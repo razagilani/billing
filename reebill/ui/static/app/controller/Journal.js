@@ -4,6 +4,10 @@ Ext.define('ReeBill.controller.Journal', {
     stores: [
         'JournalEntries'
     ],
+
+    views: [
+      'journal.NoteForm', 'journal.JournalEntries'
+    ],
     
     refs: [{
         ref: 'noteForm',

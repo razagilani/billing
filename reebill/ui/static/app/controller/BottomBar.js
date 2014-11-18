@@ -2,6 +2,13 @@ Ext.define('ReeBill.controller.BottomBar', {
     extend: 'Ext.app.Controller',
 
     stores: ['Preferences'],
+
+    views:[
+        'Viewport',
+        'accounts.Accounts',
+        'accounts.AccountForm',
+        'reebills.Reebills'
+    ],
     
     refs: [{
         ref: 'accountForm',
@@ -50,31 +57,17 @@ Ext.define('ReeBill.controller.BottomBar', {
             },
             'grid[id=utilityBillsGrid]': {
                 selectionchange: this.handleUtilityBillSelect
-            },
-        });
-
-        Ext.Ajax.request({
-            url: window.location.origin + '/reebill/static/revision.txt',
-            success: function(response){
-                var obj = Ext.JSON.decode(response.responseText);
-                var label = me.getRevisionTBLabel();
-                label.setText(obj.date + ' ' + obj.user + ' ' + obj.version + ' ' + obj.deploy_env);
-            },
-            failure: function(){
-                var label = me.getRevisionTBLabel();
-                label.setText('Version Information Not Found');
             }
         });
 
         this.getPreferencesStore().on({
             load: function(store, records, successful, eOpts ){
-                var label = me.getUserTBLabel();
+                var label = this.getUserTBLabel();
                 label.setText(store.getAt(store.find('key', 'username')).get('value'));
             },
             scope: this
         });
     },
-
 
     /**
      * Handle the account selection.

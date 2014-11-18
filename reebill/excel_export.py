@@ -48,8 +48,8 @@ class Exporter(object):
                 account, reebills, start_date, end_date))
         output_file.write(book.xls)
 
-    def get_account_charges_sheet(self, account, reebills, start_date,
-                                  end_date):
+    def get_account_charges_sheet(self, account, reebills, start_date=None,
+                                  end_date=None):
         '''
         Returns a tablib Dataset consisting of all actual and hypothetical
         charges for all utility bills associates with 'reebills'.
@@ -230,8 +230,8 @@ class Exporter(object):
         workbook.add_sheet(dataset)
         output_file.write(workbook.xls)
 
-    def get_export_reebill_details_dataset(self, accounts, begin_date,
-                                           end_date):
+    def get_export_reebill_details_dataset(self, accounts, begin_date=None,
+                                           end_date=None):
         ''' Helper method for export_reebill_details_xls: extracts details
         data from issued  reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy.
@@ -279,9 +279,7 @@ class Exporter(object):
         ds_rows = []
 
         for account in accounts:
-            payments = self.state_db.payments(account)
             cumulative_savings = 0
-
             reebills = self.state_db.listReebills(0, 10000,
                     account, u'sequence', u'ASC')[0]
 
@@ -301,27 +299,15 @@ class Exporter(object):
                 # reebill falls outside of its bounds, skip to the next one
                 in_period = None
                 if begin_date:
-                    in_period = utilbill.period_start >= begin_date
+                    in_period = period_start >= begin_date
                 if end_date:
-                    in_period = utilbill.period_end <= end_date \
+                    in_period = period_end <= end_date \
                                 and in_period is not False
                 if (begin_date or end_date) and in_period is False:
                     continue
 
-                # iterate the payments and find the ones that apply.
-                if period_start and period_end:
-                    # TODO i don't know who wrote this or why, but it looks
-                    # like trouble. converted to use datetimes without
-                    # changing the behavior.
-                    applicable_payments = filter(
-                        lambda x: date_to_datetime(period_start) <= \
-                                x.date_applied <  date_to_datetime(period_end),
-                                payments)
-                    # pop the ones that get applied from the payment list
-                    # (there is a bug due to the reebill periods overlapping,
-                    # where a payment may be applicable more than ones)
-                    for applicable_payment in applicable_payments:
-                        payments.remove(applicable_payment)
+                applicable_payments = \
+                    self.state_db.get_payments_for_reebill_id(reebill.id)
 
                 savings = 0
                 if reebill.ree_value and reebill.ree_charge:

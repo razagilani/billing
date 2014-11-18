@@ -4,6 +4,14 @@ Ext.define('ReeBill.controller.Reebills', {
     stores: [
         'Reebills', 'ReeBillVersions'
     ],
+
+    views: [
+        'reebills.Reebills',
+        'reebills.ReeBillVersions',
+        'reebills.SequentialAccountInformation',
+        'reebills.UploadIntervalMeter',
+        'accounts.Accounts'
+    ],
     
     refs: [{
         ref: 'accountsGrid',
