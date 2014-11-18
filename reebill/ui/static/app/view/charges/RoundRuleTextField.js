@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.RoundRuleTextField', {
+Ext.define('ReeBill.view.charges.RoundRuleTextField', {
     extend: 'Ext.form.field.Text',
     alias: 'widget.roundRuleTextField',
 

@@ -105,11 +105,12 @@ class UtilbillProcessor(object):
             session.commit()
             self.compute_utility_bill(utilbill_id)
 
-    def add_charge(self, utilbill_id):
-        """Add a new charge to the given utility bill."""
+    def add_charge(self, utilbill_id, **charge_kwargs):
+        """Add a new charge to the given utility bill. charge_kwargs are
+        passed as keyword arguments to the charge"""
         utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
-            charge = utilbill.add_charge()
+            charge = utilbill.add_charge(**charge_kwargs)
             self.compute_utility_bill(utilbill_id)
         return charge
 

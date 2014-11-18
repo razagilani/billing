@@ -1,5 +1,7 @@
-Ext.define('ReeBill.view.UtilityBillRegisters', {
+Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
     extend: 'Ext.grid.Panel',
+
+    requires: ['ReeBill.store.Units'],
 
     title: 'Utility Bill Registers',
     alias: 'widget.utilityBillRegisters',    
@@ -78,8 +80,10 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         sortable: true,
         editor: {
             xtype: 'combo',
-            name: 'service',
             store: 'Units',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'name',
