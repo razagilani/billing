@@ -42,5 +42,3 @@ file { "/etc/httpd/conf.d/${username}.conf":
     ensure => file,
     source => "puppet:///modules/conf/vhosts/reebill-shareddev.conf"
 }
-
-# full crontab?

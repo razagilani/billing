@@ -1,8 +1,9 @@
 Ext.define('ReeBill.view.Viewport', {
-
     extend: 'Ext.container.Viewport',
     layout: 'fit',
     componentCls: 'panel-noborder',
+
+    requires: ['Ext.panel.PDF'],
 
     initComponent: function() {
         this.items = {
@@ -50,7 +51,7 @@ Ext.define('ReeBill.view.Viewport', {
                     type: 'vbox',
                     align: 'stretch'
                 },
-                
+
                 items: [{
                     xtype: 'panel',
                     name: 'accountsTab',
@@ -62,9 +63,9 @@ Ext.define('ReeBill.view.Viewport', {
                     items: [{
                         xtype: 'accounts',
                         id: 'accountsGrid'
-                    },{
-                        xtype: 'accountForm',
-                        id: 'newAccountForm'
+//                    },{
+//                        xtype: 'accountForm',
+//                        id: 'newAccountForm'
                     }]
                 },{
                     xtype: 'panel',
@@ -121,7 +122,7 @@ Ext.define('ReeBill.view.Viewport', {
                     items: [{
                         xtype: 'charges',
                         id: 'chargesGrid',
-                        region: 'center'                        
+                        region: 'center'
                     }]
                 },{
                     xtype: 'payments',
@@ -231,7 +232,7 @@ Ext.define('ReeBill.view.Viewport', {
                     },'->',{
                         xtype: 'tbtext',
                         name: 'revisionTBLabel',
-                        text: 'Revision String'
+                        text: VERSION.date + ' ' + VERSION.user + ' ' + VERSION.version + ' ' + VERSION.deploy_env
                     },'->',{
                         xtype: 'tbtext',
                         name: 'accountTBLabel',
@@ -245,7 +246,7 @@ Ext.define('ReeBill.view.Viewport', {
                         name: 'rbSequenceVersionTBLabel',
                         text: ''
                     }]
-                }]
+                  }]
             }]
         };
         

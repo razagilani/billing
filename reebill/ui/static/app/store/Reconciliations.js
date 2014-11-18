@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.Reconciliations', {
     extend: 'Ext.data.Store',
-
+    requires: ['ReeBill.model.Reconciliation'],
     model: 'ReeBill.model.Reconciliation',
 
     autoLoad: false,

@@ -1,5 +1,6 @@
 Ext.define('ReeBill.store.Suppliers', {
     extend: 'Ext.data.Store',
+    requires: ['ReeBill.model.Supplier'],
     model: 'ReeBill.model.Supplier',
 
     autoLoad: true,

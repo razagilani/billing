@@ -1,8 +1,9 @@
-Ext.define('ReeBill.view.IssuableReebills', {
+Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
     extend: 'Ext.grid.Panel',
 
     requires: [
-        'Ext.grid.feature.Grouping'
+        'Ext.grid.feature.Grouping',
+        'Ext.toolbar.PagingMemoryToolbar'
     ],
 
     title: 'Issuable Reebills',
