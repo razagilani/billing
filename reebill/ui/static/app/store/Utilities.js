@@ -1,5 +1,6 @@
 Ext.define('ReeBill.store.Utilities', {
     extend: 'Ext.data.Store',
+    requires: ['ReeBill.model.Utility'],
     model: 'ReeBill.model.Utility',
 
     autoLoad: true,

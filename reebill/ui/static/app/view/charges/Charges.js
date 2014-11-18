@@ -1,10 +1,13 @@
-Ext.define('ReeBill.view.Charges', {
+Ext.define('ReeBill.view.charges.Charges', {
     extend: 'Ext.grid.Panel',
 
     requires: [
         'Ext.grid.*',
         'Ext.data.*',
-        'Ext.dd.*'
+        'Ext.dd.*',
+        'ReeBill.view.charges.FormulaField',
+        'ReeBill.view.charges.GroupTextField',
+        'ReeBill.view.charges.RoundRuleTextField'
     ],
 
     alias: 'widget.charges',

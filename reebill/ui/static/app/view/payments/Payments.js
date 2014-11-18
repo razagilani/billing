@@ -1,6 +1,6 @@
-Ext.define('ReeBill.view.Payments', {
+Ext.define('ReeBill.view.payments.Payments', {
     extend: 'Ext.grid.Panel',
-
+    requires: ['Ext.datetimefield.DateTimeField'],
     title: 'Payments',
     alias: 'widget.payments',    
     store: 'Payments',
