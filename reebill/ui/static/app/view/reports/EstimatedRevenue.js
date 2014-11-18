@@ -6,7 +6,7 @@ var EstimatedRevenueRenderer = function(value){
 }
 
 
-Ext.define('ReeBill.view.EstimatedRevenue', {
+Ext.define('ReeBill.view.reports.EstimatedRevenue', {
     extend: 'Ext.grid.Panel',
 
     title:'12 Month Estimated Revenue',

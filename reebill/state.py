@@ -1169,6 +1169,13 @@ class StateDB(object):
             Payment.date_received).all()
         return payments
 
+    def get_payments_for_reebill_id(self, reebill_id):
+        session = Session()
+        payments = session.query(Payment) \
+            .filter(Payment.reebill_id == reebill_id).order_by(
+            Payment.date_received).all()
+        return payments
+
     # TODO: this method is not used anywhere but it probably should be.
     def get_outstanding_balance(self, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence

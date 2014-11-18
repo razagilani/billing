@@ -4,6 +4,11 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     stores: [
         'UtilityBillRegisters'
     ],
+
+    views: [
+        'metersandregisters.UtilityBillRegisters',
+        'metersandregisters.TOUMetering'
+    ],
     
     refs: [{
         ref: 'utilityBillRegistersGrid',
