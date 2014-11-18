@@ -43,8 +43,7 @@ Ext.define('ReeBill.controller.Accounts', {
                 click: this.saveNewAccount
             },
             'combo[name=accountsFilter]': {
-                change: this.handleFilter,
-                render: this.initFilterCombo
+                change: this.handleFilter
             }
         });
 
@@ -71,10 +70,9 @@ Ext.define('ReeBill.controller.Accounts', {
                 var memStore = this.getAccountsMemoryStore();
                 var sortColumn = store.getOrCreate('default_account_sort_field', 'account').get('value');
                 var sortDir = store.getOrCreate('default_account_sort_direction', 'DESC').get('value');
+
                 memStore.sort({property: sortColumn, direction: sortDir});
                 memStore.loadPage(1);
-
-                this.initFilterCombo();
             },
             scope: this
         });
@@ -83,7 +81,7 @@ Ext.define('ReeBill.controller.Accounts', {
             beforeload: function(store, operation, eOpts){
                 var prefStore = this.getPreferencesStore();
                 var accountsStore = this.getAccountsStore();
-                if(prefStore.getRange().length && accountsStore.getRange().length){
+                if(prefStore.count()!=0 && accountsStore.count()!=0){
                     // Filter
                     var filterStore = this.getAccountsFilterStore();
                     var allRecords = accountsStore.getRange();
@@ -98,12 +96,12 @@ Ext.define('ReeBill.controller.Accounts', {
                     
                     // apply the filter
                     store.getProxy().data = Ext.Array.filter(allRecords, filter.get('filter').filterFn);
+                    this.initFilterCombo();
                 }
             },
             load: function(store, records, successful, eOpts ){
                 var prefStore = this.getPreferencesStore();
-                var accountsStore = this.getAccountsStore();
-                if(prefStore.getRange().length && accountsStore.getRange().length){
+                if(prefStore.count()!=0 && store.sorters.items.length){
                     // Sort
                     prefStore.setOrCreate('default_account_sort_field', store.sorters.items[0].property);
                     prefStore.setOrCreate('default_account_sort_direction', store.sorters.items[0].direction);
@@ -125,9 +123,11 @@ Ext.define('ReeBill.controller.Accounts', {
     initFilterCombo: function(){
         var store = this.getPreferencesStore();
         var filterCombo = this.getAccountsFilter();
-        if(store.getRange().length && filterCombo){
-            var filterPrefRec = store.getOrCreate('filtername', 'none');
-            filterCombo.setValue(filterPrefRec.get('value'));
+        if(store.count()!=0 && filterCombo){
+            var filterPrefRec = store.findRecord('key', 'filtername');
+            if(filterPrefRec){
+                filterCombo.setValue(filterPrefRec.get('value'));
+            }
         }
     },
 
@@ -139,8 +139,11 @@ Ext.define('ReeBill.controller.Accounts', {
         // and not AccountsMemoryStore
         var memStore = this.getAccountsMemoryStore();
         var prefStore = this.getPreferencesStore();
-        prefStore.setOrCreate('filtername', newValue);
-        memStore.loadPage(1);
+        if(memStore.count()!=0 && prefStore.count()!=0 && newValue){
+            var rec= prefStore.findRecord('key', 'filtername');
+            rec.set('value', newValue);
+            memStore.loadPage(1);
+        }
     },
 
     /**

@@ -63,7 +63,7 @@ Ext.define('ReeBill.controller.BottomBar', {
         this.getPreferencesStore().on({
             load: function(store, records, successful, eOpts ){
                 var label = this.getUserTBLabel();
-                //label.setText(store.getAt(store.find('key', 'username')).get('value'));
+                label.setText(store.getAt(store.find('key', 'username')).get('value'));
             },
             scope: this
         });
