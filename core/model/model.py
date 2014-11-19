@@ -361,7 +361,7 @@ class UtilBill(Base):
 
     date_received = Column(DateTime)
     account_number = Column(String(1000), nullable=False)
-    sha256_hexdigest = Column(String(64))
+    sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
