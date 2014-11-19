@@ -1106,8 +1106,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # REG_TOTAL and OTHER
         id_1 = self.process.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
-        register = self.process.new_register(id_1, {'meter_id': 'M60324',
-                                                    'register_id': 'R'})
+        register = self.process.new_register(id_1, meter_identifier='M60324',
+                                             identifier='R')
         self.process.update_register(register.id, {'register_binding': 'OTHER'})
 
         # 2nd utility bill should have the same registers as the first
@@ -1596,7 +1596,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'active_periods_weekend': [[11, 11]],
             'active_periods_holiday': [],
         }
-        r = self.process.new_register(u.id, {})
+        r = self.process.new_register(u.id)
         self.process.update_register(r.id, {
             'description': 'time-of-use register',
             'quantity': 0,
@@ -1837,7 +1837,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill_id = self.process.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]['id']
         def add_2nd_register():
-            self.process.new_register(utilbill_id, {})
+            self.process.new_register(utilbill_id)
             register_id = self.process.get_registers_json(utilbill_id)[1]['id']
             self.process.update_register(register_id,
                     {'register_binding': 'REG_2'})
