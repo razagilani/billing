@@ -42,7 +42,7 @@ class BillFileHandler(object):
 
     @staticmethod
     def _get_key_name(utilbill):
-        return 'utilbill/' + utilbill.sha256_hexdigest
+        return utilbill.sha256_hexdigest + '.pdf'
 
     def _get_amazon_bucket(self):
         return self._connection.get_bucket(self._bucket_name)
