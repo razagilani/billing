@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.UploadIntervalMeter', {
+Ext.define('ReeBill.view.reebills.UploadIntervalMeter', {
     extend: 'Ext.form.Panel',
 
     title: 'Upload Interval Meter CSV',
@@ -53,8 +53,7 @@ Ext.define('ReeBill.view.UploadIntervalMeter', {
             displayField: 'name',
             editable: false,
             queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
+            forceSelection: true
         },{
             xtype: 'textfield',
             name: 'energy_column',
@@ -71,8 +70,7 @@ Ext.define('ReeBill.view.UploadIntervalMeter', {
             displayField: 'name',
             editable: false,
             queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
+            forceSelection: true
         }]
     }],
 

@@ -361,7 +361,7 @@ class UtilBill(Base):
 
     date_received = Column(DateTime)
     account_number = Column(String(1000), nullable=False)
-    sha256_hexdigest = Column(String(64))
+    sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -475,19 +475,23 @@ class UtilBill(Base):
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
 
-    def add_charge(self):
+    def add_charge(self, **charge_kwargs):
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
         charge = Charge(utilbill=self,
-                        rsi_binding="New Charge %s" % n,
-                        rate=0.0,
-                        quantity_formula='',
-                        description="New Charge - Insert description here",
-                        group="",
-                        unit="dollars",
+                        rsi_binding=charge_kwargs.get(
+                            'rsi_binding', "New Charge %s" % n),
+                        rate=charge_kwargs.get('rate', 0.0),
+                        quantity_formula=charge_kwargs.get(
+                            'quantity_formula', ''),
+                        description=charge_kwargs.get(
+                            'description',
+                            "New Charge - Insert description here"),
+                        group=charge_kwargs.get("group", ''),
+                        unit=charge_kwargs.get('unit', "dollars")
                         )
         session.add(charge)
         registers = self.registers

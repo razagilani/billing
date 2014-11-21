@@ -1,6 +1,6 @@
-Ext.define('ReeBill.view.TOUMetering', {
+Ext.define('ReeBill.view.metersandregisters.TOUMetering', {
     extend: 'Ext.form.Panel',
-
+    requires: ['Ext.slider.DynamicMultiSlider'],
     title: 'Time of Use Metering',
 
     alias: 'widget.TOUMetering',
