@@ -36,6 +36,11 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         #self._clear_tables(mysql_connection)
 
     def test_get_last_real_utilbill(self):
+        from billing.core.model import Charge, Register
+        self.session.query(Charge).delete()
+        self.session.query(Register).delete()
+        self.session.query(UtilBill).delete()
+
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
         supplier = customer.fb_supplier
@@ -67,6 +72,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                                  rateclass2, empty_address, empty_address,
                                  period_start=date(2000,1,2),
                                  period_end=date(2000,2,2))
+        self.session.add(electric_bill)
         self.assertEqual(electric_bill,
                          self.ubl.get_last_real_utilbill('99999', end=None))
         self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(

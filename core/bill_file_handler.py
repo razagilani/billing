@@ -3,7 +3,7 @@ import hashlib
 import requests
 
 from billing.core.model import UtilBill
-from exc import MissingFileError
+from billing.exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandler(object):
@@ -93,6 +93,10 @@ class BillFileHandler(object):
         :param file: a seekable file
         '''
         sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
+        if self._utilbill_loader.count_utilbills_with_hash(
+                sha256_hexdigest) != 0:
+            raise DuplicateFileError('File already exists with hash %s ' %
+                                     sha256_hexdigest)
         key_name = self._get_key_name_for_hash(sha256_hexdigest)
         key = self._get_amazon_bucket().new_key(key_name)
         key.set_contents_from_file(file)
