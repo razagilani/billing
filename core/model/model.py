@@ -374,8 +374,15 @@ class UtilBill(Base):
     # downloaded and can't take into account information from other sources.)
     date_scraped = Column(DateTime)
 
+    # cascade for customer relationship does NOT include "save-update" to allow
+    # more control over when UtilBills get added--for example, when uploading
+    # a new utility bill, the new UtilBill object should only be added to the
+    # session after the file upload succeeded (because in a test, there is no
+    # way to check that the UtilBill was not inserted into the database because
+    # the transaction was rolled back).
     customer = relationship("Customer", backref=backref('utilbill',
-            order_by=id))
+            order_by=id, cascade='delete'))
+
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
@@ -461,9 +468,9 @@ class UtilBill(Base):
 
     def __repr__(self):
         return ('<UtilBill(customer=<%s>, service=%s, period_start=%s, '
-                'period_end=%s, state=%s, %s reebills)>') % (
+                'period_end=%s, state=%s)>') % (
             self.customer.account, self.service, self.period_start,
-            self.period_end, self.state, len(self._utilbill_reebills))
+            self.period_end, self.state)
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
@@ -569,7 +576,7 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        return dict(super(UtilBill, self).column_dict().items() +
+        result = dict(super(UtilBill, self).column_dict().items() +
                     [('account', self.customer.account),
                      ('service', 'Unknown' if self.service is None
                                            else self.service.capitalize()),
@@ -584,6 +591,7 @@ class UtilBill(Base):
                      ('rate_class', (self.rate_class.column_dict() if
                                      self.rate_class else None)),
                      ('state', self.state_name())])
+        return result
 
 class Register(Base):
     """A register reading on a utility bill"""

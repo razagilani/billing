@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
-from billing.exc import NoSuchBillException
+from billing.exc import NoSuchBillException, DuplicateFileError
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -188,8 +188,24 @@ class UtilbillProcessor(object):
         return  utilbill
 
     def _create_utilbill_in_db(self, account, start=None, end=None,
-                            service='', utility=None, rate_class=None,
+                            service=None, utility=None, rate_class=None,
                             total=0, state=UtilBill.Complete, supplier=None):
+        '''
+        Returns a UtilBill with related objects (Charges and Registers
+        assigned to it). Does not add anything to the session, so callers can
+        do this only if no exception was raised by BillFileHandler when
+        uploading the file.`
+        :param account:
+        :param start:
+        :param end:
+        :param service:
+        :param utility:
+        :param rate_class:
+        :param total:
+        :param state:
+        :param supplier:
+        :return:
+        '''
         # validate arguments
         UtilBill.validate_utilbill_period(start, end)
 
@@ -235,19 +251,31 @@ class UtilbillProcessor(object):
             billing_address = customer.fb_billing_address
             service_address = customer.fb_service_address
 
+        # order of preference for picking value of "service" field: value
+        # passed as an argument, or 'electric' by default
+        # TODO: this doesn't really make sense; probably the "service" field
+        # should belong to the rate class.
         if service is None:
-            if predecessor is None:
-                # TODO: this is not a good choice for "service". it should
-                # probably belong to the Customer or UtilityAccount object.
-                service = ''
-            else:
-                service = predecessor.service
-        utility = self.state_db.get_create_utility(utility) if utility else \
-            getattr(predecessor, 'utility', None)
-        supplier = self.state_db.get_create_supplier(supplier) if supplier else \
-            getattr(predecessor, 'supplier', None)
-        rate_class = self.state_db.get_create_rate_class(rate_class, utility) if rate_class else \
-            getattr(predecessor, 'rate_class', None)
+            service = getattr(predecessor, 'service', None)
+        if service is None:
+            service = 'electric'
+
+        # order of preference for picking utility/supplier/rate_class: value
+        # passed as an argument, same value as predecessor,
+        # "fb" values from Customer
+        # TODO: this is unnecessarily complicated.
+        if utility is None:
+            utility = getattr(predecessor, 'utility', None)
+        if utility is None:
+            utility = customer.fb_utility
+        if supplier is None:
+            supplier = getattr(predecessor, 'supplier', None)
+        if supplier is None:
+            supplier = customer.fb_supplier
+        if rate_class is None:
+            rate_class = getattr(predecessor, 'rate_class', None)
+        if rate_class is None:
+            rate_class = customer.fb_rate_class
 
         # delete any existing bill with same service and period but less-final
         # state
@@ -258,23 +286,16 @@ class UtilbillProcessor(object):
                                 period_start=start, period_end=end,
                                 target_total=total,
                                 date_received=datetime.utcnow().date())
-        session.add(new_utilbill)
-        session.flush()
 
         new_utilbill.charges = self.rate_structure_dao. \
             get_predicted_charges(new_utilbill)
         for register in predecessor.registers if predecessor else []:
-            session.add(Register(new_utilbill, register.description,
-                                 register.identifier,
-                                 register.unit,
-                                 False,
-                                 register.reg_type,
-                                 register.active_periods,
-                                 register.meter_identifier,
-                                 quantity=0,
-                                 register_binding=register.register_binding))
-        session.flush()
-        self.compute_utility_bill(new_utilbill.id)
+            # no need to append this Register to new_utilbill.Registers because
+            # SQLAlchemy does it automatically
+            Register(new_utilbill, register.description, register.identifier,
+                     register.unit, False, register.reg_type,
+                     register.active_periods, register.meter_identifier,
+                     quantity=0, register_binding=register.register_binding)
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -302,14 +323,28 @@ class UtilbillProcessor(object):
             raise ValueError("Estimated utility bills can't have a file")
 
         # create in database
+        if utility is not None:
+            utility = self.state_db.get_create_utility(utility)
+        if rate_class is not None:
+            rate_class = self.state_db.get_create_rate_class(rate_class, utility)
+        if supplier is not None:
+           supplier = self.state_db.get_create_supplier(supplier)
         new_utilbill = self._create_utilbill_in_db(
-            account, start=start, end=end, service=service, utility=utility,
+            account, start=start, end=end, service=service,utility=utility,
             rate_class=rate_class, total=total, state=state, supplier=supplier)
 
         # upload the file
         if bill_file is not None:
             self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill,
                                                              bill_file)
+
+        # adding UtilBill should also add Charges and Registers due to cascade
+        session = Session()
+        session.add(new_utilbill)
+        session.flush()
+
+        self.compute_utility_bill(new_utilbill.id)
+
         return new_utilbill
 
     def upload_utility_bill_existing_file(self, account, utility_guid,
@@ -323,10 +358,20 @@ class UtilbillProcessor(object):
         determine which existing file goes with this bill.
         '''
         s = Session()
+        if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
+            raise DuplicateFileError('Utility bill already exists with '
+                                     'file hash %s' % sha256_hexdigest)
 
         # of all the UtilBill fields, only utility is known
         utility = s.query(Utility).filter_by(guid=utility_guid).one()
         new_utilbill = self._create_utilbill_in_db(account, utility=utility)
+
+        # adding UtilBill should also add Charges and Registers due to cascade
+        session = Session()
+        session.add(new_utilbill)
+        session.flush()
+
+        self.compute_utility_bill(new_utilbill.id)
 
         # set hexdigest of the file (this would normally be done by
         # BillFileHandler.uppad_utilbill_pdf_to_s3)

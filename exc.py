@@ -27,6 +27,11 @@ class MissingDataError(BillingError):
 class MissingFileError(BillingError):
     pass
 
+class DuplicateFileError(BillingError):
+    '''Attempt to upload or recognize a utility bill file that already exists.
+    '''
+    pass
+
 class NoSuchBillException(BillingError):
     pass
 

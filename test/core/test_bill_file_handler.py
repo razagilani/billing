@@ -11,7 +11,7 @@ from mock import Mock
 
 from billing.core.model import UtilBill, UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
-from exc import MissingFileError
+from billing.exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):
@@ -27,6 +27,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bucket.get_key.return_value = self.key
 
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 0
 
         url_format = 'https://example.com/%(bucket_name)s/%(key_name)s'
         self.bfh = BillFileHandler(connection, bucket_name,
@@ -94,7 +95,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
 
         #Ensure the file is gone
-        self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
+        self.utilbill_loader.count_utilbills_with_hash.assert_with(
             self.file_hash)
         self.key.delete.assert_called_once_with()
 
@@ -114,9 +115,19 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
 
         #Ensure the file is *still in S3* even though we have called delete
-        self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
+        self.utilbill_loader.count_utilbills_with_hash.assert_called_with(
             self.file_hash)
         self.assertEqual(0, self.key.delete.call_count)
+
+    def test_upload_duplicate_file(self):
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 1
+
+        # both uploading methods should raise an exception if there is already
+        # a file with the given hash
+        with self.assertRaises(DuplicateFileError):
+            self.bfh.upload_file(self.file)
+        with self.assertRaises(DuplicateFileError):
+            self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
 if __name__ == '__main__':
     unittest.main()
