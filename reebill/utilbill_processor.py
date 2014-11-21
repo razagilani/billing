@@ -39,7 +39,7 @@ class UtilbillProcessor(object):
             l.append(r.column_dict())
         return l
 
-    def new_register(self, utilbill_id, row):
+    def new_register(self, utilbill_id, **register_kwargs):
         """Creates a new register for the utility bill having the specified id
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
@@ -49,15 +49,19 @@ class UtilbillProcessor(object):
         if utility_bill.editable():
             r = Register(
                 utility_bill,
-                "Insert description",
-                row.get('register_id', "Insert register ID here"),
-                'therms',
-                False,
-                "total",
-                None,
-                row.get('meter_id', ""),
-                quantity=0,
-                register_binding="Insert register binding here")
+                description=register_kwargs.get(
+                    'description',"Insert description"),
+                identifier=register_kwargs.get(
+                    'identifier', "Insert register ID here"),
+                unit=register_kwargs.get('unit', 'therms'),
+                estimated=register_kwargs.get('estimated', False),
+                reg_type=register_kwargs.get('reg_type', "total"),
+                active_periods=register_kwargs.get('active_periods', None),
+                meter_identifier=register_kwargs.get('meter_identifier', ""),
+                quantity=register_kwargs.get('quantity', 0),
+                register_binding=register_kwargs.get(
+                    'register_binding', "Insert register binding here")
+            )
             session.add(r)
             session.flush()
             return r
@@ -101,11 +105,12 @@ class UtilbillProcessor(object):
             session.commit()
             self.compute_utility_bill(utilbill_id)
 
-    def add_charge(self, utilbill_id):
-        """Add a new charge to the given utility bill."""
+    def add_charge(self, utilbill_id, **charge_kwargs):
+        """Add a new charge to the given utility bill. charge_kwargs are
+        passed as keyword arguments to the charge"""
         utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
-            charge = utilbill.add_charge()
+            charge = utilbill.add_charge(**charge_kwargs)
             self.compute_utility_bill(utilbill_id)
         return charge
 

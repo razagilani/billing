@@ -1,6 +1,12 @@
-Ext.define('ReeBill.view.UtilityBills', {
+Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
-
+    requires: [
+        'Ext.toolbar.PagingMemoryToolbar',
+        'ReeBill.store.Suppliers',
+        'ReeBill.store.Services',
+        'ReeBill.store.Utilities',
+        'ReeBill.store.RateClasses'
+    ],
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
     store: 'UtilityBillsMemory',
