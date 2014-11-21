@@ -46,6 +46,8 @@ def upgrade():
     op.alter_column('reebill', 'customer_id', existing_type=sa.Integer(), nullable=True)
     op.alter_column('customer', 'fb_billing_address_id', existing_type=sa.Integer(), nullable=True)
     op.alter_column('customer', 'fb_service_address_id', existing_type=sa.Integer(), nullable=True)
+    op.execute('drop view status_days_since')
+    op.execute('drop view status_unbilled')
 
 def downgrade():
     op.drop_table('utility_account')
