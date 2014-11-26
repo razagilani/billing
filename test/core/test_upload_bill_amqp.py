@@ -1,3 +1,7 @@
+'''Integration tests for receiving data associated with an existing utility
+bill file over AMQP. The RabbitMQ server is not started by this test so it
+must be running separately before the test starts.
+'''
 from StringIO import StringIO
 import json
 
@@ -8,13 +12,9 @@ from billing.core.amqp_exchange import run
 from billing.core.model import Session, UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
-
+from billing.exc import DuplicateFileError
 
 class TestUploadBillAMQP(TestCaseWithSetup):
-    '''Integration test for receiving data associated with an existing utility
-    bill file over AMQP. The RabbitMQ server is not started by this test so
-    it must be running in order for this to work.
-    '''
 
     def _queue_exists(self):
         '''Return True if the queue named by 'self.queue_name' exists,
@@ -67,7 +67,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # TODO: replace with just a UtilBillProcessor (BILL-5776)
         self.utilbill_processor = self.process
-
         self.utilbill_loader = UtilBillLoader(Session())
 
     def tearDown(self):
@@ -85,15 +84,30 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
 
-        # send message
-        message = json.dumps({'account': '99999','utility_guid': 'a',
+        # two messages with the same sha256_hexigest: the first one will
+        # cause a UtilBill to be created, but the second will cause a
+        # DuplicateFileError to be raised.
+        message1 = json.dumps({'account': '99999','utility_guid': 'a',
                               'sha256_hexdigest': file_hash})
         self.channel.basic_publish(exchange=self.exchange_name,
-                                   routing_key=self.queue_name, body=message)
+                                   routing_key=self.queue_name, body=message1)
+        message2 = json.dumps({'account': '100000','utility_guid': 'b',
+                              'sha256_hexdigest': file_hash})
+        self.channel.basic_publish(exchange=self.exchange_name,
+                                   routing_key=self.queue_name, body=message2)
 
-        # receive message
-        run(self.channel, self.queue_name, self.utilbill_processor)
+        # receive message: this not only causes the callback function to be
+        # registered, but also calls it for any messages that are already
+        # present when it is registered. any messages that are inserted after
+        # "basic_consume" is called will not be processed until after the
+        # test is finished, so we can't check for them.
+        with self.assertRaises(DuplicateFileError):
+            run(self.channel, self.queue_name, self.utilbill_processor)
 
-        # make sure the data have been received
+        # make sure the data have been received. we can only check for the
+        # final state after all messages have been processed, not the
+        # intermediate states after receiving each individual messages.
+        # that's not ideal, but not a huge problem because we also have unit
+        # testing.
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
