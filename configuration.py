@@ -103,7 +103,8 @@ class amqp(Schema):
     # more specific if additional AMQP stuff needs to go in this file
     host = String()
     exchange = String()
-    queue = String()
+    utilbill_queue = String()
+    # TODO add utility_queue
 
 class aws_s3(Schema):
     # utility bill file storage in Amazon S3

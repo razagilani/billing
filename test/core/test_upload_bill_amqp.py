@@ -54,7 +54,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         host_name = config.get('amqp', 'host')
         self.exchange_name = config.get('amqp', 'exchange')
-        self.queue_name = config.get('amqp', 'queue')
+        self.queue_name = config.get('amqp', 'utilbill_queue')
 
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host_name))
