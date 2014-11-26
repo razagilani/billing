@@ -1,6 +1,6 @@
-Ext.define('ReeBill.view.AccountDatePicker', {
+Ext.define('ReeBill.view.reports.AccountDatePicker', {
     extend: 'Ext.window.Window',
-
+    requires: ['ReeBill.store.Accounts'],
     title: 'Select Account and Date Range',
     alias: 'widget.accountDatePicker',
     height: 200,

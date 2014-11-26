@@ -1,19 +1,18 @@
 Ext.define('ReeBill.model.Charge', {
     extend: 'Ext.data.Model',
     fields: [
-        {name: 'group'},
-        {name: 'id'},
-        {name: 'rsi_binding'},
-        {name: 'description'},
-        {name: 'quantity'},
-        {name: 'quantity_units'},
+        {name: 'group', type: 'string'},
+        {name: 'rsi_binding', type: 'string'},
+        {name: 'description', type: 'string'},
+        {name: 'quantity', type: 'float'},
+        {name: 'unit', type: 'string'},
         {name: 'rate', type: 'float'},
         {name: 'total', type: 'float'},
-        {name: 'error'},
-        {name: 'has_charge'},
-        {name: 'quantity_formula'},
-        {name: 'roundrule'},
-        {name: 'shared'},
-        {name: 'utilbill_id'}
+        {name: 'error', type: 'string', useNull: true},
+        {name: 'has_charge', type: 'boolean'},
+        {name: 'quantity_formula', type: 'string'},
+        {name: 'roundrule', type: 'string'},
+        {name: 'shared', type: 'boolean'},
+        {name: 'utilbill_id', type: 'int'}
     ]
 });

@@ -4,6 +4,8 @@ Ext.define('ReeBill.controller.ReebillCharges', {
     stores: [
         'ReebillCharges', 'ReeBillVersions'
     ],
+
+    views: ['reebillcharges.ReebillCharges'],
     
     refs: [{
         ref: 'accountsGrid',

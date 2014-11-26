@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.Preferences', {
+Ext.define('ReeBill.view.preferences.Preferences', {
     extend: 'Ext.form.Panel',
 
     title: 'Preferences',
