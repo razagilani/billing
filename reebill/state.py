@@ -305,7 +305,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
 
@@ -343,7 +344,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
