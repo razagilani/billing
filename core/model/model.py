@@ -431,7 +431,7 @@ class UtilBill(Base):
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest=None):
+                 reebill=None, sha256_hexdigest=''):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -441,6 +441,7 @@ class UtilBill(Base):
         self.service = service
         self.utility = utility
         self.rate_class = rate_class
+        self.supplier = supplier
         self.billing_address = billing_address
         self.service_address = service_address
         self.period_start = period_start
@@ -451,8 +452,12 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+
+        # TODO: empty string as default value for sha256_hexdigest is
+        # probably a bad idea. if we are writing tests that involve puttint
+        # UtilBills in an actual database then we should probably have actual
+        # files for them.
         self.sha256_hexdigest = sha256_hexdigest
-        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
