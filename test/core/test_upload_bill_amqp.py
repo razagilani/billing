@@ -106,8 +106,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the
-        # intermediate states after receiving each individual messages.
-        # that's not ideal, but not a huge problem because we also have unit
-        # testing.
+        # intermediate states after receiving each individual message. that's
+        # not ideal, but not a huge problem because we also have unit testing.
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
