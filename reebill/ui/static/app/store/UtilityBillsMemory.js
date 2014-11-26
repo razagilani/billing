@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.UtilityBillsMemory', {
     extend: 'Ext.data.Store',
-
+    requires: ['ReeBill.model.UtilityBill'],
     model: 'ReeBill.model.UtilityBill',
     autoLoad: false,
 

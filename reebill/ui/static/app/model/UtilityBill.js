@@ -7,8 +7,9 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'id'},
         {name: 'name'},
         {name: 'account'},
-        {name: 'rate_class', type:'string'},
-        {name: 'utility', type:'string'},
+        {name: 'rate_class'},
+        {name: 'utility'},
+        {name: 'supplier'},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_charges', type: 'float' },
@@ -18,6 +19,8 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'state', type:'string'},
         {name: 'service', type:'string'},
         {name: 'processed'},
-        {name: 'editable'}
+        {name: 'editable'},
+        {name: 'sha256_hexdigest'},
+        {name: 'pdf_url'}
     ]
 });

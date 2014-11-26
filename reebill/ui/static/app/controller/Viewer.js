@@ -1,6 +1,13 @@
 Ext.define('ReeBill.controller.Viewer', {
     extend: 'Ext.app.Controller',
 
+    require: ['Ext.panel.PDF'],
+
+    views: [
+        'utilitybills.UtilityBills',
+        'reebills.Reebills'
+    ],
+
     refs: [{
         ref: 'utilityBillViewer',
         selector: 'pdfpanel[name=utilityBillViewer]'
@@ -35,8 +42,7 @@ Ext.define('ReeBill.controller.Viewer', {
             return
         }
         var viewer = this.getUtilityBillViewer();
-        viewer.setSrc(window.location.origin + '/utilitybills/' + bill.get('account') + '/' + bill.get('id') + '.pdf');
-
+        viewer.setSrc(bill.get('pdf_url'));
     },
 
     handleUtilityBillDeselect: function(){
