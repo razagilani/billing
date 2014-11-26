@@ -291,7 +291,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -329,7 +329,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
