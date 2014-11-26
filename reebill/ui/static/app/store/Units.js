@@ -5,11 +5,9 @@ Ext.define('ReeBill.store.Units', {
     data: [
         {name : 'dollars', value: 'dollars'},
         {name : 'kWh', value: 'kwh'},
-        {name : 'ccf', value: 'ccf'},
-        {name : 'BTU', value: 'btu'},
-        {name : 'Therms', value: 'Therms'},
+        {name : 'BTU', value: 'BTU'},
+        {name : 'MMBTU', value: 'MMBTU'},
+        {name : 'therms', value: 'therms'},
         {name : 'kWD', value: 'kWD'},
-        {name : 'KQH', value: 'KQH'},
-        {name : 'rkVA', value: 'rkVA'}
     ]
 });

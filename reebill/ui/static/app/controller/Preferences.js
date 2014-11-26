@@ -4,6 +4,10 @@ Ext.define('ReeBill.controller.Preferences', {
     stores: [
         'Preferences'
     ],
+
+    views: [
+        'preferences.CurrencySpinner', 'preferences.Preferences'
+    ],
     
     refs: [{
         ref: 'differenceThresholdSpinner',

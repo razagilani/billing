@@ -1,10 +1,13 @@
-import sys
 import os.path as path
+from os.path import dirname, realpath
 
-__version__ = '21'
+import configuration as config_file_schema
+
+
+__version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config', 'update_path']
+           'initialize', 'config']
 
 config = None
 
@@ -16,15 +19,13 @@ def init_config(filepath='settings.cfg', fp=None):
     :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
-    from billing.data.validation import configuration as vns
-    from billing.lib.config import ValidatedConfigParser
-    from os.path import dirname, realpath
+    from util.validated_config_parser import ValidatedConfigParser
     import logging
 
     log = logging.getLogger(__name__)
     
     global config
-    config = ValidatedConfigParser(vns)
+    config = ValidatedConfigParser(config_file_schema)
     if fp:
         log.debug('Reading configuration fp')
         config.readfp(fp)
@@ -38,11 +39,28 @@ def init_config(filepath='settings.cfg', fp=None):
     config.set('main', 'appdir', dirname(realpath(__file__)))
     log.debug('Initialized configuration')
 
+    # set boto's options for AWS HTTP requests according to the aws_s3
+    # section of the config file.
+    # it is necessary to override boto's defaults because the default
+    # behavior is to repeat every request 6 times with an extremely long
+    # timeout and extremely long interval between attempts, making it hard to
+    # tell when the server is not responding.
+    # this will override ~/.boto and/or /etc/boto.cfg if they exist (though we
+    # should not have those files).
+    import boto
+    if not boto.config.has_section('Boto'):
+        boto.config.add_section('Boto')
+    for key in ['num_retries', 'max_retry_delay', 'http_socket_timeout']:
+        value = config.get('aws_s3', key)
+        if value is not None:
+            boto.config.set('Boto', key, str(value))
 
-def init_logging(path='settings.cfg'):
+
+def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
     import logging, logging.config
-    logging.config.fileConfig(path)
+    absolute_path = path.join(dirname(realpath(__file__)), filepath)
+    logging.config.fileConfig(absolute_path)
     log = logging.getLogger(__name__)
     log.debug('Initialized logging')
 
@@ -56,7 +74,7 @@ def init_model(uri=None, schema_revision=None):
     log = logging.getLogger(__name__)
 
 
-    uri = uri if uri else config.get('statedb', 'uri')
+    uri = uri if uri else config.get('db', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
     Session.rollback()
     Session.remove()
