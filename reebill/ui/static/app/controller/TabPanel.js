@@ -5,6 +5,17 @@ Ext.define('ReeBill.controller.TabPanel', {
         'IssuableReebills',
     ],
 
+    views: [
+        'issuablereebills.IssuableReebills',
+        'accounts.Accounts',
+        'reebills.Reebills',
+        'utilitybills.UtilityBills',
+        'payments.Payments',
+        'charges.Charges',
+        'reebillcharges.ReebillCharges',
+        'metersandregisters.UtilityBillRegisters'
+    ],
+
     refs: [{
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'

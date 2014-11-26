@@ -1,6 +1,9 @@
-Ext.define('ReeBill.view.Accounts', {
+Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-
+    requires: [
+        'ReeBill.store.AccountsMemory',
+        'ReeBill.store.AccountsFilter',
+        'Ext.toolbar.PagingMemoryToolbar'],
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
     store: 'AccountsMemory',
@@ -79,8 +82,7 @@ Ext.define('ReeBill.view.Accounts', {
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',
-            forceSelection: true,
-            selectOnFocus: true
+            forceSelection: true
         }]
     }
 });

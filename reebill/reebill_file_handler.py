@@ -58,7 +58,7 @@ class ReebillFileHandler(object):
             if e.errno == EEXIST:
                 pass
 
-    def __init__(self, template_dir_path, output_dir_path, teva_accounts):
+    def __init__(self, output_dir_path, teva_accounts):
         '''
         :param template_dir_path: path of directory where
         "templates" and fonts are stored, RELATIVE to billing directory.
@@ -68,6 +68,7 @@ class ReebillFileHandler(object):
         have PDFs with the "teva" PDF format instead of the normal one.
         '''
         base_path = os.path.dirname(os.path.dirname(__file__))
+        template_dir_path = 'reebill/reebill_templates'
         self._template_dir_path = os.path.join(base_path, template_dir_path)
         if not os.access(self._template_dir_path, os.R_OK):
             raise InvalidParameter('Path "%s" is not readable' %

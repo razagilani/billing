@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.FormulaField', {
+Ext.define('ReeBill.view.charges.FormulaField', {
     extend: 'Ext.form.field.Text',
     alias: 'widget.formulaField',
 

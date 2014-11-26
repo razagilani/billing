@@ -1,11 +1,12 @@
 from os.path import dirname, realpath, join
-
+import smtplib
+from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(path=p)
+init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
@@ -30,9 +31,9 @@ from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import process, state, fetch_bill_data as fbd
-from billing.core.rate_structure import RateStructureDAO
-from billing.core.model import Session
-from billing.core.billupload import BillUpload
+from billing.core.pricing import FuzzyPricingModel
+from billing.core.model import Session, UtilBillLoader
+from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
@@ -63,7 +64,7 @@ cherrypy.tools.authenticate_ajax = cherrypy.Tool(
 
 def check_authentication():
     logger = logging.getLogger('reebill')
-    if not config.get('authentication', 'authenticate'):
+    if not config.get('reebill', 'authenticate'):
         if 'user' not in cherrypy.session:
             cherrypy.session['user'] = UserDAO.default_user
     if 'user' not in cherrypy.session:
@@ -107,9 +108,17 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
-        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
-        cache = json.load(open(cache_file)) if cache_file != "" else None
-        self.nexus_util = NexusUtil(self.config.get('skyline_backend',
+        cache_file_path = self.config.get('reebill', 'nexus_offline_cache_file')
+        if cache_file_path == '':
+            cache = None
+        else:
+            with open(cache_file_path) as cache_file:
+                text = cache_file.read()
+            if text == '':
+                cache = []
+            else:
+                cache = json.load(text)
+        self.nexus_util = NexusUtil(self.config.get('reebill',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
 
@@ -117,14 +126,28 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(logger=self.logger)
 
-        # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config, self.logger)
+        s3_connection = S3Connection(
+                config.get('aws_s3', 'aws_access_key_id'),
+                config.get('aws_s3', 'aws_secret_access_key'),
+                is_secure=config.get('aws_s3', 'is_secure'),
+                port=config.get('aws_s3', 'port'),
+                host=config.get('aws_s3', 'host'),
+                calling_format=config.get('aws_s3', 'calling_format'))
+        utilbill_loader = UtilBillLoader(Session())
+        # TODO: ugly. maybe put entire url_format in config file.
+        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                'https' if config.get('aws_s3', 'is_secure') is True else
+                'http', config.get('aws_s3', 'host'),
+                config.get('aws_s3', 'port'))
+        self.bill_file_handler = BillFileHandler(s3_connection,
+                                     config.get('aws_s3', 'bucket'),
+                                     utilbill_loader, url_format)
 
-        # create a RateStructureDAO
-        self.ratestructure_dao = RateStructureDAO(logger=self.logger)
+        # create a FuzzyPricingModel
+        self.ratestructure_dao = FuzzyPricingModel(utilbill_loader,
+                                                   logger=self.logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
@@ -139,47 +162,43 @@ class WebResource(object):
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
-        if self.config.get('runtime', 'sessions_key'):
-            self.sessions_key = self.config.get('runtime', 'sessions_key')
+        if self.config.get('reebill', 'sessions_key'):
+            self.sessions_key = self.config.get('reebill', 'sessions_key')
 
         # create a Splinter
-        if self.config.get('runtime', 'mock_skyliner'):
+        if self.config.get('reebill', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
-                self.config.get('skyline_backend', 'oltp_url'),
-                skykit_host=self.config.get('skyline_backend', 'olap_host'),
-                skykit_db=self.config.get('skyline_backend', 'olap_database'),
-                olap_cache_host=self.config.get('skyline_backend', 'olap_host'),
-                olap_cache_db=self.config.get('skyline_backend',
-                                              'olap_database'),
+                self.config.get('reebill', 'oltp_url'),
+                skykit_host=self.config.get('reebill', 'olap_host'),
+                skykit_db=self.config.get('reebill', 'olap_database'),
+                olap_cache_host=self.config.get('reebill', 'olap_host'),
+                olap_cache_db=self.config.get('reebill', 'olap_database'),
                 monguru_options={
-                    'olap_cache_host': self.config.get('skyline_backend',
-                                                       'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend',
+                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
+                    'olap_cache_db': self.config.get('reebill',
                                                      'olap_database'),
                     'cartographer_options': {
-                        'olap_cache_host': self.config.get('skyline_backend',
+                        'olap_cache_host': self.config.get('reebill',
                                                            'olap_host'),
-                        'olap_cache_db': self.config.get('skyline_backend',
+                        'olap_cache_db': self.config.get('reebill',
                                                          'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        'nexus_host': self.config.get('skyline_backend',
+                        'nexus_host': self.config.get('reebill',
                                                       'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
                 },
                 cartographer_options={
-                    'olap_cache_host': self.config.get('skyline_backend',
-                                                       'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend',
+                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
+                    'olap_cache_db': self.config.get('reebill',
                                                      'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
-                    'nexus_host': self.config.get('skyline_backend',
-                                                  'nexus_db_host'),
+                    'nexus_host': self.config.get('reebill', 'nexus_db_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
@@ -187,38 +206,32 @@ class WebResource(object):
 
         # create a ReebillRenderer
         self.reebill_file_handler = reebill_file_handler.ReebillFileHandler(
-                self.config.get('reebillrendering', 'template_directory'),
-                self.config.get('bill', 'billpath'),
-                self.config.get('reebillrendering', 'teva_accounts'))
+                self.config.get('reebill', 'reebill_file_path'),
+                self.config.get('reebill', 'teva_accounts'))
         mailer_opts = dict(self.config.items("mailer"))
+        server = smtplib.SMTP()
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
+                server,
                 mailer_opts['smtp_host'],
                 mailer_opts['smtp_port'],
                 mailer_opts['bcc_list'])
 
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    self.logger)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
+            self.bill_file_handler, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
             self.ree_getter, self.journal_dao, logger=self.logger)
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.get('authentication',
-                                                 'authenticate')
+        self.authentication_on = self.config.get('reebill', 'authenticate')
 
-        self.reconciliation_log_dir = self.config.get(
-            'reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get(
             'reebillreconciliation', 'report_directory')
-
-        self.estimated_revenue_log_dir = self.config.get(
-            'reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
 
@@ -365,7 +378,6 @@ class IssuableReebills(RESTResource):
         bills = json.loads(reebills)
         reebills_with_corrections = []
         for bill in bills:
-            print bill
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             try:
@@ -401,16 +413,17 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        bills = self.process.issue_and_mail(apply_corrections=True, processed=True)
+        bills = self.process.issue_processed_and_mail(apply_corrections=True)
         for bill in bills:
             version = self.state_db.max_version(bill['account'], bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'], bill['sequence'], version,
-                    applied_sequence=bill['sequence'] if version != 0 else None)
+                    cherrypy.session['user'], bill['account'], bill['sequence'],
+                    version, applied_sequence=bill['sequence']
+                if version != 0 else None)
             if version == 0:
                 journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'], bill['sequence'],
-                    bill['mailto'])
+                        cherrypy.session['user'], bill['account'],
+                        bill['sequence'], bill['mailto'])
         return self.dumps({'success': True,
                     'issued': bills})
 
@@ -467,9 +480,6 @@ class ReebillsResource(RESTResource):
         rtn = None
 
         if action == 'bindree':
-            if self.config.get('runtime', 'integrate_nexus') is False:
-                raise ValueError("Nexus is not integrated")
-
             self.process.bind_renewable_energy(account, sequence)
             reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
@@ -596,7 +606,6 @@ class UtilBillResource(RESTResource):
             UtilBill.Estimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
-            fileobj.filename if fileobj.file else None,
             total=total_charges, state=billstate, utility=None, rate_class=None)
 
         # Since this is initated by an Ajax request, we will still have to
@@ -617,6 +626,21 @@ class UtilBillResource(RESTResource):
             ub = self.process.compute_utility_bill(utilbill_id)
             result = ub.column_dict()
 
+        elif action == 'supplier':
+            update_args = {'supplier': row.pop('supplier')}
+            result = self.process.update_utilbill_metadata(
+                utilbill_id, **update_args).column_dict()
+
+        elif action == 'utility':
+            update_args = {'utility': row.pop('utility')}
+            result = self.process.update_utilbill_metadata(
+                utilbill_id, **update_args).column_dict()
+
+        elif action == 'rate_class':
+            update_args = {'rate_class': row.pop('rate_class')}
+            result = self.process.update_utilbill_metadata(
+                utilbill_id, **update_args).column_dict()
+
         elif action == '':
             # convert JSON key/value pairs into arguments for
             # Process.update_utilbill_metadata below
@@ -627,8 +651,7 @@ class UtilBillResource(RESTResource):
                         v, ISO_8601_DATE).date()
                 elif k == 'service':
                     update_args[k] = v.lower()
-                elif k in ('target_total', 'utility',
-                           'rate_class', 'processed'):
+                elif k in ('target_total', 'processed'):
                     update_args[k] = v
 
             result = self.process.update_utilbill_metadata(
@@ -665,10 +688,8 @@ class RegistersResource(RESTResource):
         registers_json = self.process.get_registers_json(utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
-    def handle_post(self, utilbill_id, *vpath, **params):
-        new_register = cherrypy.request.json
-        r = self.process.new_register(utilbill_id, new_register)
-
+    def handle_post(self, *vpath, **params):
+        r = self.process.new_register(**cherrypy.request.json)
         return True, {"rows": r.column_dict(), 'results': 1}
 
     def handle_put(self, register_id, *vpath, **params):
@@ -680,12 +701,12 @@ class RegistersResource(RESTResource):
             assert isinstance(updated_reg['quantity'], (float, int))
 
         register = self.process.update_register(register_id, updated_reg)
-
         return True, {"rows": register.column_dict(), 'results': 1}
 
     def handle_delete(self, register_id, *vpath, **params):
         self.process.delete_register(register_id)
         return True, {}
+
 
 class ChargesResource(RESTResource):
 
@@ -694,17 +715,38 @@ class ChargesResource(RESTResource):
         return True, {'rows': charges, 'results': len(charges)}
 
     def handle_put(self, charge_id, *vpath, **params):
-        row = cherrypy.request.json
-        c = self.process.update_charge(row, charge_id=charge_id)
+        c = self.process.update_charge(cherrypy.request.json,
+                                       charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 
-    def handle_post(self, utilbill_id, *vpath, **params):
-        c = self.process.add_charge(utilbill_id)
+    def handle_post(self, *vpath, **params):
+        c = self.process.add_charge(**cherrypy.request.json)
         return True, {'rows': c.column_dict(),  'results': 1}
 
     def handle_delete(self, charge_id, *vpath, **params):
         self.process.delete_charge(charge_id)
         return True, {}
+
+
+class SuppliersResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        suppliers = self.process.get_all_suppliers_json()
+        return True, {'rows': suppliers, 'results': len(suppliers)}
+
+
+class UtilitiesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        utilities = self.process.get_all_utilities_json()
+        return True, {'rows': utilities, 'results': len(utilities)}
+
+
+class RateClassesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        rate_classes = self.process.get_all_rate_classes_json()
+        return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
 class PaymentsResource(RESTResource):
@@ -899,6 +941,9 @@ class ReebillWSGI(WebResource):
     reports = ReportsResource()
     preferences = PreferencesResource()
     issuable = IssuableReebills()
+    suppliers = SuppliersResource()
+    utilities = UtilitiesResource()
+    rateclasses = RateClassesResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
@@ -1004,19 +1049,16 @@ if __name__ == '__main__':
             'tools.staticdir.on': True,
             'tools.staticdir.dir': join(ui_root, "static")
         },
-        '/utilitybills': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': app.config.get('bill', 'utilitybillpath')
-        },
         '/reebills': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': app.config.get('bill', 'billpath')
+            'tools.staticdir.dir': app.config.get('reebill',
+                                                  'reebill_file_path')
         }
     }
 
     cherrypy.config.update({
-        'server.socket_host': app.config.get("http", "socket_host"),
-        'server.socket_port': app.config.get("http", "socket_port")})
+        'server.socket_host': app.config.get("reebill", "socket_host"),
+        'server.socket_port': app.config.get("reebill", "socket_port")})
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)

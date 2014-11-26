@@ -22,19 +22,19 @@ class ChargeUnitTests(testing_utils.TestCase):
     def setUp(self):
         self.bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                                  'nobody@example.com', 'FB Test Utility',
-                                 'FB Test Rate Class', Address(), Address()),
-                        UtilBill.Complete, 'gas', 'utility', 'rate class',
-                        Address(), Address(), period_start=date(2000, 1, 1),
-                        period_end=date(2000, 2, 1))
+                                 'FB Test Supplier', 'FB Test Rate Class',
+                                 Address(), Address()), UtilBill.Complete,
+                                 'gas', 'utility', 'supplier', 'rate class',
+                                 Address(), Address(),
+                                 period_start=date(2000, 1, 1),
+                                 period_end=date(2000, 2, 1))
         self.charge_params = dict(utilbill=self.bill,
+                                  rsi_binding='SOME_RSI',
+                                  rate=6,
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
-                                  quantity=0.0,
-                                  quantity_units='therms',
-                                  rsi_binding='SOME_RSI',
-                                  total=0.0,
+                                  unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
-                                  rate=6,
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding")
@@ -104,16 +104,9 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_blank(self):
         '''Test that empty quantity_formula is equivalent to 0.
         '''
-        c = Charge(self.bill, '', '', 2, 'kWh', 3, 'X', 6,
-                   quantity_formula='')
+        c = Charge(self.bill, 'X', 3, '', '', '', 'kWh')
         self.assertEqual(0, c.evaluate({}).quantity)
+        self.assertEqual(0, c.evaluate({}).total)
 
-        # when update=False, old value is preserved
-        self.assertEqual(2, c.quantity)
-        self.assertEqual(6, c.total)
 
-        # when update=False, old value is replaced with new value
-        self.assertEqual(0, c.evaluate({}, update=True).quantity)
-        self.assertEqual(0, c.quantity)
-        self.assertEqual(0, c.total)
 
