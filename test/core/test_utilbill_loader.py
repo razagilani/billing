@@ -36,6 +36,11 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         #self._clear_tables(mysql_connection)
 
     def test_get_last_real_utilbill(self):
+        from billing.core.model import Charge, Register
+        self.session.query(Charge).delete()
+        self.session.query(Register).delete()
+        self.session.query(UtilBill).delete()
+
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
         supplier = customer.fb_supplier
@@ -52,11 +57,12 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         empty_address = Address()
         gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas, supplier,
                               rateclass1, empty_address, empty_address,
-                              period_start=date(2000,1,1), period_end=date(2000,2,1))
+                              period_start=date(2000,1,1),
+                              period_end=date(2000,2,1))
         self.session.add(gas_bill_1)
 
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', end=date(2000,2,1)))
+            '99999', end=date(2000, 2, 1)))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
                           end=date(2000,1,31))
@@ -64,57 +70,47 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         # two bills
         electric_bill = UtilBill(customer, 0, 'electric', pepco, other_supplier,
                                  rateclass2, empty_address, empty_address,
-                                 period_start=date(2000,1,2), period_end=date(2000,2,2))
+                                 period_start=date(2000,1,2),
+                                 period_end=date(2000,2,2))
+        self.session.add(electric_bill)
         self.assertEqual(electric_bill,
-                         self.ubl.get_last_real_utilbill('99999',
-                         end=date(2000, 3, 1)))
-        self.assertEqual(electric_bill,
-                         self.ubl.get_last_real_utilbill('99999',
-                                                         end=date(2000, 2, 2)))
-        self.assertEqual(gas_bill_1,
-                         self.ubl.get_last_real_utilbill('99999',
-                                                         end=date(2000, 2, 1)))
+                         self.ubl.get_last_real_utilbill('99999', end=None))
+        self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(
+                             '99999', end=date(2000, 3, 1)))
+        self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 2, 2)))
+        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 2, 1)))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
                           end=date(2000, 1, 31))
 
         # electric bill is ignored if service "gas" is specified
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', date(2000,2,2), service='gas'))
+            '99999', date(2000, 2, 2), service='gas'))
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', date(2000,2,1), service='gas'))
+            '99999', date(2000, 2, 1), service='gas'))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
                           date(2000,1,31), service='gas')
 
         # filter by utility and rate class
-        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill('99999',
-                end=date(2000, 3, 1), utility=gas_bill_1.utility))
-        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill('99999',
-                         end=date(2000, 3, 1),
-                         rate_class=rateclass1))
-        self.assertEqual(electric_bill,
-                         self.ubl.get_last_real_utilbill('99999',
-                        end=date(2000,3, 1), utility=pepco,
-                        rate_class=rateclass2))
-        self.assertEqual(electric_bill,
-                         self.ubl.get_last_real_utilbill('99999',
-                        end=date(2000,3, 1), rate_class=rateclass2))
-        self.assertEqual(electric_bill,
-                         self.ubl.get_last_real_utilbill('99999',
-                                                         end=date(2000, 3, 1),
-                                                         utility=pepco,
-                                                         rate_class=rateclass2))
+        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 3, 1), utility=gas_bill_1.utility))
+        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 3, 1), rate_class=rateclass1))
+        self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 3, 1), utility=pepco,
+            rate_class=rateclass2))
+        self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 3, 1), rate_class=rateclass2))
+        self.assertEqual(electric_bill, self.ubl.get_last_real_utilbill(
+            '99999', end=date(2000, 3, 1), utility=pepco,
+            rate_class=rateclass2))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
                           end=date(2000,1,31), utility=washington_gas,
                           rate_class=rateclass2)
-
-        # hypothetical utility bills are always ignored
-        gas_bill_1.state = UtilBill.Hypothetical
-        electric_bill.state = UtilBill.Hypothetical
-        self.assertRaises(NoSuchBillException,
-                          self.ubl.get_last_real_utilbill, '99999', date(2000,3,1))
 
     def test_count_utilbills_with_hash(self):
         hash = '01234567890abcdef'

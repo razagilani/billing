@@ -167,7 +167,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        uc = Utility('Test Utility Company Template', ca1, '')
+        uc = Utility('Test Utility Company Template', ca1, 'a')
         supplier = Supplier('Test Supplier', ca1, '')
 
         ca2 = Address('Test Other Utilco Address',
@@ -175,7 +175,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        other_uc = Utility('Other Utility', ca1, '')
+        other_uc = Utility('Other Utility', ca1, 'b')
         other_supplier = Supplier('Other Supplier', ca1, '')
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
@@ -224,7 +224,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                       quantity=123.45,
                       register_binding='REG_TOTAL')
 
-        session.add_all([u1r1, u2r1])
+        session.add_all([u1, u2, u1r1, u2r1])
+        session.flush()
         session.commit()
 
         #Utility BIll with no Rate structures
@@ -242,6 +243,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
                              'example2@example.com', other_uc, other_supplier,
                              other_rate_class, c4ba, c4sa)
+        session.add(c4)
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
                      '123 Test Street',
@@ -263,6 +265,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                          date_received=date(2011, 2, 3),
                          processed=True)
         session.add(u)
+        session.flush()
+        session.commit()
 
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.

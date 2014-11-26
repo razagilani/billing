@@ -11,6 +11,7 @@ from mock import Mock
 
 from billing.core.model import UtilBill, UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
+from billing.exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):
@@ -26,6 +27,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bucket.get_key.return_value = self.key
 
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 0
 
         url_format = 'https://example.com/%(bucket_name)s/%(key_name)s'
         self.bfh = BillFileHandler(connection, bucket_name,
@@ -34,6 +36,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.file = StringIO('test_file_data')
         self.file_hash = \
             'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
+        self.key_name = 'utilbill/' + self.file_hash
         self.utilbill = Mock(autospec=UtilBill)
         self.utilbill.sha256_hexdigest = self.file_hash
         self.utilbill.state = UtilBill.Complete
@@ -50,6 +53,18 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.state = UtilBill.Estimated
         self.assertEqual('', self.bfh.get_s3_url(self.utilbill))
 
+    def test_check_file_exists(self):
+        # success
+        self.bfh.check_file_exists(self.utilbill)
+        self.bucket.get_key.assert_called_once_with(self.key_name)
+
+        # failure
+        self.bucket.reset_mock()
+        self.bucket.get_key.return_value = None
+        with self.assertRaises(MissingFileError):
+            self.bfh.check_file_exists(self.utilbill)
+        self.bucket.get_key.assert_called_once_with(self.key_name)
+
     def test_url_for_missing_files(self):
         # it doesn't matter what the URL is, only that it gets returned
         # without an error
@@ -58,22 +73,17 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.sha256_hexdigest = None
         self.bfh.get_s3_url(self.utilbill)
 
-    def test_utilbill_key_name(self):
-        expected = 'utilbill/' + self.file_hash
-        self.assertEqual(self.bfh._get_key_name(self.utilbill), expected)
-
     def test_upload_to_s3(self):
-        key_name = 'utilbill/' + self.file_hash
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
-        self.bucket.new_key.assert_called_once_with(key_name)
+        self.bucket.new_key.assert_called_once_with(self.key_name)
         self.key.set_contents_from_file.assert_called_once_with(self.file)
 
     def test_delete_utilbill_pdf_from_s3_one_utilbill(self):
         """The UtilBill should be deleted when delete_utilbill_pdf_from_S3 is
         called, as long as there is only one UtilBill instance persisted
         having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name(self.utilbill)
+        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
@@ -85,7 +95,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
 
         #Ensure the file is gone
-        self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
+        self.utilbill_loader.count_utilbills_with_hash.assert_with(
             self.file_hash)
         self.key.delete.assert_called_once_with()
 
@@ -93,7 +103,7 @@ class BillFileHandlerTest(unittest.TestCase):
         """The UtilBill should NOT be deleted from s3 when
         delete_utilbill_pdf_from_S3 is called, if there are two UtilBill
         instances persisted having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name(self.utilbill)
+        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
@@ -105,9 +115,19 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
 
         #Ensure the file is *still in S3* even though we have called delete
-        self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
+        self.utilbill_loader.count_utilbills_with_hash.assert_called_with(
             self.file_hash)
         self.assertEqual(0, self.key.delete.call_count)
+
+    def test_upload_duplicate_file(self):
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 1
+
+        # both uploading methods should raise an exception if there is already
+        # a file with the given hash
+        with self.assertRaises(DuplicateFileError):
+            self.bfh.upload_file(self.file)
+        with self.assertRaises(DuplicateFileError):
+            self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
 if __name__ == '__main__':
     unittest.main()

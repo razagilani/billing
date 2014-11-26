@@ -674,37 +674,39 @@ class StateDB(object):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
 
-    def get_create_utility(self, utility):
+    def get_create_utility(self, name):
         session = Session()
         try:
-            utility = session.query(Utility).filter_by(name=utility).one()
+            result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            utility = Utility(utility, Address('', '', '', '', ''), '')
-        return utility
+            result = Utility(name, Address('', '', '', '', ''), '')
+        return result
 
     def get_utility(self, name):
         session = Session()
         return session.query(Utility).filter(Utility.name == name).one()
 
-    def get_create_supplier(self, supplier):
+    def get_create_supplier(self, name):
         session = Session()
         try:
-            supplier = session.query(Supplier).filter_by(name=supplier).one()
+            result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            supplier = Supplier(supplier, Address('', '', '', '', ''), '')
-        return supplier
+            result = Supplier(name, Address('', '', '', '', ''), '')
+        return result
 
     def get_supplier(self, name):
         session = Session()
         return session.query(Supplier).filter(Supplier.name == name).one()
 
-    def get_create_rate_class(self, rate_class, utility):
+    def get_create_rate_class(self, rate_class_name, utility):
+        assert isinstance(utility, Utility)
         session = Session()
         try:
-            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
         except NoResultFound:
-            rate_class = RateClass(rate_class, utility)
-        return rate_class
+            result = RateClass(rate_class_name, utility)
+        return result
 
     def get_rate_class(self, name):
         session = Session()

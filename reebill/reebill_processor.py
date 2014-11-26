@@ -302,9 +302,6 @@ class ReebillProcessor(object):
                 if successor is None:
                     raise NoSuchBillException(("Couldn't find next "
                             "utility bill following %s") % utilbill)
-                if successor.state == UtilBill.Hypothetical:
-                    raise NoSuchBillException(('The next utility bill is '
-                        '"hypothetical" so a reebill can\'t be based on it'))
                 new_utilbills.append(successor)
             new_sequence = last_reebill_row.sequence + 1
 

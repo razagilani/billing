@@ -604,9 +604,10 @@ class UtilBillResource(RESTResource):
 
         billstate = UtilBill.Complete if fileobj.file else \
             UtilBill.Estimated
-        self.process.upload_utility_bill(
-            account, service, begin_date, end_date, fileobj.file,
-            total=total_charges, state=billstate, utility=None, rate_class=None)
+        self.process.upload_utility_bill(account, fileobj.file, begin_date,
+                                         end_date, service, utility=None,
+                                         rate_class=None, total=total_charges,
+                                         state=billstate)
 
         # Since this is initated by an Ajax request, we will still have to
         # send a {'success', 'true'} parameter
