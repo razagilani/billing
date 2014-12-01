@@ -295,7 +295,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -309,7 +309,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
 
@@ -333,7 +334,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -347,7 +348,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
