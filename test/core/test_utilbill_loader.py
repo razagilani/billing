@@ -51,7 +51,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
-                          date(2001,1,1))
+                          end=date(2001,1,1))
 
         # one bill
         empty_address = Address()
@@ -87,12 +87,12 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # electric bill is ignored if service "gas" is specified
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', date(2000, 2, 2), service='gas'))
+            '99999', end=date(2000, 2, 2), service='gas'))
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', date(2000, 2, 1), service='gas'))
+            '99999', end=date(2000, 2, 1), service='gas'))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
-                          date(2000,1,31), service='gas')
+                          end=date(2000,1,31), service='gas')
 
         # filter by utility and rate class
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill(
