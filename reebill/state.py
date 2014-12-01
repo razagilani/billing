@@ -39,7 +39,7 @@ class ReeBill(Base):
     __tablename__ = 'reebill'
 
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False, column_name='reebill_customer_id')
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
@@ -118,10 +118,10 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill',
                             cascade='all, delete-orphan')
 
-    def __init__(self, customer, sequence, version=0, discount_rate=None,
+    def __init__(self, reebill_customer, sequence, version=0, discount_rate=None,
                  late_charge_rate=None, billing_address=None,
                  service_address=None, utilbills=[]):
-        self.customer = customer
+        self.customer = reebill_customer
         self.sequence = sequence
         self.version = version
         self.issued = 0

@@ -10,7 +10,7 @@ from billing import config
 from sqlalchemy.sql.expression import desc
 from billing.mq.simple import SimpleExchange
 from billing.core.model import Customer, UtilBill, Session, Utility, \
-    Address
+    Address, UtilityAccount
 
 
 def process_utility_bill(utility_provider_guid, account_number,
@@ -24,15 +24,15 @@ def process_utility_bill(utility_provider_guid, account_number,
 
     utility = s.query(Utility).filter_by(guid=utility_provider_guid).one()
 
-    customer = s.query(Customer).filter_by(account=account_number).first()
-    customer = customer if customer else Customer('', account_number, 0, 0, '',
+    utility_account = s.query(UtilityAccount).filter_by(account=account_number).first()
+    utility_accounty = utility_account if utility_account else UtilityAccount('', account_number,
         utility, '', Address(), Address())
 
-    prev = s.query(UtilBill).filter_by(customer=customer).\
+    prev = s.query(UtilBill).filter_by(utility_account=utility_account).\
         filter_by(state=UtilBill.Complete).\
         order_by(desc(UtilBill.period_start)).first()
 
-    ub = UtilBill(customer, UtilBill.Complete, getattr(prev, 'service', ''),
+    ub = UtilBill(utility_account, UtilBill.Complete, getattr(prev, 'service', ''),
                   utility, getattr(prev, 'rate_class', ''),
                   Address.from_other(prev.billing_address) if \
                       prev else Address(),
