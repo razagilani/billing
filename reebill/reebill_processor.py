@@ -351,7 +351,6 @@ class ReebillProcessor(object):
 
         assert len(reebill.utilbills) == 1
 
-        reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
         self.ree_getter.\
             update_renewable_readings(self.nexus_util.olap_id(account), reebill)
         try:
