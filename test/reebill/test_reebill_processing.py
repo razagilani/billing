@@ -945,17 +945,18 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # Update the discount rate for reebill sequence 1
         p.new_version(acc, 1)
+        p.update_reebill_readings(acc, 1)
         p.update_sequential_account_info(acc, 1, discount_rate=0.75)
         p.ree_getter = MockReeGetter(100)
         p.bind_renewable_energy(acc, 1)
         p.compute_reebill(acc, 1, version=1)
 
         d = reebill_data(1)
-        self.assertEqual(d['ree_charge'], 25.0,
-                         "Charges for reebill seq 1 should be updated to 25")
+        self.assertEqual(d['ree_charge'], 25.0)
 
         #Update the discount rate for reebill sequence 3
         p.new_version(acc, 3)
+        p.update_reebill_readings(acc, 3)
         p.update_sequential_account_info(acc, 3, discount_rate=0.25)
         p.ree_getter = MockReeGetter(300)
         p.bind_renewable_energy(acc, 3)
@@ -1899,6 +1900,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # the total amount of renewable energy should be the same as it was
         # when there was only one register
         self.assertEqual(energy_1, energy_2)
+
+        # when a correction is made, the readings are those of the original
+        # reebill; they are not updated to match the utility bill
+        # (bug BILL-5814)
+        self.process.issue('99999', 1, issue_date=datetime(2000,2,5))
+        self.process.new_version('99999', 1)
+        reebill = self.session.query(ReeBill).filter_by(version=1).one()
+        self.assertEqual(1, len(reebill.readings))
+        self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
+        self.assertEqual(energy_1, reebill.readings[0].renewable_quantity)
 
 if __name__ == '__main__':
     unittest.main()
