@@ -8,7 +8,7 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from billing.core.model import (Customer, UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, ReeBillCustomer)
 from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
@@ -86,8 +86,8 @@ class ReebillProcessor(object):
         latest_versions_sq = session.query(ReeBill.customer_id,
                 ReeBill.sequence,
                 functions.max(ReeBill.version).label('max_version'))\
-                .join(Customer)\
-                .filter(Customer.account == account)\
+                .join(UtilityAccount)\
+                .filter(UtilityAccount.account == account)\
                 .order_by(ReeBill.customer_id, ReeBill.sequence).group_by(
                 ReeBill.customer, ReeBill.sequence).subquery()
 
@@ -538,42 +538,30 @@ class ReebillProcessor(object):
         if not 0 <= late_charge_rate <=1:
             raise ValueError(('Late charge rate must be between 0 and 1 '
                               'inclusive'))
-        if service_type not in (None,) + Customer.SERVICE_TYPES:
+        if service_type not in (None,) + ReeBillCustomer.SERVICE_TYPES:
             raise ValueError('Unknown service type "%s"' % service_type)
 
         session = Session()
-        template_customer = session.query(Customer).filter_by(
-                account=template_account).one()
+        template_utility_account = session.query(UtilityAccount).filter_by(
+                account == template_account).one()
         last_utility_bill = session.query(UtilBill)\
-                .join(Customer).filter(UtilBill.customer==template_customer)\
+                .join(UtilityAccount).filter(UtilBill.utility_account==template_utility_account)\
                 .order_by(desc(UtilBill.period_end)).first()
         if last_utility_bill is None:
-            utility = template_customer.fb_utility
-            supplier = template_customer.fb_supplier
-            rate_class = template_customer.fb_rate_class
+            utility = template_utility_account.fb_utility
+            supplier = template_utility_account.fb_supplier
+            rate_class = template_utility_account.fb_rate_class
         else:
             utility = last_utility_bill.utility
             supplier = last_utility_bill.supplier
             rate_class = last_utility_bill.rate_class
 
-        new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                'example@example.com', utility, supplier, rate_class,
-                Address(billing_address['addressee'],
-                        billing_address['street'],
-                        billing_address['city'],
-                        billing_address['state'],
-                        billing_address['postal_code']),
-                Address(service_address['addressee'],
-                        service_address['street'],
-                        service_address['city'],
-                        service_address['state'],
-                        service_address['postal_code']))
-
-        new_customer.service = service_type
-
-        session.add(new_customer)
-        session.flush()
-        return new_customer
+        if service_type is not None:
+            new_reebill_customer = ReeBillCustomer(name, discount_rate, late_charge_rate,
+                service_type, 'example@example.com', template_utility_account)
+            session.add(new_reebill_customer)
+            session.flush()
+            return new_reebill_customer
 
     def issue(self, account, sequence, issue_date=None):
         '''Sets the issue date of the reebill given by account, sequence to
