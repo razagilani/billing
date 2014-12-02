@@ -134,11 +134,11 @@ class ReeBill(Base):
         if discount_rate:
             self.discount_rate = discount_rate
         else:
-            self.discount_rate = self.customer.discountrate
+            self.discount_rate = self.reebill_customer.discountrate
         if late_charge_rate:
             self.late_charge_rate = late_charge_rate
         else:
-            self.late_charge_rate = self.customer.latechargerate
+            self.late_charge_rate = self.reebill_customer.latechargerate
 
         self.ree_charge = 0
         self.balance_due = 0
@@ -173,6 +173,9 @@ class ReeBill(Base):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
             self.customer.account, self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
+
+    def get_account(self):
+        return self.utilbill.utility_account.account
 
     def check_editable(self):
         '''Raise a ProcessedBillError or IssuedBillError to prevent editing a
@@ -433,8 +436,8 @@ class ReeBill(Base):
         period_start , period_end = self.get_period()
         the_dict = super(ReeBill, self).column_dict()
         the_dict.update({
-            'account': self.customer.account,
-            'mailto': self.customer.bill_email_recipient,
+            'account': self.get_account(),
+            'mailto': self.reebill_customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
             'billing_address': self.billing_address.to_dict(),
@@ -1032,10 +1035,12 @@ class StateDB(object):
         given).'''
         session = Session()
         if version == 'max':
-            version = session.query(func.max(ReeBill.version)).join(UtilityAccount) \
+            version = session.query(func.max(ReeBill.version)).join(
+                ReeBillCustomer).join(UtilityAccount)\
                 .filter(UtilityAccount.account == account) \
                 .filter(ReeBill.sequence == sequence).one()[0]
-        result = session.query(ReeBill).join(UtilityAccount) \
+        result = session.query(ReeBill).join(ReeBillCustomer)\
+            .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.sequence == sequence) \
             .filter(ReeBill.version == version).one()
@@ -1171,7 +1176,7 @@ class StateDB(object):
             end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
-                .filter(Payment.customer==self.get_customer(account))\
+                .filter(Payment.customer==self.get_reebill_customer(account))\
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)

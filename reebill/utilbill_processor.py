@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
 from billing.exc import NoSuchBillException
+from billing.core.model import UtilityAccount
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -225,7 +226,8 @@ class UtilbillProcessor(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        customer = self.state_db.get_customer(account)
+        utility_account = session.query(UtilityAccount).filter_by(
+            account=account).one()
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
                 account, begin_date, service=service)
@@ -238,8 +240,8 @@ class UtilbillProcessor(object):
             # class and utility.
 
             q = session.query(UtilBill). \
-                filter_by(rate_class=customer.fb_rate_class). \
-                filter_by(utility=customer.fb_utility).\
+                filter_by(rate_class=utility_account.fb_rate_class). \
+                filter_by(utility=utility_account.fb_utility).\
                 filter_by(processed=True). \
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
@@ -256,8 +258,8 @@ class UtilbillProcessor(object):
             predecessor = None if next_distance == prev_distance == float('inf') \
                 else prev_ub if prev_distance < next_distance else next_ub
 
-            billing_address = customer.fb_billing_address
-            service_address = customer.fb_service_address
+            billing_address = utility_account.fb_billing_address
+            service_address = utility_account.fb_service_address
 
         utility = self.state_db.get_create_utility(utility) if utility else \
             getattr(predecessor, 'utility', None)
@@ -268,8 +270,9 @@ class UtilbillProcessor(object):
 
         # delete any existing bill with same service and period but less-final
         # state
-        customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
+        utility_account = session.query(UtilityAccount).filter_by(
+            account=account).one()
+        new_utilbill = UtilBill(utility_account, state, service, utility, supplier, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
                                 period_start=begin_date, period_end=end_date,
