@@ -378,8 +378,8 @@ class ReebillProcessor(object):
             a list of dictionaries
         '''
         session = Session()
-        q = session.query(ReeBill).join(Customer).with_lockmode('read')\
-            .filter(Customer.account == account)\
+        q = session.query(ReeBill).join(UtilityAccount).with_lockmode('read')\
+            .filter(UtilityAccount.account == account)\
             .filter(ReeBill.sequence == sequence)\
             .order_by(desc(ReeBill.version))
 
@@ -712,8 +712,8 @@ class ReebillProcessor(object):
         try:
             session = Session()
             reebill_object = (session.query(ReeBill)
-                    .join(Customer)
-                    .filter(Customer.account==account)
+                    .join(UtilityAccount)
+                    .filter(UtilityAccount.account==account)
                     .filter(ReeBill.sequence==sequence)
                     .order_by(desc(ReeBill.version)).first())
             if not reebill_object.processed:
@@ -856,9 +856,10 @@ class ReebillProcessor(object):
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued bill")
 
-        issuable_reebill = session.query(ReeBill).join(Customer) \
-                .filter(ReeBill.customer_id==Customer.id)\
-                .filter(Customer.account==account)\
+        issuable_reebill = session.query(ReeBill).join(ReeBillCustomer) \
+                .filter(ReeBill.customer_id==ReeBillCustomer.id)\
+                .jojn(UtilityAccount)\
+                .filter(UtilityAccount.account==account)\
                 .filter(ReeBill.version==0, ReeBill.issued==False)\
                 .order_by(ReeBill.sequence).first()
 
