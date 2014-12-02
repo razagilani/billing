@@ -145,37 +145,25 @@ def create_utility_accounts(session, customer_data):
             fb_billing_address = Address()
         if customer.fb_service_address is None:
             fb_service_address = Address()
-        if customer.service is None:
-            utility_account = UtilityAccount(customer.name,
-                                             customer.account,
-                                             customer.fb_utility,
-                                             customer.fb_supplier,
-                                             customer.fb_rate_class,
-                                             fb_billing_address,
-                                             fb_service_address)
-            utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
-            for utilbill in utilbills:
-                utilbill.utility_account = utility_account
-                utilbill.customer = None
-            session.add(utility_account)
-        else:
-            utility_account = UtilityAccount(customer.name,
-                                             customer.account,
-                                             customer.fb_utility,
-                                             customer.fb_supplier,
-                                             customer.fb_rate_class,
-                                             fb_billing_address,
-                                             fb_service_address)
+        utility_account = UtilityAccount(customer.name,
+                                         customer.account,
+                                         customer.fb_utility,
+                                         customer.fb_supplier,
+                                         customer.fb_rate_class,
+                                         fb_billing_address,
+                                         fb_service_address)
+        utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
+        for utilbill in utilbills:
+            utilbill.utility_account = utility_account
+            utilbill.customer = None
+        session.add(utility_account)
+        if customer.service is not None:
             reebill_customer = ReeBillCustomer(customer.name,
                                                customer.discountrate,
                                                customer.latechargerate,
                                                customer.service,
                                                customer.bill_email_recipient,
                                                utility_account)
-            utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
-            for utilbill in utilbills:
-                utilbill.utility_account = utility_account
-                utilbill.customer = None
             payments = session.query(Payment).join(Customer, Payment.customer==customer).all()
             for payment in payments:
                 payment.reebill_customer = reebill_customer
@@ -184,23 +172,21 @@ def create_utility_accounts(session, customer_data):
             for reebill in reebills:
                 reebill.reebill_customer = reebill_customer
                 reebill.customer = None
-            session.add(utility_account)
             session.add(reebill_customer)
+        # TODO: why is this necessary?
         customer.fb_rate_class = None
         customer.fb_supplier = None
         customer.fb_billing_address = None
         customer.fb_service_address = None
-    for customer in session.query(Customer).all():
-        session.delete(customer)
-    session.flush()
+ #   session.flush()
     session.commit()
 
 def migrate_customer_fb_utility(customer_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for customer in session.query(Customer).all():
         fb_utility_name = customer_data[customer.id]['fb_utility_name'].lower()
-        log.debug('Setting fb_utility to %s for utility_account id %s' %
-                  (fb_utility_name, customer.id))
+        # log.debug('Setting fb_utility to %s for utility_account id %s' %
+        #           (fb_utility_name, customer.id))
         try:
             customer.fb_utility = company_map[fb_utility_name]
         except KeyError:
