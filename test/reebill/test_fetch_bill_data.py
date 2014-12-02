@@ -7,7 +7,7 @@ from mock import Mock, call
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from billing.reebill.state import ReeBill, Customer, UtilBill, Address, \
+from billing.reebill.state import ReeBill, UtilBill, Address, \
     Register, Reading
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils

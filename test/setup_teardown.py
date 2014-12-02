@@ -25,7 +25,7 @@ from billing.core import pricing
 from billing.core.model import Supplier, UtilBillLoader, RateClass
 from billing.reebill import journal
 from billing.reebill.process import Process
-from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
+from billing.reebill.state import StateDB, Session, UtilBill, \
     Register, Address
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
