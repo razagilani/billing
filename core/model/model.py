@@ -457,7 +457,10 @@ class UtilBill(Base):
     __tablename__ = 'utilbill'
 
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+
+    # deprecated: do not use
+    customer_id = Column(Integer, ForeignKey('customer.id'))
+
     utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
@@ -494,6 +497,7 @@ class UtilBill(Base):
     # downloaded and can't take into account information from other sources.)
     date_scraped = Column(DateTime)
 
+    # deprecated: do not use
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
     utility_account = relationship("UtilityAccount", backref=backref('utilbill',
