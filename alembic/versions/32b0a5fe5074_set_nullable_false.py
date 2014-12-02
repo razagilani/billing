@@ -22,17 +22,11 @@ def upgrade():
     op.alter_column(u'charge', 'group',
                existing_type=mysql.VARCHAR(length=255),
                nullable=False)
-    op.alter_column(u'charge', 'quantity',
-               existing_type=mysql.FLOAT(),
-               nullable=False)
     op.alter_column(u'charge', 'rate',
                existing_type=mysql.FLOAT(),
                nullable=False)
     op.alter_column(u'charge', 'rsi_binding',
                existing_type=mysql.VARCHAR(length=255),
-               nullable=False)
-    op.alter_column(u'charge', 'total',
-               existing_type=mysql.FLOAT(),
                nullable=False)
     op.alter_column(u'charge', 'unit',
                existing_type=mysql.ENUM(u'kWh', u'dollars', u'KWD', u'therms', u'MMBTU', u'BTU'),
