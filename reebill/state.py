@@ -40,7 +40,8 @@ class ReeBill(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    # deprecated: do not use
+    customer_id = Column(Integer, ForeignKey('customer.id'))
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
@@ -71,6 +72,7 @@ class ReeBill(Base):
     reebill_customer = relationship("ReeBillCustomer", backref=backref('reebills',
         order_by=id))
 
+    # deprecated: do not use
     customer = relationship("Customer", backref=backref('reebills',
         order_by=id))
 
@@ -125,7 +127,7 @@ class ReeBill(Base):
     def __init__(self, reebill_customer, sequence, version=0, discount_rate=None,
                  late_charge_rate=None, billing_address=None,
                  service_address=None, utilbills=[]):
-        self.customer = reebill_customer
+        self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
         self.issued = 0
@@ -611,7 +613,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    customer_id = Column(Integer, ForeignKey('customer.id'))
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
