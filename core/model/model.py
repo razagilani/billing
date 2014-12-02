@@ -792,11 +792,11 @@ class Charge(Base):
 
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
-    quantity = Column(Float, nullable=False)
+    quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
-    total = Column(Float, nullable=False)
+    total = Column(Float)
     error = Column(String(255))
     # description of error in computing the quantity and/or rate formula.
     # either this or quantity and rate should be null at any given time,
