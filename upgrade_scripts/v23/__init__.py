@@ -141,14 +141,18 @@ def create_utilities(session):
 def create_utility_accounts(session, customer_data):
     customers = session.query(Customer).all()
     for customer in customers:
+        if customer.fb_billing_address is None:
+            fb_billing_address = Address()
+        if customer.fb_service_address is None:
+            fb_service_address = Address()
         if customer.service is None:
             utility_account = UtilityAccount(customer.name,
                                              customer.account,
                                              customer.fb_utility,
                                              customer.fb_supplier,
                                              customer.fb_rate_class,
-                                             customer.fb_billing_address,
-                                             customer.fb_service_address)
+                                             fb_billing_address,
+                                             fb_service_address)
             utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
             for utilbill in utilbills:
                 utilbill.utility_account = utility_account
@@ -160,8 +164,8 @@ def create_utility_accounts(session, customer_data):
                                              customer.fb_utility,
                                              customer.fb_supplier,
                                              customer.fb_rate_class,
-                                             customer.fb_billing_address,
-                                             customer.fb_service_address)
+                                             fb_billing_address,
+                                             fb_service_address)
             reebill_customer = ReeBillCustomer(customer.name,
                                                customer.discountrate,
                                                customer.latechargerate,
@@ -220,14 +224,18 @@ def migrate_utilbill_utility(utilbill_data, session):
 
 def set_fb_utility_id(session):
     for customer in session.query(Customer):
-        first_bill = session.query(UtilBill)\
-            .filter(UtilBill.utility_account == customer)\
+        first_bill = session.query(UtilBill).join(Customer)\
             .order_by(UtilBill.period_start)\
             .first()
         if first_bill:
             log.debug('Setting fb_utility_id to %s for utility_account id %s' %
                   (first_bill.utility_id, customer.id))
             customer.fb_utility_id = first_bill.utility_id
+        else:
+            # accounts with no bills should be new ones so they have
+            # fb_utility and fb_rate_class
+            assert customer.fb_utility_id is not None
+            assert customer.fb_rate_class_id is not None
     session.commit()
 
 def set_supplier_ids(session):
@@ -244,8 +252,8 @@ def set_supplier_ids(session):
             supplier = session.query(Supplier).\
                 filter(Supplier.name==utility.name).\
                 first()
-            log.debug('Setting supplier_id to %s for utility_account id %s' %
-                  (supplier, customer.id))
+            # log.debug('Setting supplier_id to %s for utility_account id %s' %
+            #       (supplier, customer.id))
             customer.fb_supplier = supplier
     for bill in session.query(UtilBill).all():
         if bill.utility:
@@ -253,16 +261,16 @@ def set_supplier_ids(session):
             supplier = session.query(Supplier).\
                 filter(Supplier.name==utility_name).\
                 first()
-            log.debug('Setting supplier_id to %s for utility bill id %s' %
-                  (supplier, bill.id))
+            # log.debug('Setting supplier_id to %s for utility bill id %s' %
+            #       (supplier, bill.id))
             bill.supplier = supplier
 
 def create_rate_classes(session):
     utilbills = session.execute("select distinct rate_class, utility_id from utilbill")
 
     for bill in utilbills:
-        '''log.debug('Creating RateClass object with name %s and utility_id %s'
-                  %(bill['rate_class'], bill['utility_id']))'''
+        # '''log.debug('Creating RateClass object with name %s and utility_id %s'
+        #           %(bill['rate_class'], bill['utility_id']))'''
         utility = session.query(Utility).filter(Utility.id==bill['utility_id']).one()
         rate_class = RateClass(bill['rate_class'], utility)
         session.add(rate_class)
@@ -274,8 +282,8 @@ def set_rate_class_ids(session, utilbill_data, customer_data):
     for bill in utilbills:
         u_rate_class = session.query(RateClass).join(UtilBill, RateClass.utility_id==bill.utility_id).\
             filter(RateClass.name==utilbill_data[bill.id]['rate_class']).first()
-        log.debug('setting rate_class_id to %s for utilbill with id %s'
-                  %(u_rate_class.id, bill.id))
+        # log.debug('setting rate_class_id to %s for utilbill with id %s'
+        #           %(u_rate_class.id, bill.id))
         bill.rate_class = u_rate_class
         bill.rate_class_id = u_rate_class.id
     customers = session.query(Customer).all()
@@ -286,8 +294,8 @@ def set_rate_class_ids(session, utilbill_data, customer_data):
             customer.fb_rate_class = Session.query(RateClass).first()
             customer.fb_rate_class_id = Session.query(RateClass).first().id
         else:
-            log.debug('setting rate_class_id to %s for utility_account with id %s'
-                  %(c_rate_class.id, customer.id))
+            # log.debug('setting rate_class_id to %s for utility_account with id %s'
+            #       %(c_rate_class.id, customer.id))
             customer.fb_rate_class = c_rate_class
             customer.fb_rate_class_id = c_rate_class.id
     session.commit()
