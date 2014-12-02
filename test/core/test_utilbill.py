@@ -23,6 +23,9 @@ class UtilBillTest(TestCase):
         session.query(Payment).delete()
         session.query(UtilityAccount).delete()
 
+        self.utility = Utility('utility', Address(), '')
+        self.supplier = Supplier('supplier', Address(), '')
+
     def tearDown(self):
         Session.remove()
 
@@ -45,13 +48,14 @@ class UtilBillTest(TestCase):
         self.assertEqual(None, c.error)
 
     def test_add_charge(self):
-        utility = Utility('utility', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
-        utilbill = UtilBill(UtilityAccount('someone', '98989', utility, supplier,
-                RateClass('FB Test Rate Class',utility), Address(),
-                Address()), UtilBill.Complete, 'gas', utility, supplier,
-                RateClass('rate class', utility), Address(), Address(),
-                period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
+        utility_account = UtilityAccount(
+            'someone', '98989', self.utility, self.supplier,
+            RateClass('FB Test Rate Class', self.utility), Address(), Address())
+        utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas',
+                            self.utility, self.supplier,
+                            RateClass('rate class', self.utility), Address(),
+                            Address(), period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
 
         session = Session()
         session.add(utilbill)
@@ -273,8 +277,8 @@ class UtilBillTest(TestCase):
     def test_compute_charges_empty(self):
         '''Compute utility bill with no charges.
         '''
-        utility_account = UtilityAccount('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'supplier',
+        utility_account = UtilityAccount('someone', '99999',
+                'utility', 'supplier',
                 'rate class', Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete,
                 'gas', 'utility', 'supplier', 'rate class',

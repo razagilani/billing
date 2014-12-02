@@ -83,19 +83,21 @@ class ReebillProcessor(object):
         # this subquery gets (customer_id, sequence, version) for all the
         # reebills whose version is the maximum in their (customer, sequence,
         # version) group.
-        latest_versions_sq = session.query(ReeBill.customer_id,
+        latest_versions_sq = session.query(ReeBill.reebill_customer_id,
                 ReeBill.sequence,
                 functions.max(ReeBill.version).label('max_version'))\
-                .join(UtilityAccount)\
+                .join(ReeBillCustomer).join(UtilityAccount)\
                 .filter(UtilityAccount.account == account)\
-                .order_by(ReeBill.customer_id, ReeBill.sequence).group_by(
-                ReeBill.customer, ReeBill.sequence).subquery()
+                .order_by(ReeBill.reebill_customer_id,
+                          ReeBill.sequence).group_by(
+                ReeBill.reebill_customer, ReeBill.sequence).subquery()
 
         # query ReeBill joined to the above subquery to get only
         # maximum-version bills, and also outer join to ReeBillCharge to get
         # sum of 0 or more charges associated with each reebill
         q = session.query(ReeBill).join(latest_versions_sq, and_(
-                ReeBill.customer_id == latest_versions_sq.c.customer_id,
+                ReeBill.reebill_customer_id ==
+                latest_versions_sq.c.reebill_customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
                 ReeBill.version == latest_versions_sq.c.max_version)
         ).outerjoin(ReeBillCharge)\
@@ -269,9 +271,9 @@ class ReebillProcessor(object):
         """
         session = Session()
 
-        customer = self.state_db.get_customer(account)
+        reebill_customer = self.state_db.get_reebill_customer(account)
         last_reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
+                .filter(ReeBill.reebill_customer == reebill_customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
 
         new_utilbills = []
@@ -279,7 +281,8 @@ class ReebillProcessor(object):
             # No Reebills are associated with this account: Create the first one
             assert start_date is not None
             utilbill = session.query(UtilBill)\
-                    .filter(UtilBill.customer == customer)\
+                    .filter(UtilBill.utility_account ==
+                            reebill_customer.utility_account)\
                     .filter(UtilBill.period_start >= start_date)\
                     .order_by(UtilBill.period_start).first()
             if utilbill is None:
@@ -293,7 +296,7 @@ class ReebillProcessor(object):
             # note that Hypothetical utility bills are excluded.
             for utilbill in last_reebill_row.utilbills:
                 successor = session.query(UtilBill)\
-                    .filter(UtilBill.customer == customer)\
+                    .filter(UtilBill.customer == reebill_customer)\
                     .filter(not_(UtilBill._utilbill_reebills.any()))\
                     .filter(UtilBill.service == utilbill.service)\
                     .filter(UtilBill.utility == utilbill.utility)\
@@ -312,7 +315,7 @@ class ReebillProcessor(object):
         assert len(new_utilbills) == 1
 
         # create reebill row in state database
-        new_reebill = ReeBill(customer, new_sequence, 0,
+        new_reebill = ReeBill(reebill_customer, new_sequence, 0,
                               utilbills=new_utilbills,
                               billing_address=Address.from_other(
                                 new_utilbills[0].billing_address),
@@ -457,7 +460,7 @@ class ReebillProcessor(object):
         session = Session()
         if day is None:
             day = datetime.utcnow().date()
-        acc, seq = reebill.customer.account, reebill.sequence
+        acc, seq = reebill.get_account(), reebill.sequence
 
         if reebill.sequence <= 1:
             return 0
@@ -543,7 +546,7 @@ class ReebillProcessor(object):
 
         session = Session()
         template_utility_account = session.query(UtilityAccount).filter_by(
-                account == template_account).one()
+                account=template_account).one()
         last_utility_bill = session.query(UtilBill)\
                 .join(UtilityAccount).filter(UtilBill.utility_account==template_utility_account)\
                 .order_by(desc(UtilBill.period_end)).first()
@@ -556,9 +559,25 @@ class ReebillProcessor(object):
             supplier = last_utility_bill.supplier
             rate_class = last_utility_bill.rate_class
 
+        new_utility_account = UtilityAccount(
+            name, account, utility, supplier, rate_class,
+            Address(billing_address['addressee'],
+                    billing_address['street'],
+                    billing_address['city'],
+                    billing_address['state'],
+                    billing_address['postal_code']),
+            Address(service_address['addressee'],
+                    service_address['street'],
+                    service_address['city'],
+                    service_address['state'],
+                    service_address['postal_code']))
+
+        session.add(new_utility_account)
+
         if service_type is not None:
-            new_reebill_customer = ReeBillCustomer(name, discount_rate, late_charge_rate,
-                service_type, 'example@example.com', template_utility_account)
+            new_reebill_customer = ReeBillCustomer(
+                name, discount_rate, late_charge_rate, service_type,
+                'example@example.com', new_utility_account)
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer
@@ -579,7 +598,7 @@ class ReebillProcessor(object):
 
         # compute the bill to make sure it's up to date before issuing
         if not reebill.processed:
-            self.compute_reebill(reebill.customer.account, reebill.sequence,
+            self.compute_reebill(reebill.get_account(), reebill.sequence,
                                  version=reebill.version)
 
         reebill.issue_date = issue_date
@@ -598,7 +617,7 @@ class ReebillProcessor(object):
         self.state_db.issue(account, sequence, issue_date=issue_date)
 
         # store email recipient in the bill
-        reebill.email_recipient = reebill.customer.bill_email_recipient
+        reebill.email_recipient = reebill.reebill_customer.bill_email_recipient
 
     def update_reebill_readings(self, account, sequence):
         '''Replace the readings of the reebill given by account, sequence
