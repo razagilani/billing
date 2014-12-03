@@ -230,12 +230,6 @@ class WebResource(object):
             self.state_db, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,
             logger=self.logger)
-        # TODO: remove; this should not be used anymore
-        # self.process = process.Process(
-        #     self.state_db, self.ratestructure_dao,
-        #     self.bill_file_handler, self.nexus_util, self.bill_mailer,
-        #     self.reebill_file_handler, self.ree_getter, self.journal_dao,
-        #     logger=self.logger)
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('reebill', 'authenticate')
