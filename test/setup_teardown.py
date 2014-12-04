@@ -103,7 +103,8 @@ class TestCaseWithSetup(test_utils.TestCase):
     def truncate_tables(session):
         for t in ["utilbill_reebill", "register", "payment", "reebill",
                   "charge", "utilbill",  "reading", "reebill_charge",
-                  "customer", "rate_class", "supplier", "company", "address"]:
+                  "customer", "rate_class", "supplier", "company", "address",
+                  "altitude_utility", "altitude_supplier"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -167,16 +168,16 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        uc = Utility('Test Utility Company Template', ca1, 'a')
-        supplier = Supplier('Test Supplier', ca1, '')
+        uc = Utility('Test Utility Company Template', ca1)
+        supplier = Supplier('Test Supplier', ca1)
 
         ca2 = Address('Test Other Utilco Address',
                       '123 Utilco Street',
                       'Utilco City',
                       'XX', '12345')
 
-        other_uc = Utility('Other Utility', ca1, 'b')
-        other_supplier = Supplier('Other Supplier', ca1, '')
+        other_uc = Utility('Other Utility', ca1)
+        other_supplier = Supplier('Other Supplier', ca1)
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,

@@ -7,8 +7,8 @@ from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''), '')
-        supplier = Supplier('supplier', Address(), '')
+        washgas = Utility('washgas', Address('', '', '', '', ''))
+        supplier = Supplier('supplier', Address())
         c_rate_class = RateClass('Test Rate Class', washgas)
         customer = Customer('someone', '11111', 0.5, 0.1,
                             'example@example.com', washgas, supplier,

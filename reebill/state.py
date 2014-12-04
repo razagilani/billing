@@ -679,7 +679,7 @@ class StateDB(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name, Address('', '', '', '', ''), '')
+            result = Utility(name, Address('', '', '', '', ''))
         return result
 
     def get_utility(self, name):
@@ -691,7 +691,7 @@ class StateDB(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name, Address('', '', '', '', ''), '')
+            result = Supplier(name, Address('', '', '', '', ''))
         return result
 
     def get_supplier(self, name):

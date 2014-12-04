@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
@@ -352,7 +352,7 @@ class UtilbillProcessor(object):
 
         return new_utilbill
 
-    def upload_utility_bill_existing_file(self, account, utility_guid,
+    def upload_utility_bill_existing_file(self, account, utility,
                                   sha256_hexdigest):
         '''Create a utility bill in the database corresponding to a file that
         has already been stored in S3.
@@ -367,8 +367,6 @@ class UtilbillProcessor(object):
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
-        # of all the UtilBill fields, only utility is known
-        utility = s.query(Utility).filter_by(guid=utility_guid).one()
         new_utilbill = self._create_utilbill_in_db(account, utility=utility)
 
         # adding UtilBill should also add Charges and Registers due to cascade
@@ -385,6 +383,16 @@ class UtilbillProcessor(object):
         self.bill_file_handler.check_file_exists(new_utilbill)
 
         return new_utilbill
+
+    def create_utility(self, name):
+        '''Create and return a new Utility with the given name. A new
+        RateClass for the utility is also added.
+        '''
+        s = Session()
+        new_utility = Utility(name=name, address=Address())
+        new_rate_class = RateClass('Unknown rate class for %s' % name)
+        new_utility.rate_classes.append(new_rate_class)
+        s.add_all([new_utility, new_rate_class])
 
     def get_service_address(self, account):
         return UtilBillLoader(Session()).get_last_real_utilbill(

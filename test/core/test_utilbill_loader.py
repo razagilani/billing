@@ -17,10 +17,10 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        utility =  Utility('Test Utility', Address(), '')
+        utility =  Utility('Test Utility', Address())
         self.customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', utility,
-                            Supplier('Test Supplier', Address(), ''),
+                            Supplier('Test Supplier', Address()),
                             RateClass('FB Test Rate Class', utility),
                             blank_address, blank_address)
         self.session.add(self.customer)
@@ -44,8 +44,8 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
         supplier = customer.fb_supplier
-        pepco = Utility('pepco', Address(), '')
-        other_supplier = Supplier('Other Supplier', Address(), '')
+        pepco = Utility('pepco', Address())
+        other_supplier = Supplier('Other Supplier', Address())
         rateclass1 = RateClass('DC Non Residential Non Heat', washington_gas)
         rateclass2 = RateClass('whatever', pepco)
 

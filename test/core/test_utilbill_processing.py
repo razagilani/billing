@@ -9,7 +9,7 @@ from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill
+from billing.core.model import UtilBill, Utility
 from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -484,10 +484,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         customer = s.query(Customer).filter_by(account=account).one()
         self.process.bill_file_handler.upload_file(file)
 
-        # this was added in setUp
-        utility_guid = 'a'
-
-        self.process.upload_utility_bill_existing_file(account, utility_guid,
+        utility = s.query(Utility).first()
+        self.process.upload_utility_bill_existing_file(account, utility,
                                                        file_hash)
 
         data, count = self.process.get_all_utilbills_json(account, 0, 30)
@@ -511,7 +509,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # (regardless of other parameters)
         with self.assertRaises(DuplicateFileError):
             self.process.upload_utility_bill_existing_file(
-                account, utility_guid, file_hash)
+                account, utility, file_hash)
         with self.assertRaises(DuplicateFileError):
             self.process.upload_utility_bill_existing_file(
                 'other acccount', 'other utility guid', file_hash)

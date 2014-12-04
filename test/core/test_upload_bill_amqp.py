@@ -9,10 +9,12 @@ import pika
 from pika.exceptions import ChannelClosed
 
 from billing.core.amqp_exchange import run
-from billing.core.model import Session, UtilBillLoader
+from billing.core.model import Session, UtilBillLoader, Utility
+from billing.core.altitude import AltitudeUtility
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
 from billing.exc import DuplicateFileError
+
 
 class TestUploadBillAMQP(TestCaseWithSetup):
 
@@ -83,6 +85,12 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # no UtilBills exist yet with this hash
         self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
+
+        # AltitudeUtilities must exist
+        s = Session()
+        utility = s.query(Utility).first()
+        s.add_all([AltitudeUtility(utility, 'a'),
+                         AltitudeUtility(utility, 'b')])
 
         # two messages with the same sha256_hexigest: the first one will
         # cause a UtilBill to be created, but the second will cause a

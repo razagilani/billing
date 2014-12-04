@@ -63,8 +63,8 @@ class UtilBillTest(TestCase):
             UtilBill.validate_utilbill_period(date(2000,1,1), date(2001,1,2))
 
     def test_add_charge(self):
-        utility = Utility('utility', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
                 RateClass('FB Test Rate Class',utility), Address(),
@@ -109,14 +109,14 @@ class UtilBillTest(TestCase):
             " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
-        fb_utility = Utility('FB Test Utility', '', '')
-        utility = Utility('utility', Address(), '')
+        fb_utility = Utility('FB Test Utility', Address())
+        utility = Utility('utility', Address())
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', fb_utility,
                 'FB Test Supplier',
                 RateClass('FB Test Rate Class', fb_utility),
                 Address(), Address()), UtilBill.Complete, 'gas',
-                utility, Supplier('supplier', Address(), ''),
+                utility, Supplier('supplier', Address()),
                 RateClass('rate class', utility),
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
@@ -304,8 +304,8 @@ class UtilBillTest(TestCase):
         self.assertEqual(0, utilbill.get_total_charges())
 
     def test_compute_charges_independent(self):
-        utility = Utility('utility', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
                 RateClass('rate class', utility), Address(),
@@ -340,8 +340,8 @@ class UtilBillTest(TestCase):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
-        utility = Utility('utility', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
                 RateClass('rate class', utility), Address(),
@@ -380,8 +380,8 @@ class UtilBillTest(TestCase):
         '''
         test for making sure processed bills cannot be edited
         '''
-        utility = Utility('utility', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
                 RateClass('rate class', utility), Address(),
