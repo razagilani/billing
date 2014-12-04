@@ -167,11 +167,11 @@ def create_utility_accounts(session, customer_data):
             payments = session.query(Payment).join(Customer, Payment.customer==customer).all()
             for payment in payments:
                 payment.reebill_customer = reebill_customer
-                payment.customer = None
+                #payment.customer = None
             reebills = session.query(ReeBill).join(Customer, ReeBill.customer==customer).all()
             for reebill in reebills:
                 reebill.reebill_customer = reebill_customer
-                reebill.customer = None
+                #reebill.customer = None
             session.add(reebill_customer)
         # TODO: why is this necessary?
         customer.fb_rate_class = None
