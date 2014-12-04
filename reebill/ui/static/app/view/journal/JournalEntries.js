@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.JournalEntries', {
+Ext.define('ReeBill.view.journal.JournalEntries', {
     extend: 'Ext.grid.Panel',
 
     title: 'Journal Entries',

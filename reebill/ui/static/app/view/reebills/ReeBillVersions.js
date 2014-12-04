@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.ReeBillVersions', {
+Ext.define('ReeBill.view.reebills.ReeBillVersions', {
     extend: 'Ext.form.field.ComboBox',
 
     alias: 'widget.reeBillVersions',
@@ -22,6 +22,5 @@ Ext.define('ReeBill.view.ReeBillVersions', {
         '</tpl>'
     ),
 
-    forceSelection: true,
-    selectOnFocus: true
+    forceSelection: true
 });

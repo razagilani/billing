@@ -1,6 +1,13 @@
 Ext.define('ReeBill.controller.Viewer', {
     extend: 'Ext.app.Controller',
 
+    require: ['Ext.panel.PDF'],
+
+    views: [
+        'utilitybills.UtilityBills',
+        'reebills.Reebills'
+    ],
+
     refs: [{
         ref: 'utilityBillViewer',
         selector: 'pdfpanel[name=utilityBillViewer]'

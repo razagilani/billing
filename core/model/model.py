@@ -487,7 +487,7 @@ class UtilBill(Base):
 
     date_received = Column(DateTime)
     account_number = Column(String(1000), nullable=False)
-    sha256_hexdigest = Column(String(64))
+    sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -503,8 +503,16 @@ class UtilBill(Base):
     # deprecated: do not use
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
+
+    # cascade for UtilityAccount relationship does NOT include "save-update"
+    # to allow more control over when UtilBills get added--for example,
+    # when uploading a new utility bill, the new UtilBill object should only
+    # be added to the session after the file upload succeeded (because in a
+    # test, there is no way to check that the UtilBill was not inserted into
+    # the database because the transaction was rolled back).
     utility_account = relationship("UtilityAccount", backref=backref('utilbill',
-            order_by=id))
+            order_by=id, cascade='delete'))
+
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
@@ -527,7 +535,10 @@ class UtilBill(Base):
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
         as a utility bill period: "reasonable" means start < end and (end -
-        start) < 1 year.'''
+        start) < 1 year. Does nothing if either period date is None.
+        '''
+        if None in (start, end):
+            return
         if start >= end:
             raise ValueError('Utility bill start date must precede end')
         if (end - start).days > 365:
@@ -545,14 +556,13 @@ class UtilBill(Base):
     # many bills there are in a given period of time), and if it does exist,
     # its actual dates will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
-    Complete, UtilityEstimated, Estimated, Hypothetical = range(4)
+    Complete, UtilityEstimated, Estimated = range(3)
 
     # human-readable names for utilbill states (used in UI)
     _state_descriptions = {
         Complete: 'Final',
         UtilityEstimated: 'Utility Estimated',
         Estimated: 'Estimated',
-        Hypothetical: 'Missing'
     }
 
     # TODO remove uprs_id, doc_id
@@ -560,7 +570,7 @@ class UtilBill(Base):
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest=None):
+                 reebill=None, sha256_hexdigest=''):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -570,6 +580,7 @@ class UtilBill(Base):
         self.service = service
         self.utility = utility
         self.rate_class = rate_class
+        self.supplier = supplier
         self.billing_address = billing_address
         self.service_address = service_address
         self.period_start = period_start
@@ -580,34 +591,42 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+
+        # TODO: empty string as default value for sha256_hexdigest is
+        # probably a bad idea. if we are writing tests that involve puttint
+        # UtilBills in an actual database then we should probably have actual
+        # files for them.
         self.sha256_hexdigest = sha256_hexdigest
-        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
 
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
-                'period_end=%s, state=%s, %s reebills)>') % (
+                'period_end=%s, state=%s)>') % (
             self.utility_account.account, self.service, self.period_start,
-            self.period_end, self.state, len(self._utilbill_reebills))
+            self.period_end, self.state)
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
 
-    def add_charge(self):
+    def add_charge(self, **charge_kwargs):
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
         charge = Charge(utilbill=self,
-                        rsi_binding="New Charge %s" % n,
-                        rate=0.0,
-                        quantity_formula='',
-                        description="New Charge - Insert description here",
-                        group="",
-                        unit="dollars",
+                        rsi_binding=charge_kwargs.get(
+                            'rsi_binding', "New Charge %s" % n),
+                        rate=charge_kwargs.get('rate', 0.0),
+                        quantity_formula=charge_kwargs.get(
+                            'quantity_formula', ''),
+                        description=charge_kwargs.get(
+                            'description',
+                            "New Charge - Insert description here"),
+                        group=charge_kwargs.get("group", ''),
+                        unit=charge_kwargs.get('unit', "dollars")
                         )
         session.add(charge)
         registers = self.registers
@@ -696,19 +715,22 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        return dict(super(UtilBill, self).column_dict().items() +
+        result = dict(super(UtilBill, self).column_dict().items() +
                     [('account', self.utility_account.account),
                      ('service', 'Unknown' if self.service is None
                                            else self.service.capitalize()),
                      ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges() if self.state <
-                                        UtilBill.Hypothetical else None),
+                     ('computed_total', self.get_total_charges()),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
-                     ('utility', self.utility.column_dict()),
-                     ('supplier', self.supplier.column_dict()),
-                     ('rate_class', self.rate_class.column_dict()),
+                     ('utility', (self.utility.column_dict() if self.utility
+                                  else None)),
+                     ('supplier', (self.supplier.column_dict() if
+                                   self.supplier else None)),
+                     ('rate_class', (self.rate_class.column_dict() if
+                                     self.rate_class else None)),
                      ('state', self.state_name())])
+        return result
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -962,18 +984,18 @@ class UtilBillLoader(object):
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
 
-    def get_last_real_utilbill(self, account, end, service=None, utility=None,
-                rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill whose
-        end date is before/on 'end', optionally with the given service,
-        utility, rate class, and 'processed' status.
+    def get_last_real_utilbill(self, account, end=None, service=None,
+                               utility=None, rate_class=None, processed=None):
+        '''Returns the latest-ending UtilBill, optionally limited to those
+        whose end date is before/on 'end', and optionally with
+        the given service, utility, rate class, and 'processed' status.
         '''
         utility_account = self._session.query(UtilityAccount).filter_by(account=account) \
             .one()
         cursor = self._session.query(UtilBill) \
-            .filter(UtilBill.utility_account == utility_account) \
-            .filter(UtilBill.state != UtilBill.Hypothetical) \
-            .filter(UtilBill.period_end <= end)
+            .filter(UtilBill.utility_account == utility_account)
+        if end is not None:
+            cursor = cursor.filter(UtilBill.period_end <= end)
         if service is not None:
             cursor = cursor.filter(UtilBill.service == service)
         if utility is not None:

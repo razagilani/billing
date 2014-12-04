@@ -286,6 +286,11 @@ def set_rate_class_ids(session, utilbill_data, customer_data):
             customer.fb_rate_class_id = c_rate_class.id
     session.commit()
 
+def delete_hypothetical_utility_bills(session):
+    # UtilBill.Hypothetical == 3, but that name can't be used because it
+    # has been removed from the code
+    session.query(UtilBill).filter_by(state=3).delete()
+
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
@@ -313,7 +318,7 @@ def upgrade():
     log.info('Migration utilbill utility')
     migrate_utilbill_utility(utilbill_data, session)
 
-    log.info('Uploading utilbills to AWS')
+    #log.info('Uploading utilbills to AWS')
     #upload_utilbills_to_aws(session)
 
     log.info('Setting up fb_utility_id')
@@ -336,6 +341,8 @@ def upgrade():
 
     log.info('setting up rate_class ids for Customer and UtilBill records')
     set_rate_class_ids(session, utilbill_data, customer_data)
+
+    delete_hypothetical_utility_bills(session)
 
     log.info('creating utility_accounts and reebill_customers')
     create_utility_accounts(session, customer_data)

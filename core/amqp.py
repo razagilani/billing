@@ -7,6 +7,12 @@ This package contains classes for listening and publishing to an AMQP exchange
 using `mq`, a library which Skyline Innovations created for communicating with
 an AMQP message broker.
 
+This is a wrapper around mq that hides extra configuration parameters. mq is
+itself a wrapper around pika.
+
+The code for actually sending and receiving the specific AMQP messages used
+by this application is in amqp_exchange.py, not in this file.
+
 
 LISTENING:
 

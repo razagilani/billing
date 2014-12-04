@@ -1,6 +1,9 @@
-Ext.define('ReeBill.view.AccountForm', {
+Ext.define('ReeBill.view.accounts.AccountForm', {
     extend: 'Ext.form.Panel',
-
+    requires: [
+        'ReeBill.view.accounts.AccountsCombo',
+        'ReeBill.store.ServiceTypes'
+    ],
     title: 'Create New Account',
 
     alias: 'widget.accountForm',    

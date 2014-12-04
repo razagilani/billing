@@ -305,7 +305,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -319,7 +319,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
 
@@ -343,7 +344,7 @@ class ReeBill(Base):
                 total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / .0341214163
+                total_therms += quantity * .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -357,7 +358,8 @@ class ReeBill(Base):
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit == 'kwd':
-                total_therms += quantity
+                # power does not count toward total energy
+                pass
             else:
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
@@ -687,37 +689,39 @@ class StateDB(object):
         utility_account = self.session.query(UtilityAccount).filter(UtilityAccount.account == account).one()
         return session.query(ReeBillCustomer).filter(ReeBillCustomer.utility_account == utility_account).one()
 
-    def get_create_utility(self, utility):
+    def get_create_utility(self, name):
         session = Session()
         try:
-            utility = session.query(Utility).filter_by(name=utility).one()
+            result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            utility = Utility(utility, Address('', '', '', '', ''), '')
-        return utility
+            result = Utility(name, Address('', '', '', '', ''), '')
+        return result
 
     def get_utility(self, name):
         session = Session()
         return session.query(Utility).filter(Utility.name == name).one()
 
-    def get_create_supplier(self, supplier):
+    def get_create_supplier(self, name):
         session = Session()
         try:
-            supplier = session.query(Supplier).filter_by(name=supplier).one()
+            result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            supplier = Supplier(supplier, Address('', '', '', '', ''), '')
-        return supplier
+            result = Supplier(name, Address('', '', '', '', ''), '')
+        return result
 
     def get_supplier(self, name):
         session = Session()
         return session.query(Supplier).filter(Supplier.name == name).one()
 
-    def get_create_rate_class(self, rate_class, utility):
+    def get_create_rate_class(self, rate_class_name, utility):
+        assert isinstance(utility, Utility)
         session = Session()
         try:
-            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
         except NoResultFound:
-            rate_class = RateClass(rate_class, utility)
-        return rate_class
+            result = RateClass(rate_class_name, utility)
+        return result
 
     def get_rate_class(self, name):
         session = Session()
@@ -1194,6 +1198,13 @@ class StateDB(object):
         payments = session.query(Payment).join(ReeBillCustomer)\
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account).order_by(
+            Payment.date_received).all()
+        return payments
+
+    def get_payments_for_reebill_id(self, reebill_id):
+        session = Session()
+        payments = session.query(Payment) \
+            .filter(Payment.reebill_id == reebill_id).order_by(
             Payment.date_received).all()
         return payments
 
