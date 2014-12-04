@@ -249,6 +249,9 @@ class TestCaseWithSetup(test_utils.TestCase):
             'Test Customer 3 No Rate Strucutres', .12, .34, 'thermal',
             'example2@example.com', utility_account4)
 
+        session.add(utility_account4)
+        session.add(reebill_customer4)
+
         ub_sa = Address('Test Customer 3 UB 1 Service',
                      '123 Test Street',
                      'Test City',
