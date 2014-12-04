@@ -171,11 +171,12 @@ class ReeBill(Base):
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
-            self.customer.account, self.sequence, self.version, 'issued' if
+            self.reebill_customer.utility_account.account, self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
 
     def get_account(self):
-        return self.utilbill.utility_account.account
+        return self.reebill_customer.utility_account.account
+
 
     def check_editable(self):
         '''Raise a ProcessedBillError or IssuedBillError to prevent editing a
@@ -639,11 +640,11 @@ class Payment(Base):
     date_applied as the old one, whose credit is the true amount minus the
     previously-entered amount.'''
 
-    def __init__(self, customer, date_received, date_applied, description,
+    def __init__(self, reebill_customer, date_received, date_applied, description,
                  credit):
         assert isinstance(date_received, datetime)
         assert isinstance(date_applied, date)
-        self.customer = customer
+        self.reebill_customer = reebill_customer
         self.date_received = date_received
         self.date_applied = date_applied
         self.description = description
@@ -808,7 +809,8 @@ class StateDB(object):
         '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''
         session = Session()
-        reebills = session.query(ReeBill).join(UtilityAccount) \
+        reebills = session.query(ReeBill).join(ReeBillCustomer) \
+            .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.version > 0) \
             .filter(ReeBill.issued == 0).all()
@@ -826,9 +828,9 @@ class StateDB(object):
         '''Returns the sequence of the last reebill for 'account', or 0 if
         there are no reebills.'''
         session = Session()
-        customer = self.get_customer(account)
+        reebill_customer = self.get_reebill_customer(account)
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
-            .filter(ReeBill.customer_id == customer.id).one()[0]
+            .filter(ReeBill.reebill_customer_id == reebill_customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
         # the database) reebill needs to be primed otherwise the last sequence
         # for a new bill is None. Design a solution to this issue.
@@ -868,52 +870,52 @@ class StateDB(object):
         '''
         session = Session()
         sequence_sq = session.query(
-            ReeBill.customer_id, func.max(
+            ReeBill.reebill_customer_id, func.max(
                 ReeBill.sequence).label('max_sequence'))\
             .filter(ReeBill.issued == 1)\
-            .group_by(ReeBill.customer_id).subquery()
+            .group_by(ReeBill.reebill_customer_id).subquery()
         version_sq = session.query(
-            ReeBill.customer_id, ReeBill.sequence, ReeBill.issue_date,
+            ReeBill.reebill_customer_id, ReeBill.sequence, ReeBill.issue_date,
             func.max(ReeBill.version).label('max_version'))\
             .filter(ReeBill.issued == 1)\
-            .group_by(ReeBill.sequence, ReeBill.customer_id)\
+            .group_by(ReeBill.sequence, ReeBill.reebill_customer_id)\
             .subquery()
         utilbill_sq = session.query(
-            UtilBill.customer_id,
+            UtilBill.utility_account_id,
             func.max(UtilBill.period_end).label('max_period_end'))\
-        .group_by(UtilBill.customer_id)\
+        .group_by(UtilBill.utility_account_id)\
         .subquery()
         processed_utilbill_sq = session.query(
-            UtilBill.customer_id,
+            UtilBill.utility_account_id,
             func.max(UtilBill.period_end).label('max_period_end_processed'))\
         .filter(UtilBill.processed == 1)\
-        .group_by(UtilBill.customer_id)\
+        .group_by(UtilBill.utility_account_id)\
         .subquery()
         rate_class = aliased(RateClass)
 
         q = session.query(UtilityAccount.account,
                           Utility.name,
                           RateClass.name,
-                          ReeBillCustomer.fb_service_address,
+                          UtilityAccount.fb_service_address,
                           sequence_sq.c.max_sequence,
                           version_sq.c.max_version,
                           version_sq.c.issue_date,
                           rate_class.name,
                           Address,
                           processed_utilbill_sq.c.max_period_end_processed)\
-        .outerjoin(RateClass, RateClass.id==ReeBillCustomer.fb_rate_class_id)\
-        .outerjoin(Utility, Utility.id == ReeBillCustomer.fb_utility_id)\
-        .outerjoin(sequence_sq, ReeBillCustomer.id == sequence_sq.c.customer_id)\
-        .outerjoin(version_sq, and_(ReeBillCustomer.id == version_sq.c.customer_id,
+        .outerjoin(RateClass, RateClass.id==UtilityAccount.fb_rate_class_id)\
+        .outerjoin(Utility, Utility.id == UtilityAccount.fb_utility_id)\
+        .outerjoin(sequence_sq, ReeBillCustomer.id == sequence_sq.c.reebill_customer_id)\
+        .outerjoin(version_sq, and_(ReeBillCustomer.id == version_sq.c.reebill_customer_id,
                    sequence_sq.c.max_sequence == version_sq.c.sequence))\
-        .outerjoin(utilbill_sq, ReeBillCustomer.id == utilbill_sq.c.customer_id)\
+        .outerjoin(utilbill_sq, UtilityAccount.id == utilbill_sq.c.utility_account_id)\
         .outerjoin(UtilBill, and_(
-            UtilBill.customer_id == utilbill_sq.c.customer_id,
+            UtilBill.utility_account_id == utilbill_sq.c.utility_account_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
         .outerjoin(rate_class, rate_class.id == UtilBill.rate_class_id)\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
         .outerjoin(processed_utilbill_sq,
-                   ReeBillCustomer.id == processed_utilbill_sq.c.customer_id)\
+                   ReeBillCustomer.utility_account_id == processed_utilbill_sq.c.utility_account_id)\
         .order_by(desc(UtilityAccount.account))
 
         if account is not None:
@@ -987,10 +989,10 @@ class StateDB(object):
         # TODO: figure out how to do this all in one query. many SQLAlchemy
         # subquery examples use multiple queries but that shouldn't be
         # necessary
-        customer = session.query(UtilityAccount).filter(
-            UtilityAccount.account == account).one()
+        reebill_customer = session.query(ReeBillCustomer).join(UtilityAccount) \
+            .filter(UtilityAccount.account == account).one()
         sequences = session.query(ReeBill.sequence).with_lockmode("read") \
-            .filter(ReeBill.customer_id == customer.id).all()
+            .filter(ReeBill.reebill_customer_id == reebill_customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         result = map((lambda x: x[0]), sequences)
@@ -1129,7 +1131,7 @@ class StateDB(object):
             date_received = datetime.utcnow()
         session = Session()
         utility_account = session.query(UtilityAccount)\
-                .filter(UtilityAccount==account).one()
+                .filter(UtilityAccount.account==account).one()
         reebill_customer = session.query(ReeBillCustomer)\
                 .filter(ReeBillCustomer.utility_account==utility_account)\
                 .one()
@@ -1176,7 +1178,7 @@ class StateDB(object):
             end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
-                .filter(Payment.customer==self.get_reebill_customer(account))\
+                .filter(Payment.reebill_customer==self.get_reebill_customer(account))\
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
@@ -1188,7 +1190,8 @@ class StateDB(object):
         '''Returns list of all payments for the given account ordered by
         date_received.'''
         session = Session()
-        payments = session.query(Payment).join(UtilityAccount) \
+        payments = session.query(Payment).join(ReeBillCustomer)\
+            .join(UtilityAccount) \
             .filter(UtilityAccount.account == account).order_by(
             Payment.date_received).all()
         return payments

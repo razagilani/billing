@@ -38,9 +38,10 @@ class StateDBTest(TestCaseWithSetup):
                             RateClass('FB Test Rate Class', test_utility),
                             blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
-                            'example@example.com', self.utility_account)
+                            'thermal', 'example@example.com',
+                            self.utility_account)
         self.session.add(self.utility_account)
-        self.session.add(self.self.reebill_customer)
+        self.session.add(self.reebill_customer)
         self.session.commit()
         self.state_db = state.StateDB()
 
@@ -83,9 +84,9 @@ class StateDBTest(TestCaseWithSetup):
                     )
         self.session.add(utility_account1)
         self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
-                'customer1@example.com', utility_account1))
-        self.session.add(Customer('someone', 0.5, 0.1,
-                'customer2@example.com', utility_account2))
+                'thermal', 'customer1@example.com', utility_account1))
+        self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
+                'thermal', 'customer2@example.com', utility_account2))
         session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
         session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
         session.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
@@ -215,7 +216,7 @@ class StateDBTest(TestCaseWithSetup):
         p = payments[0]
         self.assertEqual(1, len(payments))
         self.assertEqual((acc, datetime(2012,1,15), 'payment 1', 100),
-                (p.customer.account, p.date_applied, p.description,
+                (p.reebill_customer.utility_account.account, p.date_applied, p.description,
                 p.credit))
         self.assertDatetimesClose(datetime.utcnow(), p.date_received)
         # should be editable since it was created today
@@ -233,7 +234,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
-                (q.customer.account, q.date_applied, q.description,
+                (q.reebill_customer.utility_account.account, q.date_applied, q.description,
                 q.credit))
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
@@ -246,7 +247,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,3,1), 'new description', 200),
-                (q.customer.account, q.date_applied, q.description,
+                (q.reebill_customer.utility_account.account, q.date_applied, q.description,
                 q.credit))
 
         # delete jan 15
@@ -261,14 +262,15 @@ class StateDBTest(TestCaseWithSetup):
         # Create 2 customers
         utility_account1 = self.session.query(UtilityAccount).one()
         reebill_customer1 = self.session.query(ReeBillCustomer).one()
-        rateclass1 = RateClass('FB Test Rate Class', reebill_customer1.fb_utility)
+        rateclass1 = RateClass('FB Test Rate Class', utility_account1.fb_utility)
         utility_account2 = UtilityAccount('other_account', 99998,
                             utility_account1.fb_utility,
                             utility_account1.fb_supplier, rateclass1,
                             empty_address, empty_address)
         self.session.add(utility_account2)
-        reebill_customer2 = Customer('Test Customer', .12, .34,
-                            'example@example.com', )
+        reebill_customer2 = ReeBillCustomer('Test Customer', .12, .34,
+                            'thermal', 'example@example.com',
+                            utility_account2)
         self.session.add(reebill_customer2)
         self.session.commit()
 
