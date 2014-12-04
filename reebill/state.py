@@ -904,6 +904,7 @@ class StateDB(object):
                           Address,
                           processed_utilbill_sq.c.max_period_end_processed)\
         .outerjoin(RateClass, RateClass.id==UtilityAccount.fb_rate_class_id)\
+        .outerjoin(ReeBillCustomer, ReeBillCustomer.utility_account_id==UtilityAccount.id)\
         .outerjoin(Utility, Utility.id == UtilityAccount.fb_utility_id)\
         .outerjoin(sequence_sq, ReeBillCustomer.id == sequence_sq.c.reebill_customer_id)\
         .outerjoin(version_sq, and_(ReeBillCustomer.id == version_sq.c.reebill_customer_id,
