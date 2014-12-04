@@ -22,11 +22,11 @@ init_test_config()
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import pricing
-from billing.core.model import Supplier, UtilBillLoader, RateClass
+from billing.core.model import Supplier, UtilBillLoader, RateClass, UtilityAccount
 from billing.reebill import journal
 from billing.reebill.process import Process
-from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
-    Register, Address
+from billing.reebill.state import StateDB, Session, UtilBill, \
+    Register, Address, ReeBillCustomer
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
@@ -103,7 +103,8 @@ class TestCaseWithSetup(test_utils.TestCase):
     def truncate_tables(session):
         for t in ["utilbill_reebill", "register", "payment", "reebill",
                   "charge", "utilbill",  "reading", "reebill_charge",
-                  "customer", "rate_class", "supplier", "company", "address"]:
+                  "customer", "reebill_customer", "utility_account",
+                  "rate_class", "supplier", "company", "address"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -183,19 +184,25 @@ class TestCaseWithSetup(test_utils.TestCase):
                         other_supplier])
         session.flush()
         rate_class = RateClass('Test Rate Class Template', uc)
-        session.add(Customer('Test Customer', '99999', .12, .34,
-                             'example@example.com', uc, supplier,
-                             rate_class,
-                             fa_ba1, fa_sa1))
+        utility_account = UtilityAccount(
+            'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1)
+        reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
+                            'thermal', 'example@example.com', utility_account)
+        session.add(utility_account)
+        session.add(reebill_customer)
 
         #Template Customer aka "Template Account" in UI
-        c2 = Customer('Test Customer 2', '100000', .12, .34,
-                             'example2@example.com', uc, supplier,
-                             rate_class,
-                             fa_ba2, fa_sa2)
-        session.add(c2)
+        utility_account2 = UtilityAccount(
+            'Test Customer 2', '100000', uc, supplier, rate_class, fa_ba2,
+            fa_sa2)
+        reebill_customer2 = ReeBillCustomer('Test Customer 2',  .12, .34,
+                                            'thermal',
+                                           'example2@example.com',
+                                           utility_account2)
+        session.add(utility_account2)
+        session.add(reebill_customer2)
 
-        u1 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
+        u1 = UtilBill(utility_account2, UtilBill.Complete, 'gas', uc, supplier,
                              rate_class,
                              ub_ba1, ub_sa1,
                              account_number='Acct123456',
@@ -205,7 +212,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 2, 3),
                              processed=True)
 
-        u2 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
+        u2 = UtilBill(utility_account2, UtilBill.Complete, 'gas', uc, supplier,
                              rate_class,
                              ub_ba2, ub_sa2,
                              account_number='Acct123456',
@@ -240,10 +247,15 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
         other_rate_class = RateClass('Other Rate Class', other_uc)
-        c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
-                             'example2@example.com', other_uc, other_supplier,
-                             other_rate_class, c4ba, c4sa)
-        session.add(c4)
+        utility_account4 = UtilityAccount(
+            'Test Customer 3 No Rate Strucutres', '100001', other_uc,
+            other_supplier, other_rate_class, c4ba, c4sa)
+        reebill_customer4 = ReeBillCustomer(
+            'Test Customer 3 No Rate Strucutres', .12, .34, 'thermal',
+            'example2@example.com', utility_account4)
+
+        session.add(utility_account4)
+        session.add(reebill_customer4)
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
                      '123 Test Street',
@@ -256,7 +268,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
 
-        u = UtilBill(c4, UtilBill.Complete, 'gas', other_uc, other_supplier,
+        u = UtilBill(utility_account4, UtilBill.Complete, 'gas', other_uc,
+                                        other_supplier,
                          other_rate_class, ub_ba, ub_sa,
                          account_number='Acct123456',
                          period_start=date(2012, 1, 1),

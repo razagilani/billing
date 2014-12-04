@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 
 from billing.core.model import UtilBill, Address, \
-    Charge, Register, Session, Utility, Customer, Supplier, RateClass
+    Charge, Register, Session, Utility, Customer, Supplier, RateClass, ReeBillCustomer, UtilityAccount
 from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
@@ -10,12 +10,13 @@ class ReebillTest(unittest.TestCase):
         washgas = Utility('washgas', Address('', '', '', '', ''), '')
         supplier = Supplier('supplier', Address(), '')
         c_rate_class = RateClass('Test Rate Class', washgas)
-        customer = Customer('someone', '11111', 0.5, 0.1,
-                            'example@example.com', washgas, supplier,
-                            c_rate_class,
+        utility_account = UtilityAccount('someaccount', '11111',
+                            washgas, supplier, c_rate_class,
                             Address(), Address())
+        reebill_customer = ReeBillCustomer('someone', '11111', 0.5, 0.1,
+                            'example@example.com', utility_account)
         u_rate_class = RateClass('DC Non Residential Non Heat', washgas)
-        self.utilbill = UtilBill(customer, UtilBill.Complete, 'gas', washgas,
+        self.utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', washgas,
                                  supplier,
                                  u_rate_class,
                                  period_start=date(2000, 1, 1),
@@ -33,7 +34,7 @@ class ReebillTest(unittest.TestCase):
                    has_charge=False),
         ]
 
-        self.reebill = ReeBill(customer, 1, discount_rate=0.5,
+        self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,
                                late_charge_rate=0.1,
                                utilbills=[self.utilbill])
         Session().add_all([self.utilbill, self.reebill])
