@@ -27,31 +27,58 @@ Ext.Ajax.request({
         config.defaultAccountSortField = data.default_account_sort_field;
         config.defaultAccountSortDir = data.default_account_sort_dir;
 
-        // Create the application.
         Ext.application({
             name: 'ReeBill',
             autoCreateViewport: true,
-            
+
+            paths: {'ReeBill': 'static/app'},
+
             controllers: [
-                'BottomBar', 'Accounts', 'IssuableReebills', 'Journal', 'Payments', 'Charges', 'Reports', 'Preferences',
-                'ReebillCharges', 'Reebills', 'TabPanel', 'UtilityBillRegisters', 'UtilityBills', 'Viewer'
+                'Accounts',
+                'BottomBar',
+                'Charges',
+                'IssuableReebills',
+                'Journal',
+                'Payments',
+                'Preferences',
+                'ReebillCharges',
+                'Reebills',
+                'Reports',
+                'TabPanel',
+                'UtilityBillRegisters',
+                'UtilityBills',
+                'Viewer'
             ],
-            
+
             stores: [
-                'Accounts', 'AccountsMemory', 'AccountsFilter', 'IssuableReebills', 'IssuableReebillsMemory', 'EstimatedRevenue', 'Preferences',
-                'JournalEntries', 'Payments', 'Charges', 'RateClasses', 'Reconciliations', 'ReebillCharges', 'Reebills', 'Suppliers', 'Utilities',
-                'Services', 'ServiceTypes', 'Timestamps', 'Units', 'UtilityBills', 'UtilityBillsMemory', 'UtilityBillRegisters', 'ReeBillVersions'
+                'Suppliers',
+                'Services',
+                'Utilities',
+                'RateClasses',
+                'Accounts',
+                'AccountsFilter',
+                'AccountsMemory',
+                'Charges',
+                'EstimatedRevenue',
+                'IssuableReebills',
+                'IssuableReebillsMemory',
+                'JournalEntries',
+                'Payments',
+                'Preferences',
+                'Reconciliations',
+                'ReebillCharges',
+                'Reebills',
+                'ReeBillVersions',
+                'ServiceTypes',
+                'Units',
+                'Utilities',
+                'UtilityBillRegisters',
+                'UtilityBills',
+                'UtilityBillsMemory',
+                'Timestamps'
             ],
 
-            models: [
-                'Account', 'Charge', 'EstimatedRevenue', 'Preference',
-                'JournalEntry', 'Payment', 'RateClass', 'Reconciliation', 'Supplier', 'Utility',
-                'Reebill', 'ReebillCharge', 'UtilityBill', 'UtilityBillRegister'
-            ],
-            
-            launch: function() {
-
-            }
+            launch: function() {}
         });
     }
 });

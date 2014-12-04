@@ -2,7 +2,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'UtilityBills', 'ReeBillVersions'
+        'UtilityBills',
+        'ReeBillVersions',
+        'RateClasses',
+        'Suppliers',
+        'Utilities',
+        'Services'
+    ],
+
+    views: [
+        'utilitybills.UtilityBills',
+        'utilitybills.UploadUtilityBill'
     ],
     
     refs: [{

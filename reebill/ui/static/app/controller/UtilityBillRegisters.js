@@ -4,6 +4,11 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     stores: [
         'UtilityBillRegisters'
     ],
+
+    views: [
+        'metersandregisters.UtilityBillRegisters',
+        'metersandregisters.TOUMetering'
+    ],
     
     refs: [{
         ref: 'utilityBillRegistersGrid',
@@ -109,9 +114,16 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length)
             return;
 
-        store.add({identifier:'new Register',
-                   meter_identifier:'new Meter'})
-
+        store.add({
+            identifier:'Enter Register ID',
+            meter_identifier:'Enter Meter ID',
+            description: 'Insert description',
+            quantity: 0,
+            reg_type: 'total',
+            register_binding: 'Insert register binding here',
+            unit: 'therms',
+            utilbill_id: selectedBill[0].internalId
+        });
     },
 
     /**

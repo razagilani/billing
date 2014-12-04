@@ -24,6 +24,13 @@ class MissingDataError(BillingError):
     """Data from an external source (e.g. Skyline OLAP or OLTP) were expected
     but not found."""
 
+class MissingFileError(BillingError):
+    pass
+
+class DuplicateFileError(BillingError):
+    '''Attempt to upload or recognize a utility bill file that already exists.
+    '''
+    pass
 
 class NoSuchBillException(BillingError):
     pass

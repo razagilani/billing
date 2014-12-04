@@ -4,6 +4,11 @@ Ext.define('ReeBill.controller.Reports', {
     stores: [
         'Accounts'
     ],
+
+    views: [
+        'reports.AccountDatePicker', 'reports.EstimatedRevenue',
+        'reports.Exports', 'reports.Reconciliations'
+    ],
     
     refs: [{
         ref: 'reconciliationsGrid',

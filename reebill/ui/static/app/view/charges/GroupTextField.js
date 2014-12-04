@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.GroupTextField', {
+Ext.define('ReeBill.view.charges.GroupTextField', {
     extend: 'Ext.form.field.Text',
     alias: 'widget.groupTextField',
 

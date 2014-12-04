@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.ReebillCharges', {
+Ext.define('ReeBill.view.reebillcharges.ReebillCharges', {
     extend: 'Ext.grid.Panel',
 
     requires: [

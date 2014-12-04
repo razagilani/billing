@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.ReebillCharges', {
     extend: 'Ext.data.Store',
-
+    requires: ['ReeBill.model.ReebillCharge'],
     model: 'ReeBill.model.ReebillCharge',
 
     autoLoad: false,

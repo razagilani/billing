@@ -1,9 +1,11 @@
-Ext.define('ReeBill.view.UploadUtilityBill', {
+Ext.define('ReeBill.view.utilitybills.UploadUtilityBill', {
     extend: 'Ext.form.Panel',
 
     title: 'Upload Utility Bill',
 
     alias: 'widget.uploadUtilityBill',    
+
+    requires: ['ReeBill.store.Services'],
 
     bodyPadding: 15,
     titleCollapse: true,
