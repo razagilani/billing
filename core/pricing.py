@@ -157,8 +157,8 @@ class FuzzyPricingModel(PricingModel):
         try:
             predecessor = self._utilbill_loader.get_last_real_utilbill(
                     utilbill.utility_account.account, end=utilbill.period_start,
-                    service=utilbill.service, utility=utilbill.utility,
-                    rate_class=utilbill.rate_class, processed=True)
+                service=utilbill.service, utility=utilbill.utility,
+                rate_class=utilbill.rate_class, processed=True)
         except NoSuchBillException:
             # if there's no predecessor, there are no charges to add
             pass

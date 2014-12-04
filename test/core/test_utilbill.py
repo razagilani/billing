@@ -47,6 +47,24 @@ class UtilBillTest(TestCase):
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
 
+    def test_validate_utilbill_period(self):
+        # valid periods
+        UtilBill.validate_utilbill_period(None, None)
+        UtilBill.validate_utilbill_period(date(1000,1,1), None)
+        UtilBill.validate_utilbill_period(None, date(1000,1,1))
+        UtilBill.validate_utilbill_period(date(2000,1,1), date(2000,1,2))
+        UtilBill.validate_utilbill_period(date(2000,1,1), date(2000,12,31))
+
+        # length < 1 day
+        with self.assertRaises(ValueError):
+            UtilBill.validate_utilbill_period(date(2000,1,1), date(2000,1,1))
+        with self.assertRaises(ValueError):
+            UtilBill.validate_utilbill_period(date(2000,1,2), date(2000,1,1))
+
+        # length > 365 days
+        with self.assertRaises(ValueError):
+            UtilBill.validate_utilbill_period(date(2000,1,1), date(2001,1,2))
+
     def test_add_charge(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
