@@ -33,7 +33,7 @@ class ReebillFileHandlerTest(TestCase):
                         'Test Utility', 'Test Supplier', 'Test Rate Class',
                         ba, sa)
         c = ReeBillCustomer('Test Customer', 0.2, 0.1, 'test@example.com',
-                            utility_account)
+                            'thermal', utility_account)
         ba2 = Address.from_other(ba)
         ba2.addressee = 'Reebill Billing Addressee'
         sa2 = Address.from_other(sa)
@@ -137,7 +137,7 @@ class ReebillFileHandlerTest(TestCase):
         '''
         # tstsettings.cfg specifies that if the customer's account number is
         # this one, it willl get the "teva" images on its bill PDFs.
-        self.reebill.customer.account = 'teva'
+        self.reebill.reebill_customer.utility_account.account = 'teva'
         self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data

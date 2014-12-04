@@ -296,7 +296,7 @@ class ReebillProcessor(object):
             # note that Hypothetical utility bills are excluded.
             for utilbill in last_reebill_row.utilbills:
                 successor = session.query(UtilBill)\
-                    .filter(UtilBill.customer == reebill_customer)\
+                    .filter(UtilBill.utility_account == reebill_customer.utility_account)\
                     .filter(not_(UtilBill._utilbill_reebills.any()))\
                     .filter(UtilBill.service == utilbill.service)\
                     .filter(UtilBill.utility == utilbill.utility)\
@@ -371,7 +371,7 @@ class ReebillProcessor(object):
             # edit it, but can't until the new version already exists).
             self.logger.error(("In Process.new_version, couldn't compute new "
                     "version %s of reebill %s-%s: %s\n%s") % (
-                    reebill.version, reebill.customer.account,
+                    reebill.version, reebill.get_account(),
                     reebill.sequence, e, traceback.format_exc()))
 
         return reebill
@@ -381,7 +381,8 @@ class ReebillProcessor(object):
             a list of dictionaries
         '''
         session = Session()
-        q = session.query(ReeBill).join(UtilityAccount).with_lockmode('read')\
+        q = session.query(ReeBill).join(ReeBillCustomer)\
+            .join(UtilityAccount).with_lockmode('read')\
             .filter(UtilityAccount.account == account)\
             .filter(ReeBill.sequence == sequence)\
             .order_by(desc(ReeBill.version))
@@ -480,9 +481,9 @@ class ReebillProcessor(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        customer = self.state_db.get_customer(acc)
+        reebill_customer = self.state_db.get_reebill_customer(acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
-                .filter(ReeBill.customer == customer)\
+                .filter(ReeBill.reebill_customer == reebill_customer)\
                 .filter(ReeBill.sequence == seq - 1).one()[0]
         source_balance = min_balance_due - \
                 self.state_db.get_total_payment_since(acc,
@@ -666,15 +667,15 @@ class ReebillProcessor(object):
         """
         session = Session()
         unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.customer_id).filter(ReeBill.issued == 0,
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == 0,
                                                           ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
-                unissued_v0_reebills.c.customer_id.label('customer_id'),
+                unissued_v0_reebills.c.reebill_customer_id.label('reebill_customer_id'),
                 func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+                .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
         issuable_reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)\
                 .filter(ReeBill.processed == 1).all()
 
@@ -731,6 +732,7 @@ class ReebillProcessor(object):
         try:
             session = Session()
             reebill_object = (session.query(ReeBill)
+                    .join(ReeBillCustomer)
                     .join(UtilityAccount)
                     .filter(UtilityAccount.account==account)
                     .filter(ReeBill.sequence==sequence)
@@ -765,7 +767,7 @@ class ReebillProcessor(object):
             # sum of adjustments that have to be made so the client can create
             # a confirmation message
             unissued_corrections = self.get_unissued_corrections(
-                bill.customer.account)
+                bill.reebill_customer.utility_account.account)
             if len(unissued_corrections) > 0 and not apply_corrections:
                 # The user has confirmed to issue unissued corrections.
                 sequences = [sequence for sequence, _, _
@@ -777,14 +779,14 @@ class ReebillProcessor(object):
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
                 try:
-                    self.issue_corrections(bill.customer.account, bill.sequence)
+                    self.issue_corrections(bill.get_account(), bill.sequence)
                 except Exception as e:
                     self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.customer.account, bill.sequence,
+                        bill.reebill_customer.utility_account.account, bill.sequence,
                         e.__class__.__name__),) + e.args)
                     raise
             try:
-                self.issue(bill.customer.account, bill.sequence)
+                self.issue(bill.get_account(), bill.sequence)
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill.customer.account, bill.sequence,
@@ -799,7 +801,7 @@ class ReebillProcessor(object):
             else:
                 recipient_list = [rec.strip() for rec in
                                   bill.email_recipient.split(',')]
-            self.mail_reebills(bill.customer.account, [bill.sequence],
+            self.mail_reebills(bill.get_account(), [bill.sequence],
                                recipient_list)
         bills_dict = [bill.column_dict() for bill in bills]
         return bills_dict
@@ -876,8 +878,7 @@ class ReebillProcessor(object):
             raise IssuedBillError("Can't modify an issued bill")
 
         issuable_reebill = session.query(ReeBill).join(ReeBillCustomer) \
-                .filter(ReeBill.customer_id==ReeBillCustomer.id)\
-                .jojn(UtilityAccount)\
+                .join(UtilityAccount)\
                 .filter(UtilityAccount.account==account)\
                 .filter(ReeBill.version==0, ReeBill.issued==False)\
                 .order_by(ReeBill.sequence).first()
