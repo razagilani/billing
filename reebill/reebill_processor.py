@@ -782,14 +782,14 @@ class ReebillProcessor(object):
                     self.issue_corrections(bill.get_account(), bill.sequence)
                 except Exception as e:
                     self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.reebill_customer.utility_account.account, bill.sequence,
+                        bill.get_account(), bill.sequence,
                         e.__class__.__name__),) + e.args)
                     raise
             try:
                 self.issue(bill.get_account(), bill.sequence)
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.customer.account, bill.sequence,
+                        bill.get_accont(), bill.sequence,
                         e.__class__.__name__),) + e.args)
                 raise
             # Let's mail!

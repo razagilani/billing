@@ -216,7 +216,7 @@ class StateDBTest(TestCaseWithSetup):
         p = payments[0]
         self.assertEqual(1, len(payments))
         self.assertEqual((acc, datetime(2012,1,15), 'payment 1', 100),
-                (p.reebill_customer.utility_account.account, p.date_applied, p.description,
+                (p.reebill_customer.get_account(), p.date_applied, p.description,
                 p.credit))
         self.assertDatetimesClose(datetime.utcnow(), p.date_received)
         # should be editable since it was created today
@@ -234,7 +234,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
-                (q.reebill_customer.utility_account.account, q.date_applied, q.description,
+                (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
@@ -247,7 +247,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,3,1), 'new description', 200),
-                (q.reebill_customer.utility_account.account, q.date_applied, q.description,
+                (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
 
         # delete jan 15

@@ -81,13 +81,13 @@ class ReebillFileHandler(object):
         (the file may not exist).
         '''
         return ReebillFileHandler.FILE_NAME_FORMAT % dict(
-                account=reebill.reebill_customer.utility_account.account, sequence=reebill.sequence)
+                account=reebill.get_account(), sequence=reebill.sequence)
 
     def get_file_path(self, reebill):
         '''Return full path to the PDF file associated with the given
         :class:`ReeBill` (the file may not exist).
         '''
-        return os.path.join(self._pdf_dir_path, reebill.reebill_customer.utility_account.account,
+        return os.path.join(self._pdf_dir_path, reebill.get_account(),
                 self.get_file_name(reebill))
 
     def delete_file(self, reebill, ignore_missing=False):
@@ -118,7 +118,7 @@ class ReebillFileHandler(object):
             return (register.meter_identifier, register.identifier,
                     register.description)
         return {
-            'account': reebill.reebill_customer.utility_account.account,
+            'account': reebill.get_account(),
             'sequence': str(reebill.sequence),
             'begin_period': reebill.utilbills[0].period_start,
             'manual_adjustment': reebill.manual_adjustment,

@@ -4,12 +4,13 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
+from billing.core.model import Utility
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
 from billing.reebill.state import ReeBill, UtilBill, Address, \
     Register, Reading, ReeBillCustomer
-from billing.core.model import UtilityAccount
+from billing.core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -56,7 +57,7 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 class FetchTest(unittest.TestCase):
     def setUp(self):
         utility_account = UtilityAccount(
-            'someone', '12345', Mock(), Mock(), Mock(), Address(), Address())
+            'someone', '12345', Mock(autospec=Utility), Mock(autospec=Supplier), Mock(autospec=RateClass), Address(), Address())
         reebill_customer = ReeBillCustomer('someone', 0.5, 0.1, 'thermal',
                             'example@example.com', utility_account)
         utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', 'washgas',

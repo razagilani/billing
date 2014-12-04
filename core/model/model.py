@@ -272,6 +272,9 @@ class ReeBillCustomer(Base):
     def get_discount_rate(self):
         return self.discountrate
 
+    def get_account(self):
+        return self.utility_account.account
+
     def set_discountrate(self, value):
         self.discountrate = value
 
