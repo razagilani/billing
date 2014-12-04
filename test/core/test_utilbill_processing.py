@@ -9,7 +9,7 @@ from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill
+from billing.core.model import UtilBill, UtilityAccount
 from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -221,7 +221,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         account = '99999'
 
         s = Session()
-        customer = s.query(Customer).filter_by(account=account).one()
+        utility_account = s.query(UtilityAccount).filter_by(account=account).one()
 
         # validation of dates
         bad_dates = [
@@ -232,9 +232,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(account, StringIO(), start,
                                                  end, 'electric',
-                                                 utility=customer.fb_utility,
-                                                 rate_class='Residential-R',
-                                                 supplier=customer.fb_supplier)
+                    utility=utility_account.fb_utility, supplier=utility_account.fb_supplier,
+                    rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
@@ -481,7 +480,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         file = StringIO('example')
         file_hash = self.process.bill_file_handler.compute_hexdigest(file)
         s = Session()
-        customer = s.query(Customer).filter_by(account=account).one()
+        customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.process.bill_file_handler.upload_file(file)
 
         # this was added in setUp
