@@ -381,7 +381,10 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def create_utility_bill_with_existing_file(self, account, utility,
-                                  sha256_hexdigest):
+                                  sha256_hexdigest,
+                                  # TODO
+                                  # due_date=None,
+                                  target_total=None, service_address=None):
         '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param account: Nextility customer account number.
@@ -395,6 +398,9 @@ class UtilbillProcessor(object):
         assert isinstance(sha256_hexdigest, basestring) and len(
             sha256_hexdigest) == 64;
         b16decode(sha256_hexdigest.upper())
+        #assert isinstance(due_date, (datetime, type(None)))
+        assert isinstance(target_total, (float, int, type(None)))
+        assert isinstance(service_address, (Address, type(None)))
 
         s = Session()
         if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
@@ -411,8 +417,13 @@ class UtilbillProcessor(object):
         self.compute_utility_bill(new_utilbill.id)
 
         # set hexdigest of the file (this would normally be done by
-        # BillFileHandler.uppad_utilbill_pdf_to_s3)
+        # BillFileHandler.upload_utilbill_pdf_to_s3)
         new_utilbill.sha256_hexdigest = sha256_hexdigest
+
+        if target_total is not None:
+            new_utilbill.target_total = target_total
+        if service_address is not None:
+            new_utilbill.service_address = service_address
 
         self.bill_file_handler.check_file_exists(new_utilbill)
 
