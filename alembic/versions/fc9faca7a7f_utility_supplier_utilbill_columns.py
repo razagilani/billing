@@ -57,13 +57,13 @@ def upgrade():
                               nullable=False),
                     sa.Column('utility_id', sa.Integer(),
                               sa.ForeignKey('company.id'), nullable=False),
-                    sa.Column('guid', sa.String(length=35), nullable=False))
+                    sa.Column('guid', sa.String(length=36), nullable=False))
     op.create_table('altitude_supplier',
                     sa.Column('id', sa.Integer(), primary_key=True,
                               nullable=False),
                     sa.Column('supplier_id', sa.Integer(),
                               sa.ForeignKey('supplier.id'), nullable=False),
-                    sa.Column('guid', sa.String(length=35), nullable=False))
+                    sa.Column('guid', sa.String(length=36), nullable=False))
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')
     op.drop_column('utilbill', 'utility_id')
