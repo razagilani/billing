@@ -24,7 +24,6 @@ from billing.test import testing_utils as test_utils
 from billing.core import pricing
 from billing.core.model import Supplier, UtilBillLoader, RateClass, UtilityAccount
 from billing.reebill import journal
-from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Session, UtilBill, \
     Register, Address, ReeBillCustomer
 from billing.core.model import Utility
@@ -360,11 +359,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.reebill_processor = ReebillProcessor(
             self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
             ree_getter, journal_dao, logger=logger)
-
-        # TODO: remove
-        self.process = Process(self.state_db, self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer,
-                reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
