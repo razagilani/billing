@@ -17,8 +17,9 @@ from sqlalchemy.orm import relationship
 from billing.core.model import Base, Session, Utility
 
 class AltitudeGUID(String):
+    LENGTH = 36
     def __init__(self):
-        super(AltitudeGUID, self).__init__(length=35)
+        super(AltitudeGUID, self).__init__(length=self.LENGTH)
 
 class AltitudeUtility(Base):
     '''Holds foreign keys from Utility to Altitude utilities.'''
