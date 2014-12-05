@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
@@ -174,13 +175,13 @@ class UtilbillProcessor(object):
                 utilbill.service = service
 
             if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.state_db.get_create_utility(utility)
+                utilbill.utility = self.get_create_utility(utility)
 
             if supplier is not None and isinstance(supplier, basestring):
-                utilbill.supplier = self.state_db.get_create_supplier(supplier)
+                utilbill.supplier = self.get_create_supplier(supplier)
 
             if rate_class is not None and isinstance(rate_class, basestring):
-                utilbill.rate_class = self.state_db.get_create_rate_class(
+                utilbill.rate_class = self.get_create_rate_class(
                     rate_class, utilbill.utility)
 
             period_start = period_start if period_start else \
@@ -192,6 +193,32 @@ class UtilbillProcessor(object):
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
         return  utilbill
+
+    def get_create_utility(self, name):
+        session = Session()
+        try:
+            result = session.query(Utility).filter_by(name=name).one()
+        except NoResultFound:
+            result = Utility(name, Address('', '', '', '', ''), '')
+        return result
+
+    def get_create_supplier(self, name):
+        session = Session()
+        try:
+            result = session.query(Supplier).filter_by(name=name).one()
+        except NoResultFound:
+            result = Supplier(name, Address('', '', '', '', ''), '')
+        return result
+
+    def get_create_rate_class(self, rate_class_name, utility):
+        assert isinstance(utility, Utility)
+        session = Session()
+        try:
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
+        except NoResultFound:
+            result = RateClass(rate_class_name, utility)
+        return result
 
     def _create_utilbill_in_db(self, account, start=None, end=None,
                             service=None, utility=None, rate_class=None,
@@ -328,11 +355,11 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility = self.state_db.get_create_utility(utility)
+            utility = self.get_create_utility(utility)
         if rate_class is not None:
-            rate_class = self.state_db.get_create_rate_class(rate_class, utility)
+            rate_class = self.get_create_rate_class(rate_class, utility)
         if supplier is not None:
-           supplier = self.state_db.get_create_supplier(supplier)
+           supplier = self.get_create_supplier(supplier)
         new_utilbill = self._create_utilbill_in_db(
             account, start=start, end=end, service=service,utility=utility,
             rate_class=rate_class, total=total, state=state, supplier=supplier)
@@ -462,3 +489,15 @@ class UtilbillProcessor(object):
     def get_all_rate_classes_json(self):
         session = Session()
         return [r.column_dict() for r in session.query(RateClass).all()]
+
+    def get_utility(self, name):
+        session = Session()
+        return session.query(Utility).filter(Utility.name == name).one()
+
+    def get_supplier(self, name):
+        session = Session()
+        return session.query(Supplier).filter(Supplier.name == name).one()
+
+    def get_rate_class(self, name):
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name == name).one()

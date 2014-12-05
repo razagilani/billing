@@ -689,44 +689,6 @@ class StateDB(object):
         utility_account = self.session.query(UtilityAccount).filter(UtilityAccount.account == account).one()
         return session.query(ReeBillCustomer).filter(ReeBillCustomer.utility_account == utility_account).one()
 
-    def get_create_utility(self, name):
-        session = Session()
-        try:
-            result = session.query(Utility).filter_by(name=name).one()
-        except NoResultFound:
-            result = Utility(name, Address('', '', '', '', ''), '')
-        return result
-
-    def get_utility(self, name):
-        session = Session()
-        return session.query(Utility).filter(Utility.name == name).one()
-
-    def get_create_supplier(self, name):
-        session = Session()
-        try:
-            result = session.query(Supplier).filter_by(name=name).one()
-        except NoResultFound:
-            result = Supplier(name, Address('', '', '', '', ''), '')
-        return result
-
-    def get_supplier(self, name):
-        session = Session()
-        return session.query(Supplier).filter(Supplier.name == name).one()
-
-    def get_create_rate_class(self, rate_class_name, utility):
-        assert isinstance(utility, Utility)
-        session = Session()
-        try:
-            result = session.query(RateClass).filter_by(
-                name=rate_class_name).one()
-        except NoResultFound:
-            result = RateClass(rate_class_name, utility)
-        return result
-
-    def get_rate_class(self, name):
-        session = Session()
-        return session.query(RateClass).filter(RateClass.name == name).one()
-
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
