@@ -476,7 +476,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         _, count = self.utilbill_processor.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
-    def test_upload_utility_bill_existing_file(self):
+    def test_create_utility_bill_for_existing_file(self):
         account = '99999'
 
         # file is assumed to already exist in S3, so put it there
@@ -514,7 +514,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 account, utility, file_hash)
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                'other acccount', 'other utility guid', file_hash)
+                'other account', utility, file_hash)
 
     def test_get_service_address(self):
         account = '99999'

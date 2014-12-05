@@ -1,3 +1,4 @@
+from base64 import b16decode
 import json
 from datetime import datetime
 from sqlalchemy import desc
@@ -389,6 +390,12 @@ class UtilbillProcessor(object):
         which should also be (part of) the file name and sufficient to
         determine which existing file goes with this bill.
         '''
+        assert isinstance(account, basestring)
+        assert isinstance(utility, Utility)
+        assert isinstance(sha256_hexdigest, basestring) and len(
+            sha256_hexdigest) == 64;
+        b16decode(sha256_hexdigest.upper())
+
         s = Session()
         if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
