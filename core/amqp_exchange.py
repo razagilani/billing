@@ -17,7 +17,7 @@ def process_utility(name, utility_provider_guid):
         s.add(utility)
     s.commit()
 
-def run(channel, queue_name, utilbill_processor):
+def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Wait for AMQP messages to receive a utility bill.
     '''
     def callback(ch, method, properties, body):
