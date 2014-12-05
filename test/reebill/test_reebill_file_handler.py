@@ -10,7 +10,7 @@ import os.path
 from testfixtures import TempDirectory
 
 from billing.core.model import Address, Customer, UtilBill, \
-    Register
+    Register, UtilityAccount, ReeBillCustomer
 from billing.reebill.state import ReeBill, ReeBillCharge
 from billing.reebill.reebill_file_handler import ReebillFileHandler
 from billing import init_config
@@ -29,8 +29,11 @@ class ReebillFileHandlerTest(TestCase):
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
-        c = Customer('Test Customer', '00001', 0.2, 0.1, 'test@example.com',
-                     'Test Utility', 'Test Supplier', 'Test Rate Class', ba, sa)
+        utility_account = UtilityAccount('someaccount', '00001',
+                        'Test Utility', 'Test Supplier', 'Test Rate Class',
+                        ba, sa)
+        c = ReeBillCustomer('Test Customer', 0.2, 0.1, 'test@example.com',
+                            'thermal', utility_account)
         ba2 = Address.from_other(ba)
         ba2.addressee = 'Reebill Billing Addressee'
         sa2 = Address.from_other(sa)
@@ -39,7 +42,7 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
+        u = UtilBill(utility_account, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
             'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
             period_end=date(2000,2,1))
         u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
@@ -134,7 +137,7 @@ class ReebillFileHandlerTest(TestCase):
         '''
         # tstsettings.cfg specifies that if the customer's account number is
         # this one, it willl get the "teva" images on its bill PDFs.
-        self.reebill.customer.account = 'teva'
+        self.reebill.reebill_customer.utility_account.account = 'teva'
         self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
