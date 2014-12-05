@@ -776,12 +776,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': self.state_db.get_rate_class('Test Rate Class Template').column_dict(),
+                                          'rate_class': self.process.get_rate_class('Test Rate Class Template').column_dict(),
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.state_db.get_utility('Test Utility Company Template').column_dict(),
+                                          'utility': self.process.get_utility('Test Utility Company Template').column_dict(),
                                           }, utilbill_data)
 
         # create a reebill
@@ -798,12 +798,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': self.state_db.
+                                          'rate_class': self.process.
                                             get_rate_class('Test Rate Class Template').
                                             column_dict(),
                                           'service': 'Gas', 'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.state_db.
+                                          'utility': self.process.
                                             get_utility('Test Utility Company '
                                                         'Template').
                                             column_dict(),
