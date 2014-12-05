@@ -21,19 +21,19 @@ def upgrade():
     op.drop_constraint('fk_rebill_customer', 'reebill', 'foreignkey')
     op.drop_constraint('fk_utilbill_customer', 'utilbill', 'foreignkey')
     # op.drop_table('customer')
-    # op.drop_index('fk_utilbill_customer', table_name='utilbill')
-    # op.drop_index('fk_payment_customer', table_name='payment')
-    # op.drop_constraint(u'customer_id', 'reebill', 'unique')
-    # op.drop_column('utilbill', 'customer_id')
-    # op.drop_column('payment', 'customer_id')
-    # op.drop_column('reebill', 'customer_id')
+    op.drop_index('fk_utilbill_customer', table_name='utilbill')
+    op.drop_index('fk_payment_customer', table_name='payment')
+    op.drop_constraint(u'customer_id', 'reebill', 'unique')
+    #op.drop_column('utilbill', 'customer_id')
+    #op.drop_column('payment', 'customer_id')
+    #op.drop_column('reebill', 'customer_id')
     op.create_unique_constraint(u'unq_reebill_customer_id', 'reebill', ['reebill_customer_id', 'sequence', 'version'])
     op.drop_column('utilbill', 'rate_class')
 
 
 def downgrade():
     SERVICE_TYPES = ('thermal', 'pv')
-    op.create_table('customer',
+    '''op.create_table('customer',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=45), nullable=True),
         sa.Column('account', sa.String(length=45), nullable=False),
@@ -46,7 +46,7 @@ def downgrade():
         sa.Column('fb_service_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_supplier_id', sa.Integer(), sa.ForeignKey('supplier.id')),
         sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('company.id')),
-        sa.PrimaryKeyConstraint('id'))
+        sa.PrimaryKeyConstraint('id'))'''
 
     op.add_column('customer', sa.Column('fb_billing_address_id', sa.Integer(), sa.ForeignKey('address.id')))
     op.add_column('customer', sa.Column('fb_service_address_id', sa.Integer(), sa.ForeignKey('address.id')))
