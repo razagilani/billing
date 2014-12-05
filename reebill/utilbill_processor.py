@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
@@ -471,12 +472,14 @@ class UtilbillProcessor(object):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
-        utilbills, total_count = self.state_db.list_utilbills(account,
-                                                              start, limit)
+        s = Session()
+        utilbills = s.query(UtilBill).join(UtilityAccount).filter_by(
+            account=account).order_by(UtilityAccount.account,
+                                      desc(UtilBill.period_start)).all()
         data = [dict(ub.column_dict(),
                      pdf_url=self.bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
-        return data, total_count
+        return data, len(utilbills)
 
     def get_all_suppliers_json(self):
         session = Session()
