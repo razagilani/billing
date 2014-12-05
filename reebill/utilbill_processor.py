@@ -1,9 +1,12 @@
 import json
 from datetime import datetime
+from sqlalchemy import desc
+from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
 from billing.exc import NoSuchBillException, DuplicateFileError
+from billing.core.model import UtilityAccount
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -173,13 +176,13 @@ class UtilbillProcessor(object):
                 utilbill.service = service
 
             if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.state_db.get_create_utility(utility)
+                utilbill.utility = self.get_create_utility(utility)
 
             if supplier is not None and isinstance(supplier, basestring):
-                utilbill.supplier = self.state_db.get_create_supplier(supplier)
+                utilbill.supplier = self.get_create_supplier(supplier)
 
             if rate_class is not None and isinstance(rate_class, basestring):
-                utilbill.rate_class = self.state_db.get_create_rate_class(
+                utilbill.rate_class = self.get_create_rate_class(
                     rate_class, utilbill.utility)
 
             period_start = period_start if period_start else \
@@ -191,6 +194,32 @@ class UtilbillProcessor(object):
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
         return  utilbill
+
+    def get_create_utility(self, name):
+        session = Session()
+        try:
+            result = session.query(Utility).filter_by(name=name).one()
+        except NoResultFound:
+            result = Utility(name, Address('', '', '', '', ''))
+        return result
+
+    def get_create_supplier(self, name):
+        session = Session()
+        try:
+            result = session.query(Supplier).filter_by(name=name).one()
+        except NoResultFound:
+            result = Supplier(name, Address('', '', '', '', ''))
+        return result
+
+    def get_create_rate_class(self, rate_class_name, utility):
+        assert isinstance(utility, Utility)
+        session = Session()
+        try:
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
+        except NoResultFound:
+            result = RateClass(rate_class_name, utility)
+        return result
 
     def _create_utilbill_in_db(self, account, start=None, end=None,
                             service=None, utility=None, rate_class=None,
@@ -220,7 +249,8 @@ class UtilbillProcessor(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        customer = self.state_db.get_customer(account)
+        utility_account = session.query(UtilityAccount).filter_by(
+            account=account).one()
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
                 account, end=start, service=service)
@@ -233,8 +263,8 @@ class UtilbillProcessor(object):
             # class and utility.
 
             q = session.query(UtilBill). \
-                filter_by(rate_class=customer.fb_rate_class). \
-                filter_by(utility=customer.fb_utility). \
+                filter_by(rate_class=utility_account.fb_rate_class). \
+                filter_by(utility=utility_account.fb_utility).\
                 filter_by(processed=True)
 
             # find "closest" or most recent utility bill to copy data from
@@ -253,8 +283,8 @@ class UtilbillProcessor(object):
             predecessor = None if next_distance == prev_distance == float('inf') \
                 else prev_ub if prev_distance < next_distance else next_ub
 
-            billing_address = customer.fb_billing_address
-            service_address = customer.fb_service_address
+            billing_address = utility_account.fb_billing_address
+            service_address = utility_account.fb_service_address
 
         # order of preference for picking value of "service" field: value
         # passed as an argument, or 'electric' by default
@@ -272,25 +302,22 @@ class UtilbillProcessor(object):
         if utility is None:
             utility = getattr(predecessor, 'utility', None)
         if utility is None:
-            utility = customer.fb_utility
+            utility = utility_account.fb_utility
         if supplier is None:
             supplier = getattr(predecessor, 'supplier', None)
         if supplier is None:
-            supplier = customer.fb_supplier
+            supplier = utility_account.fb_supplier
         if rate_class is None:
             rate_class = getattr(predecessor, 'rate_class', None)
         if rate_class is None:
-            rate_class = customer.fb_rate_class
+            rate_class = utility_account.fb_rate_class
 
-        # delete any existing bill with same service and period but less-final
-        # state
-        customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, supplier,
-                                rate_class, Address.from_other(billing_address),
-                                Address.from_other(service_address),
-                                period_start=start, period_end=end,
-                                target_total=total,
-                                date_received=datetime.utcnow().date())
+        new_utilbill = UtilBill(
+            utility_account, state, service, utility, supplier, rate_class,
+            Address.from_other(billing_address),
+            Address.from_other(service_address),
+            period_start=start, period_end=end, target_total=total,
+            date_received=datetime.utcnow().date())
 
         new_utilbill.charges = self.rate_structure_dao. \
             get_predicted_charges(new_utilbill)
@@ -329,11 +356,11 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility = self.state_db.get_create_utility(utility)
+            utility = self.get_create_utility(utility)
         if rate_class is not None:
-            rate_class = self.state_db.get_create_rate_class(rate_class, utility)
+            rate_class = self.get_create_rate_class(rate_class, utility)
         if supplier is not None:
-           supplier = self.state_db.get_create_supplier(supplier)
+           supplier = self.get_create_supplier(supplier)
         new_utilbill = self._create_utilbill_in_db(
             account, start=start, end=end, service=service,utility=utility,
             rate_class=rate_class, total=total, state=state, supplier=supplier)
@@ -352,9 +379,9 @@ class UtilbillProcessor(object):
 
         return new_utilbill
 
-    def upload_utility_bill_existing_file(self, account, utility,
+    def create_utility_bill_with_existing_file(self, account, utility,
                                   sha256_hexdigest):
-        '''Create a utility bill in the database corresponding to a file that
+        '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param account: Nextility customer account number.
         :param utility_guid: specifies which utility this bill is for.
@@ -453,12 +480,14 @@ class UtilbillProcessor(object):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
-        utilbills, total_count = self.state_db.list_utilbills(account,
-                                                              start, limit)
+        s = Session()
+        utilbills = s.query(UtilBill).join(UtilityAccount).filter_by(
+            account=account).order_by(UtilityAccount.account,
+                                      desc(UtilBill.period_start)).all()
         data = [dict(ub.column_dict(),
                      pdf_url=self.bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
-        return data, total_count
+        return data, len(utilbills)
 
     def get_all_suppliers_json(self):
         session = Session()
@@ -471,3 +500,15 @@ class UtilbillProcessor(object):
     def get_all_rate_classes_json(self):
         session = Session()
         return [r.column_dict() for r in session.query(RateClass).all()]
+
+    def get_utility(self, name):
+        session = Session()
+        return session.query(Utility).filter(Utility.name == name).one()
+
+    def get_supplier(self, name):
+        session = Session()
+        return session.query(Supplier).filter(Supplier.name == name).one()
+
+    def get_rate_class(self, name):
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name == name).one()
