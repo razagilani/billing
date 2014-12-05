@@ -6,7 +6,8 @@ from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
-from billing.reebill.state import ReeBill, Customer, UtilBill
+from billing.reebill.state import ReeBill, UtilBill
+from billing.core.model import UtilityAccount
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
@@ -361,7 +362,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
         self.assertEquals('example@example.com', one.email_recipient)
 
-        customer = self.state_db.get_customer(acc)
+        customer = self.state_db.get_reebill_customer(acc)
         customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue two
@@ -486,7 +487,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.ree_getter.quantity = 20
         self.process.new_version(acc, 1)
 
-        customer = self.state_db.get_customer(acc)
+        customer = self.state_db.get_reebill_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
@@ -552,7 +553,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEquals(True, self.state_db.is_issued(acc, 1))
         self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
 
-        customer = self.state_db.get_customer(acc)
+        customer = self.state_db.get_reebill_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
@@ -576,9 +577,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.upload_utility_bill(account, StringIO('february 2012'),
                                          date(2012, 2, 1), date(2012, 3, 1),
                                          'gas')
-        utilbill = self.session.query(UtilBill).join(Customer). \
-            filter(Customer.account == account).order_by(
-            UtilBill.period_start).first()
+        utilbill = self.session.query(UtilBill).join(UtilityAccount) \
+            .filter(UtilityAccount.account==account)\
+            .order_by(UtilBill.period_start).first()
 
         reebill = self.process.roll_reebill(account,
                                             start_date=date(2012, 1, 1))
@@ -775,12 +776,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': self.state_db.get_rate_class('Test Rate Class Template').column_dict(),
+                                          'rate_class': self.process.get_rate_class('Test Rate Class Template').column_dict(),
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.state_db.get_utility('Test Utility Company Template').column_dict(),
+                                          'utility': self.process.get_utility('Test Utility Company Template').column_dict(),
                                           }, utilbill_data)
 
         # create a reebill
@@ -797,12 +798,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': self.state_db.
+                                          'rate_class': self.process.
                                             get_rate_class('Test Rate Class Template').
                                             column_dict(),
                                           'service': 'Gas', 'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.state_db.
+                                          'utility': self.process.
                                             get_utility('Test Utility Company '
                                                         'Template').
                                             column_dict(),
@@ -1008,7 +1009,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     def test_late_charge_correction(self):
         acc = '99999'
         # set customer late charge rate
-        customer = self.state_db.get_customer(acc)
+        customer = self.state_db.get_reebill_customer(acc)
         customer.set_discountrate(.5)
         customer.set_late_charge_rate(.34)
 
@@ -1595,7 +1596,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          'gas')
 
         # modify registers of this utility bill so they are TOU
-        u = self.session.query(UtilBill).join(Customer). \
+        u = self.session.query(UtilBill).join(UtilityAccount). \
             filter_by(account=account).one()
         active_periods = {
             'active_periods_weekday': [[9, 9]],

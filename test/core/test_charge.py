@@ -2,7 +2,7 @@ from datetime import date
 from mock import Mock
 
 from billing.core.model import Charge, UtilBill, Customer, Address, \
-    ChargeEvaluation
+    ChargeEvaluation, UtilityAccount
 from billing.exc import FormulaError
 from test import testing_utils
 
@@ -20,8 +20,7 @@ class ChargeUnitTests(testing_utils.TestCase):
     """Unit Tests for the :class:`billing.processing.state.Charge` class"""
 
     def setUp(self):
-        self.bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
-                                 'nobody@example.com', 'FB Test Utility',
+        self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
                                  'FB Test Supplier', 'FB Test Rate Class',
                                  Address(), Address()), UtilBill.Complete,
                                  'gas', 'utility', 'supplier', 'rate class',
