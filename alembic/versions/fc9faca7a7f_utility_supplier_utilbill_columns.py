@@ -50,8 +50,7 @@ def upgrade():
     op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
 
     # tables for foreign keys to Altitude (many-to-1 with utility and supplier)
-    # TODO: move this to somewhere after the utility/supplier tables exist and
-    # the company table doesn't?
+    # TODO: "company" will have to be replaced by utility
     op.create_table('altitude_utility',
                     sa.Column('id', sa.Integer(), primary_key=True,
                               nullable=False),
