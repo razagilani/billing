@@ -392,6 +392,8 @@ class UtilbillProcessor(object):
         :param sha256_hexdigest: SHA-256 hash of the existing file,
         which should also be (part of) the file name and sufficient to
         determine which existing file goes with this bill.
+        :param target_total: total of charges on the bill (float).
+        :param service_address: service address for new utility bill (Address).
         '''
         assert isinstance(account, basestring)
         assert isinstance(utility, Utility)
