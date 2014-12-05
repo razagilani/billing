@@ -67,8 +67,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.channel.queue_bind(exchange=self.exchange_name,
                                 queue=self.queue_name)
 
-        # TODO: replace with just a UtilBillProcessor (BILL-5776)
-        self.utilbill_processor = self.process
         self.utilbill_loader = UtilBillLoader(Session())
 
     def tearDown(self):
