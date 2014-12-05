@@ -24,12 +24,13 @@ from billing.test import testing_utils as test_utils
 from billing.core import pricing
 from billing.core.model import Supplier, UtilBillLoader, RateClass, UtilityAccount
 from billing.reebill import journal
-from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Session, UtilBill, \
     Register, Address, ReeBillCustomer
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
+from billing.reebill.utilbill_processor import UtilbillProcessor
+from billing.reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -352,9 +353,12 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         journal_dao = journal.JournalDAO()
 
-        self.process = Process(self.state_db, self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
-                ree_getter, journal_dao, logger=logger)
+        self.utilbill_processor = UtilbillProcessor(
+            self.rate_structure_dao, self.billupload, self.nexus_util,
+            logger=logger)
+        self.reebill_processor = ReebillProcessor(
+            self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
+            ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
