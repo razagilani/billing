@@ -8,7 +8,7 @@ import json
 import pika
 from pika.exceptions import ChannelClosed
 
-from billing.core.amqp_exchange import run
+from billing.core.amqp_exchange import consume_utilbill_file
 from billing.core.model import Session, UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
@@ -100,7 +100,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # "basic_consume" is called will not be processed until after the
         # test is finished, so we can't check for them.
         with self.assertRaises(DuplicateFileError):
-            run(self.channel, self.queue_name, self.utilbill_processor)
+            consume_utilbill_file(self.channel, self.queue_name, self.utilbill_processor)
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the
