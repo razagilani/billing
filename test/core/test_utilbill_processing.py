@@ -489,7 +489,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # this was added in setUp
         utility_guid = 'a'
 
-        self.utilbill_processor.upload_utility_bill_existing_file(account, utility_guid,
+        self.utilbill_processor.create_utility_bill_with_existing_file(account, utility_guid,
                                                        file_hash)
 
         data, count = self.utilbill_processor.get_all_utilbills_json(account, 0, 30)
@@ -512,10 +512,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # exception should be raised if the same file is re-uploaded
         # (regardless of other parameters)
         with self.assertRaises(DuplicateFileError):
-            self.utilbill_processor.upload_utility_bill_existing_file(
+            self.utilbill_processor.create_utility_bill_with_existing_file(
                 account, utility_guid, file_hash)
         with self.assertRaises(DuplicateFileError):
-            self.utilbill_processor.upload_utility_bill_existing_file(
+            self.utilbill_processor.create_utility_bill_with_existing_file(
                 'other acccount', 'other utility guid', file_hash)
 
     def test_get_service_address(self):

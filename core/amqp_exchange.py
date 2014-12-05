@@ -22,7 +22,7 @@ def run(channel, queue_name, utilbill_processor):
     '''
     def callback(ch, method, properties, body):
         d = json.loads(body)
-        utilbill_processor.upload_utility_bill_existing_file(
+        utilbill_processor.create_utility_bill_with_existing_file(
             d['account'], d['utility_guid'], d['sha256_hexdigest'])
         ch.basic_ack(delivery_tag=method.delivery_tag)
     channel.basic_consume(callback, queue=queue_name)

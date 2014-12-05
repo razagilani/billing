@@ -379,9 +379,9 @@ class UtilbillProcessor(object):
 
         return new_utilbill
 
-    def upload_utility_bill_existing_file(self, account, utility_guid,
+    def create_utility_bill_with_existing_file(self, account, utility_guid,
                                   sha256_hexdigest):
-        '''Create a utility bill in the database corresponding to a file that
+        '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param account: Nextility customer account number.
         :param utility_guid: specifies which utility this bill is for.
