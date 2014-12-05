@@ -5,6 +5,8 @@ from billing.core.altitude import AltitudeUtility, get_utility_from_guid
 from billing.exc import AltitudeDuplicateError
 
 
+# TODO: this is not used yet and not tested (BILL-3784); it's serving to show
+# how the AltitudeUtility table (BILL-5836) will be used.
 def consume_utility_guid(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility.
     '''
@@ -25,8 +27,7 @@ def consume_utility_guid(channel, queue_name, utilbill_processor):
         s.commit()
     channel.basic_consume(callback, queue=queue_name)
 
-# TODO rename
-def run(channel, queue_name, utilbill_processor):
+def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility bill.
     '''
     def callback(ch, method, properties, body):
