@@ -48,6 +48,22 @@ class AltitudeSupplier(Base):
         self.supplier = supplier
         self.guid = guid
 
+class AltitudeAccount(Base):
+    '''Holds foreign keys from UtilityAccount to Altitude "accounts" (not to
+    be confused with ReeBillCustomers or their "Nexitility account numbers").
+    '''
+    __tablename__ = 'altitude_account'
+
+    id = Column('id', Integer(), primary_key=True, nullable=False)
+    utility_id = Column('utility_account_id', Integer(),
+                        ForeignKey('utility_account.id'), nullable=False)
+    guid = Column('guid', AltitudeGUID, nullable=False)
+    utility_account = relationship('UtilityAccount')
+
+    def __init__(self, utility_account, guid):
+        self.utility_account = utility_account
+        self.guid = guid
+
 def get_utility_from_guid(guid):
     '''Returns the Utility corresponding to the given Altitude GUID.
     '''
