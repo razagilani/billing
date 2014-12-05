@@ -7,6 +7,8 @@ from mock import Mock
 from billing.core.pricing import FuzzyPricingModel
 from billing.core.model import Charge
 from billing.exc import NoSuchBillException
+from billing.core.model import UtilBill
+
 
 class FuzzyPricingModelTest(unittest.TestCase):
     def setUp(self):
@@ -84,8 +86,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
 
         # utility bill for which to predict a rate structure, using the
         # ones created in setUp
-        u = Mock()
-        u.customer.account = '00004'
+        u = Mock(autospec=UtilBill)
+        u.utility_account.account = '00004'
         u.period_start = date(2000, 1, 1)
         u.period_end = date(2000, 2, 1)
         u.processed = False
@@ -104,7 +106,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.return_value = []
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.get_last_real_utilbill.assert_called_once_with(
-                u.customer.account, end=u.period_start,
+                u.utility_account.account, end=u.period_start,
                 service=u.service, utility=u.utility,
                 rate_class=u.rate_class, processed=True)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
