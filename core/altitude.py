@@ -19,6 +19,7 @@ from billing.core.model import Base, Session, Utility, UtilityAccount
 
 class AltitudeGUID(String):
     LENGTH = 36
+    REGEX = '[0-9A-F\\-]{%d}' % LENGTH
     def __init__(self):
         super(AltitudeGUID, self).__init__(length=self.LENGTH)
 
@@ -71,4 +72,3 @@ def _altitude_to_billing(altitude_class, billing_class):
     return lambda guid: Session().query(billing_class).join(
         altitude_class).filter(altitude_class.guid==guid).one()
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
-get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
