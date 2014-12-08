@@ -6,10 +6,10 @@ from billing.exc import DuplicateFileError
 init_test_config()
 
 from StringIO import StringIO
-from datetime import date
+from datetime import date, datetime
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill, UtilityAccount, Utility
+from billing.core.model import UtilBill, UtilityAccount, Utility, Address
 from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -476,7 +476,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         _, count = self.utilbill_processor.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
-    def test_upload_utility_bill_existing_file(self):
+    def test_create_utility_bill_for_existing_file(self):
         account = '99999'
 
         # file is assumed to already exist in S3, so put it there
@@ -514,7 +514,44 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 account, utility, file_hash)
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                'other acccount', 'other utility guid', file_hash)
+                'other account', utility, file_hash)
+
+        # here's another bill for the same account. this time more than the
+        # minimal set of arguments is given.
+        file = StringIO('example 2')
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
+        s = Session()
+        customer = s.query(UtilityAccount).filter_by(account=account).one()
+        self.utilbill_processor.bill_file_handler.upload_file(file)
+        the_address = Address(addressee='Nextility Inc.',
+                              street='1606 20th St.',
+                              city='Washington', state='DC',
+                              postal_code='20009')
+        utilbill \
+            = self.utilbill_processor.create_utility_bill_with_existing_file(
+            account, utility, file_hash,
+            # TODO: add due date
+            #due_date=datetime(2000,1,1),
+            target_total=100, service_address=the_address)
+        # the only one of these arguments that is visible in the UI is "total"
+        data, count = self.utilbill_processor.get_all_utilbills_json(account, 0, 30)
+        self.assertEqual(2, count)
+        self.assertDictContainsSubset({
+                                          'state': 'Final',
+                                          'service': 'Electric',
+                                          'utility': customer.fb_utility.column_dict(),
+                                          'supplier': customer.fb_supplier.column_dict(),
+                                          'rate_class': customer.fb_rate_class.column_dict(),
+                                          'period_start': None,
+                                          'period_end': None,
+                                          'total_charges': 100,
+                                          'computed_total': 0,
+                                          'processed': 0,
+                                          'account': '99999',
+                                          'reebills': []
+                                      }, data[1])
+        self.assertEqual(100, utilbill.target_total)
+        self.assertEqual(the_address, utilbill.service_address)
 
     def test_get_service_address(self):
         account = '99999'

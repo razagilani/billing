@@ -4,11 +4,12 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 import json
+from datetime import date
 
 import pika
 from pika.exceptions import ChannelClosed
 
-from billing.core.amqp_exchange import run
+from billing.core.amqp_exchange import consume_utilbill_file
 from billing.core.model import Session, UtilBillLoader, Utility
 from billing.core.altitude import AltitudeUtility
 from billing.test.setup_teardown import TestCaseWithSetup
@@ -94,11 +95,17 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # cause a UtilBill to be created, but the second will cause a
         # DuplicateFileError to be raised.
         message1 = json.dumps({'account': '99999','utility_guid': 'a',
-                              'sha256_hexdigest': file_hash})
+                              'sha256_hexdigest': file_hash,
+                              #'due_date': '2014-09-30T18:00:00+00:00',
+                              'total': '$231.12',
+                              'service_address': '123 Hollywood Drive'})
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message1)
         message2 = json.dumps({'account': '100000','utility_guid': 'b',
-                              'sha256_hexdigest': file_hash})
+                              'sha256_hexdigest': file_hash,
+                               #'due_date': '2014-09-30T18:00:00+00:00',
+                               'total': '',
+                               'service_address': ''})
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message2)
 
@@ -108,7 +115,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # "basic_consume" is called will not be processed until after the
         # test is finished, so we can't check for them.
         with self.assertRaises(DuplicateFileError):
-            run(self.channel, self.queue_name, self.utilbill_processor)
+            consume_utilbill_file(self.channel, self.queue_name, self.utilbill_processor)
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the
@@ -116,3 +123,12 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # not ideal, but not a huge problem because we also have unit testing.
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
+
+        # check metadata that were provided with the bill:
+        u = self.utilbill_loader.get_last_real_utilbill('99999')
+        #self.assertEqual(date(2014,9,30), u.due_date)
+        self.assertEqual(231.12, u.target_total)
+        self.assertEqual('123 Hollywood Drive', u.service_address.street)
+        self.assertEqual('', u.service_address.city)
+        self.assertEqual('', u.service_address.state)
+        self.assertEqual('', u.service_address.postal_code)
