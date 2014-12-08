@@ -14,7 +14,8 @@ all almost identical.
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from billing.core.model import Base, Session, Utility
+from billing.core.model import Base, Session, Utility, UtilityAccount
+
 
 class AltitudeGUID(String):
     LENGTH = 36
@@ -49,8 +50,9 @@ class AltitudeSupplier(Base):
         self.supplier = supplier
         self.guid = guid
 
-def get_utility_from_guid(guid):
-    '''Returns the Utility corresponding to the given Altitude GUID.
-    '''
-    s = Session()
-    return s.query(Utility).join(AltitudeUtility).filter_by(guid=guid).one()
+# conversion functions: look up billing entities via Altitude GUIDs
+def _altitude_to_billing(altitude_class, billing_class):
+    return lambda guid: Session().query(billing_class).join(
+        altitude_class).filter(altitude_class.guid==guid).one()
+get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
+get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
