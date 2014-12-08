@@ -487,8 +487,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.bill_file_handler.upload_file(file)
 
         utility = s.query(Utility).first()
+        utility_account = s.query(UtilityAccount).first()
         self.utilbill_processor.create_utility_bill_with_existing_file(
-            account, utility, file_hash)
+            utility_account, utility, file_hash)
 
         data, count = self.utilbill_processor.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
@@ -511,10 +512,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # (regardless of other parameters)
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                account, utility, file_hash)
+                utility_account, utility, file_hash)
+        other_account = Session().query(UtilityAccount).filter(
+            UtilityAccount.id != utility_account.id).first()
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                'other acccount', 'other utility guid', file_hash)
+                other_account, utility, file_hash)
 
     def test_get_service_address(self):
         account = '99999'
