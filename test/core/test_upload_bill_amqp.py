@@ -4,14 +4,14 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 import json
-from datetime import date
 
 import pika
 from pika.exceptions import ChannelClosed
 
-from billing.core.amqp_exchange import consume_utilbill_file
+from billing.core.amqp_exchange import consume_utilbill_file, \
+    UtilbillMessageSchema
 from billing.core.model import Session, UtilBillLoader, Utility
-from billing.core.altitude import AltitudeUtility
+from billing.core.altitude import AltitudeUtility, AltitudeGUID
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
 from billing.exc import DuplicateFileError
@@ -85,27 +85,33 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
 
-        # AltitudeUtilities must exist
+        # altitude GUID entities must exist
         s = Session()
         utility = s.query(Utility).first()
-        s.add_all([AltitudeUtility(utility, 'a'),
-                         AltitudeUtility(utility, 'b')])
+        guid_a, guid_b = 'A' * AltitudeGUID.LENGTH, 'B' * AltitudeGUID.LENGTH
+        s.add_all([AltitudeUtility(utility, guid_a),
+                   AltitudeUtility(utility, guid_b),
+                   ])
 
         # two messages with the same sha256_hexigest: the first one will
         # cause a UtilBill to be created, but the second will cause a
         # DuplicateFileError to be raised.
-        message1 = json.dumps({'account': '99999','utility_guid': 'a',
-                              'sha256_hexdigest': file_hash,
-                              #'due_date': '2014-09-30T18:00:00+00:00',
-                              'total': '$231.12',
-                              'service_address': '123 Hollywood Drive'})
+        message1 = json.dumps(dict(
+            utility_account_number='1',
+            utility_provider_guid=guid_a,
+            sha256_hexdigest=file_hash,
+            # due_date='2014-09-30T18:00:00+00:00',
+            total='$231.12',
+            service_address='123 Hollywood Drive'))
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message1)
-        message2 = json.dumps({'account': '100000','utility_guid': 'b',
-                              'sha256_hexdigest': file_hash,
-                               #'due_date': '2014-09-30T18:00:00+00:00',
-                               'total': '',
-                               'service_address': ''})
+        message2 = json.dumps(dict(
+            utility_account_number='2',
+            utility_provider_guid=guid_b,
+            sha256_hexdigest=file_hash,
+            # due_date='2014-09-30T18:00:00+00:00',
+            total='',
+            service_address=''))
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message2)
 
@@ -115,7 +121,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # "basic_consume" is called will not be processed until after the
         # test is finished, so we can't check for them.
         with self.assertRaises(DuplicateFileError):
-            consume_utilbill_file(self.channel, self.queue_name, self.utilbill_processor)
+            consume_utilbill_file(self.channel, self.queue_name,
+                                  self.utilbill_processor)
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the

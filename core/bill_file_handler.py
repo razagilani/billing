@@ -12,6 +12,10 @@ class BillFileHandler(object):
     '''
     HASH_CHUNK_SIZE = 1024 ** 2
 
+    # for validating file hash strings
+    HASH_DIGEST_LENGTH = 64
+    HASH_DIGEST_REGEX = '^[0-9a-f]{%s}$' % HASH_DIGEST_LENGTH
+
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
         :param bucket_name: name of S3 bucket where utility bill files are
