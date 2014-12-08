@@ -403,6 +403,7 @@ class UtilityAccount(Base):
     id = Column(Integer, primary_key = True)
     name = Column(String(45))
     account = Column(String(45), nullable=False)
+    account_number = Column(String(1000), nullable=False)
 
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('company.id'))
@@ -427,7 +428,8 @@ class UtilityAccount(Base):
     fb_utility = relationship('Utility')
 
     def __init__(self, name, account, fb_utility, fb_supplier,
-                fb_rate_class, fb_billing_address, fb_service_address):
+                fb_rate_class, fb_billing_address, fb_service_address,
+                account_number=''):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -440,6 +442,7 @@ class UtilityAccount(Base):
         :fb_service address: (as previous)
         """
         self.name = name
+        self.account_number = account_number
         self.account = account
         self.fb_utility = fb_utility
         self.fb_supplier = fb_supplier
@@ -564,8 +567,8 @@ class UtilBill(Base):
 
     # TODO remove uprs_id, doc_id
     def __init__(self, utility_account, state, service, utility, supplier, rate_class,
-                 billing_address, service_address, account_number='',
-                 period_start=None, period_end=None, doc_id=None, uprs_id=None,
+                 billing_address, service_address, period_start=None,
+                 period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
                  reebill=None, sha256_hexdigest=''):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
@@ -584,7 +587,7 @@ class UtilBill(Base):
         self.period_end = period_end
         self.target_total = target_total
         self.date_received = date_received
-        self.account_number = account_number
+        self.account_number = utility_account.account_number
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
