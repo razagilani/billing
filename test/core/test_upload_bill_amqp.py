@@ -87,7 +87,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # altitude GUID entities must exist
         s = Session()
         utility = s.query(Utility).first()
-        utility_account = s.query(UtilityAccount).first()
         s.add_all([AltitudeUtility(utility, 'a'),
                    AltitudeUtility(utility, 'b'),
                    ])
