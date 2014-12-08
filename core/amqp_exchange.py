@@ -1,6 +1,6 @@
 import json
 
-from billing.core.model import Session
+from billing.core.model import Session, Address, UtilityAccount
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid
 from billing.exc import AltitudeDuplicateError
 
@@ -33,8 +33,10 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
     def callback(ch, method, properties, body):
         d = json.loads(body)
         utility = get_utility_from_guid(d['utility_guid'])
+        utility_account = Session().query(UtilityAccount).filter_by(
+            account_number=d['account']).one()
         utilbill_processor.create_utility_bill_with_existing_file(
-            d['account'], utility, d['sha256_hexdigest'])
+            utility_account, utility, d['sha256_hexdigest'])
         ch.basic_ack(delivery_tag=method.delivery_tag)
     channel.basic_consume(callback, queue=queue_name)
 

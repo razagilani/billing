@@ -221,7 +221,7 @@ class UtilbillProcessor(object):
             result = RateClass(rate_class_name, utility)
         return result
 
-    def _create_utilbill_in_db(self, account, start=None, end=None,
+    def _create_utilbill_in_db(self, utility_account, start=None, end=None,
                             service=None, utility=None, rate_class=None,
                             total=0, state=UtilBill.Complete, supplier=None):
         '''
@@ -229,7 +229,7 @@ class UtilbillProcessor(object):
         assigned to it). Does not add anything to the session, so callers can
         do this only if no exception was raised by BillFileHandler when
         uploading the file.`
-        :param account:
+        :param utility_account:
         :param start:
         :param end:
         :param service:
@@ -249,11 +249,9 @@ class UtilbillProcessor(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        utility_account = session.query(UtilityAccount).filter_by(
-            account=account).one()
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
-                account, end=start, service=service)
+                utility_account.account, end=start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -361,9 +359,13 @@ class UtilbillProcessor(object):
             rate_class = self.get_create_rate_class(rate_class, utility)
         if supplier is not None:
            supplier = self.get_create_supplier(supplier)
+        session = Session()
+        utility_account = session.query(UtilityAccount).filter_by(
+            account=account).one()
         new_utilbill = self._create_utilbill_in_db(
-            account, start=start, end=end, service=service,utility=utility,
-            rate_class=rate_class, total=total, state=state, supplier=supplier)
+            utility_account, start=start, end=end, service=service,
+            utility=utility, rate_class=rate_class, total=total, state=state,
+            supplier=supplier)
 
         # upload the file
         if bill_file is not None:
@@ -371,30 +373,31 @@ class UtilbillProcessor(object):
                                                              bill_file)
 
         # adding UtilBill should also add Charges and Registers due to cascade
-        session = Session()
         session.add(new_utilbill)
         session.flush()
 
         self.compute_utility_bill(new_utilbill.id)
-
         return new_utilbill
 
-    def create_utility_bill_with_existing_file(self, account, utility,
+    def create_utility_bill_with_existing_file(self, utility_account, utility,
                                   sha256_hexdigest):
         '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
-        :param account: Nextility customer account number.
+        :param utility_account: UtilityAccount to which the new bill will
+        belong.
         :param utility_guid: specifies which utility this bill is for.
         :param sha256_hexdigest: SHA-256 hash of the existing file,
         which should also be (part of) the file name and sufficient to
         determine which existing file goes with this bill.
         '''
+        assert isinstance(utility_account, UtilityAccount)
         s = Session()
         if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
-        new_utilbill = self._create_utilbill_in_db(account, utility=utility)
+        new_utilbill = self._create_utilbill_in_db(utility_account,
+                                                   utility=utility)
 
         # adding UtilBill should also add Charges and Registers due to cascade
         session = Session()
