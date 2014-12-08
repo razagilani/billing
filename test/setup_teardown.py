@@ -201,7 +201,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         session.flush()
         rate_class = RateClass('Test Rate Class Template', uc)
         utility_account = UtilityAccount(
-            'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1)
+            'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
+            account_number='1')
         reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
                             'thermal', 'example@example.com', utility_account)
         session.add(utility_account)
@@ -210,7 +211,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         #Template Customer aka "Template Account" in UI
         utility_account2 = UtilityAccount(
             'Test Customer 2', '100000', uc, supplier, rate_class, fa_ba2,
-            fa_sa2)
+            fa_sa2, account_number='2')
         reebill_customer2 = ReeBillCustomer('Test Customer 2',  .12, .34,
                                             'thermal',
                                            'example2@example.com',

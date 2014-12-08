@@ -399,7 +399,6 @@ class Customer(Base):
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
-
     id = Column(Integer, primary_key = True)
     name = Column(String(45))
     account = Column(String(45), nullable=False)
