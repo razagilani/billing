@@ -399,11 +399,18 @@ class Customer(Base):
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
-
     id = Column(Integer, primary_key = True)
     name = Column(String(45))
-    account = Column(String(45), nullable=False)
+
+    # account number used by the utility, shown on utility bills and
+    # the utility's website. (also used as an inter-database foreign key for
+    # referring to UtilityAccounts from other databases, because it can be
+    # reasonably be expected to be permanent and unique.)
     account_number = Column(String(1000), nullable=False)
+
+    # Nextility account number, which is currently only used for ReeBill.
+    # this is shown to customers on their solar energy bills from Nextility.
+    account = Column(String(45), nullable=False)
 
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('company.id'))
