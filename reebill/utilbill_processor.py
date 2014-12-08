@@ -1,4 +1,3 @@
-from base64 import b16decode
 import json
 from datetime import datetime
 from sqlalchemy import desc
@@ -400,7 +399,6 @@ class UtilbillProcessor(object):
         assert isinstance(utility, Utility)
         assert isinstance(sha256_hexdigest, basestring) and len(
             sha256_hexdigest) == 64;
-        b16decode(sha256_hexdigest.upper())
         #assert isinstance(due_date, (datetime, type(None)))
         assert isinstance(target_total, (float, int, type(None)))
         assert isinstance(service_address, (Address, type(None)))
