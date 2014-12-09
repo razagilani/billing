@@ -279,16 +279,21 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
 
     os.remove(bson_file_path)
 
-def restore_mongo_collection_local(collection_name, dump_file_path):
+def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_path):
     print 'restoring Mongo collection "%s" from local file %s' % (
             collection_name, dump_file_path)
+    with open(bson_file_path, 'wb') as bson_file:
+        ungzip_file = UnGzipFile(bson_file)
+        with open(dump_file_path, 'r') as dump_file:
+            ungzip_file.write(dump_file.read())
     command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, filepath=dump_file_path)
+            collection=collection_name, filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
     # 0 even when it has an error
     check_exit_status()
+    os.remove(bson_file_path)
 
 def scrub_dev_data():
     '''Replace some data with placeholder values for development environment.
@@ -409,7 +414,9 @@ def restore_local(args):
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
-        restore_mongo_collection_local(collection, backup_file_path)
+        bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
+                collection, datetime.utcnow())
+        restore_mongo_collection_local(collection, backup_file_path, bson_file_path)
     # TODO always scrub the data when restore-local is used because it's only for development?
     if args.scrub:
         scrub_dev_data()
