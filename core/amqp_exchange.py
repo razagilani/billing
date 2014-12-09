@@ -1,5 +1,5 @@
 import json
-from formencode.validators import String, Regex, FancyValidator
+from formencode.validators import String, Regex, FancyValidator, Int
 from formencode import Schema
 from formencode.api import Invalid
 from formencode.foreach import ForEach
@@ -26,7 +26,10 @@ class UtilbillMessageSchema(Schema):
     specification is at
     https://docs.google.com/a/nextility.com/document/d
     /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
-   '''
+    '''
+    # note formencode.validators.Constant does not allow lists; see assertion
+    # to check message_version in consume_utilbill_file below
+    message_version = ForEach(Int())
     utility_account_number = String()
     utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
     sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
@@ -61,8 +64,9 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility bill.
     '''
     def callback(ch, method, properties, body):
-        d = UtilbillMessageSchema.to_python(json.loads(body))
         s = Session()
+        d = UtilbillMessageSchema.to_python(json.loads(body))
+        assert d['message_version'] == [1, 0]
         utility = get_utility_from_guid(d['utility_provider_guid'])
         utility_account = s.query(UtilityAccount).filter_by(
             account_number=d['utility_account_number']).one()
