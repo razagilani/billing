@@ -370,12 +370,16 @@ def restore_files_s3(args):
     # TODO Pull destination bucket out of billing config file
     source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
     dest_bucket = get_bucket(args.destination, args.destination_access_key, args.destination_secret_key)
+    count = 0
     for key in source_bucket.list():
+        if args.limit and count >= args.limit:
+            return
         if dest_bucket.get_key(key.name) == None:
             print 'Copying key {0}'.format(key.name)
             key.copy(args.destination, key.name)
         else:
             print 'Destination already has key {0}, not copying'.format(key.name)
+        count += 1
 
 def restore_files_local(args):
     # TODO Set a limit on the number of files to download
