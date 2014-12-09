@@ -100,6 +100,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # DuplicateFileError to be raised. the second message also checks the
         # "empty" values that are allowed for some fields in the message.
         message1 = json.dumps(dict(
+            message_version=[1, 0],
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
@@ -111,6 +112,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message1)
         message2 = json.dumps(dict(
+            message_version=[1, 0],
             utility_account_number='2',
             utility_provider_guid=guid_b,
             sha256_hexdigest=file_hash,
@@ -150,3 +152,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.assertEqual(2, len(altitude_accounts))
         for aa in altitude_accounts:
             self.assertEqual(utility_account, aa.utility_account)
+
+    # TODO:
+    # check some invalid messages
+    # check updating altitude_utility.utility_account_id when utility bill
+    # messages are sent for two different accounts with the same account_guids
