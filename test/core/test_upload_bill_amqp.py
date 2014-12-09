@@ -10,8 +10,8 @@ from pika.exceptions import ChannelClosed
 
 from billing.core.amqp_exchange import consume_utilbill_file, \
     UtilbillMessageSchema
-from billing.core.model import Session, UtilBillLoader, Utility
-from billing.core.altitude import AltitudeUtility, AltitudeGUID
+from billing.core.model import Session, UtilBillLoader, Utility, UtilityAccount
+from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
 from billing.exc import DuplicateFileError
@@ -87,7 +87,9 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # altitude GUID entities must exist
         s = Session()
-        utility = s.query(Utility).first()
+        utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        utility = utility_account.fb_utility
         guid_a, guid_b = 'A' * AltitudeGUID.LENGTH, 'B' * AltitudeGUID.LENGTH
         s.add_all([AltitudeUtility(utility, guid_a),
                    AltitudeUtility(utility, guid_b),
@@ -95,14 +97,17 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # two messages with the same sha256_hexigest: the first one will
         # cause a UtilBill to be created, but the second will cause a
-        # DuplicateFileError to be raised.
+        # DuplicateFileError to be raised. the second message also checks the
+        # "empty" values that are allowed for some fields in the message.
         message1 = json.dumps(dict(
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
             # due_date='2014-09-30T18:00:00+00:00',
             total='$231.12',
-            service_address='123 Hollywood Drive'))
+            service_address='123 Hollywood Drive',
+            account_guids=['C' * AltitudeGUID.LENGTH,
+                           'D' * AltitudeGUID.LENGTH]))
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message1)
         message2 = json.dumps(dict(
@@ -111,7 +116,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             sha256_hexdigest=file_hash,
             # due_date='2014-09-30T18:00:00+00:00',
             total='',
-            service_address=''))
+            service_address='',
+            account_guids=[]))
         self.channel.basic_publish(exchange=self.exchange_name,
                                    routing_key=self.queue_name, body=message2)
 
@@ -132,10 +138,15 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             file_hash))
 
         # check metadata that were provided with the bill:
-        u = self.utilbill_loader.get_last_real_utilbill('99999')
+        u = self.utilbill_loader.get_last_real_utilbill(utility_account.account)
         #self.assertEqual(date(2014,9,30), u.due_date)
         self.assertEqual(231.12, u.target_total)
         self.assertEqual('123 Hollywood Drive', u.service_address.street)
         self.assertEqual('', u.service_address.city)
         self.assertEqual('', u.service_address.state)
         self.assertEqual('', u.service_address.postal_code)
+
+        altitude_accounts = s.query(AltitudeAccount).all()
+        self.assertEqual(2, len(altitude_accounts))
+        for aa in altitude_accounts:
+            self.assertEqual(utility_account, aa.utility_account)
