@@ -1022,3 +1022,10 @@ class UtilBillLoader(object):
         '''
         return self._session.query(UtilBill).filter_by(
                 sha256_hexdigest=hash).count()
+
+    def get_utilbills_for_account_id(self, utility_account_id):
+        '''Return an iterator containing utility bills whose UtilityAccount
+        is identified by utility_account_id.
+        '''
+        return self._session.query(UtilBill).join(
+            UtilityAccount).filter(UtilityAccount.id==utility_account_id)
