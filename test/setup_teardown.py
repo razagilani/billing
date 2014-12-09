@@ -22,7 +22,8 @@ init_test_config()
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import pricing
-from billing.core.model import Supplier, UtilBillLoader, RateClass, UtilityAccount
+from billing.core.model import Supplier, RateClass, UtilityAccount
+from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.state import StateDB, Session, UtilBill, \
     Register, Address, ReeBillCustomer
