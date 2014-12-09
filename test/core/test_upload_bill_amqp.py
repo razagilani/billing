@@ -8,6 +8,7 @@ from formencode import Invalid
 
 import pika
 from pika.exceptions import ChannelClosed
+from sqlalchemy import distinct
 
 from billing.core.amqp_exchange import consume_utilbill_file
 from billing.core.model import Session, UtilBillLoader, UtilityAccount
@@ -71,14 +72,16 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.utilbill_loader = UtilBillLoader(Session())
 
         # put the file in place
-        self.file = StringIO('test data')
-        self.file_hash = self.utilbill_processor.bill_file_handler.upload_file(
-            self.file)
+        self.files = [StringIO('test data %s' % i) for i in xrange(4)]
+        self.hashes = [self.utilbill_processor.bill_file_handler.upload_file(f)
+                       for f in self.files]
 
-        # altitude GUID entities must exist
+        # data used in tests
         s = Session()
         self.utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
+        self.other_utility_account = s.query(UtilityAccount).filter_by(
+            account='100000').one()
         self.utility = self.utility_account.fb_utility
         self.guid_a = 'A' * AltitudeGUID.LENGTH
         self.guid_b = 'B' * AltitudeGUID.LENGTH
@@ -94,7 +97,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
     def test_basic(self):
         # no UtilBills exist yet with this hash
         self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
-            self.file_hash))
+            self.hashes[0]))
 
         # two messages with the same sha256_hexigest: the first one will
         # cause a UtilBill to be created, but the second will cause a
@@ -104,7 +107,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             message_version=[1, 0],
             utility_account_number='1',
             utility_provider_guid=self.guid_a,
-            sha256_hexdigest=self.file_hash,
+            sha256_hexdigest=self.hashes[0],
             # due_date='2014-09-30T18:00:00+00:00',
             total='$231.12',
             service_address='123 Hollywood Drive',
@@ -116,7 +119,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             message_version=[1, 0],
             utility_account_number='2',
             utility_provider_guid=self.guid_b,
-            sha256_hexdigest=self.file_hash,
+            sha256_hexdigest=self.hashes[0],
             # due_date='2014-09-30T18:00:00+00:00',
             total='',
             service_address='',
@@ -138,7 +141,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # intermediate states after receiving each individual message. that's
         # not ideal, but not a huge problem because we also have unit testing.
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
-            self.file_hash))
+            self.hashes[0]))
 
         # check metadata that were provided with the bill:
         u = self.utilbill_loader.get_last_real_utilbill(
@@ -161,7 +164,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             message_version=[1, 0],
             utility_account_number='1',
             utility_provider_guid=self.guid_b,
-            sha256_hexdigest=self.file_hash,
+            sha256_hexdigest=self.hashes[0],
             # due_date='2014-09-30T18:00:00+00:00',
             total='',
             service_address='',
@@ -186,6 +189,48 @@ class TestUploadBillAMQP(TestCaseWithSetup):
                 consume_utilbill_file(self.channel, self.queue_name,
                                       self.utilbill_processor)
 
-    # TODO:
-    # check updating altitude_utility.utility_account_id when utility bill
-    # messages are sent for two different accounts with the same account_guids
+    def test_altitude_account_guids(self):
+        '''Each message contains 0 or more not necessarily distinct GUIDs in
+        the account_guids field. Each time a message is received,
+        the AltitudeAccounts associated with each UtilityAccount are replaced
+        with new ones associated with the UtilityAccount that contains the
+        newly-uploaded bill.
+        '''
+        guids = [x * AltitudeGUID.LENGTH for x in 'ABC']
+        i = [0]
+        def send_message(utility_account_number, *guid_indices):
+            message = dict(
+                message_version=[1, 0],
+                utility_account_number='1',
+                utility_provider_guid=self.guid_a,
+                sha256_hexdigest=self.hashes[i[0]],
+                # due_date='2014-09-30T18:00:00+00:00',
+                total='',
+                service_address='',
+                account_guids=[guids[j] for j in guid_indices])
+            self.channel.basic_publish(exchange=self.exchange_name,
+                                       routing_key=self.queue_name,
+                                       body=json.dumps(message))
+            consume_utilbill_file(self.channel, self.queue_name,
+                                  self.utilbill_processor)
+            i[0] += 1
+
+        # 1 account_guid: create an AltitudeAccount with this UtilityAccount
+        send_message('1', 0)
+        s = Session()
+        self.assertEqual(self.utility_account,
+                         s.query(AltitudeAccount).one().utility_account)
+
+        # 2 account_guids for a different UtilityAccount, one of which is the
+        # same as above: modify or replace the original AltitudeAccount, and
+        # create a new one for the 2nd GUID
+        send_message('2', 0, 1)
+        self.assertEqual(2, s.query(AltitudeAccount).count())
+        self.assertEqual([self.utility_account.id,],
+                         [s.query(
+                             AltitudeAccount.utility_account_id).distinct()])
+
+        # no account_guids: delete AltitudeAccounts associated with the
+        # UtilityAccount
+        send_message('2')
+        self.assertEqual([], s.query(AltitudeAccount).all())
