@@ -730,7 +730,7 @@ class UtilBill(Base):
                                   else None)),
                      ('supplier', (self.supplier.column_dict() if
                                    self.supplier else None)),
-                     ('rate_class', (self.rate_class.column_dict() if
+                     ('rate_class', (self.rate_class.name if
                                      self.rate_class else None)),
                      ('state', self.state_name())])
         return result

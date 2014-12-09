@@ -128,8 +128,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         dataIndex: 'utility',
         editor: {
             xtype: 'combo',
-            id: 'utility_combo',
             store: 'Utilities',
+            itemId: 'utility_combo',
             displayField: 'name',
             valueField: 'name',
             triggerAction: 'all',
@@ -143,7 +143,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                     fn: function (combo) {
                         utility_grid = combo.findParentByType('grid');
                         selected = utility_grid.getSelectionModel().getSelection()[0];
-                        selected.set('action', 'utility');
+                        var utility = selected.data.utility;
+                        rate_class_store = Ext.getStore("RateClasses");
+                        rate_class_store.clearFilter(true);
+                        rate_class_store.filter('utility_id', utility.id);
                     }
                 },
                 focus: function(combo) {
@@ -176,7 +179,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                     fn: function (combo) {
                         utility_grid = combo.findParentByType('grid');
                         selected = utility_grid.getSelectionModel().getSelection()[0];
-                        selected.set('action', 'supplier');
                     }
                 },
                 focus: function(combo) {
@@ -196,6 +198,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         editor: {
             xtype: 'combo',
             store: 'RateClasses',
+            itemId: 'rate_class_combo',
             displayField: 'name',
             valueField: 'name',
             triggerAction: 'all',
@@ -205,7 +208,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             autoSelect: false,
             minChars: 1,
             listeners: {
-                blur: {
+                /*blur: {
                     fn: function (combo) {
                         utility_grid = combo.findParentByType('grid');
                         selected = utility_grid.getSelectionModel().getSelection()[0];
@@ -223,15 +226,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                 focus: function(combo) {
                     utility_grid = combo.findParentByType('grid');
                     selected = utility_grid.getSelectionModel().getSelection()[0];
+                    this.store.clearFilter(true);
+                    this.store.filter('utility_id', selected.get('utility').id);
                     combo.setValue(selected.get('rate_class').name);
-                }
+                }*/
             }
         },
         width: 125,
-        flex: 1,
-        renderer: function(value, metaData, record) {
-            return record.get('rate_class').name;
-        }
+        flex: 1
     }],
 
     dockedItems: [{
