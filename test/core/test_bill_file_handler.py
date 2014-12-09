@@ -83,7 +83,7 @@ class BillFileHandlerTest(unittest.TestCase):
         """The UtilBill should be deleted when delete_utilbill_pdf_from_S3 is
         called, as long as there is only one UtilBill instance persisted
         having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
+        key_name = self.bfh.get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
@@ -103,7 +103,7 @@ class BillFileHandlerTest(unittest.TestCase):
         """The UtilBill should NOT be deleted from s3 when
         delete_utilbill_pdf_from_S3 is called, if there are two UtilBill
         instances persisted having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
+        key_name = self.bfh.get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
