@@ -9,9 +9,8 @@ from formencode import Invalid
 import pika
 from pika.exceptions import ChannelClosed
 
-from billing.core.amqp_exchange import consume_utilbill_file, \
-    UtilbillMessageSchema
-from billing.core.model import Session, UtilBillLoader, Utility, UtilityAccount
+from billing.core.amqp_exchange import consume_utilbill_file
+from billing.core.model import Session, UtilBillLoader, UtilityAccount
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
@@ -173,7 +172,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             dict(valid_message, utility_provider_guid='invalid guid'),
             dict(valid_message, sha256_hexdigest='abcdefg'),
             dict(valid_message, total='1.23'),
-            dict(valid_message, total='1.234'),
+            dict(valid_message, total='$1.234'),
             dict(valid_message, total='$1.23 '),
             dict(valid_message, total=1.23),
             dict(valid_message, service_address=5),
