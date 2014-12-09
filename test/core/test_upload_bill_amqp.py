@@ -9,7 +9,8 @@ import pika
 from pika.exceptions import ChannelClosed
 
 from billing.core.amqp_exchange import consume_utilbill_file
-from billing.core.model import Session, UtilBillLoader, Utility, UtilityAccount
+from billing.core.model import Session, Utility, UtilityAccount
+from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.altitude import AltitudeUtility
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config

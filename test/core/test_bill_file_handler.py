@@ -9,8 +9,9 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
 
-from billing.core.model import UtilBill, UtilBillLoader
+from billing.core.model import UtilBill
 from billing.core.bill_file_handler import BillFileHandler
+from billing.core.utilbill_loader import UtilBillLoader
 from billing.exc import MissingFileError, DuplicateFileError
 
 
