@@ -305,7 +305,7 @@ def scrub_dev_data():
 
 def get_bucket(bucket_name, access_key, secret_key):
     conn = S3Connection(access_key, secret_key)
-    bucket = conn.get_bucket(args.bucket)
+    bucket = conn.get_bucket(bucket_name)
 
     # make sure this bucket has versioning turned on; if not, it's probably
     # the wrong bucket
@@ -338,13 +338,13 @@ def restore(args):
         scrub_dev_data()
 
 def download(args):
-    if args.backup_file_dir.startswith(os.path.sep):
-        backup_file_dir_absolute_path = args.backup_file_dir
+    if args.local_dir.startswith(os.path.sep):
+        local_dir_absolute_path = args.local_dir
     else:
-        backup_file_dir_absolute_path = os.path.join(
-            os.path.realpath(__file__), args.backup_file_dir)
+        local_dir_absolute_path = os.path.join(
+            os.path.realpath(__file__), args.local_dir)
     # TODO actual error message
-    assert os.access(backup_file_dir_absolute_path, os.W_OK)
+    assert os.access(local_dir_absolute_path, os.W_OK)
 
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
 
@@ -354,7 +354,7 @@ def download(args):
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
                 key.name, bucket.name))
     key.get_contents_to_filename(os.path.join(
-            backup_file_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
+            local_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
 
     # download Mongo dump
     for collection in MONGO_COLLECTIONS:
@@ -364,20 +364,46 @@ def download(args):
             raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
                     key.name, bucket.name))
         key.get_contents_to_filename(os.path.join(
-                backup_file_dir_absolute_path, file_name))
+                local_dir_absolute_path, file_name))
+
+def restore_files_s3(args):
+    # TODO Pull destination bucket out of billing config file
+    source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
+    dest_bucket = get_bucket(args.destination, args.destination_access_key, args.destination_secret_key)
+    for key in source_bucket.list():
+        if dest_bucket.get_key(key.name) == None:
+            print 'Copying key {0}'.format(key.name)
+            key.copy(args.destination, key.name)
+        else:
+            print 'Destination already has key {0}, not copying'.format(key.name)
+
+def restore_files_local(args):
+    # TODO Set a limit on the number of files to download
+    source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
+    dest_dir = args.local_dir
+    count = 0
+    for key in source_bucket.list():
+        if args.limit and count >= args.limit:
+            return
+        if not os.path.isfile(os.path.join(dest_dir, key.name)):
+            print 'Copying key {0}'.format(key.name)
+            key.get_contents_to_filename(os.path.join(dest_dir, key.name))
+        else:
+            print 'Destination has key {0}, not copying'.format(key.name)
+        count += 1
 
 def backup_local(args):
-    backup_mysql_local(os.path.join(args.backup_file_dir, MYSQL_BACKUP_FILE_NAME))
+    backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))
     for collection in MONGO_COLLECTIONS:
-        backup_file_path = os.path.join(args.backup_file_dir,
+        backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
         backup_mongo_collection_local(collection, backup_file_path)
 
 def restore_local(args):
-    restore_mysql_local(os.path.join(args.backup_file_dir,
+    restore_mysql_local(os.path.join(args.local_dir,
             MYSQL_BACKUP_FILE_NAME), args.root_password)
     for collection in MONGO_COLLECTIONS:
-        backup_file_path = os.path.join(args.backup_file_dir,
+        backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
         restore_mongo_collection_local(collection, backup_file_path)
     # TODO always scrub the data when restore-local is used because it's only for development?
@@ -396,6 +422,10 @@ if __name__ == '__main__':
             help='write database dump files to the given S3 bucket')
     restore_parser = subparsers.add_parser('restore',
             help='restore databases from existing dump files in S3 bucket')
+    restore_files_s3_parser = subparsers.add_parser('restore-files-s3',
+            help='restore files from one S3 bucket to another')
+    restore_files_local_parser = subparsers.add_parser('restore-files-local',
+            help='restore files from one S3 bucket to a local directory')
     download_parser = subparsers.add_parser('download',
             help=('download database dump files so they can be used '
             'with "restore-local"'))
@@ -407,9 +437,12 @@ if __name__ == '__main__':
     # arguments for S3
     for parser in (backup_parser, restore_parser, download_parser):
         parser.add_argument(dest='bucket', type=str, help='S3 bucket name')
-        # the environment variables that provide default values for these keys
-        # come from Josh's bash script, documented here:
-        # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
+
+    # the environment variables that provide default values for these keys
+    # come from Josh's bash script, documented here:
+    # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
+    for parser in (backup_parser, restore_parser, download_parser, 
+        restore_files_s3_parser, restore_files_local_parser):
         parser.add_argument("--access-key", type=str,
                 default=os.environ.get('AWS_ACCESS_KEY_ID', None),
                 help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
@@ -418,15 +451,36 @@ if __name__ == '__main__':
                 help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY if "
                 "it is defined."))
 
+    # args for restoring files
+    for parser in (restore_files_s3_parser, restore_files_local_parser):
+        parser.add_argument('source', type=str,
+                help=('source bucket to restore files from'))
+        parser.add_argument('--limit', type=int,
+                default=None,
+                help=('limit the number of files to restore to the given location'))
+
+    for parser in (restore_files_s3_parser,):
+        parser.add_argument("--destination-access-key", type=str,
+                default=config.get('aws_s3', 'aws_access_key_id'),
+                help=("AWS S3 access key. Default to value in settings.cfg"))
+        parser.add_argument("--destination-secret-key", type=str,
+                default=config.get('aws_s3', 'aws_secret_access_key'),
+                help=("AWS S3 secret key. Default to value in settings.cfg"))
+        parser.add_argument('destination', type=str,
+                default= config.get('aws_s3', 'bucket'),
+                help=('destination bucket to restore files to, '\
+                'defaults to value in settings.cfg ({0})'.format(config.get('aws_s3', 'bucket'))))
+
     # arguments for local backup files
     all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
-    for parser in (download_parser, restore_local_parser, backup_local_parser):
-        parser.add_argument(dest='backup_file_dir', type=str,
+    for parser in (download_parser, restore_local_parser,
+        backup_local_parser, restore_files_local_parser):
+        parser.add_argument(dest='local_dir', type=str,
                 help=('Local directory containing database dump files (%s)' %
                 ', '.join(all_file_names)))
 
-    # arguments for restoring database
+    # args for restoring databases
     for parser in (restore_parser, restore_local_parser):
         # only root can restore a MySQL database, but root's credentials are not
         # stored in the config file.
@@ -439,6 +493,9 @@ if __name__ == '__main__':
     # each command corrsponds to the function with the same name defined above
     backup_parser.set_defaults(func=backup)
     restore_parser.set_defaults(func=restore)
+    restore_parser.set_defaults(func=restore)
+    restore_files_s3_parser.set_defaults(func=restore_files_s3)
+    restore_files_local_parser.set_defaults(func=restore_files_local)
     download_parser.set_defaults(func=download)
     restore_local_parser.set_defaults(func=restore_local)
     backup_local_parser.set_defaults(func=backup_local)
