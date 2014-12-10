@@ -73,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '28552fdf9f48'
+_schema_revision = '42f84150db03'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -485,6 +485,7 @@ class UtilBill(Base):
     service = Column(String(45), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
+    due_date = Column(Date)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
