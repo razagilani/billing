@@ -25,7 +25,6 @@ from billing.core.model import Session
 from billing.core.utilbill_loader import UtilBillLoader
 
 init_config()
-init_model()
 from billing import config
 
 # all backups are stored with the same key name. a new version is created every
@@ -41,7 +40,7 @@ MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
-ACCOUNTS_LIST = [10]
+ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
@@ -316,30 +315,31 @@ def scrub_dev_data():
     stdin.close()
     check_exit_status()
 
-def get_bucket(bucket_name, access_key, secret_key):
-    conn = S3Connection(access_key, secret_key)
-    bucket = conn.get_bucket(bucket_name)
-
+def get_bucket(bucket_name, connection, enforce_versioning=True):
+    bucket = connection.get_bucket(bucket_name)
     # make sure this bucket has versioning turned on; if not, it's probably
     # the wrong bucket
-    versioning_status = bucket.get_versioning_status()
-    if versioning_status != {'Versioning': 'Enabled'}:
-        print >> sys.stderr, ("Can't use a bucket without versioning for "
-                "backups. The bucket \"%s\" has versioning status: %s") % (
-                bucket.name, versioning_status)
-        # TODO not good to sys.exit outside main
-        sys.exit(1)
+    if enforce_versioning:
+        versioning_status = bucket.get_versioning_status()
+        if versioning_status != {'Versioning': 'Enabled'}:
+            print >> sys.stderr, ("Can't use a bucket without versioning for "
+                    "backups. The bucket \"%s\" has versioning status: %s") % (
+                    bucket.name, versioning_status)
+            # TODO not good to sys.exit outside main
+            sys.exit(1)
     return bucket
 
 def backup(args):
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    conn = S3Connection(args.access_key, args.secret_key)
+    bucket = get_bucket(args.bucket, conn)
     backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
 
 def restore(args):
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    conn = S3Connection(args.access_key, args.secret_key)
+    bucket = get_bucket(args.bucket, conn)
     restore_mysql_s3(bucket, args.root_password)
     for collection in MONGO_COLLECTIONS:
         # NOTE mongorestore cannot restore from a file unless its name
@@ -359,7 +359,8 @@ def download(args):
     # TODO actual error message
     assert os.access(local_dir_absolute_path, os.W_OK)
 
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    conn = S3Connection(args.access_key, args.secret_key)
+    bucket = get_bucket(args.bucket, conn)
 
     # download MySQL dump
     key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
@@ -380,18 +381,22 @@ def download(args):
                 local_dir_absolute_path, file_name))
 
 def get_key_names_for_account(account_id):
+    init_model()
     session = Session()
     ubl = UtilBillLoader(session)
     utilbills = ubl.get_utilbills_for_account_id(account_id)
-    print utilbills[0].sha256_hexdigest
     return [BillFileHandler.get_key_name_for_utilbill(u) for u in utilbills]
 
 def restore_files_s3(args):
-    source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
-    dest_bucket = get_bucket(args.destination, args.destination_access_key, args.destination_secret_key)
+    source_conn = S3Connection(args.access_key, args.secret_key)
+    dest_conn = S3Connection(args.destination_access_key,
+                         args.destination_secret_key)
+    source_bucket = get_bucket(args.source, source_conn)
+    dest_bucket = get_bucket(args.destination, dest_conn)
     if args.limit:
+        key_names = []
         for account in ACCOUNTS_LIST:
-            key_names = [key_name for key_name in get_key_names_for_account(account)]
+            key_names += [key_name for key_name in get_key_names_for_account(account)]
     else:
         key_names = [key.name for key in source_bucket.list()]
 
@@ -403,20 +408,33 @@ def restore_files_s3(args):
         else:
             print 'Destination already has key {0}, not copying'.format(key.name)
 
-def restore_files_local(args):
-    source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
-    dest_dir = args.local_dir
+def restore_files(args):
+    source_conn = S3Connection(args.access_key, args.secret_key)
+    dest_conn = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                         config.get('aws_s3', 'aws_secret_access_key'),
+                         is_secure=config.get('aws_s3', 'is_secure'),
+                         port=config.get('aws_s3', 'port'),
+                         host=config.get('aws_s3', 'host'),
+                         calling_format=config.get('aws_s3',
+                                                   'calling_format'))
+    source_bucket = get_bucket(args.source, source_conn)
+    dest_bucket = get_bucket(config.get('aws_s3', 'bucket'), dest_conn, enforce_versioning=False)
     if args.limit:
+        key_names = []
         for account in ACCOUNTS_LIST:
-            key_names = [key_name for key_name in get_key_names_for_account(account)]
+            key_names += [key_name for key_name in get_key_names_for_account(account)]
     else:
         key_names = [key.name for key in source_bucket.list()]
 
     for key_name in key_names:
-        if not os.path.isfile(os.path.join(dest_dir, key_name)):
+        if dest_bucket.get_key(key_name) == None:
             print 'Copying key {0}'.format(key_name)
-            key = source_bucket.get_key(key_name)
-            key.get_contents_to_filename(os.path.join(dest_dir, key_name))
+            source_key = source_bucket.get_key(key_name)
+            dest_key = dest_bucket.new_key(key_name)
+            file = StringIO()
+            source_key.get_contents_to_file(file)
+            file.seek(0)
+            dest_key.set_contents_from_file(file)
         else:
             print 'Destination already has key {0}, not copying'.format(key.name)
 
@@ -452,10 +470,11 @@ if __name__ == '__main__':
             help='write database dump files to the given S3 bucket')
     restore_parser = subparsers.add_parser('restore',
             help='restore databases from existing dump files in S3 bucket')
+    restore_files_parser = subparsers.add_parser('restore-files',
+            help='restore files from one AWS S3 bucket to a local environment running '
+            'fakeS3')
     restore_files_s3_parser = subparsers.add_parser('restore-files-s3',
-            help='restore files from one S3 bucket to another')
-    restore_files_local_parser = subparsers.add_parser('restore-files-local',
-            help='restore files from one S3 bucket to a local directory')
+            help='restore files from one AWS S3 bucket to another AWS S3 bucket')
     download_parser = subparsers.add_parser('download',
             help=('download database dump files so they can be used '
             'with "restore-local"'))
@@ -472,7 +491,7 @@ if __name__ == '__main__':
     # come from Josh's bash script, documented here:
     # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
     for parser in (backup_parser, restore_parser, download_parser, 
-        restore_files_s3_parser, restore_files_local_parser):
+        restore_files_parser, restore_files_s3_parser):
         parser.add_argument("--access-key", type=str,
                 default=os.environ.get('AWS_ACCESS_KEY_ID', None),
                 help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
@@ -482,7 +501,7 @@ if __name__ == '__main__':
                 "it is defined."))
 
     # args for restoring files
-    for parser in (restore_files_s3_parser, restore_files_local_parser):
+    for parser in (restore_files_parser, restore_files_s3_parser):
         parser.add_argument('source', type=str,
                 help=('source bucket to restore files from'))
         parser.add_argument('--limit', action='store_true',
@@ -505,7 +524,7 @@ if __name__ == '__main__':
     all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser,
-        backup_local_parser, restore_files_local_parser):
+        backup_local_parser):
         parser.add_argument(dest='local_dir', type=str,
                 help=('Local directory containing database dump files (%s)' %
                 ', '.join(all_file_names)))
@@ -524,8 +543,8 @@ if __name__ == '__main__':
     backup_parser.set_defaults(func=backup)
     restore_parser.set_defaults(func=restore)
     restore_parser.set_defaults(func=restore)
+    restore_files_parser.set_defaults(func=restore_files)
     restore_files_s3_parser.set_defaults(func=restore_files_s3)
-    restore_files_local_parser.set_defaults(func=restore_files_local)
     download_parser.set_defaults(func=download)
     restore_local_parser.set_defaults(func=restore_local)
     backup_local_parser.set_defaults(func=backup_local)
