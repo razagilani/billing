@@ -1,92 +1,76 @@
-from billing import init_config, init_model, init_logging
-from os.path import dirname, realpath, join
-p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(filepath=p)
-init_config(filepath=p)
-init_model()
+import json
+from formencode.validators import String, Regex, Validator, FancyValidator
+from formencode import Schema, Invalid
+import re
 
-from billing import config
+from billing.core.bill_file_handler import BillFileHandler
+from billing.core.model import Session, Address, UtilityAccount
+from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
+    AltitudeGUID
+from billing.exc import AltitudeDuplicateError
 
-from sqlalchemy.sql.expression import desc
-from billing.mq import Exchange, MessageHandler
-from billing.mq.schemas.schemas import process_utility_bill_schema,\
-    process_utility_schema
-from billing.core.model import Customer, UtilBill, Session, Utility, \
-    Address
+class TotalValidator(FancyValidator):
+    '''Validator for the odd format of the "total" field in utility bill
+    messages: dollars and cents as a string preceded by "$", or empty.
+    '''
+    def _convert_to_python(self, value, state):
+        substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
+        if substr is None:
+            raise Invalid('Invalid "total" string: "%s"' % value, value, state)
+        return None if substr == '' else float(substr[1:])
 
+class UtilbillMessageSchema(Schema):
+    '''Formencode schema for validating/parsing utility bill message contents.
+    specification is at
+    https://docs.google.com/a/nextility.com/document/d
+    /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
+   '''
+    utility_account_number = String()
+    utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
+    sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
+    #due_date = String()
+    total = TotalValidator()
+    service_address = String()
 
-class ProcessUtilityBillHander(MessageHandler):
-    """Receives a utility bill over AMQP
+# TODO: this is not used yet and not tested (BILL-3784); it's serving to show
+# how the AltitudeUtility table (BILL-5836) will be used.
+def consume_utility_guid(channel, queue_name, utilbill_processor):
+    '''Register callback for AMQP messages to receive a utility.
+    '''
+    def callback(ch, method, properties, body):
+        d = json.loads(body)
+        name, guid = d['name'], d['utility_provider_guid']
 
-    Message schema:
-    See Integration Specifications in GDrive > Team Tech > Integration
-    Specifications > Working > Billing > MQ Specification > process_utility_bill
-    """
-
-    message_schema = process_utility_bill_schema
-
-    def handle(self, message):
-        utility_provider_guid = message['utility_provider_guid']
-        account_number = message['utility_account_number']
-        sha256_hexdigest = message['sha256_hexdigest']
-
+        # TODO: this may not be necessary because unique constraint in the
+        # database can take care of preventing duplicates
         s = Session()
+        if s.query(AltitudeUtility).filter_by(guid=guid).count() != 0:
+            raise AltitudeDuplicateError(
+                'Altitude utility "%" already exists with name "%s"' % (
+                    guid, name))
 
-        utility = s.query(Utility).filter_by(guid=utility_provider_guid).one()
-
-        # TODO: use of 'account_number' argument does not match docstring
-        # https://skylineinnovations.atlassian.net/browse/BILL-5757
-        customer = s.query(Customer).filter_by(account=account_number).first()
-        customer = customer if customer else Customer('', account_number, 0, 0, '',
-            utility, '', Address(), Address())
-
-        # TODO replace with UtilbillLoader.get_last_real_utilbill
-        prev = s.query(UtilBill).filter_by(customer=customer).\
-            filter_by(state=UtilBill.Complete).\
-            order_by(desc(UtilBill.period_start)).first()
-
-        ub = UtilBill(customer, UtilBill.Complete, getattr(prev, 'service', ''),
-                      utility, getattr(prev, 'rate_class', ''),
-                      Address.from_other(prev.billing_address) if \
-                          prev else Address(),
-                      Address.from_other(prev.service_address) if \
-                          prev else Address(),
-                      sha256_hexdigest=sha256_hexdigest)
-        s.add(ub)
+        new_utility = utilbill_processor.create_utility(name)
+        s.add(AltitudeUtility(new_utility, guid))
         s.commit()
+    channel.basic_consume(callback, queue=queue_name)
 
+def consume_utilbill_file(channel, queue_name, utilbill_processor):
+    '''Register callback for AMQP messages to receive a utility bill.
+    '''
+    def callback(ch, method, properties, body):
+        d = UtilbillMessageSchema.to_python(json.loads(body))
+        utility = get_utility_from_guid(d['utility_provider_guid'])
+        utility_account = Session().query(UtilityAccount).filter_by(
+            account_number=d['utility_account_number']).one()
+        sha256_hexdigest = d['sha256_hexdigest']
+        total = d['total']
+        # TODO due_date
+        service_address_street = d['service_address']
 
-class ProcessUtilityHandler(MessageHandler):
-    """Receives a utility over AMQP
+        utilbill_processor.create_utility_bill_with_existing_file(
+            utility_account, utility, sha256_hexdigest,
+            target_total=total,
+            service_address=Address(street=service_address_street))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    channel.basic_consume(callback, queue=queue_name)
 
-    Message schema:
-    See Integration Specifications in GDrive > Team Tech > Integration
-    Specifications > Working > Billing > MQ Specification > process_utility
-    """
-
-    message_schema = process_utility_schema
-
-    def handle(self, message):
-        name = message['name']
-        utility_provider_guid = message['guid']
-
-        s = Session()
-        utility = s.query(Utility).filter_by(guid=utility_provider_guid).first()
-        if utility:
-            utility.name = name
-        else:
-            utility = Utility(name=name,
-                              address=Address(),
-                              guid=utility_provider_guid)
-            s.add(utility)
-        s.commit()
-
-
-def run_exchange():
-    e = Exchange(config.get('amqp', 'exchange'))
-    e.attach_handler('process_utility_bill', ProcessUtilityBillHander)
-    e.attach_handler('process_utility', ProcessUtilityHandler)
-    e.run()
-
-if __name__ == '__main__':
-    run_exchange()
