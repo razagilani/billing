@@ -21,7 +21,8 @@ from billing import init_config
 from billing import init_model
 
 from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session, UtilBillLoader
+from billing.core.model import Session
+from billing.core.utilbill_loader import UtilBillLoader
 
 init_config()
 init_model()
