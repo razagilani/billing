@@ -13,6 +13,18 @@ ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
 
 class UtilbillProcessor(object):
+    ''''Does a mix of the following things:
+    - Operations on utility bills: upload, delete, compute, regenerate charges,
+    etc.
+    - CRUD on child objects of UtilBill that are closely associated
+    with UtilBills, like charges and registers.
+    - CRUD on utilities, suppliers, rate classes.
+    - Generating JSON data for the ReeBill UI.
+    Only methods that do the first or the first two things should stay in
+    here; the others should eventually be moved. This file should be inside
+    "core" (not "reebill") so the "utility bill processing" methods can be used
+    outside of ReeBill.
+    '''
     def __init__(self, rate_structure_dao, bill_file_handler, nexus_util,
                  logger=None):
         self.rate_structure_dao = rate_structure_dao
@@ -478,7 +490,7 @@ class UtilbillProcessor(object):
 
     ############################################################################
     # "view" methods: return JSON dictionaries for ReeBill UI
-    # TODO: move to reebill/
+    # TODO: move to another file in reebill/
     ############################################################################
 
     def get_utilbill_charges_json(self, utilbill_id):
