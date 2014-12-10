@@ -2,7 +2,7 @@
 Currently the only one is StateDB.
 '''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-from billing.core.model.model import Utility, Supplier, RateClass
+from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount, ReeBillCustomer
 
 init_logging()
 import unittest
@@ -31,14 +31,17 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        test_utility = Utility('FB Test Utility Name', blank_address, '')
-        test_supplier = Supplier('FB Test Suplier', blank_address, '')
-        self.customer = Customer('Test Customer', 99999, .12, .34,
-                            'example@example.com', test_utility,
-                            test_supplier,
+        test_utility = Utility('FB Test Utility Name', blank_address)
+        test_supplier = Supplier('FB Test Suplier', blank_address)
+        self.utility_account = UtilityAccount('someaccount', 99999,
+                            test_utility, test_supplier,
                             RateClass('FB Test Rate Class', test_utility),
                             blank_address, blank_address)
-        self.session.add(self.customer)
+        self.reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
+                            'thermal', 'example@example.com',
+                            self.utility_account)
+        self.session.add(self.utility_account)
+        self.session.add(self.reebill_customer)
         self.session.commit()
         self.state_db = state.StateDB()
 
@@ -53,7 +56,7 @@ class StateDBTest(TestCaseWithSetup):
         acc, seq = '99999', 1
         # initially max_version is 0, max_issued_version is None, and issued
         # is false
-        b = ReeBill(self.customer, seq)
+        b = ReeBill(self.reebill_customer, seq)
         session.add(b)
         self.assertEqual(0, self.state_db.max_version(acc, seq))
         self.assertEqual(None, self.state_db.max_issued_version(acc, seq))
@@ -68,19 +71,25 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility('FB Test Utility', Address(), '')
-        fb_test_supplier = Supplier('FB Test Supplier', Address(), '')
-        self.session.add(Customer('someone', '11111', 0.5, 0.1,
-                'customer1@example.com', fb_test_utility, fb_test_supplier,
+        fb_test_utility = Utility('FB Test Utility', Address())
+        fb_test_supplier = Supplier('FB Test Supplier', Address())
+        utility_account1 = UtilityAccount('some_account', '11111',
+                fb_test_utility, fb_test_supplier,
                 RateClass('FB Test Rate Class', fb_test_utility),
-                Address(), Address()))
-        self.session.add(Customer('someone', '22222', 0.5, 0.1,
-                'customer2@example.com', fb_test_utility, fb_test_supplier,
+                Address(), Address())
+        utility_account2 = UtilityAccount('another_account', '22222',
+                fb_test_utility, fb_test_supplier,
                 RateClass('FB Test Rate Class', fb_test_utility),
-                Address(), Address()))
-        session.add(ReeBill(self.state_db.get_customer('11111'), 1))
-        session.add(ReeBill(self.state_db.get_customer('11111'), 2))
-        session.add(ReeBill(self.state_db.get_customer('22222'), 1))
+                Address(), Address()
+                    )
+        self.session.add(utility_account1)
+        self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
+                'thermal', 'customer1@example.com', utility_account1))
+        self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
+                'thermal', 'customer2@example.com', utility_account2))
+        session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
+        session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
+        session.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
         self.state_db.issue('11111', 1)
         self.state_db.issue('22222', 1)
         self.state_db.increment_version('11111', 1)
@@ -165,9 +174,9 @@ class StateDBTest(TestCaseWithSetup):
     def test_get_unissued_corrections(self):
         session = Session()
         # reebills 1-4, 1-3 issued
-        session.add(ReeBill(self.customer, 1))
-        session.add(ReeBill(self.customer, 2))
-        session.add(ReeBill(self.customer, 3))
+        session.add(ReeBill(self.reebill_customer, 1))
+        session.add(ReeBill(self.reebill_customer, 2))
+        session.add(ReeBill(self.reebill_customer, 3))
         self.state_db.issue('99999', 1)
         self.state_db.issue('99999', 2)
         self.state_db.issue('99999', 3)
@@ -207,7 +216,7 @@ class StateDBTest(TestCaseWithSetup):
         p = payments[0]
         self.assertEqual(1, len(payments))
         self.assertEqual((acc, datetime(2012,1,15), 'payment 1', 100),
-                (p.customer.account, p.date_applied, p.description,
+                (p.reebill_customer.get_account(), p.date_applied, p.description,
                 p.credit))
         self.assertDatetimesClose(datetime.utcnow(), p.date_received)
         # should be editable since it was created today
@@ -225,7 +234,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
-                (q.customer.account, q.date_applied, q.description,
+                (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
@@ -238,7 +247,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,3,1), 'new description', 200),
-                (q.customer.account, q.date_applied, q.description,
+                (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
 
         # delete jan 15
@@ -251,13 +260,18 @@ class StateDBTest(TestCaseWithSetup):
         empty_address = Address()
         fake_address = Address('Addressee', 'Street', 'City', 'ST', '12345')
         # Create 2 customers
-        customer1 = self.session.query(Customer).one()
-        rateclass1 = RateClass('FB Test Rate Class', customer1.fb_utility)
-        customer2 = Customer('Test Customer', 99998, .12, .34,
-                            'example@example.com', customer1.fb_utility,
-                            customer1.fb_supplier, rateclass1,
+        utility_account1 = self.session.query(UtilityAccount).one()
+        reebill_customer1 = self.session.query(ReeBillCustomer).one()
+        rateclass1 = RateClass('FB Test Rate Class', utility_account1.fb_utility)
+        utility_account2 = UtilityAccount('other_account', 99998,
+                            utility_account1.fb_utility,
+                            utility_account1.fb_supplier, rateclass1,
                             empty_address, empty_address)
-        self.session.add(customer2)
+        self.session.add(utility_account2)
+        reebill_customer2 = ReeBillCustomer('Test Customer', .12, .34,
+                            'thermal', 'example@example.com',
+                            utility_account2)
+        self.session.add(reebill_customer2)
         self.session.commit()
 
         self.assertEqual(
@@ -274,18 +288,18 @@ class StateDBTest(TestCaseWithSetup):
         # Attach two utilitybills with out addresses but with rate class to one
         # of the customers, and one utilbill with empty rateclass but with
         # address to the other customer
-        washgas = Utility('washgas', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        washgas = Utility('washgas', Address())
+        supplier = Supplier('supplier', Address())
         rateclass2 = RateClass('DC Non Residential Non Heat', washgas)
         rateclass3 = RateClass('', washgas)
-        gas_bill_1 = UtilBill(customer1, 0, 'gas', washgas, supplier,
+        gas_bill_1 = UtilBill(utility_account1, 0, 'gas', washgas, supplier,
                 rateclass2, empty_address, empty_address,
                 period_start=date(2000, 1, 1), period_end=date(2000, 2, 1),
                 processed=True)
-        gas_bill_2 = UtilBill(customer1, 0, 'gas', washgas, supplier,
+        gas_bill_2 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
                 rateclass2, empty_address, empty_address,
                 period_start=date(2000, 3, 1), period_end=date(2000, 4, 1))
-        gas_bill_3 = UtilBill(customer2, 0, 'gas', washgas, supplier,
+        gas_bill_3 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
                 rateclass3, fake_address, fake_address,
                 period_start=date(2000, 4, 1), period_end=date(2000, 5, 1),
                 processed=True)
@@ -310,9 +324,9 @@ class StateDBTest(TestCaseWithSetup):
 
         # Now Attach a reebill to one and issue it , and a utilbill with a
         # different rateclass to the other
-        reebill = ReeBill(customer1, 1, 0, utilbills=[gas_bill_1])
+        reebill = ReeBill(reebill_customer1, 1, 0, utilbills=[gas_bill_1])
         newrateclass = RateClass('New Rateclass', washgas)
-        gas_bill_4 = UtilBill(customer2, 0, 'gas', washgas, supplier,
+        gas_bill_4 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
                 newrateclass, fake_address, fake_address,
                 period_start=date(2000, 5, 1), period_end=date(2000, 6, 1),
                 processed=True)
@@ -340,7 +354,7 @@ class StateDBTest(TestCaseWithSetup):
         )
 
         # Create another reebill, but don't issue it. The data should not change
-        reebill_2 = ReeBill(customer1, 2, 0, utilbills=[gas_bill_2])
+        reebill_2 = ReeBill(reebill_customer1, 2, 0, utilbills=[gas_bill_2])
         self.session.add(reebill_2)
         self.session.commit()
 

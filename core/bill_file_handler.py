@@ -1,7 +1,9 @@
 #!/usr/bin/python
 import hashlib
+import requests
 
 from billing.core.model import UtilBill
+from billing.exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandler(object):
@@ -9,6 +11,10 @@ class BillFileHandler(object):
     stored in Amazon S3.
     '''
     HASH_CHUNK_SIZE = 1024 ** 2
+
+    # for validating file hash strings
+    HASH_DIGEST_LENGTH = 64
+    HASH_DIGEST_REGEX = '^[0-9a-f]{%s}$' % HASH_DIGEST_LENGTH
 
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
@@ -41,8 +47,14 @@ class BillFileHandler(object):
         return hash_function.hexdigest()
 
     @staticmethod
-    def _get_key_name(utilbill):
-        return utilbill.sha256_hexdigest + '.pdf'
+    def _get_key_name_for_hash(sha256_hexdigest):
+        return sha256_hexdigest + '.pdf'
+
+    @classmethod
+    def get_key_name_for_utilbill(cls, utilbill):
+        '''Return the S3 key name for the file belonging to the given UtilBill.
+        '''
+        return cls._get_key_name_for_hash(utilbill.sha256_hexdigest)
 
     def _get_amazon_bucket(self):
         return self._connection.get_bucket(self._bucket_name)
@@ -60,7 +72,16 @@ class BillFileHandler(object):
         if utilbill.sha256_hexdigest in (None, ''):
             return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
-                                      key_name=self._get_key_name(utilbill))
+                                      key_name=self.get_key_name_for_utilbill(utilbill))
+
+    def check_file_exists(self, utilbill):
+        '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
+        does not exist.
+        '''
+        key_name = self.get_key_name_for_utilbill(utilbill)
+        key = self._get_amazon_bucket().get_key(key_name)
+        if key is None:
+            raise MissingFileError('Key "%s" does not exist' % key_name)
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
         """Removes the pdf file associated with utilbill from s3 (unless
@@ -69,17 +90,29 @@ class BillFileHandler(object):
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
                 utilbill.sha256_hexdigest) == 1:
-            key_name = BillFileHandler._get_key_name(utilbill)
+            key_name = BillFileHandler.get_key_name_for_utilbill(utilbill)
             key = self._get_amazon_bucket().get_key(key_name)
             key.delete()
 
-    def upload_utilbill_pdf_to_s3(self, utilbill, file):
-        """Uploads the pdf file to amazon s3
-        :param utilbill: a :class:`billing.process.state.UtilBill`
+    def upload_file(self, file):
+        '''Upload the given file to s3.
         :param file: a seekable file
-        """
-        utilbill.sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
-        key_name = self._get_key_name(utilbill)
+        '''
+        sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
+        if self._utilbill_loader.count_utilbills_with_hash(
+                sha256_hexdigest) != 0:
+            raise DuplicateFileError('File already exists with hash %s ' %
+                                     sha256_hexdigest)
+        key_name = self._get_key_name_for_hash(sha256_hexdigest)
         key = self._get_amazon_bucket().new_key(key_name)
         key.set_contents_from_file(file)
+        return sha256_hexdigest
+
+    def upload_utilbill_pdf_to_s3(self, utilbill, file):
+        '''Upload the given file to s3, and also set the
+        'UtilBill.sha256_hexdigest' attribute according to the file.
+        :param utilbill: a :class:`billing.process.state.UtilBill`
+        :param file: a seekable file
+        '''
+        utilbill.sha256_hexdigest = self.upload_file(file)
 
