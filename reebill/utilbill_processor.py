@@ -3,19 +3,31 @@ from datetime import datetime
 from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
 
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
-    RateClass
+from billing.core.model import UtilBill, Address, Charge, Register, Session, \
+    Supplier, Utility, RateClass, UtilityAccount
 from billing.exc import NoSuchBillException, DuplicateFileError
-from billing.core.model import UtilityAccount
+from billing.core.utilbill_loader import UtilBillLoader
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
 
 class UtilbillProcessor(object):
-    def __init__(self, rate_structure_dao, bill_file_handler, nexus_util,
+    ''''Does a mix of the following things:
+    - Operations on utility bills: upload, delete, compute, regenerate charges,
+    etc.
+    - CRUD on child objects of UtilBill that are closely associated
+    with UtilBills, like charges and registers.
+    - CRUD on utilities, suppliers, rate classes.
+    - Generating JSON data for the ReeBill UI.
+    Only methods that do the first or the first two things should stay in
+    here; the others should eventually be moved. This file should be inside
+    "core" (not "reebill") so the "utility bill processing" methods can be used
+    outside of ReeBill.
+    '''
+    def __init__(self, pricing_model, bill_file_handler, nexus_util,
                  logger=None):
-        self.rate_structure_dao = rate_structure_dao
+        self.pricing_model = pricing_model
         self.bill_file_handler = bill_file_handler
         self.nexus_util = nexus_util
         self.logger = logger
@@ -24,137 +36,9 @@ class UtilbillProcessor(object):
     def _get_utilbill(self, utilbill_id):
         return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
 
-    def get_utilbill_charges_json(self, utilbill_id):
-        """Returns a list of dictionaries of charges for the utility bill given
-        by  'utilbill_id' (MySQL id)."""
-        session = Session()
-        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        return [charge.column_dict() for charge in utilbill.charges]
-
-    def get_registers_json(self, utilbill_id):
-        """Returns a dictionary of register information for the utility bill
-        having the specified utilbill_id."""
-        l = []
-        session = Session()
-        for r in session.query(Register).join(UtilBill,
-            Register.utilbill_id == UtilBill.id).\
-            filter(UtilBill.id == utilbill_id).all():
-            l.append(r.column_dict())
-        return l
-
-    def new_register(self, utilbill_id, **register_kwargs):
-        """Creates a new register for the utility bill having the specified id
-        "row" argument is a dictionary but keys other than
-        "meter_id" and "register_id" are ignored.
-        """
-        session = Session()
-        utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        if utility_bill.editable():
-            r = Register(
-                utility_bill,
-                description=register_kwargs.get(
-                    'description',"Insert description"),
-                identifier=register_kwargs.get(
-                    'identifier', "Insert register ID here"),
-                unit=register_kwargs.get('unit', 'therms'),
-                estimated=register_kwargs.get('estimated', False),
-                reg_type=register_kwargs.get('reg_type', "total"),
-                active_periods=register_kwargs.get('active_periods', None),
-                meter_identifier=register_kwargs.get('meter_identifier', ""),
-                quantity=register_kwargs.get('quantity', 0),
-                register_binding=register_kwargs.get(
-                    'register_binding', "Insert register binding here")
-            )
-            session.add(r)
-            session.flush()
-            return r
-
-    def update_register(self, register_id, rows):
-        """Updates fields in the register given by 'register_id'
-        """
-        self.logger.info("Running Process.update_register %s" % register_id)
-        session = Session()
-
-        #Register to be updated
-        register = session.query(Register).filter(
-            Register.id == register_id).one()
-
-        for k in ['description', 'quantity', 'unit',
-                  'identifier', 'estimated', 'reg_type', 'register_binding',
-                  'meter_identifier']:
-            val = rows.get(k, getattr(register, k))
-            self.logger.debug("Setting attribute %s on register %s to %s" %
-                              (k, register.id, val))
-            setattr(register, k, val)
-        if 'active_periods' in rows and rows['active_periods'] is not None:
-            active_periods_str = json.dumps(rows['active_periods'])
-            self.logger.debug("Setting attribute active_periods on register"
-                              " %s to %s" % (register.id, active_periods_str))
-            register.active_periods = active_periods_str
-        self.logger.debug("Commiting changes to register %s" % register.id)
-        self.compute_utility_bill(register.utilbill_id)
-        return register
-
-    def delete_register(self, register_id):
-        self.logger.info("Running Process.delete_register %s" %
-                         register_id)
-        session = Session()
-        register = session.query(Register).filter(
-            Register.id == register_id).one()
-        utilbill_id = register.utilbill_id
-        utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session.delete(register)
-            session.commit()
-            self.compute_utility_bill(utilbill_id)
-
-    def add_charge(self, utilbill_id, **charge_kwargs):
-        """Add a new charge to the given utility bill. charge_kwargs are
-        passed as keyword arguments to the charge"""
-        utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            charge = utilbill.add_charge(**charge_kwargs)
-            self.compute_utility_bill(utilbill_id)
-        return charge
-
-    def update_charge(self, fields, charge_id=None, utilbill_id=None,
-                      rsi_binding=None):
-        """Modify the charge given by charge_id
-        by setting key-value pairs to match the dictionary 'fields'."""
-        assert charge_id or utilbill_id and rsi_binding
-        session = Session()
-        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
-            if charge_id else \
-            session.query(Charge). \
-                filter(Charge.utilbill_id == utilbill_id). \
-                filter(Charge.rsi_binding == rsi_binding).one()
-        utilbill = self._get_utilbill(charge.utilbill.id)
-        if utilbill.editable():
-            for k, v in fields.iteritems():
-                if k not in Charge.column_names():
-                    raise AttributeError("Charge has no attribute '%s'" % k)
-                setattr(charge, k, v)
-            session.flush()
-            self.compute_utility_bill(charge.utilbill.id)
-        return charge
-
-    def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
-        """Delete the charge given by 'rsi_binding' in the given utility
-        bill."""
-        assert charge_id or utilbill_id and rsi_binding
-        utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session = Session()
-            if charge_id:
-                charge = session.query(Charge)\
-                    .filter(Charge.id == charge_id).one()
-            else:
-                charge = session.query(Charge)\
-                    .filter(Charge.utilbill_id == utilbill_id)\
-                    .filter(Charge.rsi_binding == rsi_binding).one()
-            session.delete(charge)
-            self.compute_utility_bill(charge.utilbill_id)
-            session.expire(charge.utilbill)
+    ############################################################################
+    # methods that are actually for "processing" UtilBills
+    ############################################################################
 
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
@@ -194,32 +78,6 @@ class UtilbillProcessor(object):
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
         return  utilbill
-
-    def get_create_utility(self, name):
-        session = Session()
-        try:
-            result = session.query(Utility).filter_by(name=name).one()
-        except NoResultFound:
-            result = Utility(name, Address('', '', '', '', ''))
-        return result
-
-    def get_create_supplier(self, name):
-        session = Session()
-        try:
-            result = session.query(Supplier).filter_by(name=name).one()
-        except NoResultFound:
-            result = Supplier(name, Address('', '', '', '', ''))
-        return result
-
-    def get_create_rate_class(self, rate_class_name, utility):
-        assert isinstance(utility, Utility)
-        session = Session()
-        try:
-            result = session.query(RateClass).filter_by(
-                name=rate_class_name).one()
-        except NoResultFound:
-            result = RateClass(rate_class_name, utility)
-        return result
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
                             service=None, utility=None, rate_class=None,
@@ -317,7 +175,7 @@ class UtilbillProcessor(object):
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow().date())
 
-        new_utilbill.charges = self.rate_structure_dao. \
+        new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
         for register in predecessor.registers if predecessor else []:
             # no need to append this Register to new_utilbill.Registers because
@@ -431,16 +289,6 @@ class UtilbillProcessor(object):
 
         return new_utilbill
 
-    def create_utility(self, name):
-        '''Create and return a new Utility with the given name. A new
-        RateClass for the utility is also added.
-        '''
-        s = Session()
-        new_utility = Utility(name=name, address=Address())
-        new_rate_class = RateClass('Unknown rate class for %s' % name)
-        new_utility.rate_classes.append(new_rate_class)
-        s.add_all([new_utility, new_rate_class])
-
     def get_service_address(self, account):
         return UtilBillLoader(Session()).get_last_real_utilbill(
             account, end=datetime.utcnow()).service_address.to_dict()
@@ -482,7 +330,7 @@ class UtilbillProcessor(object):
             for charge in utilbill.charges:
                 session.delete(charge)
             utilbill.charges = []
-            utilbill.charges = self.rate_structure_dao. \
+            utilbill.charges = self.pricing_model. \
                 get_predicted_charges(utilbill)
         return self.compute_utility_bill(utilbill_id)
 
@@ -495,6 +343,190 @@ class UtilbillProcessor(object):
         if utilbill.editable():
             utilbill.compute_charges()
         return utilbill
+
+    ############################################################################
+    # CRUD methods for child objects of UtilBill
+    ############################################################################
+
+    def new_register(self, utilbill_id, **register_kwargs):
+        """Creates a new register for the utility bill having the specified id
+        "row" argument is a dictionary but keys other than
+        "meter_id" and "register_id" are ignored.
+        """
+        session = Session()
+        utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
+        if utility_bill.editable():
+            r = Register(
+                utility_bill,
+                description=register_kwargs.get(
+                    'description',"Insert description"),
+                identifier=register_kwargs.get(
+                    'identifier', "Insert register ID here"),
+                unit=register_kwargs.get('unit', 'therms'),
+                estimated=register_kwargs.get('estimated', False),
+                reg_type=register_kwargs.get('reg_type', "total"),
+                active_periods=register_kwargs.get('active_periods', None),
+                meter_identifier=register_kwargs.get('meter_identifier', ""),
+                quantity=register_kwargs.get('quantity', 0),
+                register_binding=register_kwargs.get(
+                    'register_binding', "Insert register binding here")
+            )
+            session.add(r)
+            session.flush()
+            return r
+
+    def update_register(self, register_id, rows):
+        """Updates fields in the register given by 'register_id'
+        """
+        self.logger.info("Running Process.update_register %s" % register_id)
+        session = Session()
+
+        #Register to be updated
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
+
+        for k in ['description', 'quantity', 'unit',
+                  'identifier', 'estimated', 'reg_type', 'register_binding',
+                  'meter_identifier']:
+            val = rows.get(k, getattr(register, k))
+            self.logger.debug("Setting attribute %s on register %s to %s" %
+                              (k, register.id, val))
+            setattr(register, k, val)
+        if 'active_periods' in rows and rows['active_periods'] is not None:
+            active_periods_str = json.dumps(rows['active_periods'])
+            self.logger.debug("Setting attribute active_periods on register"
+                              " %s to %s" % (register.id, active_periods_str))
+            register.active_periods = active_periods_str
+        self.logger.debug("Commiting changes to register %s" % register.id)
+        self.compute_utility_bill(register.utilbill_id)
+        return register
+
+    def delete_register(self, register_id):
+        self.logger.info("Running Process.delete_register %s" %
+                         register_id)
+        session = Session()
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
+        utilbill_id = register.utilbill_id
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            session.delete(register)
+            session.commit()
+            self.compute_utility_bill(utilbill_id)
+
+    def add_charge(self, utilbill_id, **charge_kwargs):
+        """Add a new charge to the given utility bill. charge_kwargs are
+        passed as keyword arguments to the charge"""
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            charge = utilbill.add_charge(**charge_kwargs)
+            self.compute_utility_bill(utilbill_id)
+        return charge
+
+    def update_charge(self, fields, charge_id=None, utilbill_id=None,
+                      rsi_binding=None):
+        """Modify the charge given by charge_id
+        by setting key-value pairs to match the dictionary 'fields'."""
+        assert charge_id or utilbill_id and rsi_binding
+        session = Session()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+            if charge_id else \
+            session.query(Charge). \
+                filter(Charge.utilbill_id == utilbill_id). \
+                filter(Charge.rsi_binding == rsi_binding).one()
+        utilbill = self._get_utilbill(charge.utilbill.id)
+        if utilbill.editable():
+            for k, v in fields.iteritems():
+                if k not in Charge.column_names():
+                    raise AttributeError("Charge has no attribute '%s'" % k)
+                setattr(charge, k, v)
+            session.flush()
+            self.compute_utility_bill(charge.utilbill.id)
+        return charge
+
+    def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
+        """Delete the charge given by 'rsi_binding' in the given utility
+        bill."""
+        assert charge_id or utilbill_id and rsi_binding
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            session = Session()
+            if charge_id:
+                charge = session.query(Charge) \
+                    .filter(Charge.id == charge_id).one()
+            else:
+                charge = session.query(Charge) \
+                    .filter(Charge.utilbill_id == utilbill_id) \
+                    .filter(Charge.rsi_binding == rsi_binding).one()
+            session.delete(charge)
+            self.compute_utility_bill(charge.utilbill_id)
+            session.expire(charge.utilbill)
+
+
+    ############################################################################
+    # CRUD methods for objects that are not children of UtilBill
+    # TODO move somewhere else (or delete if unnecessary)
+    ############################################################################
+
+    def get_create_utility(self, name):
+        session = Session()
+        try:
+            result = session.query(Utility).filter_by(name=name).one()
+        except NoResultFound:
+            result = Utility(name, Address('', '', '', '', ''))
+        return result
+
+    def get_create_supplier(self, name):
+        session = Session()
+        try:
+            result = session.query(Supplier).filter_by(name=name).one()
+        except NoResultFound:
+            result = Supplier(name, Address('', '', '', '', ''))
+        return result
+
+    def get_create_rate_class(self, rate_class_name, utility):
+        assert isinstance(utility, Utility)
+        session = Session()
+        try:
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
+        except NoResultFound:
+            result = RateClass(rate_class_name, utility)
+        return result
+
+    def create_utility(self, name):
+        '''Create and return a new Utility with the given name. A new
+        RateClass for the utility is also added.
+        '''
+        s = Session()
+        new_utility = Utility(name=name, address=Address())
+        new_rate_class = RateClass('Unknown rate class for %s' % name)
+        new_utility.rate_classes.append(new_rate_class)
+        s.add_all([new_utility, new_rate_class])
+
+
+    ############################################################################
+    # "view" methods: return JSON dictionaries for ReeBill UI
+    # TODO: move to another file in reebill/
+    ############################################################################
+
+    def get_utilbill_charges_json(self, utilbill_id):
+        """Returns a list of dictionaries of charges for the utility bill given
+        by  'utilbill_id' (MySQL id)."""
+        session = Session()
+        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
+        return [charge.column_dict() for charge in utilbill.charges]
+
+    def get_registers_json(self, utilbill_id):
+        """Returns a dictionary of register information for the utility bill
+        having the specified utilbill_id."""
+        l = []
+        session = Session()
+        for r in session.query(Register).join(UtilBill,
+                                              Register.utilbill_id == UtilBill.id). \
+                filter(UtilBill.id == utilbill_id).all():
+            l.append(r.column_dict())
+        return l
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
