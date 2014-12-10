@@ -81,13 +81,13 @@ class ReebillFileHandler(object):
         (the file may not exist).
         '''
         return ReebillFileHandler.FILE_NAME_FORMAT % dict(
-                account=reebill.customer.account, sequence=reebill.sequence)
+                account=reebill.get_account(), sequence=reebill.sequence)
 
     def get_file_path(self, reebill):
         '''Return full path to the PDF file associated with the given
         :class:`ReeBill` (the file may not exist).
         '''
-        return os.path.join(self._pdf_dir_path, reebill.customer.account,
+        return os.path.join(self._pdf_dir_path, reebill.get_account(),
                 self.get_file_name(reebill))
 
     def delete_file(self, reebill, ignore_missing=False):
@@ -118,7 +118,7 @@ class ReebillFileHandler(object):
             return (register.meter_identifier, register.identifier,
                     register.description)
         return {
-            'account': reebill.customer.account,
+            'account': reebill.get_account(),
             'sequence': str(reebill.sequence),
             'begin_period': reebill.utilbills[0].period_start,
             'manual_adjustment': reebill.manual_adjustment,
@@ -209,7 +209,7 @@ class ReebillFileHandler(object):
         ThermalBillDoc().render([document], dir_path,
                 file_name, self._template_dir_path,
                 self._get_skin_directory_name_for_account(
-                        reebill.customer.account))
+                        reebill.get_account()))
 
 class BillDoc(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """

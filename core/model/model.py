@@ -11,15 +11,13 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql.expression import desc
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-import traceback
-from billing.exc import NoSuchBillException, FormulaSyntaxError, ProcessedBillError
+from billing.exc import FormulaSyntaxError
 
 from billing.exc import FormulaError
 from exc import DatabaseError
@@ -38,7 +36,8 @@ __all__ = [
     'RateClass',
     'Utility',
     'UtilBill',
-    'UtilBillLoader',
+    'UtilityAccount',
+    'ReeBillCustomer',
     'check_schema_revision',
 ]
 
@@ -74,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '4bc721447593'
+_schema_revision = '32b0a5fe5074'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -199,14 +198,12 @@ class Company(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
 
     name = Column(String(1000))
-    guid = Column(String(36))
     discriminator = Column(String(50))
     address = relationship("Address")
 
-    def __init__(self, name, address, guid):
+    def __init__(self, name, address):
         self.name = name
         self.address = address
-        self.guid = guid
 
     __mapper_args__ = {'polymorphic_on': discriminator}
 
@@ -218,8 +215,8 @@ class Supplier(Company):
     company_id = Column(Integer, ForeignKey('company.id'))
     name = Column(String(1000), nullable=False)
 
-    def __init__(self, name, address, guid):
-        super(Supplier, self).__init__(name, address, guid)
+    def __init__(self, name, address):
+        super(Supplier, self).__init__(name, address)
         self.name = name
 
 
@@ -228,10 +225,9 @@ class Utility(Company):
 
     #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
 
-    def __init__(self, name, address, guid, rate_classes=[]):
+    def __init__(self, name, address):
         """Construct a :class:`Utility` instance"""
-        assert rate_classes == []
-        super(Utility, self).__init__(name, address, guid)
+        super(Utility, self).__init__(name, address)
 
 
 class RateClass(Base):
@@ -246,6 +242,70 @@ class RateClass(Base):
     def __init__(self, name, utility):
         self.name = name
         self.utility = utility
+
+
+class ReeBillCustomer(Base):
+    __tablename__ = 'reebill_customer'
+
+    SERVICE_TYPES = ('thermal', 'pv')
+    # this is here because there doesn't seem to be a way to get a list of
+    # possible values from a SQLAlchemy.types.Enum
+
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(45))
+    discountrate = Column(Float(asdecimal=False), nullable=False)
+    latechargerate = Column(Float(asdecimal=False), nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
+    service = Column(Enum(*SERVICE_TYPES), nullable=False)
+    utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
+
+    utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
+        primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
+
+
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
+    def __init__(self, name, discount_rate, late_charge_rate,
+                service, bill_email_recipient, utility_account):
+        """Construct a new :class:`.Customer`.
+        :param name: The name of the utility_account.
+        :param account:
+        :param discount_rate:
+        :param late_charge_rate:
+        :param bill_email_recipient: The utility_account receiving email
+        address for skyline-generated bills
+        :fb_utility: The :class:`.Utility` to be assigned to the the first
+        `UtilityBill` associated with this utility_account.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this utility_account
+        :fb_rate_class": "first bill rate class" (see fb_utility_name)
+        :fb_billing_address: (as previous)
+        :fb_service address: (as previous)
+        """
+        self.name = name
+        self.discountrate = discount_rate
+        self.latechargerate = late_charge_rate
+        self.bill_email_recipient = bill_email_recipient
+        self.service = service
+        self.utility_account = utility_account
+
+    def __repr__(self):
+        return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
+               % (self.name, self.discountrate)
 
 
 class Customer(Base):
@@ -284,7 +344,7 @@ class Customer(Base):
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
-    primaryjoin='Customer.fb_service_address_id==Address.id')
+        primaryjoin='Customer.fb_service_address_id==Address.id')
 
     fb_utility = relationship('Utility')
 
@@ -334,18 +394,89 @@ class Customer(Base):
                % (self.name, self.account, self.discountrate)
 
 
+class UtilityAccount(Base):
+    __tablename__ = 'utility_account'
+
+    id = Column(Integer, primary_key = True)
+    name = Column(String(45))
+
+    # account number used by the utility, shown on utility bills and
+    # the utility's website. (also used as an inter-database foreign key for
+    # referring to UtilityAccounts from other databases, because it can be
+    # reasonably be expected to be permanent and unique.)
+    account_number = Column(String(1000), nullable=False)
+
+    # Nextility account number, which is currently only used for ReeBill.
+    # this is shown to customers on their solar energy bills from Nextility.
+    account = Column(String(45), nullable=False)
+
+    # "fb_" = to be assigned to the utility_account's first-created utility bill
+    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+    fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+        nullable=False)
+    fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+    fb_service_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
+        nullable=False)
+    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+
+    fb_supplier = relationship('Supplier', uselist=False,
+        primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
+    fb_rate_class = relationship('RateClass', uselist=False,
+        primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
+    fb_billing_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilityAccount.fb_billing_address_id==Address.id')
+    fb_service_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
+    fb_utility = relationship('Utility')
+
+    def __init__(self, name, account, fb_utility, fb_supplier,
+                fb_rate_class, fb_billing_address, fb_service_address,
+                account_number=''):
+        """Construct a new :class:`.Customer`.
+        :param name: The name of the utility_account.
+        :param account:
+        :fb_utility: The :class:`.Utility` to be assigned to the the first
+        `UtilityBill` associated with this utility_account.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this utility_account
+        :fb_rate_class": "first bill rate class" (see fb_utility_name)
+        :fb_billing_address: (as previous)
+        :fb_service address: (as previous)
+        """
+        self.name = name
+        self.account_number = account_number
+        self.account = account
+        self.fb_utility = fb_utility
+        self.fb_supplier = fb_supplier
+        self.fb_rate_class = fb_rate_class
+        self.fb_billing_address = fb_billing_address
+        self.fb_service_address = fb_service_address
+
+
+    def __repr__(self):
+        return '<utility_account(name=%s, account=%s)>' \
+               % (self.name, self.account)
+
+
 class UtilBill(Base):
     __tablename__ = 'utilbill'
 
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+
+    # deprecated: do not use
+    customer_id = Column(Integer, ForeignKey('customer.id'))
+
+    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
-    utility_id = Column(Integer, ForeignKey('company.id'),
+    utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=False)
@@ -374,8 +505,19 @@ class UtilBill(Base):
     # downloaded and can't take into account information from other sources.)
     date_scraped = Column(DateTime)
 
+    # deprecated: do not use
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
+
+    # cascade for UtilityAccount relationship does NOT include "save-update"
+    # to allow more control over when UtilBills get added--for example,
+    # when uploading a new utility bill, the new UtilBill object should only
+    # be added to the session after the file upload succeeded (because in a
+    # test, there is no way to check that the UtilBill was not inserted into
+    # the database because the transaction was rolled back).
+    utility_account = relationship("UtilityAccount", backref=backref('utilbill',
+            order_by=id, cascade='delete'))
+
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
@@ -398,7 +540,10 @@ class UtilBill(Base):
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
         as a utility bill period: "reasonable" means start < end and (end -
-        start) < 1 year.'''
+        start) < 1 year. Does nothing if either period date is None.
+        '''
+        if None in (start, end):
+            return
         if start >= end:
             raise ValueError('Utility bill start date must precede end')
         if (end - start).days > 365:
@@ -416,52 +561,56 @@ class UtilBill(Base):
     # many bills there are in a given period of time), and if it does exist,
     # its actual dates will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
-    Complete, UtilityEstimated, Estimated, Hypothetical = range(4)
+    Complete, UtilityEstimated, Estimated = range(3)
 
     # human-readable names for utilbill states (used in UI)
     _state_descriptions = {
         Complete: 'Final',
         UtilityEstimated: 'Utility Estimated',
         Estimated: 'Estimated',
-        Hypothetical: 'Missing'
     }
 
     # TODO remove uprs_id, doc_id
-    def __init__(self, customer, state, service, utility, supplier, rate_class,
-                 billing_address, service_address, account_number='',
-                 period_start=None, period_end=None, doc_id=None, uprs_id=None,
+    def __init__(self, utility_account, state, service, utility, supplier, rate_class,
+                 billing_address, service_address, period_start=None,
+                 period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest=None):
+                 reebill=None, sha256_hexdigest=''):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
-        self.customer = customer
+        self.utility_account = utility_account
         self.state = state
         self.service = service
         self.utility = utility
         self.rate_class = rate_class
+        self.supplier = supplier
         self.billing_address = billing_address
         self.service_address = service_address
         self.period_start = period_start
         self.period_end = period_end
         self.target_total = target_total
         self.date_received = date_received
-        self.account_number = account_number
+        self.account_number = utility_account.account_number
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+
+        # TODO: empty string as default value for sha256_hexdigest is
+        # probably a bad idea. if we are writing tests that involve puttint
+        # UtilBills in an actual database then we should probably have actual
+        # files for them.
         self.sha256_hexdigest = sha256_hexdigest
-        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
 
     def __repr__(self):
-        return ('<UtilBill(customer=<%s>, service=%s, period_start=%s, '
-                'period_end=%s, state=%s, %s reebills)>') % (
-            self.customer.account, self.service, self.period_start,
-            self.period_end, self.state, len(self._utilbill_reebills))
+        return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
+                'period_end=%s, state=%s)>') % (
+            self.utility_account.account, self.service, self.period_start,
+            self.period_end, self.state)
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
@@ -571,19 +720,22 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        return dict(super(UtilBill, self).column_dict().items() +
-                    [('account', self.customer.account),
+        result = dict(super(UtilBill, self).column_dict().items() +
+                    [('account', self.utility_account.account),
                      ('service', 'Unknown' if self.service is None
                                            else self.service.capitalize()),
                      ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges() if self.state <
-                                        UtilBill.Hypothetical else None),
+                     ('computed_total', self.get_total_charges()),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
-                     ('utility', self.utility.column_dict()),
-                     ('supplier', self.supplier.column_dict()),
-                     ('rate_class', self.rate_class.column_dict()),
+                     ('utility', (self.utility.column_dict() if self.utility
+                                  else None)),
+                     ('supplier', (self.supplier.column_dict() if
+                                   self.supplier else None)),
+                     ('rate_class', (self.rate_class.column_dict() if
+                                     self.rate_class else None)),
                      ('state', self.state_name())])
+        return result
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -674,11 +826,11 @@ class Charge(Base):
 
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
-    quantity = Column(Float, nullable=False)
+    quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
-    total = Column(Float, nullable=False)
+    total = Column(Float)
     error = Column(String(255))
     # description of error in computing the quantity and/or rate formula.
     # either this or quantity and rate should be null at any given time,
@@ -812,59 +964,3 @@ class Charge(Base):
             utility = Utility(utility_name, Address('', '', '', '', ''))
         return utility
 
-class UtilBillLoader(object):
-    '''Data access object for utility bills, used to hide database details
-    from other classes so they can be more easily tested.
-    '''
-    def __init__(self, session):
-        ''''session': SQLAlchemy session object to be used for database
-        queries.
-        '''
-        self._session = session
-
-    def get_utilbill_by_id(self, utilbill_id):
-        '''Return utilbill with the given id.'''
-        return self._session.query(UtilBill).filter_by(id=utilbill_id).one()
-
-    def load_real_utilbills(self, **kwargs):
-        '''Returns a cursor of UtilBill objects matching the criteria given
-        by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
-        state Estimated or lower) are included.
-        '''
-        cursor = self._session.query(UtilBill).filter(
-                UtilBill.state <= UtilBill.Estimated)
-        for key, value in kwargs.iteritems():
-            cursor = cursor.filter(getattr(UtilBill, key) == value)
-        return cursor
-
-    def get_last_real_utilbill(self, account, end, service=None, utility=None,
-                rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill whose
-        end date is before/on 'end', optionally with the given service,
-        utility, rate class, and 'processed' status.
-        '''
-        customer = self._session.query(Customer).filter_by(account=account) \
-            .one()
-        cursor = self._session.query(UtilBill) \
-            .filter(UtilBill.customer == customer) \
-            .filter(UtilBill.state != UtilBill.Hypothetical) \
-            .filter(UtilBill.period_end <= end)
-        if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
-        if utility is not None:
-            cursor = cursor.filter(UtilBill.utility == utility)
-        if rate_class is not None:
-            cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        if processed is not None:
-            assert isinstance(processed, bool)
-            cursor = cursor.filter(UtilBill.processed == processed)
-        result = cursor.order_by(desc(UtilBill.period_end)).first()
-        if result is None:
-            raise NoSuchBillException
-        return result
-
-    def count_utilbills_with_hash(self, hash):
-        '''Return the number of utility bills having the given SHA-256 hash.
-        '''
-        return self._session.query(UtilBill).filter_by(
-                sha256_hexdigest=hash).count()
