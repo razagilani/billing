@@ -388,6 +388,8 @@ def get_key_names_for_account(account_id):
     return [BillFileHandler.get_key_name_for_utilbill(u) for u in utilbills]
 
 def restore_files_s3(args):
+    # Restore keys from one S3 bucket to another. This copies
+    # keys between buckets without having to download locally
     source_conn = S3Connection(args.access_key, args.secret_key)
     dest_conn = S3Connection(args.destination_access_key,
                          args.destination_secret_key)
@@ -409,6 +411,9 @@ def restore_files_s3(args):
             print 'Destination already has key {0}, not copying'.format(key.name)
 
 def restore_files(args):
+    # Restores keys from one S3 bucket to a bucket with a different connection.
+    # Copies files down, then uploads them to another bucket since boto can't
+    # copy directly between buckets with different connections
     source_conn = S3Connection(args.access_key, args.secret_key)
     dest_conn = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                          config.get('aws_s3', 'aws_secret_access_key'),
