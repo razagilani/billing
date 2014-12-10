@@ -325,7 +325,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.rate_structure_dao = pricing.FuzzyPricingModel(utilbill_loader,
+        self.pricing_model = pricing.FuzzyPricingModel(utilbill_loader,
                                                             logger=logger)
 
         # TODO: 64956642 do not hard code nexus names
@@ -368,7 +368,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         journal_dao = journal.JournalDAO()
 
         self.utilbill_processor = UtilbillProcessor(
-            self.rate_structure_dao, self.billupload, self.nexus_util,
+            self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
         self.reebill_processor = ReebillProcessor(
             self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,

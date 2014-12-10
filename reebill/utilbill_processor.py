@@ -25,9 +25,9 @@ class UtilbillProcessor(object):
     "core" (not "reebill") so the "utility bill processing" methods can be used
     outside of ReeBill.
     '''
-    def __init__(self, rate_structure_dao, bill_file_handler, nexus_util,
+    def __init__(self, pricing_model, bill_file_handler, nexus_util,
                  logger=None):
-        self.rate_structure_dao = rate_structure_dao
+        self.pricing_model = pricing_model
         self.bill_file_handler = bill_file_handler
         self.nexus_util = nexus_util
         self.logger = logger
@@ -175,7 +175,7 @@ class UtilbillProcessor(object):
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow().date())
 
-        new_utilbill.charges = self.rate_structure_dao. \
+        new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
         for register in predecessor.registers if predecessor else []:
             # no need to append this Register to new_utilbill.Registers because
@@ -313,7 +313,7 @@ class UtilbillProcessor(object):
             for charge in utilbill.charges:
                 session.delete(charge)
             utilbill.charges = []
-            utilbill.charges = self.rate_structure_dao. \
+            utilbill.charges = self.pricing_model. \
                 get_predicted_charges(utilbill)
         return self.compute_utility_bill(utilbill_id)
 
