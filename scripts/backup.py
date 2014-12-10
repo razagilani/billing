@@ -18,8 +18,13 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
 from billing import init_config
+from billing import init_model
+
+from billing.core.bill_file_handler import BillFileHandler
+from billing.core.model import Session, UtilBillLoader
 
 init_config()
+init_model()
 from billing import config
 
 # all backups are stored with the same key name. a new version is created every
@@ -34,6 +39,8 @@ MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
+
+ACCOUNTS_LIST = [10]
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
@@ -371,35 +378,46 @@ def download(args):
         key.get_contents_to_filename(os.path.join(
                 local_dir_absolute_path, file_name))
 
+def get_key_names_for_account(account_id):
+    session = Session()
+    ubl = UtilBillLoader(session)
+    utilbills = ubl.get_utilbills_for_account_id(account_id)
+    print utilbills[0].sha256_hexdigest
+    return [BillFileHandler.get_key_name_for_utilbill(u) for u in utilbills]
+
 def restore_files_s3(args):
-    # TODO Pull destination bucket out of billing config file
     source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
     dest_bucket = get_bucket(args.destination, args.destination_access_key, args.destination_secret_key)
-    count = 0
-    for key in source_bucket.list():
-        if args.limit and count >= args.limit:
-            return
-        if dest_bucket.get_key(key.name) == None:
-            print 'Copying key {0}'.format(key.name)
+    if args.limit:
+        for account in ACCOUNTS_LIST:
+            key_names = [key_name for key_name in get_key_names_for_account(account)]
+    else:
+        key_names = [key.name for key in source_bucket.list()]
+
+    for key_name in key_names:
+        if dest_bucket.get_key(key_name) == None:
+            print 'Copying key {0}'.format(key_name)
+            key = source_bucket.get_key(key_name)
             key.copy(args.destination, key.name)
         else:
             print 'Destination already has key {0}, not copying'.format(key.name)
-        count += 1
 
 def restore_files_local(args):
-    # TODO Set a limit on the number of files to download
     source_bucket = get_bucket(args.source, args.access_key, args.secret_key)
     dest_dir = args.local_dir
-    count = 0
-    for key in source_bucket.list():
-        if args.limit and count >= args.limit:
-            return
-        if not os.path.isfile(os.path.join(dest_dir, key.name)):
-            print 'Copying key {0}'.format(key.name)
-            key.get_contents_to_filename(os.path.join(dest_dir, key.name))
+    if args.limit:
+        for account in ACCOUNTS_LIST:
+            key_names = [key_name for key_name in get_key_names_for_account(account)]
+    else:
+        key_names = [key.name for key in source_bucket.list()]
+
+    for key_name in key_names:
+        if not os.path.isfile(os.path.join(dest_dir, key_name)):
+            print 'Copying key {0}'.format(key_name)
+            key = source_bucket.get_key(key_name)
+            key.get_contents_to_filename(os.path.join(dest_dir, key_name))
         else:
-            print 'Destination has key {0}, not copying'.format(key.name)
-        count += 1
+            print 'Destination already has key {0}, not copying'.format(key.name)
 
 def backup_local(args):
     backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))
@@ -466,9 +484,9 @@ if __name__ == '__main__':
     for parser in (restore_files_s3_parser, restore_files_local_parser):
         parser.add_argument('source', type=str,
                 help=('source bucket to restore files from'))
-        parser.add_argument('--limit', type=int,
-                default=None,
-                help=('limit the number of files to restore to the given location'))
+        parser.add_argument('--limit', action='store_true',
+                default=False,
+                help=('limit the files being restored to specific set of accounts'))
 
     for parser in (restore_files_s3_parser,):
         parser.add_argument("--destination-access-key", type=str,
