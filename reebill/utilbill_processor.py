@@ -504,6 +504,16 @@ class UtilbillProcessor(object):
         new_utility.rate_classes.append(new_rate_class)
         s.add_all([new_utility, new_rate_class])
 
+    def update_utility_account_number(self, account, utility_account_number):
+        session = Session()
+        try:
+            utility_account = session.query(UtilityAccount).\
+                filter(UtilityAccount.account==account).one()
+        except NoResultFound:
+            raise
+        utility_account.account_number = utility_account_number
+        return utility_account
+
 
     ############################################################################
     # "view" methods: return JSON dictionaries for ReeBill UI
