@@ -778,7 +778,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
                                           'rate_class':
-                                              self.utilbill_processor.get_rate_class('Test Rate Class Template').column_dict(),
+                                              self.utilbill_processor.get_rate_class('Test Rate Class Template').name,
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
@@ -803,7 +803,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'processed': 0,
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Test Rate Class Template').
-                                            column_dict(),
+                                            name,
                                           'service': 'Gas', 'state': 'Final',
                                           'total_charges': 0.0,
                                           'utility': self.utilbill_processor.
