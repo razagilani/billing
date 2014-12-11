@@ -32,6 +32,12 @@ class DuplicateFileError(BillingError):
     '''
     pass
 
+class AltitudeDuplicateError(BillingError):
+    '''Attempt to create a new entity from Altitude (e.g. Utility,
+    Supplier) that already exists.
+    '''
+    pass
+
 class NoSuchBillException(BillingError):
     pass
 
