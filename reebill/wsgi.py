@@ -351,7 +351,8 @@ class AccountsResource(RESTResource):
         self.reebill_processor.create_new_account(
                 row['account'], row['name'], row['service_type'],
                 float(row['discount_rate']), float(row['late_charge_rate']),
-                billing_address, service_address, row['template_account'])
+                billing_address, service_address, row['template_account'],
+                row['utility_account_number'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
@@ -359,6 +360,14 @@ class AccountsResource(RESTResource):
         count, result = self.reebill_processor.list_account_status(row['account'])
         print count, result
         return True, {'rows': result, 'results': count}
+
+    def handle_put(self, *vpath, **params):
+        """ Handles the updates to existing account
+        """
+        row = cherrypy.request.json
+        self.utilbill_processor.update_utility_account_number(row['account'],
+                                                              row['utility_account_number'])
+        return True, {}
 
 
 class IssuableReebills(RESTResource):
