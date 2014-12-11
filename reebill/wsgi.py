@@ -5,6 +5,8 @@ from billing import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
+from core.utilbill_loader import UtilBillLoader
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -634,36 +636,17 @@ class UtilBillResource(RESTResource):
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
             result = ub.column_dict()
 
-        elif action == 'supplier':
-            update_args = {'supplier': row.pop('supplier')}
+        elif action == '': 
             result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id, **update_args).column_dict()
-
-        elif action == 'utility':
-            update_args = {'utility': row.pop('utility')}
-            result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id, **update_args).column_dict()
-
-        elif action == 'rate_class':
-            update_args = {'rate_class': row.pop('rate_class')}
-            result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id, **update_args).column_dict()
-
-        elif action == '':
-            # convert JSON key/value pairs into arguments for
-            # Process.update_utilbill_metadata below
-            update_args = {}
-            for k, v in row.iteritems():
-                if k in ('period_start', 'period_end'):
-                    update_args[k] = datetime.strptime(
-                        v, ISO_8601_DATE).date()
-                elif k == 'service':
-                    update_args[k] = v.lower()
-                elif k in ('target_total', 'processed'):
-                    update_args[k] = v
-
-            result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id, **update_args).column_dict()
+                utilbill_id,
+                period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date(),
+                period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date(),
+                service=row['service'].lower(),
+                target_total=row['target_total'],
+                processed=row['processed'],
+                rate_class=row['rate_class'],
+                utility=row['utility'],
+                supplier=row['supplier']).column_dict()
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
