@@ -123,6 +123,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '1',
             'codename': '',
             'lastperiodend': None,
             'primusname': '1785 Massachusetts Ave.',
@@ -137,6 +138,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '123 Test Street, Test City, XX',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '',
             'codename': '',
             'lastperiodend': date(2012, 1, 31),
             'primusname': '1788 Massachusetts Ave.',
@@ -151,6 +153,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '123 Test Street, Test City, XX',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '2',
             'codename': '',
             'lastperiodend': date(2012, 2, 28),
             'primusname': '1787 Massachusetts Ave.',
@@ -170,6 +173,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '1',
             'codename': '',
             'lastperiodend': None,
             'primusname': '1785 Massachusetts Ave.',
@@ -844,7 +848,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             }
         self.reebill_processor.create_new_account('55555', 'Another New Account',
                                         'thermal', 0.6, 0.2, billing_address,
-                                        service_address, '99999')
+                                        service_address, '99999', '10093')
         self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 
