@@ -635,19 +635,7 @@ class UtilBillResource(RESTResource):
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
             result = ub.column_dict()
 
-        elif action == '':
-            # convert JSON key/value pairs into arguments for
-            # Process.update_utilbill_metadata below
-            '''update_args = {}
-            for k, v in row.iteritems():
-                if k in ('period_start', 'period_end'):
-                    update_args[k] = datetime.strptime(
-                        v, ISO_8601_DATE).date()
-                elif k == 'service':
-                    update_args[k] = v.lower()
-                elif k in ('target_total', 'processed'):
-                    update_args[k] = v'''
-
+        elif action == '': 
             result = self.utilbill_processor.update_utilbill_metadata(
                 utilbill_id,
                 period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date(),
