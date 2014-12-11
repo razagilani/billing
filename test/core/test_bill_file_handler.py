@@ -37,7 +37,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.file = StringIO('test_file_data')
         self.file_hash = \
             'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
-        self.key_name = 'utilbill/' + self.file_hash
+        self.key_name = self.file_hash + '.pdf'
         self.utilbill = Mock(autospec=UtilBill)
         self.utilbill.sha256_hexdigest = self.file_hash
         self.utilbill.state = UtilBill.Complete
@@ -47,8 +47,8 @@ class BillFileHandlerTest(unittest.TestCase):
 
     def test_get_s3_url(self):
         self.utilbill.state = UtilBill.Complete
-        expected = 'https://example.com/%s/utilbill/%s' % (self.bucket.name,
-                                                          self.file_hash)
+        expected = 'https://example.com/%s/%s' % (
+            self.bucket.name, self.file_hash + '.pdf')
         self.assertEqual(expected, self.bfh.get_s3_url(self.utilbill))
 
         self.utilbill.state = UtilBill.Estimated
