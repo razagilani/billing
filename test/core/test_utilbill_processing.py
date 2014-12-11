@@ -38,7 +38,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # which was created in setUp
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '100000')
+            service_address, '100000', '10092')
 
         # Disabled this test for now since it bypasses the process object
         # customer = self.state_db.get_customer(session, '88888')
@@ -113,16 +113,16 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # exists
         self.assertRaises(ValueError, self.reebill_processor.create_new_account,
             '88888', 'New Account', 'pv', 0.6, 0.2,
-            billing_address, service_address, '99999')
+            billing_address, service_address, '99999', '10092')
 
         # try creating another account when the template account has no
         # utility bills yet
         self.reebill_processor.create_new_account(
             '77777', 'New Account','thermal', 0.6, 0.2, billing_address,
-            service_address, '88888')
+            service_address, '88888', '10092')
         self.reebill_processor.create_new_account(
             '66666', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '77777')
+            service_address, '77777', '10092')
 
         # Try creating a reebill for a new account that has no utility bills
         # uploaded yet
@@ -591,13 +591,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         self.reebill_processor.create_new_account(
             acc_a, 'Customer A', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '10092')
         self.reebill_processor.create_new_account(
             acc_b, 'Customer B', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '10092')
         self.reebill_processor.create_new_account(
             acc_c, 'Customer C', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '10092')
 
         # new customers also need to be in nexus for
         # 'update_renewable_readings' to

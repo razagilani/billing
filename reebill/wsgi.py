@@ -361,6 +361,14 @@ class AccountsResource(RESTResource):
         print count, result
         return True, {'rows': result, 'results': count}
 
+    def handle_put(self, *vpath, **params):
+        """ Handles the updates to existing account
+        """
+        row = cherrypy.request.json
+        self.utilbill_processor.update_utility_account_number(row['account'],
+                                                              row['utility_account_number'])
+        return True, {}
+
 
 class IssuableReebills(RESTResource):
 
