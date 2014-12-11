@@ -552,7 +552,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'processed': 0,
                                           'account': '99999',
                                           'reebills': []
-                                      }, data[0])
+                                      }, data[1])
         self.assertEqual(100, utilbill.target_total)
         self.assertEqual(the_address, utilbill.service_address)
 
