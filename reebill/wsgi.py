@@ -351,7 +351,8 @@ class AccountsResource(RESTResource):
         self.reebill_processor.create_new_account(
                 row['account'], row['name'], row['service_type'],
                 float(row['discount_rate']), float(row['late_charge_rate']),
-                billing_address, service_address, row['template_account'])
+                billing_address, service_address, row['template_account'],
+                row['utility_account_number'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
