@@ -31,9 +31,6 @@ def upgrade():
     op.alter_column(u'charge', 'unit',
                existing_type=mysql.ENUM(u'kWh', u'dollars', u'KWD', u'therms', u'MMBTU', u'BTU'),
                nullable=False)
-    op.alter_column(u'company', 'guid',
-               existing_type=mysql.VARCHAR(length=36),
-               nullable=True)
     op.alter_column(u'payment', 'date_applied',
                existing_type=mysql.DATETIME(),
                nullable=False)

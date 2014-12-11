@@ -132,8 +132,7 @@ def create_utilities(session):
     bill_utilities = session.execute("select distinct utility from utilbill");
     for bill_utility in bill_utilities:
         empty_address = Address('', '', '', '', '')
-        empty_guid = ''
-        utility_company = Utility(bill_utility['utility'], empty_address, empty_guid)
+        utility_company = Utility(bill_utility['utility'], empty_address)
         session.add(utility_company)
     session.flush()
     session.commit()
@@ -226,7 +225,7 @@ def set_fb_utility_id(session):
 
 def set_supplier_ids(session):
     for company in session.query(Company).all():
-        c_supplier = Supplier(company.name, company.address, company.guid)
+        c_supplier = Supplier(company.name, company.address)
         session.add(c_supplier)
         session.flush()
         session.refresh(c_supplier)
@@ -350,10 +349,11 @@ def upgrade():
     log.info('Comitting to Database')
     session.commit()
 
-    log.info('Upgrading to schema 4bc721447593')
+    log.info('Upgrading to schema 32b0a5fe5074')
     alembic_upgrade('32b0a5fe5074')
 
-
+    log.info('Upgrading to schema 28552fdf9f48')
+    alembic_upgrade('28552fdf9f48')
 
     log.info('Upgrade Complete')
 
