@@ -5,6 +5,8 @@ from billing import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
+from core.utilbill_loader import UtilBillLoader
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -32,7 +34,7 @@ from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import state, fetch_bill_data as fbd
 from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Session, UtilBillLoader
+from billing.core.model import Session
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
