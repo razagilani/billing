@@ -8,7 +8,7 @@ import json
 import pika
 from pika.exceptions import ChannelClosed
 
-from billing.core.amqp_exchange import consume_utilbill_file
+from billing.core.amqp_exchange import BillingHandler, ConsumeUtilityGuidHandler
 from billing.core.model import Session, Utility
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.altitude import AltitudeUtility, AltitudeGUID
