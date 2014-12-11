@@ -63,9 +63,9 @@ Ext.define('ReeBill.view.Viewport', {
                     items: [{
                         xtype: 'accounts',
                         id: 'accountsGrid'
-//                    },{
-//                        xtype: 'accountForm',
-//                        id: 'newAccountForm'
+                    },{
+                        xtype: 'accountForm',
+                        id: 'newAccountForm'
                     }]
                 },{
                     xtype: 'panel',
