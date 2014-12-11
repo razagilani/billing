@@ -45,7 +45,7 @@ class UtilbillMessageSchema(Schema):
     utility_account_number = String()
     utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
     sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
-    #due_date = String()
+    due_date = String()
     total = TotalValidator()
     service_address = String()
 
@@ -66,11 +66,16 @@ class BillingHandler(MessageHandler):
         self.pricing_model = FuzzyPricingModel(
             utilbill_loader,  logger=self.logger
         )
+        # TODO: ugly. maybe put entire url_format in config file.
+        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                'https' if config.get('aws_s3', 'is_secure') is True else
+                'http', config.get('aws_s3', 'host'),
+                config.get('aws_s3', 'port'))
         self.bill_file_handler = BillFileHandler(
             s3_connection, config.get('aws_s3', 'bucket'), utilbill_loader,
             url_format)
         self.nexus_util = NexusUtil(
-            self.config.get('reebill', 'nexus_web_host')
+            config.get('reebill', 'nexus_web_host')
         )
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.bill_file_handler, self.nexus_util,
