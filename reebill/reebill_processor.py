@@ -16,6 +16,18 @@ from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
 class ReebillProcessor(object):
+    ''''Does a mix of the following things:
+    - Operations on reebills: create, delete, compute, etc.
+    etc.
+    - CRUD on child objects of ReeBill that are closely associated
+    with ReeBills, like ReeBillCharges and Readings.
+    - CRUD on Payments.
+    - CRUD on ReeBillCustomers.
+    - Generating JSON data for the ReeBill UI.
+    Each of these things should be separated into its own class (especially
+    the UI-related methods), except maybe the first two can stay in the same
+    class.
+    '''
     def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
                  ree_getter, journal_dao, logger=None):
         self.state_db = state_db

@@ -31,8 +31,8 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        test_utility = Utility('FB Test Utility Name', blank_address, '')
-        test_supplier = Supplier('FB Test Suplier', blank_address, '')
+        test_utility = Utility('FB Test Utility Name', blank_address)
+        test_supplier = Supplier('FB Test Suplier', blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
                             test_utility, test_supplier,
                             RateClass('FB Test Rate Class', test_utility),
@@ -71,8 +71,8 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility('FB Test Utility', Address(), '')
-        fb_test_supplier = Supplier('FB Test Supplier', Address(), '')
+        fb_test_utility = Utility('FB Test Utility', Address())
+        fb_test_supplier = Supplier('FB Test Supplier', Address())
         utility_account1 = UtilityAccount('some_account', '11111',
                 fb_test_utility, fb_test_supplier,
                 RateClass('FB Test Rate Class', fb_test_utility),
@@ -288,8 +288,8 @@ class StateDBTest(TestCaseWithSetup):
         # Attach two utilitybills with out addresses but with rate class to one
         # of the customers, and one utilbill with empty rateclass but with
         # address to the other customer
-        washgas = Utility('washgas', Address(), '')
-        supplier = Supplier('supplier', Address(), '')
+        washgas = Utility('washgas', Address())
+        supplier = Supplier('supplier', Address())
         rateclass2 = RateClass('DC Non Residential Non Heat', washgas)
         rateclass3 = RateClass('', washgas)
         gas_bill_1 = UtilBill(utility_account1, 0, 'gas', washgas, supplier,
