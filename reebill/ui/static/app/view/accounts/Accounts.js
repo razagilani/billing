@@ -25,6 +25,9 @@ Ext.define('ReeBill.view.accounts.Accounts', {
       {
         header: 'Utility Account Number',
         dataIndex: 'utility_account_number',
+        editor: {
+            xtype: 'textfield'
+        },
         width: 100
       },{
         header: 'Codename',
