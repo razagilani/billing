@@ -7,6 +7,12 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
     store: 'AccountsMemory',
+
+    plugins: [
+        Ext.create('Ext.grid.plugin.CellEditing', {
+            clicksToEdit: 2
+        })
+    ],
     
     viewConfig: {
         trackOver: false,
@@ -21,7 +27,15 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         header: 'Account',
         dataIndex: 'account',
         width: 100
-    },{
+    },
+      {
+        header: 'Utility Account Number',
+        dataIndex: 'utility_account_number',
+        editor: {
+            xtype: 'textfield'
+        },
+        width: 100
+      },{
         header: 'Codename',
         dataIndex: 'codename',
         width: 120
