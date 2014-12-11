@@ -61,6 +61,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
+            },
+            '#utility_combo':{
+                select: this.handleUtilityComboChanged,
+                focus: this.handleUtilityComboFocus
+            },
+            '#rate_class_combo': {
+                expand: this.handleRateClassExpand
+            },
+            '#supplier_combo': {
+                focus: this.handleSupplierComboFocus
+
             }
         });
 
@@ -242,6 +253,37 @@ Ext.define('ReeBill.controller.UtilityBills', {
         selected.set('processed', !selected.get('processed'));
         var processed = selected.get('processed');
         this.getUtilbillCompute().setDisabled(processed);
+    },
+
+    handleUtilityComboChanged: function(utility_combo, record){
+        var rate_class_store = Ext.getStore("RateClasses");
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter('utility_id', record[0].data.id);
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var utility_store = this.getUtilityBillsStore();
+        selected.set('rate_class', rate_class_store.getAt(0).data.name);
+    },
+
+
+
+    handleRateClassExpand: function(combo, record, index){
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        rate_class_store = Ext.getStore('RateClasses');
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter('utility_id', selected.get('utility').id);
+    },
+
+    handleUtilityComboFocus: function(combo) {
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('utility').name);
+    },
+
+    handleSupplierComboFocus: function(combo) {
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supplier').name);
     }
 
 });
