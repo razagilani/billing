@@ -1,7 +1,5 @@
-from sqlalchemy import desc
 from billing.core.model import UtilBill, UtilityAccount
 from billing.exc import NoSuchBillException
-from reebill.utilbill_processor import U
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
