@@ -9,8 +9,9 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
 
-from billing.core.model import UtilBill, UtilBillLoader
+from billing.core.model import UtilBill
 from billing.core.bill_file_handler import BillFileHandler
+from billing.core.utilbill_loader import UtilBillLoader
 from billing.exc import MissingFileError, DuplicateFileError
 
 
@@ -36,7 +37,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.file = StringIO('test_file_data')
         self.file_hash = \
             'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
-        self.key_name = 'utilbill/' + self.file_hash
+        self.key_name = self.file_hash + '.pdf'
         self.utilbill = Mock(autospec=UtilBill)
         self.utilbill.sha256_hexdigest = self.file_hash
         self.utilbill.state = UtilBill.Complete
@@ -46,8 +47,8 @@ class BillFileHandlerTest(unittest.TestCase):
 
     def test_get_s3_url(self):
         self.utilbill.state = UtilBill.Complete
-        expected = 'https://example.com/%s/utilbill/%s' % (self.bucket.name,
-                                                          self.file_hash)
+        expected = 'https://example.com/%s/%s' % (
+            self.bucket.name, self.file_hash + '.pdf')
         self.assertEqual(expected, self.bfh.get_s3_url(self.utilbill))
 
         self.utilbill.state = UtilBill.Estimated
@@ -83,7 +84,7 @@ class BillFileHandlerTest(unittest.TestCase):
         """The UtilBill should be deleted when delete_utilbill_pdf_from_S3 is
         called, as long as there is only one UtilBill instance persisted
         having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
+        key_name = self.bfh.get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
@@ -103,7 +104,7 @@ class BillFileHandlerTest(unittest.TestCase):
         """The UtilBill should NOT be deleted from s3 when
         delete_utilbill_pdf_from_S3 is called, if there are two UtilBill
         instances persisted having the given sha256_hexdigest"""
-        key_name = self.bfh._get_key_name_for_utilbill(self.utilbill)
+        key_name = self.bfh.get_key_name_for_utilbill(self.utilbill)
 
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
