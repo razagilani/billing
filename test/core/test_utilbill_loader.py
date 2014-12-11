@@ -4,7 +4,8 @@ from datetime import date
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import init_config, init_model
 from billing.core.model import Customer, UtilBill, Session, \
-    Address, UtilBillLoader, Utility, Supplier, RateClass, UtilityAccount
+    Address, Utility, Supplier, RateClass, UtilityAccount
+from billing.core.utilbill_loader import UtilBillLoader
 from billing.exc import NoSuchBillException
 
 
@@ -17,10 +18,10 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        utility =  Utility('Test Utility', Address(), '')
+        utility =  Utility('Test Utility', Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
-                            Supplier('Test Supplier', Address(), ''),
+                            Supplier('Test Supplier', Address()),
                             RateClass('FB Test Rate Class', utility),
                             blank_address, blank_address)
         self.session.add(self.utility_account)
@@ -39,8 +40,8 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         utility_account = self.session.query(UtilityAccount).one()
         washington_gas = utility_account.fb_utility
         supplier = utility_account.fb_supplier
-        pepco = Utility('pepco', Address(), '')
-        other_supplier = Supplier('Other Supplier', Address(), '')
+        pepco = Utility('pepco', Address())
+        other_supplier = Supplier('Other Supplier', Address())
         rateclass1 = RateClass('DC Non Residential Non Heat', washington_gas)
         rateclass2 = RateClass('whatever', pepco)
 
@@ -135,6 +136,37 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='somethingelse'))
         self.assertEqual(2, self.ubl.count_utilbills_with_hash(hash))
+
+    def test_get_utilbills_for_account_id(self):
+        self.assertEqual([], self.ubl.get_utilbills_for_account_id(
+            self.utility_account.id).all())
+
+        other_account = UtilityAccount(
+            'other', '1', self.utility_account.fb_utility,
+            self.utility_account.fb_supplier,
+            self.utility_account.fb_rate_class,
+            self.utility_account.fb_billing_address,
+            self.utility_account.fb_service_address)
+        self.session.add(other_account)
+        bills = [
+            UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
+                     self.utility_account.fb_supplier,
+                     RateClass('DC Non Residential Non Heat', self.utility_account.fb_utility),
+                     Address(), Address(), period_start=date(2000, 3, 1),
+                     period_end=date(2000, 4, 1),
+                     sha256_hexdigest='abc'),
+            UtilBill(other_account, 0, 'gas', self.utility_account.fb_utility,
+                     other_account.fb_supplier,
+                     RateClass('DC Non Residential Non Heat', other_account.fb_utility),
+                     Address(), Address(), period_start=date(2000, 3, 1),
+                     period_end=date(2000, 4, 1),
+                     sha256_hexdigest='def'),
+        ]
+        self.session.add_all(bills)
+        self.assertEqual([bills[0]], self.ubl.get_utilbills_for_account_id(
+            self.utility_account.id).all())
+        self.assertEqual([bills[1]], self.ubl.get_utilbills_for_account_id(
+            other_account.id).all())
 
 if __name__ == '__main__':
     unittest.main()

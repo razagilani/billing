@@ -11,14 +11,13 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql.expression import desc
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import NoSuchBillException, FormulaSyntaxError, ProcessedBillError
+from billing.exc import FormulaSyntaxError
 
 from billing.exc import FormulaError
 from exc import DatabaseError
@@ -37,7 +36,6 @@ __all__ = [
     'RateClass',
     'Utility',
     'UtilBill',
-    'UtilBillLoader',
     'UtilityAccount',
     'ReeBillCustomer',
     'check_schema_revision',
@@ -75,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '32b0a5fe5074'
+_schema_revision = '28552fdf9f48'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -199,15 +197,13 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
 
-    name = Column(String(1000))
-    guid = Column(String(36))
-    discriminator = Column(String(50))
+    name = Column(String(1000), nullable=False)
+    discriminator = Column(String(50), nullable=False)
     address = relationship("Address")
 
-    def __init__(self, name, address, guid):
+    def __init__(self, name, address):
         self.name = name
         self.address = address
-        self.guid = guid
 
     __mapper_args__ = {'polymorphic_on': discriminator}
 
@@ -216,11 +212,11 @@ class Supplier(Company):
     __tablename__ = 'supplier'
     __mapper_args__ = {'polymorphic_identity': 'supplier'}
     id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey('company.id'))
+    company_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     name = Column(String(1000), nullable=False)
 
-    def __init__(self, name, address, guid):
-        super(Supplier, self).__init__(name, address, guid)
+    def __init__(self, name, address):
+        super(Supplier, self).__init__(name, address)
         self.name = name
 
 
@@ -229,17 +225,16 @@ class Utility(Company):
 
     #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
 
-    def __init__(self, name, address, guid, rate_classes=[]):
+    def __init__(self, name, address):
         """Construct a :class:`Utility` instance"""
-        assert rate_classes == []
-        super(Utility, self).__init__(name, address, guid)
+        super(Utility, self).__init__(name, address)
 
 
 class RateClass(Base):
     __tablename__ = 'rate_class'
 
     id = Column(Integer, primary_key=True)
-    utility_id = Column(Integer, ForeignKey('company.id'))
+    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -402,11 +397,18 @@ class Customer(Base):
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
-
     id = Column(Integer, primary_key = True)
     name = Column(String(45))
-    account = Column(String(45), nullable=False)
+
+    # account number used by the utility, shown on utility bills and
+    # the utility's website. (also used as an inter-database foreign key for
+    # referring to UtilityAccounts from other databases, because it can be
+    # reasonably be expected to be permanent and unique.)
     account_number = Column(String(1000), nullable=False)
+
+    # Nextility account number, which is currently only used for ReeBill.
+    # this is shown to customers on their solar energy bills from Nextility.
+    account = Column(String(45), nullable=False)
 
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('company.id'))
@@ -962,59 +964,3 @@ class Charge(Base):
             utility = Utility(utility_name, Address('', '', '', '', ''))
         return utility
 
-class UtilBillLoader(object):
-    '''Data access object for utility bills, used to hide database details
-    from other classes so they can be more easily tested.
-    '''
-    def __init__(self, session):
-        ''''session': SQLAlchemy session object to be used for database
-        queries.
-        '''
-        self._session = session
-
-    def get_utilbill_by_id(self, utilbill_id):
-        '''Return utilbill with the given id.'''
-        return self._session.query(UtilBill).filter_by(id=utilbill_id).one()
-
-    def load_real_utilbills(self, **kwargs):
-        '''Returns a cursor of UtilBill objects matching the criteria given
-        by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
-        state Estimated or lower) are included.
-        '''
-        cursor = self._session.query(UtilBill).filter(
-                UtilBill.state <= UtilBill.Estimated)
-        for key, value in kwargs.iteritems():
-            cursor = cursor.filter(getattr(UtilBill, key) == value)
-        return cursor
-
-    def get_last_real_utilbill(self, account, end=None, service=None,
-                               utility=None, rate_class=None, processed=None):
-        '''Returns the latest-ending UtilBill, optionally limited to those
-        whose end date is before/on 'end', and optionally with
-        the given service, utility, rate class, and 'processed' status.
-        '''
-        utility_account = self._session.query(UtilityAccount).filter_by(account=account) \
-            .one()
-        cursor = self._session.query(UtilBill) \
-            .filter(UtilBill.utility_account == utility_account)
-        if end is not None:
-            cursor = cursor.filter(UtilBill.period_end <= end)
-        if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
-        if utility is not None:
-            cursor = cursor.filter(UtilBill.utility == utility)
-        if rate_class is not None:
-            cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        if processed is not None:
-            assert isinstance(processed, bool)
-            cursor = cursor.filter(UtilBill.processed == processed)
-        result = cursor.order_by(desc(UtilBill.period_end)).first()
-        if result is None:
-            raise NoSuchBillException
-        return result
-
-    def count_utilbills_with_hash(self, hash):
-        '''Return the number of utility bills having the given SHA-256 hash.
-        '''
-        return self._session.query(UtilBill).filter_by(
-                sha256_hexdigest=hash).count()

@@ -12,6 +12,10 @@ class BillFileHandler(object):
     '''
     HASH_CHUNK_SIZE = 1024 ** 2
 
+    # for validating file hash strings
+    HASH_DIGEST_LENGTH = 64
+    HASH_DIGEST_REGEX = '^[0-9a-f]{%s}$' % HASH_DIGEST_LENGTH
+
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
         :param bucket_name: name of S3 bucket where utility bill files are
@@ -44,10 +48,12 @@ class BillFileHandler(object):
 
     @staticmethod
     def _get_key_name_for_hash(sha256_hexdigest):
-        return 'utilbill/' + sha256_hexdigest
+        return sha256_hexdigest + '.pdf'
 
     @classmethod
-    def _get_key_name_for_utilbill(cls, utilbill):
+    def get_key_name_for_utilbill(cls, utilbill):
+        '''Return the S3 key name for the file belonging to the given UtilBill.
+        '''
         return cls._get_key_name_for_hash(utilbill.sha256_hexdigest)
 
     def _get_amazon_bucket(self):
@@ -66,13 +72,13 @@ class BillFileHandler(object):
         if utilbill.sha256_hexdigest in (None, ''):
             return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
-                                      key_name=self._get_key_name_for_utilbill(utilbill))
+                                      key_name=self.get_key_name_for_utilbill(utilbill))
 
     def check_file_exists(self, utilbill):
         '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
         does not exist.
         '''
-        key_name = self._get_key_name_for_utilbill(utilbill)
+        key_name = self.get_key_name_for_utilbill(utilbill)
         key = self._get_amazon_bucket().get_key(key_name)
         if key is None:
             raise MissingFileError('Key "%s" does not exist' % key_name)
@@ -84,7 +90,7 @@ class BillFileHandler(object):
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
                 utilbill.sha256_hexdigest) == 1:
-            key_name = BillFileHandler._get_key_name_for_utilbill(utilbill)
+            key_name = BillFileHandler.get_key_name_for_utilbill(utilbill)
             key = self._get_amazon_bucket().get_key(key_name)
             key.delete()
 
