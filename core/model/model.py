@@ -73,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '32b0a5fe5074'
+_schema_revision = '28552fdf9f48'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -197,8 +197,8 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
 
-    name = Column(String(1000))
-    discriminator = Column(String(50))
+    name = Column(String(1000), nullable=False)
+    discriminator = Column(String(50), nullable=False)
     address = relationship("Address")
 
     def __init__(self, name, address):
@@ -212,7 +212,7 @@ class Supplier(Company):
     __tablename__ = 'supplier'
     __mapper_args__ = {'polymorphic_identity': 'supplier'}
     id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey('company.id'))
+    company_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     name = Column(String(1000), nullable=False)
 
     def __init__(self, name, address):
@@ -234,7 +234,7 @@ class RateClass(Base):
     __tablename__ = 'rate_class'
 
     id = Column(Integer, primary_key=True)
-    utility_id = Column(Integer, ForeignKey('company.id'))
+    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
