@@ -349,10 +349,11 @@ def upgrade():
     log.info('Comitting to Database')
     session.commit()
 
-    log.info('Upgrading to schema 4bc721447593')
+    log.info('Upgrading to schema 32b0a5fe5074')
     alembic_upgrade('32b0a5fe5074')
 
-
+    log.info('Upgrading to schema 28552fdf9f48')
+    alembic_upgrade('28552fdf9f48')
 
     log.info('Upgrade Complete')
 
