@@ -860,6 +860,7 @@ class StateDB(object):
         rate_class = aliased(RateClass)
 
         q = session.query(UtilityAccount.account,
+                          UtilityAccount.account_number,
                           Utility.name,
                           RateClass.name,
                           UtilityAccount.fb_service_address,

@@ -529,7 +529,7 @@ class ReebillProcessor(object):
 
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
-            template_account):
+            template_account, utility_account_number):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
@@ -579,7 +579,8 @@ class ReebillProcessor(object):
                     service_address['street'],
                     service_address['city'],
                     service_address['state'],
-                    service_address['postal_code']))
+                    service_address['postal_code']),
+                    account_number=utility_account_number)
 
         session.add(new_utility_account)
 
@@ -835,10 +836,11 @@ class ReebillProcessor(object):
                 [row[0] for row in grid_data])
 
         rows_dict = {}
-        for acc, fb_utility_name, fb_rate_class, fb_service_address, _, _, \
+        for acc, account_number, fb_utility_name, fb_rate_class, fb_service_address, _, _, \
                 issue_date, rate_class, service_address, periodend in grid_data:
             rows_dict[acc] = {
                 'account': acc,
+                'utility_account_number': account_number,
                 'fb_utility_name': fb_utility_name,
                 'fb_rate_class': fb_rate_class,
                 'fb_service_address': fb_service_address,
