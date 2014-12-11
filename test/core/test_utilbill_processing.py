@@ -68,7 +68,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                             column_dict(),
                                        'rate_class': self.utilbill_processor.
                                             get_rate_class('Test Rate Class Template').
-                                            column_dict(),
+                                            name,
                                        'period_start': date(2013, 1, 1),
                                        'period_end': date(2013, 2, 1),
                                        'total_charges': 0.0,
@@ -94,7 +94,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'processed': 0,
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Test Rate Class Template').
-                                            column_dict(),
+                                            name,
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
@@ -145,7 +145,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         assert utilbill.utility.name == doc['utility']['name'] == \
                'Test Utility Company Template'
         assert utilbill.target_total == 100
-        assert utilbill.rate_class.name == doc['rate_class']['name'] == \
+        assert utilbill.rate_class.name == doc['rate_class'] == \
                'Test Rate Class Template'
 
         # invalid date ranges
@@ -282,7 +282,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                             column_dict(),
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Residential-R').
-                                            column_dict(),
+                                            name,
                                           'period_start': date(2012, 1, 1),
                                           'period_end': date(2012, 2, 1),
                                           'total_charges': 0,
@@ -323,7 +323,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'supplier': self.utilbill_processor.
                                 get_supplier('supplier').column_dict(),
                             'rate_class': self.utilbill_processor.
-                                get_rate_class('Residential-R').column_dict(),
+                                get_rate_class('Residential-R').name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -340,7 +340,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 get_supplier('supplier').column_dict(),
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
-                                column_dict(),
+                                name,
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -370,7 +370,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 get_supplier('supplier').column_dict(),
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('DC Non Residential Non Heat').
-                                column_dict(),
+                                name,
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
                                                1),
@@ -388,7 +388,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 get_supplier('supplier').column_dict(),
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
-                                column_dict(),
+                                name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -405,7 +405,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 get_supplier('supplier').column_dict(),
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
-                                column_dict(),
+                                name,
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -437,7 +437,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                             get_supplier('supplier').column_dict(),
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Residential-R').
-                                            column_dict(),
+                                            name,
                                           'period_start': date(2012, 4, 1),
                                           'period_end': date(2012, 5, 1),
                                           'total_charges': 0,
@@ -498,7 +498,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'service': 'Electric',
             'utility': customer.fb_utility.column_dict(),
             'supplier': customer.fb_supplier.column_dict(),
-            'rate_class': customer.fb_rate_class.column_dict(),
+            'rate_class': customer.fb_rate_class.name,
             'period_start': None,
             'period_end': None,
             'total_charges': 0,
@@ -544,7 +544,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'service': 'Electric',
                                           'utility': customer.fb_utility.column_dict(),
                                           'supplier': customer.fb_supplier.column_dict(),
-                                          'rate_class': customer.fb_rate_class.column_dict(),
+                                          'rate_class': customer.fb_rate_class.name,
                                           'period_start': None,
                                           'period_end': None,
                                           'total_charges': 100,
@@ -552,7 +552,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'processed': 0,
                                           'account': '99999',
                                           'reebills': []
-                                      }, data[1])
+                                      }, data[0])
         self.assertEqual(100, utilbill.target_total)
         self.assertEqual(the_address, utilbill.service_address)
 
@@ -765,7 +765,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_start': date(2013, 5, 6),
                                           'processed': 0,
                                           'rate_class': self.utilbill_processor.
-                                      get_rate_class('some rate structure').column_dict(),
+                                      get_rate_class('some rate structure').name,
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
