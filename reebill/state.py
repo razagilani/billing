@@ -859,7 +859,9 @@ class StateDB(object):
         .subquery()
         rate_class = aliased(RateClass)
 
-        q = session.query(UtilityAccount.account,
+        q = session.query(UtilityAccount.id,
+                          UtilityAccount.account,
+                          UtilityAccount.account_number,
                           Utility.name,
                           RateClass.name,
                           UtilityAccount.fb_service_address,

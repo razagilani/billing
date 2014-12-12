@@ -7,7 +7,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
 from billing.reebill.state import ReeBill, UtilBill
-from billing.core.model import UtilityAccount
+from billing.core.model import UtilityAccount, Session
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
@@ -111,9 +111,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.compute_utility_bill(utilbill.id)
 
     def test_list_account_status(self):
+        utility_account_9 = Session().query(UtilityAccount).filter_by(
+            account='99999').one()
+        utility_account_0 = Session().query(UtilityAccount).filter_by(
+            account='100000').one()
+        utility_account_1 = Session().query(UtilityAccount).filter_by(
+            account='100001').one()
         count, data = self.reebill_processor.list_account_status()
         self.assertEqual(3, count)
         self.assertEqual([{
+            'utility_account_id': utility_account_9.id,
             'account': '99999',
             'fb_rate_class': 'Test Rate Class Template',
             'fb_service_address': None,
@@ -123,11 +130,13 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '1',
             'codename': '',
             'lastperiodend': None,
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             }, {
+            'utility_account_id': utility_account_1.id,
             'account': '100001',
             'fb_rate_class': 'Other Rate Class',
             'fb_service_address': False,
@@ -137,11 +146,13 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '123 Test Street, Test City, XX',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '',
             'codename': '',
             'lastperiodend': date(2012, 1, 31),
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             }, {
+            'utility_account_id': utility_account_0.id,
             'account': '100000',
             'fb_rate_class': 'Test Rate Class Template',
             'fb_service_address': False,
@@ -151,6 +162,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '123 Test Street, Test City, XX',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '2',
             'codename': '',
             'lastperiodend': date(2012, 2, 28),
             'primusname': '1787 Massachusetts Ave.',
@@ -161,6 +173,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         count, data = self.reebill_processor.list_account_status(account='99999')
         self.assertEqual(1, count)
         self.assertEqual([{
+            'utility_account_id': utility_account_9.id,
             'account': '99999',
             'fb_rate_class': 'Test Rate Class Template',
             'fb_service_address': None,
@@ -170,6 +183,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'lastutilityserviceaddress': '',
             'lastissuedate': '',
             'provisionable': False,
+            'utility_account_number': '1',
             'codename': '',
             'lastperiodend': None,
             'primusname': '1785 Massachusetts Ave.',
@@ -844,7 +858,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             }
         self.reebill_processor.create_new_account('55555', 'Another New Account',
                                         'thermal', 0.6, 0.2, billing_address,
-                                        service_address, '99999')
+                                        service_address, '99999', '123')
         self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 
