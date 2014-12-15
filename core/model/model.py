@@ -425,6 +425,7 @@ class UtilBill(Base):
     # data automatically. (note this is different from data scraped from the
     # utility web site, because that can only be done while the bill is being
     # downloaded and can't take into account information from other sources.)
+    # TODO: not being used at all
     date_scraped = Column(DateTime)
 
     # deprecated: do not use
