@@ -2,7 +2,8 @@
 Currently the only one is StateDB.
 '''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount, ReeBillCustomer
+from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
+from billing.reebill.state import ReeBillCustomer
 
 init_logging()
 import unittest

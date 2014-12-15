@@ -8,8 +8,8 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from billing.core.model import (Customer, UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, ReeBillCustomer)
-from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, ReeBillCustomer)
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
 from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
