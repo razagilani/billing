@@ -209,7 +209,7 @@ class Supplier(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False)
 
-    address_id = Column(Integer, ForeignKey('address.id'))
+    address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
     address = relationship("Address")
 
     def __init__(self, name, address):
