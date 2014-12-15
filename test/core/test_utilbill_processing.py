@@ -9,7 +9,7 @@ from StringIO import StringIO
 from datetime import date, datetime
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill, UtilityAccount, Utility, Address
+from billing.core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
 from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -216,6 +216,20 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.issue('99999', 1)
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                                          service='water')
+
+    def test_update_account_number(self):
+        s = Session()
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
+        utility_account = UtilityAccount('someone', '99999',
+                utility, supplier,
+                RateClass('rate class', utility), Address(),
+                Address())
+        s.add(utility_account)
+        s.commit()
+        self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
+        self.assertEqual(utility_account.account_number, 12345)
+
 
     def test_upload_utility_bill(self):
         '''Tests saving of utility bills in database (which also belongs partly
