@@ -20,7 +20,7 @@ import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, ReeBillCustomer, Utility, Supplier, RateClass, Charge, UtilityAccount
+    UtilBill, Utility, RateClass, Charge, UtilityAccount
 from billing import config
 from billing.util.monthmath import Month
 
@@ -29,6 +29,7 @@ __all__ = [
     'Reading',
     'ReeBill',
     'ReeBillCharge',
+    'ReeBillCustomer',
     'StateDB',
     ]
 
@@ -505,6 +506,69 @@ class UtilbillReebill(Base):
                     self.utilbill_id, self.reebill_id, self.document_id[-4:],
                     self.uprs_document_id[-4:]))
 
+class ReeBillCustomer(Base):
+    __tablename__ = 'reebill_customer'
+
+    SERVICE_TYPES = ('thermal', 'pv')
+    # this is here because there doesn't seem to be a way to get a list of
+    # possible values from a SQLAlchemy.types.Enum
+
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(45))
+    discountrate = Column(Float(asdecimal=False), nullable=False)
+    latechargerate = Column(Float(asdecimal=False), nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
+    service = Column(Enum(*SERVICE_TYPES), nullable=False)
+    utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
+
+    utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
+        primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
+
+
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
+    def __init__(self, name, discount_rate, late_charge_rate,
+                service, bill_email_recipient, utility_account):
+        """Construct a new :class:`.Customer`.
+        :param name: The name of the utility_account.
+        :param account:
+        :param discount_rate:
+        :param late_charge_rate:
+        :param bill_email_recipient: The utility_account receiving email
+        address for skyline-generated bills
+        :fb_utility: The :class:`.Utility` to be assigned to the the first
+        `UtilityBill` associated with this utility_account.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this utility_account
+        :fb_rate_class": "first bill rate class" (see fb_utility_name)
+        :fb_billing_address: (as previous)
+        :fb_service address: (as previous)
+        """
+        self.name = name
+        self.discountrate = discount_rate
+        self.latechargerate = late_charge_rate
+        self.bill_email_recipient = bill_email_recipient
+        self.service = service
+        self.utility_account = utility_account
+
+    def __repr__(self):
+        return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
+               % (self.name, self.discountrate)
+
 class ReeBillCharge(Base):
     '''Table representing "hypothetical" versions of charges in reebills (so
     named because these may not have the same schema as utility bill charges).
@@ -859,7 +923,8 @@ class StateDB(object):
         .subquery()
         rate_class = aliased(RateClass)
 
-        q = session.query(UtilityAccount.account,
+        q = session.query(UtilityAccount.id,
+                          UtilityAccount.account,
                           UtilityAccount.account_number,
                           Utility.name,
                           RateClass.name,

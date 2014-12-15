@@ -37,7 +37,6 @@ __all__ = [
     'Utility',
     'UtilBill',
     'UtilityAccount',
-    'ReeBillCustomer',
     'check_schema_revision',
 ]
 
@@ -243,71 +242,6 @@ class RateClass(Base):
         self.name = name
         self.utility = utility
 
-
-class ReeBillCustomer(Base):
-    __tablename__ = 'reebill_customer'
-
-    SERVICE_TYPES = ('thermal', 'pv')
-    # this is here because there doesn't seem to be a way to get a list of
-    # possible values from a SQLAlchemy.types.Enum
-
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(45))
-    discountrate = Column(Float(asdecimal=False), nullable=False)
-    latechargerate = Column(Float(asdecimal=False), nullable=False)
-    bill_email_recipient = Column(String(1000), nullable=False)
-    service = Column(Enum(*SERVICE_TYPES), nullable=False)
-    utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
-
-    utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
-        primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-
-
-    def get_discount_rate(self):
-        return self.discountrate
-
-    def get_account(self):
-        return self.utility_account.account
-
-    def set_discountrate(self, value):
-        self.discountrate = value
-
-    def get_late_charge_rate(self):
-        return self.latechargerate
-
-    def set_late_charge_rate(self, value):
-        self.latechargerate = value
-
-    def __init__(self, name, discount_rate, late_charge_rate,
-                service, bill_email_recipient, utility_account):
-        """Construct a new :class:`.Customer`.
-        :param name: The name of the utility_account.
-        :param account:
-        :param discount_rate:
-        :param late_charge_rate:
-        :param bill_email_recipient: The utility_account receiving email
-        address for skyline-generated bills
-        :fb_utility: The :class:`.Utility` to be assigned to the the first
-        `UtilityBill` associated with this utility_account.
-        :fb_supplier: The :class: 'Supplier' to be assigned to the first
-        'UtilityBill' associated with this utility_account
-        :fb_rate_class": "first bill rate class" (see fb_utility_name)
-        :fb_billing_address: (as previous)
-        :fb_service address: (as previous)
-        """
-        self.name = name
-        self.discountrate = discount_rate
-        self.latechargerate = late_charge_rate
-        self.bill_email_recipient = bill_email_recipient
-        self.service = service
-        self.utility_account = utility_account
-
-    def __repr__(self):
-        return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
-               % (self.name, self.discountrate)
-
-
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -485,6 +419,7 @@ class UtilBill(Base):
     service = Column(String(45), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
+    due_date = Column(Date)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -567,7 +502,7 @@ class UtilBill(Base):
                  billing_address, service_address, period_start=None,
                  period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest=''):
+                 reebill=None, sha256_hexdigest='', due_date=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -588,6 +523,7 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.due_date = due_date
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve puttint

@@ -11,13 +11,13 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func, distinct
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
-from reebill.state import Reading, ReeBillCharge, Payment, ReeBill
+from billing.reebill.state import Payment, ReeBill, ReeBillCustomer
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier, RateClass, UtilityAccount, ReeBillCustomer
+    Address, UtilBill, Supplier, RateClass, UtilityAccount
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
@@ -310,6 +310,8 @@ def upgrade():
     log.info('Creating utilities')
     create_utilities(session)
 
+    log.info('Upgrading to schema 42f84150db03')
+    alembic_upgrade('42f84150db03')
 
     log.info('Migrating utility_account fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
