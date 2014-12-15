@@ -16,30 +16,12 @@ from sqlalchemy.dialects import mysql
 
 
 def upgrade():
-    op.alter_column(u'supplier', 'company_id',
-           existing_type=mysql.INTEGER(display_width=11),
-           nullable=False)
     op.alter_column(u'rate_class', 'utility_id',
            existing_type=mysql.INTEGER(display_width=11),
            nullable=False)
-    op.alter_column(u'company', 'name',
-           existing_type=mysql.VARCHAR(length=1000),
-           nullable=False)
-    op.alter_column(u'company', 'discriminator',
-           existing_type=mysql.VARCHAR(length=50),
-           nullable=False)
-
 
 def downgrade():
-    op.alter_column(u'supplier', 'company_id',
-           existing_type=mysql.INTEGER(display_width=11),
-           nullable=True)
     op.alter_column(u'rate_class', 'utility_id',
            existing_type=mysql.INTEGER(display_width=11),
            nullable=True)
-    op.alter_column(u'company', 'name',
-           existing_type=mysql.VARCHAR(length=1000),
-           nullable=True)
-    op.alter_column(u'company', 'descriminator',
-           existing_type=mysql.VARCHAR(length=50),
-           nullable=True)
+

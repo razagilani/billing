@@ -30,7 +30,8 @@ def upgrade():
     op.create_table('supplier',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('company_id', sa.Integer(), sa.ForeignKey('company.id')),
+    sa.Column('address_id', sa.Integer(), nullable=True),
+     sa.ForeignKeyConstraint(['address_id'], ['address.id'], ),
     sa.PrimaryKeyConstraint('id'))
     op.add_column('utilbill',
     sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
@@ -43,7 +44,7 @@ def upgrade():
     op.create_table('rate_class',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('utility_id', sa.Integer(),sa.ForeignKey('company.id')),
+    sa.Column('utility_id', sa.Integer(),sa.ForeignKey('utility.id')),
     sa.PrimaryKeyConstraint('id')
     )
     op.add_column('customer', sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
@@ -55,7 +56,7 @@ def upgrade():
                     sa.Column('id', sa.Integer(), primary_key=True,
                               nullable=False),
                     sa.Column('utility_id', sa.Integer(),
-                              sa.ForeignKey('company.id'), nullable=False),
+                              sa.ForeignKey('utility.id'), nullable=False),
                     sa.Column('guid', sa.String(length=36), nullable=False))
     op.create_table('altitude_supplier',
                     sa.Column('id', sa.Integer(), primary_key=True,
