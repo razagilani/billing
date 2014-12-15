@@ -406,6 +406,7 @@ class UtilBill(Base):
     service = Column(String(45), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
+    due_date = Column(Date)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -449,14 +450,6 @@ class UtilBill(Base):
         primaryjoin='UtilBill.service_address_id==Address.id')
     utility = relationship('Utility')
 
-    @property
-    def pdf_url(self):
-        # TODO fix this by moving the method to another class which can be
-        # initialized with the bucket name (and S3 URL)
-        from billing import config
-        return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
-               (config.get('bill', 'bucket'), self.sha256_hexdigest)
-
     @staticmethod
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
@@ -496,7 +489,7 @@ class UtilBill(Base):
                  billing_address, service_address, period_start=None,
                  period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest=''):
+                 reebill=None, sha256_hexdigest='', due_date=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -517,6 +510,7 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.due_date = due_date
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve puttint

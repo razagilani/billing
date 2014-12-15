@@ -217,10 +217,7 @@ class ReeBill(Base):
             # s.expunge(elf.readings[0]).
             del self.readings[0]
         for register in utility_bill.registers:
-            new_reading = Reading(register.register_binding, "Energy Sold",
-                                  register.quantity, 0, "SUM",
-                                  register.unit)
-            self.readings.append(new_reading)
+            self.readings.append(Reading.make_reading_from_register(register))
 
     def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
@@ -631,6 +628,17 @@ class Reading(Base):
     aggregate_function = Column(String(15), nullable=False)
 
     unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
+
+    @staticmethod
+    def make_reading_from_register(register):
+        '''Return a new 'Reading' instance based on the given utility bill
+        register  with default values for its measure name and aggregation
+        function.
+        :param register: Register on which this reading is based.
+        '''
+        return Reading(register.register_binding, "Energy Sold",
+                              register.quantity, 0, "SUM",
+                              register.unit)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):

@@ -1171,14 +1171,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'issue_date': None,
                                           }, utilbill_data[0]['reebills'][0])
 
-        # the 1st reebill has a reading for both the "REG_TOTAL" register
-        # and the "OTHER" register, for a total of 200 therms of renewable
-        # energy. since the 2nd utility bill no longer has the "OTHER" register,
-        # the 2nd reebill does not have a reading fot it, even though the 1st
-        # reebill has it.
         reebill_2_data, reebill_1_data = self.reebill_processor \
             .get_reebill_metadata_json(account)
-        self.assertEqual(200, reebill_1_data['ree_quantity'])
+        self.assertEqual(100, reebill_1_data['ree_quantity'])
         self.assertEqual(100, reebill_2_data['ree_quantity'])
 
         # addresses should be preserved from one reebill document to the
@@ -1640,6 +1635,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         })
         self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
 
+        # the reebill starts with one reading corresponding to "reg_total"
+        # so the "update readings" feature must be used to get all 3
+        self.reebill_processor.update_reebill_readings(account, 1)
+        self.reebill_processor.bind_renewable_energy(account, 1)
+
         # the total energy consumed over the 3 non-0 days is
         # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
         # when only the hours 9 and 11 are included, the total is just
@@ -1649,7 +1649,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         tou_renewable_btu = 9 + 11 + 11
 
         # check reading of the reebill corresponding to the utility register
-        total_reading, tou_reading = self.session.query(ReeBill).one().readings
+        reebill = self.session.query(ReeBill).one()
+        total_reading, tou_reading = reebill.readings
         self.assertEqual('therms', total_reading.unit)
         self.assertEqual(total_renewable_therms,
                          total_reading.renewable_quantity)
@@ -1854,15 +1855,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     def test_two_registers_one_reading(self):
         '''Test the situation where a utiltiy bill has 2 registers, but its
         reebill has only one reading corresponding to the first register,
-        so only that register gets offset by renewable energy. This has been
-        done in cases where there are two "total" registers that get added
-        together to measure total energy, and sometimes users have created two
-        registers to represent two different utility meter reads that occurred
-        within one billing period, with different pricing applied to each one,
-        and want to avoid charging the customer for twice as much renewable
-        energy as they actually consumed. (This is not strictly correct because
-        the energy would be priced differently depending on which part of the
-        period it was consumed in.)
+        so only that register gets offset by renewable energy.
+
+        This has been done in cases where there are two "total" registers
+        that get added together to measure total energy, and sometimes users
+        have created two registers to represent two different utility meter
+        reads that occurred within one billing period, with different pricing
+        applied to each one, and want to avoid charging the customer for
+        twice as much renewable energy as they actually consumed. (This is
+        not strictly correct because the energy would be priced differently
+        depending on which part of the period it was consumed in.)
         '''
         # utility bill with 2 registers
         self.utilbill_processor.upload_utility_bill('99999', StringIO('test'),
@@ -1895,40 +1897,18 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         reebill = self.reebill_processor.roll_reebill(
             '99999', start_date=date(2000,1,1))
 
-        # verify reebill has 2 readings (currently there is no way to do
-        # this through the UI)
-        self.assertEqual(2, len(reebill.readings))
-
-        # remove 2nd register from utility bill
-        register_id = self.utilbill_processor.get_registers_json(
-            utilbill_id)[1]['id']
-        self.utilbill_processor.delete_register(register_id)
-        self.assertEqual(1, len(self.utilbill_processor.get_registers_json(
-            utilbill_id)))
-
-        # "update readings" and verify that the reebill has only one reading
-        self.reebill_processor.update_reebill_readings('99999', 1)
+        # verify reebill has a reading only for REG_TOTAL (currently there is
+        # no way to do this through the UI)
         self.assertEqual(1, len(reebill.readings))
-
-        self.reebill_processor.bind_renewable_energy('99999', 1)
-        energy_1 = (self.reebill_processor.get_reebill_metadata_json('99999')[0]
-                  ['ree_quantity'])
-
-        # re-add register 2 to utility bill
-        add_2nd_register()
-        self.assertEqual(2, len(self.utilbill_processor.get_registers_json(utilbill_id)))
+        self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
 
         self.utilbill_processor.compute_utility_bill(utilbill_id)
         self.reebill_processor.compute_reebill('99999', 1)
         self.reebill_processor.bind_renewable_energy('99999', 1)
         self.utilbill_processor.compute_utility_bill(utilbill_id)
         self.reebill_processor.compute_reebill('99999', 1)
-        energy_2 = (self.reebill_processor.get_reebill_metadata_json('99999')[0]
-                    ['ree_quantity'])
-
-        # the total amount of renewable energy should be the same as it was
-        # when there was only one register
-        self.assertEqual(energy_1, energy_2)
+        energy_1 = self.reebill_processor.get_reebill_metadata_json(
+                    '99999')[0]['ree_quantity']
 
         # when a correction is made, the readings are those of the original
         # reebill; they are not updated to match the utility bill
@@ -1938,8 +1918,22 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         reebill = self.session.query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, len(reebill.readings))
         self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
-        self.assertAlmostEqual(energy_1,
-                               reebill.readings[0].renewable_quantity, places=4)
+        self.assertEqual(energy_1, reebill.readings[0].renewable_quantity)
+
+        # "update readings" causes another reading to be added for the 2nd
+        # register of the utility bill
+        self.reebill_processor.update_reebill_readings('99999', 1)
+        self.assertEqual(2, len(reebill.readings))
+        self.assertEqual('REG_2', reebill.readings[1].register_binding)
+
+        self.reebill_processor.bind_renewable_energy('99999', 1)
+        energy_2 = (self.reebill_processor.get_reebill_metadata_json('99999')[0]
+                    ['ree_quantity'])
+
+        # the total amount of renewable energy should now be double what it was
+        # when there was only one register
+        self.assertEqual(energy_2, 2 * energy_1)
+
 
 if __name__ == '__main__':
     unittest.main()

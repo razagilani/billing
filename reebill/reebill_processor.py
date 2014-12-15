@@ -9,9 +9,9 @@ from sqlalchemy import func
 
 from billing.core.model import (Customer, UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
-from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, ReeBillCustomer)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, ConfirmAdjustment, FormulaError
+    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
 from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
@@ -334,8 +334,18 @@ class ReebillProcessor(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         if last_reebill_row is None:
-            new_reebill.replace_readings_from_utility_bill_registers(utilbill)
+            # this is the first reebill: choose only REG_TOTAL complain if it
+            # doesn't exist
+            try:
+                reg_total_register = next(r for r in utilbill.registers if
+                                          r.register_binding == 'REG_TOTAL')
+            except StopIteration:
+                raise RegisterError('The utility bill must have a register '
+                                    'called "REG_TOTAL"')
+            new_reebill.readings = [Reading.make_reading_from_register(
+                reg_total_register)]
         else:
+            # not the first reebill: copy readings from the previous one
             new_reebill.update_readings_from_reebill(last_reebill_row.readings)
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
