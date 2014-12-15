@@ -1,13 +1,13 @@
 Ext.define('ReeBill.model.UtilityBill', {
     extend: 'Ext.data.Model',
     fields: [
-        {name: 'action'}, // Allows for other actions besides CRUD (e.g. 'render')
+        {name: 'action', type: 'string'}, // Allows for other actions besides CRUD (e.g. 'render')
         {name: 'action_value'}, // Additional data associated with the action
         // Model data
         {name: 'id'},
         {name: 'name'},
         {name: 'account'},
-        {name: 'rate_class'},
+        {name: 'rate_class', type:'string'},
         {name: 'utility'},
         {name: 'supplier'},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
