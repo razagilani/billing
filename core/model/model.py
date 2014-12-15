@@ -190,50 +190,38 @@ class Address(Base):
                    other_address.postal_code)
 
 
-class Company(Base):
-    __tablename__ = 'company'
+class Utility(Base):
+    __tablename__ = 'utility'
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
 
     name = Column(String(1000), nullable=False)
-    discriminator = Column(String(50), nullable=False)
     address = relationship("Address")
 
     def __init__(self, name, address):
         self.name = name
         self.address = address
 
-    __mapper_args__ = {'polymorphic_on': discriminator}
 
-
-class Supplier(Company):
+class Supplier(Base):
     __tablename__ = 'supplier'
-    __mapper_args__ = {'polymorphic_identity': 'supplier'}
     id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     name = Column(String(1000), nullable=False)
 
+    address_id = Column(Integer, ForeignKey('address.id'))
+    address = relationship("Address")
+
     def __init__(self, name, address):
-        super(Supplier, self).__init__(name, address)
         self.name = name
-
-
-class Utility(Company):
-    __mapper_args__ = {'polymorphic_identity': 'utility'}
-
-    #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
-
-    def __init__(self, name, address):
-        """Construct a :class:`Utility` instance"""
-        super(Utility, self).__init__(name, address)
+        self.address = address
 
 
 class RateClass(Base):
     __tablename__ = 'rate_class'
 
     id = Column(Integer, primary_key=True)
-    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
+    utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -250,7 +238,7 @@ class Customer(Base):
     SERVICE_TYPES = ('thermal', 'pv')
 
     id = Column(Integer, primary_key=True)
-    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+    fb_utility_id = Column(Integer, ForeignKey('utility.id'))
 
     account = Column(String(45), nullable=False)
     name = Column(String(45))
@@ -345,7 +333,7 @@ class UtilityAccount(Base):
     account = Column(String(45), nullable=False)
 
     # "fb_" = to be assigned to the utility_account's first-created utility bill
-    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+    fb_utility_id = Column(Integer, ForeignKey('utility.id'))
     fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
@@ -354,7 +342,6 @@ class UtilityAccount(Base):
         nullable=False)
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
-    fb_utility_id = Column(Integer, ForeignKey('company.id'))
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -403,7 +390,7 @@ class UtilBill(Base):
     # deprecated: do not use
     customer_id = Column(Integer, ForeignKey('customer.id'))
 
-    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
+    utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),

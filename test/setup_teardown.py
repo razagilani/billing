@@ -117,7 +117,7 @@ class TestCaseWithSetup(test_utils.TestCase):
             "utility_account",
             "rate_class",
             "supplier",
-            "company",
+            "utility",
             "address",
             "altitude_utility",
             "altitude_supplier"
