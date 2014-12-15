@@ -310,6 +310,8 @@ def upgrade():
     log.info('Creating utilities')
     create_utilities(session)
 
+    log.info('Upgrading to schema 42f84150db03')
+    alembic_upgrade('42f84150db03')
 
     log.info('Migrating utility_account fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
