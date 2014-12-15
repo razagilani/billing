@@ -8,8 +8,8 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from billing.core.model import (Customer, UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, ReeBillCustomer)
-from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, ReeBillCustomer)
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
 from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
@@ -833,13 +833,15 @@ class ReebillProcessor(object):
           accounts dictionary is returned """
         grid_data = self.state_db.get_accounts_grid_data(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
-                [row[0] for row in grid_data])
+                [row[1] for row in grid_data])
 
         rows_dict = {}
-        for acc, account_number, fb_utility_name, fb_rate_class, fb_service_address, _, _, \
+        for id, acc, account_number, fb_utility_name, fb_rate_class, \
+            fb_service_address, _, _, \
                 issue_date, rate_class, service_address, periodend in grid_data:
             rows_dict[acc] = {
                 'account': acc,
+                'utility_account_id': id,
                 'utility_account_number': account_number,
                 'fb_utility_name': fb_utility_name,
                 'fb_rate_class': fb_rate_class,
