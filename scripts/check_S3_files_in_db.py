@@ -1,8 +1,5 @@
-from billing import config
 from boto.s3.connection import S3Connection
 from billing.core.model import UtilBill
-import hashlib, logging
-from glob import glob
 
 def check_s3_files_in_db(session):
     s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
