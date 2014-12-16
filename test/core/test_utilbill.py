@@ -11,7 +11,7 @@ from unittest import TestCase
 from billing.exc import RSIError, ProcessedBillError
 from billing.core.model import UtilBill, Customer, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import Payment
+from billing.reebill.state import Payment, ReeBillCustomer
 
 class UtilBillTest(TestCase):
 
@@ -21,6 +21,7 @@ class UtilBillTest(TestCase):
         session.query(Register).delete()
         session.query(UtilBill).delete()
         session.query(Payment).delete()
+        session.query(ReeBillCustomer).delete()
         session.query(UtilityAccount).delete()
 
         self.utility = Utility('utility', Address())

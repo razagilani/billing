@@ -8,14 +8,26 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from billing.core.model import (Customer, UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, ReeBillCustomer)
-from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, ConfirmAdjustment, FormulaError
+    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
 from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
 class ReebillProcessor(object):
+    ''''Does a mix of the following things:
+    - Operations on reebills: create, delete, compute, etc.
+    etc.
+    - CRUD on child objects of ReeBill that are closely associated
+    with ReeBills, like ReeBillCharges and Readings.
+    - CRUD on Payments.
+    - CRUD on ReeBillCustomers.
+    - Generating JSON data for the ReeBill UI.
+    Each of these things should be separated into its own class (especially
+    the UI-related methods), except maybe the first two can stay in the same
+    class.
+    '''
     def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
                  ree_getter, journal_dao, logger=None):
         self.state_db = state_db
@@ -322,8 +334,18 @@ class ReebillProcessor(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         if last_reebill_row is None:
-            new_reebill.replace_readings_from_utility_bill_registers(utilbill)
+            # this is the first reebill: choose only REG_TOTAL complain if it
+            # doesn't exist
+            try:
+                reg_total_register = next(r for r in utilbill.registers if
+                                          r.register_binding == 'REG_TOTAL')
+            except StopIteration:
+                raise RegisterError('The utility bill must have a register '
+                                    'called "REG_TOTAL"')
+            new_reebill.readings = [Reading.make_reading_from_register(
+                reg_total_register)]
         else:
+            # not the first reebill: copy readings from the previous one
             new_reebill.update_readings_from_reebill(last_reebill_row.readings)
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
@@ -517,7 +539,7 @@ class ReebillProcessor(object):
 
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
-            template_account):
+            template_account, utility_account_number):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
@@ -567,7 +589,8 @@ class ReebillProcessor(object):
                     service_address['street'],
                     service_address['city'],
                     service_address['state'],
-                    service_address['postal_code']))
+                    service_address['postal_code']),
+                    account_number=utility_account_number)
 
         session.add(new_utility_account)
 
@@ -820,13 +843,16 @@ class ReebillProcessor(object):
           accounts dictionary is returned """
         grid_data = self.state_db.get_accounts_grid_data(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
-                [row[0] for row in grid_data])
+                [row[1] for row in grid_data])
 
         rows_dict = {}
-        for acc, fb_utility_name, fb_rate_class, fb_service_address, _, _, \
+        for id, acc, account_number, fb_utility_name, fb_rate_class, \
+            fb_service_address, _, _, \
                 issue_date, rate_class, service_address, periodend in grid_data:
             rows_dict[acc] = {
                 'account': acc,
+                'utility_account_id': id,
+                'utility_account_number': account_number,
                 'fb_utility_name': fb_utility_name,
                 'fb_rate_class': fb_rate_class,
                 'fb_service_address': fb_service_address,

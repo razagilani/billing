@@ -11,13 +11,13 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func, distinct
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
-from reebill.state import Reading, ReeBillCharge, Payment, ReeBill
+from billing.reebill.state import Payment, ReeBill, ReeBillCustomer
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
-from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier, RateClass, UtilityAccount, ReeBillCustomer
+from billing.core.model.model import Session, Customer, Utility, \
+    Address, UtilBill, Supplier, RateClass, UtilityAccount
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
@@ -181,26 +181,26 @@ def create_utility_accounts(session, customer_data):
     session.commit()
 
 def migrate_customer_fb_utility(customer_data, session):
-    company_map = {c.name.lower(): c for c in session.query(Company).all()}
+    utility_map = {c.name.lower(): c for c in session.query(Utility).all()}
     for customer in session.query(Customer).all():
         fb_utility_name = customer_data[customer.id]['fb_utility_name'].lower()
         # log.debug('Setting fb_utility to %s for utility_account id %s' %
         #           (fb_utility_name, customer.id))
         try:
-            customer.fb_utility = company_map[fb_utility_name]
+            customer.fb_utility = utility_map[fb_utility_name]
         except KeyError:
             log.error("Could not locate company with name '%s' for utility_account %s" %
                       (fb_utility_name, customer.id))
 
 
 def migrate_utilbill_utility(utilbill_data, session):
-    company_map = {c.name.lower(): c for c in session.query(Company).all()}
+    utility_map = {c.name.lower(): c for c in session.query(Utility).all()}
     for utility_bill in session.query(UtilBill).all():
         utility_name = utilbill_data[utility_bill.id]['utility'].lower()
         log.debug('Setting utility to %s for utilbill id %s' %
                   (utility_name, utility_bill.id))
         try:
-            utility_bill.utility = company_map[utility_name]
+            utility_bill.utility = utility_map[utility_name]
             if utility_bill.utility.name == 'washgas':
                 utility_bill.utility.name = 'washington gas'
         except KeyError:
@@ -224,8 +224,8 @@ def set_fb_utility_id(session):
     session.commit()
 
 def set_supplier_ids(session):
-    for company in session.query(Company).all():
-        c_supplier = Supplier(company.name, company.address)
+    for utility in session.query(Utility).all():
+        c_supplier = Supplier(utility.name, utility.address)
         session.add(c_supplier)
         session.flush()
         session.refresh(c_supplier)
@@ -310,6 +310,8 @@ def upgrade():
     log.info('Creating utilities')
     create_utilities(session)
 
+    log.info('Upgrading to schema 42f84150db03')
+    alembic_upgrade('42f84150db03')
 
     log.info('Migrating utility_account fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
@@ -349,10 +351,11 @@ def upgrade():
     log.info('Comitting to Database')
     session.commit()
 
-    log.info('Upgrading to schema 4bc721447593')
+    log.info('Upgrading to schema 32b0a5fe5074')
     alembic_upgrade('32b0a5fe5074')
 
-
+    log.info('Upgrading to schema 28552fdf9f48')
+    alembic_upgrade('28552fdf9f48')
 
     log.info('Upgrade Complete')
 
