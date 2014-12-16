@@ -319,8 +319,8 @@ def upgrade():
     log.info('Migration utilbill utility')
     migrate_utilbill_utility(utilbill_data, session)
 
-    #log.info('Uploading utilbills to AWS')
-    #upload_utilbills_to_aws(session)
+    log.info('Uploading utilbills to AWS')
+    upload_utilbills_to_aws(session)
 
     log.info('Setting up fb_utility_id')
     set_fb_utility_id(session)
