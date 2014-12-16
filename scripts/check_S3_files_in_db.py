@@ -19,7 +19,8 @@ def check_s3_files_in_db(session):
             print('file %s with key %s not processed correctly' %(key.name, file_hash) )
 
 if __name__ == '__main__':
-    # for testing in development environment
+    # for checking that al files from S3 were processed correctly in production
+    # this should be run after upgrade_scripts are run in production for billing release 23
     from billing import init_config, init_model, init_logging
     init_config()
     init_model()
@@ -28,4 +29,3 @@ if __name__ == '__main__':
     from billing.core.model import Session
     session = Session()
     check_s3_files_in_db(session)
-    session.commit()
