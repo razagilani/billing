@@ -12,7 +12,7 @@ If there ends up being more than a small number of these classes, some kind of
 abstraction should be used to remove the duplicate code because they are
 all almost identical.
 '''
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
 from billing.core.model import Base, Session, Utility, UtilityAccount
 
@@ -27,11 +27,16 @@ class AltitudeUtility(Base):
     '''Holds foreign keys from Utility to Altitude utilities.'''
     __tablename__ = 'altitude_utility'
 
-    id = Column('id', Integer(), primary_key=True, nullable=False)
     utility_id = Column('utility_id', Integer(), ForeignKey('utility.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     utility = relationship('Utility')
+
+    # compound primary key
+    __table_args__ = (
+        PrimaryKeyConstraint('utility_id', 'guid'),
+        {},
+    )
 
     def __init__(self, utility, guid):
         self.utility = utility
@@ -41,11 +46,16 @@ class AltitudeSupplier(Base):
     '''Holds foreign keys from Supplier to Altitude suppliers.'''
     __tablename__ = 'altitude_supplier'
 
-    id = Column('id', Integer(), primary_key=True, nullable=False)
-    utility_id = Column('supplier', Integer(), ForeignKey('supplier.id'),
+    supplier_id = Column('supplier_id', Integer(), ForeignKey('supplier.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     supplier = relationship('Supplier')
+
+    # compound primary key
+    __table_args__ = (
+        PrimaryKeyConstraint('supplier_id', 'guid'),
+        {},
+    )
 
     def __init__(self, supplier, guid):
         self.supplier = supplier
