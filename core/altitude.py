@@ -28,7 +28,7 @@ class AltitudeUtility(Base):
     __tablename__ = 'altitude_utility'
 
     id = Column('id', Integer(), primary_key=True, nullable=False)
-    utility_id = Column('utility_id', Integer(), ForeignKey('company.id'),
+    utility_id = Column('utility_id', Integer(), ForeignKey('utility.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     utility = relationship('Utility')
@@ -42,7 +42,7 @@ class AltitudeSupplier(Base):
     __tablename__ = 'altitude_supplier'
 
     id = Column('id', Integer(), primary_key=True, nullable=False)
-    utility_id = Column('supplier', Integer(), ForeignKey('company.id'),
+    utility_id = Column('supplier', Integer(), ForeignKey('supplier.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     supplier = relationship('Supplier')

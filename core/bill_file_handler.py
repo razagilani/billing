@@ -48,7 +48,7 @@ class BillFileHandler(object):
 
     @staticmethod
     def _get_key_name_for_hash(sha256_hexdigest):
-        return 'utilbill/' + sha256_hexdigest
+        return sha256_hexdigest + '.pdf'
 
     @classmethod
     def get_key_name_for_utilbill(cls, utilbill):
