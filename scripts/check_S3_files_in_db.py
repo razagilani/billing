@@ -16,7 +16,7 @@ def check_s3_files_in_db(session):
         file_hash = key.name[0: index]
         utilbills = session.query(UtilBill).filter(UtilBill.sha256_hexdigest==file_hash).all()
         if len(utilbills) != 1:
-            print('file %s with key %s not processed correctly' %(key.name, file_hash) )
+            print('file %s with key %s has %s utilbills' %(key.name, file_hash, len(utilbills)) )
 
 if __name__ == '__main__':
     # for checking that al files from S3 were processed correctly in production
