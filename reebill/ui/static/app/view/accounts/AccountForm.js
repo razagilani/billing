@@ -1,6 +1,9 @@
-Ext.define('ReeBill.view.AccountForm', {
+Ext.define('ReeBill.view.accounts.AccountForm', {
     extend: 'Ext.form.Panel',
-
+    requires: [
+        'ReeBill.view.accounts.AccountsCombo',
+        'ReeBill.store.ServiceTypes'
+    ],
     title: 'Create New Account',
 
     alias: 'widget.accountForm',    
@@ -22,12 +25,12 @@ Ext.define('ReeBill.view.AccountForm', {
         collapsible: false,
         items: [{
             xtype: 'accountsCombo',
-            name: 'template_account',
+            name: 'template_account'
         },{
             xtype: 'textfield',
             fieldLabel: 'Account',
             name: 'account',
-            allowBlank: false,
+            allowBlank: false
         },{
             xtype: 'textfield',
             fieldLabel: 'Name',
@@ -42,8 +45,15 @@ Ext.define('ReeBill.view.AccountForm', {
             xtype: 'textfield',
             fieldLabel: 'Late Charge Rate',
             name: 'late_charge_rate',
-            allowBlank: false,
-        },{
+            allowBlank: false
+        },
+        {
+            xtype: 'textfield',
+            fieldLabel: 'Utility Account Number',
+            name: 'utility_account_number',
+            allowBlank: false
+        },
+        {
             xtype: 'combobox',
             fieldLabel: 'Renewable Energy Service',
             name: 'service_type',

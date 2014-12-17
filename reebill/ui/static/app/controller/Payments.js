@@ -4,6 +4,10 @@ Ext.define('ReeBill.controller.Payments', {
     stores: [
         'Payments'
     ],
+
+    views: [
+        'payments.Payments', 'accounts.Accounts'
+    ],
     
     refs: [{
         ref: 'accountsGrid',
