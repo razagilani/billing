@@ -4,16 +4,19 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
+from billing.core.model import Utility
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from billing.reebill.state import ReeBill, Customer, UtilBill, Address, \
-    Register, Reading
+from billing.reebill.state import ReeBill, UtilBill, Address, \
+    Register, Reading, ReeBillCustomer
+from billing.core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 import billing.reebill.fetch_bill_data as fbd
 from billing.util.dateutils import date_to_datetime
+
 
 
 def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
@@ -53,16 +56,18 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        customer = Customer('someone', '12345', 0.5, 0.1,
-                '000000000000000000000000', 'example@example.com',
-                'DC Non Residential Non Heat', Address(), Address())
-        utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-                'DC Non Residential Non Heat', Address(), Address(),
+        utility_account = UtilityAccount(
+            'someone', '12345', Mock(autospec=Utility), Mock(autospec=Supplier), Mock(autospec=RateClass), Address(), Address())
+        reebill_customer = ReeBillCustomer('someone', 0.5, 0.1, 'thermal',
+                            'example@example.com', utility_account)
+        utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', 'washgas',
+                'supplier', 'DC Non Residential Non Heat', Address(), Address(),
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', 0, 'therms', False,
-                '', 'total', 'REG_TOTAL', '', '')]
-        self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
+        utilbill.registers = [Register(utilbill, '', '', 'therms', False,
+                'total', '', '', quantity=0,
+                register_binding='REG_TOTAL')]
+        self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         mock_install_1 = MockSkyInstall(name='example-1')

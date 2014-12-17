@@ -1,10 +1,13 @@
-Ext.define('ReeBill.view.Charges', {
+Ext.define('ReeBill.view.charges.Charges', {
     extend: 'Ext.grid.Panel',
 
     requires: [
         'Ext.grid.*',
         'Ext.data.*',
-        'Ext.dd.*'
+        'Ext.dd.*',
+        'ReeBill.view.charges.FormulaField',
+        'ReeBill.view.charges.GroupTextField',
+        'ReeBill.view.charges.RoundRuleTextField'
     ],
 
     alias: 'widget.charges',
@@ -86,10 +89,19 @@ Ext.define('ReeBill.view.Charges', {
     },{
         header: 'Units',
         sortable: true,
-        dataIndex: 'quantity_units',
+        dataIndex: 'unit',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Units',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'name',
+            queryMode: 'local',
+            forceSelection: true,
+            selectOnFocus: true
         },
         width: 70
     },{

@@ -40,8 +40,5 @@ file { "/db-${env}":
 }
 file { "/etc/httpd/conf.d/${username}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/reebill-stage.vhost"
+    source => "puppet:///modules/conf/vhosts/reebill-stage.conf"
 }
-
-# apache vhost setup
-# full crontab?

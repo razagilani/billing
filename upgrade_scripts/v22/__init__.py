@@ -92,14 +92,14 @@ def copy_registers_from_mongo(s):
                 #log.debug('Adding register for utilbill id %s' % ub.id)
                 s.add(Register(ub,
                                mongo_register.get('description', ""),
-                               mongo_register.get('quantity', 0),
-                               mongo_register.get('quantity_units', ""),
                                mongo_register.get('identifier', ""),
                                mongo_meter.get('estimated', False),
                                mongo_register.get('type', ""),
-                               mongo_register.get('register_binding', ""),
                                None, #active_periods does not exist in Mongo
-                               mongo_meter.get('identifier', "")))
+                               mongo_meter.get('identifier', ""),
+                               quantity=mongo_register.get('quantity', 0),
+                               quantity_units=mongo_register.get('quantity_units', ""),
+                               register_binding=mongo_register.get('register_binding', "")))
 
 def copy_rsis_from_mongo(s):
     for u in s.query(UtilBill).all():

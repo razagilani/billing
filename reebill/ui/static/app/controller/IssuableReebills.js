@@ -4,6 +4,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     stores: [
         'IssuableReebills', 'IssuableReebillsMemory'
     ],
+
+    views:[
+        'issuablereebills.IssuableReebills'
+    ],
     
     refs: [{
         ref: 'issuableReebillsGrid',

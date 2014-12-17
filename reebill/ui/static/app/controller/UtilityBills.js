@@ -2,7 +2,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'UtilityBills', 'ReeBillVersions'
+        'UtilityBills',
+        'ReeBillVersions',
+        'RateClasses',
+        'Suppliers',
+        'Utilities',
+        'Services'
+    ],
+
+    views: [
+        'utilitybills.UtilityBills',
+        'utilitybills.UploadUtilityBill'
     ],
     
     refs: [{
@@ -51,6 +61,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
+            },
+            '#utility_combo':{
+                select: this.handleUtilityComboChanged,
+                focus: this.handleUtilityComboFocus
+            },
+            '#rate_class_combo': {
+                expand: this.handleRateClassExpand
+            },
+            '#supplier_combo': {
+                focus: this.handleSupplierComboFocus
+
             }
         });
 
@@ -73,17 +94,32 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleRowSelect: function(combo, recs) {
         var hasSelections = recs.length > 0;
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        if (selected != null)
+        {
+            var processed = selected.get('processed')
+            //console.log(selected[0].get('processed'));
+            this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
-        this.getUtilbillCompute().setDisabled(!hasSelections);
-        this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            var hasReebill = false;
+            Ext.each(recs, function (rec) {
+                if (rec.get('reebills').length > 0)
+                    hasReebill = true;
+            });
 
-        var hasReebill = false;
-        Ext.each(recs, function(rec) {
-            if (rec.get('reebills').length > 0)
-                hasReebill = true;
-        });
-
-        this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill);
+            this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
+            var utility = selected.data.utility;
+            rate_class_store = Ext.getStore("RateClasses");
+            rate_class_store.clearFilter(true);
+            rate_class_store.filter('utility_id', utility.id);
+    }
+        else
+        {
+            this.getUtilbillCompute().setDisabled(true);
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            this.getUtilbillRemove().setDisabled(!hasSelections);
+        }
     },
 
     /**
@@ -184,7 +220,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     /**
-     * Handle the compute button being clicked.
+     * Handle the delete button being clicked.
      */
     handleDelete: function() {
         var scope = this,
@@ -214,8 +250,40 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         if (!selected)
             return;
-
         selected.set('processed', !selected.get('processed'));
+        var processed = selected.get('processed');
+        this.getUtilbillCompute().setDisabled(processed);
+    },
+
+    handleUtilityComboChanged: function(utility_combo, record){
+        var rate_class_store = Ext.getStore("RateClasses");
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter('utility_id', record[0].data.id);
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var utility_store = this.getUtilityBillsStore();
+        selected.set('rate_class', rate_class_store.getAt(0).data.name);
+    },
+
+
+
+    handleRateClassExpand: function(combo, record, index){
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        rate_class_store = Ext.getStore('RateClasses');
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter('utility_id', selected.get('utility').id);
+    },
+
+    handleUtilityComboFocus: function(combo) {
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('utility').name);
+    },
+
+    handleSupplierComboFocus: function(combo) {
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supplier').name);
     }
 
 });

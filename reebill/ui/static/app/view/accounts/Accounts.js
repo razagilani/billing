@@ -1,9 +1,18 @@
-Ext.define('ReeBill.view.Accounts', {
+Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-
+    requires: [
+        'ReeBill.store.AccountsMemory',
+        'ReeBill.store.AccountsFilter',
+        'Ext.toolbar.PagingMemoryToolbar'],
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
     store: 'AccountsMemory',
+
+    plugins: [
+        Ext.create('Ext.grid.plugin.CellEditing', {
+            clicksToEdit: 2
+        })
+    ],
     
     viewConfig: {
         trackOver: false,
@@ -18,7 +27,15 @@ Ext.define('ReeBill.view.Accounts', {
         header: 'Account',
         dataIndex: 'account',
         width: 100
-    },{
+    },
+      {
+        header: 'Utility Account Number',
+        dataIndex: 'utility_account_number',
+        editor: {
+            xtype: 'textfield'
+        },
+        width: 100
+      },{
         header: 'Codename',
         dataIndex: 'codename',
         width: 120
@@ -79,8 +96,7 @@ Ext.define('ReeBill.view.Accounts', {
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',
-            forceSelection: true,
-            selectOnFocus: true
+            forceSelection: true
         }]
     }
 });

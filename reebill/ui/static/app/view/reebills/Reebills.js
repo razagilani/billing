@@ -1,6 +1,6 @@
-Ext.define('ReeBill.view.Reebills', {
+Ext.define('ReeBill.view.reebills.Reebills', {
     extend: 'Ext.grid.Panel',
-
+    requires: ['ReeBill.store.Reebills'],
     title: 'Reebills',
     alias: 'widget.reebills',    
     store: 'Reebills',
