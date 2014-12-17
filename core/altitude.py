@@ -97,19 +97,25 @@ def update_altitude_account_guids(utility_account, guids):
     AltitudeAccount associated with it.
     '''
     s = Session()
-    for guid in guids:
-        try:
-            altitude_account = s.query(AltitudeAccount).filter_by(
-                guid=guid).one()
-        except NoResultFound:
-            # if this AltitudeAccount does not exist, create it and associate
-            # it with 'utility_account
-            s.add(AltitudeAccount(utility_account, guid))
-        else:
-            # if this GUID does exist, and is associated with another
-            # utility account, change it.
-            # TODO: find out if this is the desired behavior. alternatives
-            # could include: raise an exception if it's not the same utility
-            # account as before, because it shouldn't change, or ignore the
-            # new value and keep the old one
-            altitude_account.utility_account = utility_account
+    # for guid in guids:
+    #     try:
+    #         altitude_account = s.query(AltitudeAccount).filter_by(
+    #             guid=guid).one()
+    #     except NoResultFound:
+    #         # if this AltitudeAccount does not exist, create it and associate
+    #         # it with 'utility_account
+    #         s.add(AltitudeAccount(utility_account, guid))
+    #     else:
+    #         # if this GUID does exist, and is associated with another
+    #         # utility account, change it.
+    #         # TODO: find out if this is the desired behavior. alternatives
+    #         # could include: raise an exception if it's not the same utility
+    #         # account as before, because it shouldn't change, or ignore the
+    #         # new value and keep the old one
+    #         altitude_account.utility_account = utility_account
+
+    # TODO: not the best way of doing this.
+    s.query(AltitudeAccount).filter(
+        AltitudeAccount.utility_account_id==utility_account.id).delete()
+    s.add_all([AltitudeAccount(utility_account, guid) for guid in guids])
+    s.flush()
