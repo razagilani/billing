@@ -3,11 +3,15 @@ from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
 from billing import init_config, init_model
+from test.setup_teardown import TestCaseWithSetup
+
 init_config()
 init_model()
-from billing.core.model import Utility, Supplier, Address, Session
+from billing.core.model import Utility, Supplier, Address, Session, \
+    UtilityAccount, RateClass
 from billing.core.altitude import AltitudeUtility, AltitudeSupplier,\
-    get_utility_from_guid
+    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount
+
 
 class TestAltitudeModelClasses(TestCase):
     '''Very simple test just to get coverage, since these classes hardly do
@@ -33,8 +37,15 @@ class TestWithDB(TestCase):
     '''Test with database for data access function.
     '''
     def setUp(self):
+        # don't use everything in TestCaseWithSetup because it needs to be
+        # broken into smaller parts
+        TestCaseWithSetup.truncate_tables(Session())
+
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables(Session())
 
     def test_get_utility_from_guid(self):
         s = Session()
@@ -56,3 +67,36 @@ class TestWithDB(TestCase):
         s.add(AltitudeUtility(self.u, 'abc'))
         with self.assertRaises(FlushError):
             s.flush()
+
+    def test_update_altitude_account_guids(self):
+        s = Session()
+        ua = UtilityAccount('example', '00001', self.u,
+                            Supplier('s', Address()), RateClass('r', self.u),
+                            Address(), Address(), account_number='1')
+        s.add(ua)
+        s.flush()
+
+        self.assertEqual(0, s.query(AltitudeAccount).count())
+
+        update_altitude_account_guids(ua, ['a'])
+        a = s.query(AltitudeAccount).one()
+        self.assertEqual(ua, a.utility_account)
+        self.assertEqual('a', a.guid)
+
+        update_altitude_account_guids(ua, ['a', 'b'])
+        a, b = s.query(AltitudeAccount).order_by(AltitudeAccount.guid).all()
+        self.assertEqual(ua, a.utility_account)
+        self.assertEqual('a', a.guid)
+        self.assertEqual(ua, b.utility_account)
+        self.assertEqual('b', b.guid)
+
+        update_altitude_account_guids(ua, ['c'])
+        c = s.query(AltitudeAccount).one()
+        self.assertEqual(ua, c.utility_account)
+        self.assertEqual('c', c.guid)
+
+        update_altitude_account_guids(ua, [])
+        self.assertEqual(0, s.query(AltitudeAccount).count())
+
+        # TODO: add something that involves more than one utility account.
+        # also the above can be simplified.
