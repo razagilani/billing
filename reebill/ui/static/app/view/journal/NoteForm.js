@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.NoteForm', {
+Ext.define('ReeBill.view.journal.NoteForm', {
     extend: 'Ext.form.Panel',
 
     title: 'Add a Note',

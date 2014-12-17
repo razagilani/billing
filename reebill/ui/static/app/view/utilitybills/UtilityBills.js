@@ -1,13 +1,25 @@
-Ext.define('ReeBill.view.UtilityBills', {
+Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
-
+    requires: [
+        'Ext.toolbar.PagingMemoryToolbar',
+        'ReeBill.store.Suppliers',
+        'ReeBill.store.Services',
+        'ReeBill.store.Utilities',
+        'ReeBill.store.RateClasses'
+    ],
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
     store: 'UtilityBillsMemory',
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
-            clicksToEdit: 2
+            clicksToEdit: 2,
+            listeners: {
+                beforeedit: function (e, editor) {
+                    if (editor.record.get('processed'))
+                        return false;
+                }
+            }
         })
     ],
 
@@ -61,7 +73,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         width: 100,
         renderer: function(value) {
             return Ext.util.Format.date(value, 'Y-m-d');
-        },
+        }
     },{
         header: 'Total',
         dataIndex: 'target_total',
@@ -106,7 +118,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
         renderer: function(value) {
             return value ? 'Yes' : 'No';                    
-        },
+        }
     },{
         header: 'State',
         dataIndex: 'state',
@@ -115,16 +127,57 @@ Ext.define('ReeBill.view.UtilityBills', {
         header: 'Utility',
         dataIndex: 'utility',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Utilities',
+            itemId: 'utility_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('utility').name;
+        }
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1
+        },
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('supplier').name;
+        }
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'RateClasses',
+            itemId: 'rate_class_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay: 1,
+            autoSelect: false,
+            minChars: 1
         },
         width: 125,
         flex: 1

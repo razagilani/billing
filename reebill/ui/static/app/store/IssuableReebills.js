@@ -1,6 +1,7 @@
 Ext.define('ReeBill.store.IssuableReebills', {
     extend: 'Ext.data.SyncStore',
     memoryStore: 'IssuableReebillsMemory',
+    requires: ['ReeBill.model.Reebill'],
     model: 'ReeBill.model.Reebill',
 
     autoLoad: false,

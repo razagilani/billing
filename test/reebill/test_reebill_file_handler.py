@@ -1,3 +1,6 @@
+from billing.test import init_test_config
+init_test_config()
+
 from datetime import date
 from errno import ENOENT
 from unittest import TestCase
@@ -7,8 +10,8 @@ import os.path
 from testfixtures import TempDirectory
 
 from billing.core.model import Address, Customer, UtilBill, \
-    Register
-from billing.reebill.state import ReeBill, ReeBillCharge
+    Register, UtilityAccount
+from billing.reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
 from billing.reebill.reebill_file_handler import ReebillFileHandler
 from billing import init_config
 
@@ -18,18 +21,19 @@ class ReebillFileHandlerTest(TestCase):
     def setUp(self):
         from billing import config
         self.temp_dir = TempDirectory()
-#        self.file_handler = ReebillFileHandler(self.temp_dir.path)
         self.file_handler = ReebillFileHandler(
-                config.get('reebillrendering', 'template_directory'),
                 self.temp_dir.path,
-                config.get('reebillrendering', 'teva_accounts'))
+                config.get('reebill', 'teva_accounts'))
 
         ba = Address(addressee='Billing Addressee', street='123 Example St.',
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
-        c = Customer('Test Customer', '00001', 0.2, 0.1, 'test@example.com',
-                     'Test Utility', 'Test Rate Class', ba, sa)
+        utility_account = UtilityAccount('someaccount', '00001',
+                        'Test Utility', 'Test Supplier', 'Test Rate Class',
+                        ba, sa)
+        c = ReeBillCustomer('Test Customer', 0.2, 0.1, 'test@example.com',
+                            'thermal', utility_account)
         ba2 = Address.from_other(ba)
         ba2.addressee = 'Reebill Billing Addressee'
         sa2 = Address.from_other(sa)
@@ -38,23 +42,25 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Rate Class', ba3, sa3,
-                     period_start=date(2000,1,1), period_end=date(2000,2,1))
-        u.registers = [Register(u, 'All energy', 100, 'therms', 'REGID',
-                                False, 'total', 'REG_TOTAL', [], 'METERID')]
+        u = UtilBill(utility_account, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
+            'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
+            period_end=date(2000,2,1))
+        u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
+                                'total', [], 'METERID', quantity=100,
+                                register_binding='REG_TOTAL')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
         self.reebill.replace_readings_from_utility_bill_registers(u)
         self.reebill.charges = [
-            ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply', 10, 20, 'kWh',
-                          1, 10, 20),
+            ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply',
+                          10, 20, 'therms', 1, 10, 20),
             ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution', 30, 40,
-                          'kWh', 1, 30, 40),
+                          'therms', 1, 30, 40),
             # charges are not in group order to make sure they are sorted
             # before grouping; otherwise some charges could be omitted
             # (this was bug #80340044)
             ReeBillCharge(self.reebill, 'C', 'Example Charge C', 'Supply', 50, 60,
-                          'kWh', 1, 50, 60),
+                          'therms', 1, 50, 60),
         ]
 
         self.file_handler.render(self.reebill)
@@ -131,7 +137,7 @@ class ReebillFileHandlerTest(TestCase):
         '''
         # tstsettings.cfg specifies that if the customer's account number is
         # this one, it willl get the "teva" images on its bill PDFs.
-        self.reebill.customer.account = 'teva'
+        self.reebill.reebill_customer.utility_account.account = 'teva'
         self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data

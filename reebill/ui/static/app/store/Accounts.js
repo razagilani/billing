@@ -1,6 +1,7 @@
 Ext.define('ReeBill.store.Accounts', {
     extend: 'Ext.data.SyncStore',
     memoryStore: 'AccountsMemory',
+    requires: ['ReeBill.store.Preferences', 'ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
 
     autoLoad: true,

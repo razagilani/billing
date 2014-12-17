@@ -1,5 +1,6 @@
-Ext.define('ReeBill.view.AccountsCombo', {
+Ext.define('ReeBill.view.accounts.AccountsCombo', {
     extend: 'Ext.form.field.ComboBox',
+    requires: ['ReeBill.store.Accounts'],
     alias: 'widget.accountsCombo',
     
     store: 'Accounts',
