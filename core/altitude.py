@@ -10,7 +10,8 @@ permeate the codebase.
 
 If there ends up being more than a small number of these classes, some kind of
 abstraction should be used to remove the duplicate code because they are
-all almost identical.
+all almost identical (all their code is determined just by a billing table
+name).
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
@@ -68,11 +69,16 @@ class AltitudeAccount(Base):
     '''
     __tablename__ = 'altitude_account'
 
-    id = Column('id', Integer(), primary_key=True, nullable=False)
     utility_account_id = Column('utility_account_id', Integer(),
                         ForeignKey('utility_account.id'), nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     utility_account = relationship('UtilityAccount')
+
+    # compound primary key
+    __table_args__ = (
+        PrimaryKeyConstraint('utility_account_id', 'guid'),
+        {},
+    )
 
     def __init__(self, utility_account, guid):
         self.utility_account = utility_account
