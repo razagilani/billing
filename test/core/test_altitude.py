@@ -3,7 +3,7 @@ from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
 from billing import init_config, init_model
-from test.setup_teardown import TestCaseWithSetup
+from billing.test.setup_teardown import TestCaseWithSetup
 
 init_config()
 init_model()
