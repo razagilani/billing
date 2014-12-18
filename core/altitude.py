@@ -13,7 +13,8 @@ abstraction should be used to remove the duplicate code because they are
 all almost identical (all their code is determined just by a billing table
 name).
 '''
-from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint, \
+    not_
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 from billing.core.model import Base, Session, Utility, UtilityAccount
@@ -97,25 +98,17 @@ def update_altitude_account_guids(utility_account, guids):
     AltitudeAccount associated with it.
     '''
     s = Session()
-    # for guid in guids:
-    #     try:
-    #         altitude_account = s.query(AltitudeAccount).filter_by(
-    #             guid=guid).one()
-    #     except NoResultFound:
-    #         # if this AltitudeAccount does not exist, create it and associate
-    #         # it with 'utility_account
-    #         s.add(AltitudeAccount(utility_account, guid))
-    #     else:
-    #         # if this GUID does exist, and is associated with another
-    #         # utility account, change it.
-    #         # TODO: find out if this is the desired behavior. alternatives
-    #         # could include: raise an exception if it's not the same utility
-    #         # account as before, because it shouldn't change, or ignore the
-    #         # new value and keep the old one
-    #         altitude_account.utility_account = utility_account
-
-    # TODO: not the best way of doing this.
-    s.query(AltitudeAccount).filter(
-        AltitudeAccount.utility_account_id==utility_account.id).delete()
-    s.add_all([AltitudeAccount(utility_account, guid) for guid in guids])
+    # there seems to be no good way to do an "upsert" in SQLAlchemy (SQL
+    # "merge"--not to be confused with SQLAlchemy session merge). instead,
+    # store every AltitudeAccount that should not be added while looking for
+    # the ones that should be deleted, then add ones that were not already seen.
+    existing_account_guids = set()
+    for aa in s.query(AltitudeAccount).filter(
+                    AltitudeAccount.utility_account_id == utility_account.id):
+        if aa.guid in guids:
+            existing_account_guids.add(aa.guid)
+        else:
+            s.delete(aa)
+    s.add_all([AltitudeAccount(utility_account, guid)
+               for guid in set(guids) - existing_account_guids])
     s.flush()
