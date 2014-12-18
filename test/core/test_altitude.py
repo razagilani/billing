@@ -76,7 +76,6 @@ class TestWithDB(TestCase):
                             Supplier('s', Address()), RateClass('r', self.u),
                             Address(), Address(), account_number='1')
         s.add(ua)
-        s.flush()
 
         self.assertEqual(0, s.query(AltitudeAccount).count())
 
@@ -107,6 +106,7 @@ class TestWithDB(TestCase):
         self.assertEqual('c', c1.guid)
         self.assertEqual('c', c2.guid)
 
+        # delete AltitudeAccount for one UtilityAccount, leaving the other
         update_altitude_account_guids(ua, [])
         c2 = s.query(AltitudeAccount).one()
         self.assertEqual('c', c2.guid)
