@@ -53,17 +53,15 @@ def upgrade():
     # tables for foreign keys to Altitude (many-to-1 with utility and supplier)
     # TODO: "company" will have to be replaced by utility
     op.create_table('altitude_utility',
-                    sa.Column('id', sa.Integer(), primary_key=True,
-                              nullable=False),
                     sa.Column('utility_id', sa.Integer(),
                               sa.ForeignKey('utility.id'), nullable=False),
-                    sa.Column('guid', sa.String(length=36), nullable=False))
+                    sa.Column('guid', sa.String(length=36), nullable=False),
+                    sa.PrimaryKeyConstraint('utility_id', 'guid'))
     op.create_table('altitude_supplier',
-                    sa.Column('id', sa.Integer(), primary_key=True,
-                              nullable=False),
                     sa.Column('supplier_id', sa.Integer(),
                               sa.ForeignKey('supplier.id'), nullable=False),
-                    sa.Column('guid', sa.String(length=36), nullable=False))
+                    sa.Column('guid', sa.String(length=36), nullable=False),
+                    sa.PrimaryKeyConstraint('supplier_id', 'guid'))
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')
     op.drop_column('utilbill', 'utility_id')

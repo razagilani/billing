@@ -2,6 +2,8 @@
 import unittest
 from datetime import date, datetime, timedelta
 from copy import deepcopy
+from pika.exceptions import ChannelClosed
+
 
 class TestCase(unittest.TestCase):
     '''Extra assert methods.'''
@@ -49,3 +51,43 @@ class TestCase(unittest.TestCase):
                 if k in d:
                     del d[key]
         self.assertEqual(d1, d2)
+
+def _rabbitmq_queue_exists(connection, queue_name):
+    '''Return True if the queue named by 'self.queue_name' exists,
+    False otherwise.
+    '''
+    # for an unknown reason, queue_declare() can cause the channel used
+    # to become closed, so a separate channel must be used for this
+    tmp_channel = connection.channel()
+
+    # "passive declare" of the queue will fail if the queue does not
+    # exist and otherwise do nothing, so is equivalent to checking if the
+    # queue exists
+    try:
+        tmp_channel.queue_declare(queue=queue_name, passive=True)
+    except ChannelClosed:
+        result = False
+    else:
+        result = True
+
+    if tmp_channel.is_open:
+        tmp_channel.close()
+    return result
+
+def clean_up_rabbitmq(connection, channel, queue_name):
+    '''Clear out messages to reset the given queue to its original state.
+    Should be run before and after tests that use RabbitMQ.
+    :param connection: pika.connection.Connection
+    :param channel: pika.channel.Channel
+    :param queue_name: name of queue to clean up (string)
+    '''
+    if _rabbitmq_queue_exists(connection, queue_name):
+        channel.queue_purge(queue=queue_name)
+
+        # TODO: the queue cannot be deleted because pika raises
+        # 'ConsumerCancelled' here for an unknown reason. this seems
+        # similar to this Github issue from 2012 that is described as
+        # "correct behavior":
+        # https://github.com/pika/pika/issues/223
+        # self.channel.queue_delete(queue=self.queue_name)
+
