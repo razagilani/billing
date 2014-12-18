@@ -2,7 +2,8 @@
 Currently the only one is StateDB.
 '''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount, ReeBillCustomer
+from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
+from billing.reebill.state import ReeBillCustomer
 
 init_logging()
 import unittest
@@ -274,15 +275,22 @@ class StateDBTest(TestCaseWithSetup):
         self.session.add(reebill_customer2)
         self.session.commit()
 
+        utility_account_8 = Session().query(UtilityAccount).filter_by(
+            account='99998').one()
+        utility_account_9 = Session().query(UtilityAccount).filter_by(
+            account='99999').one()
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),
-            [('99999', 'FB Test Utility Name', rateclass1.name, None,
+            [(utility_account_9.id, '99999', '', 'FB Test Utility Name',
+             rateclass1.name, None,
               None, None, None, None, None, None),
-             ('99998', 'FB Test Utility Name', rateclass1.name, None,
+             (utility_account_8.id, '99998', '', 'FB Test Utility Name',
+              rateclass1.name, None,
               None, None, None, None, None, None)])
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', 'FB Test Utility Name', rateclass1.name, None,
+            [(utility_account_8.id, '99998', '', 'FB Test Utility Name',
+              rateclass1.name, None,
               None, None, None, None, None, None)])
 
         # Attach two utilitybills with out addresses but with rate class to one
@@ -310,15 +318,18 @@ class StateDBTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),[
-                ('99999', 'FB Test Utility Name', rateclass1.name,
+                (utility_account_9.id, '99999', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, None, None, None, rateclass2.name,
-                    empty_address, date(2000, 2, 1)),
-                ('99998', 'FB Test Utility Name', rateclass1.name,
+                 empty_address, date(2000, 2, 1)),
+                (utility_account_8.id, '99998', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, None, None, None, rateclass3.name,
-                    fake_address, date(2000, 5, 1))])
+                 fake_address, date(2000, 5, 1))])
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', 'FB Test Utility Name', rateclass1.name, False,
+            [(utility_account_8.id, '99998', '', 'FB Test Utility Name',
+              rateclass1.name, False,
               None, None, None, '', fake_address, date(2000, 5, 1))]
         )
 
@@ -339,16 +350,19 @@ class StateDBTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
-                ('99999', 'FB Test Utility Name', rateclass1.name,
+                (utility_account_9.id, '99999', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, 1L, 0L, issue_date, rateclass2.name,
-                    empty_address, date(2000, 2, 1)),
-                ('99998', 'FB Test Utility Name', rateclass1.name,
+                 empty_address, date(2000, 2, 1)),
+                (utility_account_8.id, '99998', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, None, None, None, newrateclass.name, fake_address,
                  date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', 'FB Test Utility Name', rateclass1.name, False,
+            [(utility_account_8.id, '99998', '', 'FB Test Utility Name',
+              rateclass1.name, False,
               None, None, None, newrateclass.name, fake_address,
               date(2000, 6, 1))]
         )
@@ -360,16 +374,19 @@ class StateDBTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
-                ('99999', 'FB Test Utility Name', rateclass1.name,
+                (utility_account_9.id, '99999', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, 1L, 0L, issue_date, rateclass2.name,
                     empty_address, date(2000, 2, 1)),
-                ('99998', 'FB Test Utility Name', rateclass1.name,
+                (utility_account_8.id, '99998', '', 'FB Test Utility Name',
+                 rateclass1.name,
                  False, None, None, None, newrateclass.name, fake_address,
                  date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', 'FB Test Utility Name', rateclass1.name, False,
+            [(utility_account_8.id, '99998', '', 'FB Test Utility Name',
+              rateclass1.name, False,
               None, None, None, newrateclass.name, fake_address,
               date(2000, 6, 1))]
         )

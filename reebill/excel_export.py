@@ -310,6 +310,7 @@ class Exporter(object):
                 # Skip them
                 if len(reebill.utilbills) > 1:
                     continue
+                utilbill = reebill.utilbill
 
                 period_start, period_end = reebill.get_period()
 
