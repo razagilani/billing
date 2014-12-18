@@ -19,6 +19,7 @@ from billing import config, init_model
 from billing.core.model.model import Session, Customer, Utility, \
     Address, UtilBill, Supplier, RateClass, UtilityAccount
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
+from billing.upgrade_scripts.v23.clean_up_rate_class_data import clean_up_rate_class_data
 
 log = logging.getLogger(__name__)
 
@@ -356,6 +357,9 @@ def upgrade():
 
     log.info('Upgrading to schema 28552fdf9f48')
     alembic_upgrade('28552fdf9f48')
+
+    log.info('Cleaning up rate class data')
+    clean_up_rate_class_data(session)
 
     log.info('Upgrade Complete')
 
