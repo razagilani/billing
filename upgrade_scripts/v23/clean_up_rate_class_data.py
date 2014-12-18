@@ -42,6 +42,12 @@ def clean_up_rate_class_data(session):
     # WGES
     COMMERCIAL_HEAT_COOL_DC = RateClass("COMMERCIAL HEAT/COOL_DC_DC", WGES)
     session.add(COMMERCIAL_HEAT_COOL_DC)
+    COMMERCIAL_HEAT_COOL_DC_Level_1 = RateClass(
+        "COMMERCIAL HEAT/COOL_Level 1_DC_DC", WGES)
+    session.add(COMMERCIAL_HEAT_COOL_DC_Level_1)
+    COMMERCIAL_HEAT_COOL_DC_Level_2 = RateClass(
+        "COMMERCIAL HEAT/COOL_Level 2_DC_DC", WGES)
+    session.add(COMMERCIAL_HEAT_COOL_DC_Level_2)
 
     NONRESIDENTIAL_NONHEAT_Level_1 = RateClass(
         "NONRESIDENTIAL NONHEAT_Level 1_DC_DC", WGES
@@ -339,6 +345,29 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10138', APT_HEAT_NEW_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10139', APT_HEAT_NEW_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10140', APT_HEAT_MONTGOMERY)
+    account_bills_2_rate_class(session, '10141', APT_HEAT_PRINCE_GEORGE)
+    account_bills_2_rate_class(session, '10142', APT_NONHEAT_PRINCE_GEORGE)
+    account_bills_2_rate_class(session, '10143', APT_NONHEAT_MONTGOMERY)
+    account_bills_2_rate_class(session, '10144', RESIDENTIAL_HEAT_PRINCE_GEORGE)
+    account_bills_2_rate_class(session, '10145', APT_NONHEAT_MONTGOMERY)
+    account_bills_2_rate_class(session, '10146', APT_HEAT_NEW)
+    account_bills_2_rate_class(session, '10147', APT_HEAT_MONTGOMERY)
+    account_bills_2_rate_class(session, '10148', APT_HEAT_NEW_MONTGOMERY)
+    # TODO 149-157 CA and PG&E
+    account_bills_2_rate_class(session, '10158', APT_HEAT_NEW)
+    # Todo: MAUI account_bills_2_rate_class(session, '10159', )
+    account_bills_2_rate_class(session, '10160', NON_RESIDENTIAL_GS_D)
+    account_bills_2_rate_class(session, '10160', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20001', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20002', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20003', NONRESIDENTIAL_HEAT_Level_2)
+    account_bills_2_rate_class(session, '20004', NON_RESIDENTIAL_GS_D)
+    account_bills_2_rate_class(session, '20005', NONRESIDENTIAL_HEAT)
+    account_bills_2_rate_class(session, '20006', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20007', NONRESIDENTIAL_HEAT_Level_2)
+    account_bills_2_rate_class(session, '20008', GENERAL_SERVICE_SCHEDULE_C_BALTIMORE)
+    # TODO 20009
+    account_bills_2_rate_class(session, '20010', COMMERCIAL_HEAT_COOL_DC_Level_2)
 
 if __name__ == '__main__':
     # for testing in development environment
