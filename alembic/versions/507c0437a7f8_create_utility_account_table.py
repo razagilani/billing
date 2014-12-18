@@ -50,13 +50,12 @@ def upgrade():
     op.execute('drop view status_days_since')
     op.execute('drop view status_unbilled')
 
-    # also create utility_account table
     op.create_table('altitude_account',
-        sa.Column('id', sa.Integer(), primary_key=True, nullable=False),
         sa.Column('utility_account_id', sa.Integer(),
                             sa.ForeignKey('utility_account.id'),
                             nullable=False),
-        sa.Column('guid', sa.String(length=36), nullable=False))
+        sa.Column('guid', sa.String(length=36), nullable=False),
+        sa.PrimaryKeyConstraint('utility_account_id', 'guid'))
 
 def downgrade():
     op.drop_table('utility_account')
@@ -70,3 +69,4 @@ def downgrade():
     op.alter_column('reebill', 'customer_id', existing_type=sa.Integer(), nullable=False)
     op.alter_column('customer', 'fb_billing_address_id', existing_type=sa.Integer(), nullable=False)
     op.alter_column('customer', 'fb_service_address_id', existing_type=sa.Integer(), nullable=False)
+    op.drop_table('altitude_account')
