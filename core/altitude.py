@@ -13,10 +13,9 @@ abstraction should be used to remove the duplicate code because they are
 all almost identical (all their code is determined just by a billing table
 name).
 '''
-from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint, \
-    not_
+from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.exc import NoResultFound
+
 from billing.core.model import Base, Session, Utility, UtilityAccount
 
 
