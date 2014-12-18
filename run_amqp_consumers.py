@@ -51,4 +51,7 @@ if __name__ == '__main__':
                                            None)
 
     consume_utilbill_file(channel, queue_name, utilbill_processor)
-    consume_utility_guid(channel, queue_name, utilbill_processor)
+
+    # TODO: disabled because it was decided that this should not be done
+    # after all (for now)
+    #consume_utility_guid(channel, queue_name, utilbill_processor)
