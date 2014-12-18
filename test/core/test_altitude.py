@@ -104,7 +104,9 @@ class TestWithDB(TestCase):
         c1, c2 = s.query(AltitudeAccount).order_by(
             AltitudeAccount.utility_account_id).all()
         self.assertEqual('c', c1.guid)
+        self.assertEqual(ua, c1.utility_account)
         self.assertEqual('c', c2.guid)
+        self.assertEqual(ua2, c2.utility_account)
 
         # delete AltitudeAccount for one UtilityAccount, leaving the other
         update_altitude_account_guids(ua, [])
