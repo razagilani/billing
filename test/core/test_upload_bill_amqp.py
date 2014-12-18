@@ -6,7 +6,6 @@ from StringIO import StringIO
 import json
 
 import pika
-from pika.exceptions import ChannelClosed
 
 from billing.core.amqp_exchange import consume_utilbill_file
 from billing.core.model import Session, Utility
@@ -15,42 +14,10 @@ from billing.core.altitude import AltitudeUtility, AltitudeGUID
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
 from billing.exc import DuplicateFileError
+from billing.test.testing_utils import clean_up_rabbitmq
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
-
-    def _queue_exists(self):
-        '''Return True if the queue named by 'self.queue_name' exists,
-        False otherwise.
-        '''
-        # for an unknown reason, queue_declare() can cause the channel used
-        # to become closed, so a separate channel must be used for this
-        tmp_channel = self.connection.channel()
-
-        # "passive declare" of the queue will fail if the queue does not
-        # exist and otherwise do nothing, so is equivalent to checking if the
-        # queue exists
-        try:
-            tmp_channel.queue_declare(queue=self.queue_name, passive=True)
-        except ChannelClosed:
-            result = False
-        else:
-            result = True
-
-        if tmp_channel.is_open:
-            tmp_channel.close()
-        return result
-
-    def _clean_up_rabbitmq(self):
-           if self._queue_exists():
-                self.channel.queue_purge(queue=self.queue_name)
-
-                # TODO: the queue cannot be deleted because pika raises
-                # 'ConsumerCancelled' here for an unknown reason. this seems
-                # similar to this Github issue from 2012 that is described as
-                # "correct behavior":
-                # https://github.com/pika/pika/issues/223
-                # self.channel.queue_delete(queue=self.queue_name)
 
     def setUp(self):
         super(TestUploadBillAMQP, self).setUp()
@@ -62,7 +29,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host_name))
         self.channel = self.connection.channel()
-        self._clean_up_rabbitmq()
+        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
         self.channel.exchange_declare(exchange=self.exchange_name)
         self.channel.queue_declare(queue=self.queue_name)
         self.channel.queue_bind(exchange=self.exchange_name,
@@ -71,7 +38,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.utilbill_loader = UtilBillLoader(Session())
 
     def tearDown(self):
-        self._clean_up_rabbitmq()
+        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
         self.connection.close()
         super(self.__class__, self).tearDown()
 
