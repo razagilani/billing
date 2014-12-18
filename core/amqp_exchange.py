@@ -53,6 +53,7 @@ def consume_utility_guid(channel, queue_name, utilbill_processor):
         s.add(AltitudeUtility(new_utility, guid))
         s.commit()
     channel.basic_consume(callback, queue=queue_name)
+    channel.start_consuming()
 
 def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility bill.
@@ -73,4 +74,5 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
             service_address=Address(street=service_address_street))
         ch.basic_ack(delivery_tag=method.delivery_tag)
     channel.basic_consume(callback, queue=queue_name)
+    channel.start_consuming()
 
