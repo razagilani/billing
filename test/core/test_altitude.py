@@ -97,8 +97,17 @@ class TestWithDB(TestCase):
         self.assertEqual(ua, c.utility_account)
         self.assertEqual('c', c.guid)
 
-        update_altitude_account_guids(ua, [])
-        self.assertEqual(0, s.query(AltitudeAccount).count())
+        # more than one utility account can share the same AltitudeAccount
+        ua2 = UtilityAccount('example2', '00002', self.u, ua.fb_supplier,
+                             ua.fb_rate_class, Address(), Address(),
+                             account_number='2')
+        update_altitude_account_guids(ua2, ['c'])
+        c1, c2 = s.query(AltitudeAccount).order_by(
+            AltitudeAccount.utility_account_id).all()
+        self.assertEqual('c', c1.guid)
+        self.assertEqual('c', c2.guid)
 
-        # TODO: add something that involves more than one utility account.
-        # also the above can be simplified.
+        update_altitude_account_guids(ua, [])
+        c2 = s.query(AltitudeAccount).one()
+        self.assertEqual('c', c2.guid)
+        self.assertEqual(ua2, c2.utility_account)
