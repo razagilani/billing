@@ -35,8 +35,11 @@ class UtilbillMessageSchema(Schema):
     service_address = String()
     account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
 
-# TODO: this is not used yet and not tested (BILL-3784); it's serving to show
-# how the AltitudeUtility table (BILL-5836) will be used.
+
+# TODO: this code is not used yet (and not tested). it was originally decided
+#  that it was necessary to synchronize utilities between altitude and
+# billing databases, but this was later un-decided, so nothing is being done
+# about it for now. see BILL-3784.
 def consume_utility_guid(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility.
     '''
