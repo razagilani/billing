@@ -65,7 +65,7 @@ def get_utilbill_file_path(utilbill, extension=None):
 
     # if extension is provided, this is the path of a file that may not
     # (yet) exist
-    return path_without_extension + extension
+    return (path_without_extension, extension)
 
 def upload_utilbills_to_aws(session):
     """
@@ -87,8 +87,8 @@ def upload_utilbills_to_aws(session):
     upload_count = 0
     for utilbill in session.query(UtilBill).all():
         try:
-            local_file_path = get_utilbill_file_path(utilbill)
-            with open(local_file_path) as local_file:
+            local_file_path, extension = get_utilbill_file_path(utilbill)
+            with open(local_file_path + extension) as local_file:
                 sha256_hexdigest = bu.compute_hexdigest(local_file)
         except IOError:
             log.error('Local pdf file for utilbill id %s not found' % \
@@ -102,9 +102,9 @@ def upload_utilbills_to_aws(session):
                   % (utilbill.id, local_file_path, sha256_hexdigest))
         upload_count += 1
         log.debug('upload count: %s' % upload_count)
-        full_key_name = os.path.join('utilbill', sha256_hexdigest)
+        full_key_name = sha256_hexdigest + extension
         key = bucket.new_key(full_key_name)
-        key.set_contents_from_filename(local_file_path)
+        key.set_contents_from_filename(local_file_path + extension)
 
 if __name__ == '__main__':
     # for testing in development environment

@@ -10,8 +10,8 @@ import os.path
 from testfixtures import TempDirectory
 
 from billing.core.model import Address, Customer, UtilBill, \
-    Register, UtilityAccount, ReeBillCustomer
-from billing.reebill.state import ReeBill, ReeBillCharge
+    Register, UtilityAccount
+from billing.reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
 from billing.reebill.reebill_file_handler import ReebillFileHandler
 from billing import init_config
 

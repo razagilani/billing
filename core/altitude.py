@@ -14,10 +14,12 @@ all almost identical.
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from billing.core.model import Base, Session, Utility
+from billing.core.model import Base, Session, Utility, UtilityAccount
+
 
 class AltitudeGUID(String):
     LENGTH = 36
+    REGEX = '[0-9A-F\\-]{%d}' % LENGTH
     def __init__(self):
         super(AltitudeGUID, self).__init__(length=self.LENGTH)
 
@@ -26,7 +28,7 @@ class AltitudeUtility(Base):
     __tablename__ = 'altitude_utility'
 
     id = Column('id', Integer(), primary_key=True, nullable=False)
-    utility_id = Column('utility_id', Integer(), ForeignKey('company.id'),
+    utility_id = Column('utility_id', Integer(), ForeignKey('utility.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     utility = relationship('Utility')
@@ -40,7 +42,7 @@ class AltitudeSupplier(Base):
     __tablename__ = 'altitude_supplier'
 
     id = Column('id', Integer(), primary_key=True, nullable=False)
-    utility_id = Column('supplier', Integer(), ForeignKey('company.id'),
+    utility_id = Column('supplier', Integer(), ForeignKey('supplier.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
     supplier = relationship('Supplier')
@@ -49,8 +51,8 @@ class AltitudeSupplier(Base):
         self.supplier = supplier
         self.guid = guid
 
-def get_utility_from_guid(guid):
-    '''Returns the Utility corresponding to the given Altitude GUID.
-    '''
-    s = Session()
-    return s.query(Utility).join(AltitudeUtility).filter_by(guid=guid).one()
+# conversion functions: look up billing entities via Altitude GUIDs
+def _altitude_to_billing(altitude_class, billing_class):
+    return lambda guid: Session().query(billing_class).join(
+        altitude_class).filter(altitude_class.guid==guid).one()
+get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
