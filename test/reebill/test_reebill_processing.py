@@ -1918,7 +1918,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         reebill = self.session.query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, len(reebill.readings))
         self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
-        self.assertEqual(energy_1, reebill.readings[0].renewable_quantity)
+        self.assertAlmostEqual(energy_1,
+                               reebill.readings[0].renewable_quantity, places=4)
 
         # "update readings" causes another reading to be added for the 2nd
         # register of the utility bill

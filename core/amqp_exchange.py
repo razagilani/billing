@@ -1,12 +1,14 @@
 import json
-from formencode.validators import String, Regex, Validator, FancyValidator
-from formencode import Schema, Invalid
+from formencode.validators import String, Regex, FancyValidator
+from formencode import Schema
+from formencode.api import Invalid
+from formencode.foreach import ForEach
 import re
 
 from billing.core.bill_file_handler import BillFileHandler
 from billing.core.model import Session, Address, UtilityAccount
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
-    AltitudeGUID
+    AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
 
 class TotalValidator(FancyValidator):
@@ -31,9 +33,13 @@ class UtilbillMessageSchema(Schema):
     #due_date = String()
     total = TotalValidator()
     service_address = String()
+    account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
 
-# TODO: this is not used yet and not tested (BILL-3784); it's serving to show
-# how the AltitudeUtility table (BILL-5836) will be used.
+
+# TODO: this code is not used yet (and not tested). it was originally decided
+#  that it was necessary to synchronize utilities between altitude and
+# billing databases, but this was later un-decided, so nothing is being done
+# about it for now. see BILL-3784.
 def consume_utility_guid(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility.
     '''
@@ -60,18 +66,22 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''
     def callback(ch, method, properties, body):
         d = UtilbillMessageSchema.to_python(json.loads(body))
+        s = Session()
         utility = get_utility_from_guid(d['utility_provider_guid'])
-        utility_account = Session().query(UtilityAccount).filter_by(
+        utility_account = s.query(UtilityAccount).filter_by(
             account_number=d['utility_account_number']).one()
         sha256_hexdigest = d['sha256_hexdigest']
         total = d['total']
         # TODO due_date
         service_address_street = d['service_address']
+        account_guids = d['account_guids']
 
         utilbill_processor.create_utility_bill_with_existing_file(
             utility_account, utility, sha256_hexdigest,
             target_total=total,
             service_address=Address(street=service_address_street))
+        update_altitude_account_guids(utility_account, account_guids)
+        s.commit()
         ch.basic_ack(delivery_tag=method.delivery_tag)
     channel.basic_consume(callback, queue=queue_name)
     channel.start_consuming()
