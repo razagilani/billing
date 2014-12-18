@@ -1,7 +1,9 @@
 Ext.define('ReeBill.model.Account', {
     extend: 'Ext.data.Model',
     fields: [
+        {name: 'utility_account_id', type: 'int'},
         {name: 'account', type: 'string'},
+        {name: 'utility_account_number', type: 'string'},
         {name: 'fb_utility_name', type: 'string'},
         {name: 'fb_rate_class', type: 'string'},
         {name: 'fb_service_address', type: 'string'},
