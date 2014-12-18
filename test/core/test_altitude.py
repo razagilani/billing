@@ -45,7 +45,9 @@ class TestWithDB(TestCase):
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables(Session())
+        s = Session()
+        s.rollback()
+        TestCaseWithSetup.truncate_tables(s)
 
     def test_get_utility_from_guid(self):
         s = Session()
