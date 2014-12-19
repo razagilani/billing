@@ -1,11 +1,3 @@
-from billing import init_config, init_model, init_logging
-from os.path import join, realpath, dirname
-# TODO: is it necessary to specify file path?
-p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(filepath=p)
-init_config(filepath=p)
-init_model()
-
 import json
 import re
 from formencode.validators import String, Regex, FancyValidator
@@ -68,10 +60,7 @@ class UtilbillMessageSchema(Schema):
     account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
 
 
-# TODO: this code is not used yet (and not tested). it was originally decided
-#  that it was necessary to synchronize utilities between altitude and
-# billing databases, but this was later un-decided, so nothing is being done
-# about it for now. see BILL-3784.
+
 class BillingHandler(MessageHandler):
 
     def __init__(self, *args, **kwargs):
@@ -102,7 +91,10 @@ class BillingHandler(MessageHandler):
             self.pricing_model, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
 
-
+# TODO: this code is not used yet (and not tested). it was originally decided
+#  that it was necessary to synchronize utilities between altitude and
+# billing databases, but this was later un-decided, so nothing is being done
+# about it for now. see BILL-3784.
 class ConsumeUtilityGuidHandler(BillingHandler):
 
     def handle(self, message):
@@ -145,6 +137,15 @@ class ConsumeUtilbillFileHandler(BillingHandler):
 
 
 if __name__ == "__main__":
+    from billing import init_config, init_model, init_logging
+    from os.path import join, realpath, dirname
+    # TODO: is it necessary to specify file path?
+    p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+    init_logging(filepath=p)
+    init_config(filepath=p)
+    init_model()
+
+    from billing import config
     exchange_name = config.get('amqp', 'exchange')
     utilbill_routing_key = config.get('amqp', 'utilbill_routing_key')
     utilityguid_routing_key = config.get('amqp', 'utilityguid_routing_key')
