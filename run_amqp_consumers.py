@@ -1,6 +1,8 @@
-'''Entry point for AMQP consumers. All config file reading and instantiation of
-objects based on config file values should be done here. The substantive code
-that actually does things is in core/amqp_exchange.py.
+#!/usr/bin/env/python
+'''Entry point for AMQP consumers: run this file to start consuming messages.
+All config file reading and instantiation of objects based on config file
+values should be done here. The substantive code that actually does things is
+in core/amqp_exchange.py.
 '''
 from boto.s3.connection import S3Connection
 import pika

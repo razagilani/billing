@@ -1,6 +1,11 @@
 '''Integration tests for receiving data associated with an existing utility
 bill file over AMQP. The RabbitMQ server is not started by this test so it
 must be running separately before the test starts.
+
+# TODO: a lot of the behavior that is tested in here could be tested at a
+unit-test level. Also, as much as possible of the real code that is used to
+process AMQP messages should be covered here, which means using
+run_amqp_consuers.py if possible.
 '''
 from StringIO import StringIO
 import json
