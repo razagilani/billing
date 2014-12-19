@@ -3,6 +3,7 @@ bill file over AMQP. The RabbitMQ server is not started by this test so it
 must be running separately before the test starts.
 '''
 from StringIO import StringIO
+from datetime import date
 import json
 
 import pika
@@ -70,7 +71,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
-            # due_date='2014-09-30T18:00:00+00:00',
+            due_date='2014-09-30T18:00:00+00:00',
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
@@ -81,7 +82,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             utility_account_number='2',
             utility_provider_guid=guid_b,
             sha256_hexdigest=file_hash,
-            # due_date='2014-09-30T18:00:00+00:00',
+            due_date='',
             total='',
             service_address='',
             account_guids=[]))
@@ -106,7 +107,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # check metadata that were provided with the bill:
         u = self.utilbill_loader.get_last_real_utilbill(utility_account.account)
-        #self.assertEqual(date(2014,9,30), u.due_date)
+        self.assertEqual(date(2014, 9, 30), u.due_date)
         self.assertEqual(231.12, u.target_total)
         self.assertEqual('123 Hollywood Drive', u.service_address.street)
         self.assertEqual('', u.service_address.city)
