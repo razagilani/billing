@@ -25,7 +25,7 @@ def upgrade():
         sa.Column('fb_billing_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_service_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_supplier_id', sa.Integer(), sa.ForeignKey('supplier.id')),
-        sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('company.id')),
+        sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('utility.id')),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_table('reebill_customer',
@@ -50,6 +50,13 @@ def upgrade():
     op.execute('drop view status_days_since')
     op.execute('drop view status_unbilled')
 
+    op.create_table('altitude_account',
+        sa.Column('utility_account_id', sa.Integer(),
+                            sa.ForeignKey('utility_account.id'),
+                            nullable=False),
+        sa.Column('guid', sa.String(length=36), nullable=False),
+        sa.PrimaryKeyConstraint('utility_account_id', 'guid'))
+
 def downgrade():
     op.drop_table('utility_account')
     op.drop_table('reebill_customer')
@@ -62,3 +69,4 @@ def downgrade():
     op.alter_column('reebill', 'customer_id', existing_type=sa.Integer(), nullable=False)
     op.alter_column('customer', 'fb_billing_address_id', existing_type=sa.Integer(), nullable=False)
     op.alter_column('customer', 'fb_service_address_id', existing_type=sa.Integer(), nullable=False)
+    op.drop_table('altitude_account')

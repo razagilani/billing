@@ -9,7 +9,7 @@ from StringIO import StringIO
 from datetime import date, datetime
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill, UtilityAccount, Utility, Address
+from billing.core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
 from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -38,7 +38,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # which was created in setUp
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '100000')
+            service_address, '100000', '12345')
 
         # Disabled this test for now since it bypasses the process object
         # customer = self.state_db.get_customer(session, '88888')
@@ -113,16 +113,16 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # exists
         self.assertRaises(ValueError, self.reebill_processor.create_new_account,
             '88888', 'New Account', 'pv', 0.6, 0.2,
-            billing_address, service_address, '99999')
+            billing_address, service_address, '99999', '12345')
 
         # try creating another account when the template account has no
         # utility bills yet
         self.reebill_processor.create_new_account(
             '77777', 'New Account','thermal', 0.6, 0.2, billing_address,
-            service_address, '88888')
+            service_address, '88888', '12345')
         self.reebill_processor.create_new_account(
             '66666', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '77777')
+            service_address, '77777', '12345')
 
         # Try creating a reebill for a new account that has no utility bills
         # uploaded yet
@@ -216,6 +216,20 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.issue('99999', 1)
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                                          service='water')
+
+    def test_update_account_number(self):
+        s = Session()
+        utility = Utility('utility', Address())
+        supplier = Supplier('supplier', Address())
+        utility_account = UtilityAccount('someone', '99999',
+                utility, supplier,
+                RateClass('rate class', utility), Address(),
+                Address())
+        s.add(utility_account)
+        s.commit()
+        self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
+        self.assertEqual(utility_account.account_number, 12345)
+
 
     def test_upload_utility_bill(self):
         '''Tests saving of utility bills in database (which also belongs partly
@@ -591,13 +605,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         self.reebill_processor.create_new_account(
             acc_a, 'Customer A', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '12345')
         self.reebill_processor.create_new_account(
             acc_b, 'Customer B', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '12345')
         self.reebill_processor.create_new_account(
             acc_c, 'Customer C', 'thermal', .12, .34, billing_address,
-            service_address, '100001')
+            service_address, '100001', '12345')
 
         # new customers also need to be in nexus for
         # 'update_renewable_readings' to
