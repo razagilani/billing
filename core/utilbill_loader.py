@@ -1,4 +1,3 @@
-from sqlalchemy import desc
 from billing.core.model import UtilBill, UtilityAccount
 from billing.exc import NoSuchBillException
 
