@@ -8,7 +8,7 @@ import json
 
 import pika
 
-from billing.core.amqp_exchange import consume_utilbill_file
+from billing.core.amqp_exchange import BillingHandler, ConsumeUtilityGuidHandler
 from billing.core.model import Session, UtilityAccount
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
