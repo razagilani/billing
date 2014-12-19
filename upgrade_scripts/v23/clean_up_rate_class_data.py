@@ -7,14 +7,23 @@ log = logging.getLogger(__name__)
 
 
 def account_bills_2_rate_class(session, account_str, rate_class):
+    utility_account = session.query(UtilityAccount).filter(
+        UtilityAccount.account == account_str
+    ).one()
+    utility_account.fb_rate_class = rate_class
+    utility_account.fb_utility = rate_class.utility
+
     utilbills = session.query(UtilBill).join(
         UtilityAccount, UtilityAccount.id ==
         UtilBill.utility_account_id).filter(
         UtilityAccount.account == account_str
-    )
-    for bill in utilbills:
-       bill.rate_class = rate_class
+    ).all()
 
+    print "Updating Rate Class for %s bills for account %s" % (
+        len(utilbills), account_str)
+
+    for bill in utilbills:
+        bill.rate_class = rate_class
 
 def clean_up_rate_class_data(session):
     # Utilities
@@ -87,6 +96,9 @@ def clean_up_rate_class_data(session):
     RESIDENTIAL_HEAT_PRINCE_GEORGE = RateClass(
         "RESIDENTIAL HEAT/COOL_MD_Prince George's", WGES)
     session.add(RESIDENTIAL_HEAT_PRINCE_GEORGE)
+    RESIDENTIAL_HEAT_Level_1 = RateClass(
+        "RESIDENTIAL HEAT/COOL_Level 1_DC_DC", WGES)
+    session.add(RESIDENTIAL_HEAT_Level_1)
 
     APT_HEAT_NEW = RateClass(
         'Group Metered Apartments Heating Delivery Service_DC_DC', WGES
@@ -186,6 +198,10 @@ def clean_up_rate_class_data(session):
         "Residential-R_DC_DC", PEPCO
     )
     session.add(RESIDENTIAL_R_DC)
+    RESIDENTIAL_AE_DC = RateClass(
+        "Residential-AE_DC_DC", PEPCO
+    )
+    session.add(RESIDENTIAL_AE_DC)
 
     # PECO
     ELECTRIC_0_100_PHILADELPHIA = RateClass(
@@ -368,6 +384,189 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '20008', GENERAL_SERVICE_SCHEDULE_C_BALTIMORE)
     # TODO 20009
     account_bills_2_rate_class(session, '20010', COMMERCIAL_HEAT_COOL_DC_Level_2)
+    account_bills_2_rate_class(session, '20011',
+                               COMMERCIAL_HEAT_COOL_DC_Level_2)
+    account_bills_2_rate_class(session, '20012',
+                               COMMERCIAL_HEAT_COOL_DC_Level_1)
+    account_bills_2_rate_class(session, '20013',
+                               COMMERCIAL_HEAT_COOL_DC_Level_2)
+    # No bills for 20013 - 20015
+    account_bills_2_rate_class(session, '20016',
+                               NONRESIDENTIAL_HEAT_Level_2)
+    account_bills_2_rate_class(session, '20017',
+                               NONRESIDENTIAL_HEAT_Level_1)
+    account_bills_2_rate_class(session, '20018',
+                               NONRESIDENTIAL_HEAT_Level_1)
+    account_bills_2_rate_class(session, '20019',
+                               RESIDENTIAL_HEAT_Level_1)
+    account_bills_2_rate_class(session, '20021',
+                               ELECTRIC_0_100_PHILADELPHIA)
+
+    for a in xrange(20022, 20026):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20026', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20027, 20056):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20056', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20057, 20076):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20076', NON_RESIDENTIAL_GS_ND)
+    # No bills for 20077
+    account_bills_2_rate_class(session, '20078', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20079', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20080, 20096):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20096', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20097, 20107):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20107', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20108', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20109', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20110, 20114):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20114', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20115', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20116, 20121):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20121', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20122', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20123', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20124, 20128):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    for a in xrange(20128, 20137):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    account_bills_2_rate_class(session, '20138', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20138', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20138', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20138', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20138', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20143, 20149):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    for a in xrange(20149, 20152):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20152, 20186):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20186', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20187', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20188', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20189, 20198):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20198', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20199, 20208):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20208', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20209, 20252):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20252', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20253, 20273):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20273', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20274', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20275, 20281):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20281', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20282', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20283', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20284', RESIDENTIAL_R_DC)
+    # No bills for 20086
+    account_bills_2_rate_class(session, '20286', RESIDENTIAL_R_DC)
+
+    for a in xrange(20287, 20297):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20297, 20301):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20301', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20302', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20303, 20321):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20321', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20322, 20333):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20333', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20334', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20335, 20340):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    for a in xrange(20340, 20368):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_AE_DC)
+
+    for a in xrange(20368, 20372):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    account_bills_2_rate_class(session, '20372', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20373', NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20374, 20377):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    for a in xrange(20377, 20382):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    for a in xrange(20382, 20388):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    account_bills_2_rate_class(session, '20388', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20389', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20390', RESIDENTIAL_R_DC)
+
+    for a in xrange(20391, 20405):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
+
+    account_bills_2_rate_class(session, '20405', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20406', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20407', RESIDENTIAL_AE_DC)
+
+    for a in xrange(20408, 20414):
+        account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    # Delete orphraned Rate Class objects
+    session.flush()
+    session.execute("""
+        DELETE FROM rate_class
+        WHERE NOT EXISTS (
+            SELECT * FROM utilbill
+            WHERE utilbill.rate_class_id = rate_class.id
+            UNION
+            SELECT * FROM utility_account
+            WHERE utility_account.fb_rate_class_id = rate_class.id);
+    """)
 
 if __name__ == '__main__':
     # for testing in development environment
