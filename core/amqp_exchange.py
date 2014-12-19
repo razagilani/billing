@@ -1,15 +1,21 @@
 import json
+from boto.s3.connection import S3Connection
 from formencode.validators import String, Regex, FancyValidator
 from formencode import Schema
 from formencode.api import Invalid
 from formencode.foreach import ForEach
 import re
+import pika
 
 from billing.core.bill_file_handler import BillFileHandler
 from billing.core.model import Session, Address, UtilityAccount
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
+from billing.core.pricing import FuzzyPricingModel
+from billing.core.utilbill_loader import UtilBillLoader
+from billing.reebill.utilbill_processor import UtilbillProcessor
+
 
 class TotalValidator(FancyValidator):
     '''Validator for the odd format of the "total" field in utility bill
@@ -35,6 +41,45 @@ class UtilbillMessageSchema(Schema):
     service_address = String()
     account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
 
+
+def create_dependencies():
+    '''Return objects used for processing AMQP messages to create UtilBills
+    and Utilities: pika.connection.Connection, pika.channel.Channel,
+    exchange name (string), queue name (string), and UtilbillProcessor.
+
+    This can be called by both run_amqp_consumers.py and test code.
+    '''
+    from billing import config
+    host_name = config.get('amqp', 'host')
+    exchange_name = config.get('amqp', 'exchange')
+    queue_name = config.get('amqp', 'utilbill_queue')
+
+    s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                 config.get('aws_s3', 'aws_secret_access_key'),
+                                 is_secure=config.get('aws_s3', 'is_secure'),
+                                 port=config.get('aws_s3', 'port'),
+                                 host=config.get('aws_s3', 'host'),
+                                 calling_format=config.get('aws_s3',
+                                                           'calling_format'))
+    utilbill_loader = UtilBillLoader(Session())
+    url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+        config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
+    bill_file_handler = BillFileHandler(s3_connection,
+                                        config.get('aws_s3', 'bucket'),
+                                        utilbill_loader, url_format)
+    rabbitmq_connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host_name))
+    channel = rabbitmq_connection.channel()
+    channel.exchange_declare(exchange=exchange_name)
+    channel.queue_declare(queue=queue_name)
+    channel.queue_bind(exchange=exchange_name, queue=queue_name)
+
+    s = Session()
+    utilbill_loader = UtilBillLoader(s)
+    pricing_model = FuzzyPricingModel(utilbill_loader)
+    utilbill_processor = UtilbillProcessor(pricing_model, bill_file_handler, None)
+    return (rabbitmq_connection, channel, exchange_name, queue_name,
+            utilbill_processor)
 
 # TODO: this code is not used yet (and not tested). it was originally decided
 #  that it was necessary to synchronize utilities between altitude and
