@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime,date
 from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -238,9 +238,7 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def create_utility_bill_with_existing_file(self, utility_account, utility,
-                                  sha256_hexdigest,
-                                  # TODO
-                                  # due_date=None,
+                                  sha256_hexdigest, due_date=None,
                                   target_total=None, service_address=None):
         '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
@@ -257,7 +255,7 @@ class UtilbillProcessor(object):
         assert isinstance(utility, Utility)
         assert isinstance(sha256_hexdigest, basestring) and len(
             sha256_hexdigest) == 64;
-        #assert isinstance(due_date, (datetime, type(None)))
+        assert isinstance(due_date, (date, type(None)))
         assert isinstance(target_total, (float, int, type(None)))
         assert isinstance(service_address, (Address, type(None)))
 
@@ -284,6 +282,8 @@ class UtilbillProcessor(object):
             new_utilbill.target_total = target_total
         if service_address is not None:
             new_utilbill.service_address = service_address
+        if due_date is not None:
+            new_utilbill.due_date = due_date
 
         self.bill_file_handler.check_file_exists(new_utilbill)
 

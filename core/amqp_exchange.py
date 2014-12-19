@@ -4,12 +4,27 @@ from formencode import Schema
 from formencode.api import Invalid
 from formencode.foreach import ForEach
 import re
+from dateutil.parser import parse
 
 from billing.core.bill_file_handler import BillFileHandler
 from billing.core.model import Session, Address, UtilityAccount
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
+
+class DueDateValidator(FancyValidator):
+    ''' Validator for "due_date" field in utility bill
+    messages. ISO-8601 datetime string or empty string converted to Date or None
+    '''
+
+    def _convert_to_python(self, value, state):
+        try:
+            dt = parse(value)
+        except TypeError:
+            # Parse Errors are considered TypeErrors
+            return Invalid('Could not parse "due_date" string: %s' % value)
+        return None if value == '' else dt.date()
+
 
 class TotalValidator(FancyValidator):
     '''Validator for the odd format of the "total" field in utility bill
@@ -30,7 +45,7 @@ class UtilbillMessageSchema(Schema):
     utility_account_number = String()
     utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
     sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
-    #due_date = String()
+    due_date = DueDateValidator()
     total = TotalValidator()
     service_address = String()
     account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
@@ -71,14 +86,15 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
             account_number=d['utility_account_number']).one()
         sha256_hexdigest = d['sha256_hexdigest']
         total = d['total']
-        # TODO due_date
+        due_date = d['due_date']
         service_address_street = d['service_address']
         account_guids = d['account_guids']
 
         utilbill_processor.create_utility_bill_with_existing_file(
             utility_account, utility, sha256_hexdigest,
             target_total=total,
-            service_address=Address(street=service_address_street))
+            service_address=Address(street=service_address_street),
+            due_date=due_date)
         update_altitude_account_guids(utility_account, account_guids)
         s.commit()
         ch.basic_ack(delivery_tag=method.delivery_tag)
