@@ -4,14 +4,15 @@ that actually does things is in core/amqp_exchange.py.
 '''
 from boto.s3.connection import S3Connection
 import pika
+
 from billing import init_config, init_model, init_logging
 from billing.reebill.utilbill_processor import UtilbillProcessor
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.pricing import FuzzyPricingModel
-from billing.core.amqp_exchange import consume_utilbill_file, \
-    consume_utility_guid
+from billing.core.amqp_exchange import consume_utilbill_file
 from billing.core.model import Session
 from billing.core.bill_file_handler import BillFileHandler
+
 
 if __name__ == '__main__':
     init_config()
@@ -52,6 +53,6 @@ if __name__ == '__main__':
 
     consume_utilbill_file(channel, queue_name, utilbill_processor)
 
-    # TODO: disabled because it was decided that this should not be done
-    # after all (for now)
+    # TODO: 'consume_utility_guid' is disabled because it was decided
+    # that this should not be done after all (for now)
     #consume_utility_guid(channel, queue_name, utilbill_processor)
