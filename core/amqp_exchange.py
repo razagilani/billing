@@ -89,20 +89,24 @@ def consume_utility_guid(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility.
     '''
     def callback(ch, method, properties, body):
-        d = json.loads(body)
-        name, guid = d['name'], d['utility_provider_guid']
+        try:
+            d = json.loads(body)
+            name, guid = d['name'], d['utility_provider_guid']
 
-        # TODO: this may not be necessary because unique constraint in the
-        # database can take care of preventing duplicates
-        s = Session()
-        if s.query(AltitudeUtility).filter_by(guid=guid).count() != 0:
-            raise AltitudeDuplicateError(
-                'Altitude utility "%" already exists with name "%s"' % (
-                    guid, name))
+            # TODO: this may not be necessary because unique constraint in the
+            # database can take care of preventing duplicates
+            s = Session()
+            if s.query(AltitudeUtility).filter_by(guid=guid).count() != 0:
+                raise AltitudeDuplicateError(
+                    'Altitude utility "%" already exists with name "%s"' % (
+                        guid, name))
 
-        new_utility = utilbill_processor.create_utility(name)
-        s.add(AltitudeUtility(new_utility, guid))
-        s.commit()
+            new_utility = utilbill_processor.create_utility(name)
+            s.add(AltitudeUtility(new_utility, guid))
+            s.commit()
+        except:
+            ch.basic_ack()
+            raise
     channel.basic_consume(callback, queue=queue_name)
     channel.start_consuming()
 
@@ -110,24 +114,27 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility bill.
     '''
     def callback(ch, method, properties, body):
-        d = UtilbillMessageSchema.to_python(json.loads(body))
-        s = Session()
-        utility = get_utility_from_guid(d['utility_provider_guid'])
-        utility_account = s.query(UtilityAccount).filter_by(
-            account_number=d['utility_account_number']).one()
-        sha256_hexdigest = d['sha256_hexdigest']
-        total = d['total']
-        # TODO due_date
-        service_address_street = d['service_address']
-        account_guids = d['account_guids']
+        try:
+            d = UtilbillMessageSchema.to_python(json.loads(body))
+            s = Session()
+            utility = get_utility_from_guid(d['utility_provider_guid'])
+            utility_account = s.query(UtilityAccount).filter_by(
+                account_number=d['utility_account_number']).one()
+            sha256_hexdigest = d['sha256_hexdigest']
+            total = d['total']
+            # TODO due_date
+            service_address_street = d['service_address']
+            account_guids = d['account_guids']
 
-        utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, sha256_hexdigest,
-            target_total=total,
-            service_address=Address(street=service_address_street))
-        update_altitude_account_guids(utility_account, account_guids)
-        s.commit()
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            utilbill_processor.create_utility_bill_with_existing_file(
+                utility_account, utility, sha256_hexdigest,
+                target_total=total,
+                service_address=Address(street=service_address_street))
+            update_altitude_account_guids(utility_account, account_guids)
+            s.commit()
+        except:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            raise
     channel.basic_consume(callback, queue=queue_name)
     channel.start_consuming()
 
