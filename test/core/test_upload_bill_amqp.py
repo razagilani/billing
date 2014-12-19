@@ -4,11 +4,9 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 from datetime import date
-import json
+from pika import ConnectionParameters
 
-import pika
-
-from billing.core.amqp_exchange import BillingHandler, ConsumeUtilityGuidHandler
+from billing.core.amqp_exchange import BillingHandler, ConsumeUtilbillFileHandler
 from billing.core.model import Session, UtilityAccount
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
@@ -16,32 +14,25 @@ from billing.test.setup_teardown import TestCaseWithSetup
 from billing import config
 from billing.exc import DuplicateFileError
 from billing.test.testing_utils import clean_up_rabbitmq
+from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
+from billing.mq import IncomingMessage
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
 
     def setUp(self):
         super(TestUploadBillAMQP, self).setUp()
-
-        host_name = config.get('amqp', 'host')
-        self.exchange_name = config.get('amqp', 'exchange')
-        self.queue_name = config.get('amqp', 'utilbill_queue')
-
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host_name))
-        self.channel = self.connection.channel()
-        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
-        self.channel.exchange_declare(exchange=self.exchange_name)
-        self.channel.queue_declare(queue=self.queue_name)
-        self.channel.queue_bind(exchange=self.exchange_name,
-                                queue=self.queue_name)
+        _, method, props = create_mock_channel_method_props()
+        self.mock_method = method
+        self.mock_props = props
+        self.handler = ConsumeUtilbillFileHandler(
+            config.get('amqp', 'exchange'),
+            config.get('amqp', 'utilbill_routing_key'),
+            {},
+            ConnectionParameters(host=config.get('amqp', 'host'))
+        )
 
         self.utilbill_loader = UtilBillLoader(Session())
-
-    def tearDown(self):
-        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
-        self.connection.close()
-        super(self.__class__, self).tearDown()
 
     def test_upload_bill_amqp(self):
         # put the file in place
@@ -67,7 +58,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # cause a UtilBill to be created, but the second will cause a
         # DuplicateFileError to be raised. the second message also checks the
         # "empty" values that are allowed for some fields in the message.
-        message1 = json.dumps(dict(
+        message1 = create_channel_message_body(dict(
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
@@ -76,9 +67,10 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
                            'D' * AltitudeGUID.LENGTH]))
-        self.channel.basic_publish(exchange=self.exchange_name,
-                                   routing_key=self.queue_name, body=message1)
-        message2 = json.dumps(dict(
+        message_obj = IncomingMessage(self.mock_method, self.mock_props, message1)
+        self.handler.handle(message_obj)
+
+        message2 = create_channel_message_body(dict(
             utility_account_number='2',
             utility_provider_guid=guid_b,
             sha256_hexdigest=file_hash,
@@ -86,8 +78,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             total='',
             service_address='',
             account_guids=[]))
-        self.channel.basic_publish(exchange=self.exchange_name,
-                                   routing_key=self.queue_name, body=message2)
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message2)
 
         # receive message: this not only causes the callback function to be
         # registered, but also calls it for any messages that are already
@@ -95,8 +87,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # "basic_consume" is called will not be processed until after the
         # test is finished, so we can't check for them.
         with self.assertRaises(DuplicateFileError):
-            consume_utilbill_file(self.channel, self.queue_name,
-                                  self.utilbill_processor)
+            self.handler.handle(message_obj)
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the
