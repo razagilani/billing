@@ -45,6 +45,17 @@ class TotalValidator(FancyValidator):
         return None if substr == '' else float(substr[1:])
 
 
+class MessageVersionValidator(FancyValidator):
+    '''Validator for "message_version" field. message version is a list of
+    major version, minor version
+    '''
+
+    def _convert_to_python(self, value, state):
+        if value != [1, 0]:
+            raise Invalid('Invalid "message_version" list: "%s"' % value,
+                          value, state)
+        return value
+
 class UtilbillMessageSchema(Schema):
     '''Formencode schema for validating/parsing utility bill message contents.
     specification is at
@@ -58,7 +69,7 @@ class UtilbillMessageSchema(Schema):
     total = TotalValidator()
     service_address = String()
     account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
-
+    message_version = MessageVersionValidator()
 
 
 class BillingHandler(MessageHandler):
