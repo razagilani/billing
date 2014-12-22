@@ -1,11 +1,11 @@
 import json
 import re
-from formencode.validators import String, Regex, FancyValidator
+from formencode.validators import String, Regex, FancyValidator, Int
 from formencode import Schema
 from formencode.api import Invalid
 from boto.s3.connection import S3Connection
 from formencode.foreach import ForEach
-from dateutil.parser import parse
+from datetime import datetime
 
 from billing import config
 from billing.nexusapi.nexus_util import NexusUtil
@@ -17,7 +17,7 @@ from billing.core.model import Session, Address, UtilityAccount
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
-from mq import MessageHandler, MessageHandlerManager
+from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 
 
 class DueDateValidator(FancyValidator):
@@ -27,8 +27,8 @@ class DueDateValidator(FancyValidator):
 
     def _convert_to_python(self, value, state):
         try:
-            dt = parse(value)
-        except TypeError:
+            dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
             # Parse Errors are considered TypeErrors
             return Invalid('Could not parse "due_date" string: %s' % value)
         return None if value == '' else dt.date()
@@ -44,18 +44,6 @@ class TotalValidator(FancyValidator):
             raise Invalid('Invalid "total" string: "%s"' % value, value, state)
         return None if substr == '' else float(substr[1:])
 
-
-class MessageVersionValidator(FancyValidator):
-    '''Validator for "message_version" field. message version is a list of
-    major version, minor version
-    '''
-
-    def _convert_to_python(self, value, state):
-        if value != [1, 0]:
-            raise Invalid('Invalid "message_version" list: "%s"' % value,
-                          value, state)
-        return value
-
 class UtilbillMessageSchema(Schema):
     '''Formencode schema for validating/parsing utility bill message contents.
     specification is at
@@ -63,13 +51,15 @@ class UtilbillMessageSchema(Schema):
     /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
    '''
     utility_account_number = String()
-    utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
+    utility_provider_guid = String()
     sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
     due_date = DueDateValidator()
     total = TotalValidator()
     service_address = String()
-    account_guids = ForEach(Regex(regex=AltitudeGUID.REGEX))
-    message_version = MessageVersionValidator()
+    account_guids = ForEach(String())
+    # TODO: There seems to be no good way of validating the exact sequence
+    # 1,0
+    message_version = ForEach(Int())
 
 
 class BillingHandler(MessageHandler):
@@ -125,6 +115,7 @@ class ConsumeUtilityGuidHandler(BillingHandler):
 
 
 class ConsumeUtilbillFileHandler(BillingHandler):
+    # on_error = REJECT_MESSAGE
 
     def handle(self, message):
         d = UtilbillMessageSchema.to_python(message.body)
@@ -159,11 +150,7 @@ if __name__ == "__main__":
     from billing import config
     exchange_name = config.get('amqp', 'exchange')
     utilbill_routing_key = config.get('amqp', 'utilbill_routing_key')
-    utilityguid_routing_key = config.get('amqp', 'utilityguid_routing_key')
     mgr = MessageHandlerManager()
-    mgr.attach_message_handler(
-        exchange_name, utilityguid_routing_key, ConsumeUtilityGuidHandler
-    )
     mgr.attach_message_handler(
         exchange_name, utilbill_routing_key, ConsumeUtilbillFileHandler
     )
