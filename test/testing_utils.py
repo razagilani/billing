@@ -74,15 +74,15 @@ def _rabbitmq_queue_exists(connection, queue_name):
         tmp_channel.close()
     return result
 
-def clean_up_rabbitmq(connection, channel, queue_name):
+def clean_up_rabbitmq(connection, queue_name):
     '''Clear out messages to reset the given queue to its original state.
     Should be run before and after tests that use RabbitMQ.
     :param connection: pika.connection.Connection
-    :param channel: pika.channel.Channel
     :param queue_name: name of queue to clean up (string)
     '''
+    tmp_channel = connection.channel()
     if _rabbitmq_queue_exists(connection, queue_name):
-        channel.queue_purge(queue=queue_name)
+        tmp_channel.queue_purge(queue=queue_name)
 
         # TODO: the queue cannot be deleted because pika raises
         # 'ConsumerCancelled' here for an unknown reason. this seems

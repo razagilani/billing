@@ -5,23 +5,25 @@ must be running separately before the test starts.
 from StringIO import StringIO
 from datetime import date
 from pika import ConnectionParameters
+from datetime import datetime
 
-from billing.core.amqp_exchange import BillingHandler, ConsumeUtilbillFileHandler
 from billing.core.model import Session, UtilityAccount
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing import config
 from billing.exc import DuplicateFileError
 from billing.test.testing_utils import clean_up_rabbitmq
 from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
 from billing.mq import IncomingMessage
+from billing.core.amqp_exchange import BillingHandler, ConsumeUtilbillFileHandler
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
 
     def setUp(self):
         super(TestUploadBillAMQP, self).setUp()
+        from billing import config
+
         _, method, props = create_mock_channel_method_props()
         self.mock_method = method
         self.mock_props = props
@@ -59,10 +61,11 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # DuplicateFileError to be raised. the second message also checks the
         # "empty" values that are allowed for some fields in the message.
         message1 = create_channel_message_body(dict(
+            message_version=[1, 0],
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
-            due_date='2014-09-30T18:00:00+00:00',
+            due_date='2014-09-30T18:00:00',
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
@@ -71,6 +74,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.handler.handle(message_obj)
 
         message2 = create_channel_message_body(dict(
+            message_version=[1, 0],
             utility_account_number='2',
             utility_provider_guid=guid_b,
             sha256_hexdigest=file_hash,
