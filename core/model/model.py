@@ -5,6 +5,7 @@ Also contains some related classes that do not correspond to database tables.
 import ast
 from datetime import datetime
 import json
+
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -17,10 +18,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import FormulaSyntaxError
+from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError
 
-from billing.exc import FormulaError
-from exc import DatabaseError
 
 __all__ = [
     'Address',
@@ -714,10 +713,10 @@ class Charge(Base):
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float)
-    error = Column(String(255))
     # description of error in computing the quantity and/or rate formula.
     # either this or quantity and rate should be null at any given time,
     # never both or neither.
+    error = Column(String(255))
 
     quantity_formula = Column(String(1000), nullable=False)
     has_charge = Column(Boolean, nullable=False)
@@ -759,7 +758,6 @@ class Charge(Base):
         :param group: The charge group
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
-
         :param quantity_formula: The RSI quantity formula
         :param has_charge:
         :param shared:
@@ -771,7 +769,6 @@ class Charge(Base):
         self.group = group
         self.unit = unit
         self.rsi_binding = rsi_binding
-
         self.quantity_formula = quantity_formula
         self.has_charge = has_charge
         self.shared = shared
