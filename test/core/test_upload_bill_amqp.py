@@ -1,45 +1,47 @@
 '''Integration tests for receiving data associated with an existing utility
 bill file over AMQP. The RabbitMQ server is not started by this test so it
 must be running separately before the test starts.
+
+# TODO: a lot of the behavior that is tested in here could be tested at a
+unit-test level. Also, as much as possible of the real code that is used to
+process AMQP messages should be covered here, which means using
+run_amqp_consuers.py if possible.
 '''
 from StringIO import StringIO
 from datetime import date
 import json
 
-import pika
-
-from billing.core.amqp_exchange import consume_utilbill_file
+from billing.core.amqp_exchange import consume_utilbill_file, \
+    create_dependencies
 from billing.core.model import Session, UtilityAccount
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing import config
 from billing.exc import DuplicateFileError
 from billing.test.testing_utils import clean_up_rabbitmq
-
 
 class TestUploadBillAMQP(TestCaseWithSetup):
 
     def setUp(self):
         super(TestUploadBillAMQP, self).setUp()
 
-        host_name = config.get('amqp', 'host')
-        self.exchange_name = config.get('amqp', 'exchange')
-        self.queue_name = config.get('amqp', 'utilbill_queue')
-
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host_name))
-        self.channel = self.connection.channel()
-        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
-        self.channel.exchange_declare(exchange=self.exchange_name)
-        self.channel.queue_declare(queue=self.queue_name)
-        self.channel.queue_bind(exchange=self.exchange_name,
-                                queue=self.queue_name)
-
+        self.connection, self.channel, self.exchange_name, self.queue_name, \
+            self.utilbill_processor = create_dependencies()
+        print self.exchange_name, self.queue_name
         self.utilbill_loader = UtilBillLoader(Session())
 
+        clean_up_rabbitmq(self.connection, self.queue_name)
+
     def tearDown(self):
-        clean_up_rabbitmq(self.connection, self.channel, self.queue_name)
+        # channel must be closed before trying to purge the queue, otherwise
+        # any un-acked messages remain in an "unacked" rather than "ready"
+        # state and will not get removed when queue_purge is called. (these
+        # can always be removed in setUp because all "unacked" messages
+        # become "ready", and thus purgeable, when the client process exits.)
+        # a separate channel should be used to purge the queue so the channel
+        # associated with the "unacked" messages can be closed.
+        self.channel.close()
+        clean_up_rabbitmq(self.connection, self.queue_name)
         self.connection.close()
         super(self.__class__, self).tearDown()
 
