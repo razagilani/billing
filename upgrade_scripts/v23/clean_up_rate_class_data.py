@@ -1,6 +1,6 @@
 import logging
 from billing.core.model.model import Utility, UtilityAccount, \
-    UtilBill, RateClass
+    UtilBill, RateClass, Address
 
 
 log = logging.getLogger(__name__)
@@ -19,11 +19,12 @@ def account_bills_2_rate_class(session, account_str, rate_class):
         UtilityAccount.account == account_str
     ).all()
 
-    print "Updating Rate Class for %s bills for account %s" % (
-        len(utilbills), account_str)
+    log.debug("Updating Rate Class for %s bills for account %s",
+              len(utilbills), account_str)
 
     for bill in utilbills:
         bill.rate_class = rate_class
+        bill.utility = rate_class.utility
 
 def clean_up_rate_class_data(session):
     # Utilities
@@ -38,8 +39,10 @@ def clean_up_rate_class_data(session):
     MAUI = session.query(Utility).filter(
         Utility.name == 'Maui Electric Company').one()
     DOMINION = session.query(Utility).filter(Utility.name == 'dominion').one()
-
-    print PIEDMONT, WGES, PEPCO, PECO, DOMINION
+    CONOCO = session.query(Utility).filter(Utility.name == 'ConocoPhillips').one()
+    VI_WATER_POWER = Utility("Virgin Islands Water and Power Authority",
+                             Address())
+    session.add(VI_WATER_POWER)
 
     # RATE CLASSES
     # PIEDMONT
@@ -193,7 +196,10 @@ def clean_up_rate_class_data(session):
     NON_RESIDENTIAL_GS_ND = RateClass(
         "Non-Residential-GS ND_DC_DC", PEPCO
     )
-    session.add(NON_RESIDENTIAL_GS_ND)
+    NON_RESIDENTIAL_MGT= RateClass(
+        "Non Residential MGT-LV IIB_MD_Montgomery", PEPCO
+    )
+    session.add(NON_RESIDENTIAL_MGT)
     RESIDENTIAL_R_DC = RateClass(
         "Residential-R_DC_DC", PEPCO
     )
@@ -202,16 +208,66 @@ def clean_up_rate_class_data(session):
         "Residential-AE_DC_DC", PEPCO
     )
     session.add(RESIDENTIAL_AE_DC)
+    MISSING_PEPCO = RateClass(
+        "Missing Pepco Ratestructure", PEPCO
+    )
+    session.add(MISSING_PEPCO)
 
     # PECO
     ELECTRIC_0_100_PHILADELPHIA = RateClass(
         "Electric Commercial Service 0-100kW_PA_Philadelphia", PECO
     )
     session.add(ELECTRIC_0_100_PHILADELPHIA)
+    ELECTRIC_100_500_PHILADELPHIA = RateClass(
+        "Electric Commercial Service 100kw-500kW_PA_Philadelphia", PECO
+    )
+    session.add(ELECTRIC_100_500_PHILADELPHIA)
+    ELECTRIC_HIGH_TENSION = RateClass(
+        "Electric High Tension Service 100kW-500kW_PA_Philadelphia", PECO
+    )
+    session.add(ELECTRIC_HIGH_TENSION)
     GAS_COMMERCIAL_SERVICE_CHESTER = RateClass(
         "Gas Commercial Service_PA_Chester", PECO
     )
     session.add(GAS_COMMERCIAL_SERVICE_CHESTER)
+
+    #SEMEPRA
+    GM_E_6_ZONE_1_LA_CITY = RateClass(
+        "GM-E 6 - Residential_Zone 1_CA_Los Angeles City", SEMPERA
+    )
+    session.add(GM_E_6_ZONE_1_LA_CITY)
+    GM_E_ZONE_1_LA_CITY = RateClass(
+        "GM-E - Residential_Zone 1_CA_Los Angeles City", SEMPERA
+    )
+    session.add(GM_E_ZONE_1_LA_CITY)
+    GM_E_6_ZONE_1_LA_COUNTY = RateClass(
+        "GM-E 6 - Residential_Zone 1_CA_Los Angeles County", SEMPERA
+    )
+    session.add(GM_E_6_ZONE_1_LA_COUNTY)
+
+    #ConocoPhillips
+    INDIVIDUAL_CONTRACT_CONOCO = RateClass(
+        "Individual Contract", CONOCO
+    )
+    session.add(INDIVIDUAL_CONTRACT_CONOCO)
+
+    #PG&E
+    GM_T_MASTER_METERED = RateClass(
+        "GM T Master-Metered Multi-Family Service_CA_Contra Costa", PGE)
+    session.add(GM_T_MASTER_METERED)
+    GNR2 = RateClass(
+        "GNR2_CA_Fresno", PGE
+    )
+
+    # VI_Water_Power
+    VI_COMMERCIAL = RateClass("Commercial_Virgin Islands", VI_WATER_POWER)
+    session.add(VI_COMMERCIAL)
+
+    # Maui
+    J_GENERAL_SERVICE_DEMAND = RateClass(
+        "J General Service - Demand_HI", MAUI
+    )
+    session.add(J_GENERAL_SERVICE_DEMAND)
 
     session.flush()
 
@@ -222,19 +278,26 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10005', NONRESIDENTIAL_HEAT_Level_1)
     account_bills_2_rate_class(session, '10006', NONRESIDENTIAL_NONHEAT_NEW)
     account_bills_2_rate_class(session, '10007', NONRESIDENTIAL_NONHEAT_NEW)
+
     # No bills for 10008
+    account_bills_2_rate_class(session, '10008', MISSING_PEPCO)
+
     account_bills_2_rate_class(session, '10009', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '10010', NONRESIDENTIAL_NONHEAT_NEW)
     account_bills_2_rate_class(session, '10011', NONRESIDENTIAL_HEAT_Level_2)
     account_bills_2_rate_class(session, '10012', NONRESIDENTIAL_HEAT)
     account_bills_2_rate_class(session, '10013', NONRESIDENTIAL_HEAT)
     account_bills_2_rate_class(session, '10014', NONRESIDENTIAL_HEAT_NEW)
-    # Account 10015 missing
+
+    # Account 10015 does not exist
+
     account_bills_2_rate_class(session, '10016', NONRESIDENTIAL_HEAT)
     account_bills_2_rate_class(session, '10017', TOU_Schedule_GL)
     account_bills_2_rate_class(session, '10018', NON_RESIDENTIAL_GS_1)
     account_bills_2_rate_class(session, '10019', NONRESIDENTIAL_NONHEAT)
-    # Account 10020 missing
+
+    # Account 10020 does not exist
+
     account_bills_2_rate_class(session, '10021', NONRESIDENTIAL_NONHEAT_Level_2)
     account_bills_2_rate_class(session, '10022', NONRESIDENTIAL_NONHEAT_Level_1)
     account_bills_2_rate_class(session, '10023', NONRESIDENTIAL_NONHEAT_Level_2)
@@ -243,7 +306,11 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10026', APT_NONHEAT_NEW_ARLINGTON)
     account_bills_2_rate_class(session, '10027', APT_NONHEAT_NEW)
     account_bills_2_rate_class(session, '10028', APT_NONHEAT_NEW)
-    # TODO: CA
+
+    account_bills_2_rate_class(session, '10029', GM_E_6_ZONE_1_LA_CITY)
+    account_bills_2_rate_class(session, '10030', GM_E_6_ZONE_1_LA_CITY)
+    account_bills_2_rate_class(session, '10031', GM_E_6_ZONE_1_LA_CITY)
+
     account_bills_2_rate_class(session, '10032', DELIVERY_INTERRUPT)
     account_bills_2_rate_class(session, '10033',
                                GENERAL_SERVICE_SCHEDULE_C_ANNE_ARUNDEL)
@@ -267,10 +334,18 @@ def clean_up_rate_class_data(session):
                                GENERAL_SERVICE_SCHEDULE_C_ANNE_ARUNDEL)
     account_bills_2_rate_class(session, '10043',
                                GENERAL_SERVICE_SCHEDULE_C_ANNE_ARUNDEL)
+    # No bills for 10044
+    account_bills_2_rate_class(session, '10044',
+                               GENERAL_SERVICE_SCHEDULE_C_ANNE_ARUNDEL)
     account_bills_2_rate_class(session, '10045', NON_RESIDENTIAL_GT)
-    # TODO: CONOCO PHilips Individual contract
-    # Account 10047, 10048 missing
-    # PECO Individual contract
+
+    account_bills_2_rate_class(session, '10046', INDIVIDUAL_CONTRACT_CONOCO)
+
+    account_bills_2_rate_class(session, '10047', MISSING_PEPCO)
+    account_bills_2_rate_class(session, '10048', MISSING_PEPCO)
+
+    account_bills_2_rate_class(session, '10049', ELECTRIC_HIGH_TENSION)
+
     account_bills_2_rate_class(session, '10050', APT_HEAT_NEW_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10051', APT_HEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10052', APT_HEAT_PRINCE_GEORGE)
@@ -281,11 +356,17 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10057', APT_HEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10058', NONRESIDENTIAL_HEAT_Level_2)
     account_bills_2_rate_class(session, '10059', NONRESIDENTIAL_HEAT_Level_2)
-    # TODO: PG&E
+
+    account_bills_2_rate_class(session, '10060', GM_T_MASTER_METERED)
+
     account_bills_2_rate_class(session, '10061', DELIVERY_INTERRUPT_NEW)
     account_bills_2_rate_class(session, '10062', NONRESIDENTIAL_HEAT)
     account_bills_2_rate_class(session, '10063', GENERAL_SERVICE_SCHEDULE_C_ANNE_ARUNDEL)
-    # TODO: Skipping 10064, 10065
+
+    account_bills_2_rate_class(session, '10064', VI_COMMERCIAL)
+
+    account_bills_2_rate_class(session, '10065', MISSING_PEPCO)
+
     account_bills_2_rate_class(session, '10066', NONRESIDENTIAL_NONHEAT_NEW)
     account_bills_2_rate_class(session, '10067', NONRESIDENTIAL_HEAT)
     account_bills_2_rate_class(session, '10068', APT_HEAT_NEW)
@@ -303,7 +384,10 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10080', NONRESIDENTIAL_NONHEAT_NEW)
     account_bills_2_rate_class(session, '10081', DELIVERY_INTERRUPT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10082', APT_HEAT_NEW_PRINCE_GEORGE)
+
     # No bills for 10083
+    account_bills_2_rate_class(session, '10083', APT_HEAT_NEW_PRINCE_GEORGE)
+
     account_bills_2_rate_class(session, '10084', APT_HEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10085', APT_NONHEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10086', APT_NONHEAT_PRINCE_GEORGE)
@@ -315,7 +399,10 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10092', APT_HEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10093', APT_HEAT_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10094', APT_HEAT_PRINCE_GEORGE)
+
     # No bills for 10095
+    account_bills_2_rate_class(session, '10095', APT_HEAT_PRINCE_GEORGE)
+
     account_bills_2_rate_class(session, '10096', APT_HEAT_NEW)
     account_bills_2_rate_class(session, '10097', APT_NONHEAT_NEW_PRINCE_GEORGE)
     account_bills_2_rate_class(session, '10098', APT_NONHEAT_NEW_PRINCE_GEORGE)
@@ -369,11 +456,29 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '10146', APT_HEAT_NEW)
     account_bills_2_rate_class(session, '10147', APT_HEAT_MONTGOMERY)
     account_bills_2_rate_class(session, '10148', APT_HEAT_NEW_MONTGOMERY)
-    # TODO 149-157 CA and PG&E
+
+    account_bills_2_rate_class(session, '10149', GM_E_6_ZONE_1_LA_COUNTY)
+    account_bills_2_rate_class(session, '10150', GM_E_6_ZONE_1_LA_CITY)
+    account_bills_2_rate_class(session, '10151', GM_E_ZONE_1_LA_CITY)
+
+    account_bills_2_rate_class(session, '10152', GNR2)
+
+    account_bills_2_rate_class(session, '10153', APT_HEAT_NEW)
+    account_bills_2_rate_class(session, '10154', APT_HEAT_NEW)
+    account_bills_2_rate_class(session, '10155', APT_HEAT_NEW)
+    account_bills_2_rate_class(session, '10156', APT_HEAT_NEW)
+
+    account_bills_2_rate_class(session, '10157', GM_E_6_ZONE_1_LA_CITY)
+
     account_bills_2_rate_class(session, '10158', APT_HEAT_NEW)
-    # Todo: MAUI account_bills_2_rate_class(session, '10159', )
+    account_bills_2_rate_class(session, '10159', J_GENERAL_SERVICE_DEMAND)
     account_bills_2_rate_class(session, '10160', NON_RESIDENTIAL_GS_D)
-    account_bills_2_rate_class(session, '10160', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '10161', NON_RESIDENTIAL_GS_ND)
+
+    # No bills for 10162 - 10169
+    for a in xrange(10162, 10170):
+        account_bills_2_rate_class(session, str(a), MISSING_PEPCO)
+
     account_bills_2_rate_class(session, '20001', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '20002', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '20003', NONRESIDENTIAL_HEAT_Level_2)
@@ -382,7 +487,9 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '20006', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '20007', NONRESIDENTIAL_HEAT_Level_2)
     account_bills_2_rate_class(session, '20008', GENERAL_SERVICE_SCHEDULE_C_BALTIMORE)
-    # TODO 20009
+
+    account_bills_2_rate_class(session, '20009', ELECTRIC_100_500_PHILADELPHIA)
+
     account_bills_2_rate_class(session, '20010', COMMERCIAL_HEAT_COOL_DC_Level_2)
     account_bills_2_rate_class(session, '20011',
                                COMMERCIAL_HEAT_COOL_DC_Level_2)
@@ -390,7 +497,9 @@ def clean_up_rate_class_data(session):
                                COMMERCIAL_HEAT_COOL_DC_Level_1)
     account_bills_2_rate_class(session, '20013',
                                COMMERCIAL_HEAT_COOL_DC_Level_2)
-    # No bills for 20013 - 20015
+
+    # Account 20014 - 20015 does not exist
+
     account_bills_2_rate_class(session, '20016',
                                NONRESIDENTIAL_HEAT_Level_2)
     account_bills_2_rate_class(session, '20017',
@@ -398,6 +507,9 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '20018',
                                NONRESIDENTIAL_HEAT_Level_1)
     account_bills_2_rate_class(session, '20019',
+                               RESIDENTIAL_HEAT_Level_1)
+    # No bills for 20020
+    account_bills_2_rate_class(session, '20020',
                                RESIDENTIAL_HEAT_Level_1)
     account_bills_2_rate_class(session, '20021',
                                ELECTRIC_0_100_PHILADELPHIA)
@@ -417,6 +529,7 @@ def clean_up_rate_class_data(session):
 
     account_bills_2_rate_class(session, '20076', NON_RESIDENTIAL_GS_ND)
     # No bills for 20077
+    account_bills_2_rate_class(session, '20077', NON_RESIDENTIAL_GS_ND)
     account_bills_2_rate_class(session, '20078', RESIDENTIAL_AE_DC)
     account_bills_2_rate_class(session, '20079', RESIDENTIAL_AE_DC)
 
@@ -448,14 +561,14 @@ def clean_up_rate_class_data(session):
     for a in xrange(20124, 20128):
         account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
 
-    for a in xrange(20128, 20137):
+    for a in xrange(20128, 20138):
         account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_GS_ND)
 
     account_bills_2_rate_class(session, '20138', RESIDENTIAL_AE_DC)
-    account_bills_2_rate_class(session, '20138', RESIDENTIAL_R_DC)
-    account_bills_2_rate_class(session, '20138', RESIDENTIAL_R_DC)
-    account_bills_2_rate_class(session, '20138', NON_RESIDENTIAL_GS_ND)
-    account_bills_2_rate_class(session, '20138', RESIDENTIAL_AE_DC)
+    account_bills_2_rate_class(session, '20139', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20140', RESIDENTIAL_R_DC)
+    account_bills_2_rate_class(session, '20141', NON_RESIDENTIAL_GS_ND)
+    account_bills_2_rate_class(session, '20142', RESIDENTIAL_AE_DC)
 
     for a in xrange(20143, 20149):
         account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
@@ -498,7 +611,8 @@ def clean_up_rate_class_data(session):
     account_bills_2_rate_class(session, '20282', RESIDENTIAL_AE_DC)
     account_bills_2_rate_class(session, '20283', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '20284', RESIDENTIAL_R_DC)
-    # No bills for 20086
+    # No bills for 20085
+    account_bills_2_rate_class(session, '20285', RESIDENTIAL_R_DC)
     account_bills_2_rate_class(session, '20286', RESIDENTIAL_R_DC)
 
     for a in xrange(20287, 20297):
@@ -555,6 +669,9 @@ def clean_up_rate_class_data(session):
 
     for a in xrange(20408, 20414):
         account_bills_2_rate_class(session, str(a), RESIDENTIAL_R_DC)
+
+    for a in xrange(20414, 20433):
+        account_bills_2_rate_class(session, str(a), NON_RESIDENTIAL_MGT)
 
     # Delete orphraned Rate Class objects
     session.flush()

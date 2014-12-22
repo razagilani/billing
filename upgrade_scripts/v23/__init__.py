@@ -361,6 +361,9 @@ def upgrade():
     log.info('Cleaning up rate class data')
     clean_up_rate_class_data(session)
 
+    log.info('Comitting to Database')
+    session.commit()
+
     log.info('Upgrade Complete')
 
 
