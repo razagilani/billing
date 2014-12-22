@@ -73,7 +73,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
-            due_date='2014-09-30T18:00:00+00:00',
+            due_date='2014-09-30T18:00:00',
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,

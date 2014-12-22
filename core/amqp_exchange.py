@@ -4,8 +4,8 @@ from formencode.validators import String, Regex, FancyValidator
 from formencode import Schema
 from formencode.api import Invalid
 from formencode.foreach import ForEach
+from datetime import datetime
 import re
-from dateutil.parser import parse
 import pika
 
 from billing.core.bill_file_handler import BillFileHandler
@@ -25,7 +25,7 @@ class DueDateValidator(FancyValidator):
 
     def _convert_to_python(self, value, state):
         try:
-            dt = parse(value)
+            dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
             # Parse Errors are considered TypeErrors
             return Invalid('Could not parse "due_date" string: %s' % value)
