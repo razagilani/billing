@@ -1093,6 +1093,7 @@ class StateDB(object):
         session = Session()
         return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
+    # missing coverage because only called by dead code
     def sequences_in_month(self, account, year, month):
         '''Returns a list of sequences of all reebills whose periods contain
         ANY days within the given month. The list is empty if the month
