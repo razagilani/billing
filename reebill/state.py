@@ -1042,9 +1042,8 @@ class StateDB(object):
 
     def listReebills(self, start, limit, account, sort, dir, **kwargs):
         session = Session()
-        query = session.query(ReeBill).join(UtilityAccount) \
-            .filter(UtilityAccount.account == account)
-
+        query = session.query(ReeBill).join(ReeBillCustomer).join(
+            UtilityAccount).filter(UtilityAccount.account == account)
         if (dir == u'DESC'):
             order = desc
         elif (dir == u'ASC'):
