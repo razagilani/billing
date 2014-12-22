@@ -1,18 +1,11 @@
-import os
 from jinja2 import Template
-from billing import config
-from billing.test import init_test_config
+from test import init_test_config
 init_test_config()
 
-from datetime import date
-from StringIO import StringIO
 from mock import Mock, call
-from billing.reebill.state import Address, UtilBill, Register, ReeBill
-from testfixtures import TempDirectory
-
 
 from unittest import TestCase
-from billing.reebill.bill_mailer import Mailer, TEMPLATE_FILE_PATH
+from reebill.bill_mailer import Mailer, TEMPLATE_FILE_PATH
 
 class BillMailerTest(TestCase):
     def setUp(self):
@@ -20,8 +13,8 @@ class BillMailerTest(TestCase):
             self.template_html = template_file.read()
 
     def test_send_mail(self):
-        from billing import config
-        from billing.test import init_test_config
+        from core import config
+        from test import init_test_config
         init_test_config()
         server = Mock()
         #server.send_mail = Mock()
@@ -40,9 +33,12 @@ class BillMailerTest(TestCase):
             'street': '456 test Ave.',
             'balance_due': 20
         }
-        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields, 'core/data', ['text.txt'], boundary='abc' )
+        # TODO: use of repeated hardcoded file path is bad
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
+                         'test/test_core/data', ['text.txt'], boundary='abc' )
         contents1 = []
-        data = open('core/data/text.txt', 'r').read()
+        # TODO: use of repeated hardcoded file path is bad
+        data = open('test/test_core/data/text.txt', 'r').read()
         contents1.append('Content-Type: multipart/mixed; boundary="abc"\n')
         contents1.append(('MIME-Version: 1.0\n'))
         contents1.append('Subject: Nextility: Your Monthly Bill for 456 test Ave.\n')
@@ -67,7 +63,8 @@ class BillMailerTest(TestCase):
         contents1.append('\n--abc--\n')
 
         contents2 = []
-        data = open('core/data/text.txt', 'r').read()
+        # TODO: use of repeated hardcoded file path is bad
+        data = open('test/test_core/data/text.txt', 'r').read()
         contents2.append('Content-Type: multipart/mixed; boundary="abc"\n')
         contents2.append(('MIME-Version: 1.0\n'))
         contents2.append('Subject: Nextility: Your Monthly Bill for 456 test Ave.\n')
@@ -97,10 +94,16 @@ class BillMailerTest(TestCase):
         calls = [call(mailer_opts['originator'], ['one@example.com', 'one@gmail.com'], ''.join(contents1)),
                 call(mailer_opts['originator'], ['someone@example.com', 'others@gmail.com'], ''.join(contents2))]
         server.sendmail.assert_has_calls(calls)
-        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields, 'core/data', ['utility_bill.pdf'], boundary='abc' )
-        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields, 'core/data', ['audio.wav'], boundary='abc' )
-        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields, 'core/data', ['image.jpg'], boundary='abc' )
-        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields, 'core/data', ['video.mov'], boundary='abc' )
+        # TODO: use of repeated hardcoded file path is bad
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
+                         'test/test_core/data', ['utility_bill.pdf'],
+                         boundary='abc' )
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
+                         'test/test_core/data', ['audio.wav'], boundary='abc' )
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
+                         'test/test_core/data', ['image.jpg'], boundary='abc' )
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
+                         'test/test_core/data', ['video.mov'], boundary='abc' )
         server.ehlo.assert_has_calls([call(), call(), call(), call(), call(), call()])
         server.starttls.asserrt_has_calls([call(), call(), call(), call()])
         server.login.assert_has_calls([call(mailer_opts['originator'], mailer_opts['password']),

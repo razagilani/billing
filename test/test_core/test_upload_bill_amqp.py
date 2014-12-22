@@ -11,14 +11,14 @@ from StringIO import StringIO
 from datetime import date
 import json
 
-from billing.core.amqp_exchange import consume_utilbill_file, \
+from core.amqp_exchange import consume_utilbill_file, \
     create_dependencies
-from billing.core.model import Session, UtilityAccount
-from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import DuplicateFileError
-from billing.test.testing_utils import clean_up_rabbitmq
+from core.model import Session, UtilityAccount
+from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
+from core.utilbill_loader import UtilBillLoader
+from test.setup_teardown import TestCaseWithSetup
+from exc import DuplicateFileError
+from test.testing_utils import clean_up_rabbitmq
 
 class TestUploadBillAMQP(TestCaseWithSetup):
 

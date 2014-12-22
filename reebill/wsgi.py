@@ -1,18 +1,16 @@
 from os.path import dirname, realpath, join
 import smtplib
 from boto.s3.connection import S3Connection
-from billing import init_config, init_model, init_logging
-
-
-# TODO: is it necessary to specify file path?
+from core import init_config, init_model, init_logging
 from core.utilbill_loader import UtilBillLoader
 
+# TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
-from billing import config
+from core import config
 import sys
 
 import json
@@ -25,25 +23,25 @@ import functools
 from operator import itemgetter
 from StringIO import StringIO
 import mongoengine
-from billing.skyliner.splinter import Splinter
-from billing.skyliner import mock_skyliner
-from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE
-from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map
-from billing.reebill.bill_mailer import Mailer
-from billing.reebill import state, fetch_bill_data as fbd
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Session
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.core.bill_file_handler import BillFileHandler
-from billing.reebill import journal, reebill_file_handler
-from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor
-from billing.reebill.reebill_processor import ReebillProcessor
-from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
-from billing.reebill.excel_export import Exporter
-from billing.core.model import UtilBill
+from skyliner.splinter import Splinter
+from skyliner import mock_skyliner
+from util import json_util as ju
+from util.dateutils import ISO_8601_DATE
+from nexusapi.nexus_util import NexusUtil
+from util.dictutils import deep_map
+from reebill.bill_mailer import Mailer
+from reebill import state, fetch_bill_data as fbd
+from core.pricing import FuzzyPricingModel
+from core.model import Session
+from core.utilbill_loader import UtilBillLoader
+from core.bill_file_handler import BillFileHandler
+from reebill import journal, reebill_file_handler
+from reebill.users import UserDAO
+from reebill.utilbill_processor import UtilbillProcessor
+from reebill.reebill_processor import ReebillProcessor
+from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
+from reebill.excel_export import Exporter
+from core.model import UtilBill
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 

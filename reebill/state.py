@@ -18,11 +18,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
 
-from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
-from billing.core.model import Base, Address, Register, Session, Evaluation, \
+from exc import IssuedBillError, RegisterError, ProcessedBillError
+from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
-from billing import config
-from billing.util.monthmath import Month
+from util.monthmath import Month
 
 __all__ = [
     'Payment',

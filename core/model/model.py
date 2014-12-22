@@ -18,7 +18,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError
+from exc import FormulaSyntaxError, FormulaError, DatabaseError
 
 
 __all__ = [

@@ -8,14 +8,14 @@ from datetime import datetime
 import re
 import pika
 
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session, Address, UtilityAccount
-from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
+from core.bill_file_handler import BillFileHandler
+from core.model import Session, Address, UtilityAccount
+from core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
-from billing.exc import AltitudeDuplicateError
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.reebill.utilbill_processor import UtilbillProcessor
+from exc import AltitudeDuplicateError
+from core.pricing import FuzzyPricingModel
+from core.utilbill_loader import UtilBillLoader
+from reebill.utilbill_processor import UtilbillProcessor
 
 
 class DueDateValidator(FancyValidator):
@@ -64,7 +64,7 @@ def create_dependencies():
 
     This can be called by both run_amqp_consumers.py and test code.
     '''
-    from billing import config
+    from core import config
     host_name = config.get('amqp', 'host')
     exchange_name = config.get('amqp', 'exchange')
     queue_name = config.get('amqp', 'utilbill_queue')

@@ -16,7 +16,7 @@ name).
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
 
-from billing.core.model import Base, Session, Utility, UtilityAccount
+from core.model import Base, Session, Utility, UtilityAccount
 
 
 class AltitudeGUID(String):

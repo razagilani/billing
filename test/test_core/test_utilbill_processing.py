@@ -1,7 +1,7 @@
 import requests
 
-from billing.test import init_test_config
-from billing.exc import DuplicateFileError
+from test import init_test_config
+from exc import DuplicateFileError
 
 init_test_config()
 
@@ -9,8 +9,8 @@ from StringIO import StringIO
 from datetime import date, datetime
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
-from billing.core.model.model import Session, Customer
+from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
+from core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 

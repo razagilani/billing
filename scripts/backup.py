@@ -17,15 +17,14 @@ import zlib
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from billing import init_config
-from billing import init_model
+from core import init_config, init_model
 
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session
-from billing.core.utilbill_loader import UtilBillLoader
+from core.bill_file_handler import BillFileHandler
+from core.model import Session
+from core.utilbill_loader import UtilBillLoader
 
 init_config()
-from billing import config
+from core import config
 
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
