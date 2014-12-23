@@ -39,13 +39,11 @@ class Exporter(object):
         book = tablib.Databook()
         if account == None:
             for acc in self.state_db.listAccounts():
-                reebills = self.state_db.listReebills(0, 100000, acc,
-                                                      'sequence', 'ASC')[0]
+                reebills = self.state_db.get_all_reebills_for_account(acc)
                 book.add_sheet(self.get_account_charges_sheet(
                     acc, reebills, start_date, end_date))
         else:
-            reebills = self.state_db.listReebills(0, 100000, account,
-                                                  'sequence', 'ASC')[0]
+            reebills = self.state_db.get_all_reebills_for_account(account)
             book.add_sheet(self.get_account_charges_sheet(
                 account, reebills, start_date, end_date))
         output_file.write(book.xls)
@@ -299,8 +297,7 @@ class Exporter(object):
 
         for account in accounts:
             cumulative_savings = 0
-            reebills = self.state_db.listReebills(0, 10000,
-                    account, u'sequence', u'ASC')[0]
+            reebills = self.state_db.get_all_reebills_for_account(account)
 
             for reebill in reebills:
                 # Skip over unissued reebills
