@@ -62,10 +62,9 @@ class ExporterTest(unittest.TestCase):
                 return []
 
         self.mock_StateDB.get_payments_for_reebill_id.side_effect = get_payments_for_reebill_id
-        self.mock_StateDB.listReebills.side_effect = cycle([
-            ([make_reebill(1, 1)], 1),   # For account '10003'
-            ([make_reebill(2, 2), make_reebill(3, 3), make_reebill(4, 4)],
-             3)   # 10004
+        self.mock_StateDB.get_all_reebills_for_account.side_effect = cycle([
+            [make_reebill(1, 1)],   # For account '10003'
+            [make_reebill(2, 2), make_reebill(3, 3), make_reebill(4, 4)] # 10004
         ])
 
         # No start or end date

@@ -1040,27 +1040,16 @@ class StateDB(object):
 
         return result
 
-    def listReebills(self, start, limit, account, dir='ASC'):
+    def get_all_reebills_for_account(self, account):
         """
-        Returns a list of 'start'+'limit' Reebill objects for UtilityAccount
-        'account' sorted by secquence with sort direction 'dir', and the
-        total number of bills for the account
+        Returns a list of all Reebill objects for UtilityAccount 'account'
+        odered by sequence and version ascending
         """
         session = Session()
         query = session.query(ReeBill).join(ReeBillCustomer).join(
-            UtilityAccount).filter(UtilityAccount.account == account)
-        if (dir == u'DESC'):
-            order = desc
-        elif (dir == u'ASC'):
-            order = asc
-        else:
-            raise ValueError(
-                "Bad Parameter Value: 'dir' must be 'ASC' or 'DESC'")
-
-        slice = query.order_by(order(ReeBill.sequence))[start:start + limit]
-        count = query.count()
-
-        return slice, count
+            UtilityAccount).filter(UtilityAccount.account == account).order_by(
+            ReeBill.sequence.asc(), ReeBill.version.asc())
+        return query.all()
 
     def reebills(self, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
