@@ -215,20 +215,13 @@ class StateDBTest(TestCaseWithSetup):
             session.add(rb)
 
         account = self.reebill_customer.get_account()
-        bills, count = self.state_db.listReebills(
-            1, 3, account, 'sequence', 'ASC')
+        bills, count = self.state_db.listReebills(1, 3, account)
         self.assertEqual(count, 3)
         self.assertEqual(bills, reebills[1:3])
 
-        # Only sorting by sequence is supported
-        with self.assertRaises(ValueError):
-            self.state_db.listReebills(
-                0, 1, account, sort='somefield', dir='DESC')
-
         # Direction needs to be DESC or ASC
         with self.assertRaises(ValueError):
-            self.state_db.listReebills(
-                0, 1, account, sort='sequence', dir='nonsense')
+            self.state_db.listReebills(0, 1, account, dir='nonsense')
 
 
     def test_payments(self):
