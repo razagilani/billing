@@ -202,7 +202,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEquals([],
                 self.state_db.get_unissued_corrections('99999'))
 
-    def test_listReebills(self):
+    def test_get_all_reebills_for_account(self):
         session = Session()
 
         reebills = [
@@ -215,14 +215,8 @@ class StateDBTest(TestCaseWithSetup):
             session.add(rb)
 
         account = self.reebill_customer.get_account()
-        bills, count = self.state_db.listReebills(1, 3, account)
-        self.assertEqual(count, 3)
-        self.assertEqual(bills, reebills[1:3])
-
-        # Direction needs to be DESC or ASC
-        with self.assertRaises(ValueError):
-            self.state_db.listReebills(0, 1, account, dir='nonsense')
-
+        bills = self.state_db.get_all_reebills_for_account(account)
+        self.assertEqual(bills, reebills)
 
     def test_payments(self):
         acc = '99999'
