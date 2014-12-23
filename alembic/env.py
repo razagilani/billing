@@ -18,6 +18,14 @@ config = context.config
 from billing.core.model import Base
 target_metadata = Base.metadata
 
+# all modules that contain model classes that inherit from Base should be
+# imported here in order to make Alembic aware of them. if you don't import
+# these, "autogenerate" will create an upgrade script with "drop table"
+# commands to remove all the tables corresponding to classes defined in those
+# modules.
+import billing.core.altitude
+import billing.reebill.state
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
