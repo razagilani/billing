@@ -6,6 +6,7 @@ from billing import init_config, init_model, init_logging
 
 # TODO: is it necessary to specify file path?
 from core.utilbill_loader import UtilBillLoader
+from reebill.payment_dao import PaymentDAO
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
@@ -131,7 +132,7 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.payment_dao = state.PaymentDAO()
+        self.payment_dao = PaymentDAO()
         self.state_db = state.StateDB(logger=self.logger)
 
         s3_connection = S3Connection(

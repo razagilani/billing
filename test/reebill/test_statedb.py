@@ -1,9 +1,11 @@
 '''Tests for ReeBill-specific data-access objects, including the database.
 Currently the only one is StateDB.
 '''
-from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+from billing import init_logging
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
 from billing.reebill.state import ReeBillCustomer
+from billing.reebill.payment_dao import PaymentDAO
 
 init_logging()
 import unittest
@@ -45,7 +47,7 @@ class StateDBTest(TestCaseWithSetup):
         self.session.add(self.reebill_customer)
         self.session.commit()
         self.state_db = state.StateDB()
-        self.payment_dao = state.PaymentDAO()
+        self.payment_dao = PaymentDAO()
 
     def tearDown(self):
         self.session.rollback()
