@@ -753,11 +753,10 @@ class ReeBillDAO(object):
         :param logger: a logger object
         """
         self.logger = logger
-        self.session = Session
 
     def get_reebill_customer(self, account):
         session = Session()
-        utility_account = self.session.query(UtilityAccount).filter(UtilityAccount.account == account).one()
+        utility_account = session.query(UtilityAccount).filter(UtilityAccount.account == account).one()
         return session.query(ReeBillCustomer).filter(ReeBillCustomer.utility_account == utility_account).one()
 
     def max_version(self, account, sequence):
