@@ -1015,31 +1015,6 @@ class StateDB(object):
             return False
         return True
 
-    def listAccounts(self):
-        '''List of all customer accounts (ordered).'''
-        # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        session = Session()
-        result = map((lambda x: x[0]),
-            session.query(UtilityAccount.account) \
-                .order_by(UtilityAccount.account).all())
-        return result
-
-    def listSequences(self, account):
-        session = Session()
-
-        # TODO: figure out how to do this all in one query. many SQLAlchemy
-        # subquery examples use multiple queries but that shouldn't be
-        # necessary
-        reebill_customer = session.query(ReeBillCustomer).join(UtilityAccount) \
-            .filter(UtilityAccount.account == account).one()
-        sequences = session.query(ReeBill.sequence).with_lockmode("read") \
-            .filter(ReeBill.reebill_customer_id == reebill_customer.id).all()
-
-        # sequences is a list of tuples of numbers, so convert it into a plain list
-        result = map((lambda x: x[0]), sequences)
-
-        return result
-
     def listReebills(self, start, limit, account, sort, dir, **kwargs):
         session = Session()
         query = session.query(ReeBill).join(ReeBillCustomer).join(
@@ -1061,15 +1036,6 @@ class StateDB(object):
         count = query.count()
 
         return slice, count
-
-    def reebills(self, include_unissued=True):
-        '''Generates (account, sequence, max version) tuples for all reebills
-        in MySQL.'''
-        for account in self.listAccounts():
-            for sequence in self.listSequences(account):
-                reebill = self.get_reebill(account, sequence)
-                if include_unissued or reebill.issued:
-                    yield account, int(sequence), int(reebill.max_version)
 
     def get_reebill(self, account, sequence, version='max'):
         '''Returns the ReeBill object corresponding to the given account,
