@@ -8,7 +8,8 @@ import mock
 
 from billing.reebill.excel_export import Exporter
 from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import ReeBillDAO, ReeBill, Payment
+from billing.reebill.state import ReeBill, Payment
+from billing.reebill.reebill_dao import ReeBillDAO
 from billing.reebill.payment_dao import PaymentDAO
 
 
