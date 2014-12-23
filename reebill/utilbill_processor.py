@@ -19,11 +19,6 @@ class UtilbillProcessor(object):
     - CRUD on child objects of UtilBill that are closely associated
     with UtilBills, like charges and registers.
     - CRUD on utilities, suppliers, rate classes.
-    - Generating JSON data for the ReeBill UI.
-    Only methods that do the first or the first two things should stay in
-    here; the others should eventually be moved. This file should be inside
-    "core" (not "reebill") so the "utility bill processing" methods can be used
-    outside of ReeBill.
     '''
     def __init__(self, pricing_model, bill_file_handler, nexus_util,
                  logger=None):
