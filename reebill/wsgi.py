@@ -39,7 +39,8 @@ from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor, UtilBillViews
+from billing.reebill.utilbill_processor import UtilbillProcessor
+from reebill.views import UtilBillViews
 from billing.reebill.reebill_processor import ReebillProcessor
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter

@@ -30,7 +30,8 @@ from billing.reebill.state import StateDB, Session, UtilBill, \
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
-from billing.reebill.utilbill_processor import UtilbillProcessor, UtilBillViews
+from billing.reebill.utilbill_processor import UtilbillProcessor
+from reebill.views import UtilBillViews
 from billing.reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
