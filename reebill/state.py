@@ -1,27 +1,18 @@
-"""
-Utility functions to interact with state database
-"""
+'''SQLAlchemy model classes for ReeBill-related database tables.
+'''
 from datetime import datetime, date
 from itertools import chain
-import logging
 import traceback
 
-import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import relationship, backref, aliased
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc
-from sqlalchemy import func
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Utility, RateClass, Charge, UtilityAccount
-from billing.util.monthmath import Month
-
+    UtilBill, Charge
 
 __all__ = [
     'Payment',
@@ -29,10 +20,7 @@ __all__ = [
     'ReeBill',
     'ReeBillCharge',
     'ReeBillCustomer',
-    'ReeBillDAO',
-    ]
-
-log = logging.getLogger(__name__)
+]
 
 class ReeBill(Base):
     __tablename__ = 'reebill'
