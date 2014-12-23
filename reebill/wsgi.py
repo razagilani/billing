@@ -490,7 +490,7 @@ class ReebillsResource(RESTResource):
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
         r = self.state_db.get_reebill_by_id(reebill_id)
-        sequence, account = r.sequence, r.customer.account
+        sequence, account = r.sequence, r.get_account()
         action = row.pop('action')
         action_value = row.pop('action_value')
         rtn = None
@@ -532,7 +532,7 @@ class ReebillsResource(RESTResource):
             rb = self.reebill_processor.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    rb.customer.account, rb.sequence, rb.version)
+                    rb.get_account(), rb.sequence, rb.version)
             rtn = rb.column_dict()
 
         elif not action:
