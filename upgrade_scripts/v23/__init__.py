@@ -18,6 +18,7 @@ from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Customer, Utility, \
     Address, UtilBill, Supplier, RateClass, UtilityAccount
+from billing.reebill.state import ReeBill
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 from billing.upgrade_scripts.v23.clean_up_rate_class_data import clean_up_rate_class_data
 
@@ -291,6 +292,10 @@ def delete_hypothetical_utility_bills(session):
     # has been removed from the code
     session.query(UtilBill).filter_by(state=3).delete()
 
+def delete_reebills_with_null_reebill_customer(session):
+    session.query(ReeBill).filter(ReeBill.reebill_customer_id==None).delete()
+
+
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
@@ -358,11 +363,12 @@ def upgrade():
     log.info('Upgrading to schema 28552fdf9f48')
     alembic_upgrade('28552fdf9f48')
 
-    log.info('Cleaning up rate class data')
-    clean_up_rate_class_data(session)
-
-    log.info('Comitting to Database')
+    log.info("deleting reebills with null reebill_customer_id")
+    delete_reebills_with_null_reebill_customer(session)
     session.commit()
+
+    log.info('Upgrading to 5a6d7e4f8b80')
+    alembic_upgrade('5a6d7e4f8b80')
 
     log.info('Upgrade Complete')
 
