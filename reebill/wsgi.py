@@ -481,7 +481,7 @@ class ReebillsResource(RESTResource):
         # TODO "attached" is no longer a useful event;
         # see https://www.pivotaltracker.com/story/show/55044870
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-            reebill.customer.account, reebill.sequence, reebill.version)
+            reebill.get_account(), reebill.sequence, reebill.version)
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
@@ -490,7 +490,7 @@ class ReebillsResource(RESTResource):
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
         r = self.state_db.get_reebill_by_id(reebill_id)
-        sequence, account = r.sequence, r.customer.account
+        sequence, account = r.sequence, r.get_account()
         action = row.pop('action')
         action_value = row.pop('action_value')
         rtn = None
@@ -532,7 +532,7 @@ class ReebillsResource(RESTResource):
             rb = self.reebill_processor.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    rb.customer.account, rb.sequence, rb.version)
+                    rb.get_account(), rb.sequence, rb.version)
             rtn = rb.column_dict()
 
         elif not action:
@@ -571,7 +571,7 @@ class ReebillsResource(RESTResource):
     def handle_delete(self, reebill_id, *vpath, **params):
         r = self.state_db.get_reebill_by_id(reebill_id)
 
-        sequence, account = r.sequence, r.customer.account
+        sequence, account = r.sequence, r.get_account()
         deleted_version = self.reebill_processor.delete_reebill(account,
                                                                 sequence)
         # deletions must all have succeeded, so journal them
@@ -588,7 +588,7 @@ class ReebillsResource(RESTResource):
         r = self.state_db.get_reebill_by_id(int(params['reebill']))
         try:
             self.reebill_processor.toggle_reebill_processed(
-                r.customer.account, r.sequence,
+                r.get_account(), r.sequence,
                 params['apply_corrections'] == 'true')
         except ConfirmAdjustment as e:
             return self.dumps({
