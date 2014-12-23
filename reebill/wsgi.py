@@ -481,7 +481,7 @@ class ReebillsResource(RESTResource):
         # TODO "attached" is no longer a useful event;
         # see https://www.pivotaltracker.com/story/show/55044870
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-            reebill.customer.account, reebill.sequence, reebill.version)
+            reebill.reebill_customer.get_account(), reebill.sequence, reebill.version)
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
