@@ -1,11 +1,13 @@
 from os.path import dirname, realpath, join
 import smtplib
+
 from boto.s3.connection import S3Connection
+
 from billing import init_config, init_model, init_logging
 
 
+
 # TODO: is it necessary to specify file path?
-from core.utilbill_loader import UtilBillLoader
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
@@ -39,8 +41,8 @@ from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor
-from reebill.views import UtilBillViews
+from billing.core.utilbill_processor import UtilbillProcessor
+from billing.reebill.views import UtilBillViews
 from billing.reebill.reebill_processor import ReebillProcessor
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter

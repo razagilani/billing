@@ -5,12 +5,11 @@ import logging
 from os.path import join
 from subprocess import CalledProcessError, Popen
 from time import sleep
+import subprocess
 
 from mock import Mock
 import mongoengine
-
 from boto.s3.connection import S3Connection
-import subprocess
 
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -30,7 +29,7 @@ from billing.reebill.state import StateDB, Session, UtilBill, \
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
-from billing.reebill.utilbill_processor import UtilbillProcessor
+from core.utilbill_processor import UtilbillProcessor
 from reebill.views import UtilBillViews
 from billing.reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
