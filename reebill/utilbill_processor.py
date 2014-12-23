@@ -515,11 +515,12 @@ class UtilbillProcessor(object):
         utility_account.account_number = utility_account_number
         return utility_account
 
-
-    ############################################################################
-    # "view" methods: return JSON dictionaries for ReeBill UI
-    # TODO: move to another file in reebill/
-    ############################################################################
+class UtilBillViews(object):
+    '''"View" methods: return JSON dictionaries of utility bill-related data
+    for ReeBill UI.
+    '''
+    def __init__(self, bill_file_handler):
+        self.bill_file_handler = bill_file_handler
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -575,3 +576,6 @@ class UtilbillProcessor(object):
     def get_rate_class(self, name):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
+
+
+

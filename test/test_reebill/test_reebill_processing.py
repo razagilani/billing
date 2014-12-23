@@ -37,7 +37,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(account, StringIO("test1"),
                                               start, end,
                                          'gas')
-        utilbills_data, count = self.utilbill_processor.get_all_utilbills_json(
+        utilbills_data, count = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
 
@@ -775,7 +775,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             making sure the reebill is correct with respect to the utility bill.
             '''
         # at first, there are no utility bills
-        self.assertEqual(([], 0), self.utilbill_processor.get_all_utilbills_json(
+        self.assertEqual(([], 0), self.utilbill_views.get_all_utilbills_json(
             '99999', 0, 30))
 
         # upload a utility bill
@@ -783,7 +783,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          date(2013, 1, 1), date(2013, 2, 1),
                                          'gas')
 
-        utilbill_data = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_data = self.utilbill_views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
         self.assertDictContainsSubset({
                                           'account': '99999',
@@ -792,19 +792,20 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
                                           'rate_class':
-                                              self.utilbill_processor.get_rate_class('Test Rate Class Template').name,
+                                              self.utilbill_views.get_rate_class('Test Rate Class Template').name,
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
                                           'utility':
-                                              self.utilbill_processor.get_utility('Test Utility Company Template').column_dict(),
+                                              self.utilbill_views.get_utility(
+                                                  'Test Utility Company Template').column_dict(),
                                           }, utilbill_data)
 
         # create a reebill
         self.reebill_processor.roll_reebill('99999', start_date=date(2013, 1, 1))
 
-        utilbill_data = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_data = self.utilbill_views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
         self.assertDictContainsSubset({'issue_date': None, 'sequence': 1, 'version': 0},
                                       utilbill_data['reebills'][0])
@@ -815,12 +816,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': self.utilbill_processor.
+                                          'rate_class': self.utilbill_views.
                                             get_rate_class('Test Rate Class Template').
                                             name,
                                           'service': 'Gas', 'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.utilbill_processor.
+                                          'utility': self.utilbill_views.
                                             get_utility('Test Utility Company '
                                                         'Template').
                                             column_dict(),
@@ -870,7 +871,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(
             account, StringIO('January 2013'), date(2013, 1, 1),
             date(2013, 2, 1), 'gas')
-        utilbill_id = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_id = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
         self.reebill_processor.roll_reebill(account, start_date=date(2013, 1, 1))
         # bind, compute, issue
@@ -1122,7 +1123,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          'gas')
         # add a register to the first utility bill so there are 2,
         # REG_TOTAL and OTHER
-        id_1 = self.utilbill_processor.get_all_utilbills_json(
+        id_1 = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
         register = self.utilbill_processor.new_register(
             id_1, meter_identifier='M60324', identifier='R')
@@ -1143,7 +1144,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.issue(account, 1,
                            issue_date=datetime(2013, 5, 1))
         # delete register from the 2nd utility bill
-        id_2 = self.utilbill_processor.get_all_utilbills_json(
+        id_2 = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
         register = filter(lambda x: x.identifier == 'R' and
@@ -1154,7 +1155,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # 2nd reebill should NOT have a reading corresponding to the
         # additional register, which was removed
         reebill2 = self.reebill_processor.roll_reebill(account)
-        utilbill_data, count = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_data, count = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(2, count)
         self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
@@ -1204,7 +1205,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(account, StringIO('July 2013'),
                                          date(2013, 7, 1), date(2013, 7, 30),
                                          'gas')
-        utilbill_data, count = self.utilbill_processor.get_all_utilbills_json(account,
+        utilbill_data, count = self.utilbill_views.get_all_utilbills_json(account,
                 0, 30)
         self.assertEqual(3, count)
         self.assertEqual(['Final', 'Final', 'Final'],
@@ -1213,7 +1214,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(account, StringIO('June 2013'),
                                          date(2013, 6, 3), date(2013, 7, 1),
                                          'gas', state=UtilBill.UtilityEstimated)
-        utilbill_data, count = self.utilbill_processor.get_all_utilbills_json(account,
+        utilbill_data, count = self.utilbill_views.get_all_utilbills_json(account,
                 0, 30)
         self.assertEqual(4, count)
         self.assertEqual(['Final', 'Utility Estimated', 'Final', 'Final'],
@@ -1305,7 +1306,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(
             account, StringIO('February 2013'), date(2013, 2, 1),
             date(2013, 3, 1), 'gas')
-        utilbills_data, _ = self.utilbill_processor.get_all_utilbills_json(
+        utilbills_data, _ = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)
         id_2, id_1 = (obj['id'] for obj in utilbills_data)
         self.utilbill_processor.add_charge(id_1)
@@ -1685,7 +1686,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(
             account, StringIO('January 2012'), date(2012, 1, 1),
             date(2012, 2, 1), 'gas')
-        utilbill_id = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_id = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
         example_charge_fields = [
@@ -1737,9 +1738,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
-        quantity = self.utilbill_processor.get_registers_json(
+        quantity = self.utilbill_views.get_registers_json(
             utilbill_id)[0]['quantity']
-        actual_charges = self.utilbill_processor.get_utilbill_charges_json(
+        actual_charges = self.utilbill_views.get_utilbill_charges_json(
             utilbill_id)
 
         def get_total(rsi_binding):
@@ -1803,7 +1804,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # sure it exists all 3 places)
         self.utilbill_processor.upload_utility_bill(
             account, StringIO("test1"), start, end, 'gas')
-        utilbills_data, count = self.utilbill_processor.get_all_utilbills_json(
+        utilbills_data, count = self.utilbill_views.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
 
@@ -1870,11 +1871,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill('99999', StringIO('test'),
                                          date(2000, 1, 1), date(2000, 2, 1),
                                          'gas')
-        utilbill_id = self.utilbill_processor.get_all_utilbills_json(
+        utilbill_id = self.utilbill_views.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]['id']
         def add_2nd_register():
             self.utilbill_processor.new_register(utilbill_id)
-            register_id = self.utilbill_processor.get_registers_json(utilbill_id)[1]['id']
+            register_id = self.utilbill_views.get_registers_json(
+                utilbill_id)[1]['id']
             self.utilbill_processor.update_register(register_id,
                     {'register_binding': 'REG_2'})
         add_2nd_register()

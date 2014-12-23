@@ -39,7 +39,7 @@ from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor
+from billing.reebill.utilbill_processor import UtilbillProcessor, UtilBillViews
 from billing.reebill.reebill_processor import ReebillProcessor
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
@@ -226,6 +226,7 @@ class WebResource(object):
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
+        self.utilbill_views = UtilBillViews(self.bill_file_handler)
         self.utilbill_processor = UtilbillProcessor(
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
