@@ -46,7 +46,7 @@ class StateDBTest(TestCaseWithSetup):
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
-        self.state_db = state.StateDB()
+        self.state_db = state.ReeBillDAO()
         self.payment_dao = PaymentDAO()
 
     def tearDown(self):

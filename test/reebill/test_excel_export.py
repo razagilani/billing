@@ -8,7 +8,7 @@ import mock
 
 from billing.reebill.excel_export import Exporter
 from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import StateDB, ReeBill, Payment
+from billing.reebill.state import ReeBillDAO, ReeBill, Payment
 from billing.reebill.payment_dao import PaymentDAO
 
 
@@ -16,7 +16,7 @@ class ExporterTest(unittest.TestCase):
 
     def setUp(self):
         #Set up the mock
-        self.mock_StateDB = mock.create_autospec(StateDB)
+        self.mock_StateDB = mock.create_autospec(ReeBillDAO)
         self.payment_dao = mock.Mock(autospec=PaymentDAO)
         self.exp = Exporter(self.mock_StateDB, self.payment_dao)
 

@@ -442,7 +442,7 @@ def main(export_func, filename, account=None):
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.StateDB(logger=logger)
+    state_db = state.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
