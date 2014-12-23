@@ -29,7 +29,7 @@ __all__ = [
     'ReeBill',
     'ReeBillCharge',
     'ReeBillCustomer',
-    'StateDB',
+    'ReeBillDAO',
     ]
 
 log = logging.getLogger(__name__)
@@ -744,11 +744,10 @@ class Payment(Base):
 
 
 
-class StateDB(object):
-    """A Data Access Class"""
+class ReeBillDAO(object):
 
     def __init__(self, logger=None):
-        """Construct a new :class:`.StateDB`.
+        """Construct a new :class:`.ReeBillDAO`.
 
         :param session: a ``scoped_session`` instance
         :param logger: a logger object

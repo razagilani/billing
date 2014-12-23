@@ -25,7 +25,7 @@ from billing.core import pricing
 from billing.core.model import Supplier, RateClass, UtilityAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
-from billing.reebill.state import StateDB, Session, UtilBill, \
+from billing.reebill.state import ReeBillDAO, Session, UtilBill, \
     Register, Address, ReeBillCustomer
 from billing.reebill.payment_dao import PaymentDAO
 from billing.core.model import Utility
@@ -307,7 +307,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
-        self.state_db = StateDB(logger)
+        self.state_db = ReeBillDAO(logger)
         s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                   config.get('aws_s3', 'aws_secret_access_key'),
                                   is_secure=config.get('aws_s3', 'is_secure'),
@@ -381,7 +381,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
-        ReebillDAO, FuzzyPricingModel, StateDB, Splinter, Process,
+        ReebillDAO, FuzzyPricingModel, ReeBillDAO, Splinter, Process,
         NexusUtil."""
         # make sure FakeS3 server is still running (in theory one of the
         # tests or some other process could cause it to exit)

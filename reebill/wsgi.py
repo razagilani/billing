@@ -133,7 +133,7 @@ class WebResource(object):
 
         # create an instance representing the database
         self.payment_dao = PaymentDAO()
-        self.state_db = state.StateDB(logger=self.logger)
+        self.state_db = state.ReeBillDAO(logger=self.logger)
 
         s3_connection = S3Connection(
                 config.get('aws_s3', 'aws_access_key_id'),
