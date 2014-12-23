@@ -32,11 +32,11 @@ class BillMailerTest(TestCase):
             'balance_due': 20
         }
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         'test/reebill/data', ['text.txt'], boundary='abc' )
+                         'test/test_reebill/data', ['text.txt'], boundary='abc')
         contents1 = []
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
-        data = open('test/reebill/data/text.txt', 'r').read()
+        data = open('test/test_reebill/data/text.txt', 'r').read()
         contents1.append('Content-Type: multipart/mixed; boundary="abc"\n')
         contents1.append(('MIME-Version: 1.0\n'))
         contents1.append('Subject: Nextility: Your Monthly Bill for 456 test Ave.\n')
@@ -63,7 +63,7 @@ class BillMailerTest(TestCase):
         contents2 = []
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
-        data = open('test/reebill/data/text.txt', 'r').read()
+        data = open('test/test_reebill/data/text.txt', 'r').read()
         contents2.append('Content-Type: multipart/mixed; boundary="abc"\n')
         contents2.append(('MIME-Version: 1.0\n'))
         contents2.append('Subject: Nextility: Your Monthly Bill for 456 test Ave.\n')
@@ -98,14 +98,14 @@ class BillMailerTest(TestCase):
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         'test/reebill/data', ['utility_bill.pdf'],
+                         'test/test_reebill/data', ['utility_bill.pdf'],
                          boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         'test/reebill/data', ['audio.wav'], boundary='abc' )
+                         'test/test_reebill/data', ['audio.wav'], boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         'test/reebill/data', ['image.jpg'], boundary='abc' )
+                         'test/test_reebill/data', ['image.jpg'], boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         'test/reebill/data', ['video.mov'], boundary='abc' )
+                         'test/test_reebill/data', ['video.mov'], boundary='abc' )
         server.ehlo.assert_has_calls([call(), call(), call(), call(), call(), call()])
         server.starttls.asserrt_has_calls([call(), call(), call(), call()])
         server.login.assert_has_calls([call(mailer_opts['originator'], mailer_opts['password']),
