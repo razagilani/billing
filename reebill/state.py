@@ -1040,7 +1040,12 @@ class StateDB(object):
 
         return result
 
-    def listReebills(self, start, limit, account, sort, dir, **kwargs):
+    def listReebills(self, start, limit, account, sort='sequence', dir='DESC'):
+        """
+        Returns a list of 'start'+'limit' Reebill objects for UtilityAccount
+        'account' sorted by secquence with sort direction 'dir', and the
+        total number of bills for the account
+        """
         session = Session()
         query = session.query(ReeBill).join(ReeBillCustomer).join(
             UtilityAccount).filter(UtilityAccount.account == account)
