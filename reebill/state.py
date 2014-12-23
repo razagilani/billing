@@ -175,7 +175,7 @@ class ReeBill(Base):
             self.issued else 'unissued', len(self.utilbills))
 
     def get_account(self):
-        return self.reebill_customer.utility_account.account
+        return self.reebill_customer.get_account()
 
 
     def check_editable(self):
