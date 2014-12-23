@@ -363,8 +363,13 @@ def upgrade():
     log.info('Upgrading to schema 28552fdf9f48')
     alembic_upgrade('28552fdf9f48')
 
+    log.info("Cleaning up rate class data")
+    clean_up_rate_class_data(session)
+
     log.info("deleting reebills with null reebill_customer_id")
     delete_reebills_with_null_reebill_customer(session)
+
+    log.info('Comitting to Database')
     session.commit()
 
     log.info('Upgrading to 5a6d7e4f8b80')
