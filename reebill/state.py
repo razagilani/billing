@@ -1040,7 +1040,7 @@ class StateDB(object):
 
         return result
 
-    def listReebills(self, start, limit, account, sort='sequence', dir='DESC'):
+    def listReebills(self, start, limit, account, dir='ASC'):
         """
         Returns a list of 'start'+'limit' Reebill objects for UtilityAccount
         'account' sorted by secquence with sort direction 'dir', and the
@@ -1057,12 +1057,7 @@ class StateDB(object):
             raise ValueError(
                 "Bad Parameter Value: 'dir' must be 'ASC' or 'DESC'")
 
-        if (sort == u'sequence'):
-            field = ReeBill.sequence
-        else:
-            raise ValueError("Bad Parameter Value: 'sort' must be 'sequence'")
-
-        slice = query.order_by(order(field))[start:start + limit]
+        slice = query.order_by(order(ReeBill.sequence))[start:start + limit]
         count = query.count()
 
         return slice, count
