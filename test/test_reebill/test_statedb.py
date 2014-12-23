@@ -202,6 +202,22 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEquals([],
                 self.state_db.get_unissued_corrections('99999'))
 
+    def test_get_all_reebills_for_account(self):
+        session = Session()
+
+        reebills = [
+            ReeBill(self.reebill_customer, 1),
+            ReeBill(self.reebill_customer, 2),
+            ReeBill(self.reebill_customer, 3)
+        ]
+
+        for rb in reebills:
+            session.add(rb)
+
+        account = self.reebill_customer.get_account()
+        bills = self.state_db.get_all_reebills_for_account(account)
+        self.assertEqual(bills, reebills)
+
     def test_payments(self):
         acc = '99999'
         # one payment on jan 15
