@@ -28,9 +28,10 @@ class ReebillProcessor(object):
     the UI-related methods), except maybe the first two can stay in the same
     class.
     '''
-    def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
-                 ree_getter, journal_dao, logger=None):
+    def __init__(self, state_db, payment_dao, nexus_util, bill_mailer,
+                 reebill_file_handler, ree_getter, journal_dao, logger=None):
         self.state_db = state_db
+        self.payment_dao = payment_dao
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
@@ -41,7 +42,7 @@ class ReebillProcessor(object):
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
         '''Wrapper to create_payment method in state.py'''
-        return self.state_db.create_payment(account, date_applied, description,
+        return self.payment_dao.create_payment(account, date_applied, description,
             credit, date_received)
 
     def update_payment(self, id, date_applied, description, credit):
@@ -203,11 +204,11 @@ class ReebillProcessor(object):
             present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
-                payments = self.state_db.get_total_payment_since(
+                payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
             else:
-                payments = self.state_db.get_total_payment_since(
+                payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, end=present_v0_issue_date,
                         payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
@@ -236,12 +237,12 @@ class ReebillProcessor(object):
                         version=0):
                     present_v0_issue_date = self.state_db.get_reebill(account,
                             reebill.sequence, version=0).issue_date
-                    payments = self.state_db.get_total_payment_since(
+                    payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
                         end=present_v0_issue_date, payment_objects=True)
                     self.compute_reebill_payments(payments, reebill)
                 else:
-                    payments = self.state_db. \
+                    payments = self.payment_dao. \
                             get_total_payment_since(account,
                             predecessor.issue_date, payment_objects=True)
                     self.compute_reebill_payments(payments, reebill)
@@ -504,7 +505,7 @@ class ReebillProcessor(object):
                 .filter(ReeBill.reebill_customer == reebill_customer)\
                 .filter(ReeBill.sequence == seq - 1).one()[0]
         source_balance = min_balance_due - \
-                self.state_db.get_total_payment_since(acc,
+                self.payment_dao.get_total_payment_since(acc,
                 predecessor0.issue_date)
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
