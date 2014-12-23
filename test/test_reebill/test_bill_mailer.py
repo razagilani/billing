@@ -1,15 +1,10 @@
-import os
 from jinja2 import Template
-from billing import config
-from billing.test import init_test_config
-init_test_config()
-
-from datetime import date
-from StringIO import StringIO
 from mock import Mock, call
-from reebill.state import Address, UtilBill, Register, ReeBill
-from testfixtures import TempDirectory
 
+from test import init_test_config
+
+init_test_config()
+from core import config
 
 from unittest import TestCase
 from reebill.bill_mailer import Mailer, TEMPLATE_FILE_PATH
@@ -20,11 +15,7 @@ class BillMailerTest(TestCase):
             self.template_html = template_file.read()
 
     def test_send_mail(self):
-        from core import config
-        from test import init_test_config
-        init_test_config()
         server = Mock()
-        #server.send_mail = Mock()
         mailer_opts = dict(config.items("mailer"))
         bill_mailer = Mailer(
                 mailer_opts['mail_from'],
