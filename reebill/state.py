@@ -6,7 +6,7 @@ from itertools import chain
 
 import logging
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, and_
 from sqlalchemy.orm import relationship, backref, aliased
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
@@ -34,7 +34,6 @@ __all__ = [
     ]
 
 log = logging.getLogger(__name__)
-
 
 class ReeBill(Base):
     __tablename__ = 'reebill'
@@ -744,6 +743,8 @@ class Payment(Base):
         the_dict.update(editable=self.is_editable())
         return the_dict
 
+
+
 class StateDB(object):
     """A Data Access Class"""
 
@@ -1141,6 +1142,29 @@ class StateDB(object):
                                                      last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
+    def get_outstanding_balance(self, account, sequence=None):
+        '''Returns the balance due of the reebill given by account and sequence
+        (or the account's last issued reebill when 'sequence' is not given)
+        minus the sum of all payments that have been made since that bill was
+        issued. Returns 0 if total payments since the issue date exceed the
+        balance due, or if no reebill has ever been issued for the customer.'''
+        # get balance due of last reebill
+        if sequence == None:
+            sequence = self.last_issued_sequence(account)
+        if sequence == 0:
+            return 0
+        reebill = self.get_reebill(sequence)
+
+        if reebill.issue_date == None:
+            return 0
+
+        # result cannot be negative
+        return max(0, reebill.balance_due -
+                   self.payment_dao.get_total_payment_since(account,
+                                                            reebill.issue_date))
+
+
+class PaymentDAO(object):
     def create_payment(self, account, date_applied, description,
                        credit, date_received=None):
         '''Adds a new payment, returns the new Payment object. By default,
@@ -1153,13 +1177,13 @@ class StateDB(object):
         if date_received is None:
             date_received = datetime.utcnow()
         session = Session()
-        utility_account = session.query(UtilityAccount)\
-                .filter(UtilityAccount.account==account).one()
-        reebill_customer = session.query(ReeBillCustomer)\
-                .filter(ReeBillCustomer.utility_account==utility_account)\
-                .one()
+        utility_account = session.query(UtilityAccount) \
+            .filter(UtilityAccount.account==account).one()
+        reebill_customer = session.query(ReeBillCustomer) \
+            .filter(ReeBillCustomer.utility_account==utility_account) \
+            .one()
         new_payment = Payment(reebill_customer, date_received, date_applied,
-                description, credit)
+                              description, credit)
         session.add(new_payment)
         session.flush()
         return new_payment
@@ -1180,15 +1204,15 @@ class StateDB(object):
         # first utility service on the reebill. If the periods overlap,
         # payments will be applied more than once. See 11093293
         session = Session()
-        utility_account = session.query(UtilityAccount)\
+        utility_account = session.query(UtilityAccount) \
             .filter(UtilityAccount.account==account).one()
-        reebill_customer = session.query(ReeBillCustomer)\
-            .filter(ReeBillCustomer.utility_account==utility_account)\
+        reebill_customer = session.query(ReeBillCustomer) \
+            .filter(ReeBillCustomer.utility_account==utility_account) \
             .one()
         payments = session.query(Payment) \
             .filter(Payment.reebill_customer == reebill_customer) \
             .filter(and_(Payment.date_applied >= periodbegin,
-            Payment.date_applied < periodend)).all()
+                         Payment.date_applied < periodend)).all()
         return payments
 
     def get_total_payment_since(self, account, start, end=None, payment_objects=False):
@@ -1200,9 +1224,11 @@ class StateDB(object):
         if end is None:
             end=datetime.utcnow()
         session = Session()
-        payments = session.query(Payment)\
-                .filter(Payment.reebill_customer==self.get_reebill_customer(account))\
-                .filter(Payment.date_applied < end)
+        reebill_customer = session.query(ReeBillCustomer).join(
+            UtilityAccount).filter_by(account=account).one()
+        payments = session.query(Payment) \
+            .filter(Payment.reebill_customer==reebill_customer) \
+            .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
         if payment_objects:
@@ -1213,11 +1239,13 @@ class StateDB(object):
         '''Returns list of all payments for the given account ordered by
         date_received.'''
         session = Session()
-        payments = session.query(Payment).join(ReeBillCustomer)\
+        payments = session.query(Payment).join(ReeBillCustomer) \
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account).order_by(
             Payment.date_received).all()
         return payments
+
+    get_payments = payments
 
     def get_payments_for_reebill_id(self, reebill_id):
         session = Session()
@@ -1225,25 +1253,4 @@ class StateDB(object):
             .filter(Payment.reebill_id == reebill_id).order_by(
             Payment.date_received).all()
         return payments
-
-    # TODO: this method is not used anywhere but it probably should be.
-    def get_outstanding_balance(self, account, sequence=None):
-        '''Returns the balance due of the reebill given by account and sequence
-        (or the account's last issued reebill when 'sequence' is not given)
-        minus the sum of all payments that have been made since that bill was
-        issued. Returns 0 if total payments since the issue date exceed the
-        balance due, or if no reebill has ever been issued for the customer.'''
-        # get balance due of last reebill
-        if sequence == None:
-            sequence = self.last_issued_sequence(account)
-        if sequence == 0:
-            return 0
-        reebill = self.get_reebill(sequence)
-
-        if reebill.issue_date == None:
-            return 0
-
-        # result cannot be negative
-        return max(0, reebill.balance_due -
-                   self.get_total_payment_since(account, reebill.issue_date))
 

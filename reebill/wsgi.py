@@ -131,6 +131,7 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
+        self.payment_dao = state.PaymentDAO()
         self.state_db = state.StateDB(logger=self.logger)
 
         s3_connection = S3Connection(
@@ -230,7 +231,7 @@ class WebResource(object):
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, self.bill_mailer,
+            self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,
             logger=self.logger)
 

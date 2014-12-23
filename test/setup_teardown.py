@@ -26,7 +26,7 @@ from billing.core.model import Supplier, RateClass, UtilityAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.state import StateDB, Session, UtilBill, \
-    Register, Address, ReeBillCustomer
+    Register, Address, ReeBillCustomer, PaymentDAO
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
@@ -365,15 +365,15 @@ class TestCaseWithSetup(test_utils.TestCase):
                 config.get('reebill', 'teva_accounts'))
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
-
         journal_dao = journal.JournalDAO()
+        self.payment_dao = PaymentDAO()
 
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, logger=logger)
+            self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+            reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
