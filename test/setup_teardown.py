@@ -26,7 +26,8 @@ from billing.core.model import Supplier, RateClass, UtilityAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.state import StateDB, Session, UtilBill, \
-    Register, Address, ReeBillCustomer, PaymentDAO
+    Register, Address, ReeBillCustomer
+from billing.reebill.payment_dao import PaymentDAO
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter

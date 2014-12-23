@@ -8,7 +8,8 @@ import mock
 
 from billing.reebill.excel_export import Exporter
 from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import StateDB, ReeBill, Payment, PaymentDAO
+from billing.reebill.state import StateDB, ReeBill, Payment
+from billing.reebill.payment_dao import PaymentDAO
 
 
 class ExporterTest(unittest.TestCase):
