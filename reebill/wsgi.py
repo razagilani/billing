@@ -4,10 +4,9 @@ from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
 
-# TODO: is it necessary to specify file path?
-from core.utilbill_loader import UtilBillLoader
-from reebill.payment_dao import PaymentDAO
+from billing.reebill.payment_dao import PaymentDAO
 
+# TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)

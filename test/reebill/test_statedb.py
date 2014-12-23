@@ -12,7 +12,7 @@ import unittest
 from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
 from billing import init_config, init_model
-from billing.reebill import state
+from billing.reebill.reebill_dao import ReeBillDAO
 from billing.core.model import Customer, UtilBill, Session, Address
 from billing.reebill.state import ReeBill
 
@@ -46,7 +46,7 @@ class StateDBTest(TestCaseWithSetup):
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
-        self.state_db = state.ReeBillDAO()
+        self.state_db = ReeBillDAO()
         self.payment_dao = PaymentDAO()
 
     def tearDown(self):

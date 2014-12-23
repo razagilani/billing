@@ -25,8 +25,9 @@ from billing.core import pricing
 from billing.core.model import Supplier, RateClass, UtilityAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
-from billing.reebill.state import ReeBillDAO, Session, UtilBill, \
+from billing.reebill.state import Session, UtilBill, \
     Register, Address, ReeBillCustomer
+from billing.reebill.reebill_dao import ReeBillDAO
 from billing.reebill.payment_dao import PaymentDAO
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
