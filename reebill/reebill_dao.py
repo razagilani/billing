@@ -1,25 +1,16 @@
 """
 Utility functions to interact with state database
 """
-from datetime import datetime, date
-from itertools import chain
-import logging
-import traceback
+from datetime import datetime
 
-import sqlalchemy
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import relationship, backref, aliased
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.sql.expression import desc
-from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
-        Enum
-from sqlalchemy.ext.associationproxy import association_proxy
 
-from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
-from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Utility, RateClass, Charge, UtilityAccount
+from billing.exc import IssuedBillError
+from billing.core.model import Address, Session, UtilBill, Utility, RateClass, \
+    UtilityAccount
 from billing.reebill.state import ReeBillCustomer, ReeBill
 from billing.util.monthmath import Month
 
@@ -145,7 +136,7 @@ class ReeBillDAO(object):
         there are no reebills.'''
         session = Session()
         reebill_customer = self.get_reebill_customer(account)
-        max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
+        max_sequence = session.query(func.max(ReeBill.sequence)) \
             .filter(ReeBill.reebill_customer_id == reebill_customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
         # the database) reebill needs to be primed otherwise the last sequence
