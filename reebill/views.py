@@ -9,13 +9,14 @@ class Views(object):
     '''"View" methods: return JSON dictionaries of utility bill-related data
     for ReeBill UI.
     '''
-    def __init__(self, reebill_dao, bill_file_handler, nexus_util):
+    def __init__(self, reebill_dao, bill_file_handler, nexus_util, journal_dao):
         # TODO: it would be good to avoid using database/network connections
         # in  here--data from these should be passed in by the caller so
         # these methods only handle transforming the data into JSON for display
         self._reebill_dao = reebill_dao
         self._bill_file_handler = bill_file_handler
         self._nexus_util = nexus_util
+        self._journal_dao = journal_dao
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -127,9 +128,9 @@ class Views(object):
                 }
 
         if account is not None:
-            events = [(account, self.journal_dao.last_event_summary(account))]
+            events = [(account, self._journal_dao.last_event_summary(account))]
         else:
-            events = self.journal_dao.get_all_last_events()
+            events = self._journal_dao.get_all_last_events()
         for acc, last_event in events:
             # filter out events that belong to an unknown account (this could
             # not be done in JournalDAO.get_all_last_events() because it only
