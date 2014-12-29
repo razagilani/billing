@@ -323,20 +323,20 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # add a payment between 2000-01-01 (when bill1 version 0 was
         # issued) and 2013-01-01 (the present), to make sure that payment
         # is deducted from the balance on which the late charge is based
-        self.state_db.create_payment(acc, date(2000, 6, 5),
+        self.payment_dao.create_payment(acc, date(2000, 6, 5),
                                      'a $10 payment in june', 10)
         self.assertEqual((late_charge_source_amount - 10) *
                          bill2.late_charge_rate,
                          self.reebill_processor.get_late_charge(bill2, date(2013, 1, 1)))
 
         # Pay off the bill, make sure the late charge is 0
-        self.reebill_processor.create_payment(acc, date(2000, 6, 6),
+        self.payment_dao.create_payment(acc, date(2000, 6, 6),
                                     'a $40 payment in june', 40)
         self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
                                                          date(2013, 1, 1)))
 
         #Overpay the bill, make sure the late charge is still 0
-        self.reebill_processor.create_payment(acc, date(2000, 6, 7),
+        self.payment_dao.create_payment(acc, date(2000, 6, 7),
                                     'a $40 payment in june', 40)
         self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
                                                          date(2013, 1, 1)))
@@ -417,7 +417,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         three = self.reebill_processor.roll_reebill(acc)
 
         # add a payment, shown on bill #2
-        self.state_db.create_payment(acc, date(2000, 2, 16), 'a payment', 100)
+        self.payment_dao.create_payment(acc, date(2000, 2, 16), 'a payment',
+                                        100)
         # TODO bill shows 0 because bill has no energy in it and
         # payment_received is 0
         self.reebill_processor.compute_reebill(acc, 2)
@@ -1570,21 +1571,25 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         #self.reebill_processor.compute_reebill(account, 1)
 
-        payments = self.reebill_processor.get_payments(account)
+        payments = [p.column_dict() for p in self.payment_dao.get_payments(
+            account)]
         self.assertEqual(len(payments), 2)
         self.assertEqual(payments[0]['credit'], 10)
         self.assertEqual(payments[1]['credit'], 12)
-        self.reebill_processor.update_payment(payments[0]['id'], payments[0]['date_applied'], 'changed credit', 20)
-        payments = self.reebill_processor.get_payments(account)
+        self.reebill_processor.update_payment(payments[0]['id'], payments[0][
+            'date_applied'], 'changed credit', 20)
+        payments = [p.column_dict() for p in self.payment_dao.get_payments(
+            account)]
         self.assertEqual(payments[0]['credit'], 20)
-        self.reebill_processor.delete_payment(payments[0]['id'])
-        self.assertEqual(len(self.reebill_processor.get_payments(account)), 1)
+        self.payment_dao.delete_payment(payments[0]['id'])
+        self.assertEqual(len(self.payment_dao.get_payments(account)), 1)
 
          # 1st reebill has the only payment applied to it,
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1)
-        payment = self.reebill_processor.get_payments(account)[0]
-        self.assertRaises(IssuedBillError, self.reebill_processor.update_payment, payment['id'], payment['date_applied'], 'update', 20)
+        payment = self.payment_dao.get_payments(account)[0].column_dict()
+        self.assertRaises(IssuedBillError, self.reebill_processor.update_payment,
+                          payment['id'], payment['date_applied'], 'update', 20)
         self.assertRaises(IssuedBillError, self.reebill_processor.delete_payment,
                           payment['id'])
 

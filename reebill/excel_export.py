@@ -23,9 +23,10 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 
-    def __init__(self, state_db, verbose=False):
+    def __init__(self, state_db, payment_dao, verbose=False):
         # objects for database access
         self.state_db = state_db
+        self.payment_dao = payment_dao
         self.verbose = verbose
 
     def export_account_charges(self, output_file, account=None,
@@ -323,7 +324,7 @@ class Exporter(object):
                     continue
 
                 applicable_payments = \
-                    self.state_db.get_payments_for_reebill_id(reebill.id)
+                    self.payment_dao.get_payments_for_reebill_id(reebill.id)
 
                 savings = 0
                 if reebill.ree_value and reebill.ree_charge:
@@ -441,7 +442,7 @@ def main(export_func, filename, account=None):
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.StateDB(logger=logger)
+    state_db = state.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
