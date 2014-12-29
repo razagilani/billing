@@ -42,7 +42,7 @@ from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
 from billing.core.utilbill_processor import UtilbillProcessor
-from billing.reebill.views import UtilBillViews
+from billing.reebill.views import Views
 from billing.reebill.reebill_processor import ReebillProcessor
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
@@ -229,7 +229,7 @@ class WebResource(object):
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
-        self.utilbill_views = UtilBillViews(self.bill_file_handler)
+        self.utilbill_views = Views(self.bill_file_handler)
         self.utilbill_processor = UtilbillProcessor(
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
@@ -327,7 +327,7 @@ class AccountsResource(RESTResource):
     def handle_get(self, *vpath, **params):
         """Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab."""
-        count, rows = self.reebill_processor.list_account_status()
+        count, rows = self.utilbill_views.list_account_status()
         return True, {'rows': rows, 'results': count}
 
     def handle_post(self,*vpath, **params):
@@ -361,7 +361,7 @@ class AccountsResource(RESTResource):
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
 
-        count, result = self.reebill_processor.list_account_status(row['account'])
+        count, result = self.utilbill_views.list_account_status(row['account'])
         print count, result
         return True, {'rows': result, 'results': count}
 
@@ -377,7 +377,7 @@ class AccountsResource(RESTResource):
 class IssuableReebills(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        issuable_reebills = self.reebill_processor.get_issuable_reebills_dict()
+        issuable_reebills = self.utilbill_views.get_issuable_reebills_dict()
         return True, {'rows': issuable_reebills,
                       'results': len(issuable_reebills)}
 
@@ -450,7 +450,7 @@ class IssuableReebills(RESTResource):
 class ReebillVersionsResource(RESTResource):
 
     def handle_get(self, account, sequence, *vpath, **params):
-        result = self.reebill_processor.list_all_versions(account, sequence)
+        result = self.utilbill_views.list_all_versions(account, sequence)
         return True, {'rows': result, 'results': len(result)}
 
 class ReebillsResource(RESTResource):
@@ -461,8 +461,8 @@ class ReebillsResource(RESTResource):
 
         '''Handles GET requests for reebill grid data.'''
         # this is inefficient but length is always <= 120 rows
-        rows = sorted(self.reebill_processor.get_reebill_metadata_json(
-            account), key=itemgetter(sort))
+        rows = sorted(self.utilbill_views.get_reebill_metadata_json(account),
+                      key=itemgetter(sort))
         if dir == 'DESC':
             rows.reverse()
 
