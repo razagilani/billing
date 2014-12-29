@@ -1,11 +1,8 @@
 import json
 import re
-from formencode.validators import String, Regex, FancyValidator, Int
-from formencode import Schema
-from formencode.api import Invalid
 from boto.s3.connection import S3Connection
-from formencode.foreach import ForEach
 from datetime import datetime
+from voluptuous import Schema, Match, Any
 
 from billing import config
 from billing.nexusapi.nexus_util import NexusUtil
@@ -18,48 +15,24 @@ from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
+from mq.schemas.validators import MessageVersion, EmptyString, Date
 
 
-class DueDateValidator(FancyValidator):
-    ''' Validator for "due_date" field in utility bill
-    messages. ISO-8601 datetime string or empty string converted to Date or None
-    '''
+# Voluptuos schema for validating/parsing utility bill message contents.
+# specification is at
+# https://docs.google.com/a/nextility.com/document/d
+# /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
 
-    def _convert_to_python(self, value, state):
-        try:
-            dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
-        except ValueError:
-            # Parse Errors are considered TypeErrors
-            return Invalid('Could not parse "due_date" string: %s' % value)
-        return None if value == '' else dt.date()
-
-
-class TotalValidator(FancyValidator):
-    '''Validator for the odd format of the "total" field in utility bill
-    messages: dollars and cents as a string preceded by "$", or empty.
-    '''
-    def _convert_to_python(self, value, state):
-        substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
-        if substr is None:
-            raise Invalid('Invalid "total" string: "%s"' % value, value, state)
-        return None if substr == '' else float(substr[1:])
-
-class UtilbillMessageSchema(Schema):
-    '''Formencode schema for validating/parsing utility bill message contents.
-    specification is at
-    https://docs.google.com/a/nextility.com/document/d
-    /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
-   '''
-    utility_account_number = String()
-    sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
-    due_date = DueDateValidator()
-    total = TotalValidator()
-    service_address = String()
-    utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
-    account_guids = ForEach(String())
-    # TODO: There seems to be no good way of validating the exact sequence
-    # 1,0
-    message_version = ForEach(Int())
+UtilbillMessageSchema = Schema({
+    'utility_account_number': basestring,
+    'sha256_hexdigest': Match(BillFileHandler.HASH_DIGEST_REGEX),
+    'due_date': Any(EmptyString(), Date('%Y-%m-%dT%H:%M:%S')),
+    'total': Any(EmptyString(), Match('^\$\d*\.?\d{1,2}|$')),
+    'service_address': basestring,
+    'utility_provider_guid': Match(AltitudeGUID.REGEX),
+    'account_guids': [basestring],
+    'message_version': MessageVersion(1)
+}, required=True)
 
 
 class BillingHandler(MessageHandler):
@@ -116,18 +89,18 @@ class ConsumeUtilityGuidHandler(BillingHandler):
 
 class ConsumeUtilbillFileHandler(BillingHandler):
     # on_error = REJECT_MESSAGE
+    message_schema = UtilbillMessageSchema
 
     def handle(self, message):
-        d = UtilbillMessageSchema.to_python(message.body)
         s = Session()
-        utility = get_utility_from_guid(d['utility_provider_guid'])
+        utility = get_utility_from_guid(message['utility_provider_guid'])
         utility_account = s.query(UtilityAccount).filter_by(
-            account_number=d['utility_account_number']).one()
-        sha256_hexdigest = d['sha256_hexdigest']
-        total = d['total']
-        due_date = d['due_date']
-        service_address_street = d['service_address']
-        account_guids = d['account_guids']
+            account_number=message['utility_account_number']).one()
+        sha256_hexdigest = message['sha256_hexdigest']
+        total = message['total']
+        due_date = message['due_date']
+        service_address_street = message['service_address']
+        account_guids = message['account_guids']
 
         self.utilbill_processor.create_utility_bill_with_existing_file(
             utility_account, utility, sha256_hexdigest,
