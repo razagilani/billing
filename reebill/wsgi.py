@@ -231,7 +231,7 @@ class WebResource(object):
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
         self.utilbill_views = Views(self.state_db, self.bill_file_handler,
-                                    self.nexus_util)
+                                    self.nexus_util, self.journal_dao)
         self.utilbill_processor = UtilbillProcessor(
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)

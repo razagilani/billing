@@ -373,7 +373,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
-        self.views = Views(self.state_db, self.billupload, self.nexus_util)
+        self.views = Views(self.state_db, self.billupload, self.nexus_util,
+                           journal_dao)
         self.reebill_processor = ReebillProcessor(
             self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
             reebill_file_handler, ree_getter, journal_dao, logger=logger)
