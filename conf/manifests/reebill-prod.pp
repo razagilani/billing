@@ -44,6 +44,11 @@ file { "/etc/httpd/conf.d/${username}.conf":
     source => "puppet:///modules/conf/vhosts/reebill-prod.conf"
 }
 
+file { "/etc/init/billing-${env}-exchange.conf":
+ensure => file,
+content => template('conf/billing-exchange.conf.erb')
+}
+
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
     cluster => 'rabbit@ip-10-0-0-158'
 }
