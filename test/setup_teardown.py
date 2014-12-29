@@ -30,7 +30,7 @@ from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from core.utilbill_processor import UtilbillProcessor
-from reebill.views import UtilBillViews
+from reebill.views import Views
 from billing.reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -371,7 +371,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
-        self.utilbill_views = UtilBillViews(self.billupload)
+        self.views = Views(self.billupload)
         self.reebill_processor = ReebillProcessor(
             self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
             ree_getter, journal_dao, logger=logger)
