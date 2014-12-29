@@ -51,11 +51,11 @@ class UtilbillMessageSchema(Schema):
     /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
    '''
     utility_account_number = String()
-    utility_provider_guid = String()
     sha256_hexdigest = Regex(regex=BillFileHandler.HASH_DIGEST_REGEX)
     due_date = DueDateValidator()
     total = TotalValidator()
     service_address = String()
+    utility_provider_guid = Regex(regex=AltitudeGUID.REGEX)
     account_guids = ForEach(String())
     # TODO: There seems to be no good way of validating the exact sequence
     # 1,0
