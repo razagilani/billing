@@ -1,8 +1,10 @@
 import csv
+import logging
 from os.path import dirname, realpath, join
 from billing.core.altitude import AltitudeUtility
 from billing.core.model import Utility, Address
 
+log = logging.getLogger(__name__)
 
 def get_or_create_billing_utility_from_portal_id(session, portal_id,
                                                  utility_name):
@@ -33,9 +35,8 @@ def import_csv_record(session, record):
     )
     au = AltitudeUtility(u, record['guid'])
     session.add(au)
-    print "Linking Altitude Utility %s to Billing Utility %s" % (
-        record['name'], u.name
-    )
+    log.info("Linking Altitude Utility %s to Billing Utility %s",
+             record['name'], u.name)
 
 
 def import_altitude_utilities(session):
