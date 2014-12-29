@@ -6,9 +6,9 @@ from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
 
+from billing.reebill.payment_dao import PaymentDAO
 
 # TODO: is it necessary to specify file path?
-
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -134,7 +134,8 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.state_db = state.StateDB(logger=self.logger)
+        self.payment_dao = PaymentDAO()
+        self.state_db = state.ReeBillDAO(logger=self.logger)
 
         s3_connection = S3Connection(
                 config.get('aws_s3', 'aws_access_key_id'),
@@ -234,7 +235,7 @@ class WebResource(object):
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, self.bill_mailer,
+            self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,
             logger=self.logger)
 

@@ -24,8 +24,10 @@ from billing.core import pricing
 from billing.core.model import Supplier, RateClass, UtilityAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
-from billing.reebill.state import StateDB, Session, UtilBill, \
+from billing.reebill.state import Session, UtilBill, \
     Register, Address, ReeBillCustomer
+from billing.reebill.reebill_dao import ReeBillDAO
+from billing.reebill.payment_dao import PaymentDAO
 from billing.core.model import Utility
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
@@ -306,7 +308,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
-        self.state_db = StateDB(logger)
+        self.state_db = ReeBillDAO(logger)
         s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                   config.get('aws_s3', 'aws_secret_access_key'),
                                   is_secure=config.get('aws_s3', 'is_secure'),
@@ -365,23 +367,23 @@ class TestCaseWithSetup(test_utils.TestCase):
                 config.get('reebill', 'teva_accounts'))
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
-
         journal_dao = journal.JournalDAO()
+        self.payment_dao = PaymentDAO()
 
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
         self.views = Views(self.billupload)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, logger=logger)
+            self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+            reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
-        ReebillDAO, FuzzyPricingModel, StateDB, Splinter, Process,
+        ReebillDAO, FuzzyPricingModel, ReeBillDAO, Splinter, Process,
         NexusUtil."""
         # make sure FakeS3 server is still running (in theory one of the
         # tests or some other process could cause it to exit)
