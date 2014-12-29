@@ -1,5 +1,5 @@
 from sqlalchemy import desc, and_
-from sqlalchemy.sql import functions
+from sqlalchemy.sql import functions as func
 from billing.core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
 from billing.reebill.state import ReeBill, ReeBillCustomer, ReeBillCharge
@@ -9,8 +9,13 @@ class Views(object):
     '''"View" methods: return JSON dictionaries of utility bill-related data
     for ReeBill UI.
     '''
-    def __init__(self, bill_file_handler):
-        self.bill_file_handler = bill_file_handler
+    def __init__(self, reebill_dao, bill_file_handler, nexus_util):
+        # TODO: it would be good to avoid using database/network connections
+        # in  here--data from these should be passed in by the caller so
+        # these methods only handle transforming the data into JSON for display
+        self._reebill_dao = reebill_dao
+        self._bill_file_handler = bill_file_handler
+        self._nexus_util = nexus_util
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -39,7 +44,7 @@ class Views(object):
             account=account).order_by(UtilityAccount.account,
                                       desc(UtilBill.period_start)).all()
         data = [dict(ub.column_dict(),
-                     pdf_url=self.bill_file_handler.get_s3_url(ub))
+                     pdf_url=self._bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
         return data, len(utilbills)
 
@@ -94,8 +99,8 @@ class Views(object):
           issued bill, Days since then and the last event) and the length
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
-        grid_data = self.state_db.get_accounts_grid_data(account)
-        name_dicts = self.nexus_util.all_names_for_accounts(
+        grid_data = self._reebill_dao.get_accounts_grid_data(account)
+        name_dicts = self._nexus_util.all_names_for_accounts(
             [row[1] for row in grid_data])
 
         rows_dict = {}
@@ -172,7 +177,7 @@ class Views(object):
         # version) group.
         latest_versions_sq = session.query(
             ReeBill.reebill_customer_id, ReeBill.sequence,
-            functions.max(ReeBill.version).label('max_version')) \
+            func.max(ReeBill.version).label('max_version')) \
             .join(ReeBillCustomer).join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .order_by(ReeBill.reebill_customer_id,
