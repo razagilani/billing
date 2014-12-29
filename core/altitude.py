@@ -20,8 +20,8 @@ from billing.core.model import Base, Session, Utility, UtilityAccount
 
 
 class AltitudeGUID(String):
-    LENGTH = 35
-    REGEX = '[0-9A-F\\-]{%d}' % LENGTH
+    LENGTH = 36
+    REGEX = '[0-9a-f\\-]{%d}' % LENGTH
     def __init__(self):
         super(AltitudeGUID, self).__init__(length=self.LENGTH)
 
