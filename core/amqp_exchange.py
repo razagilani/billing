@@ -2,7 +2,7 @@ import json
 import re
 from boto.s3.connection import S3Connection
 from datetime import datetime
-from voluptuous import Schema, Match, Any
+from voluptuous import Schema, Match, Any, Invalid
 
 from billing import config
 from billing.nexusapi.nexus_util import NexusUtil
@@ -23,11 +23,37 @@ from mq.schemas.validators import MessageVersion, EmptyString, Date
 # https://docs.google.com/a/nextility.com/document/d
 # /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
 
+def TotalValidator():
+    # Validator for the odd format of the "total" field in utility bill
+    # messages: dollars and cents as a string preceded by "$", or empty.
+    #
+    def validate(value):
+        substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
+        if substr is None:
+            raise Invalid('Invalid "total" string: "%s"' % value, value, state)
+        return None if substr == '' else float(substr[1:])
+    return validate
+
+def DueDateValidator():
+    # Validator for "due_date" field in utility bill
+    # messages. ISO-8601 datetime string or empty string converted to Date or
+    # None
+    def validate(value):
+        if value == '':
+            return None
+        try:
+            dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            raise Invalid('Could not parse "due_date" string: %s' % value)
+        return dt.date()
+    return validate
+
+
 UtilbillMessageSchema = Schema({
     'utility_account_number': basestring,
     'sha256_hexdigest': Match(BillFileHandler.HASH_DIGEST_REGEX),
-    'due_date': Any(EmptyString(), Date('%Y-%m-%dT%H:%M:%S')),
-    'total': Any(EmptyString(), Match('^\$\d*\.?\d{1,2}|$')),
+    'due_date': DueDateValidator(),
+    'total': TotalValidator(),
     'service_address': basestring,
     'utility_provider_guid': Match(AltitudeGUID.REGEX),
     'account_guids': [basestring],
