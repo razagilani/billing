@@ -11,7 +11,7 @@ class Views(object):
     '''
     def __init__(self, reebill_dao, bill_file_handler, nexus_util, journal_dao):
         # TODO: it would be good to avoid using database/network connections
-        # in  here--data from these should be passed in by the caller so
+        # in here--data from these should be passed in by the caller so
         # these methods only handle transforming the data into JSON for display
         self._reebill_dao = reebill_dao
         self._bill_file_handler = bill_file_handler
@@ -30,9 +30,8 @@ class Views(object):
         having the specified utilbill_id."""
         l = []
         session = Session()
-        for r in session.query(Register).join(UtilBill,
-                                              Register.utilbill_id == UtilBill.id). \
-                filter(UtilBill.id == utilbill_id).all():
+        for r in session.query(Register).join(
+                UtilBill).filter(UtilBill.id == utilbill_id).all():
             l.append(r.column_dict())
         return l
 
@@ -161,8 +160,9 @@ class Views(object):
         session = Session()
         def _get_total_error(account, sequence):
             '''Returns the net difference between the total of the latest
-            version (issued or not) and version 0 of the reebill given by account,
-            sequence.'''
+            version (issued or not) and version 0 of the reebill given by
+            account, sequence.
+            '''
             earliest = session.query(ReeBill).join(ReeBillCustomer).join(
                 UtilityAccount).filter(UtilityAccount.account == account,
                                           ReeBill.sequence == sequence,
