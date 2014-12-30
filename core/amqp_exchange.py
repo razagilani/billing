@@ -96,35 +96,6 @@ def create_dependencies():
     return (rabbitmq_connection, channel, exchange_name, queue_name,
             utilbill_processor)
 
-# TODO: this code is not used yet (and not tested). it was originally decided
-#  that it was necessary to synchronize utilities between altitude and
-# billing databases, but this was later un-decided, so nothing is being done
-# about it for now. see BILL-3784.
-def consume_utility_guid(channel, queue_name, utilbill_processor):
-    '''Register callback for AMQP messages to receive a utility.
-    '''
-    def callback(ch, method, properties, body):
-        try:
-            d = json.loads(body)
-            name, guid = d['name'], d['utility_provider_guid']
-
-            # TODO: this may not be necessary because unique constraint in the
-            # database can take care of preventing duplicates
-            s = Session()
-            if s.query(AltitudeUtility).filter_by(guid=guid).count() != 0:
-                raise AltitudeDuplicateError(
-                    'Altitude utility "%" already exists with name "%s"' % (
-                        guid, name))
-
-            new_utility = utilbill_processor.create_utility(name)
-            s.add(AltitudeUtility(new_utility, guid))
-            s.commit()
-        except:
-            ch.basic_ack()
-            raise
-    channel.basic_consume(callback, queue=queue_name)
-    channel.start_consuming()
-
 def consume_utilbill_file(channel, queue_name, utilbill_processor):
     '''Register callback for AMQP messages to receive a utility bill.
     '''
@@ -153,4 +124,3 @@ def consume_utilbill_file(channel, queue_name, utilbill_processor):
             raise
     channel.basic_consume(callback, queue=queue_name)
     channel.start_consuming()
-
