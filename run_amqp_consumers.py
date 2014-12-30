@@ -21,11 +21,10 @@ if __name__ == '__main__':
     #consume_utility_guid(channel, queue_name, utilbill_processor)
 
 # here are some lines of text
-# 1
+# 1 changed line
 # 2
 # 3
 # 4
-# 5
 # 6
 # 7
 # 8
