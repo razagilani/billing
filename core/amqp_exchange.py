@@ -114,7 +114,7 @@ class ConsumeUtilityGuidHandler(BillingHandler):
 
 
 class ConsumeUtilbillFileHandler(BillingHandler):
-    # on_error = REJECT_MESSAGE
+    on_error = REJECT_MESSAGE
     message_schema = UtilbillMessageSchema
 
     def handle(self, message):
