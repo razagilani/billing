@@ -1,11 +1,12 @@
 import json
+from datetime import datetime
+import re
+
 from boto.s3.connection import S3Connection
 from formencode.validators import String, Regex, FancyValidator
 from formencode import Schema
 from formencode.api import Invalid
 from formencode.foreach import ForEach
-from datetime import datetime
-import re
 import pika
 
 from billing.core.bill_file_handler import BillFileHandler
@@ -15,7 +16,7 @@ from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
 from billing.exc import AltitudeDuplicateError
 from billing.core.pricing import FuzzyPricingModel
 from billing.core.utilbill_loader import UtilBillLoader
-from billing.reebill.utilbill_processor import UtilbillProcessor
+from core.utilbill_processor import UtilbillProcessor
 
 
 class DueDateValidator(FancyValidator):
