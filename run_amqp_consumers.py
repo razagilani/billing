@@ -5,17 +5,24 @@ in amqp_exchange.py (and should have test coverage).
 '''
 from billing import init_config, init_model, init_logging
 from billing.core.amqp_exchange import create_dependencies, \
-    consume_utility_guid, consume_utilbill_file
+    ConsumeUtilbillFileHandler
+from billing.mq import MessageHandlerManager
 
 if __name__ == '__main__':
     init_config()
     init_model()
     init_logging()
 
-    _, channel, _, queue_name, utilbill_processor = create_dependencies()
+    exchange_name, routing_key, amqp_connection_parameters, \
+        utilbill_processor = create_dependencies()
 
-    consume_utilbill_file(channel, queue_name, utilbill_processor)
+    def create_consume_utilbill_file_handler():
+        return ConsumeUtilbillFileHandler(
+            exchange_name, routing_key, amqp_connection_parameters,
+            utilbill_processor)
 
-    # TODO: 'consume_utility_guid' is disabled because it was decided
-    # that this should not be done after all (for now)
-    #consume_utility_guid(channel, queue_name, utilbill_processor)
+    mgr = MessageHandlerManager(amqp_connection_parameters)
+    mgr.attach_message_handler(
+        exchange_name, routing_key, create_consume_utilbill_file_handler
+    )
+    mgr.run()

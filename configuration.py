@@ -101,7 +101,7 @@ class mailer(Schema):
 class amqp(Schema):
     # parameters for receiving utility bills via AMQP--should be named something
     # more specific if additional AMQP stuff needs to go in this file
-    host = String()
+    url = String()
     exchange = String()
     utilbill_routing_key = String()
 
