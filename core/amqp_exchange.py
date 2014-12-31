@@ -112,15 +112,16 @@ class ConsumeUtilbillFileHandler(MessageHandler):
 
     def handle(self, message):
         s = Session()
-
         try:
             utility = get_utility_from_guid(message['utility_provider_guid'])
-            utility_account = s.query(UtilityAccount).filter_by(
-                account_number=message['utility_account_number'],
-                utility=utility).one()
         except NoResultFound:
             utility = Utility('', Address())
             s.add(utility)
+        try:
+            utility_account = s.query(UtilityAccount).filter_by(
+                account_number=message['utility_account_number'],
+                fb_utility=utility).one()
+        except NoResultFound:
             utility_account = UtilityAccount('', str(uuid.uuid4()).replace("-", "")[0:10],
                                              utility,
                                              self.utilbill_processor.get_unknown_supplier(),

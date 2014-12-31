@@ -83,8 +83,13 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         self.handler._handle_wrapper()
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
-        utility_account = s.query(UtilityAccount).filter(UtilityAccount.account_number=='45').all()
+        utility_account = s.query(UtilityAccount).\
+            filter(UtilityAccount.account_number=='45').all()
         self.assertEqual(1, len(utility_account))
+        self.assertEqual(self.utilbill_processor.get_unknown_supplier().name,
+                         utility_account[0].fb_supplier.name)
+        self.assertEqual(self.utilbill_processor.get_unknown_rate_class().name,
+                         utility_account[0].fb_rate_class.name)
 
     def test_upload_bill_amqp(self):
         # put the file in place
