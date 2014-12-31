@@ -4,7 +4,7 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 from datetime import date
-from pika import ConnectionParameters
+from pika import URLParameters
 from datetime import datetime
 from uuid import uuid4
 
@@ -16,7 +16,7 @@ from billing.exc import DuplicateFileError
 from billing.test.testing_utils import clean_up_rabbitmq
 from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
 from billing.mq import IncomingMessage
-from billing.core.amqp_exchange import BillingHandler, ConsumeUtilbillFileHandler
+from billing.core.amqp_exchange import ConsumeUtilbillFileHandler
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
@@ -32,7 +32,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             config.get('amqp', 'exchange'),
             config.get('amqp', 'utilbill_routing_key'),
             {},
-            ConnectionParameters(host=config.get('amqp', 'host'))
+            URLParameters(config.get('amqp', 'url'))
         )
         # We don't have to wait for the rabbitmq connection to close,
         # since we're never instatiating a connection
@@ -55,7 +55,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
         utility = utility_account.fb_utility
-        guid_a, guid_b = str(uuid4()), str(uuid4())
+        guid_a = '5efc8f5a-7cca-48eb-af58-7787348388c5',
+        guid_b = '3e7f9bf5-f729-423c-acde-58f6174df551'
         s.add_all([AltitudeUtility(utility, guid_a),
                    AltitudeUtility(utility, guid_b),
                    ])
