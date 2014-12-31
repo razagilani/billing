@@ -357,29 +357,20 @@ class ExporterDataBookTest(unittest.TestCase):
         syntactically correct and calls existing methods
         """
 
+        string_io = StringIO()
+
         # export_account_charges
-        string_io = StringIO()
         self.exp.export_account_charges(string_io)
-
-        string_io = StringIO()
         self.exp.export_account_charges(string_io, '20001')
-
-        string_io = StringIO()
         self.exp.export_account_charges(string_io, '20001', date(2010, 11, 1))
-
-        string_io = StringIO()
         self.exp.export_account_charges(string_io, '20001',
                                         date(2010, 11, 1), date(2011, 2, 3))
 
         # export_energy_usage
-        string_io = StringIO()
         self.exp.export_energy_usage(string_io)
-
-        string_io = StringIO()
         self.exp.export_energy_usage(string_io, '20001')
 
         # export_reebill_details
-        string_io = StringIO()
         self.exp.export_reebill_details(string_io)
         self.exp.export_reebill_details(string_io, '20001')
         self.exp.export_reebill_details(string_io, '20001', date(2010, 11, 1))
