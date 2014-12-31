@@ -8,7 +8,7 @@ from pika import URLParameters
 from datetime import datetime
 from uuid import uuid4
 
-from billing.core.model import Session, UtilityAccount
+from billing.core.model import Session, UtilityAccount, Supplier, Address, Utility, RateClass
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
@@ -45,6 +45,46 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         _, method, props = create_mock_channel_method_props()
         self.mock_method = method
         self.mock_props = props
+
+    def test_upload_bill_with_no_matching_utility_account_amqp(self):
+        # put the file in place
+        the_file = StringIO('initial test data')
+        file_hash = self.utilbill_processor.bill_file_handler.upload_file(
+            the_file)
+
+        # no UtilBills exist yet with this hash
+        self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
+            file_hash))
+
+        s = Session()
+        supplier = Supplier('Unknown Supplier', Address())
+        s.add(supplier)
+        rate_class = RateClass('Unknown Rate Class', Utility('', Address()))
+        s.add(rate_class)
+        s.commit()
+        utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        guid = 'c59fded5-53ed-482e-8ca4-87819042e687'
+
+        message = create_channel_message_body(dict(
+            message_version=[1, 0],
+            utility_account_number='45',
+            utility_provider_guid=guid,
+            sha256_hexdigest=file_hash,
+            due_date='2014-09-30T18:00:00',
+            total='$231.12',
+            service_address='123 Hollywood Drive',
+            account_guids=['C' * AltitudeGUID.LENGTH,
+                           'D' * AltitudeGUID.LENGTH]))
+        message_obj = IncomingMessage(self.mock_method, self.mock_props, message)
+        self.handler.message_queue.put(message_obj)
+
+        # Process the message
+        self.handler._handle_wrapper()
+        self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
+            file_hash))
+        utility_account = s.query(UtilityAccount).filter(UtilityAccount.account_number=='45').all()
+        self.assertEqual(1, len(utility_account))
 
     def test_upload_bill_amqp(self):
         # put the file in place

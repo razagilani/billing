@@ -1,8 +1,10 @@
 import json
 import re
+import uuid
 from boto.s3.connection import S3Connection
 from pika import URLParameters
 from datetime import datetime
+from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match, Any, Invalid
 
 from billing import config
@@ -11,7 +13,7 @@ from billing.reebill.utilbill_processor import UtilbillProcessor
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.pricing import FuzzyPricingModel
 from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session, Address, UtilityAccount
+from billing.core.model import Session, Address, UtilityAccount, Utility
 from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
 from billing.exc import AltitudeDuplicateError
@@ -110,9 +112,24 @@ class ConsumeUtilbillFileHandler(MessageHandler):
 
     def handle(self, message):
         s = Session()
-        utility = get_utility_from_guid(message['utility_provider_guid'])
-        utility_account = s.query(UtilityAccount).filter_by(
-            account_number=message['utility_account_number']).one()
+
+        try:
+            utility = get_utility_from_guid(message['utility_provider_guid'])
+            utility_account = s.query(UtilityAccount).filter_by(
+                account_number=message['utility_account_number'],
+                utility=utility).one()
+        except NoResultFound:
+            utility = Utility('', Address())
+            s.add(utility)
+            utility_account = UtilityAccount('', str(uuid.uuid4()).replace("-", "")[0:10],
+                                             utility,
+                                             self.utilbill_processor.get_unknown_supplier(),
+                                             self.utilbill_processor.get_unknown_rate_class(),
+                                             Address(),
+                                             Address(street=message['service_address']),
+                                             message['utility_account_number']
+                                             )
+            s.add(utility_account)
         sha256_hexdigest = message['sha256_hexdigest']
         total = message['total']
         due_date = message['due_date']

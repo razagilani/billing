@@ -50,7 +50,9 @@ class UtilbillProcessor(object):
         """
         utilbill = self._get_utilbill(utilbill_id)
         #toggle processed state of utility bill
-        if processed is not None:
+        if processed is not None and \
+                        utilbill.rate_class.name!='Unknown Rate Class' \
+                and utilbill.supplier.name!='Unknown Supplier':
                 utilbill.processed = processed
         if utilbill.editable():
             if target_total is not None:
@@ -185,6 +187,24 @@ class UtilbillProcessor(object):
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
         return new_utilbill
+
+    def get_unknown_supplier(self):
+        """
+        This method returns the Unknown Supplier that was created for use in
+        creation of UtilityAccounts when a matching UtilityAccount cannot be found
+        on receiving AMQP message from Acquisitor
+        """
+        session = Session()
+        return session.query(Supplier).filter(Supplier.name=='Unknown Supplier').one()
+
+    def get_unknown_rate_class(self):
+        """
+        This method returns the Unknown Rate Class that was created for use in
+        creation of UtilityAccounts when a matching UtilityAccount cannot be found
+        on receiving AMQP message from Acquisitor
+        """
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name=='Unknown Rate Class').one()
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
                             service=None, utility=None, rate_class=None,

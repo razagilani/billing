@@ -26,6 +26,7 @@ def upgrade():
         sa.Column('fb_service_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_supplier_id', sa.Integer(), sa.ForeignKey('supplier.id')),
         sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('utility.id')),
+        sa.UniqueConstraint('account_number'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_table('reebill_customer',
