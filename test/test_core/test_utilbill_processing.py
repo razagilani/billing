@@ -731,9 +731,14 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
         # a new bill is rolled, the UPRS it gets depends on whether it's
         # closer to B/C-1 or to A-2.
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='DISTRIBUTION_CHARGE')
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='PGC')
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='NOT_SHARED')
+        s = Session()
+        utilbill_a_2 = s.query(UtilBill).filter_by(id=id_a_2).one()
+        dc_id = utilbill_a_2.get_charge_by_rsi_binding('DISTRIBUTION_CHARGE').id
+        pgc_id = utilbill_a_2.get_charge_by_rsi_binding('PGC').id
+        not_shared_id = utilbill_a_2.get_charge_by_rsi_binding('NOT_SHARED').id
+        self.utilbill_processor.delete_charge(dc_id)
+        self.utilbill_processor.delete_charge(pgc_id)
+        self.utilbill_processor.delete_charge(not_shared_id)
         self.session.flush()
         self.utilbill_processor.add_charge(id_a_2)
         self.utilbill_processor.update_charge({
