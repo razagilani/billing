@@ -5,7 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError
+from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -49,11 +49,16 @@ class UtilbillProcessor(object):
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
-        #toggle processed state of utility bill
+
         if processed is not None and \
                         utilbill.rate_class.name!=self.get_unknown_rate_class().name \
                 and utilbill.supplier.name!=self.get_unknown_supplier().name:
-                utilbill.processed = processed
+            raise BillingError("Bill with unknown supplier or rate class can't become processed")
+
+        #toggle processed state of utility bill
+        if processed is not None:
+            utilbill.processed = processed
+
         if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
@@ -187,24 +192,6 @@ class UtilbillProcessor(object):
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
         return new_utilbill
-
-    def get_unknown_supplier(self):
-        """
-        This method returns the Unknown Supplier that was created for use in
-        creation of UtilityAccounts when a matching UtilityAccount cannot be found
-        on receiving AMQP message from Acquisitor
-        """
-        session = Session()
-        return session.query(Supplier).filter(Supplier.name=='Unknown Supplier').one()
-
-    def get_unknown_rate_class(self):
-        """
-        This method returns the Unknown Rate Class that was created for use in
-        creation of UtilityAccounts when a matching UtilityAccount cannot be found
-        on receiving AMQP message from Acquisitor
-        """
-        session = Session()
-        return session.query(RateClass).filter(RateClass.name=='Unknown Rate Class').one()
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
                             service=None, utility=None, rate_class=None,

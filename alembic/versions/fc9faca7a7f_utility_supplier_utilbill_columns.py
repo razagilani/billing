@@ -34,7 +34,7 @@ def upgrade():
      sa.ForeignKeyConstraint(['address_id'], ['address.id'], ),
     sa.PrimaryKeyConstraint('id'))
     op.add_column('utilbill',
-    sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
+    sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'), nullable=True))
     op.add_column('customer',
         sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
     )
@@ -48,7 +48,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.add_column('customer', sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
-    op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
+    op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id'), nullable=True))
 
     # tables for foreign keys to Altitude (many-to-1 with utility and supplier)
     # TODO: "company" will have to be replaced by utility

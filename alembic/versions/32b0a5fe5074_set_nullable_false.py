@@ -65,12 +65,6 @@ def upgrade():
     op.alter_column(u'supplier', 'name',
                existing_type=mysql.VARCHAR(length=255),
                nullable=False)
-    op.alter_column(u'utilbill', 'rate_class_id',
-               existing_type=mysql.INTEGER(display_width=11),
-               nullable=False)
-    op.alter_column(u'utilbill', 'supplier_id',
-               existing_type=mysql.INTEGER(display_width=11),
-               nullable=False)
     op.alter_column(u'utilbill', 'utility_account_id',
                existing_type=mysql.INTEGER(display_width=11),
                nullable=False)
@@ -80,13 +74,7 @@ def upgrade():
     op.alter_column(u'utility_account', 'fb_billing_address_id',
                existing_type=mysql.INTEGER(display_width=11),
                nullable=False)
-    op.alter_column(u'utility_account', 'fb_rate_class_id',
-               existing_type=mysql.INTEGER(display_width=11),
-               nullable=False)
     op.alter_column(u'utility_account', 'fb_service_address_id',
-               existing_type=mysql.INTEGER(display_width=11),
-               nullable=False)
-    op.alter_column(u'utility_account', 'fb_supplier_id',
                existing_type=mysql.INTEGER(display_width=11),
                nullable=False)
     ### end Alembic commands ###

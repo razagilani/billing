@@ -296,17 +296,6 @@ def delete_hypothetical_utility_bills(session):
 def delete_reebills_with_null_reebill_customer(session):
     session.query(ReeBill).filter(ReeBill.reebill_customer_id==None).delete()
 
-def create_unknown_supplier(session):
-    supplier = Supplier('Unknown Supplier', Address())
-    session.add(supplier)
-
-def create_unknown_rate_class(session):
-    utility = Utility('', Address())
-    session.add(utility)
-    rate_class = RateClass('Unknown Rate Class', utility)
-    session.add(rate_class)
-
-
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
@@ -388,10 +377,6 @@ def upgrade():
 
     log.info("Importing altitude utilities")
     import_altitude_utilities(session)
-
-    log.info("Creating unknown supplier and rate class")
-    create_unknown_supplier(session)
-    create_unknown_rate_class(session)
 
     log.info('Comitting to Database')
     session.commit()
