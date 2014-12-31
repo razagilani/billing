@@ -124,8 +124,8 @@ class ConsumeUtilbillFileHandler(MessageHandler):
         except NoResultFound:
             utility_account = UtilityAccount('', str(uuid.uuid4()).replace("-", "")[0:10],
                                              utility,
-                                             self.utilbill_processor.get_unknown_supplier(),
-                                             self.utilbill_processor.get_unknown_rate_class(),
+                                             None,
+                                             None,
                                              Address(),
                                              Address(street=message['service_address']),
                                              message['utility_account_number']

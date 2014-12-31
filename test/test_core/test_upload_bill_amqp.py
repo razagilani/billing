@@ -57,13 +57,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             file_hash))
 
         s = Session()
-        supplier = Supplier('Unknown Supplier', Address())
-        s.add(supplier)
-        rate_class = RateClass('Unknown Rate Class', Utility('', Address()))
-        s.add(rate_class)
-        s.commit()
-        utility_account = s.query(UtilityAccount).filter_by(
-            account='99999').one()
         guid = 'c59fded5-53ed-482e-8ca4-87819042e687'
 
         message = create_channel_message_body(dict(
@@ -77,19 +70,19 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             account_guids=['C' * AltitudeGUID.LENGTH,
                            'D' * AltitudeGUID.LENGTH]))
         message_obj = IncomingMessage(self.mock_method, self.mock_props, message)
-        self.handler.message_queue.put(message_obj)
 
         # Process the message
-        self.handler._handle_wrapper()
+        message_obj = self.handler.validate(message_obj)
+        self.handler.handle(message_obj)
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
         utility_account = s.query(UtilityAccount).\
             filter(UtilityAccount.account_number=='45').all()
         self.assertEqual(1, len(utility_account))
-        self.assertEqual(self.utilbill_processor.get_unknown_supplier().name,
-                         utility_account[0].fb_supplier.name)
-        self.assertEqual(self.utilbill_processor.get_unknown_rate_class().name,
-                         utility_account[0].fb_rate_class.name)
+        self.assertEqual(None,
+                         utility_account[0].fb_supplier)
+        self.assertEqual(None,
+                         utility_account[0].fb_rate_class)
 
     def test_upload_bill_amqp(self):
         # put the file in place
