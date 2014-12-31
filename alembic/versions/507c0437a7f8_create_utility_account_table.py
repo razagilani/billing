@@ -19,14 +19,13 @@ def upgrade():
     op.create_table('utility_account',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=45), nullable=True),
-        sa.Column('account', sa.String(length=45), nullable=False),
+        sa.Column('account', sa.String(length=45), unique=True, nullable=False),
         sa.Column('account_number', sa.String(length=1000), nullable=False),
         sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')),
         sa.Column('fb_billing_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_service_address_id', sa.Integer(), sa.ForeignKey('address.id')),
         sa.Column('fb_supplier_id', sa.Integer(), sa.ForeignKey('supplier.id')),
         sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('utility.id')),
-        sa.UniqueConstraint('account_number'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_table('reebill_customer',
