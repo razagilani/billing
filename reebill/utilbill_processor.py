@@ -51,8 +51,8 @@ class UtilbillProcessor(object):
         utilbill = self._get_utilbill(utilbill_id)
         #toggle processed state of utility bill
         if processed is not None and \
-                        utilbill.rate_class.name!='Unknown Rate Class' \
-                and utilbill.supplier.name!='Unknown Supplier':
+                        utilbill.rate_class.name!=self.get_unknown_rate_class().name \
+                and utilbill.supplier.name!=self.get_unknown_supplier().name:
                 utilbill.processed = processed
         if utilbill.editable():
             if target_total is not None:
