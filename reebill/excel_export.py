@@ -37,10 +37,12 @@ class Exporter(object):
         '''
         book = tablib.Databook()
         if account == None:
-            for acc in self.state_db.listAccounts():
-                reebills = self.state_db.get_all_reebills_for_account(acc)
+            s = Session()
+            for ua in s.query(UtilityAccount).all():
+                reebills = self.state_db.get_all_reebills_for_account(
+                    ua.account)
                 book.add_sheet(self.get_account_charges_sheet(
-                    acc, reebills, start_date, end_date))
+                    ua.account, reebills, start_date, end_date))
         else:
             reebills = self.state_db.get_all_reebills_for_account(account)
             book.add_sheet(self.get_account_charges_sheet(
@@ -100,16 +102,20 @@ class Exporter(object):
             for charge in sorted(utilbill.charges, key=lambda c: c.description):
                 column_name = '%s: %s' % (charge.group, charge.description)
 
+                if charge.total is None:
+                    charge_total_str = 'ERROR: charge could not be computed'
+                else:
+                    charge_total_str = '%.2f' % charge.total
                 if dataset.height == 0:
                     dataset.headers.append(column_name)
-                    row.append(("%.2f" % charge.total))
+                    row.append(charge_total_str)
                 elif column_name not in dataset.headers:
                     dataset.append_col([''] * dataset.height,
                                        header=column_name)
-                    row.append(("%.2f" % charge.total))
+                    row.append(charge_total_str)
                 else:
                     col_idx = dataset.headers.index(column_name)
-                    row[col_idx] = "%.2f" % charge.total if row[col_idx] == '' \
+                    row[col_idx] = charge_total_str if row[col_idx] == '' \
                         else 'ERROR: duplicate charge name %s' % column_name
 
             dataset.append(row)
