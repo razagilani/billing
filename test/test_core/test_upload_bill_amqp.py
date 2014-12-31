@@ -16,7 +16,8 @@ from billing.exc import DuplicateFileError
 from billing.test.testing_utils import clean_up_rabbitmq
 from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
 from billing.mq import IncomingMessage
-from billing.core.amqp_exchange import ConsumeUtilbillFileHandler
+from billing.core.amqp_exchange import ConsumeUtilbillFileHandler, \
+    create_dependencies
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
@@ -25,20 +26,25 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         super(TestUploadBillAMQP, self).setUp()
         from billing import config
 
-        _, method, props = create_mock_channel_method_props()
-        self.mock_method = method
-        self.mock_props = props
+        # parameters for real RabbitMQ connection are stored but never used so
+        # there is no actual connection
+        exchange_name, routing_key, amqp_connection_parameters, \
+                utilbill_processor = create_dependencies()
         self.handler = ConsumeUtilbillFileHandler(
-            config.get('amqp', 'exchange'),
-            config.get('amqp', 'utilbill_routing_key'),
-            {},
-            URLParameters(config.get('amqp', 'url'))
-        )
+            exchange_name, routing_key, amqp_connection_parameters,
+            utilbill_processor)
+
         # We don't have to wait for the rabbitmq connection to close,
         # since we're never instatiating a connection
         self.handler._wait_on_close = 0
 
         self.utilbill_loader = UtilBillLoader(Session())
+
+        # these are for creating IncomingMessage objects for 'handler' to
+        # handle
+        _, method, props = create_mock_channel_method_props()
+        self.mock_method = method
+        self.mock_props = props
 
     def test_upload_bill_amqp(self):
         # put the file in place
@@ -55,7 +61,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
         utility = utility_account.fb_utility
-        guid_a = '5efc8f5a-7cca-48eb-af58-7787348388c5',
+        guid_a = '5efc8f5a-7cca-48eb-af58-7787348388c5'
         guid_b = '3e7f9bf5-f729-423c-acde-58f6174df551'
         s.add_all([AltitudeUtility(utility, guid_a),
                    AltitudeUtility(utility, guid_b),
