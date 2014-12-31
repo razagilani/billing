@@ -51,8 +51,8 @@ class UtilbillProcessor(object):
         utilbill = self._get_utilbill(utilbill_id)
 
         if processed is not None and \
-                        utilbill.rate_class.name!=self.get_unknown_rate_class().name \
-                and utilbill.supplier.name!=self.get_unknown_supplier().name:
+                        utilbill.rate_class is None \
+                and utilbill.supplier is None:
             raise BillingError("Bill with unknown supplier or rate class can't become processed")
 
         #toggle processed state of utility bill
