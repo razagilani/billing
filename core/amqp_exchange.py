@@ -5,8 +5,6 @@ from pika import URLParameters
 from datetime import datetime
 from voluptuous import Schema, Match, Any, Invalid
 
-from billing import config
-from billing.nexusapi.nexus_util import NexusUtil
 from billing.reebill.utilbill_processor import UtilbillProcessor
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.pricing import FuzzyPricingModel
@@ -18,6 +16,9 @@ from billing.exc import AltitudeDuplicateError
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
 
+__all__ = [
+    'consume_utilbill_file_mq',
+]
 
 # Voluptuous schema for validating/parsing utility bill message contents.
 # specification is at
@@ -126,3 +127,19 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             due_date=due_date)
         update_altitude_account_guids(utility_account, account_guids)
         s.commit()
+
+
+def consume_utilbill_file_mq(
+        exchange_name, routing_key, amqp_connection_parameters,
+        utilbill_processor):
+    '''Block to wait for messages about new utility bill files uploaded to
+    S3 and  process them by creating new UtilBills.
+    '''
+    def consume_utilbill_file_handler_factory():
+        return ConsumeUtilbillFileHandler(
+            exchange_name, routing_key, amqp_connection_parameters,
+            utilbill_processor)
+    mgr = MessageHandlerManager(amqp_connection_parameters)
+    mgr.attach_message_handler(exchange_name, routing_key,
+                               consume_utilbill_file_handler_factory)
+    mgr.run()
