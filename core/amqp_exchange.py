@@ -86,8 +86,7 @@ def create_dependencies():
     utilbill_loader = UtilBillLoader(Session())
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
-    bill_file_handler = BillFileHandler(s3_connection,
-                                        config.get('aws_s3', 'bucket'),
+    bill_file_handler = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                                         utilbill_loader, url_format)
 
     s = Session()
@@ -101,10 +100,21 @@ def create_dependencies():
 
 class ConsumeUtilbillFileHandler(MessageHandler):
     on_error = REJECT_MESSAGE
+
+    # instead of overriding the 'validate' method of the superclass, a class
+    # variable is set which is used there to check that incoming messages
+    # conform to the schema.
     message_schema = UtilbillMessageSchema
 
     def __init__(self, exchange_name, routing_key, connection_parameters,
                  utilbill_processor):
+        '''Note: AMQP connection parameters are stored inside the superclass'
+        __init__, but a connection is not actually created until you call
+        connect(), not in __init__. So it is not possible to fully unit test
+        the class using a mock connection, but it is possible to instantiate
+        the class in unit tests and call methods that don't actually use the
+        connection--the most important ones being 'validate' and 'handle'.
+        '''
         super(ConsumeUtilbillFileHandler, self).__init__(
             exchange_name, routing_key, connection_parameters)
         self.utilbill_processor = utilbill_processor
