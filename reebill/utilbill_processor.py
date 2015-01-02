@@ -5,7 +5,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError
+from billing.exc import NoSuchBillException, DuplicateFileError, \
+    ProcessedBillError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -444,24 +445,17 @@ class UtilbillProcessor(object):
             self.compute_utility_bill(charge.utilbill.id)
         return charge
 
-    def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
-        """Delete the charge given by 'rsi_binding' in the given utility
-        bill."""
-        assert charge_id or utilbill_id and rsi_binding
-        utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session = Session()
-            if charge_id:
-                charge = session.query(Charge) \
-                    .filter(Charge.id == charge_id).one()
-            else:
-                charge = session.query(Charge) \
-                    .filter(Charge.utilbill_id == utilbill_id) \
-                    .filter(Charge.rsi_binding == rsi_binding).one()
-            session.delete(charge)
-            self.compute_utility_bill(charge.utilbill_id)
-            session.expire(charge.utilbill)
-
+    def delete_charge(self, charge_id):
+        """Delete the charge given by 'charge_id' from its utility
+        bill and recompute the utility bill. Raise ProcessedBillError if the
+        utility bill is not editable.
+        """
+        session = Session()
+        charge = session.query(Charge).filter_by(id=charge_id).one()
+        charge.utilbill.check_editable()
+        session.delete(charge)
+        self.compute_utility_bill(charge.utilbill_id)
+        session.expire(charge.utilbill)
 
     ############################################################################
     # CRUD methods for objects that are not children of UtilBill
