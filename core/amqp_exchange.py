@@ -19,15 +19,16 @@ from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
 
 
-# Voluptuos schema for validating/parsing utility bill message contents.
+# Voluptuous schema for validating/parsing utility bill message contents.
 # specification is at
 # https://docs.google.com/a/nextility.com/document/d
 # /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
 
+# "voluptuous" convention is to name functions like classes.
 def TotalValidator():
-    # Validator for the odd format of the "total" field in utility bill
-    # messages: dollars and cents as a string preceded by "$", or empty.
-    #
+    '''Validator for the odd format of the "total" field in utility bill
+    messages: dollars and cents as a string preceded by "$", or empty.
+    '''
     def validate(value):
         substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
         if substr is None:
@@ -36,9 +37,9 @@ def TotalValidator():
     return validate
 
 def DueDateValidator():
-    # Validator for "due_date" field in utility bill
-    # messages. ISO-8601 datetime string or empty string converted to Date or
-    # None
+    '''Validator for "due_date" field in utility bill messages.
+    ISO-8601 datetime string or empty string converted to Date or None.
+    '''
     def validate(value):
         if value == '':
             return None
@@ -48,7 +49,6 @@ def DueDateValidator():
             raise Invalid('Could not parse "due_date" string: %s' % value)
         return dt.date()
     return validate
-
 
 UtilbillMessageSchema = Schema({
     'utility_account_number': basestring,
