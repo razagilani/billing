@@ -5,8 +5,7 @@ in amqp_exchange.py (and should have test coverage).
 '''
 from billing import init_config, init_model, init_logging
 from billing.core.amqp_exchange import create_dependencies, \
-    ConsumeUtilbillFileHandler, consume_utilbill_file_mq
-from billing.mq import MessageHandlerManager
+    consume_utilbill_file_mq
 
 if __name__ == '__main__':
     init_config()
