@@ -19,12 +19,6 @@ package { 'httpd':
 package { 'html2ps':
     ensure  => installed
 }
-package { 'imageMagick':
-    ensure  => installed
-}
-package { 'poppler-utils':
-    ensure  => installed
-}
 package { 'libevent-dev':
     ensure  => installed
 }
