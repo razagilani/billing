@@ -5,14 +5,14 @@ in amqp_exchange.py (and should have test coverage).
 '''
 from billing import init_config, init_model, init_logging
 from billing.core.amqp_exchange import create_dependencies, \
-    consume_utility_guid, consume_utilbill_file
+    consume_utilbill_file_mq
 
 if __name__ == '__main__':
     init_config()
     init_model()
     init_logging()
 
-    _, channel, _, queue_name, utilbill_processor = create_dependencies()
-
-    consume_utilbill_file(channel, queue_name, utilbill_processor)
-
+    exchange_name, routing_key, amqp_connection_parameters, \
+        utilbill_processor = create_dependencies()
+    consume_utilbill_file_mq(exchange_name, routing_key,
+                             amqp_connection_parameters, utilbill_processor)
