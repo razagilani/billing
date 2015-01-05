@@ -36,11 +36,9 @@ def upgrade():
                     sa.UniqueConstraint('name'),
     )
     op.add_column('utilbill',
-    sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'), nullable=True))
-                            sa.ForeignKey('supplier.id')))
+            sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'), nullable=True))
     op.add_column('customer',
-        sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
-    )
+            sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
 
     op.add_column('utilbill', sa.Column('date_scraped', sa.DateTime,
                                         nullable=True))
