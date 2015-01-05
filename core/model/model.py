@@ -302,13 +302,13 @@ class UtilityAccount(Base):
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('utility.id'))
     fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=False)
+        nullable=True)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=False)
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -363,11 +363,11 @@ class UtilBill(Base):
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=False)
+        nullable=True)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=False)
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     service = Column(String(45), nullable=False)
@@ -639,7 +639,7 @@ class UtilBill(Base):
                                    in self._utilbill_reebills]),
                      ('utility', (self.utility.column_dict() if self.utility
                                   else None)),
-                     ('supplier', (self.supplier.column_dict() if
+                     ('supplier', (self.supplier.name if
                                    self.supplier else None)),
                      ('rate_class', self.get_rate_class_name()),
                      ('state', self.state_name())])

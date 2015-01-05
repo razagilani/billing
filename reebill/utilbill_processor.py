@@ -5,8 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, \
-    ProcessedBillError
+from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -50,9 +49,15 @@ class UtilbillProcessor(object):
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
+        assert utilbill.utility is not None
+
         #toggle processed state of utility bill
         if processed is not None:
-                utilbill.processed = processed
+            if utilbill.rate_class is None or utilbill.supplier is None:
+                raise BillingError("Bill with unknown supplier or rate class "
+                                   "can't become processed")
+            utilbill.processed = processed
+
         if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
@@ -60,15 +65,17 @@ class UtilbillProcessor(object):
             if service is not None:
                 utilbill.service = service
 
-            if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.get_create_utility(utility)
-
-            if supplier is not None and isinstance(supplier, basestring):
+            if supplier is not None:
                 utilbill.supplier = self.get_create_supplier(supplier)
 
-            if rate_class is not None and isinstance(rate_class, basestring):
+            if rate_class is not None:
                 utilbill.rate_class = self.get_create_rate_class(
                     rate_class, utilbill.utility)
+
+            if utility is not None and isinstance(utility, basestring):
+                utilbill.utility = self.get_create_utility(utility)
+                utilbill.supplier = None
+                utilbill.rate_class = None
 
             period_start = period_start if period_start else \
                 utilbill.period_start
@@ -472,6 +479,12 @@ class UtilbillProcessor(object):
 
     def get_create_supplier(self, name):
         session = Session()
+        # rate classes are identified in the client by name, rather than
+        # their primary key. "Unknown Supplier" is a name sent by the client
+        # to the server to identify the supplier that is identified by "null"
+        # when sent from the server to the client.
+        if name == 'Unknown Supplier':
+            return None
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
@@ -481,6 +494,12 @@ class UtilbillProcessor(object):
     def get_create_rate_class(self, rate_class_name, utility):
         assert isinstance(utility, Utility)
         session = Session()
+        # rate classes are identified in the client by name, rather than
+        # their primary key. "Unknown Rate Class" is a name sent by the client
+        # to the server to identify the rate class that is identified by "null"
+        # when sent from the server to the client.
+        if rate_class_name == 'Unknown Rate Class':
+            return None
         try:
             result = session.query(RateClass).filter_by(
                 name=rate_class_name).one()
