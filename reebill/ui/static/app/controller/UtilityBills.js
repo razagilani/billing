@@ -281,9 +281,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     handleSupplierComboFocus: function(combo) {
-        utility_grid = combo.findParentByType('grid');
+        /*utility_grid = combo.findParentByType('grid');
         selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('supplier').name);
+        combo.setValue(selected.get('supplier').name);*/
     }
 
 });

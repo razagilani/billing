@@ -620,7 +620,7 @@ class UtilBill(Base):
                                    in self._utilbill_reebills]),
                      ('utility', (self.utility.column_dict() if self.utility
                                   else None)),
-                     ('supplier', (self.supplier.column_dict() if
+                     ('supplier', (self.supplier.name if
                                    self.supplier else None)),
                      ('rate_class', (self.rate_class.name if
                                      self.rate_class else None)),

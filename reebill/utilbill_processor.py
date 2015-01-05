@@ -6,7 +6,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
 from billing.exc import NoSuchBillException, DuplicateFileError, \
-    ProcessedBillError
+    ProcessedBillError, BillingError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -60,15 +60,17 @@ class UtilbillProcessor(object):
             if service is not None:
                 utilbill.service = service
 
-            if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.get_create_utility(utility)
-
             if supplier is not None and isinstance(supplier, basestring):
                 utilbill.supplier = self.get_create_supplier(supplier)
 
             if rate_class is not None and isinstance(rate_class, basestring):
                 utilbill.rate_class = self.get_create_rate_class(
                     rate_class, utilbill.utility)
+
+            if utility is not None and isinstance(utility, basestring):
+                utilbill.utility = self.get_create_utility(utility)
+                utilbill.supplier = None
+                utilbill.rate_class = None
 
             period_start = period_start if period_start else \
                 utilbill.period_start
