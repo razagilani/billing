@@ -4,6 +4,7 @@ import uuid
 from boto.s3.connection import S3Connection
 from pika import URLParameters
 from datetime import datetime
+from sqlalchemy import cast, Integer
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match, Any, Invalid
 
@@ -133,7 +134,10 @@ class ConsumeUtilbillFileHandler(MessageHandler):
                 account_number=message['utility_account_number'],
                 fb_utility=utility).one()
         except NoResultFound:
-            utility_account = UtilityAccount('', str(uuid.uuid4()).replace("-", "")[0:10],
+            last_account = s.query(cast(UtilityAccount.account, Integer)).order_by(
+                cast(UtilityAccount.account, Integer).desc()).first()
+            next_account = str(last_account[0] + 1)
+            utility_account = UtilityAccount('', next_account,
                                              utility,
                                              None,
                                              None,
