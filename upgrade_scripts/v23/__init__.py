@@ -376,9 +376,6 @@ def upgrade():
     log.info('Upgrading to 5a6d7e4f8b80')
     alembic_upgrade('5a6d7e4f8b80')
 
-    log.info('Upgrading to 5a6d7e4f8b80')
-    alembic_upgrade('5a02ad84f437')
-
     log.info("Importing altitude utilities")
     import_altitude_utilities(session)
 
