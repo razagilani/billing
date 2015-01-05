@@ -479,12 +479,14 @@ class UtilbillProcessor(object):
 
     def get_create_supplier(self, name):
         session = Session()
+        # rate classes are identified in the client by name, rather than
+        # their primary key. "Unknown Supplier" is a name sent by the client
+        # to the server to identify the supplier that is identified by "null"
+        # when sent from the server to the client.
+        if name == 'Unknown Supplier':
+            return None
         try:
-            if name == 'Unknown Supplier':
-                return None
-            else:
-                result = session.query(Supplier).filter_by(name=name).one()
-
+            result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
             result = Supplier(name, Address('', '', '', '', ''))
         return result
@@ -492,12 +494,15 @@ class UtilbillProcessor(object):
     def get_create_rate_class(self, rate_class_name, utility):
         assert isinstance(utility, Utility)
         session = Session()
+        # rate classes are identified in the client by name, rather than
+        # their primary key. "Unknown Rate Class" is a name sent by the client
+        # to the server to identify the rate class that is identified by "null"
+        # when sent from the server to the client.
+        if rate_class_name == 'Unknown Rate Class':
+            return None
         try:
-            if rate_class_name == 'Unknown Rate Class':
-                return None
-            else:
-                result = session.query(RateClass).filter_by(
-                    name=rate_class_name).one()
+            result = session.query(RateClass).filter_by(
+                name=rate_class_name).one()
         except NoResultFound:
             result = RateClass(rate_class_name, utility)
         return result
