@@ -5,8 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, \
-    ProcessedBillError, BillingError
+from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -50,6 +49,12 @@ class UtilbillProcessor(object):
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
+        assert utilbill.utility is not None
+
+        if processed is not None and \
+                        utilbill.rate_class is None \
+                or utilbill.supplier is None:
+            raise BillingError("Bill with unknown supplier or rate class can't become processed")
 
         #toggle processed state of utility bill
         if processed is not None and \
