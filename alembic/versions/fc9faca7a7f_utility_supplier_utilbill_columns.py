@@ -28,13 +28,16 @@ def upgrade():
            nullable=True)
 
     op.create_table('supplier',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('address_id', sa.Integer(), nullable=True),
-     sa.ForeignKeyConstraint(['address_id'], ['address.id'], ),
-    sa.PrimaryKeyConstraint('id'))
+                    sa.Column('id', sa.Integer(), nullable=False),
+                    sa.Column('name', sa.String(length=255), nullable=True),
+                    sa.Column('address_id', sa.Integer(), nullable=True),
+                    sa.ForeignKeyConstraint(['address_id'], ['address.id'], ),
+                    sa.PrimaryKeyConstraint('id'),
+                    sa.UniqueConstraint('name'),
+    )
     op.add_column('utilbill',
-    sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
+                  sa.Column('supplier_id', sa.INTEGER,
+                            sa.ForeignKey('supplier.id')))
     op.add_column('customer',
         sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
     )
@@ -42,10 +45,12 @@ def upgrade():
     op.add_column('utilbill', sa.Column('date_scraped', sa.DateTime,
                                         nullable=True))
     op.create_table('rate_class',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('utility_id', sa.Integer(),sa.ForeignKey('utility.id')),
-    sa.PrimaryKeyConstraint('id')
+                    sa.Column('id', sa.Integer(), nullable=False),
+                    sa.Column('name', sa.String(length=255), nullable=True),
+                    sa.Column('utility_id', sa.Integer(),
+                              sa.ForeignKey('utility.id')),
+                    sa.PrimaryKeyConstraint('id'),
+                    sa.UniqueConstraint('utility_id', 'name'),
     )
     op.add_column('customer', sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
     op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
