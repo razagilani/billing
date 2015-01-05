@@ -15,6 +15,7 @@ class BillMailerTest(TestCase):
             self.template_html = template_file.read()
 
     def test_send_mail(self):
+        import os
         server = Mock()
         mailer_opts = dict(config.items("mailer"))
         bill_mailer = Mailer(
