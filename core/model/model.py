@@ -18,7 +18,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError
+from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError, \
+    ProcessedBillError
 
 
 __all__ = [
@@ -587,6 +588,13 @@ class UtilBill(Base):
         if self.processed:
             return False
         return True
+
+    def check_editable(self):
+        '''Raise ProcessedBillError if this bill should not be edited. Call
+        this before modifying a UtilBill or its child objects.
+        '''
+        if not self.editable():
+            raise ProcessedBillError('Utility bill is not editable')
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
