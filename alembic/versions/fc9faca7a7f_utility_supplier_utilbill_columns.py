@@ -50,7 +50,7 @@ def upgrade():
                     sa.Column('utility_id', sa.Integer(),
                               sa.ForeignKey('utility.id')),
                     sa.PrimaryKeyConstraint('id'),
-                    sa.UniqueConstraint('name'),
+                    sa.UniqueConstraint('utility_id', 'name'),
     )
     op.add_column('customer', sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
     op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
