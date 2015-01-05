@@ -101,10 +101,9 @@ class mailer(Schema):
 class amqp(Schema):
     # parameters for receiving utility bills via AMQP--should be named something
     # more specific if additional AMQP stuff needs to go in this file
-    host = String()
+    url = String()
     exchange = String()
-    utilbill_queue = String()
-    # TODO add utility_queue
+    utilbill_routing_key = String()
 
 class aws_s3(Schema):
     # utility bill file storage in Amazon S3
