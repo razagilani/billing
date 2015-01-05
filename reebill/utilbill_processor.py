@@ -51,15 +51,15 @@ class UtilbillProcessor(object):
         """
         utilbill = self._get_utilbill(utilbill_id)
 
-        if processed is not None and \
-                processed is True and\
-                utilbill.rate_class is None \
-                or utilbill.supplier is None:
-            raise BillingError("Bill with unknown supplier or rate class can't become processed")
-
         #toggle processed state of utility bill
-        if processed is not None:
-                utilbill.processed = processed
+        if processed is not None and \
+                processed != utilbill.processed and \
+                (utilbill.rate_class is None \
+                or utilbill.supplier is None):
+            raise BillingError("Bill with unknown supplier or rate class can't become processed")
+        else:
+            utilbill.processed = processed
+
         if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
@@ -67,10 +67,10 @@ class UtilbillProcessor(object):
             if service is not None:
                 utilbill.service = service
 
-            if supplier is not None and isinstance(supplier, basestring):
+            if supplier is not None:
                 utilbill.supplier = self.get_create_supplier(supplier)
 
-            if rate_class is not None and isinstance(rate_class, basestring):
+            if rate_class is not None:
                 utilbill.rate_class = self.get_create_rate_class(
                     rate_class, utilbill.utility)
 
