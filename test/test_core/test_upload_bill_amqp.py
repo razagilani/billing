@@ -7,6 +7,7 @@ from datetime import date
 from pika import URLParameters
 from datetime import datetime
 from uuid import uuid4
+from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import Session, UtilityAccount, Supplier, Address, Utility, RateClass
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
@@ -78,22 +79,13 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         # Process the message
         message_obj = self.handler.validate(message_obj)
-        self.handler.handle(message_obj)
+        self.assertRaises(NoResultFound, self.handler.handle, message_obj)
 
-
-
-
-        self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
+        self.assertEqual(0, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
         utility_account = s.query(UtilityAccount).\
             filter(UtilityAccount.account_number=='45').all()
-        self.assertEqual(1, len(utility_account))
-        self.assertEqual(None,
-                         utility_account[0].fb_supplier)
-        self.assertEqual(None,
-                         utility_account[0].fb_rate_class)
-        self.assertEqual('',
-                         utility_account[0].fb_utility.name)
+        self.assertEqual(0, len(utility_account))
 
     def test_upload_bill_with_no_matching_utility_account_and_matching_utility_amqp(self):
         the_file = StringIO('some test data')
@@ -125,7 +117,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # Process the message
         message_obj = self.handler.validate(message_obj)
         self.handler.handle(message_obj)
-
         self.assertEqual(1, self.utilbill_loader.count_utilbills_with_hash(
             file_hash))
         utility_account = s.query(UtilityAccount).\
@@ -137,8 +128,6 @@ class TestUploadBillAMQP(TestCaseWithSetup):
                          utility_account[0].fb_rate_class)
         self.assertEqual('Some Utility',
                          utility_account[0].fb_utility.name)
-
-
 
     def test_upload_bill_amqp(self):
         # put the file in place

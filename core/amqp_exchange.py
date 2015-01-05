@@ -126,8 +126,8 @@ class ConsumeUtilbillFileHandler(MessageHandler):
         try:
             utility = get_utility_from_guid(message['utility_provider_guid'])
         except NoResultFound:
-            utility = Utility('', Address())
-            s.add(utility)
+            raise
+
         try:
             utility_account = s.query(UtilityAccount).filter_by(
                 account_number=message['utility_account_number'],
