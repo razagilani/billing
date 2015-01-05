@@ -489,6 +489,25 @@ class UtilBill(Base):
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
 
+    def get_utility_name(self):
+        '''Return name of this bill's utility.
+        '''
+        return self.utility.name
+
+    def get_rate_class_name(self):
+        '''Return name of this bill's rate class or None if the rate class is
+        None (unknown).
+        '''
+        if self.rate_class is None:
+            return None
+        return self.rate_class.name
+
+    def get_supplier_name(self):
+        '''Return name of this bill's supplier or None if the supplier is
+        None (unknown).
+        '''
+        return self.supplier.name
+
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
@@ -622,8 +641,7 @@ class UtilBill(Base):
                                   else None)),
                      ('supplier', (self.supplier.column_dict() if
                                    self.supplier else None)),
-                     ('rate_class', (self.rate_class.name if
-                                     self.rate_class else None)),
+                     ('rate_class', self.get_rate_class_name()),
                      ('state', self.state_name())])
         return result
 
