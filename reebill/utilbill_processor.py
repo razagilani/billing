@@ -482,7 +482,11 @@ class UtilbillProcessor(object):
     def get_create_supplier(self, name):
         session = Session()
         try:
-            result = session.query(Supplier).filter_by(name=name).one()
+            if name == 'Unknown Supplier':
+                return None
+            else:
+                result = session.query(Supplier).filter_by(name=name).one()
+
         except NoResultFound:
             result = Supplier(name, Address('', '', '', '', ''))
         return result
@@ -491,8 +495,11 @@ class UtilbillProcessor(object):
         assert isinstance(utility, Utility)
         session = Session()
         try:
-            result = session.query(RateClass).filter_by(
-                name=rate_class_name).one()
+            if rate_class_name == 'Unknown Rate Class':
+                return None
+            else:
+                result = session.query(RateClass).filter_by(
+                    name=rate_class_name).one()
         except NoResultFound:
             result = RateClass(rate_class_name, utility)
         return result
