@@ -176,10 +176,10 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             account_guids=['C' * AltitudeGUID.LENGTH,
                            'D' * AltitudeGUID.LENGTH]))
         message_obj = IncomingMessage(self.mock_method, self.mock_props, message1)
-        self.handler.message_queue.put(message_obj)
 
         # Process the first message
-        self.handler._handle_wrapper()
+        message_obj = self.handler.validate(message_obj)
+        self.handler.handle(message_obj)
 
         message2 = create_channel_message_body(dict(
             message_version=[1, 0],
@@ -192,11 +192,11 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             account_guids=[]))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message2)
-        self.handler.message_queue.put(message_obj)
 
         # Process the second message
+        message_obj = self.handler.validate(message_obj)
         with self.assertRaises(DuplicateFileError):
-            self.handler._handle_wrapper()
+            self.handler.handle(message_obj)
 
         # make sure the data have been received. we can only check for the
         # final state after all messages have been processed, not the

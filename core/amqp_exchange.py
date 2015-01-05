@@ -7,8 +7,6 @@ from datetime import datetime
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match, Any, Invalid
 
-from billing import config
-from billing.nexusapi.nexus_util import NexusUtil
 from billing.reebill.utilbill_processor import UtilbillProcessor
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.pricing import FuzzyPricingModel
@@ -20,16 +18,20 @@ from billing.exc import AltitudeDuplicateError
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
 
+__all__ = [
+    'consume_utilbill_file_mq',
+]
 
-# Voluptuos schema for validating/parsing utility bill message contents.
+# Voluptuous schema for validating/parsing utility bill message contents.
 # specification is at
 # https://docs.google.com/a/nextility.com/document/d
 # /1u_YBupWZlpVr_vIyJfTeC2IaGU2mYZl9NoRwjF0MQ6c/edit
 
+# "voluptuous" convention is to name functions like classes.
 def TotalValidator():
-    # Validator for the odd format of the "total" field in utility bill
-    # messages: dollars and cents as a string preceded by "$", or empty.
-    #
+    '''Validator for the odd format of the "total" field in utility bill
+    messages: dollars and cents as a string preceded by "$", or empty.
+    '''
     def validate(value):
         substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
         if substr is None:
@@ -38,9 +40,9 @@ def TotalValidator():
     return validate
 
 def DueDateValidator():
-    # Validator for "due_date" field in utility bill
-    # messages. ISO-8601 datetime string or empty string converted to Date or
-    # None
+    '''Validator for "due_date" field in utility bill messages.
+    ISO-8601 datetime string or empty string converted to Date or None.
+    '''
     def validate(value):
         if value == '':
             return None
@@ -50,7 +52,6 @@ def DueDateValidator():
             raise Invalid('Could not parse "due_date" string: %s' % value)
         return dt.date()
     return validate
-
 
 UtilbillMessageSchema = Schema({
     'utility_account_number': basestring,
@@ -87,8 +88,7 @@ def create_dependencies():
     utilbill_loader = UtilBillLoader(Session())
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
-    bill_file_handler = BillFileHandler(s3_connection,
-                                        config.get('aws_s3', 'bucket'),
+    bill_file_handler = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                                         utilbill_loader, url_format)
 
     s = Session()
@@ -102,10 +102,21 @@ def create_dependencies():
 
 class ConsumeUtilbillFileHandler(MessageHandler):
     on_error = REJECT_MESSAGE
+
+    # instead of overriding the 'validate' method of the superclass, a class
+    # variable is set which is used there to check that incoming messages
+    # conform to the schema.
     message_schema = UtilbillMessageSchema
 
     def __init__(self, exchange_name, routing_key, connection_parameters,
                  utilbill_processor):
+        '''Note: AMQP connection parameters are stored inside the superclass'
+        __init__, but a connection is not actually created until you call
+        connect(), not in __init__. So it is not possible to fully unit test
+        the class using a mock connection, but it is possible to instantiate
+        the class in unit tests and call methods that don't actually use the
+        connection--the most important ones being 'validate' and 'handle'.
+        '''
         super(ConsumeUtilbillFileHandler, self).__init__(
             exchange_name, routing_key, connection_parameters)
         self.utilbill_processor = utilbill_processor
@@ -144,3 +155,19 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             due_date=due_date)
         update_altitude_account_guids(utility_account, account_guids)
         s.commit()
+
+
+def consume_utilbill_file_mq(
+        exchange_name, routing_key, amqp_connection_parameters,
+        utilbill_processor):
+    '''Block to wait for messages about new utility bill files uploaded to
+    S3 and  process them by creating new UtilBills.
+    '''
+    def consume_utilbill_file_handler_factory():
+        return ConsumeUtilbillFileHandler(
+            exchange_name, routing_key, amqp_connection_parameters,
+            utilbill_processor)
+    mgr = MessageHandlerManager(amqp_connection_parameters)
+    mgr.attach_message_handler(exchange_name, routing_key,
+                               consume_utilbill_file_handler_factory)
+    mgr.run()
