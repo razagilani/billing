@@ -1,12 +1,14 @@
 from os.path import dirname, realpath, join
 import smtplib
+
 from boto.s3.connection import S3Connection
+
 from billing import init_config, init_model, init_logging
 
 
-# TODO: is it necessary to specify file path?
-from core.utilbill_loader import UtilBillLoader
+from billing.reebill.payment_dao import PaymentDAO
 
+# TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -39,7 +41,8 @@ from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor
+from billing.core.utilbill_processor import UtilbillProcessor
+from billing.reebill.views import Views
 from billing.reebill.reebill_processor import ReebillProcessor
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
@@ -131,7 +134,8 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.state_db = state.StateDB(logger=self.logger)
+        self.payment_dao = PaymentDAO()
+        self.state_db = state.ReeBillDAO(logger=self.logger)
 
         s3_connection = S3Connection(
                 config.get('aws_s3', 'aws_access_key_id'),
@@ -226,11 +230,13 @@ class WebResource(object):
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
+        self.utilbill_views = Views(self.state_db, self.bill_file_handler,
+                                    self.nexus_util, self.journal_dao)
         self.utilbill_processor = UtilbillProcessor(
             self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
             logger=self.logger)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, self.bill_mailer,
+            self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,
             logger=self.logger)
 
@@ -323,7 +329,7 @@ class AccountsResource(RESTResource):
     def handle_get(self, *vpath, **params):
         """Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab."""
-        count, rows = self.reebill_processor.list_account_status()
+        count, rows = self.utilbill_views.list_account_status()
         return True, {'rows': rows, 'results': count}
 
     def handle_post(self,*vpath, **params):
@@ -357,7 +363,7 @@ class AccountsResource(RESTResource):
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
 
-        count, result = self.reebill_processor.list_account_status(row['account'])
+        count, result = self.utilbill_views.list_account_status(row['account'])
         print count, result
         return True, {'rows': result, 'results': count}
 
@@ -373,7 +379,7 @@ class AccountsResource(RESTResource):
 class IssuableReebills(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        issuable_reebills = self.reebill_processor.get_issuable_reebills_dict()
+        issuable_reebills = self.utilbill_views.get_issuable_reebills_dict()
         return True, {'rows': issuable_reebills,
                       'results': len(issuable_reebills)}
 
@@ -446,7 +452,7 @@ class IssuableReebills(RESTResource):
 class ReebillVersionsResource(RESTResource):
 
     def handle_get(self, account, sequence, *vpath, **params):
-        result = self.reebill_processor.list_all_versions(account, sequence)
+        result = self.utilbill_views.list_all_versions(account, sequence)
         return True, {'rows': result, 'results': len(result)}
 
 class ReebillsResource(RESTResource):
@@ -457,8 +463,8 @@ class ReebillsResource(RESTResource):
 
         '''Handles GET requests for reebill grid data.'''
         # this is inefficient but length is always <= 120 rows
-        rows = sorted(self.reebill_processor.get_reebill_metadata_json(
-            account), key=itemgetter(sort))
+        rows = sorted(self.utilbill_views.get_reebill_metadata_json(account),
+                      key=itemgetter(sort))
         if dir == 'DESC':
             rows.reverse()
 

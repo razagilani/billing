@@ -63,6 +63,7 @@ class Base(object):
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
+    # TODO: move UI-related code to views.py
     def column_dict(self):
         '''Return dictionary of names and values for all attributes
         corresponding to database columns.
@@ -160,6 +161,7 @@ class Address(Base):
     def column_dict(self):
         raise NotImplementedError
 
+    # TODO: move UI-related code to views.py
     # TODO rename to column_dict
     def to_dict(self):
         return {
@@ -445,13 +447,6 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    # human-readable names for utilbill states (used in UI)
-    _state_descriptions = {
-        Complete: 'Final',
-        UtilityEstimated: 'Utility Estimated',
-        Estimated: 'Estimated',
-    }
-
     # TODO remove uprs_id, doc_id
     def __init__(self, utility_account, state, service, utility, supplier, rate_class,
                  billing_address, service_address, period_start=None,
@@ -485,9 +480,6 @@ class UtilBill(Base):
         # UtilBills in an actual database then we should probably have actual
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
-
-    def state_name(self):
-        return self.__class__._state_descriptions[self.state]
 
     def get_utility_name(self):
         '''Return name of this bill's utility.
@@ -628,7 +620,14 @@ class UtilBill(Base):
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
 
+    # TODO: move UI-related code to views.py
     def column_dict(self):
+        # human-readable names for utilbill states (used in UI)
+        state_name = {
+            UtilBill.Complete: 'Final',
+            UtilBill.UtilityEstimated: 'Utility Estimated',
+            UtilBill.Estimated: 'Estimated',
+        }[self.state]
         result = dict(super(UtilBill, self).column_dict().items() +
                     [('account', self.utility_account.account),
                      ('service', 'Unknown' if self.service is None
@@ -642,7 +641,7 @@ class UtilBill(Base):
                      ('supplier', (self.supplier.name if
                                    self.supplier else None)),
                      ('rate_class', self.get_rate_class_name()),
-                     ('state', self.state_name())])
+                     ('state', state_name)])
         return result
 
 class Register(Base):

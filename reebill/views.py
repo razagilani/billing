@@ -1,10 +1,8 @@
-import json
-from datetime import datetime,date
-from sqlalchemy import desc
-from sqlalchemy.orm.exc import NoResultFound
-
-from billing.core.model import UtilBill, Address, Charge, Register, Session, \
-    Supplier, Utility, RateClass, UtilityAccount
+from sqlalchemy import desc, and_
+from sqlalchemy.sql import functions as func
+from billing.core.model import Session, UtilBill, Register, UtilityAccount, \
+    Supplier, Utility, RateClass
+from billing.reebill.state import ReeBill, ReeBillCustomer, ReeBillCharge
 from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
 from billing.core.utilbill_loader import UtilBillLoader
 
@@ -507,32 +505,18 @@ class UtilbillProcessor(object):
             result = RateClass(rate_class_name, utility)
         return result
 
-    def create_utility(self, name):
-        '''Create and return a new Utility with the given name. A new
-        RateClass for the utility is also added.
-        '''
-        s = Session()
-        new_utility = Utility(name=name, address=Address())
-        new_rate_class = RateClass('Unknown rate class for %s' % name)
-        new_utility.rate_classes.append(new_rate_class)
-        s.add_all([new_utility, new_rate_class])
-
-    def update_utility_account_number(self, utility_account_id,
-                                      utility_account_number):
-        session = Session()
-        try:
-            utility_account = session.query(UtilityAccount).\
-                filter(UtilityAccount.id==utility_account_id).one()
-        except NoResultFound:
-            raise
-        utility_account.account_number = utility_account_number
-        return utility_account
-
-
-    ############################################################################
-    # "view" methods: return JSON dictionaries for ReeBill UI
-    # TODO: move to another file in reebill/
-    ############################################################################
+class Views(object):
+    '''"View" methods: return JSON dictionaries of utility bill-related data
+    for ReeBill UI.
+    '''
+    def __init__(self, reebill_dao, bill_file_handler, nexus_util, journal_dao):
+        # TODO: it would be good to avoid using database/network connections
+        # in here--data from these should be passed in by the caller so
+        # these methods only handle transforming the data into JSON for display
+        self._reebill_dao = reebill_dao
+        self._bill_file_handler = bill_file_handler
+        self._nexus_util = nexus_util
+        self._journal_dao = journal_dao
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -546,9 +530,8 @@ class UtilbillProcessor(object):
         having the specified utilbill_id."""
         l = []
         session = Session()
-        for r in session.query(Register).join(UtilBill,
-                                              Register.utilbill_id == UtilBill.id). \
-                filter(UtilBill.id == utilbill_id).all():
+        for r in session.query(Register).join(
+                UtilBill).filter(UtilBill.id == utilbill_id).all():
             l.append(r.column_dict())
         return l
 
@@ -561,7 +544,7 @@ class UtilbillProcessor(object):
             account=account).order_by(UtilityAccount.account,
                                       desc(UtilBill.period_start)).all()
         data = [dict(ub.column_dict(),
-                     pdf_url=self.bill_file_handler.get_s3_url(ub))
+                     pdf_url=self._bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
         return data, len(utilbills)
 
@@ -588,3 +571,132 @@ class UtilbillProcessor(object):
     def get_rate_class(self, name):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
+
+    def get_issuable_reebills_dict(self):
+        """ Returns a list of issuable reebill dictionaries
+            of the earliest unissued version-0 reebill account. If
+            proccessed == True, only processed Reebills are returned
+            account can be used to get issuable bill for an account
+        """
+        session = Session()
+        unissued_v0_reebills = session.query(
+            ReeBill.sequence, ReeBill.customer_id).filter(ReeBill.issued == 0,
+                                                          ReeBill.version == 0)
+        unissued_v0_reebills = unissued_v0_reebills.subquery()
+        min_sequence = session.query(
+            unissued_v0_reebills.c.customer_id.label('customer_id'),
+            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
+            .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        reebills = session.query(ReeBill) \
+            .filter(ReeBill.customer_id==min_sequence.c.customer_id) \
+            .filter(ReeBill.sequence==min_sequence.c.sequence)
+        issuable_reebills = [r.column_dict() for r in reebills.all()]
+        return issuable_reebills
+
+    def list_account_status(self, account=None):
+        """ Returns a list of dictonaries (containing Account, Nexus Codename,
+          Casual name, Primus Name, Utility Service Address, Date of last
+          issued bill, Days since then and the last event) and the length
+          of the list for all accounts. If account is given, the only the
+          accounts dictionary is returned """
+        grid_data = self._reebill_dao.get_accounts_grid_data(account)
+        name_dicts = self._nexus_util.all_names_for_accounts(
+            [row[1] for row in grid_data])
+
+        rows_dict = {}
+        for id, acc, account_number, fb_utility_name, fb_rate_class, \
+            fb_service_address, _, _, \
+            issue_date, rate_class, service_address, periodend in grid_data:
+            rows_dict[acc] = {
+                'account': acc,
+                'utility_account_id': id,
+                'utility_account_number': account_number,
+                'fb_utility_name': fb_utility_name,
+                'fb_rate_class': fb_rate_class,
+                'fb_service_address': fb_service_address,
+                'codename': name_dicts[acc].get('codename', ''),
+                'casualname': name_dicts[acc].get('casualname', ''),
+                'primusname': name_dicts[acc].get('primus', ''),
+                'lastperiodend': periodend,
+                'provisionable': False,
+                'lastissuedate': issue_date if issue_date else '',
+                'lastrateclass': rate_class if rate_class else '',
+                'lastutilityserviceaddress': str(service_address) if
+                service_address else '',
+                'lastevent': '',
+                }
+
+        if account is not None:
+            events = [(account, self._journal_dao.last_event_summary(account))]
+        else:
+            events = self._journal_dao.get_all_last_events()
+        for acc, last_event in events:
+            # filter out events that belong to an unknown account (this could
+            # not be done in JournalDAO.get_all_last_events() because it only
+            # has access to Mongo)
+            if acc in rows_dict:
+                rows_dict[acc]['lastevent'] = last_event
+
+        rows = list(rows_dict.itervalues())
+        return len(rows), rows
+
+    def list_all_versions(self, account, sequence):
+        ''' Returns all Reebills with sequence and account ordered by versions
+            a list of dictionaries
+        '''
+        session = Session()
+        q = session.query(ReeBill).join(ReeBillCustomer) \
+            .join(UtilityAccount).with_lockmode('read') \
+            .filter(UtilityAccount.account == account) \
+            .filter(ReeBill.sequence == sequence) \
+            .order_by(desc(ReeBill.version))
+
+        return [rb.column_dict() for rb in q]
+
+    def get_reebill_metadata_json(self, account):
+        """Returns data describing all reebills for the given account, as list
+        of JSON-ready dictionaries.
+        """
+        session = Session()
+        def _get_total_error(account, sequence):
+            '''Returns the net difference between the total of the latest
+            version (issued or not) and version 0 of the reebill given by
+            account, sequence.
+            '''
+            earliest = session.query(ReeBill).join(ReeBillCustomer).join(
+                UtilityAccount).filter(UtilityAccount.account == account,
+                                          ReeBill.sequence == sequence,
+                                          ReeBill.version == 0).one()
+            latest = session.query(ReeBill).join(ReeBillCustomer).join(
+                UtilityAccount).filter(UtilityAccount.account == account,
+                                          ReeBill.sequence == sequence
+            ).order_by(desc(ReeBill.version)).first()
+            return latest.total - earliest.total
+
+        # this subquery gets (customer_id, sequence, version) for all the
+        # reebills whose version is the maximum in their (customer, sequence,
+        # version) group.
+        latest_versions_sq = session.query(
+            ReeBill.reebill_customer_id, ReeBill.sequence,
+            func.max(ReeBill.version).label('max_version')) \
+            .join(ReeBillCustomer).join(UtilityAccount) \
+            .filter(UtilityAccount.account == account) \
+            .order_by(ReeBill.reebill_customer_id,
+                      ReeBill.sequence).group_by(
+            ReeBill.reebill_customer, ReeBill.sequence).subquery()
+
+        # query ReeBill joined to the above subquery to get only
+        # maximum-version bills, and also outer join to ReeBillCharge to get
+        # sum of 0 or more charges associated with each reebill
+        q = session.query(ReeBill).join(latest_versions_sq, and_(
+            ReeBill.reebill_customer_id ==
+            latest_versions_sq.c.reebill_customer_id,
+            ReeBill.sequence == latest_versions_sq.c.sequence,
+            ReeBill.version == latest_versions_sq.c.max_version)
+        ).outerjoin(ReeBillCharge) \
+            .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
+
+        return [dict(rb.column_dict().items() +
+                     [('total_error', _get_total_error(account, rb.sequence))])
+                for rb in q]
+
