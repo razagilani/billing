@@ -135,7 +135,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                     StringIO('January 2013'),
                                                     date(2013, 1, 1),
                                                     date(2013, 2, 1), 'Gas',
-                                                    total=100)
+                                                    total=100,
+                                                    )
 
         doc = self.utilbill_processor.get_all_utilbills_json('99999', 0, 30)[0][0]
         assert utilbill.period_start == doc['period_start'] == date(2013, 1,
@@ -201,6 +202,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               rate_class='something else')
         self.assertEqual('something else', utilbill.rate_class.name)
 
+        # change supplier
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                              supplier='some supplier')
+        self.assertEqual('some supplier', utilbill.supplier.name)
+
         # change processed state
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               processed=True)
@@ -221,7 +227,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         s = Session()
         utility = Utility('utility', Address())
         supplier = Supplier('supplier', Address())
-        utility_account = UtilityAccount('someone', '99999',
+        utility_account = UtilityAccount('someone', '1000001',
                 utility, supplier,
                 RateClass('rate class', utility), Address(),
                 Address())
@@ -249,7 +255,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             with self.assertRaises(ValueError):
                 self.utilbill_processor.upload_utility_bill(account, StringIO(), start,
                                                  end, 'electric',
-                    utility=utility_account.fb_utility, supplier=utility_account.fb_supplier,
+                    utility=utility_account.fb_utility.name, supplier=utility_account.fb_supplier.name,
                     rate_class='Residential-R')
 
         # one utility bill
@@ -292,8 +298,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                             get_utility('pepco').
                                             column_dict(),
                                           'supplier': self.utilbill_processor.
-                                            get_supplier('supplier').
-                                            column_dict(),
+                                            get_supplier('supplier').name,
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Residential-R').
                                             name,
@@ -335,7 +340,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'utility': self.utilbill_processor.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.utilbill_processor.
-                                get_supplier('supplier').column_dict(),
+                                get_supplier('supplier').name,
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').name,
                             'period_start': date(2012, 2, 1),
@@ -351,7 +356,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'utility': self.utilbill_processor.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.utilbill_processor.
-                                get_supplier('supplier').column_dict(),
+                                get_supplier('supplier').name,
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
                                 name,
@@ -381,7 +386,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'utility': self.utilbill_processor.
                                 get_utility('washgas').column_dict(),
                             'supplier': self.utilbill_processor.
-                                get_supplier('supplier').column_dict(),
+                                get_supplier('supplier').name,
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('DC Non Residential Non Heat').
                                 name,
@@ -399,7 +404,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'utility': self.utilbill_processor.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.utilbill_processor.
-                                get_supplier('supplier').column_dict(),
+                                get_supplier('supplier').name,
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
                                 name,
@@ -416,7 +421,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'utility': self.utilbill_processor.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.utilbill_processor.
-                                get_supplier('supplier').column_dict(),
+                                get_supplier('supplier').name,
                             'rate_class': self.utilbill_processor.
                                 get_rate_class('Residential-R').
                                 name,
@@ -448,7 +453,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'utility': self.utilbill_processor.
                                             get_utility('pepco').column_dict(),
                                           'supplier': self.utilbill_processor.
-                                            get_supplier('supplier').column_dict(),
+                                            get_supplier('supplier').name,
                                           'rate_class': self.utilbill_processor.
                                             get_rate_class('Residential-R').
                                             name,
@@ -511,7 +516,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'state': 'Final',
             'service': 'Electric',
             'utility': customer.fb_utility.column_dict(),
-            'supplier': customer.fb_supplier.column_dict(),
+            'supplier': customer.fb_supplier.name,
             'rate_class': customer.fb_rate_class.name,
             'period_start': None,
             'period_end': None,
@@ -557,7 +562,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'state': 'Final',
                                           'service': 'Electric',
                                           'utility': customer.fb_utility.column_dict(),
-                                          'supplier': customer.fb_supplier.column_dict(),
+                                          'supplier': customer.fb_supplier.name,
                                           'rate_class': customer.fb_rate_class.name,
                                           'period_start': None,
                                           'period_end': None,
@@ -731,9 +736,14 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
         # a new bill is rolled, the UPRS it gets depends on whether it's
         # closer to B/C-1 or to A-2.
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='DISTRIBUTION_CHARGE')
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='PGC')
-        self.utilbill_processor.delete_charge(utilbill_id=id_a_2, rsi_binding='NOT_SHARED')
+        s = Session()
+        utilbill_a_2 = s.query(UtilBill).filter_by(id=id_a_2).one()
+        dc_id = utilbill_a_2.get_charge_by_rsi_binding('DISTRIBUTION_CHARGE').id
+        pgc_id = utilbill_a_2.get_charge_by_rsi_binding('PGC').id
+        not_shared_id = utilbill_a_2.get_charge_by_rsi_binding('NOT_SHARED').id
+        self.utilbill_processor.delete_charge(dc_id)
+        self.utilbill_processor.delete_charge(pgc_id)
+        self.utilbill_processor.delete_charge(not_shared_id)
         self.session.flush()
         self.utilbill_processor.add_charge(id_a_2)
         self.utilbill_processor.update_charge({

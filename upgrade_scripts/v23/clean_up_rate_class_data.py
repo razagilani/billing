@@ -246,10 +246,13 @@ def clean_up_rate_class_data(session):
     session.add(GM_E_6_ZONE_1_LA_COUNTY)
 
     #ConocoPhillips
-    INDIVIDUAL_CONTRACT_CONOCO = RateClass(
-        "Individual Contract", CONOCO
-    )
-    session.add(INDIVIDUAL_CONTRACT_CONOCO)
+    # violates unique constraint
+    # INDIVIDUAL_CONTRACT_CONOCO = RateClass(
+    #     "Individual Contract", CONOCO
+    # )
+    #session.add(INDIVIDUAL_CONTRACT_CONOCO)
+    INDIVIDUAL_CONTRACT_CONOCO = session.query(RateClass).filter_by(
+        utility_id=CONOCO.id, name='individual contract').one()
 
     #PG&E
     GM_T_MASTER_METERED = RateClass(

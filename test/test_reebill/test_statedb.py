@@ -74,15 +74,13 @@ class StateDBTest(TestCaseWithSetup):
         # adding versions of bills for other accounts should have no effect
         fb_test_utility = Utility('FB Test Utility', Address())
         fb_test_supplier = Supplier('FB Test Supplier', Address())
+        rate_class = session.query(RateClass).one()
         utility_account1 = UtilityAccount('some_account', '11111',
-                fb_test_utility, fb_test_supplier,
-                RateClass('FB Test Rate Class', fb_test_utility),
+                fb_test_utility, fb_test_supplier, rate_class,
                 Address(), Address())
         utility_account2 = UtilityAccount('another_account', '22222',
-                fb_test_utility, fb_test_supplier,
-                RateClass('FB Test Rate Class', fb_test_utility),
-                Address(), Address()
-                    )
+                fb_test_utility, fb_test_supplier, rate_class,
+                Address(), Address())
         self.session.add(utility_account1)
         self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
                 'thermal', 'customer1@example.com', utility_account1))
@@ -279,7 +277,8 @@ class StateDBTest(TestCaseWithSetup):
         # Create 2 customers
         utility_account1 = self.session.query(UtilityAccount).one()
         reebill_customer1 = self.session.query(ReeBillCustomer).one()
-        rateclass1 = RateClass('FB Test Rate Class', utility_account1.fb_utility)
+        rateclass1 = Session().query(RateClass).filter_by(
+            name='FB Test Rate Class').one()
         utility_account2 = UtilityAccount('other_account', 99998,
                             utility_account1.fb_utility,
                             utility_account1.fb_supplier, rateclass1,

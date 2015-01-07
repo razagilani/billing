@@ -66,6 +66,23 @@ class UtilBillTest(TestCase):
         with self.assertRaises(ValueError):
             UtilBill.validate_utilbill_period(date(2000,1,1), date(2001,1,2))
 
+    def test_processed_editable(self):
+        utility_account = UtilityAccount(
+            'someone', '98989', self.utility, self.supplier,
+            RateClass('FB Test Rate Class', self.utility), Address(), Address())
+        utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas',
+                            self.utility, self.supplier,
+                            RateClass('rate class', self.utility), Address(),
+                            Address(), period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
+
+        self.assertFalse(utilbill.processed)
+        utilbill.check_editable()
+
+        utilbill.processed = True
+        self.assertTrue(utilbill.processed)
+        self.assertRaises(ProcessedBillError, utilbill.check_editable)
+
     def test_add_charge(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,

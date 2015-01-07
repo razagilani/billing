@@ -19,12 +19,6 @@ package { 'httpd':
 package { 'html2ps':
     ensure  => installed
 }
-package { 'imageMagick':
-    ensure  => installed
-}
-package { 'poppler-utils':
-    ensure  => installed
-}
 package { 'libevent-dev':
     ensure  => installed
 }
@@ -42,6 +36,11 @@ file { "/db-${env}":
 file { "/etc/httpd/conf.d/${username}.conf":
     ensure => file,
     source => "puppet:///modules/conf/vhosts/reebill-prod.conf"
+}
+
+file { "/etc/init/billing-${env}-exchange.conf":
+ensure => file,
+content => template('conf/billing-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
