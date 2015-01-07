@@ -397,6 +397,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.session = Session()
         self.truncate_tables(self.session)
         TestCaseWithSetup.insert_data()
+        self.session.flush()
 
     def tearDown(self):
         '''Clears out databases.'''

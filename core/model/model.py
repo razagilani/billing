@@ -18,7 +18,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError
+from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError, \
+    ProcessedBillError
 
 
 __all__ = [
@@ -303,13 +304,13 @@ class UtilityAccount(Base):
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('utility.id'))
     fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=False)
+        nullable=True)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=False)
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -364,11 +365,11 @@ class UtilBill(Base):
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=False)
+        nullable=True)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=False)
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     service = Column(String(45), nullable=False)
@@ -480,6 +481,25 @@ class UtilBill(Base):
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
 
+    def get_utility_name(self):
+        '''Return name of this bill's utility.
+        '''
+        return self.utility.name
+
+    def get_rate_class_name(self):
+        '''Return name of this bill's rate class or None if the rate class is
+        None (unknown).
+        '''
+        if self.rate_class is None:
+            return None
+        return self.rate_class.name
+
+    def get_supplier_name(self):
+        '''Return name of this bill's supplier or None if the supplier is
+        None (unknown).
+        '''
+        return self.supplier.name
+
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
@@ -580,6 +600,13 @@ class UtilBill(Base):
             return False
         return True
 
+    def check_editable(self):
+        '''Raise ProcessedBillError if this bill should not be edited. Call
+        this before modifying a UtilBill or its child objects.
+        '''
+        if not self.editable():
+            raise ProcessedBillError('Utility bill is not editable')
+
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
         ReeBill whose 'rsi_binding' matches 'binding'.
@@ -611,10 +638,9 @@ class UtilBill(Base):
                                    in self._utilbill_reebills]),
                      ('utility', (self.utility.column_dict() if self.utility
                                   else None)),
-                     ('supplier', (self.supplier.column_dict() if
+                     ('supplier', (self.supplier.name if
                                    self.supplier else None)),
-                     ('rate_class', (self.rate_class.name if
-                                     self.rate_class else None)),
+                     ('rate_class', self.get_rate_class_name()),
                      ('state', state_name)])
         return result
 

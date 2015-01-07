@@ -115,7 +115,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session.add(
             UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('DC Non Residential Non Heat', self.utility_account.fb_utility),
+                     RateClass('RC1',  self.utility_account.fb_utility),
                      Address(), Address(), period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1), sha256_hexdigest=hash))
         self.assertEqual(1, self.ubl.count_utilbills_with_hash(hash))
@@ -123,7 +123,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session.add(
             UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('DC Non Residential Non Heat', self.utility_account.fb_utility),
+                     RateClass('RC2', self.utility_account.fb_utility),
                      Address(), Address(), period_start=date(2000, 2, 1),
                      period_end=date(2000, 3, 1), sha256_hexdigest=hash))
         self.assertEqual(2, self.ubl.count_utilbills_with_hash(hash))
@@ -131,7 +131,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session.add(
             UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('DC Non Residential Non Heat', self.utility_account.fb_utility),
+                     RateClass('RC3', self.utility_account.fb_utility),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='somethingelse'))
@@ -151,13 +151,13 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         bills = [
             UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('DC Non Residential Non Heat', self.utility_account.fb_utility),
+                     RateClass('RC1', self.utility_account.fb_utility),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='abc'),
             UtilBill(other_account, 0, 'gas', self.utility_account.fb_utility,
                      other_account.fb_supplier,
-                     RateClass('DC Non Residential Non Heat', other_account.fb_utility),
+                     RateClass('RC2', other_account.fb_utility),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='def'),

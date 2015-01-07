@@ -296,7 +296,6 @@ def delete_hypothetical_utility_bills(session):
 def delete_reebills_with_null_reebill_customer(session):
     session.query(ReeBill).filter(ReeBill.reebill_customer_id==None).delete()
 
-
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')

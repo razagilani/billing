@@ -68,10 +68,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#rate_class_combo': {
                 expand: this.handleRateClassExpand
-            },
-            '#supplier_combo': {
-                focus: this.handleSupplierComboFocus
-
             }
         });
 
@@ -278,12 +274,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         utility_grid = combo.findParentByType('grid');
         selected = utility_grid.getSelectionModel().getSelection()[0];
         combo.setValue(selected.get('utility').name);
-    },
-
-    handleSupplierComboFocus: function(combo) {
-        utility_grid = combo.findParentByType('grid');
-        selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('supplier').name);
     }
 
 });
