@@ -2,16 +2,20 @@
 from copy import deepcopy
 from datetime import date, datetime
 from itertools import cycle
+from StringIO import StringIO
+
 import unittest
-
 import mock
+import logging
 
-import reebill
+from core import init_config, init_model
+from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
+    Supplier, RateClass, UtilityAccount
 from reebill.excel_export import Exporter
-from core.model import UtilBill, Register, Charge
 from reebill.state import StateDB, ReeBill, Payment
 
-class ExporterTest(unittest.TestCase):
+
+class ExporterSheetTest(unittest.TestCase):
 
     def setUp(self):
         #Set up the mock
@@ -270,8 +274,8 @@ class ExporterTest(unittest.TestCase):
 
         #Setup Mock
         u1 = mock.Mock(autospec=UtilBill)
-        u1.customer.account = '10003'
-        u1.rate_class = 'DC Non Residential Non Heat'
+        u1.utility_account.account = '10003'
+        u1.rate_class.name = 'DC Non Residential Non Heat'
         u1.period_start = date(2011,11,12)
         u1.period_end = date(2011,12,14)
         u1.charges = [make_charge(x) for x in [3.37, 17.19, 43.7, 164.92,
@@ -302,3 +306,70 @@ class ExporterTest(unittest.TestCase):
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
+
+
+class ExporterDataBookTest(unittest.TestCase):
+
+    def setUp(self):
+        init_config('test/tstsettings.cfg')
+        init_model()
+        logger = logging.getLogger('test')
+        self.exp = Exporter(StateDB(logger))
+
+        s = Session()
+        utility = Utility('New Utility', Address())
+        s.add(utility)
+
+        supplier = Supplier('New Supplier', Address())
+        s.add(supplier)
+
+        rate_class = RateClass('New Rate Class', utility)
+        s.add(rate_class)
+
+        utility_account = UtilityAccount(
+                'some name',
+                '20001',
+                utility,
+                supplier,
+                rate_class,
+                Address(),
+                Address(),
+                '1234567890'
+        )
+        s.add(utility_account)
+
+        s.add(
+            UtilBill(
+                utility_account, UtilBill.Estimated, 'electric', utility,
+                supplier, rate_class, Address(), Address(),
+                period_start=date(2010, 11, 1), period_end=date(2011, 2, 3),
+                date_received=datetime.utcnow().date()
+            )
+        )
+
+    def test_exports_returning_binaries(self):
+        """
+        This test simply calls all export functions returning binaries. This
+        way we can at least verify that the code in those functions is
+        syntactically correct and calls existing methods
+        """
+
+        string_io = StringIO()
+
+        # export_account_charges
+        self.exp.export_account_charges(string_io)
+        self.exp.export_account_charges(string_io, '20001')
+        self.exp.export_account_charges(string_io, '20001', date(2010, 11, 1))
+        self.exp.export_account_charges(string_io, '20001',
+                                        date(2010, 11, 1), date(2011, 2, 3))
+
+        # export_energy_usage
+        self.exp.export_energy_usage(string_io)
+        self.exp.export_energy_usage(string_io, '20001')
+
+        # export_reebill_details
+        self.exp.export_reebill_details(string_io)
+        self.exp.export_reebill_details(string_io, '20001')
+        self.exp.export_reebill_details(string_io, '20001', date(2010, 11, 1))
+        self.exp.export_reebill_details(string_io, '20001',
+                                        date(2010, 11, 1), date(2011, 2, 3))

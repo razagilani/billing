@@ -21,6 +21,7 @@ from billing.core.model.model import Session, Customer, Utility, \
 from billing.reebill.state import ReeBill
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 from billing.upgrade_scripts.v23.clean_up_rate_class_data import clean_up_rate_class_data
+from billing.upgrade_scripts.v23.import_alitude_utilities import import_altitude_utilities
 
 log = logging.getLogger(__name__)
 
@@ -295,7 +296,6 @@ def delete_hypothetical_utility_bills(session):
 def delete_reebills_with_null_reebill_customer(session):
     session.query(ReeBill).filter(ReeBill.reebill_customer_id==None).delete()
 
-
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
@@ -374,6 +374,12 @@ def upgrade():
 
     log.info('Upgrading to 5a6d7e4f8b80')
     alembic_upgrade('5a6d7e4f8b80')
+
+    log.info("Importing altitude utilities")
+    import_altitude_utilities(session)
+
+    log.info('Comitting to Database')
+    session.commit()
 
     log.info('Upgrade Complete')
 

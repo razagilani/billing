@@ -37,10 +37,12 @@ class Exporter(object):
         '''
         book = tablib.Databook()
         if account == None:
-            for acc in self.state_db.listAccounts():
-                reebills = self.state_db.get_all_reebills_for_account(acc)
+            s = Session()
+            for ua in s.query(UtilityAccount).all():
+                reebills = self.state_db.get_all_reebills_for_account(
+                    ua.account)
                 book.add_sheet(self.get_account_charges_sheet(
-                    acc, reebills, start_date, end_date))
+                    ua.account, reebills, start_date, end_date))
         else:
             reebills = self.state_db.get_all_reebills_for_account(account)
             book.add_sheet(self.get_account_charges_sheet(
@@ -100,16 +102,20 @@ class Exporter(object):
             for charge in sorted(utilbill.charges, key=lambda c: c.description):
                 column_name = '%s: %s' % (charge.group, charge.description)
 
+                if charge.total is None:
+                    charge_total_str = 'ERROR: charge could not be computed'
+                else:
+                    charge_total_str = '%.2f' % charge.total
                 if dataset.height == 0:
                     dataset.headers.append(column_name)
-                    row.append(("%.2f" % charge.total))
+                    row.append(charge_total_str)
                 elif column_name not in dataset.headers:
                     dataset.append_col([''] * dataset.height,
                                        header=column_name)
-                    row.append(("%.2f" % charge.total))
+                    row.append(charge_total_str)
                 else:
                     col_idx = dataset.headers.index(column_name)
-                    row[col_idx] = "%.2f" % charge.total if row[col_idx] == '' \
+                    row[col_idx] = charge_total_str if row[col_idx] == '' \
                         else 'ERROR: duplicate charge name %s' % column_name
 
             dataset.append(row)
@@ -125,29 +131,20 @@ class Exporter(object):
         for each account.
         '''
         book = tablib.Databook()
-        def list_utilbills(self, account, start=None, limit=None):
-            '''Queries the database for account, start date, and end date of bills
-            in a slice of the utilbills table; returns the slice and the total
-            number of rows in the table (for paging). If 'start' is not given, all
-            bills are returned. If 'start' is given but 'limit' is not, all bills
-            starting with index 'start'. If both 'start' and 'limit' are given,
-            returns bills with indices in [start, start + limit).'''
+        def list_utilbills(account):
             session = Session()
             query = session.query(UtilBill).with_lockmode('read').join(UtilityAccount) \
                 .filter(UtilityAccount.account == account) \
                 .order_by(UtilityAccount.account, desc(UtilBill.period_start))
+            return query.all()
 
-            if start is None:
-                return query, query.count()
-            if limit is None:
-                return query[start:], query.count()
-            return query[start:start + limit], query.count()
         if account == None:
             #Only export brokerage accounts (id>20000)
+            s = Session()
             for acc in [
-                x for x in sorted(self.state_db.listAccounts()) if
-                    (int(x) >= 20000)]:
-                utilbills, _ = self.list_utilbills(acc)
+                ua for ua in s.query(UtilityAccount).all() if
+                            int(ua.account) >= 20000]:
+                utilbills = list_utilbills(acc)
                 book.add_sheet(self.get_energy_usage_sheet(utilbills))
         else:
             utilbills = list_utilbills(account)
@@ -168,7 +165,7 @@ class Exporter(object):
         ds_rows = []
         for ub in utilbills:
             units = quantity = ''
-            account = ub.customer.account
+            account = ub.utility_account.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
                 for register in ub.registers:
@@ -178,8 +175,8 @@ class Exporter(object):
             except NoSuchBillException:
                 units = quantity = "ERROR"
             # Create a row
-            row = [ub.customer.account,
-                   ub.rate_class,
+            row = [ub.utility_account.account,
+                   ub.rate_class.name,
                    quantity, units,
                    ub.period_start.strftime(dateutils.ISO_8601_DATE),
                    ub.period_end.strftime(dateutils.ISO_8601_DATE)]
@@ -239,7 +236,8 @@ class Exporter(object):
         if account is not None:
             accounts = [account]
         else:
-            accounts = self.state_db.listAccounts()
+            s = Session()
+            accounts = [ua.account for ua in s.query(UtilityAccount).all()]
         dataset = self.get_export_reebill_details_dataset(
             accounts, begin_date, end_date)
         workbook = tablib.Databook()

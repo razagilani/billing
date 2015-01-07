@@ -7,9 +7,17 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'id'},
         {name: 'name'},
         {name: 'account'},
-        {name: 'rate_class', type:'string'},
+        {name: 'rate_class', type:'string', mapping: function( data )
+            { if (data.rate_class==null)
+                    return 'Unknown Rate Class';
+              else
+                    return data.rate_class;  }},
         {name: 'utility'},
-        {name: 'supplier'},
+        {name: 'supplier', type:'string', mapping: function( data ) {
+            if (data.supplier==null)
+                return 'Unknown Supplier' ;
+            else
+                return data.supplier;}},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_charges', type: 'float' },
