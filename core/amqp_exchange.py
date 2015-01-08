@@ -86,14 +86,13 @@ def create_dependencies():
                                  host=config.get('aws_s3', 'host'),
                                  calling_format=config.get('aws_s3',
                                                            'calling_format'))
-    utilbill_loader = UtilBillLoader(Session())
+    utilbill_loader = UtilBillLoader()
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
     bill_file_handler = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                                         utilbill_loader, url_format)
 
-    s = Session()
-    utilbill_loader = UtilBillLoader(s)
+    utilbill_loader = UtilBillLoader()
     pricing_model = FuzzyPricingModel(utilbill_loader)
     utilbill_processor = UtilbillProcessor(pricing_model, bill_file_handler, None)
 

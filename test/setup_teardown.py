@@ -314,7 +314,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   host=config.get('aws_s3', 'host'),
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
-        utilbill_loader = UtilBillLoader(Session())
+        utilbill_loader = UtilBillLoader()
         url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.billupload = BillFileHandler(s3_connection,
