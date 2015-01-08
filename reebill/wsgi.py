@@ -5,8 +5,6 @@ from billing import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
-from core.utilbill_loader import UtilBillLoader
-
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -140,7 +138,7 @@ class WebResource(object):
                 port=config.get('aws_s3', 'port'),
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
-        utilbill_loader = UtilBillLoader(Session())
+        utilbill_loader = UtilBillLoader()
         # TODO: ugly. maybe put entire url_format in config file.
         url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 'https' if config.get('aws_s3', 'is_secure') is True else

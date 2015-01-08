@@ -34,7 +34,7 @@ class UtilbillProcessor(object):
 
     # TODO this method might be replaced by the UtilbillLoader method
     def _get_utilbill(self, utilbill_id):
-        return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
+        return UtilBillLoader().get_utilbill_by_id(utilbill_id)
 
     ############################################################################
     # methods that are actually for "processing" UtilBills
@@ -116,7 +116,7 @@ class UtilbillProcessor(object):
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
         try:
-            predecessor = UtilBillLoader(session).get_last_real_utilbill(
+            predecessor = UtilBillLoader().get_last_real_utilbill(
                 utility_account.account, end=start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
@@ -268,7 +268,7 @@ class UtilbillProcessor(object):
         assert isinstance(service_address, (Address, type(None)))
 
         s = Session()
-        if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
+        if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
@@ -298,7 +298,7 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return UtilBillLoader(Session()).get_last_real_utilbill(
+        return UtilBillLoader().get_last_real_utilbill(
             account, end=datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
