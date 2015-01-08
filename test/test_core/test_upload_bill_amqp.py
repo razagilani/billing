@@ -14,7 +14,6 @@ from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import DuplicateFileError
-from billing.test.testing_utils import clean_up_rabbitmq
 from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
 from billing.mq import IncomingMessage
 from billing.core.amqp_exchange import ConsumeUtilbillFileHandler, \
@@ -39,7 +38,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # since we're never instatiating a connection
         self.handler._wait_on_close = 0
 
-        self.utilbill_loader = UtilBillLoader(Session())
+        self.utilbill_loader = UtilBillLoader()
 
         # these are for creating IncomingMessage objects for 'handler' to
         # handle
