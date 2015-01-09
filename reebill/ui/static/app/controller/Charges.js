@@ -204,6 +204,7 @@ Ext.define('ReeBill.controller.Charges', {
 
         store.remove(selected);
         this.updateTextFields();
+        store.reload();
     },
 
     /**
