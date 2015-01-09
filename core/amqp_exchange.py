@@ -131,17 +131,14 @@ class ConsumeUtilbillFileHandler(MessageHandler):
                     account_number=message['utility_account_number'],
                     fb_utility=utility).one()
             except NoResultFound:
-                last_account = s.query(cast(UtilityAccount.account, Integer)).order_by(
+                last_account = s.query(
+                    cast(UtilityAccount.account,Integer)).order_by(
                     cast(UtilityAccount.account, Integer).desc()).first()
                 next_account = str(last_account[0] + 1)
-                utility_account = UtilityAccount('', next_account,
-                                                 utility,
-                                                 None,
-                                                 None,
-                                                 Address(),
-                                                 Address(street=message['service_address']),
-                                                 message['utility_account_number']
-                                                 )
+                utility_account = UtilityAccount(
+                    '', next_account, utility, None, None, Address(),
+                    Address(street=message['service_address']),
+                    message['utility_account_number'])
                 s.add(utility_account)
             sha256_hexdigest = message['sha256_hexdigest']
             total = message['total']
@@ -150,8 +147,7 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             account_guids = message['account_guids']
 
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, sha256_hexdigest,
-                target_total=total,
+                utility_account, utility, sha256_hexdigest, target_total=total,
                 service_address=Address(street=service_address_street),
                 due_date=due_date)
             update_altitude_account_guids(utility_account, account_guids)
