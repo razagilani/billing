@@ -124,10 +124,7 @@ class ConsumeUtilbillFileHandler(MessageHandler):
     def handle(self, message):
         s = Session()
         try:
-            try:
-                utility = get_utility_from_guid(message['utility_provider_guid'])
-            except NoResultFound:
-                raise
+            utility = get_utility_from_guid(message['utility_provider_guid'])
 
             try:
                 utility_account = s.query(UtilityAccount).filter_by(
