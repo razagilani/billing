@@ -124,40 +124,49 @@ class ConsumeUtilbillFileHandler(MessageHandler):
     def handle(self, message):
         s = Session()
         try:
-            utility = get_utility_from_guid(message['utility_provider_guid'])
-        except NoResultFound:
+            try:
+                utility = get_utility_from_guid(message['utility_provider_guid'])
+            except NoResultFound:
+                raise
+
+            try:
+                utility_account = s.query(UtilityAccount).filter_by(
+                    account_number=message['utility_account_number'],
+                    fb_utility=utility).one()
+            except NoResultFound:
+                last_account = s.query(cast(UtilityAccount.account, Integer)).order_by(
+                    cast(UtilityAccount.account, Integer).desc()).first()
+                next_account = str(last_account[0] + 1)
+                utility_account = UtilityAccount('', next_account,
+                                                 utility,
+                                                 None,
+                                                 None,
+                                                 Address(),
+                                                 Address(street=message['service_address']),
+                                                 message['utility_account_number']
+                                                 )
+                s.add(utility_account)
+            sha256_hexdigest = message['sha256_hexdigest']
+            total = message['total']
+            due_date = message['due_date']
+            service_address_street = message['service_address']
+            account_guids = message['account_guids']
+
+            self.utilbill_processor.create_utility_bill_with_existing_file(
+                utility_account, utility, sha256_hexdigest,
+                target_total=total,
+                service_address=Address(street=service_address_street),
+                due_date=due_date)
+            update_altitude_account_guids(utility_account, account_guids)
+            s.commit()
+        except:
+            s.rollback()
             raise
-
-        try:
-            utility_account = s.query(UtilityAccount).filter_by(
-                account_number=message['utility_account_number'],
-                fb_utility=utility).one()
-        except NoResultFound:
-            last_account = s.query(cast(UtilityAccount.account, Integer)).order_by(
-                cast(UtilityAccount.account, Integer).desc()).first()
-            next_account = str(last_account[0] + 1)
-            utility_account = UtilityAccount('', next_account,
-                                             utility,
-                                             None,
-                                             None,
-                                             Address(),
-                                             Address(street=message['service_address']),
-                                             message['utility_account_number']
-                                             )
-            s.add(utility_account)
-        sha256_hexdigest = message['sha256_hexdigest']
-        total = message['total']
-        due_date = message['due_date']
-        service_address_street = message['service_address']
-        account_guids = message['account_guids']
-
-        self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, sha256_hexdigest,
-            target_total=total,
-            service_address=Address(street=service_address_street),
-            due_date=due_date)
-        update_altitude_account_guids(utility_account, account_guids)
-        s.commit()
+        finally:
+            # Session.remove() probably should be called here but can't
+            # because tests use the Session to query for data. not sure what
+            # to do about that.
+            pass
 
 
 def consume_utilbill_file_mq(
