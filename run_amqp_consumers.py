@@ -3,16 +3,33 @@
 This file should be kept as short as possible; all substantive code should go
 in amqp_exchange.py (and should have test coverage).
 '''
+import logging
+from traceback import format_exc
+
 from billing import init_config, init_model, init_logging
 from billing.core.amqp_exchange import create_dependencies, \
-    consume_utilbill_file_mq
+    consume_utilbill_file_mq, LOG_NAME
 
 if __name__ == '__main__':
     init_config()
     init_model()
     init_logging()
+    from billing import config
 
-    exchange_name, routing_key, amqp_connection_parameters, \
-        utilbill_processor = create_dependencies()
-    consume_utilbill_file_mq(exchange_name, routing_key,
-                             amqp_connection_parameters, utilbill_processor)
+    logger = logging.getLogger(LOG_NAME)
+    log_path = config.get('logger_amqp_utilbill_file', 'path')
+    logger.addHandler(logging.FileHandler(log_path))
+    logger.info('Starting run_ampq_consumers')
+
+    try:
+        exchange_name, routing_key, amqp_connection_parameters, \
+            utilbill_processor = create_dependencies()
+        consume_utilbill_file_mq(exchange_name, routing_key,
+                                 amqp_connection_parameters, utilbill_processor)
+    except Exception as e:
+        logger.critical('Exception in run_amqp_consumers:\n%s' % format_exc())
+        raise
+    else:
+        logger.warning('End of run_ampq_consumers: should never be reached!')
+
+

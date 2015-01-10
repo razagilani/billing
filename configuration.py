@@ -148,6 +148,11 @@ class logger_reebill(Schema):
     qualname = String()
     propagate = Int()
 
+class logger_amqp_utilbill_file(Schema):
+    level = String()
+    handlers = String()
+    path = String()
+
 class handler_consoleHandler(Schema):
     level = String()
     formatter = String()
