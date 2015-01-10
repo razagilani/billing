@@ -12,3 +12,4 @@ revision.txt
 alembic.ini
 .directory
 .idea
+logs/*.log

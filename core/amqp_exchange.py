@@ -1,6 +1,8 @@
 import json
 import re
 import uuid
+import logging
+import traceback
 from boto.s3.connection import S3Connection
 from pika import URLParameters
 from datetime import datetime
@@ -22,6 +24,8 @@ from mq.schemas.validators import MessageVersion, EmptyString, Date
 __all__ = [
     'consume_utilbill_file_mq',
 ]
+
+LOG_NAME = 'amqp_utilbill_file'
 
 # Voluptuous schema for validating/parsing utility bill message contents.
 # specification is at
@@ -122,6 +126,9 @@ class ConsumeUtilbillFileHandler(MessageHandler):
         self.utilbill_processor = utilbill_processor
 
     def handle(self, message):
+        logger = logging.getLogger(LOG_NAME)
+        logger.debug("Got message: can't print it because datetime.date is not "
+                     "JSON-serializable")
         s = Session()
         try:
             utility = get_utility_from_guid(message['utility_provider_guid'])
@@ -146,13 +153,16 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             service_address_street = message['service_address']
             account_guids = message['account_guids']
 
-            self.utilbill_processor.create_utility_bill_with_existing_file(
+            ub = self.utilbill_processor.create_utility_bill_with_existing_file(
                 utility_account, utility, sha256_hexdigest, target_total=total,
                 service_address=Address(street=service_address_street),
                 due_date=due_date)
             update_altitude_account_guids(utility_account, account_guids)
             s.commit()
-        except:
+            logger.info('Created %s' % ub)
+        except Exception as e:
+            logger.error('Failed to process message:\n%s' % (
+                traceback.format_exc()))
             s.rollback()
             raise
         finally:
