@@ -14,12 +14,8 @@ if __name__ == '__main__':
     init_config()
     init_model()
     init_logging()
-    from billing import config
 
     logger = logging.getLogger(LOG_NAME)
-    log_path = config.get('logger_amqp_utilbill_file', 'path')
-    logger.addHandler(logging.FileHandler(log_path))
-    logger.info('Starting run_ampq_consumers')
 
     try:
         exchange_name, routing_key, amqp_connection_parameters, \
