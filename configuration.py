@@ -151,7 +151,6 @@ class logger_reebill(Schema):
 class logger_amqp_utilbill_file(Schema):
     level = String()
     handlers = String()
-    path = String()
 
 class handler_consoleHandler(Schema):
     level = String()
@@ -170,6 +169,12 @@ class handler_fileHandler(Schema):
     formatter = String()
     args = String()
 handler_fileHandler.add_field('class', String())
+
+class handler_amqp_utilbill_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_amqp_utilbill_file_handler.add_field('class', String())
 
 class formatter_simpleFormatter(Schema):
     format = String()
