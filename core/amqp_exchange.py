@@ -2,7 +2,6 @@ import json
 import re
 import uuid
 import logging
-import traceback
 from boto.s3.connection import S3Connection
 from pika import URLParameters
 from datetime import datetime
@@ -161,8 +160,7 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             s.commit()
             logger.info('Created %s' % ub)
         except Exception as e:
-            logger.error('Failed to process message:\n%s' % (
-                traceback.format_exc()))
+            logger.error('Failed to process message:', exc_info=True)
             s.rollback()
             raise
         finally:

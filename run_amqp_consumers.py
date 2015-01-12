@@ -23,7 +23,7 @@ if __name__ == '__main__':
         consume_utilbill_file_mq(exchange_name, routing_key,
                                  amqp_connection_parameters, utilbill_processor)
     except Exception as e:
-        logger.critical('Exception in run_amqp_consumers:\n%s' % format_exc())
+        logger.critical('Exception in run_amqp_consumers:', exc_info=True)
         raise
     else:
         logger.warning('End of run_ampq_consumers: should never be reached!')
