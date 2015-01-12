@@ -2,11 +2,12 @@ from unittest import TestCase
 from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
-from billing import init_config, init_model
+from billing import init_model
 from billing.test.setup_teardown import TestCaseWithSetup
-
-init_config()
+from billing.test import init_test_config
+init_test_config()
 init_model()
+
 from billing.core.model import Utility, Supplier, Address, Session, \
     UtilityAccount, RateClass
 from billing.core.altitude import AltitudeUtility, AltitudeSupplier,\
