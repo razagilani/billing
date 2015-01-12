@@ -8,6 +8,8 @@ from pika import URLParameters
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy.orm.exc import NoResultFound
+from unittest import TestCase
+from voluptuous import Invalid
 
 from billing.core.model import Session, UtilityAccount, Supplier, Address, Utility, RateClass
 from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
@@ -17,7 +19,24 @@ from billing.exc import DuplicateFileError
 from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
 from billing.mq import IncomingMessage
 from billing.core.amqp_exchange import ConsumeUtilbillFileHandler, \
-    create_dependencies
+    create_dependencies, TotalValidator, DueDateValidator
+
+
+class TestValidators(TestCase):
+
+    def test_total_validator(self):
+        validator = TotalValidator()
+        self.assertEqual(validator('$123.45'), 123.45)
+        self.assertEqual(validator(''), None)
+        with self.assertRaises(Invalid):
+            validator("nonsense")
+
+    def test_due_date_validator(self):
+        validator = DueDateValidator()
+        self.assertEqual(validator('2010-07-21T23:15:12'), date(2010, 7, 21))
+        self.assertEqual(validator(''), None)
+        with self.assertRaises(Invalid):
+            validator("nonsense")
 
 
 class TestUploadBillAMQP(TestCaseWithSetup):
