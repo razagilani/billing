@@ -37,10 +37,12 @@ def TotalValidator():
     messages: dollars and cents as a string preceded by "$", or empty.
     '''
     def validate(value):
-        substr = re.match('^\$\d*\.?\d{1,2}|$', value)
-        if substr is None:
+        if value == '':
+            return None
+        match = re.match('^\$[\d,]*\.?\d{1,2}$', value)
+        if match is None:
             raise Invalid('Invalid "total" string: "%s"' % value)
-        return None if value == '' else float(substr.group(0)[1:])
+        return float(match.group(0)[1:].replace(',', ''))
     return validate
 
 def DueDateValidator():
