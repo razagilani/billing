@@ -5,7 +5,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
+from billing.exc import NoSuchBillException, DuplicateFileError, BillingError, \
+    ProcessedBillError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -450,6 +451,8 @@ class UtilbillProcessor(object):
                 setattr(charge, k, v)
             session.flush()
             self.compute_utility_bill(charge.utilbill.id)
+        else:
+            raise ProcessedBillError('Cannot update charges for a processed utility bill')
         return charge
 
     def delete_charge(self, charge_id):
