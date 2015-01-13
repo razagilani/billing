@@ -451,8 +451,6 @@ class UtilbillProcessor(object):
             setattr(charge, k, v)
         session.flush()
         self.compute_utility_bill(charge.utilbill.id)
-        #else:
-        #    raise ProcessedBillError('Cannot update charges for a processed utility bill')
         return charge
 
     def delete_charge(self, charge_id):
