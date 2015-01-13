@@ -11,6 +11,7 @@ import mongoengine
 
 from boto.s3.connection import S3Connection
 import subprocess
+from sqlalchemy import create_engine
 
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -19,10 +20,10 @@ from billing.util.file_utils import make_directories_if_necessary
 init_test_config()
 
 
-from billing import init_config, init_model
+from billing import init_config, init_model, bind_metadata
 from billing.test import testing_utils as test_utils
 from billing.core import pricing
-from billing.core.model import Supplier, RateClass, UtilityAccount
+from billing.core.model import Supplier, RateClass, UtilityAccount, Base
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.state import StateDB, Session, UtilBill, \
@@ -59,6 +60,18 @@ from billing.reebill.reebill_file_handler import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
+def create_db():
+    '''Create database from SQLAlchemy schema, then "stamp" this database
+    with the current Alembic revision number (see
+    http://alembic.readthedocs.org/en/latest/cookbook.html).
+    '''
+    bind_metadata()
+    Base.metadata.drop_all()
+    Base.metadata.create_all()
+    from alembic.config import Config
+    from alembic import command
+    alembic_cfg = Config("alembic.ini")
+    command.stamp(alembic_cfg, "head")
 
 class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -72,7 +85,9 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        init_config('test/tstsettings.cfg')
         from billing import config
+
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
         cls.fakes3_root_dir = TempDirectory()
@@ -101,8 +116,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         cls.fakes3_process.wait()
         cls.fakes3_root_dir.cleanup()
 
+        # wipe out database tables
+        Base.metadata.drop_all();
+
     @staticmethod
-    def truncate_tables(session):
+    def delete_data(session):
         for t in [
             "altitude_utility",
             "altitude_supplier",
@@ -137,7 +155,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def insert_data():
         session = Session()
-        TestCaseWithSetup.truncate_tables(session)
+        TestCaseWithSetup.delete_data(session)
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
                      '123 Test Street',
@@ -386,12 +404,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         # tests or some other process could cause it to exit)
         self.__class__.check_fakes3_process()
 
-        init_config('test/tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
-        self.truncate_tables(self.session)
+        self.delete_data(self.session)
         TestCaseWithSetup.insert_data()
         self.session.flush()
 
@@ -400,7 +417,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
         self.session.rollback()
-        self.truncate_tables(self.session)
+        self.delete_data(self.session)
         Session.remove()
 
         self.temp_dir.cleanup()

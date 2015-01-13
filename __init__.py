@@ -65,24 +65,34 @@ def init_logging(filepath='settings.cfg'):
     log.debug('Initialized logging')
 
 
+def bind_metadata(uri=None):
+    '''Bind SQLAlchemy MetaData object to the database. This is part of
+    init_model; the only reason to call this separately from init_model is
+    when connecting to an empty database, e.g. when creating the tables to set
+    up a
+    test.
+    '''
+    from sqlalchemy import create_engine
+    from billing.core.model import Base
+    uri = uri if uri else config.get('db', 'uri')
+    engine = create_engine(uri)
+    Base.metadata.bind = engine
+
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
     """
-    from billing.core.model import Session, Base, check_schema_revision
-    from sqlalchemy import create_engine
-    import logging
-    log = logging.getLogger(__name__)
+    bind_metadata(uri)
 
+    # TODO: check_schema_revision fails because Session.bind = None
+    #from billing.core.model import Session, check_schema_revision
+    from billing.core.model import check_schema_revision
+    check_schema_revision(schema_revision=schema_revision)
 
-    uri = uri if uri else config.get('db', 'uri')
-    log.debug('Intializing sqlalchemy model with uri %s' % uri)
+    # TODO: these may not be necessary here. but if they are necessary,
+    # they should go at the beginning (right after bind_metadata)
+    from billing.core.model import Session
     Session.rollback()
     Session.remove()
-    engine = create_engine(uri)
-    Session.configure(bind=engine)
-    Base.metadata.bind = engine
-    check_schema_revision(schema_revision=schema_revision)
-    log.debug('Initialized sqlalchemy model')
 
 def initialize():
     init_logging()
