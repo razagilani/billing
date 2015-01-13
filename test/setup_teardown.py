@@ -1,3 +1,7 @@
+'''Utilities for tests that use databases and other services like FakeS3,
+RabbitMQ, and Nexus. Ideally these would be separate so each test case can
+choose only the services that it actually needs.
+'''
 import sys
 import unittest
 from datetime import date
@@ -11,7 +15,6 @@ import mongoengine
 
 from boto.s3.connection import S3Connection
 import subprocess
-from sqlalchemy import create_engine
 
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -61,22 +64,25 @@ from testfixtures import TempDirectory
 
 
 def create_db():
-    '''Create database from SQLAlchemy schema, then "stamp" this database
-    with the current Alembic revision number (see
+    '''Create empty tables in the test database from SQLAlchemy schema,
+    then "stamp"  this database with the current Alembic revision number (see
     http://alembic.readthedocs.org/en/latest/cookbook.html).
+    The database itself must already exist. Any existing database is replaced.
     '''
     bind_metadata()
     Base.metadata.drop_all()
     Base.metadata.create_all()
     from alembic.config import Config
     from alembic import command
+    # this only works when "billing" (the repository root) is the current
+    # directory
     alembic_cfg = Config(join(root_dir_path, "alembic.ini"))
     command.stamp(alembic_cfg, "head")
 
 class TestCaseWithSetup(test_utils.TestCase):
-    '''Contains setUp/tearDown code for all test cases that need to use ReeBill
-    databases.'''
-
+    '''Contains setUp/tearDown code for everything that might be used in any
+    test. Should be broken into parts as much as possible.
+    '''
     @classmethod
     def check_fakes3_process(cls):
         exit_status = cls.fakes3_process.poll()
