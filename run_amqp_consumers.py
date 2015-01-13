@@ -16,6 +16,7 @@ if __name__ == '__main__':
     init_logging()
 
     logger = logging.getLogger(LOG_NAME)
+    logger.info('Starting run_ampq_consumers')
 
     try:
         exchange_name, routing_key, amqp_connection_parameters, \
