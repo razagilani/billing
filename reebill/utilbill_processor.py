@@ -444,15 +444,15 @@ class UtilbillProcessor(object):
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
         utilbill = self._get_utilbill(charge.utilbill.id)
-        if utilbill.editable():
-            for k, v in fields.iteritems():
-                if k not in Charge.column_names():
-                    raise AttributeError("Charge has no attribute '%s'" % k)
-                setattr(charge, k, v)
-            session.flush()
-            self.compute_utility_bill(charge.utilbill.id)
-        else:
-            raise ProcessedBillError('Cannot update charges for a processed utility bill')
+        utilbill.check_editable()
+        for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
+            setattr(charge, k, v)
+        session.flush()
+        self.compute_utility_bill(charge.utilbill.id)
+        #else:
+        #    raise ProcessedBillError('Cannot update charges for a processed utility bill')
         return charge
 
     def delete_charge(self, charge_id):
