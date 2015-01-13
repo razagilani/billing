@@ -20,7 +20,7 @@ from billing.util.file_utils import make_directories_if_necessary
 init_test_config()
 
 
-from billing import init_config, init_model, bind_metadata
+from billing import init_config, init_model, bind_metadata, root_dir_path
 from billing.test import testing_utils as test_utils
 from billing.core import pricing
 from billing.core.model import Supplier, RateClass, UtilityAccount, Base
@@ -70,7 +70,7 @@ def create_db():
     Base.metadata.create_all()
     from alembic.config import Config
     from alembic import command
-    alembic_cfg = Config("alembic.ini")
+    alembic_cfg = Config(join(root_dir_path, "alembic.ini"))
     command.stamp(alembic_cfg, "head")
 
 class TestCaseWithSetup(test_utils.TestCase):

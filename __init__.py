@@ -9,6 +9,8 @@ __version__ = '23'
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
            'initialize', 'config']
 
+root_dir_path = dirname(realpath(__file__))
+
 config = None
 
 
