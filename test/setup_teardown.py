@@ -76,8 +76,15 @@ def create_db():
     from alembic import command
     # this only works when "billing" (the repository root) is the current
     # directory
-    alembic_cfg = Config(join(root_dir_path, "alembic.ini"))
+    alembic_cfg = Config(join(root_dir_path, 'test', 'tstalembic.ini'))
     command.stamp(alembic_cfg, "head")
+
+def drop_db():
+    '''Remove database tables. It may not be necessary to call this if the
+    test database is dropped.
+    '''
+    Base.metadata.drop_all()
+
 
 class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for everything that might be used in any
@@ -123,10 +130,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         cls.fakes3_root_dir.cleanup()
 
         # wipe out database tables
-        Base.metadata.drop_all();
+        drop_db()
 
     @staticmethod
     def delete_data(session):
+        # TODO use SQLAlchemy MetaData.sorted_tables
         for t in [
             "altitude_utility",
             "altitude_supplier",
