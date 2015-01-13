@@ -5,7 +5,7 @@ from sqlalchemy.orm.exc import FlushError
 from billing import init_model
 # TODO importing setup_teardown here causes core.model to be imported,
 # which defines Session with bind=None.
-#from billing.test.setup_teardown import TestCaseWithSetup
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import init_test_config
 init_test_config()
 init_model()
@@ -42,8 +42,7 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        from billing.test.setup_teardown import TestCaseWithSetup
-        TestCaseWithSetup.truncate_tables(Session())
+        TestCaseWithSetup.delete_data(Session())
 
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
@@ -51,7 +50,7 @@ class TestWithDB(TestCase):
     def tearDown(self):
         s = Session()
         s.rollback()
-        TestCaseWithSetup.truncate_tables(s)
+        TestCaseWithSetup.delete_data(s)
 
     def test_get_utility_from_guid(self):
         s = Session()

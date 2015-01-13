@@ -73,10 +73,12 @@ def bind_metadata(uri=None):
     test.
     '''
     from sqlalchemy import create_engine
-    from billing.core.model import Base
+    from billing.core.model import Base, Session
     uri = uri if uri else config.get('db', 'uri')
     engine = create_engine(uri)
     Base.metadata.bind = engine
+    Session.configure(bind=engine)
+
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
@@ -84,8 +86,8 @@ def init_model(uri=None, schema_revision=None):
     bind_metadata(uri)
 
     # TODO: check_schema_revision fails because Session.bind = None
-    #from billing.core.model import Session, check_schema_revision
-    from billing.core.model import check_schema_revision
+    from billing.core.model import Session, check_schema_revision
+    #from billing.core.model import check_schema_revision
     check_schema_revision(schema_revision=schema_revision)
 
     # TODO: these may not be necessary here. but if they are necessary,
