@@ -5,7 +5,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from billing.core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
+from billing.exc import NoSuchBillException, DuplicateFileError, BillingError, \
+    ProcessedBillError
 from billing.core.utilbill_loader import UtilBillLoader
 
 
@@ -443,13 +444,13 @@ class UtilbillProcessor(object):
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
         utilbill = self._get_utilbill(charge.utilbill.id)
-        if utilbill.editable():
-            for k, v in fields.iteritems():
-                if k not in Charge.column_names():
-                    raise AttributeError("Charge has no attribute '%s'" % k)
-                setattr(charge, k, v)
-            session.flush()
-            self.compute_utility_bill(charge.utilbill.id)
+        utilbill.check_editable()
+        for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
+            setattr(charge, k, v)
+        session.flush()
+        self.compute_utility_bill(charge.utilbill.id)
         return charge
 
     def delete_charge(self, charge_id):
