@@ -12,23 +12,21 @@ from billing.exc import RSIError, ProcessedBillError
 from billing.core.model import UtilBill, Customer, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from billing.reebill.state import Payment, ReeBillCustomer
+from billing.test.setup_teardown import create_db, TestCaseWithSetup
 
 class UtilBillTest(TestCase):
 
     def setUp(self):
+        create_db()
         init_model()
-        session = Session()
-        session.query(Register).delete()
-        session.query(UtilBill).delete()
-        session.query(Payment).delete()
-        session.query(ReeBillCustomer).delete()
-        session.query(UtilityAccount).delete()
+        TestCaseWithSetup.delete_data()
 
         self.utility = Utility('utility', Address())
         self.supplier = Supplier('supplier', Address())
 
     def tearDown(self):
         Session.remove()
+        TestCaseWithSetup.delete_data()
 
     def assert_error(self, c, error_message):
         '''Assert that the Charge 'c' has None for its quantity/rate/total
