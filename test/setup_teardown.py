@@ -101,6 +101,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         init_config('test/tstsettings.cfg')
         from billing import config
 
+        create_db()
+
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
         cls.fakes3_root_dir = TempDirectory()
@@ -134,31 +136,8 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @staticmethod
     def delete_data():
-        session = Session()
-        # TODO use SQLAlchemy MetaData.sorted_tables
-        # for t in [
-        #     "altitude_utility",
-        #     "altitude_supplier",
-        #     "altitude_account",
-        #     "utilbill_reebill",
-        #     "register",
-        #     "payment",
-        #     "reebill",
-        #     "charge",
-        #     "utilbill",
-        #     "reading",
-        #     "reebill_charge",
-        #     "customer",
-        #     "reebill_customer",
-        #     "utility_account",
-        #     "rate_class",
-        #     "supplier",
-        #     "utility",
-        #     "address",
-        # ]:
-        #     session.execute("delete from %s" % t)
-        #session.commit()
-        Base.metadata.drop_all()
+        for t in reversed(Base.metadata.sorted_tables):
+            t.delete().execute()
 
     @staticmethod
     def init_logging():
@@ -424,7 +403,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
-        self.delete_data()
         TestCaseWithSetup.insert_data()
         self.session.flush()
 
@@ -433,7 +411,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
         self.session.rollback()
-        self.delete_data(self.session)
+        self.delete_data()
         Session.remove()
 
         self.temp_dir.cleanup()
