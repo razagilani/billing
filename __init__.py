@@ -76,6 +76,13 @@ def bind_metadata(uri=None):
     '''
     from sqlalchemy import create_engine
     from billing.core.model import Base, Session
+
+    # make sure all modules containing SQLAlchemy model classes are imported
+    # here, so their tables become associated with Base.metadata
+    import billing.core.model
+    import billing.core.altitude
+    import billing.reebill.state
+
     uri = uri if uri else config.get('db', 'uri')
     engine = create_engine(uri)
     Base.metadata.bind = engine

@@ -133,7 +133,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         drop_db()
 
     @staticmethod
-    def delete_data(session):
+    def delete_data():
+        session = Session()
         # TODO use SQLAlchemy MetaData.sorted_tables
         for t in [
             "altitude_utility",
@@ -422,7 +423,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
-        self.delete_data(self.session)
+        self.delete_data()
         TestCaseWithSetup.insert_data()
         self.session.flush()
 

@@ -21,7 +21,6 @@ from alembic.migration import MigrationContext
 from billing.exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     ProcessedBillError
 
-
 __all__ = [
     'Address',
     'Base',
