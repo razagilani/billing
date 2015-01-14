@@ -3,10 +3,10 @@ from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
 from billing import init_model
-from billing.test.setup_teardown import TestCaseWithSetup
+# TODO importing setup_teardown here causes core.model to be imported,
+# which defines Session with bind=None.
+from billing.test.setup_teardown import TestCaseWithSetup, create_db, drop_db
 from billing.test import init_test_config
-init_test_config()
-init_model()
 
 from billing.core.model import Utility, Supplier, Address, Session, \
     UtilityAccount, RateClass
@@ -18,7 +18,12 @@ class TestAltitudeModelClasses(TestCase):
     '''Very simple test just to get coverage, since these classes hardly do
     anything.
     '''
+
     def setUp(self):
+        init_test_config()
+        create_db()
+        init_model()
+
         self.utility = Mock(autospec=Utility)
         self.utility.id = 1
         self.supplier = Mock(autospec=Supplier)
@@ -38,9 +43,10 @@ class TestWithDB(TestCase):
     '''Test with database for data access function.
     '''
     def setUp(self):
+        create_db()
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        TestCaseWithSetup.truncate_tables(Session())
+        TestCaseWithSetup.delete_data(Session())
 
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
@@ -48,7 +54,8 @@ class TestWithDB(TestCase):
     def tearDown(self):
         s = Session()
         s.rollback()
-        TestCaseWithSetup.truncate_tables(s)
+        TestCaseWithSetup.delete_data(s)
+        drop_db()
 
     def test_get_utility_from_guid(self):
         s = Session()
