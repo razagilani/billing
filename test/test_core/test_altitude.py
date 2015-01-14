@@ -43,11 +43,8 @@ class TestWithDB(TestCase):
     '''Test with database for data access function.
     '''
     def setUp(self):
+        init_model()
         create_db()
-        # don't use everything in TestCaseWithSetup because it needs to be
-        # broken into smaller parts
-        TestCaseWithSetup.delete_data()
-
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
