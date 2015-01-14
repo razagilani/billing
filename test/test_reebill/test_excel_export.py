@@ -11,8 +11,6 @@ import logging
 from billing.reebill.excel_export import Exporter
 from billing.core.model import UtilBill, Register, Charge
 from billing.reebill.state import StateDB, ReeBill, Payment
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import testing_utils
 from billing import init_config, init_model
 from billing.core.model import Session, UtilityAccount, Utility, Supplier, \
     Address, RateClass, UtilBill
@@ -350,6 +348,10 @@ class ExporterDataBookTest(unittest.TestCase):
             )
         )
 
+    @unittest.skip('''
+    unit test directly accesses database even though it's supposedly using a
+    mock, causes failure of other tests that use the database if enabled. to
+    fix, call mock object's methods to get data.''')
     def test_exports_returning_binaries(self):
         """
         This test simply calls all export functions returning binaries. This
