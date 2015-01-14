@@ -91,11 +91,11 @@ def _altitude_to_billing(altitude_class, billing_class):
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
 get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
 
-def _billing_to_altitude(altitude_class, billing_class):
+def _billing_to_altitude(billing_class, altitude_class):
     return lambda guid: Session().query(altitude_class).join(
         billing_class).filter(altitude_class.guid==guid).first()
-get_guid_for_utility = _altitude_to_billing(Supplier, AltitudeSupplier)
-get_guid_for_supplier = _altitude_to_billing(Supplier, AltitudeSupplier)
+get_guid_for_utility = _billing_to_altitude(Utility, AltitudeUtility)
+get_guid_for_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)
 
 
 def update_altitude_account_guids(utility_account, guids):
