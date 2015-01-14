@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy.orm import relationship
 from billing.core.model import Base, UtilityAccount
 
 class PGAccount(Base):
@@ -10,3 +11,7 @@ class PGAccount(Base):
     __tablename__ = 'pg_account'
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
                                 primary_key=True)
+    utility_account = relationship(UtilityAccount)
+
+    def __init__(self, utility_account):
+        self.utility_account = utility_account
