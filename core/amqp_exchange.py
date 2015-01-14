@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+import logging
 from boto.s3.connection import S3Connection
 from pika import URLParameters
 from datetime import datetime
@@ -23,6 +24,8 @@ __all__ = [
     'consume_utilbill_file_mq',
 ]
 
+LOG_NAME = 'amqp_utilbill_file'
+
 # Voluptuous schema for validating/parsing utility bill message contents.
 # specification is at
 # https://docs.google.com/a/nextility.com/document/d
@@ -34,10 +37,12 @@ def TotalValidator():
     messages: dollars and cents as a string preceded by "$", or empty.
     '''
     def validate(value):
-        substr = re.match('^\$\d*\.?\d{1,2}|$', value).group(0)
-        if substr is None:
-            raise Invalid('Invalid "total" string: "%s"' % value, value, state)
-        return None if substr == '' else float(substr[1:])
+        if value == '':
+            return None
+        match = re.match('^\$[\d,]*\.?\d{1,2}$', value)
+        if match is None:
+            raise Invalid('Invalid "total" string: "%s"' % value)
+        return float(match.group(0)[1:].replace(',', ''))
     return validate
 
 def DueDateValidator():
@@ -86,14 +91,13 @@ def create_dependencies():
                                  host=config.get('aws_s3', 'host'),
                                  calling_format=config.get('aws_s3',
                                                            'calling_format'))
-    utilbill_loader = UtilBillLoader(Session())
+    utilbill_loader = UtilBillLoader()
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
     bill_file_handler = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                                         utilbill_loader, url_format)
 
-    s = Session()
-    utilbill_loader = UtilBillLoader(s)
+    utilbill_loader = UtilBillLoader()
     pricing_model = FuzzyPricingModel(utilbill_loader)
     utilbill_processor = UtilbillProcessor(pricing_model, bill_file_handler, None)
 
@@ -123,42 +127,49 @@ class ConsumeUtilbillFileHandler(MessageHandler):
         self.utilbill_processor = utilbill_processor
 
     def handle(self, message):
+        logger = logging.getLogger(LOG_NAME)
+        logger.debug("Got message: can't print it because datetime.date is not "
+                     "JSON-serializable")
         s = Session()
         try:
             utility = get_utility_from_guid(message['utility_provider_guid'])
-        except NoResultFound:
+
+            try:
+                utility_account = s.query(UtilityAccount).filter_by(
+                    account_number=message['utility_account_number'],
+                    fb_utility=utility).one()
+            except NoResultFound:
+                last_account = s.query(
+                    cast(UtilityAccount.account,Integer)).order_by(
+                    cast(UtilityAccount.account, Integer).desc()).first()
+                next_account = str(last_account[0] + 1)
+                utility_account = UtilityAccount(
+                    '', next_account, utility, None, None, Address(),
+                    Address(street=message['service_address']),
+                    message['utility_account_number'])
+                s.add(utility_account)
+            sha256_hexdigest = message['sha256_hexdigest']
+            total = message['total']
+            due_date = message['due_date']
+            service_address_street = message['service_address']
+            account_guids = message['account_guids']
+
+            ub = self.utilbill_processor.create_utility_bill_with_existing_file(
+                utility_account, utility, sha256_hexdigest, target_total=total,
+                service_address=Address(street=service_address_street),
+                due_date=due_date)
+            update_altitude_account_guids(utility_account, account_guids)
+            s.commit()
+            logger.info('Created %s' % ub)
+        except Exception as e:
+            logger.error('Failed to process message:', exc_info=True)
+            s.rollback()
             raise
-
-        try:
-            utility_account = s.query(UtilityAccount).filter_by(
-                account_number=message['utility_account_number'],
-                fb_utility=utility).one()
-        except NoResultFound:
-            last_account = s.query(cast(UtilityAccount.account, Integer)).order_by(
-                cast(UtilityAccount.account, Integer).desc()).first()
-            next_account = str(last_account[0] + 1)
-            utility_account = UtilityAccount('', next_account,
-                                             utility,
-                                             None,
-                                             None,
-                                             Address(),
-                                             Address(street=message['service_address']),
-                                             message['utility_account_number']
-                                             )
-            s.add(utility_account)
-        sha256_hexdigest = message['sha256_hexdigest']
-        total = message['total']
-        due_date = message['due_date']
-        service_address_street = message['service_address']
-        account_guids = message['account_guids']
-
-        self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, sha256_hexdigest,
-            target_total=total,
-            service_address=Address(street=service_address_street),
-            due_date=due_date)
-        update_altitude_account_guids(utility_account, account_guids)
-        s.commit()
+        finally:
+            # Session.remove() probably should be called here but can't
+            # because tests use the Session to query for data. not sure what
+            # to do about that.
+            pass
 
 
 def consume_utilbill_file_mq(

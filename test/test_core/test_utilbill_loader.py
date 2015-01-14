@@ -28,7 +28,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session.commit()
 
         self.session = Session()
-        self.ubl = UtilBillLoader(self.session)
+        self.ubl = UtilBillLoader()
 
     def tearDown(self):
         self.session.commit()

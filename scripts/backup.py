@@ -381,8 +381,7 @@ def download(args):
 
 def get_key_names_for_account(account_id):
     init_model()
-    session = Session()
-    ubl = UtilBillLoader(session)
+    ubl = UtilBillLoader()
     utilbills = ubl.get_utilbills_for_account_id(account_id)
     return [BillFileHandler.get_key_name_for_utilbill(u) for u in utilbills]
 

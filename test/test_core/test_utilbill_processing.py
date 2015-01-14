@@ -1,7 +1,7 @@
 import requests
 
 from test import init_test_config
-from exc import DuplicateFileError
+from exc import DuplicateFileError, ProcessedBillError
 
 init_test_config()
 
@@ -870,6 +870,21 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 },
                             ], charges):
             self.assertDictContainsSubset(x, y)
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         rate_class='some rate class')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='some supplier')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         processed=True)
+        self.assertRaises(ProcessedBillError, self.utilbill_processor.update_charge, {
+                                       'rsi_binding': 'C',
+                                       'description':'not shared',
+                                       'quantity_formula': '6',
+                                       'rate': 7,
+                                       'unit':'therms',
+                                       'group': 'All Charges',
+                                       'shared': False
+                                   }, utilbill_id=utilbill_data['id'], rsi_binding='B')
 
     def test_compute_realistic_charges(self):
         '''Tests computing utility bill charges and reebill charge for a

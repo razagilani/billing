@@ -138,7 +138,7 @@ class WebResource(object):
                 port=config.get('aws_s3', 'port'),
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
-        utilbill_loader = UtilBillLoader(Session())
+        utilbill_loader = UtilBillLoader()
         # TODO: ugly. maybe put entire url_format in config file.
         url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 'https' if config.get('aws_s3', 'is_secure') is True else

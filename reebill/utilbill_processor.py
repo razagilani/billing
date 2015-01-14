@@ -5,7 +5,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from exc import NoSuchBillException, DuplicateFileError
+from exc import NoSuchBillException, DuplicateFileError, BillingError, \
+    ProcessedBillError
 from core.utilbill_loader import UtilBillLoader
 
 
@@ -34,7 +35,7 @@ class UtilbillProcessor(object):
 
     # TODO this method might be replaced by the UtilbillLoader method
     def _get_utilbill(self, utilbill_id):
-        return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
+        return UtilBillLoader().get_utilbill_by_id(utilbill_id)
 
     ############################################################################
     # methods that are actually for "processing" UtilBills
@@ -116,7 +117,7 @@ class UtilbillProcessor(object):
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
         try:
-            predecessor = UtilBillLoader(session).get_last_real_utilbill(
+            predecessor = UtilBillLoader().get_last_real_utilbill(
                 utility_account.account, end=start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
@@ -268,7 +269,7 @@ class UtilbillProcessor(object):
         assert isinstance(service_address, (Address, type(None)))
 
         s = Session()
-        if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
+        if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
@@ -298,7 +299,7 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return UtilBillLoader(Session()).get_last_real_utilbill(
+        return UtilBillLoader().get_last_real_utilbill(
             account, end=datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
@@ -443,13 +444,13 @@ class UtilbillProcessor(object):
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
         utilbill = self._get_utilbill(charge.utilbill.id)
-        if utilbill.editable():
-            for k, v in fields.iteritems():
-                if k not in Charge.column_names():
-                    raise AttributeError("Charge has no attribute '%s'" % k)
-                setattr(charge, k, v)
-            session.flush()
-            self.compute_utility_bill(charge.utilbill.id)
+        utilbill.check_editable()
+        for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
+            setattr(charge, k, v)
+        session.flush()
+        self.compute_utility_bill(charge.utilbill.id)
         return charge
 
     def delete_charge(self, charge_id):

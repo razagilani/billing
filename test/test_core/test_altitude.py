@@ -4,9 +4,10 @@ from sqlalchemy.orm.exc import FlushError
 
 from core import init_config, init_model
 from test.setup_teardown import TestCaseWithSetup
-
-init_config()
+from test import init_test_config
+init_test_config()
 init_model()
+
 from core.model import Utility, Supplier, Address, Session, \
     UtilityAccount, RateClass
 from core.altitude import AltitudeUtility, AltitudeSupplier,\

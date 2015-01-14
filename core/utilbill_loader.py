@@ -1,27 +1,21 @@
 from sqlalchemy import desc
-from core.model import UtilBill, UtilityAccount
+from core.model import UtilBill, UtilityAccount, Session
 from exc import NoSuchBillException
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
     from other classes so they can be more easily tested.
     '''
-    def __init__(self, session):
-        ''''session': SQLAlchemy session object to be used for database
-        queries.
-        '''
-        self._session = session
-
     def get_utilbill_by_id(self, utilbill_id):
         '''Return utilbill with the given id.'''
-        return self._session.query(UtilBill).filter_by(id=utilbill_id).one()
+        return Session().query(UtilBill).filter_by(id=utilbill_id).one()
 
     def load_real_utilbills(self, **kwargs):
         '''Returns a cursor of UtilBill objects matching the criteria given
         by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
         state Estimated or lower) are included.
         '''
-        cursor = self._session.query(UtilBill).filter(
+        cursor = Session().query(UtilBill).filter(
             UtilBill.state <= UtilBill.Estimated)
         for key, value in kwargs.iteritems():
             cursor = cursor.filter(getattr(UtilBill, key) == value)
@@ -33,9 +27,9 @@ class UtilBillLoader(object):
         whose end date is before/on 'end', and optionally with
         the given service, utility, rate class, and 'processed' status.
         '''
-        utility_account = self._session.query(UtilityAccount).filter_by(account=account) \
-            .one()
-        cursor = self._session.query(UtilBill) \
+        utility_account = Session().query(UtilityAccount).filter_by(
+            account=account).one()
+        cursor = Session().query(UtilBill) \
             .filter(UtilBill.utility_account == utility_account)
         if end is not None:
             cursor = cursor.filter(UtilBill.period_end <= end)
@@ -56,13 +50,13 @@ class UtilBillLoader(object):
     def count_utilbills_with_hash(self, hash):
         '''Return the number of utility bills having the given SHA-256 hash.
         '''
-        return self._session.query(UtilBill).filter_by(
+        return Session().query(UtilBill).filter_by(
             sha256_hexdigest=hash).count()
 
     def get_utilbills_for_account_id(self, utility_account_id):
         '''Return an iterator containing utility bills whose UtilityAccount
         is identified by utility_account_id.
         '''
-        return self._session.query(UtilBill).join(
+        return Session().query(UtilBill).join(
             UtilityAccount).filter(UtilityAccount.id==utility_account_id)
 
