@@ -12,26 +12,26 @@ import mongoengine
 from boto.s3.connection import S3Connection
 import subprocess
 
-from billing.test import init_test_config
-from billing.util.file_utils import make_directories_if_necessary
+from test import init_test_config
+from util.file_utils import make_directories_if_necessary
 
 
 init_test_config()
 
 
-from billing import init_config, init_model
-from billing.test import testing_utils as test_utils
-from billing.core import pricing
-from billing.core.model import Supplier, RateClass, UtilityAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.reebill import journal
-from billing.reebill.state import StateDB, Session, UtilBill, \
+from core import init_config, init_model
+from test import testing_utils as test_utils
+from core import pricing
+from core.model import Supplier, RateClass, UtilityAccount
+from core.utilbill_loader import UtilBillLoader
+from reebill import journal
+from reebill.state import StateDB, Session, UtilBill, \
     Register, Address, ReeBillCustomer
-from billing.core.model import Utility
-from billing.core.bill_file_handler import BillFileHandler
-from billing.reebill.fetch_bill_data import RenewableEnergyGetter
-from billing.reebill.utilbill_processor import UtilbillProcessor
-from billing.reebill.reebill_processor import ReebillProcessor
+from core.model import Utility
+from core.bill_file_handler import BillFileHandler
+from reebill.fetch_bill_data import RenewableEnergyGetter
+from reebill.utilbill_processor import UtilbillProcessor
+from reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -55,7 +55,7 @@ def init_logging():
 
 init_logging()
 
-from billing.reebill.reebill_file_handler import ReebillFileHandler
+from reebill.reebill_file_handler import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
@@ -72,7 +72,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from billing import config
+        from core import config
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
         cls.fakes3_root_dir = TempDirectory()
@@ -300,7 +300,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.
         """
-        from billing import config
+        from core import config
 
         logger = logging.getLogger('test')
 

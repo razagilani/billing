@@ -1,13 +1,13 @@
 from jinja2 import Template
 from mock import Mock, call
 
-from billing.test import init_test_config
+from test import init_test_config
 
 init_test_config()
-from billing import config
+from core import config
 
 from unittest import TestCase
-from billing.reebill.bill_mailer import Mailer, TEMPLATE_FILE_PATH
+from reebill.bill_mailer import Mailer, TEMPLATE_FILE_PATH
 
 class BillMailerTest(TestCase):
     def setUp(self):

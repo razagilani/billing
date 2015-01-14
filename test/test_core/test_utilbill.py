@@ -3,15 +3,15 @@ included in it.
 '''
 from test import init_test_config
 init_test_config()
-from billing import init_model
+from core import init_model
 
 from datetime import date
 from unittest import TestCase
 
-from billing.exc import RSIError, ProcessedBillError
-from billing.core.model import UtilBill, Customer, Session, Charge,\
+from exc import RSIError, ProcessedBillError
+from core.model import UtilBill, Customer, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import Payment, ReeBillCustomer
+from reebill.state import Payment, ReeBillCustomer
 
 class UtilBillTest(TestCase):
 
