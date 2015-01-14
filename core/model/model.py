@@ -71,7 +71,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '5a6d7e4f8b80'
+_schema_revision = '556352363426'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -380,6 +380,7 @@ class UtilBill(Base):
     target_total = Column(Float)
 
     date_received = Column(DateTime)
+    date_modified = Column(DateTime)
     account_number = Column(String(1000), nullable=False)
     sha256_hexdigest = Column(String(64), nullable=False)
 
@@ -485,6 +486,8 @@ class UtilBill(Base):
         # UtilBills in an actual database then we should probably have actual
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
+
+        self.date_modified = datetime.utcnow()
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
@@ -621,12 +624,32 @@ class UtilBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
+    def get_supply_charges(self):
+        '''Return a list of Charges that are for supply (rather than
+        distribution, or other).
+        '''
+        return [c for c in self.charges if c.has_charge and c.type == 'supply']
+
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
         errors.
         """
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
+
+    def get_supply_total(self):
+        '''Return the total cost of all supply charges.
+        '''
+        return sum(c.total for c in self.get_supply_charges())
+
+    def get_total_energy_consumption(self):
+        '''Return total energy consumption, i.e. value of the "REG_TOTAL"
+        register, in whatever unit it uses.
+        '''
+        # a "REG_TOTAL" register should exist in every bill
+        total_register = next(r for r in self.registers if r.register_binding
+                              == 'REG_TOTAL')
+        return total_register.quantity
 
     def column_dict(self):
         result = dict(super(UtilBill, self).column_dict().items() +
@@ -721,6 +744,7 @@ class Register(Base):
         return result
 
 
+
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
@@ -728,6 +752,9 @@ class Charge(Base):
 
     # allowed units for "quantity" field of charges
     CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
+
+    # allowed values for "type" field of charges
+    CHARGE_TYPES = ['supply', 'distribution', 'other']
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -748,6 +775,7 @@ class Charge(Base):
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
+    type = Column(Enum(*CHARGE_TYPES), nullable=False)
 
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
 
@@ -776,7 +804,7 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', unit='',
-            has_charge=True, shared=False, roundrule=""):
+            has_charge=True, shared=False, roundrule="", type='other'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -800,6 +828,9 @@ class Charge(Base):
         self.shared = shared
         self.rate=rate
         self.roundrule = roundrule
+        if not type in self.CHARGE_TYPES:
+            raise ValueError('Invalid charge type "%s"' % type)
+        self.type = type
 
     @classmethod
     def formulas_from_other(cls, other):
