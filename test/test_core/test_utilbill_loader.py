@@ -16,7 +16,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.delete_data(self.session)
+        TestCaseWithSetup.delete_data()
         blank_address = Address()
         utility =  Utility('Test Utility', Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,

@@ -1,7 +1,8 @@
 '''Tests for ReeBill-specific data-access objects, including the database.
 Currently the only one is StateDB.
 '''
-from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+from billing.test.setup_teardown import init_logging, TestCaseWithSetup, \
+    create_db
 from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
 from billing.reebill.state import ReeBillCustomer
 
@@ -29,8 +30,8 @@ class StateDBTest(TestCaseWithSetup):
         # clear out database
         init_config('test/tstsettings.cfg')
         init_model()
+        create_db()
         self.session = Session()
-        TestCaseWithSetup.delete_data(self.session)
         blank_address = Address()
         test_utility = Utility('FB Test Utility Name', blank_address)
         test_supplier = Supplier('FB Test Suplier', blank_address)
@@ -48,7 +49,7 @@ class StateDBTest(TestCaseWithSetup):
 
     def tearDown(self):
         self.session.rollback()
-        self.delete_data(self.session)
+        self.delete_data()
 
     def test_versions(self):
         '''Tests max_version(), max_issued_version(), increment_version(), and
