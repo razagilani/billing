@@ -30,7 +30,7 @@ class StateDBTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.truncate_tables(self.session)
+        TestCaseWithSetup.delete_data(self.session)
         blank_address = Address()
         test_utility = Utility('FB Test Utility Name', blank_address)
         test_supplier = Supplier('FB Test Suplier', blank_address)
@@ -48,7 +48,7 @@ class StateDBTest(TestCaseWithSetup):
 
     def tearDown(self):
         self.session.rollback()
-        self.truncate_tables(self.session)
+        self.delete_data(self.session)
 
     def test_versions(self):
         '''Tests max_version(), max_issued_version(), increment_version(), and
