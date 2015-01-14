@@ -492,6 +492,16 @@ class UtilBill(Base):
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
 
+    def get_utility(self):
+        # the 'utility' attribute may move to UtilityAccount where it would
+        # make more sense for it to be.
+        return self.utility
+
+    def get_supplier(self):
+        # the 'supplier' attribute may move to UtilityAccount where it would
+        # make more sense for it to be.
+        return self.supplier
+
     def get_utility_name(self):
         '''Return name of this bill's utility.
         '''
@@ -546,7 +556,6 @@ class UtilBill(Base):
             registers[0].register_binding
         session.flush()
         return charge
-
 
     def ordered_charges(self):
         """Sorts the charges by their evaluation order. Any charge that is
@@ -638,17 +647,22 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def get_supply_total(self):
-        '''Return the total cost of all supply charges.
+        '''Return the total cost of all supply charges, excluding any charge
+        that has an error or has_charge=False.
         '''
-        return sum(c.total for c in self.get_supply_charges())
+        return sum(c.total for c in self.get_supply_charges()
+                   if c.total is not None and c.has_charge)
 
     def get_total_energy_consumption(self):
         '''Return total energy consumption, i.e. value of the "REG_TOTAL"
-        register, in whatever unit it uses.
+        register, in whatever unit it uses. Return 0 if there is no
+        "REG_TOTAL" (which is not supposed to happen).
         '''
-        # a "REG_TOTAL" register should exist in every bill
-        total_register = next(r for r in self.registers if r.register_binding
-                              == 'REG_TOTAL')
+        try:
+            total_register = next(r for r in self.registers
+                                  if r.register_binding == 'REG_TOTAL')
+        except StopIteration:
+            return 0
         return total_register.quantity
 
     def column_dict(self):
@@ -893,6 +907,8 @@ class Charge(Base):
                 evaluation.exception.message
         return evaluation
 
+    def __repr__(self):
+        return '<Charge "%s">' % (self.rsi_binding)
     def get_create_utility(self, utility_name):
         session = Session()
         try:
