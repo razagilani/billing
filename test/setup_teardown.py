@@ -136,28 +136,29 @@ class TestCaseWithSetup(test_utils.TestCase):
     def delete_data():
         session = Session()
         # TODO use SQLAlchemy MetaData.sorted_tables
-        for t in [
-            "altitude_utility",
-            "altitude_supplier",
-            "altitude_account",
-            "utilbill_reebill",
-            "register",
-            "payment",
-            "reebill",
-            "charge",
-            "utilbill",
-            "reading",
-            "reebill_charge",
-            "customer",
-            "reebill_customer",
-            "utility_account",
-            "rate_class",
-            "supplier",
-            "utility",
-            "address",
-        ]:
-            session.execute("delete from %s" % t)
-        session.commit()
+        # for t in [
+        #     "altitude_utility",
+        #     "altitude_supplier",
+        #     "altitude_account",
+        #     "utilbill_reebill",
+        #     "register",
+        #     "payment",
+        #     "reebill",
+        #     "charge",
+        #     "utilbill",
+        #     "reading",
+        #     "reebill_charge",
+        #     "customer",
+        #     "reebill_customer",
+        #     "utility_account",
+        #     "rate_class",
+        #     "supplier",
+        #     "utility",
+        #     "address",
+        # ]:
+        #     session.execute("delete from %s" % t)
+        #session.commit()
+        Base.metadata.drop_all()
 
     @staticmethod
     def init_logging():
@@ -170,7 +171,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def insert_data():
         session = Session()
-        TestCaseWithSetup.delete_data(session)
+        #TestCaseWithSetup.delete_data()
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
                      '123 Test Street',
