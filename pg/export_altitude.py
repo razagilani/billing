@@ -16,14 +16,13 @@ def get_dataset():
     '''
     dataset = Dataset(headers=[
         'billing_customer_id',
-        'utility_bill_guid,',
+        'utility_bill_guid',
         'utility_guid',
         'supplier_guid',
         'service_type',
         'utility_account_number',
         'billing_period_start_date',
         'billing_period_end_date',
-        'next_estimated_meter_read_date',
         'total_usage',
         'total_supply_charge',
         'rate_class',
@@ -33,7 +32,7 @@ def get_dataset():
         'service_address_postal_code',
         'create_date',
         'modified_date',
-        ])
+    ])
     s = Session()
     for ub in s.query(UtilBill).join(UtilityAccount).join(PGAccount):
         append_row_as_dict(dataset, {
@@ -42,11 +41,9 @@ def get_dataset():
             'utility_guid': altitude.get_guid_for_utility(ub.get_utility()),
             'supplier_guid': altitude.get_guid_for_supplier(ub.get_supplier()),
             'service_type': ub.service,
-            'utility_account_number': ub.utility_account.utility_account_number,
+            'utility_account_number': ub.utility_account.account_number,
             'billing_period_start_date': ub.period_start,
             'billing_period_end_date': ub.period_end,
-            'next_estimated_meter_read_date': ub.ub.period_end + timedelta(
-                days=30),
             'total_usage': ub.get_total_energy_consumption(),
             'total_supply_charge': ub.get_supply_total(),
             'rate_class': ub.get_rate_class_name(),
@@ -54,8 +51,10 @@ def get_dataset():
             'service_address_city': ub.service_address.city,
             'service_address_state': ub.service_address.state,
             'service_address_postal_code': ub.service_address.postal_code,
-            'create_date': UtilBill.date_received,
-            'modified_date': UtilBill.date_modified,
+            'create_date': ('' if ub.date_received is None else
+                            ub.date_received.isoformat()),
+            'modified_date': ('' if ub.date_modified is None else
+                              ub.date_modified.isoformat()),
         })
     return dataset
 
