@@ -5,57 +5,33 @@ Ext.Ajax.on('requestexception', function (conn, response, options) {
     }
 });
 
-Ext.Ajax.request({
-    url: 'http://' + window.location.host + '/utilitybills/ui_configuration',
-    dataType: 'json',
-    success: function(response) {
-        var data = Ext.JSON.decode(response.responseText);
+Ext.application({
+    name: 'ReeBill', // TODO change
+    autoCreateViewport: true,
 
-        // TODO: we don't need these
-        config.preferencesPanelDisabled = false;
-        config.reportPanelDisabled = false;
-        config.journalPanelDisabled = false;
-        config.aboutPanelDisabled = false;
-        config.chargesPanelDisabled = false;
-        config.billPeriodsPanelDisabled = false;
-        config.usagePeriodsPanelDisabled = false;
-        config.reeBillPanelDisabled = false;
-        config.utilityBillPanelDisabled = false;
-        config.accountsPanelDisabled = false;
-        config.paymentPanelDisabled = false;
-        config.issuablePanelDisabled = false;
-        config.reebillChargesPanelDisabled = false;
-        config.defaultAccountSortField = false;
-        config.defaultAccountSortDir = false;
+    paths: {'ReeBill': 'static/app'},
 
-        Ext.application({
-            name: 'ReeBill', // TODO change
-            autoCreateViewport: true,
+    controllers: [
+        'UtilityBills',
+        'UtilityBillRegisters',
+        'Charges',
+        'TabPanel',
+        'Viewer'
+    ],
 
-            paths: {'ReeBill': 'static/app'},
+    stores: [
+        'Suppliers',
+        'Services',
+        'Utilities',
+        'RateClasses',
+        'Charges',
+        'Units',
+        'UtilityBillRegisters',
+        'UtilityBills',
+        'UtilityBillsMemory', // not sure if we need this
+        'Timestamps' // ???
+    ],
 
-            controllers: [
-                'UtilityBills',
-                'UtilityBillRegisters',
-                'Charges',
-                'TabPanel',
-                'Viewer'
-            ],
-
-            stores: [
-                'Suppliers',
-                'Services',
-                'Utilities',
-                'RateClasses',
-                'Charges',
-                'Units',
-                'UtilityBillRegisters',
-                'UtilityBills',
-                'UtilityBillsMemory', // not sure if we need this
-                'Timestamps' // ???
-            ],
-
-            launch: function() {}
-        });
-    }
+    launch: function() {}
 });
+
