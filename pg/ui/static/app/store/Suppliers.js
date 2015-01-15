@@ -15,7 +15,7 @@ Ext.define('ReeBill.store.Suppliers', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/reebill/suppliers',
+        url: 'http://' + window.location.host + '/utilitybills/suppliers',
 
         reader: {
             type: 'json',

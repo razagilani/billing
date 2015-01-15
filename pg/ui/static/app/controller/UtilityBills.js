@@ -122,7 +122,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+        // TODO: show bills for all accounts
+        var selectedAccount = '10001';
         var store = this.getUtilityBillsStore();
 
         if (!selectedAccount || !selectedAccount.length)
@@ -135,7 +136,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }else{
             selectedNode = store.find('id', selectedBill[0].getId());
         }
-        store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
+        store.getProxy().setExtraParam('account', selectedAccount);
         store.reload({
             scope: this,
             callback: function(){
@@ -190,7 +191,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             store = this.getUtilityBillsStore();
 
         this.getUploadUtilityBillForm().getForm().submit({
-            url: 'http://'+window.location.host+'/reebill/utilitybills',
+            url: 'http://'+window.location.host+'/utilitybills/utilitybills',
             success: function() {
                 scope.initalizeUploadForm();
                 store.reload();

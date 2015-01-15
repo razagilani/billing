@@ -16,7 +16,7 @@ Ext.define('ReeBill.store.UtilityBills', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://'+window.location.host+'/reebill/utilitybills',
+        url: 'http://'+window.location.host+'/utilitybills/utilitybills',
 		reader: {
 			type: 'json',
 			root: 'rows',
