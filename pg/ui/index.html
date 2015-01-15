@@ -38,7 +38,8 @@
 
         var xmlHttp = new XMLHttpRequest();
         var v = Math.random() * 100000000000000000;
-        var url = window.location.origin + '/reebill/static/revision.txt?_dc='
+        var url = window.location.origin +
+                '/utilitybills/static/revision.txt?_dc='
                 + v;
         xmlHttp.open("GET", url, true);
         xmlHttp.onreadystatechange = function () {

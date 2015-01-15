@@ -551,7 +551,7 @@ if __name__ == '__main__':
     app = ReebillWSGI()
 
     class CherryPyRoot(object):
-        reebill = app
+        utilitybills = app
 
     ui_root = join(dirname(realpath(__file__)), 'ui')
     cherrypy_conf = {

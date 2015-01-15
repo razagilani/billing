@@ -15,7 +15,7 @@ Ext.define('ReeBill.store.RateClasses', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/reebill/rateclasses',
+        url: 'http://' + window.location.host + '/utilitybills/rateclasses',
 
         reader: {
             type: 'json',

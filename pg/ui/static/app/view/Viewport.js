@@ -28,15 +28,15 @@ Ext.define('ReeBill.view.Viewport', {
                 collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
-            },{
-                region: 'east',
-                xtype: 'pdfpanel',
-                name: 'reebillViewer',
-                collapsible: true,
-                collapsed: true,
-                cache: false,
-                src: '',
-                width: Ext.getBody().getWidth() * 0.3
+            //},{
+            //    region: 'east',
+            //    xtype: 'pdfpanel',
+            //    name: 'reebillViewer',
+            //    collapsible: true,
+            //    collapsed: true,
+            //    cache: false,
+            //    src: '',
+            //    width: Ext.getBody().getWidth() * 0.3
             },{
                 xtype: 'tabpanel',
                 region: 'center',
@@ -54,25 +54,9 @@ Ext.define('ReeBill.view.Viewport', {
 
                 items: [{
                     xtype: 'panel',
-                    name: 'accountsTab',
-                    title: 'Accounts',
-                    layout: 'accordion',
-                    defaults: {
-                        collapsible: true
-                    },
-                    items: [{
-                        xtype: 'accounts',
-                        id: 'accountsGrid'
-                    },{
-                        xtype: 'accountForm',
-                        id: 'newAccountForm'
-                    }]
-                },{
-                    xtype: 'panel',
                     name: 'utilityBillsTab',
                     title: 'Utility Bills',
                     layout: 'border',
-                    disabled: true,
                     defaults: {
                         collapsible: true,
                         split: true
@@ -124,95 +108,6 @@ Ext.define('ReeBill.view.Viewport', {
                         id: 'chargesGrid',
                         region: 'center'
                     }]
-                },{
-                    xtype: 'payments',
-                    id: 'paymentsGrid',
-                    disabled: true
-                },{
-                    xtype: 'panel',
-                    name: 'reebillsTab',
-                    title: 'Reebills',
-                    layout: 'accordion',
-                    defaults: {
-                            collapsible: true
-                    },
-                    disabled: true,
-                    items: [{
-                        xtype: 'reebills',
-                        id: 'reebillsGrid'
-                    },{
-                        xtype: 'sequentialAccountInformation',
-                        id: 'sequentialAccountInformationForm',
-                        disabled: true
-                    },{
-                        xtype: 'uploadIntervalMeter',
-                        id: 'uploadIntervalMeterForm',
-                        disabled: true
-                    }]
-                },{
-                    xtype: 'panel',
-                    name: 'reebillChargesTab',
-                    title: 'Reebill Charges',
-                    layout: 'border',
-                    disabled: true,
-                    items: [{
-                        xtype: 'panel',
-                        title: 'Reebill Charges',
-                        region: 'north'
-                    },{
-                        xtype: 'reeBillVersions',
-                        name: 'reeBillChargesVersions',
-                        region: 'north'
-                    },{
-                        xtype: 'reebillCharges',
-                        id: 'reebillChargesGrid',
-                        region: 'center'
-                    }]
-                },{
-                    xtype: 'issuableReebills',
-                    id: 'issuableReebillsGrid',
-                },{
-                    xtype: 'panel',
-                    name: 'journalTab',
-                    title: 'Journal',
-                    layout: 'border',
-                    items: [{
-                        xtype: 'noteForm',
-                        region: 'north',
-                        id: 'noteForm'
-                    },{
-                        xtype: 'journalEntries',
-                        region: 'center',
-                        id: 'journalEntriesGrid'
-                    }]
-                },{
-                    xtype: 'panel',
-                    name: 'reportsTab',
-                    title: 'Reports',
-                    layout: 'border',
-                    items: [{
-                        xtype: 'accountDatePicker',
-                        id: 'accountDatePicker'
-                    },{
-                        xtype: 'exports',
-                        id: 'exportsGrid',
-                        region: 'north'
-                    },{
-                        xtype: 'panel',
-                        header: false,
-                        layout: 'accordion',
-                        region: 'center',
-                        items: [{
-                            xtype: 'reconciliations',
-                            id: 'reconciliationsGrid',
-                        },{
-                            xtype: 'estimatedRevenue',
-                            id: 'estimatedRevenueGrid',
-                        },]
-                    }]
-                },{
-                    xtype: 'preferencesPanel',
-                    name: 'preferencesPanel'
                 }],
 
                 dockedItems: [{
@@ -227,7 +122,7 @@ Ext.define('ReeBill.view.Viewport', {
                     },{
                         text: 'Logout',
                         handler: function(){
-                            window.location.pathname = 'reebill/logout';
+                            window.location.pathname = 'utilitybills/logout';
                         }
                     },'->',{
                         xtype: 'tbtext',
