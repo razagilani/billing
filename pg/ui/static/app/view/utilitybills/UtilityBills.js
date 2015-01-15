@@ -37,21 +37,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         dataIndex: 'name',
         hidden: true
     },{
-        header: 'Service',
-        dataIndex: 'service',
-        editor: {
-            xtype: 'combo',
-            name: 'service',
-            store: 'Services',
-            triggerAction: 'all',
-            valueField: 'name',
-            displayField: 'value',
-            queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
-        }  
-    },{
-        header: 'Start Date',
+        header: 'Start',
         dataIndex: 'period_start',
         editor: {
             xtype: 'datefield',
@@ -63,7 +49,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
     },{
-        header: 'End Date',
+        header: 'End',
         dataIndex: 'period_end',
         editor: {
             xtype: 'datefield',
@@ -83,86 +69,35 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 100,
         renderer: Ext.util.Format.usMoney
-    },{
-        header: 'Calculated',
-        dataIndex: 'computed_total',
-        width: 100,
-        renderer: Ext.util.Format.usMoney
-    },{
-        header: 'RB Seq./Vers.',
-        tooltip: 'Reebill Sequence/Version',
-        dataIndex: 'reebills',
-        width: 120,
-        renderer: function(value, metaData, record) {
-            var result = '';
-            var reebills = record.get('reebills');
-
-            for (var i = 0; i < reebills.length; i++) {
-                var sequence = reebills[i].sequence;
-                result += sequence.toString() + "-";
-                while (i < reebills.length && reebills[i].sequence ==
-                        sequence) {
-                    result += reebills[i].version + ",";
-                    i++;
-                } 
-                result = result.substr(0,result.length-1);
-                result += ' ';
-            }
-
-            return result;
-        }
-    },{
-        header: 'Processed',
-        dataIndex: 'processed',
-        width: 100,
-        tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
-        renderer: function(value) {
-            return value ? 'Yes' : 'No';                    
-        }
-    },{
-        header: 'State',
-        dataIndex: 'state',
-        width: 100
-    },{
-        header: 'Utility',
-        dataIndex: 'utility',
+    }, {
+        header: 'Service Address',
+        dataIndex: 'service_address'
+        },{
+            header: 'Next Meter Read',
+            dataIndex: 'next_estimated_meter_read_date'
+        },{
+            header: 'Total Supply',
+            dataIndex: 'supply_total'
+        },{
+            header: 'Utility Account Number',
+            dataIndex: 'utility_account_number'
+        },{
+            header: 'Secondary Utility Account Number',
+            dataIndex: 'secondary_account_number'
+    }, {
+        header: 'Service',
+        dataIndex: 'service',
         editor: {
             xtype: 'combo',
-            store: 'Utilities',
-            itemId: 'utility_combo',
-            displayField: 'name',
-            valueField: 'name',
+            name: 'service',
+            store: 'Services',
             triggerAction: 'all',
-            forceSelection: false,
-            typeAhead: true,
-            typeAheadDelay : 1,
-            autoSelect: false,
-            regex: /[a-zA-Z0-9]+/,
-            minChars: 1
-        },
-        width: 100,
-        renderer: function(value, metaData, record) {
-            return record.get('utility').name;
+            valueField: 'name',
+            displayField: 'value',
+            queryMode: 'local',
+            forceSelection: true,
+            selectOnFocus: true
         }
-    },{
-        header: 'Supplier',
-        dataIndex: 'supplier',
-        emptyText: 'Unknown Supplier',
-        editor: {
-            xtype: 'combo',
-            store: 'Suppliers',
-            itemId: 'supplier_combo',
-            displayField: 'name',
-            valueField: 'name',
-            triggerAction: 'all',
-            forceSelection: false,
-            typeAhead: true,
-            typeAheadDelay : 1,
-            autoSelect: false,
-            regex: /[a-zA-Z0-9]+/,
-            minChars: 1
-        },
-        width: 100
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -183,7 +118,48 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 125,
         flex: 1
-    }],
+    }
+        //},{
+        //    header: 'Utility',
+        //    dataIndex: 'utility',
+        //    editor: {
+        //        xtype: 'combo',
+        //        store: 'Utilities',
+        //        itemId: 'utility_combo',
+        //        displayField: 'name',
+        //        valueField: 'name',
+        //        triggerAction: 'all',
+        //        forceSelection: false,
+        //        typeAhead: true,
+        //        typeAheadDelay : 1,
+        //        autoSelect: false,
+        //        regex: /[a-zA-Z0-9]+/,
+        //        minChars: 1
+        //    },
+        //    width: 100,
+        //    renderer: function(value, metaData, record) {
+        //        return record.get('utility').name;
+        //    }
+        //},{
+        //    header: 'Supplier',
+        //    dataIndex: 'supplier',
+        //    emptyText: 'Unknown Supplier',
+        //    editor: {
+        //        xtype: 'combo',
+        //        store: 'Suppliers',
+        //        itemId: 'supplier_combo',
+        //        displayField: 'name',
+        //        valueField: 'name',
+        //        triggerAction: 'all',
+        //        forceSelection: false,
+        //        typeAhead: true,
+        //        typeAheadDelay : 1,
+        //        autoSelect: false,
+        //        regex: /[a-zA-Z0-9]+/,
+        //        minChars: 1
+        //    },
+        //    width: 100
+    ],
 
     dockedItems: [{
         dock: 'top',
@@ -207,21 +183,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             action: 'utilbillToggleProcessed',
             text: 'Toggle Processed',
             disabled: true
-//        },'-',{
-//            xtype: 'button',
-//            action: 'utilbillDla',
-//            text: 'Layout',
-//            disabled: true
-//        },{
-//            xtype: 'button',
-//            action: 'utilbillSlice',
-//            text: 'Identify',
-//            disabled: true
-//        },{
-//            xtype: 'button',
-//            action: 'utilbillResults',
-//            text: 'Review',
-//            disabled: true
         }]
     }],
 

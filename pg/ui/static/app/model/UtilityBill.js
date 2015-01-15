@@ -22,13 +22,17 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_charges', type: 'float' },
         {name: 'target_total', type: 'float' },
-        {name: 'computed_total', type: 'float'},
-        {name: 'reebills'},
-        {name: 'state', type:'string'},
         {name: 'service', type:'string'},
         {name: 'processed'},
         {name: 'editable'},
         {name: 'sha256_hexdigest'},
-        {name: 'pdf_url'}
+        {name: 'pdf_url'},
+
+        // new
+        {name: 'service_address'},
+        {name: 'next_estimated_meter_read_date'},
+        {name: 'supply_total'},
+        {name: 'utility_account_number'},
+        {name: 'secondary_utility_account_number'},
     ]
 });

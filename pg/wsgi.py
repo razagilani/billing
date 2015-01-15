@@ -18,7 +18,7 @@ import json
 import cherrypy
 import os
 import ConfigParser
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import functools
 from operator import itemgetter
@@ -327,18 +327,22 @@ class UtilBillResource(RESTResource):
                              desc(UtilBill.period_start)).limit(100).all()
         rows = [{
             'account': ub.utility_account.account,
+            'period_start': ub.period_start,
+            'period_end': ub.period_end,
             'service': 'Unknown' if ub.service is None
             else ub.service.capitalize(),
             'total_charges': ub.target_total,
             'computed_total': ub.get_total_charges(),
             'computed_total': 0,
-            'utility': (ub.utility.column_dict() if ub.utility
-                        else None),
-            'supplier': (ub.supplier.name if
-                         ub.supplier else None),
+            'utility': ub.get_utility_name(),
+            'supplier': ub.get_supplier_name(),
             'rate_class': ub.get_rate_class_name(),
-            'state': ub.state_name(),
             'pdf_url': self.bill_file_handler.get_s3_url(ub),
+            'service_address': str(ub.service_address),
+            'next_estimated_meter_read_date': ub.period_end + timedelta(30),
+            'supply_total': 0, # TODO
+            'utility_account_number': ub.get_utility_account_number(),
+            'secondary_account_number': '', # TODO
         } for ub in utilbills]
         return True, {'rows': rows, 'results': len(rows)}
 
