@@ -1,6 +1,7 @@
 from os.path import dirname, realpath, join
 import smtplib
 from boto.s3.connection import S3Connection
+from sqlalchemy import desc
 from billing import init_config, init_model, init_logging
 
 
@@ -32,7 +33,7 @@ from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import state, fetch_bill_data as fbd
 from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Session
+from billing.core.model import Session, UtilityAccount, Charge
 from billing.core.utilbill_loader import UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
@@ -318,10 +319,28 @@ class RESTResource(WebResource):
 
 class UtilBillResource(RESTResource):
 
-    def handle_get(self, account, *vpath, **params):
-        rows, total_count = self.utilbill_processor.get_all_utilbills_json(
-            account)
-        return True, {'rows': rows, 'results': total_count}
+    def handle_get(self, *vpath, **params):
+        s = Session()
+        # TODO: pre-join with Charge to make this faster, and get rid of limit
+        utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
+            UtilityAccount.account,
+                             desc(UtilBill.period_start)).limit(100).all()
+        rows = [{
+            'account': ub.utility_account.account,
+            'service': 'Unknown' if ub.service is None
+            else ub.service.capitalize(),
+            'total_charges': ub.target_total,
+            'computed_total': ub.get_total_charges(),
+            'computed_total': 0,
+            'utility': (ub.utility.column_dict() if ub.utility
+                        else None),
+            'supplier': (ub.supplier.name if
+                         ub.supplier else None),
+            'rate_class': ub.get_rate_class_name(),
+            'state': ub.state_name(),
+            'pdf_url': self.bill_file_handler.get_s3_url(ub),
+        } for ub in utilbills]
+        return True, {'rows': rows, 'results': len(rows)}
 
     def handle_post(self, *vpath, **params):
         """ Handles Utilitybill creation. Since this information is sent by a

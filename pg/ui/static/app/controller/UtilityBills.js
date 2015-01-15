@@ -123,11 +123,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleActivate: function() {
         // TODO: show bills for all accounts
-        var selectedAccount = '10001';
         var store = this.getUtilityBillsStore();
-
-        if (!selectedAccount || !selectedAccount.length)
-            return;
 
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var selectedNode;
@@ -136,7 +132,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }else{
             selectedNode = store.find('id', selectedBill[0].getId());
         }
-        store.getProxy().setExtraParam('account', selectedAccount);
         store.reload({
             scope: this,
             callback: function(){
