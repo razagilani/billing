@@ -155,7 +155,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s' % (self.street, self.city, self.state)
+        return '%s, %s, %s %s' % (self.street, self.city, self.state,
+                               self.postal_code)
 
     def column_dict(self):
         raise NotImplementedError
@@ -507,6 +508,9 @@ class UtilBill(Base):
         None (unknown).
         '''
         return self.supplier.name
+
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
 
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '

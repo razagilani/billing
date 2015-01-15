@@ -122,7 +122,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        // TODO: show bills for all accounts
+        // TODO: pick account
+        var selectedAccount = '10001';
+        if (!selectedAccount || !selectedAccount.length)
+            return;
         var store = this.getUtilityBillsStore();
 
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
