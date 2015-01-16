@@ -777,15 +777,22 @@ class Charge(Base):
     group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
-    rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
+
+    quantity_formula = Column(String(1000), nullable=False)
+    rate = Column(Float, nullable=False)
+
+    # amount of the charge calculated from the quantity formula and rate
     total = Column(Float)
+
     # description of error in computing the quantity and/or rate formula.
     # either this or quantity and rate should be null at any given time,
     # never both or neither.
     error = Column(String(255))
 
-    quantity_formula = Column(String(1000), nullable=False)
+    # actual charge amount shown on the bill, if known
+    target_total = Column(Float)
+
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
