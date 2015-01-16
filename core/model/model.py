@@ -635,7 +635,8 @@ class UtilBill(Base):
 
     def get_supply_charges(self):
         '''Return a list of Charges that are for supply (rather than
-        distribution, or other).
+        distribution, or other), excluding charges that are "fake" (
+        has_charge == False).
         '''
         return [c for c in self.charges if c.has_charge and c.type == 'supply']
 
@@ -647,7 +648,7 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def get_supply_total(self):
-        '''Return the total cost of all supply charges, excluding any charge
+        '''Return the total amount of all supply charges, excluding any charge
         that has an error or has_charge=False.
         '''
         return sum(c.total for c in self.get_supply_charges()

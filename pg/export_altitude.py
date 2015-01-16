@@ -61,7 +61,7 @@ def get_dataset():
 # TODO maybe this is built into tablib already or should be added there.
 def append_row_as_dict(dataset, row_dict):
     '''Append the values of 'row_dict' to 'dataset', using the keys to
-    determine which column each row goes in.
+    determine which column each value goes in.
     '''
     assert len(row_dict) == dataset.width
     row = [None] * dataset.width
