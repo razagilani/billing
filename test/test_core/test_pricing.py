@@ -26,8 +26,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       description="",
                                       group='a',
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True,)
         self.charge_b_unshared = Charge(utilbill=None,
                                         rsi_binding='B',
                                         rate=2,
@@ -35,8 +34,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         description="",
                                         group='c',
                                         unit='therms',
-                                        shared=False,
-                                        has_charge=True)
+                                        shared=False)
         self.charge_b_shared = Charge(utilbill=None,
                                       rsi_binding='B',
                                       rate=2,
@@ -44,8 +42,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       description="",
                                       group='b',
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True)
         self.charge_c_unshared = Charge(utilbill=None,
                                         rsi_binding='C',
                                         rate=3,
@@ -53,8 +50,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         description="",
                                         group='d',
                                         unit='therms',
-                                        shared=False,
-                                        has_charge=False)
+                                        shared=False)
 
         def make_mock_utilbill(account):
             u = Mock()

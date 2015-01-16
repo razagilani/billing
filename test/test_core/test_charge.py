@@ -34,7 +34,6 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   group='SOME_GROUP',
                                   unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
-                                  has_charge=True,
                                   shared=False,
                                   roundrule="rounding")
         self.charge = Charge(**self.charge_params)
