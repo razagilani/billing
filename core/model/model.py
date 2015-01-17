@@ -632,6 +632,16 @@ class UtilBill(Base):
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
 
+    def get_total_energy(self):
+        # NOTE: this may have been implemented already on another branch;
+        # remove duplicate when merged
+        try:
+            total_register = next(r for r in self.registers if
+                                  r.register_binding == 'REG_TOTAL')
+        except StopIteration:
+            return 0
+        return total_register.quantity
+
     def column_dict(self):
         result = dict(super(UtilBill, self).column_dict().items() +
                     [('account', self.utility_account.account),

@@ -331,6 +331,7 @@ class UtilBillResource(RESTResource):
             'period_end': ub.period_end,
             'service': 'Unknown' if ub.service is None
             else ub.service.capitalize(),
+            'total_energy': ub.get_total_energy(),
             'total_charges': ub.target_total,
             'computed_total': ub.get_total_charges(),
             'computed_total': 0,
@@ -396,7 +397,11 @@ class UtilBillResource(RESTResource):
                 processed=row['processed'],
                 rate_class=row['rate_class'],
                 utility=row['utility'],
-                supplier=row['supplier']).column_dict()
+                supplier=row['supplier'],
+                ).column_dict()
+            if 'total_energy' in row:
+                ub = Session().query(UtilBill).filter_by(id=utilbill_id)
+                ub.set_total_energy(row['total_energy'])
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again

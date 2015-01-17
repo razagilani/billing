@@ -61,6 +61,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
     },{
+        header: 'Energy',
+        dataIndex: 'total_energy',
+        editor: {
+            xtype: 'numberfield',
+            allowBlank: false
+        },
+        width: 100,
+    },{
         header: 'Total',
         dataIndex: 'target_total',
         editor: {
