@@ -20,6 +20,7 @@ Ext.define('ReeBill.model.UtilityBill', {
                 return data.supplier;}},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
+        {name: 'total_energy', type: 'float'},
         {name: 'total_charges', type: 'float' },
         {name: 'target_total', type: 'float' },
         {name: 'service', type:'string'},
