@@ -326,6 +326,7 @@ class UtilBillResource(RESTResource):
             UtilityAccount.account,
                              desc(UtilBill.period_start)).limit(100).all()
         rows = [{
+            'id': ub.id,
             'account': ub.utility_account.account,
             'period_start': ub.period_start,
             'period_end': ub.period_end,
@@ -344,6 +345,7 @@ class UtilBillResource(RESTResource):
             'supply_total': 0, # TODO
             'utility_account_number': ub.get_utility_account_number(),
             'secondary_account_number': '', # TODO
+            'processed': ub.processed,
         } for ub in utilbills]
         return True, {'rows': rows, 'results': len(rows)}
 
