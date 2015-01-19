@@ -11,7 +11,7 @@ from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
 from billing import init_config, init_model
 from billing.reebill import state
-from billing.core.model import Customer, UtilBill, Session, Address
+from billing.core.model import UtilBill, Session, Address
 from billing.reebill.state import ReeBill
 
 billdb_config = {
