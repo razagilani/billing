@@ -224,7 +224,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             return;
 
         Ext.Msg.confirm('Confirm deletion',
-            'Are you sure you want to delete the selected Utility Bill(s)?',
+            'Are you sure you want to delete the selected utility bill?',
             function(answer) {
                 if (answer == 'yes') {
                     store.remove(selected)

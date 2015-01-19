@@ -185,7 +185,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             action: 'utilbillRemove',
             iconCls: 'silk-delete',
             text: 'Delete',
-            disabled: true
+            disabled: false,
         },{
             xtype: 'button',
             action: 'utilbillToggleProcessed',
