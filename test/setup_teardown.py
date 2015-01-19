@@ -115,7 +115,6 @@ class TestCaseWithSetup(test_utils.TestCase):
             "utilbill",
             "reading",
             "reebill_charge",
-            "customer",
             "reebill_customer",
             "utility_account",
             "rate_class",

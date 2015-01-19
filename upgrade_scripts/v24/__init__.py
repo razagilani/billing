@@ -12,7 +12,7 @@ from billing.pg.pg_model import PGAccount
 from upgrade_scripts import alembic_upgrade
 import logging
 from billing import config, init_model
-from billing.core.model.model import Session, Customer, Utility, \
+from billing.core.model.model import Session, Utility, \
     Address, UtilBill, Supplier, RateClass, UtilityAccount
 
 log = logging.getLogger(__name__)
