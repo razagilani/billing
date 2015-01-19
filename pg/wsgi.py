@@ -336,6 +336,7 @@ class UtilBillResource(RESTResource):
             'total_charges': ub.target_total,
             'computed_total': ub.get_total_charges(),
             'computed_total': 0,
+            # TODO: should these be names or ids or objects?
             'utility': ub.get_utility_name(),
             'supplier': ub.get_supplier_name(),
             'rate_class': ub.get_rate_class_name(),

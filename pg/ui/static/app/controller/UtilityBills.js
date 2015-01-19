@@ -123,7 +123,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleActivate: function() {
         // TODO: pick account
-        var selectedAccount = '10001';
+        var selectedAccount = '20001';
         if (!selectedAccount || !selectedAccount.length)
             return;
         var store = this.getUtilityBillsStore();
