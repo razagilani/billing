@@ -3,11 +3,11 @@ from datetime import datetime,date
 from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
 
-from billing.core.model import UtilBill, Address, Charge, Register, Session, \
+from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, BillingError, \
+from exc import NoSuchBillException, DuplicateFileError, BillingError, \
     ProcessedBillError
-from billing.core.utilbill_loader import UtilBillLoader
+from core.utilbill_loader import UtilBillLoader
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'

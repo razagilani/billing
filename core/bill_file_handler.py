@@ -2,8 +2,8 @@
 import hashlib
 import requests
 
-from billing.core.model import UtilBill
-from billing.exc import MissingFileError, DuplicateFileError
+from core.model import UtilBill
+from exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandler(object):
