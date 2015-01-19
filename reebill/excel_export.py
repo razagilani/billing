@@ -429,13 +429,13 @@ def main(export_func, filename, account=None):
                 Account number (optional, uses all accounts or standard range)
     Saves output in "spreadsheet.xls".'''
     from os.path import dirname, realpath, join
-    from billing import init_config, init_model, init_logging
+    from core import init_config, init_model, init_logging
 
     p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
     init_logging(path=p)
     init_config(filename=p)
     init_model()
-    from billing import config
+    from core import config
     import logging
 
     logger = logging.getLogger('reebill')
