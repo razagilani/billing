@@ -9,16 +9,16 @@ from sqlalchemy import cast, Integer
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match, Any, Invalid
 
-from billing.reebill.utilbill_processor import UtilbillProcessor
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session, Address, UtilityAccount, Utility
-from billing.core.altitude import AltitudeUtility, get_utility_from_guid, \
+from core.bill_file_handler import BillFileHandler
+from core.model import Session, Address, UtilityAccount
+from core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
-from billing.exc import AltitudeDuplicateError
+from exc import AltitudeDuplicateError
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
+from core.pricing import FuzzyPricingModel
+from core.utilbill_loader import UtilBillLoader
+from reebill.utilbill_processor import UtilbillProcessor
 
 __all__ = [
     'consume_utilbill_file_mq',
@@ -78,7 +78,7 @@ def create_dependencies():
 
     This can be called by both run_amqp_consumers.py and test code.
     '''
-    from billing import config
+    from core import config
     exchange_name = config.get('amqp', 'exchange')
     routing_key = config.get('amqp', 'utilbill_routing_key')
 
