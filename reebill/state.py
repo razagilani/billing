@@ -5,6 +5,7 @@ from datetime import datetime, date
 from itertools import chain
 
 import logging
+from pint import UnitRegistry
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship, backref, aliased
@@ -287,17 +288,19 @@ class ReeBill(Base):
             unit = reading.unit.lower()
             assert isinstance(quantity, (float, int))
             assert isinstance(unit, basestring)
+            ureg = UnitRegistry()
 
             # convert quantity to therms according to unit, and add it to
             # the total
             if unit == 'therms':
                 total_therms += quantity
             elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / 100000.0
+                total_therms += quantity * ureg.btu.to(ureg.therm).\
+                    magnitude
             elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity * .0341214163
+                total_therms += quantity * ureg.\
+                    parse_expression('kilowatt hour').to(ureg.therm).\
+                    magnitude
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -326,17 +329,17 @@ class ReeBill(Base):
             unit = reading.unit.lower()
             assert isinstance(quantity, (float, int))
             assert isinstance(unit, basestring)
+            ureg = UnitRegistry()
 
             # convert quantity to therms according to unit, and add it to
             # the total
             if unit == 'therms':
                 total_therms += quantity
             elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / 100000.0
+                total_therms += quantity * ureg.btu.to(ureg.therm).magnitude
             elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity * .0341214163
+                total_therms += quantity * ureg.\
+                    parse_expression('kilowatt hour').to(ureg.therm).magnitude
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor

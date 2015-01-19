@@ -71,6 +71,18 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual('All Charges', c.group)
         self.assertEqual(200, self.reebill.get_total_hypothetical_charges())
 
+    def test_unit_conversion(self):
+        self.reebill.readings[0].unit = 'btu'
+        self.reebill.readings[0].conventional_quantity = 200000
+        self.reebill.readings[0].renewable_quantity = 200000
+        self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 2.00, 2)
+        self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 2.00, 2)
+        self.reebill.readings[0].unit = 'kwh'
+        self.reebill.readings[0].conventional_quantity = 29.307111111
+        self.reebill.readings[0].renewable_quantity = 29.307111111
+        self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 1.00, 2)
+        self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 1.00, 2)
+
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
         new_register = Register(self.utilbill, '', '',
