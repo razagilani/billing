@@ -620,6 +620,13 @@ class UtilBill(Base):
             return 0
         return total_register.quantity
 
+    def set_total_energy(self, quantity):
+        total_register = next(r for r in self.registers if
+                              r.register_binding == 'REG_TOTAL')
+        # TODO: maybe create REG_TOTAL register if it doesn't exist.
+        # this is hard because the unit is not known.
+        total_register.quantity = quantity
+
     def get_supply_total(self):
         '''Return the total amount of all supply charges, excluding any charge
         that has an error or has_charge=False.
