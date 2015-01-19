@@ -11,15 +11,16 @@ from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
 from voluptuous import Invalid
 
-from billing.core.model import Session, UtilityAccount, Supplier, Address, Utility, RateClass
-from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import DuplicateFileError
-from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
-from billing.mq import IncomingMessage
-from billing.core.amqp_exchange import ConsumeUtilbillFileHandler, \
-    create_dependencies, TotalValidator, DueDateValidator
+from core.amqp_exchange import create_dependencies, \
+    ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+from core.model import Session, UtilityAccount, Utility, Address
+from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
+from core.utilbill_loader import UtilBillLoader
+from mq import IncomingMessage
+from mq.tests import create_mock_channel_method_props, \
+    create_channel_message_body
+from exc import DuplicateFileError
+from test.setup_teardown import TestCaseWithSetup
 
 
 class TestValidators(TestCase):
@@ -47,12 +48,10 @@ class TestValidators(TestCase):
         with self.assertRaises(Invalid):
             validator("nonsense")
 
-
 class TestUploadBillAMQP(TestCaseWithSetup):
 
     def setUp(self):
         super(TestUploadBillAMQP, self).setUp()
-        from billing import config
 
         # parameters for real RabbitMQ connection are stored but never used so
         # there is no actual connection
@@ -102,7 +101,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             account_guids=['C' * AltitudeGUID.LENGTH,
                            'D' * AltitudeGUID.LENGTH]))
 
-        message_obj = IncomingMessage(self.mock_method, self.mock_props, message)
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
 
         # Process the message
         message_obj = self.handler.validate(message_obj)
