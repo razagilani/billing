@@ -402,7 +402,7 @@ class UtilBillResource(RESTResource):
                 supplier=row['supplier'],
                 ).column_dict()
             if 'total_energy' in row:
-                ub = Session().query(UtilBill).filter_by(id=utilbill_id)
+                ub = Session().query(UtilBill).filter_by(id=utilbill_id).one()
                 ub.set_total_energy(row['total_energy'])
 
         # Reset the action parameters, so the client can coviniently submit
