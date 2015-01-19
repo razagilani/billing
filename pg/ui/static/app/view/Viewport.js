@@ -62,8 +62,8 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'uploadUtilityBill',
-                        id: 'uploadUtilityBill',
+                        xtype: 'charges',
+                        id: 'chargesGrid',
                         region: 'north'
                     },{
                         xtype: 'utilityBills',
@@ -93,21 +93,21 @@ Ext.define('ReeBill.view.Viewport', {
                         collapsible:false,
                         floatable: false,
                     }]
-                },{
-                    xtype: 'panel',
-                    name: 'chargesTab',
-                    title: 'Charges',
-                    layout: 'border',
-                    disabled: true,
-                    defaults: {
-                        collapsible: true,
-                        split: true
-                    },
-                    items: [{
-                        xtype: 'charges',
-                        id: 'chargesGrid',
-                        region: 'center'
-                    }]
+                //},{
+                //    xtype: 'panel',
+                //    name: 'chargesTab',
+                //    title: 'Charges',
+                //    layout: 'border',
+                //    disabled: true,
+                //    defaults: {
+                //        collapsible: true,
+                //        split: true
+                //    },
+                //    items: [{
+                //        xtype: 'charges',
+                //        id: 'chargesGrid',
+                //        region: 'center'
+                //    }]
                 }],
 
                 dockedItems: [{
