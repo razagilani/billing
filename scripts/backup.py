@@ -440,7 +440,7 @@ def restore_files(args):
             file.seek(0)
             dest_key.set_contents_from_file(file)
         else:
-            print 'Destination already has key {0}, not copying'.format(key.name)
+            print 'Destination already has key {0}, not copying'.format(key_name)
 
 def backup_local(args):
     backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))
