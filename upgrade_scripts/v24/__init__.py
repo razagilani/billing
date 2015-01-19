@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 def upgrade():
     log.info('Beginning upgrade to version 24')
-    #init_model(schema_revision='5a6d7e4f8b80')
+    init_model(schema_revision='5a6d7e4f8b80')
     s = Session()
 
     log.info('Upgrading schema to revision 3cf530e68eb')
