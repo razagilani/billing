@@ -8,11 +8,11 @@ import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
 from boto.s3.connection import S3Connection
-from billing.pg.pg_model import PGAccount
+from pg.pg_model import PGAccount
 from upgrade_scripts import alembic_upgrade
 import logging
-from billing import config, init_model
-from billing.core.model.model import Session, Utility, \
+from core import config, init_model
+from core.model.model import Session, Utility, \
     Address, UtilBill, Supplier, RateClass, UtilityAccount
 
 log = logging.getLogger(__name__)

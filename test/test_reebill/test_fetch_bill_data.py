@@ -4,18 +4,18 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
-from billing.core.model import Utility
+from core.model import Utility
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from billing.reebill.state import ReeBill, UtilBill, Address, \
+from reebill.state import ReeBill, UtilBill, Address, \
     Register, Reading, ReeBillCustomer
-from billing.core.model import UtilityAccount, RateClass, Supplier
+from core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
-from billing.util import dateutils
+from util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-import billing.reebill.fetch_bill_data as fbd
-from billing.util.dateutils import date_to_datetime
+import reebill.fetch_bill_data as fbd
+from util.dateutils import date_to_datetime
 
 
 

@@ -1,18 +1,18 @@
 '''Tests for ReeBill-specific data-access objects, including the database.
 Currently the only one is StateDB.
 '''
-from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import ReeBillCustomer
+from test.setup_teardown import init_logging, TestCaseWithSetup
+from core.model.model import Utility, Supplier, RateClass, UtilityAccount
+from reebill.state import ReeBillCustomer
 
 init_logging()
 import unittest
 from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
-from billing import init_config, init_model
-from billing.reebill import state
-from billing.core.model import UtilBill, Session, Address
-from billing.reebill.state import ReeBill
+from core import init_config, init_model
+from reebill import state
+from core.model import UtilBill, Session, Address
+from reebill.state import ReeBill
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
