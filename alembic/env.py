@@ -24,8 +24,7 @@ from core.model import Base
 # modules.
 import core.altitude
 import reebill.state
-# TODO re-enable (causes an error)
-#import pg.pg_model
+import pg.pg_model
 
 target_metadata = Base.metadata
 
