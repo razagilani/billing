@@ -521,6 +521,17 @@ class UtilBill(Base):
         '''
         return self.supplier.name
 
+    def get_nextility_account_number(self):
+        '''Return the "nextility account number" (e.g.  "10001") not to be
+        confused with utility account number. This  may go away since it is
+        only used for ReeBill but it was part of Kris' schema for CSV files
+        of data exported to the  Altitude database.
+        '''
+        return self.utility_account.account
+
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
+
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
