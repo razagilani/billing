@@ -27,7 +27,6 @@ __all__ = [
     'Base',
     'Charge',
     'ChargeEvaluation',
-    'Customer',
     'Evaluation',
     'MYSQLDB_DATETIME_MIN',
     'Register',
@@ -71,7 +70,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '5a6d7e4f8b80'
+_schema_revision = '3cf530e68eb'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -238,50 +237,6 @@ class RateClass(Base):
         self.name = name
         self.utility = utility
 
-class Customer(Base):
-    '''Do not use.
-    This is needed for the upgrade from version 22 to 23 but will be deleted in
-    version 24.
-    '''
-    __tablename__ = 'customer'
-
-    # this is here because there doesn't seem to be a way to get a list of
-    # possible values from a SQLAlchemy.types.Enum
-    SERVICE_TYPES = ('thermal', 'pv')
-
-    id = Column(Integer, primary_key=True)
-    fb_utility_id = Column(Integer, ForeignKey('utility.id'))
-
-    account = Column(String(45), nullable=False)
-    name = Column(String(45))
-    discountrate = Column(Float(asdecimal=False), nullable=False)
-    latechargerate = Column(Float(asdecimal=False), nullable=False)
-    bill_email_recipient = Column(String(1000), nullable=False)
-
-    # null means brokerage-only customer
-    service = Column(Enum(*SERVICE_TYPES))
-
-    # "fb_" = to be assigned to the customer's first-created utility bill
-    fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=False)
-    fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
-    fb_service_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
-    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=False)
-
-    fb_supplier = relationship('Supplier', uselist=False,
-        primaryjoin='Customer.fb_supplier_id==Supplier.id')
-    fb_rate_class = relationship('RateClass', uselist=False,
-        primaryjoin='Customer.fb_rate_class_id==RateClass.id')
-    fb_billing_address = relationship('Address', uselist=False, cascade='all',
-        primaryjoin='Customer.fb_billing_address_id==Address.id')
-    fb_service_address = relationship('Address', uselist=False, cascade='all',
-        primaryjoin='Customer.fb_service_address_id==Address.id')
-
-    fb_utility = relationship('Utility')
-
 
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
@@ -354,9 +309,6 @@ class UtilBill(Base):
 
     id = Column(Integer, primary_key=True)
 
-    # deprecated: do not use
-    customer_id = Column(Integer, ForeignKey('customer.id'))
-
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
@@ -394,10 +346,6 @@ class UtilBill(Base):
     # downloaded and can't take into account information from other sources.)
     # TODO: not being used at all
     date_scraped = Column(DateTime)
-
-    # deprecated: do not use
-    customer = relationship("Customer", backref=backref('utilbill',
-            order_by=id))
 
     # cascade for UtilityAccount relationship does NOT include "save-update"
     # to allow more control over when UtilBills get added--for example,

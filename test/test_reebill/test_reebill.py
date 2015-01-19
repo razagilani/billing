@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 
 from core.model import UtilBill, Address, \
-    Charge, Register, Session, Utility, Customer, Supplier, RateClass, UtilityAccount
+    Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from reebill.state import ReeBill, ReeBillCustomer
 
 class ReebillTest(unittest.TestCase):
