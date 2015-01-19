@@ -1,9 +1,9 @@
 import unittest
 from datetime import date
 
-from billing.core.model import UtilBill, Address, \
+from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import ReeBill, ReeBillCustomer
+from reebill.state import ReeBill, ReeBillCustomer
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):

@@ -6,9 +6,9 @@ in it!
 '''
 from argparse import ArgumentParser
 from uuid import uuid4
-from billing import init_config, init_model
-from billing.core import altitude
-from billing.pg.export_altitude import PGAltitudeExporter, _load_pg_utilbills
+from core import init_config, init_model
+from core import altitude
+from pg.export_altitude import PGAltitudeExporter, _load_pg_utilbills
 
 # TODO determine file destination. maybe use a command-line argument.
 FILE_PATH = 'reebill_pg_utility_bills.csv'

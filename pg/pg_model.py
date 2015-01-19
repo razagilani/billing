@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from billing.core.model import Base, UtilityAccount
+from core.model import Base, UtilityAccount
 
 class PGAccount(Base):
     '''Table for storing Power & Gas-related data associated with a
