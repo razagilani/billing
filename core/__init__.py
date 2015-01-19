@@ -60,7 +60,7 @@ def init_config(filepath='settings.cfg', fp=None):
 def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
     import logging, logging.config
-    absolute_path = path.join(dirname(realpath(__file__)), filepath)
+    absolute_path = path.join(dirname(realpath(__file__)), '..', filepath)
     logging.config.fileConfig(absolute_path)
     log = logging.getLogger(__name__)
     log.debug('Initialized logging')
