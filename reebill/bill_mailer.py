@@ -9,7 +9,7 @@ import mimetypes
 import os
 import smtplib
 from jinja2 import Template
-from billing.util.email_util import send_email
+from util.email_util import send_email
 
 TEMPLATE_FILE_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
