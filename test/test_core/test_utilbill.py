@@ -1,6 +1,7 @@
 '''Unit tests for the UtilBill class and other code that will eventually be
 included in it.
 '''
+import unittest
 from test import init_test_config
 init_test_config()
 from billing import init_model
@@ -430,6 +431,7 @@ class UtilBillTest(TestCase):
         self.assertRaises(ProcessedBillError, utilbill.compute_charges())
         self.assertFalse(utilbill.editable())
 
+    @unittest.skip('')
     def test_date_modified(self):
         # TODO BILL-5878
         raise NotImplementedError
