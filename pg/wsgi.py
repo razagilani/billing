@@ -350,36 +350,9 @@ class UtilBillResource(RESTResource):
         } for ub in utilbills]
         return True, {'rows': rows, 'results': len(rows)}
 
-    def handle_post(self, *vpath, **params):
-        """ Handles Utilitybill creation. Since this information is sent by a
-        form and contains a file object we have to manually parse the data """
-        # pre-process parameters
-        params = cherrypy.request.params
-        account = params['account']
-        service = params['service'].lower()
-        total_charges = float(params['total_charges'])
-        begin_date = datetime.strptime(params['begin_date'], '%Y-%m-%d').date()
-        end_date = datetime.strptime(params['end_date'], '%Y-%m-%d').date()
-
-        # NOTE 'fileobj.file' is always a CherryPy object; if no
-        # file was specified, 'fileobj.file' will be None
-        fileobj = params['file_to_upload']
-
-        billstate = UtilBill.Complete if fileobj.file else \
-            UtilBill.Estimated
-        self.utilbill_processor.upload_utility_bill(
-            account, fileobj.file, start=begin_date, end=end_date,
-            service=service, utility=None, rate_class=None, total=total_charges,
-            state=billstate)
-
-        # Since this is initated by an Ajax request, we will still have to
-        # send a {'success', 'true'} parameter
-        return True, {'success': 'true'}
-
     def handle_put(self, utilbill_id, *vpath, **params):
         row = cherrypy.request.json
         action = row.pop('action')
-        action_value = row.pop('action_value')
         result= {}
 
         if action == 'regenerate_charges':
@@ -405,6 +378,7 @@ class UtilBillResource(RESTResource):
             if 'total_energy' in row:
                 ub = Session().query(UtilBill).filter_by(id=utilbill_id).one()
                 ub.set_total_energy(row['total_energy'])
+            self.utilbill_processor.compute_utility_bill(utilbill_id)
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
@@ -412,11 +386,11 @@ class UtilBillResource(RESTResource):
         result['action_value'] = ''
         return True, {'rows': result, 'results': 1}
 
-    def handle_delete(self, utilbill_id, account, *vpath, **params):
+    def handle_delete(self, utilbill_id, *vpath, **params):
         utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
             utilbill_id)
         journal.UtilBillDeletedEvent.save_instance(
-            cherrypy.session['user'], account,
+            cherrypy.session['user'], utilbill.get_nextility_account_number(),
             utilbill.period_start, utilbill.period_end,
             utilbill.service, deleted_path)
         return True, {}
