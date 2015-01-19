@@ -40,8 +40,6 @@ class ReeBill(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    # deprecated: do not use
-    customer_id = Column(Integer, ForeignKey('customer.id'))
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
@@ -70,10 +68,6 @@ class ReeBill(Base):
         nullable=False)
 
     reebill_customer = relationship("ReeBillCustomer", backref=backref('reebills',
-        order_by=id))
-
-    # deprecated: do not use
-    customer = relationship("Customer", backref=backref('reebills',
         order_by=id))
 
     billing_address = relationship('Address', uselist=False,
@@ -690,7 +684,6 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    customer_id = Column(Integer, ForeignKey('customer.id'))
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
@@ -698,9 +691,6 @@ class Payment(Base):
     credit = Column(Float)
 
     reebill_customer = relationship("ReeBillCustomer", backref=backref('payments',
-        order_by=id))
-
-    customer = relationship("Customer", backref=backref('payments',
         order_by=id))
 
     reebill = relationship("ReeBill", backref=backref('payments',

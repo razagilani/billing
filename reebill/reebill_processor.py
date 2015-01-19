@@ -7,7 +7,7 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from core.model import (Customer, UtilBill, Address, Session,
+from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
 from reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
