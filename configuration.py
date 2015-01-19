@@ -66,10 +66,6 @@ class reebill(Schema):
     # account numbers for bills whose PDFs are rendered using the "teva" format
     teva_accounts = String()
 
-    # path for utility bills on local file system (not used after migrating
-    # to S3)
-    utilitybillpath = Directory()
-
 class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
