@@ -6,12 +6,12 @@ from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
-from billing.reebill.state import ReeBill, UtilBill
-from billing.core.model import UtilityAccount, Session
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
+from reebill.state import ReeBill, UtilBill
+from core.model import UtilityAccount, Session
+from test.setup_teardown import TestCaseWithSetup
+from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
-from billing.test import testing_utils
+from test import testing_utils
 from testfixtures.tempdirectory import TempDirectory
 
 class MockReeGetter(object):

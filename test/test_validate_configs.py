@@ -9,8 +9,8 @@ from unittest import TestCase
 from glob import glob
 from os.path import dirname, join, realpath
 
-from billing import configuration as config_file_schema
-from billing.util.validated_config_parser import ValidatedConfigParser
+import configuration as config_file_schema
+from util.validated_config_parser import ValidatedConfigParser
 
 
 class TestValidateConfigs(TestCase):
