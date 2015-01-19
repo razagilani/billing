@@ -12,12 +12,20 @@ def _load_pg_utilbills():
 class PGAltitudeExporter(object):
 
     def __init__(self, uuid_func, altitude_converter):
+        '''
+        :param uuid_func:  a callable that returns UUID objects or strings,
+        such as any of the functions in the 'uuid' module.
+        :param  altitude_converter: matches interface of core.altitude
+        (get_guid_for_utility and get_guid_for_supplier methods), used for
+        unit testing.
+        '''
         self._uuid_func = uuid_func
         self._altitude_converter = altitude_converter
 
     def write_csv(self, utilbills, file):
         '''Write CSV of data to 'file'.
-        utilbills: iterator of UtilBills to include data from.
+        :param utilbills: iterator of UtilBills to include data from.
+        :param file: destination file.
         '''
         dataset = self.get_dataset(utilbills)
         file.write(dataset.csv)
@@ -25,7 +33,7 @@ class PGAltitudeExporter(object):
     def get_dataset(self, utilbills):
         '''Return a tablib.Dataset containing the data that is supposed to be
         exported.
-        utilbills: iterator of UtilBills to include data from.
+        :param utilbills: iterator of UtilBills to include data from.
         '''
         dataset = Dataset(headers=[
             'billing_customer_id',
