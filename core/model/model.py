@@ -59,6 +59,8 @@ class Base(object):
                 if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
     def __eq__(self, other):
+        if not isinstance(other, Base):
+            return False
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
@@ -467,6 +469,8 @@ class UtilBill(Base):
         '''Return name of this bill's supplier or None if the supplier is
         None (unknown).
         '''
+        if self.supplier is None:
+            return None
         return self.supplier.name
 
     def get_nextility_account_number(self):
