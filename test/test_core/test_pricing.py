@@ -4,10 +4,9 @@ import unittest
 
 from mock import Mock
 
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Charge
-from billing.exc import NoSuchBillException
-from billing.core.model import UtilBill
+from core.pricing import FuzzyPricingModel
+from core.model import Charge, UtilBill
+from exc import NoSuchBillException
 
 
 class FuzzyPricingModelTest(unittest.TestCase):

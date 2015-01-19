@@ -8,14 +8,11 @@ import unittest
 import mock
 import logging
 
-from billing.reebill.excel_export import Exporter
-from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import StateDB, ReeBill, Payment
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import testing_utils
-from billing import init_config, init_model
-from billing.core.model import Session, UtilityAccount, Utility, Supplier, \
-    Address, RateClass, UtilBill
+from core import init_config, init_model
+from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
+    Supplier, RateClass, UtilityAccount
+from reebill.excel_export import Exporter
+from reebill.state import StateDB, ReeBill, Payment
 
 
 class ExporterSheetTest(unittest.TestCase):
