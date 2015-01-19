@@ -9,7 +9,7 @@ from datetime import date
 from unittest import TestCase
 
 from billing.exc import RSIError, ProcessedBillError
-from billing.core.model import UtilBill, Customer, Session, Charge,\
+from billing.core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from billing.reebill.state import Payment, ReeBillCustomer
 
