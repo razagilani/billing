@@ -58,39 +58,42 @@ class MyResource(Resource):
         self.utilbill_processor = UtilbillProcessor(
             pricing_model, self.bill_file_handler, None)
 
-class UtilBillResource(MyResource):
-
+class UtilBillListResource(MyResource):
     def get(self):
         s = Session()
         # TODO: pre-join with Charge to make this faster, and get rid of limit
         utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
             UtilityAccount.account,
-                             desc(UtilBill.period_start)).limit(100).all()
+            desc(UtilBill.period_start)).limit(100).all()
         rows = [{
-            'id': ub.id,
-            'account': ub.utility_account.account,
-            'period_start': ub.period_start.isoformat(),
-            'period_end': ub.period_end.isoformat(),
-            'service': 'Unknown' if ub.service is None
-            else ub.service.capitalize(),
-            'total_energy': ub.get_total_energy(),
-            'total_charges': ub.target_total,
-            'computed_total': ub.get_total_charges(),
-            'computed_total': 0,
-            # TODO: should these be names or ids or objects?
-            'utility': ub.get_utility_name(),
-            'supplier': ub.get_supplier_name(),
-            'rate_class': ub.get_rate_class_name(),
-            'pdf_url': self.bill_file_handler.get_s3_url(ub),
-            'service_address': str(ub.service_address),
-            'next_estimated_meter_read_date': (ub.period_end + timedelta(
-                30)).isoformat(),
-            'supply_total': 0, # TODO
-            'utility_account_number': ub.get_utility_account_number(),
-            'secondary_account_number': '', # TODO
-            'processed': ub.processed,
-        } for ub in utilbills]
+                    'id': ub.id,
+                    'account': ub.utility_account.account,
+                    'period_start': ub.period_start.isoformat(),
+                    'period_end': ub.period_end.isoformat(),
+                    'service': 'Unknown' if ub.service is None
+                    else ub.service.capitalize(),
+                    'total_energy': ub.get_total_energy(),
+                    'total_charges': ub.target_total,
+                    'computed_total': ub.get_total_charges(),
+                    'computed_total': 0,
+                    # TODO: should these be names or ids or objects?
+                    'utility': ub.get_utility_name(),
+                    'supplier': ub.get_supplier_name(),
+                    'rate_class': ub.get_rate_class_name(),
+                    'pdf_url': self.bill_file_handler.get_s3_url(ub),
+                    'service_address': str(ub.service_address),
+                    'next_estimated_meter_read_date': (ub.period_end + timedelta(
+                        30)).isoformat(),
+                    'supply_total': 0, # TODO
+                    'utility_account_number': ub.get_utility_account_number(),
+                    'secondary_account_number': '', # TODO
+                    'processed': ub.processed,
+                    } for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
+
+class UtilBillResource(MyResource):
+    def __init__(self):
+        super(UtilBillResource, self).__init__()
 
     def handle_put(self, utilbill_id, *vpath, **params):
         row = cherrypy.request.json
@@ -128,14 +131,14 @@ class UtilBillResource(MyResource):
         result['action_value'] = ''
         return True, {'rows': result, 'results': 1}
 
-    def handle_delete(self, utilbill_id, *vpath, **params):
+    def delete(self, id):
         utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
-            utilbill_id)
-        journal.UtilBillDeletedEvent.save_instance(
-            cherrypy.session['user'], utilbill.get_nextility_account_number(),
-            utilbill.period_start, utilbill.period_end,
-            utilbill.service, deleted_path)
-        return True, {}
+            id)
+        # journal.UtilBillDeletedEvent.save_instance(
+        #     cherrypy.session['user'], utilbill.get_nextility_account_number(),
+        #     utilbill.period_start, utilbill.period_end,
+        #     utilbill.service, deleted_path)
+        return {}
 
 
 
@@ -218,7 +221,8 @@ class RateClassesResource(MyResource):
         print rate_classes
         return {'rows': rate_classes, 'results': len(rate_classes)}
 
-api.add_resource(UtilBillResource, '/utilitybills/utilitybills')
+api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
+api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
 api.add_resource(SuppliersResource, '/utilitybills/suppliers')
 api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
