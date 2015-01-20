@@ -146,23 +146,23 @@ Ext.define('ReeBill.controller.Charges', {
      * Update the GroupTextField
      */
     updateTextFields: function(){
-        var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
-
-        var groupTextField = this.getGroupTextField();
-        var formulaField = this.getFormulaField();
-
-        if(hasSelections && selected !== undefined){
-            groupTextField.setDisabled(false);
-            groupTextField.setValue(selected.get('group'));
-            formulaField.setDisabled(false);
-            formulaField.setValue(selected.get('quantity_formula'));
-        }else{
-            groupTextField.setDisabled(true);
-            groupTextField.setValue('');
-            formulaField.setDisabled(true);
-            formulaField.setValue('');
-        }
+        //var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
+        //var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
+        //
+        //var groupTextField = this.getGroupTextField();
+        //var formulaField = this.getFormulaField();
+        //
+        //if(hasSelections && selected !== undefined){
+        //    groupTextField.setDisabled(false);
+        //    groupTextField.setValue(selected.get('group'));
+        //    formulaField.setDisabled(false);
+        //    formulaField.setValue(selected.get('quantity_formula'));
+        //}else{
+        //    groupTextField.setDisabled(true);
+        //    groupTextField.setValue('');
+        //    formulaField.setDisabled(true);
+        //    formulaField.setValue('');
+        //}
     },
 
     /**

@@ -399,17 +399,36 @@ class UtilBillResource(RESTResource):
 class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
-        charges = self.utilbill_processor.get_utilbill_charges_json(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
+        charges = [{
+            'id': charge.id,
+            'rsi_binding': charge.rsi_binding,
+            # TODO
+            'target_total': 0, #charge.target_total,
+        } for charge in utilbill.charges]
         return True, {'rows': charges, 'results': len(charges)}
 
     def handle_put(self, charge_id, *vpath, **params):
-        c = self.utilbill_processor.update_charge(cherrypy.request.json,
-                                       charge_id=charge_id)
-        return True, {'rows': c.column_dict(),  'results': 1}
+        id = cherrypy.request.json.pop('id')
+        charge = Session().query(Charge).filter_by(id=id).one()
+        for key in ('rsi_binding', 'target_total'):
+            value = cherrypy.request.json[key]
+            setattr(charge, key, value)
+        return True, {'rows': {
+            'id': charge.id,
+            'rsi_binding': charge.rsi_binding,
+            'target_total': charge.target_total,
+        }, 'results': 1}
 
     def handle_post(self, *vpath, **params):
-        c = self.utilbill_processor.add_charge(**cherrypy.request.json)
-        return True, {'rows': c.column_dict(),  'results': 1}
+        charge = self.utilbill_processor.add_charge(
+            cherrypy.request.json['utilbill_id'],
+            rsi_binding=cherrypy.request.json['rsi_binding'])
+        return True, {'rows': {
+            'id': charge.id,
+            'rsi_binding': charge.rsi_binding,
+            'target_total': charge.target_total,
+            }, 'results': 1}
 
     def handle_delete(self, charge_id, *vpath, **params):
         self.utilbill_processor.delete_charge(charge_id)
