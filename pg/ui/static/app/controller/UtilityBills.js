@@ -95,11 +95,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
             this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
             this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
-            this.getUtilbillRemove().setDisabled(!hasSelections || processed);
-            var utility = selected.data.utility;
-            rate_class_store = Ext.getStore("RateClasses");
-            rate_class_store.clearFilter(true);
-            rate_class_store.filter('utility_id', utility.id);
+            //this.getUtilbillRemove().setDisabled(!hasSelections || processed);
+            //var utility = selected.data.utility;
+            //rate_class_store = Ext.getStore("RateClasses");
+            //rate_class_store.clearFilter(true);
+            //rate_class_store.filter('utility_id', utility.id);
+
+            var chargesStore = Ext.getStore("Charges");
+            var proxy = chargesStore.getProxy();
+            var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+            proxy.extraParams = {utilbill_id: selected.get('id')};
+            chargesStore.reload();
         } else {
             this.getUtilbillCompute().setDisabled(true);
             this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
