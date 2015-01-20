@@ -79,7 +79,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
             load: function(store) {
                 var grid = this.getUtilityBillsGrid();
                 grid.setLoading(false);
-                this.initalizeUploadForm();
             },
             scope: this
         });
@@ -140,28 +139,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     /**
-     * Initialize the upload form.
-     */
-    initalizeUploadForm: function() {
-        var form = this.getUploadUtilityBillForm(),
-            accountField = form.down('[name=account]'),
-            startDateField = form.down('[name=begin_date]'),
-            endDateField = form.down('[name=end_date]');
-        var store = this.getUtilityBillsStore();
-
-        form.getForm().reset();
-
-        var lastEndDate = store.getLastEndDate();
-        // If there is no record in the store set the date to one month ago from today
-        if(!lastEndDate){
-            lastEndDate = Ext.Date.add(new Date(), Ext.Date.MONTH, -1);
-        }
-        //accountField.setValue(selected[0].get('account'));
-        startDateField.setValue(lastEndDate);
-        endDateField.setValue(Ext.Date.add(lastEndDate, Ext.Date.MONTH, 1));
-    },
-
-    /**
      * Handle the compute button being clicked.
      */
     handleReset: function() {
@@ -178,7 +155,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.getUploadUtilityBillForm().getForm().submit({
             url: 'http://'+window.location.host+'/utilitybills/utilitybills',
             success: function() {
-                scope.initalizeUploadForm();
                 store.reload();
             },
             failure: function(form, action) {
