@@ -90,25 +90,25 @@ class ReebillTest(unittest.TestCase):
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 1.00, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 1.00, 2)
-        # 1kwh is equal to 3412.1416 btu's
+        # 1btu is equal to 0.00029307107 kwh
         self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
-        self.assertAlmostEquals(self.reebill.readings[0].renewable_quantity, 3412.1416, 4)
+        self.assertAlmostEquals(self.reebill.readings[0].renewable_quantity, 0.00029307107)
         self.reebill.readings[0].unit = 'therms'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         # no conversion is needed if the unit is already therms
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 29.307, 3)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 29.307, 3)
-        # 1 therm is equal to 100000 btu's
+        # 1 btu is equal to 1.0000000000000003e-05 therms
         self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
-        self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 100000.00, 2)
+        self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'ccf'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(ccf_conversion_factor=2), 58.61, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(ccf_conversion_factor=2), 58.61, 2)
         self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
-        self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 100000.00, 2)
+        self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'kwd'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
