@@ -1,6 +1,6 @@
 import unittest
 from datetime import date
-from billing import init_config
+from billing.core import init_config
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
