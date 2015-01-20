@@ -192,7 +192,8 @@ class ChargeResource(MyResource):
         return {'rows': {
             'id': charge.id,
             'rsi_binding': charge.rsi_binding,
-            'target_total': charge.target_total,
+            # TODO
+            'target_total': 0, #charge.target_total,
             }, 'results': 1}
 
     def delete(self, id):
