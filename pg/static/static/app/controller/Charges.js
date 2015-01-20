@@ -177,7 +177,7 @@ Ext.define('ReeBill.controller.Charges', {
 
         store.suspendAutoSync();
         store.add({
-            rsi_binding: 'New RSI',
+            rsi_binding: 'New Charge',
             description: 'Enter Description',
             rate: 0,
             unit: 'dollars',
