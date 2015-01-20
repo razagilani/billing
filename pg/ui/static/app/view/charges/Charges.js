@@ -50,13 +50,7 @@ Ext.define('ReeBill.view.charges.Charges', {
     forceFit: true,
     
     columns: [{
-        xtype: 'checkcolumn',
-        header: 'Shared',
-        dataIndex: 'shared',
-        sortable: true,
-        width: 65
-    },{
-        header: 'RSI Binding',
+        header: 'Name',
         sortable: true,
         dataIndex: 'rsi_binding',
         editor: {
@@ -65,76 +59,10 @@ Ext.define('ReeBill.view.charges.Charges', {
         },
         width: 180
     },{
-        header: 'Description',
-        sortable: true,
-        dataIndex: 'description',
-        editor: {
-            xtype: 'textfield',
-            allowBlank: false
-        },
-        width: 150
-    },{
-        xtype: 'templatecolumn',
-        header: 'Quantity',
-        id: 'quantity',
-        sortable: true,
-        dataIndex: 'quantity_formula',
-        editor: {
-            xtype: 'textfield',
-            allowBlank: true
-        },
-        flex: 1,
-        width: 250,
-        tpl: '{[values.error ? values.error : values.quantity]}'
-    },{
-        header: 'Units',
-        sortable: true,
-        dataIndex: 'unit',
-        editor: {
-            xtype: 'combo',
-            store: 'Units',
-            allowBlank: false,
-            minChars: 1,
-            typeAhead: true,
-            triggerAction: 'all',
-            valueField: 'value',
-            displayField: 'name',
-            queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
-        },
-        width: 70
-    },{
-        header: 'Rate',
-        sortable: true,
-        dataIndex: 'rate',
-        editor: {
-            xtype: 'textfield',
-            allowBlank: false
-        },
-        flex: 1,
-        width: 250,
-        allowBlank: false
-    },{
-        xtype: 'checkcolumn',
-        header: 'Has Charge',
-        dataIndex: 'has_charge',
-        sortable: true,
-        width: 100
-    },{
-        header: 'Group',
-        dataIndex: 'group',
-        sortable: true,
-        editor: {
-            xtype: 'textfield',
-            allowBlank: false
-        },
-        width: 90
-    },{
         header: 'Total',
         width: 110,
         sortable: true,
-        dataIndex: 'total',
+        dataIndex: 'target_total',
         summaryType: function(records){
             var sum = 0;
             Ext.Array.each(records, function(record){
@@ -165,21 +93,21 @@ Ext.define('ReeBill.view.charges.Charges', {
             action: 'removeCharge',
             iconCls: 'silk-delete',
             disabled: true
-        },{
-            xtype: 'button',
-            text: 'Regenerate',
-            action: 'regenerateCharge',
-            iconCls: 'silk-wrench'
-        },{
-            xtype: 'button',
-            text: 'Recompute',
-            action: 'recomputeCharges'
-        },'-',{
-            xtype: 'formulaField',
-            name: 'formulaField'
-        },'-',{
-            xtype: 'groupTextField',
-            name: 'groupTextField'
+        //},{
+        //    xtype: 'button',
+        //    text: 'Regenerate',
+        //    action: 'regenerateCharge',
+        //    iconCls: 'silk-wrench'
+        //},{
+        //    xtype: 'button',
+        //    text: 'Recompute',
+        //    action: 'recomputeCharges'
+        //},'-',{
+        //    xtype: 'formulaField',
+        //    name: 'formulaField'
+        //},'-',{
+        //    xtype: 'groupTextField',
+        //    name: 'groupTextField'
         }]
     }]
 });
