@@ -12,8 +12,10 @@ Ext.define('ReeBill.store.Charges', {
 		type: 'rest',
 
         pageParam: false,
+        startParam: false,
+        limitParam: false,
 
-        url: 'http://'+window.location.host+'/reebill/charges',
+        url: 'http://'+window.location.host+'/utilitybills/charges',
 
 		reader: {
 			type: 'json',
