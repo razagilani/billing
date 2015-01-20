@@ -1059,8 +1059,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
         self.reebill_processor.compute_reebill(acc, 1)
-        assert one.ree_charge == 50.0
-        assert one.balance_due == 50.0
+        self.assertAlmostEqual(50.0, one.ree_charge)
+        self.assertAlmostEqual(50.0, one.balance_due)
         self.reebill_processor.issue(acc, 1,
                            issue_date=datetime.utcnow() - timedelta(40))
 
