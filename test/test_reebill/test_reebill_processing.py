@@ -10,7 +10,8 @@ from reebill.state import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
 from test.setup_teardown import TestCaseWithSetup
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
+    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
+    BillingError
 from test import testing_utils
 from testfixtures.tempdirectory import TempDirectory
 
@@ -34,12 +35,13 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
         start, end = date(2012, 1, 1), date(2012, 2, 1)
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
-        self.utilbill_processor.upload_utility_bill(account, StringIO("test1"),
-                                              start, end,
-                                         'gas')
+        u = self.utilbill_processor.upload_utility_bill(account, StringIO(
+            "test1"), start, end, 'gas')
         utilbills_data, count = self.utilbill_processor.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
+
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
@@ -66,7 +68,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'total_adjustment': 0,
                                           'total_error': 0.0
                                       }, reebills_data[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
@@ -82,7 +84,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
         # TODO this may not accurately reflect the way reebills get
         # attached to different utility bills; see
         # https://www.pivotaltracker.com/story/show/51935657
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
@@ -1801,11 +1803,13 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         start, end = date(2012, 1, 1), date(2012, 2, 1)
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
-        self.utilbill_processor.upload_utility_bill(
+        u = self.utilbill_processor.upload_utility_bill(
             account, StringIO("test1"), start, end, 'gas')
         utilbills_data, count = self.utilbill_processor.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
+
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
@@ -1832,7 +1836,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'total_adjustment': 0,
                                           'total_error': 0.0
                                       }, reebills_data[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
@@ -1848,7 +1852,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # TODO this may not accurately reflect the way reebills get
         # attached to different utility bills; see
         # https://www.pivotaltracker.com/story/show/51935657
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
