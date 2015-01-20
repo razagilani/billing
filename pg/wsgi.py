@@ -1,11 +1,17 @@
 from os.path import dirname, realpath, join
+from boto.s3.connection import S3Connection
 
 from sqlalchemy import desc
 
-from core import init_config, init_model, init_logging
+from core import init_config, init_model, init_logging, config
 
 
 # TODO: is it necessary to specify file path?
+from core.bill_file_handler import BillFileHandler
+from core.pricing import FuzzyPricingModel
+from core.utilbill_loader import UtilBillLoader
+from reebill.utilbill_processor import UtilbillProcessor
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -14,22 +20,47 @@ init_model()
 import sys
 
 from datetime import datetime, timedelta
-from util.dateutils import ISO_8601_DATE
-from core.model import Session, UtilityAccount
+from util.dateutils import ISO_8601_DATE, date_to_datetime
+from core.model import Session, UtilityAccount, Charge
 from reebill import journal
 from core.model import UtilBill
 
-from flask import Flask
+from flask import Flask, url_for
 from flask.ext.restful import Api, Resource, fields, marshal_with
+from flask.ext.restful.reqparse import RequestParser
 
 
 app = Flask(__name__)
 api = Api(app)
 
+class MyResource(Resource):
+    def __init__(self):
+        init_config()
+        init_model()
+        from core import config
+        s3_connection = S3Connection(
+            config.get('aws_s3', 'aws_access_key_id'),
+            config.get('aws_s3', 'aws_secret_access_key'),
+            is_secure=config.get('aws_s3', 'is_secure'),
+            port=config.get('aws_s3', 'port'),
+            host=config.get('aws_s3', 'host'),
+            calling_format=config.get('aws_s3', 'calling_format'))
+        utilbill_loader = UtilBillLoader()
+        # TODO: ugly. maybe put entire url_format in config file.
+        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                'https' if config.get('aws_s3', 'is_secure') is True else
+                'http', config.get('aws_s3', 'host'),
+                config.get('aws_s3', 'port'))
+        self.bill_file_handler = BillFileHandler(
+            s3_connection, config.get('aws_s3', 'bucket'),
+            utilbill_loader, url_format)
+        pricing_model = FuzzyPricingModel(utilbill_loader)
+        self.utilbill_processor = UtilbillProcessor(
+            pricing_model, self.bill_file_handler, None)
 
-class UtilBillResource(Resource):
+class UtilBillResource(MyResource):
 
-    def handle_get(self, *vpath, **params):
+    def get(self):
         s = Session()
         # TODO: pre-join with Charge to make this faster, and get rid of limit
         utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
@@ -38,8 +69,8 @@ class UtilBillResource(Resource):
         rows = [{
             'id': ub.id,
             'account': ub.utility_account.account,
-            'period_start': ub.period_start,
-            'period_end': ub.period_end,
+            'period_start': ub.period_start.isoformat(),
+            'period_end': ub.period_end.isoformat(),
             'service': 'Unknown' if ub.service is None
             else ub.service.capitalize(),
             'total_energy': ub.get_total_energy(),
@@ -52,13 +83,14 @@ class UtilBillResource(Resource):
             'rate_class': ub.get_rate_class_name(),
             'pdf_url': self.bill_file_handler.get_s3_url(ub),
             'service_address': str(ub.service_address),
-            'next_estimated_meter_read_date': ub.period_end + timedelta(30),
+            'next_estimated_meter_read_date': (ub.period_end + timedelta(
+                30)).isoformat(),
             'supply_total': 0, # TODO
             'utility_account_number': ub.get_utility_account_number(),
             'secondary_account_number': '', # TODO
             'processed': ub.processed,
         } for ub in utilbills]
-        return True, {'rows': rows, 'results': len(rows)}
+        return {'rows': rows, 'results': len(rows)}
 
     def handle_put(self, utilbill_id, *vpath, **params):
         row = cherrypy.request.json
@@ -106,66 +138,96 @@ class UtilBillResource(Resource):
         return True, {}
 
 
-class ChargesResource(Resource):
 
-    def handle_get(self, utilbill_id, *vpath, **params):
-        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
+class ChargeListResource(MyResource):
+    def __init__(self):
+        super(ChargeListResource, self).__init__()
+        self.parser = RequestParser()
+        self.parser.add_argument('utilbill_id', type=int, required=True)
+
+    def get(self):
+        args = self.parser.parse_args()
+        utilbill = Session().query(UtilBill).filter_by(
+            id=args['utilbill_id']).one()
         charges = [{
             'id': charge.id,
             'rsi_binding': charge.rsi_binding,
             # TODO
             'target_total': 0, #charge.target_total,
         } for charge in utilbill.charges]
-        return True, {'rows': charges, 'results': len(charges)}
+        return {'rows': charges, 'results': len(charges)}
 
-    def handle_put(self, charge_id, *vpath, **params):
-        id = cherrypy.request.json.pop('id')
-        charge = Session().query(Charge).filter_by(id=id).one()
+class ChargeResource(MyResource):
+    def __init__(self):
+        super(ChargeResource, self).__init__()
+        self.parser = RequestParser()
+        self.parser.add_argument('id', type=int, required=True)
+        self.parser.add_argument('rsi_binding', type=str)
+        self.parser.add_argument('target_total', type=float)
+
+    def put(self, id):
+        args = self.parser.parse_args()
+        s = Session()
+        charge = s.query(Charge).filter_by(id=id).one()
         for key in ('rsi_binding', 'target_total'):
-            value = cherrypy.request.json[key]
-            setattr(charge, key, value)
-        return True, {'rows': {
+            value = args[key]
+            if value is not None:
+                setattr(charge, key, value)
+        s.commit()
+        return {'rows': {
             'id': charge.id,
             'rsi_binding': charge.rsi_binding,
-            'target_total': charge.target_total,
+            # TODO
+            'target_total': 0, #charge.target_total,
         }, 'results': 1}
 
-    def handle_post(self, *vpath, **params):
+    def post(self, id):
+        # TODO: client sends "id" even when its value is meaningless (the
+        # value is always 0, for some reason)
+        self.parser.add_argument('utilbill_id', type=int, required=True)
+        args = self.parser.parse_args()
         charge = self.utilbill_processor.add_charge(
-            cherrypy.request.json['utilbill_id'],
-            rsi_binding=cherrypy.request.json['rsi_binding'])
-        return True, {'rows': {
+            args['utilbill_id'], rsi_binding=args['rsi_binding'])
+        Session().commit()
+        return {'rows': {
             'id': charge.id,
             'rsi_binding': charge.rsi_binding,
             'target_total': charge.target_total,
             }, 'results': 1}
 
-    def handle_delete(self, charge_id, *vpath, **params):
-        self.utilbill_processor.delete_charge(charge_id)
-        return True, {}
+    def delete(self, id):
+        self.utilbill_processor.delete_charge(id)
+        Session().commit()
+        return {}
 
 
-class SuppliersResource(Resource):
+class SuppliersResource(MyResource):
     def get(self):
         suppliers = self.utilbill_processor.get_all_suppliers_json()
-        return True, {'rows': suppliers, 'results': len(suppliers)}
-api.add_resource(SuppliersResource, '/suppliers')
+        return {'rows': suppliers, 'results': len(suppliers)}
 
-class UtilitiesResource(Resource):
+class UtilitiesResource(MyResource):
     def get(self):
         utilities = self.utilbill_processor.get_all_utilities_json()
         return {'rows': utilities, 'results': len(utilities)}
-api.add_resource(UtilitiesResource, '/utilities')
 
-class RateClassesResource(Resource):
+class RateClassesResource(MyResource):
     def get(self):
         rate_classes = self.utilbill_processor.get_all_rate_classes_json()
-        return True, {'rows': rate_classes, 'results': len(rate_classes)}
-api.add_resource(RateClassesResource, '/rateclasses')
+        print rate_classes
+        return {'rows': rate_classes, 'results': len(rate_classes)}
+
+api.add_resource(UtilBillResource, '/utilitybills/utilitybills')
+api.add_resource(SuppliersResource, '/utilitybills/suppliers')
+api.add_resource(UtilitiesResource, '/utilitybills/utilities')
+api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
+api.add_resource(ChargeListResource, '/utilitybills/charges')
+api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+    url_for('static', filename='index.html')
 
     # class CherryPyRoot(object):
     #     utilitybills = app
