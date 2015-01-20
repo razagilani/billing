@@ -253,40 +253,21 @@ class ReeBill(Base):
         assert isinstance(new_quantity, (float, int))
         reading = self.get_reading_by_register_binding(register_binding)
         unit_string = reading.unit.lower()
-        if unit_string not in ['btu', 'kwd']:
+
+        if unit_string == 'kwd':
+            # for demand in PV bills, 'new_quantity' will be in kilowatts
+            # (kwd); no conversion is needed.
+            reading.renewable_quantity = new_quantity
+        else:
+            # in all other cases, 'new_quantity' will be in BTU: convert to unit
+            # of the reading
             try:
+                new_quantity_with_unit = new_quantity * ureg.btu
                 unit = ureg.parse_expression(unit_string)
-                new_quantity = unit.to('btu').magnitude
+                converted_quantity = new_quantity_with_unit.to(unit)
+                reading.renewable_quantity = converted_quantity.magnitude
             except UndefinedUnitError:
                 raise ValueError('Unknown energy unit: "%s"' % unit_string)
-
-        # Thermal: convert quantity to therms according to unit, and add it to
-        # the total
-        '''if unit == 'therms':
-            new_quantity /= 1e5
-        elif unit == 'btu':
-            # TODO physical constants must be global
-            pass
-        elif unit == 'kwh':
-            # TODO physical constants must be global
-            new_quantity /= 1e5
-            new_quantity /= .0341214163
-        elif unit == 'ccf':
-            # deal with non-energy unit "CCF" by converting to therms with
-            # conversion factor 1
-            # TODO: 28825375 - need the conversion factor for this
-            # print ("Register in reebill %s-%s-%s contains gas measured "
-            #        "in ccf: energy value is wrong; time to implement "
-            #        "https://www.pivotaltracker.com/story/show/28825375") \
-            #       % (self.account, self.sequence, self.version)
-            new_quantity /= 1e5
-        # PV: Unit is kilowatt; no conversion needs to happen
-        elif unit == 'kwd':
-            pass
-        else:
-            raise ValueError('Unknown energy unit: "%s"' % unit)'''
-
-        reading.renewable_quantity = new_quantity
 
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
         total_therms = 0
@@ -296,6 +277,8 @@ class ReeBill(Base):
             #ureg.load_definitions('/home/raza/workspace-skyline/billing/unit_defs.txt')
             assert isinstance(quantity, (float, int))
             assert isinstance(unit_string, basestring)
+            # convert quantity to therms according to unit, and add it to
+            # the total
             try:
                 unit = ureg.parse_expression(unit_string)
                 if unit == ureg.ccf and ccf_conversion_factor is not None:
@@ -304,35 +287,6 @@ class ReeBill(Base):
                     total_therms += quantity * unit.to(ureg.therm).magnitude
             except UndefinedUnitError:
                 raise ValueError('Unknown energy unit: "%s"' % unit_string)
-
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            '''if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                total_therms += quantity * ureg.btu.to(ureg.therm).\
-                    magnitude
-            elif unit == 'kwh':
-                total_therms += quantity * ureg.\
-                    parse_expression('kilowatt hour').to(ureg.therm).\
-                    magnitude
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    # print ("Register in reebill %s-%s-%s contains gas measured "
-                    #        "in ccf: energy value is wrong; time to implement "
-                    #        "https://www.pivotaltracker.com/story/show/28825375"
-                    #       ) % (self.customer.account, self.sequence,
-                    #       self.version)
-                    # assume conversion factor is 1
-                    total_therms += quantity
-            elif unit == 'kwd':
-                # power does not count toward total energy
-                pass
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)'''
 
         return total_therms
 
@@ -344,7 +298,8 @@ class ReeBill(Base):
             unit_string = reading.unit.lower()
             assert isinstance(quantity, (float, int))
             assert isinstance(unit_string, basestring)
-
+            # convert quantity to therms according to unit, and add it to
+            # the total
             try:
                 unit = ureg.parse_expression(unit_string)
                 if unit == ureg.ccf and ccf_conversion_factor is not None:
@@ -354,32 +309,6 @@ class ReeBill(Base):
             except UndefinedUnitError:
                 raise ValueError('Unknown energy unit: "%s"' % unit_string)
 
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            '''if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                total_therms += quantity * ureg.btu.to(ureg.therm).magnitude
-            elif unit == 'kwh':
-                total_therms += quantity * ureg.\
-                    parse_expression('kilowatt hour').to(ureg.therm).magnitude
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    # print ("Register in reebill %s-%s-%s contains gas measured "
-                    #        "in ccf: energy value is wrong; time to implement "
-                    #        "https://www.pivotaltracker.com/story/show/28825375"
-                    #       ) % (self.customer.account, self.sequence,
-                    #       self.version)
-                    # assume conversion factor is 1
-                    total_therms += quantity
-            elif unit == 'kwd':
-                # power does not count toward total energy
-                pass
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)'''
         return total_therms
 
     def _replace_charges_with_evaluations(self, evaluations):
