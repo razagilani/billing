@@ -5,7 +5,7 @@ from datetime import datetime, date
 from itertools import chain
 
 import logging
-from pint import UnitRegistry
+from pint import UnitRegistry, UndefinedUnitError
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship, backref, aliased
@@ -18,12 +18,13 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
+from billing import ureg
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
-from billing import config
 from billing.util.monthmath import Month
+
 
 __all__ = [
     'Payment',
@@ -251,11 +252,17 @@ class ReeBill(Base):
         assert isinstance(register_binding, basestring)
         assert isinstance(new_quantity, (float, int))
         reading = self.get_reading_by_register_binding(register_binding)
-        unit = reading.unit.lower()
+        unit_string = reading.unit.lower()
+        if unit_string not in ['btu', 'kwd']:
+            try:
+                unit = ureg.parse_expression(unit_string)
+                new_quantity = unit.to('btu').magnitude
+            except UndefinedUnitError:
+                raise ValueError('Unknown energy unit: "%s"' % unit_string)
 
         # Thermal: convert quantity to therms according to unit, and add it to
         # the total
-        if unit == 'therms':
+        '''if unit == 'therms':
             new_quantity /= 1e5
         elif unit == 'btu':
             # TODO physical constants must be global
@@ -277,7 +284,7 @@ class ReeBill(Base):
         elif unit == 'kwd':
             pass
         else:
-            raise ValueError('Unknown energy unit: "%s"' % unit)
+            raise ValueError('Unknown energy unit: "%s"' % unit)'''
 
         reading.renewable_quantity = new_quantity
 
@@ -285,14 +292,22 @@ class ReeBill(Base):
         total_therms = 0
         for reading in self.readings:
             quantity = reading.renewable_quantity
-            unit = reading.unit.lower()
+            unit_string = reading.unit.lower()
+            #ureg.load_definitions('/home/raza/workspace-skyline/billing/unit_defs.txt')
             assert isinstance(quantity, (float, int))
-            assert isinstance(unit, basestring)
-            ureg = UnitRegistry()
+            assert isinstance(unit_string, basestring)
+            try:
+                unit = ureg.parse_expression(unit_string)
+                if unit == ureg.ccf and ccf_conversion_factor is not None:
+                    total_therms += ccf_conversion_factor * quantity * unit.to(ureg.therm).magnitude
+                else:
+                    total_therms += quantity * unit.to(ureg.therm).magnitude
+            except UndefinedUnitError:
+                raise ValueError('Unknown energy unit: "%s"' % unit_string)
 
             # convert quantity to therms according to unit, and add it to
             # the total
-            if unit == 'therms':
+            '''if unit == 'therms':
                 total_therms += quantity
             elif unit == 'btu':
                 total_therms += quantity * ureg.btu.to(ureg.therm).\
@@ -317,7 +332,7 @@ class ReeBill(Base):
                 # power does not count toward total energy
                 pass
             else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)
+                raise ValueError('Unknown energy unit: "%s"' % unit)'''
 
         return total_therms
 
@@ -326,14 +341,22 @@ class ReeBill(Base):
         total_therms = 0
         for reading in self.readings:
             quantity = reading.conventional_quantity
-            unit = reading.unit.lower()
+            unit_string = reading.unit.lower()
             assert isinstance(quantity, (float, int))
-            assert isinstance(unit, basestring)
-            ureg = UnitRegistry()
+            assert isinstance(unit_string, basestring)
+
+            try:
+                unit = ureg.parse_expression(unit_string)
+                if unit == ureg.ccf and ccf_conversion_factor is not None:
+                    total_therms += ccf_conversion_factor * quantity * unit.to(ureg.therm).magnitude
+                else:
+                    total_therms += quantity * unit.to(ureg.therm).magnitude
+            except UndefinedUnitError:
+                raise ValueError('Unknown energy unit: "%s"' % unit_string)
 
             # convert quantity to therms according to unit, and add it to
             # the total
-            if unit == 'therms':
+            '''if unit == 'therms':
                 total_therms += quantity
             elif unit == 'btu':
                 total_therms += quantity * ureg.btu.to(ureg.therm).magnitude
@@ -356,7 +379,7 @@ class ReeBill(Base):
                 # power does not count toward total energy
                 pass
             else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)
+                raise ValueError('Unknown energy unit: "%s"' % unit)'''
         return total_therms
 
     def _replace_charges_with_evaluations(self, evaluations):

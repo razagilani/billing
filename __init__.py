@@ -1,5 +1,6 @@
 import os.path as path
 from os.path import dirname, realpath
+from pint import UnitRegistry
 
 import configuration as config_file_schema
 
@@ -7,10 +8,9 @@ import configuration as config_file_schema
 __version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config']
+           'initialize', 'config', 'ureg']
 
 config = None
-
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -88,3 +88,9 @@ def initialize():
     init_logging()
     init_config()
     init_model()
+
+# pint unitregistry variable used for unit conversion
+ureg = UnitRegistry()
+ureg.define('kilowatthour = 0.0341214163313 * therm = kwh')
+ureg.define('centumcubicfoot = 1 * therm = ccf = therms')
+ureg.define('kilowattdaily = 0 * therm = kwd')
