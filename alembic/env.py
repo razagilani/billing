@@ -16,7 +16,6 @@ config = context.config
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from billing.core.model import Base
-target_metadata = Base.metadata
 
 # all modules that contain model classes that inherit from Base should be
 # imported here in order to make Alembic aware of them. if you don't import
@@ -25,6 +24,9 @@ target_metadata = Base.metadata
 # modules.
 import billing.core.altitude
 import billing.reebill.state
+import billing.pg.pg_model
+
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
