@@ -396,33 +396,6 @@ class UtilBillResource(RESTResource):
         return True, {}
 
 
-class RegistersResource(RESTResource):
-
-    def handle_get(self, utilbill_id, *vpath, **params):
-        # get dictionaries describing all registers in all utility bills
-        registers_json = self.utilbill_processor.get_registers_json(utilbill_id)
-        return True, {"rows": registers_json, 'results': len(registers_json)}
-
-    def handle_post(self, *vpath, **params):
-        r = self.utilbill_processor.new_register(**cherrypy.request.json)
-        return True, {"rows": r.column_dict(), 'results': 1}
-
-    def handle_put(self, register_id, *vpath, **params):
-        updated_reg = cherrypy.request.json
-
-        # all arguments should be strings, except "quantity",
-        # which should be a number
-        if 'quantity' in updated_reg:
-            assert isinstance(updated_reg['quantity'], (float, int))
-
-        register = self.utilbill_processor.update_register(register_id, updated_reg)
-        return True, {"rows": register.column_dict(), 'results': 1}
-
-    def handle_delete(self, register_id, *vpath, **params):
-        self.utilbill_processor.delete_register(register_id)
-        return True, {}
-
-
 class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
@@ -466,7 +439,6 @@ class RateClassesResource(RESTResource):
 
 class ReebillWSGI(WebResource):
     utilitybills = UtilBillResource()
-    registers = RegistersResource()
     charges = ChargesResource()
     suppliers = SuppliersResource()
     utilities = UtilitiesResource()
