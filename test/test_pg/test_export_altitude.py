@@ -6,9 +6,9 @@ from uuid import NAMESPACE_DNS
 
 from mock import Mock, patch
 
-from billing.core.model import UtilBill, UtilityAccount
-from billing.core import altitude
-from billing.pg.export_altitude import PGAltitudeExporter
+from core.model import UtilBill, UtilityAccount
+from core import altitude
+from pg.export_altitude import PGAltitudeExporter
 #from core.altitude import AltitudeGUID
 
 

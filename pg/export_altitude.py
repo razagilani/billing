@@ -1,8 +1,8 @@
 from uuid import uuid4
 from datetime import timedelta
 from tablib import Dataset
-from billing.core.model import Session, UtilBill, UtilityAccount
-from billing.pg.pg_model import PGAccount
+from core.model import Session, UtilBill, UtilityAccount
+from pg.pg_model import PGAccount
 
 def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a PGAccount.

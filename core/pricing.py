@@ -2,8 +2,8 @@ from __future__ import division
 from collections import defaultdict
 from sys import maxint
 
-from billing.exc import NoSuchBillException
-from billing.core.model import Charge
+from exc import NoSuchBillException
+from core.model import Charge
 
 
 class PricingModel(object):

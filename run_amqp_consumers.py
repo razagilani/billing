@@ -6,8 +6,8 @@ in amqp_exchange.py (and should have test coverage).
 import logging
 from traceback import format_exc
 
-from billing import init_config, init_model, init_logging
-from billing.core.amqp_exchange import create_dependencies, \
+from core import init_config, init_model, init_logging
+from core.amqp_exchange import create_dependencies, \
     consume_utilbill_file_mq, LOG_NAME
 
 if __name__ == '__main__':
