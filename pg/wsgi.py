@@ -13,7 +13,7 @@ from reebill.utilbill_processor import UtilbillProcessor
 
 from datetime import datetime, timedelta
 from dateutil import parser as dateutil_parser
-from core.model import Session, UtilityAccount, Charge
+from core.model import Session, UtilityAccount, Charge, Supplier, Utility
 from core.model import UtilBill
 
 from flask import Flask, url_for
@@ -42,16 +42,19 @@ class CallableField(Raw):
     def format(self, value):
         return self.result_field.format(value())
 
-class CapitalizedString(String):
+class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
         return value.capitalize()
 
-class DateIsoformat(Raw):
+class IsoDatetime(Raw):
     def format(self, value):
         return value.isoformat()
 
-class MyResource(Resource):
+class BaseResource(Resource):
+    '''Base class of all resources. Contains UtilbillProcessor object to be
+    used in handling requests, and shared code related to JSON formatting.
+    '''
     def __init__(self):
         init_config()
         init_model()
@@ -88,9 +91,9 @@ class MyResource(Resource):
         self.utilbill_fields = {
             'id': Integer,
             'account': String,
-            'period_start': DateIsoformat,
-            'period_end': DateIsoformat,
-            'service': CapitalizedString(default='Unknown'),
+            'period_start': IsoDatetime,
+            'period_end': IsoDatetime,
+            'service': CapString(default='Unknown'),
             'total_energy': CallableField(Float(), attribute='get_total_energy'),
             'total_charges': Float(attribute='target_total'),
             'computed_total': CallableField(Float(), attribute='get_total_charges'),
@@ -100,16 +103,15 @@ class MyResource(Resource):
             'rate_class': CallableField(String(), attribute='get_rate_class_name'),
             'pdf_url': PDFUrlField,
             'service_address': String,
-            # TODO
             'next_estimated_meter_read_date': CallableField(
-                DateIsoformat(), attribute='get_estimated_next_meter_read_date',
+                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
                 default=None),
             #'supply_total': 0, # TODO
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
             #'secondary_account_number': '', # TODO
             'processed': Boolean,
-            }
+        }
 
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
@@ -119,7 +121,7 @@ id_parser.add_argument('id', type=int, required=True)
 # TODO: determine when argument to put/post/delete methods are created
 # instead of RequestParser arguments
 
-class UtilBillListResource(MyResource):
+class UtilBillListResource(BaseResource):
     def get(self):
         s = Session()
         # TODO: pre-join with Charge to make this faster, and get rid of limit
@@ -129,7 +131,7 @@ class UtilBillListResource(MyResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
-class UtilBillResource(MyResource):
+class UtilBillResource(BaseResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
 
@@ -166,15 +168,10 @@ class UtilBillResource(MyResource):
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
-        self.utilbill_processor.delete_utility_bill_by_id(
-            id)
-        # journal.UtilBillDeletedEvent.save_instance(
-        #     cherrypy.session['user'], utilbill.get_nextility_account_number(),
-        #     utilbill.period_start, utilbill.period_end,
-        #     utilbill.service, deleted_path)
+        self.utilbill_processor.delete_utility_bill_by_id(id)
         return {}
 
-class ChargeListResource(MyResource):
+class ChargeListResource(BaseResource):
     def __init__(self):
         super(ChargeListResource, self).__init__()
         self.parser = RequestParser()
@@ -193,7 +190,7 @@ class ChargeListResource(MyResource):
         } for charge in utilbill.charges]
         return {'rows': charges, 'results': len(charges)}
 
-class ChargeResource(MyResource):
+class ChargeResource(BaseResource):
 
     format = {
         'id': Integer,
@@ -233,21 +230,23 @@ class ChargeResource(MyResource):
         Session().commit()
         return {}
 
-
-class SuppliersResource(MyResource):
+class SuppliersResource(BaseResource):
     def get(self):
-        suppliers = self.utilbill_processor.get_all_suppliers_json()
-        return {'rows': suppliers, 'results': len(suppliers)}
+        suppliers = Session().query(Supplier).all()
+        rows = marshal(suppliers, {'id': Integer, 'name': String})
+        return {'rows': rows, 'results': len(rows)}
 
-class UtilitiesResource(MyResource):
+class UtilitiesResource(BaseResource):
     def get(self):
-        utilities = self.utilbill_processor.get_all_utilities_json()
-        return {'rows': utilities, 'results': len(utilities)}
+        utilities = Session().query(Utility).all()
+        rows = marshal(utilities, {'id': Integer, 'name': String})
+        return {'rows': rows, 'results': len(rows)}
 
-class RateClassesResource(MyResource):
+class RateClassesResource(BaseResource):
     def get(self):
         rate_classes = self.utilbill_processor.get_all_rate_classes_json()
-        return {'rows': rate_classes, 'results': len(rate_classes)}
+        rows = marshal(rate_classes, {'id': Integer, 'name': String})
+        return {'rows': rows, 'results': len(rows)}
 
 if __name__ == '__main__':
     p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
