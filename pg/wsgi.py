@@ -103,8 +103,13 @@ class MyResource(Resource):
         'processed': Boolean,
         }
 
-# TODO: remove redundant parser code
-# http://flask-restful.readthedocs.org/en/0.3.1/reqparse.html#parser-inheritance
+# basic RequestParser to be extended with more arguments by each
+# put/post/delete method below.
+id_parser = RequestParser()
+id_parser.add_argument('id', type=int, required=True)
+
+# TODO: determine when argument to put/post/delete methods are created
+# instead of RequestParser arguments
 
 class UtilBillListResource(MyResource):
     def get(self):
@@ -121,8 +126,7 @@ class UtilBillResource(MyResource):
         super(UtilBillResource, self).__init__()
 
     def put(self, id):
-        parser = RequestParser()
-        parser.add_argument('id', type=int, required=True)
+        parser = id_parser.copy()
         parser.add_argument('period_start', type=date)
         parser.add_argument('period_end', type=date)
         parser.add_argument('target_total', type=float)
@@ -152,7 +156,7 @@ class UtilBillResource(MyResource):
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
-        utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
+        self.utilbill_processor.delete_utility_bill_by_id(
             id)
         # journal.UtilBillDeletedEvent.save_instance(
         #     cherrypy.session['user'], utilbill.get_nextility_account_number(),
@@ -181,19 +185,17 @@ class ChargeListResource(MyResource):
         return {'rows': charges, 'results': len(charges)}
 
 class ChargeResource(MyResource):
-    def __init__(self):
-        super(ChargeResource, self).__init__()
-        self.parser = RequestParser()
-        self.parser.add_argument('id', type=int, required=True)
-        self.parser.add_argument('rsi_binding', type=str)
-        self.parser.add_argument('target_total', type=float)
 
-    def put(self, id):
-        args = self.parser.parse_args()
+    def put(self, id=None):
+        parser = id_parser.copy()
+        parser.add_argument('rsi_binding', type=str)
+        parser.add_argument('target_total', type=float)
+        args = parser.parse_args()
+
         s = Session()
         charge = s.query(Charge).filter_by(id=id).one()
         for key in ('rsi_binding', 'target_total'):
-            value = args[key]
+            value = args.get(key)
             if value is not None:
                 setattr(charge, key, value)
         s.commit()
@@ -207,8 +209,9 @@ class ChargeResource(MyResource):
     def post(self, id):
         # TODO: client sends "id" even when its value is meaningless (the
         # value is always 0, for some reason)
-        self.parser.add_argument('utilbill_id', type=int, required=True)
-        args = self.parser.parse_args()
+        parser = id_parser.copy()
+        parser.add_argument('utilbill_id', type=int, required=True)
+        args = parser.parse_args()
         charge = self.utilbill_processor.add_charge(
             args['utilbill_id'], rsi_binding=args['rsi_binding'])
         Session().commit()
