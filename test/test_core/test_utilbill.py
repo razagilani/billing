@@ -455,12 +455,13 @@ class UtilBillTest(TestCase):
                             Address(), Address(), period_start=date(2000,1,1),
                             period_end=date(2000,2,1))
         the_charges = [
-            Charge(utilbill, 'A', 1, '1', type='distribution'),
+            Charge(utilbill, 'A', 1, '', target_total=1, type='distribution'),
             # a Charge does not count as a real charge if has_charge=False.
-            Charge(utilbill, 'B', 1, '3', type='supply', has_charge=False),
-            Charge(utilbill, 'C', 1, '5', type='supply'),
+            Charge(utilbill, 'B', 1, '', target_total=3, type='supply',
+                   has_charge=False),
+            Charge(utilbill, 'C', 1, '', target_total=5, type='supply'),
             Charge(utilbill, 'D', 1, 'syntax error', type='supply'),
-            Charge(utilbill, 'E', 1, '7', type='other'),
+            Charge(utilbill, 'E', 1, '', target_total=7, type='other'),
         ]
         utilbill.charges = the_charges
         self.assertEqual(the_charges, utilbill.charges)
@@ -469,9 +470,9 @@ class UtilBillTest(TestCase):
         # charges"
         self.assertEqual(the_charges[2:4], utilbill.get_supply_charges())
 
-        # but it does not count toward the "supply total"
+        # but it does not count toward the "supply target total"
         utilbill.compute_charges()
-        self.assertEqual(5, utilbill.get_supply_total())
+        self.assertEqual(5, utilbill.get_supply_target_total())
 
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
