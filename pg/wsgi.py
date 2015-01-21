@@ -188,16 +188,13 @@ class UtilBillResource(BaseResource):
         return {}
 
 class ChargeListResource(BaseResource):
-    def __init__(self):
-        super(ChargeListResource, self).__init__()
-        self.parser = RequestParser()
-        self.parser.add_argument('utilbill_id', type=int, required=True)
-
     def get(self):
-        args = self.parser.parse_args()
+        parser = RequestParser()
+        parser.add_argument('utilbill_id', type=int, required=True)
+        args = parser.parse_args()
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
-        rows = [marshal(utilbill.charges, self.charge_fields)]
+        rows = [marshal(c, self.charge_fields) for c in utilbill.charges]
         return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):

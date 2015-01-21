@@ -59,12 +59,15 @@ Ext.define('ReeBill.view.charges.Charges', {
         width: 110,
         sortable: true,
         dataIndex: 'target_total',
+        editor: {
+            xtype: 'numberfield',
+            allowBlank: false,
+            step: 0.01
+        },
         summaryType: function(records){
             var sum = 0;
             Ext.Array.each(records, function(record){
-                if(record.get('has_charge')){
-                    sum += record.get('total');
-                }
+                sum += record.get('target_total');
             });
             return sum;
         },
