@@ -1,5 +1,6 @@
 import os.path as path
 from os.path import dirname, realpath
+from pint import UnitRegistry
 
 import configuration as config_file_schema
 
@@ -7,7 +8,7 @@ import configuration as config_file_schema
 __version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config']
+           'initialize', 'config', 'ureg']
 
 config = None
 
