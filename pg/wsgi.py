@@ -1,10 +1,19 @@
+'''
+Flask back-end for utility bill data-entry UI.
+
+This file will probably have to move or split apart in order to follow
+recommended file structure as documented here:
+http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
+http://flask.pocoo.org/docs/0.10/patterns/packages/
+http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
+'''
 from datetime import date, datetime
 from os.path import dirname, realpath, join
 from boto.s3.connection import S3Connection
 
 from sqlalchemy import desc
 
-from core import init_config, init_model, init_logging, config
+from core import initialize
 
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
@@ -56,8 +65,6 @@ class BaseResource(Resource):
     used in handling requests, and shared code related to JSON formatting.
     '''
     def __init__(self):
-        init_config()
-        init_model()
         from core import config
         s3_connection = S3Connection(
             config.get('aws_s3', 'aws_access_key_id'),
@@ -250,10 +257,7 @@ class RateClassesResource(BaseResource):
         return {'rows': rows, 'results': len(rows)}
 
 if __name__ == '__main__':
-    p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-    init_logging(filepath=p)
-    init_config(filepath=p)
-    init_model()
+    initialize()
 
     app = Flask(__name__)
     api = Api(app)
