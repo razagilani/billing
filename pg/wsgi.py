@@ -73,33 +73,6 @@ class MyResource(Resource):
             pricing_model, self.bill_file_handler, None)
 
 
-    # TODO: use flask-restful marshal function
-    def render_utilbill(self, ub):
-        return {
-            'id': ub.id,
-            'account': ub.utility_account.account,
-            'period_start': ub.period_start.isoformat(),
-            'period_end': ub.period_end.isoformat(),
-            'service': 'Unknown' if ub.service is None
-            else ub.service.capitalize(),
-            'total_energy': ub.get_total_energy(),
-            'total_charges': ub.target_total,
-            'computed_total': ub.get_total_charges(),
-            'computed_total': 0,
-            # TODO: should these be names or ids or objects?
-            'utility': ub.get_utility_name(),
-            'supplier': ub.get_supplier_name(),
-            'rate_class': ub.get_rate_class_name(),
-            'pdf_url': self.bill_file_handler.get_s3_url(ub),
-            'service_address': str(ub.service_address),
-            'next_estimated_meter_read_date': (ub.period_end + timedelta(
-                30)).isoformat(),
-            'supply_total': 0, # TODO
-            'utility_account_number': ub.get_utility_account_number(),
-            'secondary_account_number': '', # TODO
-            'processed': ub.processed,
-            }
-
     # fields that require special behavior:
     # - pdf_url is a different callable that is different for each utility
     # bill, therefore can't use CallableField
@@ -176,7 +149,7 @@ class UtilBillResource(MyResource):
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
 
-        return {'rows': self.render_utilbill(ub), 'results': 1}
+        return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
         utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
