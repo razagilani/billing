@@ -109,7 +109,13 @@ Ext.define('ReeBill.controller.UtilityBills', {
             rate_class_store = Ext.getStore("RateClasses");
             rate_class_store.clearFilter(true);
             rate_class_store.filter('utility_id', utility.id);
-    }
+
+            this.getChargesGrid();
+            var store = this.getChargesStore();
+            var proxy = store.getProxy();
+            proxy.extraParams = {utilbill_id: selectedBill.get('id')}
+            store.reload();
+        }
         else
         {
             this.getUtilbillCompute().setDisabled(true);

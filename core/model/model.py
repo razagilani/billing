@@ -156,7 +156,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s' % (self.street, self.city, self.state)
+        return '%s, %s, %s %s' % (self.street, self.city, self.state,
+                               self.postal_code)
 
     def column_dict(self):
         raise NotImplementedError
@@ -482,6 +483,9 @@ class UtilBill(Base):
             return None
         return self.supplier.name
 
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
+
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
         confused with utility account number. This  may go away since it is
@@ -618,6 +622,23 @@ class UtilBill(Base):
         """
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
+
+    def get_total_energy(self):
+        # NOTE: this may have been implemented already on another branch;
+        # remove duplicate when merged
+        try:
+            total_register = next(r for r in self.registers if
+                                  r.register_binding == 'REG_TOTAL')
+        except StopIteration:
+            return 0
+        return total_register.quantity
+
+    def set_total_energy(self, quantity):
+        total_register = next(r for r in self.registers if
+                              r.register_binding == 'REG_TOTAL')
+        # TODO: maybe create REG_TOTAL register if it doesn't exist.
+        # this is hard because the unit is not known.
+        total_register.quantity = quantity
 
     def get_supply_total(self):
         '''Return the total amount of all supply charges, excluding any charge
