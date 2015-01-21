@@ -186,6 +186,12 @@ class ChargeListResource(MyResource):
 
 class ChargeResource(MyResource):
 
+    format = {
+        'id': Integer,
+        'rsi_binding': String,
+        'target_total': Float,
+    }
+
     def put(self, id=None):
         parser = id_parser.copy()
         parser.add_argument('rsi_binding', type=str)
@@ -199,28 +205,19 @@ class ChargeResource(MyResource):
             if value is not None:
                 setattr(charge, key, value)
         s.commit()
-        return {'rows': {
-            'id': charge.id,
-            'rsi_binding': charge.rsi_binding,
-            # TODO
-            'target_total': 0, #charge.target_total,
-        }, 'results': 1}
+        return {'rows': marshal(charge, self.format), 'results': 1}
 
     def post(self, id):
         # TODO: client sends "id" even when its value is meaningless (the
         # value is always 0, for some reason)
         parser = id_parser.copy()
         parser.add_argument('utilbill_id', type=int, required=True)
+        parser.add_argument('rsi_binding', type=str, required=True)
         args = parser.parse_args()
         charge = self.utilbill_processor.add_charge(
             args['utilbill_id'], rsi_binding=args['rsi_binding'])
         Session().commit()
-        return {'rows': {
-            'id': charge.id,
-            'rsi_binding': charge.rsi_binding,
-            # TODO
-            'target_total': 0, #charge.target_total,
-            }, 'results': 1}
+        return {'rows': marshal(charge, self.format), 'results': 1}
 
     def delete(self, id):
         self.utilbill_processor.delete_charge(id)
