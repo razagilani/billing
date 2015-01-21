@@ -30,6 +30,7 @@ wsgiref==0.1.2
 xlwt==0.7.4
 testfixtures
 voluptuous==0.8.6
+Pint==0.6
 
 reportlab==2.5
 # PIL seems to be required for reportlab, but the reportlab package does not

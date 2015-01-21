@@ -59,7 +59,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'prior_balance': 0,
                                           'processed': 0,
                                           'ree_charge': 0.0,
-                                          'ree_quantity': 22.602462036826545,
+                                          'ree_quantity': 22.602462036826555,
                                           'ree_value': 0,
                                           'sequence': 1,
                                           'services': [],
@@ -670,12 +670,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'services': [],
                                           'total_adjustment': 0.,
                                           'total_error': 0.,
-                                          'ree_quantity': 10,
                                           'balance_due': 8.8,
                                           'balance_forward': 0,
                                           'corrections': '-',
                                           }, reebill_metadata[0])
-
+        self.assertAlmostEqual(10, reebill_metadata[0]['ree_quantity'])
         account_info_v0 = self.reebill_processor.get_sequential_account_info('99999', 1)
 
         # create 2nd reebill, leaving it unissued
@@ -702,7 +701,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                              'prior_balance': 8.8,
                              'processed': 0,
                              'ree_charge': 0.0,
-                             'ree_quantity': 0,
                              'ree_value': 0,
                              'sequence': 2,
                              'services': [],
@@ -723,7 +721,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                              'prior_balance': 0,
                              'processed': 0,
                              'ree_charge': 17.6,
-                             'ree_quantity': 20,
                              'ree_value': 20,
                              'sequence': 1,
                              'services': [],
@@ -731,6 +728,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                              'total_error': 8.8,
                              }], self.reebill_processor.get_reebill_metadata_json('99999')):
             self.assertDictContainsSubset(x, y)
+            reebill_data = self.reebill_processor.get_reebill_metadata_json('99999')
+            self.assertAlmostEqual(reebill_data[0]['ree_quantity'], 0)
+            self.assertAlmostEqual(reebill_data[1]['ree_quantity'], 20)
 
         # all "sequential account info" gets copied from one version to the next
         account_info_v1 = self.reebill_processor.get_sequential_account_info('99999', 1)
@@ -1059,8 +1059,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
         self.reebill_processor.compute_reebill(acc, 1)
-        assert one.ree_charge == 50
-        assert one.balance_due == 50
+        self.assertAlmostEqual(50.0, one.ree_charge)
+        self.assertAlmostEqual(50.0, one.balance_due)
         self.reebill_processor.issue(acc, 1,
                            issue_date=datetime.utcnow() - timedelta(40))
 
@@ -1173,8 +1173,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         reebill_2_data, reebill_1_data = self.reebill_processor \
             .get_reebill_metadata_json(account)
-        self.assertEqual(100, reebill_1_data['ree_quantity'])
-        self.assertEqual(100, reebill_2_data['ree_quantity'])
+        self.assertAlmostEqual(100, reebill_1_data['ree_quantity'])
+        self.assertAlmostEqual(100, reebill_2_data['ree_quantity'])
 
         # addresses should be preserved from one reebill document to the
         # next
@@ -1347,7 +1347,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               'services': [],
                                               'total_adjustment': 0.,
                                               'total_error': 0.,
-                                              'ree_quantity': energy_quantity,
+                                              #'ree_quantity': energy_quantity,
                                               'balance_due': energy_quantity * .5,
                                               'balance_forward': 0.,
                                               'corrections': '(never issued)'}, reebill_data[0])
@@ -1371,12 +1371,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'services': [],
                                           'total_adjustment': 0.,
                                           'total_error': 0.,
-                                          'ree_quantity': energy_quantity,
                                           'balance_due': energy_quantity * .5,
                                           'balance_forward': 0.0,
                                           'corrections': '-',
                                           }, reebill_data[0])
-
+        self.assertAlmostEqual(energy_quantity, reebill_data[0]['ree_quantity'])
         # add a payment so payment_received is not 0
         self.reebill_processor.create_payment(account, date(2013, 2, 17),
                                     'a payment for the first reebill', payment_amount)
@@ -1404,7 +1403,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'services': [],
                             'total_adjustment': 0,
                             'total_error': 0.0,
-                            'ree_quantity': energy_quantity,
                             'balance_due': energy_quantity * .5 +
                                            energy_quantity * .8 - payment_amount,
                             'balance_forward': energy_quantity * .5 -
@@ -1427,7 +1425,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'services': [],
                             'total_adjustment': 0,
                             'total_error': 0.0,
-                            'ree_quantity': energy_quantity,
                             'balance_due': energy_quantity * .5,
                             'balance_forward': 0.0,
                             'corrections': '-',
@@ -1435,6 +1432,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         for i, reebill_dct in enumerate(reebill_data):
             self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+        self.assertAlmostEqual(reebill_data[0]['ree_quantity'], energy_quantity)
+        self.assertAlmostEqual(reebill_data[1]['ree_quantity'], energy_quantity)
 
         # make a correction on reebill #1: payment does not get applied to
         # #1, and does get applied to #2
@@ -1461,7 +1460,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'services': [],
                             'total_adjustment': 0,
                             'total_error': 0,
-                            'ree_quantity': energy_quantity,
                             'balance_due': energy_quantity * .5 +
                                            energy_quantity * .8 - payment_amount,
                             'balance_forward': energy_quantity * .5 -
@@ -1484,7 +1482,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'services': [],
                             'total_adjustment': 0,
                             'total_error': 0,
-                            'ree_quantity': energy_quantity,
                             'balance_due': energy_quantity * .5,
                             'balance_forward': 0,
                             'corrections': '#1 not issued',
@@ -1492,6 +1489,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         for i, reebill_dct in enumerate(reebill_data):
             self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+        self.assertAlmostEqual(reebill_data[0]['ree_quantity'], energy_quantity)
+        self.assertAlmostEqual(reebill_data[1]['ree_quantity'], energy_quantity)
 
     def test_payment_application(self):
         """Test that payments are applied to reebills according their "date
@@ -1651,11 +1650,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # check reading of the reebill corresponding to the utility register
         reebill = self.session.query(ReeBill).one()
         total_reading, tou_reading = reebill.readings
-        self.assertEqual('therms', total_reading.unit)
-        self.assertEqual(total_renewable_therms,
+        self.assertAlmostEqual('therms', total_reading.unit)
+        self.assertAlmostEqual(total_renewable_therms,
                          total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
-        self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
+        self.assertAlmostEqual('btu', tou_reading.unit)
+        self.assertAlmostEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
@@ -1785,15 +1784,15 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         h_quantity = self.reebill_processor.get_reebill_metadata_json(
             account)[0]['ree_quantity']
         self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
-        self.assertEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
-        self.assertEqual(0.01399 * h_quantity, get_h_total('SETF'))
-        self.assertEqual(0.006 * h_quantity, get_h_total('EATF'))
-        self.assertEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
-        self.assertEqual(23.14, get_h_total('PUC'))
-        self.assertEqual(.2935 * h_quantity,
+        self.assertAlmostEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
+        self.assertAlmostEqual(0.01399 * h_quantity, get_h_total('SETF'))
+        self.assertAlmostEqual(0.006 * h_quantity, get_h_total('EATF'))
+        self.assertAlmostEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
+        self.assertAlmostEqual(23.14, get_h_total('PUC'))
+        self.assertAlmostEqual(.2935 * h_quantity,
                          get_h_total('DISTRIBUTION_CHARGE'))
-        self.assertEqual(.7653 * h_quantity, get_h_total('PGC'))
-        self.assertEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
+        self.assertAlmostEqual(.7653 * h_quantity, get_h_total('PGC'))
+        self.assertAlmostEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
                          get_h_total('SALES_TAX'))
 
     def test_delete_utility_bill_with_reebill(self):
@@ -1825,13 +1824,13 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'prior_balance': 0,
                                           'processed': 0,
                                           'ree_charge': 0.0,
-                                          'ree_quantity': 22.602462036826545,
                                           'ree_value': 0,
                                           'sequence': 1,
                                           'services': [],
                                           'total_adjustment': 0,
                                           'total_error': 0.0
                                       }, reebills_data[0])
+        self.assertAlmostEqual(22.60246203682654, reebills_data[0]['ree_quantity'])
         self.assertRaises(ValueError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])

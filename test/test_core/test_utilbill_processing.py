@@ -1009,7 +1009,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'prior_balance': 0,
                                           'processed': 0,
                                           'ree_charge': 0.0,
-                                          'ree_quantity': 22.602462036826545,
+                                          'ree_quantity': 22.602462036826555,
                                           'ree_value': 0,
                                           'sequence': 1,
                                           'services': [],
