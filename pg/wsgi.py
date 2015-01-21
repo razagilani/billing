@@ -43,6 +43,10 @@ class CapitalizedString(String):
     def format(self, value):
         return value.capitalize()
 
+class DateIsoformat(Raw):
+    def format(self, value):
+        return value.isoformat()
+
 class MyResource(Resource):
     def __init__(self):
         init_config()
@@ -99,26 +103,26 @@ class MyResource(Resource):
     utilbill_fields = {
         'id': Integer,
         'account': String,
-        'period_start': DateTime,
-        'period_end': DateTime,
+        'period_start': DateIsoformat,
+        'period_end': DateIsoformat,
         'service': CapitalizedString(default='Unknown'),
-        'total_energy': CallableField(Float, attribute='get_total_energy'),
+        'total_energy': CallableField(Float(), attribute='get_total_energy'),
         'total_charges': Float(attribute='target_total'),
-        'computed_total': CallableField(Float, attribute='get_total_charges'),
+        'computed_total': CallableField(Float(), attribute='get_total_charges'),
         # TODO: should these be names or ids or objects?
-        'utility': CallableField(String, attribute='get_utility_name'),
-        'supplier': CallableField(String, attribute='get_suuplier_name'),
-        'rate_class': CallableField(String, attribute='get_rate_class_name'),
+        'utility': CallableField(String(), attribute='get_utility_name'),
+        'supplier': CallableField(String(), attribute='get_suuplier_name'),
+        'rate_class': CallableField(String(), attribute='get_rate_class_name'),
         # TODO:
         #'pdf_url': self.bill_file_handler.get_s3_url(ub),
         'service_address': String,
         # TODO
         # 'next_estimated_meter_read_date': (ub.period_end + timedelta(
         #     30)).isoformat(),
-        'supply_total': 0, # TODO
+        #'supply_total': 0, # TODO
         'utility_account_number': CallableField(
-            String, attribute='get_utility_account_number'),
-        'secondary_account_number': '', # TODO
+            String(), attribute='get_utility_account_number'),
+        #'secondary_account_number': '', # TODO
         'processed': Boolean,
         }
 
@@ -132,7 +136,7 @@ class UtilBillListResource(MyResource):
         utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
             UtilityAccount.account,
             desc(UtilBill.period_start)).limit(100).all()
-        rows = [self.render_utilbill(ub) for ub in utilbills]
+        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
 class UtilBillResource(MyResource):
@@ -276,4 +280,4 @@ if __name__ == '__main__':
     api.add_resource(ChargeListResource, '/utilitybills/charges')
     api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-
+    app.run(debug=True)
