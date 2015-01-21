@@ -103,8 +103,6 @@ class MyResource(Resource):
     # fields that require special behavior:
     # - pdf_url is a different callable that is different for each utility
     # bill, therefore can't use CallableField
-    # - next_estimated_meter_read_date can be done by making a function here
-    # to calculate it, but would be better as a UtilBill method
     utilbill_fields = {
         'id': Integer,
         'account': String,
@@ -122,8 +120,9 @@ class MyResource(Resource):
         #'pdf_url': self.bill_file_handler.get_s3_url(ub),
         'service_address': String,
         # TODO
-        # 'next_estimated_meter_read_date': (ub.period_end + timedelta(
-        #     30)).isoformat(),
+        'next_estimated_meter_read_date': CallableField(
+            DateIsoformat(), attribute='get_estimated_next_meter_read_date',
+            default=None),
         #'supply_total': 0, # TODO
         'utility_account_number': CallableField(
             String(), attribute='get_utility_account_number'),
