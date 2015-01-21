@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from os.path import dirname, realpath, join
 from boto.s3.connection import S3Connection
 
@@ -58,6 +59,37 @@ class MyResource(Resource):
         self.utilbill_processor = UtilbillProcessor(
             pricing_model, self.bill_file_handler, None)
 
+
+    # TODO: use flask-restful marshal function
+    def render_utilbill(self, ub):
+        return {
+            'id': ub.id,
+            'account': ub.utility_account.account,
+            'period_start': ub.period_start.isoformat(),
+            'period_end': ub.period_end.isoformat(),
+            'service': 'Unknown' if ub.service is None
+            else ub.service.capitalize(),
+            'total_energy': ub.get_total_energy(),
+            'total_charges': ub.target_total,
+            'computed_total': ub.get_total_charges(),
+            'computed_total': 0,
+            # TODO: should these be names or ids or objects?
+            'utility': ub.get_utility_name(),
+            'supplier': ub.get_supplier_name(),
+            'rate_class': ub.get_rate_class_name(),
+            'pdf_url': self.bill_file_handler.get_s3_url(ub),
+            'service_address': str(ub.service_address),
+            'next_estimated_meter_read_date': (ub.period_end + timedelta(
+                30)).isoformat(),
+            'supply_total': 0, # TODO
+            'utility_account_number': ub.get_utility_account_number(),
+            'secondary_account_number': '', # TODO
+            'processed': ub.processed,
+            }
+
+# TODO: remove redundant parser code
+# http://flask-restful.readthedocs.org/en/0.3.1/reqparse.html#parser-inheritance
+
 class UtilBillListResource(MyResource):
     def get(self):
         s = Session()
@@ -65,71 +97,43 @@ class UtilBillListResource(MyResource):
         utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
             UtilityAccount.account,
             desc(UtilBill.period_start)).limit(100).all()
-        rows = [{
-                    'id': ub.id,
-                    'account': ub.utility_account.account,
-                    'period_start': ub.period_start.isoformat(),
-                    'period_end': ub.period_end.isoformat(),
-                    'service': 'Unknown' if ub.service is None
-                    else ub.service.capitalize(),
-                    'total_energy': ub.get_total_energy(),
-                    'total_charges': ub.target_total,
-                    'computed_total': ub.get_total_charges(),
-                    'computed_total': 0,
-                    # TODO: should these be names or ids or objects?
-                    'utility': ub.get_utility_name(),
-                    'supplier': ub.get_supplier_name(),
-                    'rate_class': ub.get_rate_class_name(),
-                    'pdf_url': self.bill_file_handler.get_s3_url(ub),
-                    'service_address': str(ub.service_address),
-                    'next_estimated_meter_read_date': (ub.period_end + timedelta(
-                        30)).isoformat(),
-                    'supply_total': 0, # TODO
-                    'utility_account_number': ub.get_utility_account_number(),
-                    'secondary_account_number': '', # TODO
-                    'processed': ub.processed,
-                    } for ub in utilbills]
+        rows = [self.render_utilbill(ub) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
 class UtilBillResource(MyResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
 
-    def handle_put(self, utilbill_id, *vpath, **params):
-        row = cherrypy.request.json
-        action = row.pop('action')
-        result= {}
+    def put(self, id):
+        parser = RequestParser()
+        parser.add_argument('id', type=int, required=True)
+        parser.add_argument('period_start', type=date)
+        parser.add_argument('period_end', type=date)
+        parser.add_argument('target_total', type=float)
+        parser.add_argument('processed', type=bool)
+        parser.add_argument('rate_class', type=str) # TODO: what type?
+        parser.add_argument('utility', type=str) # TODO: what type?
+        parser.add_argument('supplier', type=str) # TODO: what type?
+        parser.add_argument('total_energy', type=float)
+        parser.add_argument('service', type=str)
 
-        if action == 'regenerate_charges':
-            ub = self.utilbill_processor.regenerate_uprs(utilbill_id)
-            result = ub.column_dict()
+        row = parser.parse_args()
+        ub = self.utilbill_processor.update_utilbill_metadata(
+            id,
+            period_start=row['period_start'],
+            period_end=row['period_end'],
+            service=None if row['service'] is None else row['service'].lower(),
+            target_total=row['target_total'],
+            processed=row['processed'],
+            rate_class=row['rate_class'],
+            utility=row['utility'],
+            supplier=row['supplier'],
+            )
+        if 'total_energy' in row:
+            ub.set_total_energy(row['total_energy'])
+        self.utilbill_processor.compute_utility_bill(id)
 
-        elif action == 'compute':
-            ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
-            result = ub.column_dict()
-
-        elif action == '': 
-            result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id,
-                period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date(),
-                period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date(),
-                service=row['service'].lower(),
-                target_total=row['target_total'],
-                processed=row['processed'],
-                rate_class=row['rate_class'],
-                utility=row['utility'],
-                supplier=row['supplier'],
-                ).column_dict()
-            if 'total_energy' in row:
-                ub = Session().query(UtilBill).filter_by(id=utilbill_id).one()
-                ub.set_total_energy(row['total_energy'])
-            self.utilbill_processor.compute_utility_bill(utilbill_id)
-
-        # Reset the action parameters, so the client can coviniently submit
-        # the same action again
-        result['action'] = ''
-        result['action_value'] = ''
-        return True, {'rows': result, 'results': 1}
+        return {'rows': self.render_utilbill(ub), 'results': 1}
 
     def delete(self, id):
         utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
