@@ -22,6 +22,9 @@ from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
     Boolean
 
 
+# TODO: would be even better to make flask-restful automatically call any
+# callable attribute, because no callable attributes will be normally
+# formattable things like strings/numbers anyway.
 class CallableField(Raw):
     '''Field type that wraps another field type: it calls the attribute,
     then formats the return value with the other field.
@@ -65,43 +68,47 @@ class MyResource(Resource):
                 'https' if config.get('aws_s3', 'is_secure') is True else
                 'http', config.get('aws_s3', 'host'),
                 config.get('aws_s3', 'port'))
-        self.bill_file_handler = BillFileHandler(
+        bill_file_handler = BillFileHandler(
             s3_connection, config.get('aws_s3', 'bucket'),
             utilbill_loader, url_format)
         pricing_model = FuzzyPricingModel(utilbill_loader)
         self.utilbill_processor = UtilbillProcessor(
-            pricing_model, self.bill_file_handler, None)
+            pricing_model, bill_file_handler, None)
 
+        # field for getting the URL of the PDF corresponding to a UtilBill:
+        # requires BillFileHandler, so not an attribute of UtilBill itself
+        class PDFUrlField(Raw):
+            def output(self, key, obj):
+                return bill_file_handler.get_s3_url(obj)
 
-    # fields that require special behavior:
-    # - pdf_url is a different callable that is different for each utility
-    # bill, therefore can't use CallableField
-    utilbill_fields = {
-        'id': Integer,
-        'account': String,
-        'period_start': DateIsoformat,
-        'period_end': DateIsoformat,
-        'service': CapitalizedString(default='Unknown'),
-        'total_energy': CallableField(Float(), attribute='get_total_energy'),
-        'total_charges': Float(attribute='target_total'),
-        'computed_total': CallableField(Float(), attribute='get_total_charges'),
-        # TODO: should these be names or ids or objects?
-        'utility': CallableField(String(), attribute='get_utility_name'),
-        'supplier': CallableField(String(), attribute='get_suuplier_name'),
-        'rate_class': CallableField(String(), attribute='get_rate_class_name'),
-        # TODO:
-        #'pdf_url': self.bill_file_handler.get_s3_url(ub),
-        'service_address': String,
-        # TODO
-        'next_estimated_meter_read_date': CallableField(
-            DateIsoformat(), attribute='get_estimated_next_meter_read_date',
-            default=None),
-        #'supply_total': 0, # TODO
-        'utility_account_number': CallableField(
-            String(), attribute='get_utility_account_number'),
-        #'secondary_account_number': '', # TODO
-        'processed': Boolean,
-        }
+        # fields that require special behavior:
+        # - pdf_url is a different callable that is different for each utility
+        # bill, therefore can't use CallableField
+        self.utilbill_fields = {
+            'id': Integer,
+            'account': String,
+            'period_start': DateIsoformat,
+            'period_end': DateIsoformat,
+            'service': CapitalizedString(default='Unknown'),
+            'total_energy': CallableField(Float(), attribute='get_total_energy'),
+            'total_charges': Float(attribute='target_total'),
+            'computed_total': CallableField(Float(), attribute='get_total_charges'),
+            # TODO: should these be names or ids or objects?
+            'utility': CallableField(String(), attribute='get_utility_name'),
+            'supplier': CallableField(String(), attribute='get_suuplier_name'),
+            'rate_class': CallableField(String(), attribute='get_rate_class_name'),
+            'pdf_url': PDFUrlField,
+            'service_address': String,
+            # TODO
+            'next_estimated_meter_read_date': CallableField(
+                DateIsoformat(), attribute='get_estimated_next_meter_read_date',
+                default=None),
+            #'supply_total': 0, # TODO
+            'utility_account_number': CallableField(
+                String(), attribute='get_utility_account_number'),
+            #'secondary_account_number': '', # TODO
+            'processed': Boolean,
+            }
 
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
@@ -164,8 +171,6 @@ class UtilBillResource(MyResource):
         #     utilbill.service, deleted_path)
         return {}
 
-
-
 class ChargeListResource(MyResource):
     def __init__(self):
         super(ChargeListResource, self).__init__()
@@ -180,7 +185,8 @@ class ChargeListResource(MyResource):
             'id': charge.id,
             'rsi_binding': charge.rsi_binding,
             # TODO
-            'target_total': 0, #charge.target_total,
+            #'target_total': charge.target_total,
+            'target_total': 0
         } for charge in utilbill.charges]
         return {'rows': charges, 'results': len(charges)}
 
@@ -238,7 +244,6 @@ class UtilitiesResource(MyResource):
 class RateClassesResource(MyResource):
     def get(self):
         rate_classes = self.utilbill_processor.get_all_rate_classes_json()
-        print rate_classes
         return {'rows': rate_classes, 'results': len(rate_classes)}
 
 if __name__ == '__main__':
