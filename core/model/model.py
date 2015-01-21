@@ -781,8 +781,9 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', unit='',
-            has_charge=True, shared=False, roundrule="", type='other'):
+    def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
+                 description='', group='', unit='', has_charge=True,
+                 shared=False, roundrule="", type='other'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -818,9 +819,9 @@ class Charge(Base):
                    other.rsi_binding,
                    other.rate,
                    other.quantity_formula,
-                   other.description,
-                   other.group,
-                   other.unit,
+                   description=other.description,
+                   group=other.group,
+                   unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)
