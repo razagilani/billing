@@ -142,21 +142,22 @@ class UtilBillResource(MyResource):
         parser.add_argument('utility', type=str) # TODO: what type?
         parser.add_argument('supplier', type=str) # TODO: what type?
         parser.add_argument('total_energy', type=float)
-        parser.add_argument('service', type=str)
+        parser.add_argument('service',
+                            type=lambda v: None if v is None else v.lower())
 
         row = parser.parse_args()
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
             period_start=row['period_start'],
             period_end=row['period_end'],
-            service=None if row['service'] is None else row['service'].lower(),
+            service=row['service'],
             target_total=row['target_total'],
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
             supplier=row['supplier'],
             )
-        if 'total_energy' in row:
+        if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
 
