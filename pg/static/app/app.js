@@ -9,7 +9,7 @@ Ext.application({
     name: 'ReeBill', // TODO change
     autoCreateViewport: true,
 
-    paths: {'ReeBill': 'static/app'},
+    paths: {'ReeBill': 'app'},
 
     controllers: [
         'UtilityBills',
