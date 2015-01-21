@@ -125,29 +125,29 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 125,
         flex: 1
-    }
-        //},{
-        //    header: 'Utility',
-        //    dataIndex: 'utility',
-        //    editor: {
-        //        xtype: 'combo',
-        //        store: 'Utilities',
-        //        itemId: 'utility_combo',
-        //        displayField: 'name',
-        //        valueField: 'name',
-        //        triggerAction: 'all',
-        //        forceSelection: false,
-        //        typeAhead: true,
-        //        typeAheadDelay : 1,
-        //        autoSelect: false,
-        //        regex: /[a-zA-Z0-9]+/,
-        //        minChars: 1
-        //    },
-        //    width: 100,
-        //    renderer: function(value, metaData, record) {
-        //        return record.get('utility').name;
-        //    }
-        //},{
+    },{
+            header: 'Utility',
+            dataIndex: 'utility',
+            editor: {
+                xtype: 'combo',
+                store: 'Utilities',
+                itemId: 'utility_combo',
+                displayField: 'name',
+                valueField: 'name',
+                triggerAction: 'all',
+                forceSelection: false,
+                typeAhead: true,
+                typeAheadDelay : 1,
+                autoSelect: false,
+                regex: /[a-zA-Z0-9]+/,
+                minChars: 1
+            },
+            width: 100,
+            renderer: function(value, metaData, record) {
+                return record.get('utility').name;
+            }
+        }
+        //,{
         //    header: 'Supplier',
         //    dataIndex: 'supplier',
         //    emptyText: 'Unknown Supplier',
