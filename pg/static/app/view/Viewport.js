@@ -19,7 +19,7 @@ Ext.define('ReeBill.view.Viewport', {
                 height: 30,
                 split: false,
                 border: false,
-                html: '<div id="header" style="background:#00a4e4; height:inherit;"><img src="static/images/nextility_blue.png" style="height:inherit; padding:3px"></div>'
+                html: '<div id="header" style="background:#00a4e4; height:inherit;"><img src="images/nextility_blue.png" style="height:inherit; padding:3px"></div>'
             },{
                 region: 'west',
                 xtype: 'pdfpanel',
