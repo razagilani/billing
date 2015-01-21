@@ -92,9 +92,10 @@ class BaseResource(Resource):
             def output(self, key, obj):
                 return bill_file_handler.get_s3_url(obj)
 
-        # fields that require special behavior:
-        # - pdf_url is a different callable that is different for each utility
-        # bill, therefore can't use CallableField
+        # TODO: see if these JSON formatters can be moved to classes that
+        # only deal with the relevant objects (UtilBills or Charges). they're
+        # here because there's more than one Resource that needs to use each
+        # one (representing individual UtilBills/Charges and lists of them).
         self.utilbill_fields = {
             'id': Integer,
             'account': String,
@@ -119,6 +120,13 @@ class BaseResource(Resource):
             #'secondary_account_number': '', # TODO
             'processed': Boolean,
         }
+
+        self.charge_fields = {
+            'id': Integer,
+            'rsi_binding': String,
+            'target_total': Float,
+        }
+
 
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
@@ -189,22 +197,10 @@ class ChargeListResource(BaseResource):
         args = self.parser.parse_args()
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
-        charges = [{
-            'id': charge.id,
-            'rsi_binding': charge.rsi_binding,
-            # TODO
-            #'target_total': charge.target_total,
-            'target_total': 0
-        } for charge in utilbill.charges]
-        return {'rows': charges, 'results': len(charges)}
+        rows = [marshal(utilbill.charges, self.charge_fields)]
+        return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):
-
-    format = {
-        'id': Integer,
-        'rsi_binding': String,
-        'target_total': Float,
-    }
 
     def put(self, id=None):
         parser = id_parser.copy()
@@ -219,7 +215,7 @@ class ChargeResource(BaseResource):
             if value is not None:
                 setattr(charge, key, value)
         s.commit()
-        return {'rows': marshal(charge, self.format), 'results': 1}
+        return {'rows': marshal(charge, self.charge_fields), 'results': 1}
 
     def post(self, id):
         # TODO: client sends "id" even when its value is meaningless (the
@@ -231,7 +227,7 @@ class ChargeResource(BaseResource):
         charge = self.utilbill_processor.add_charge(
             args['utilbill_id'], rsi_binding=args['rsi_binding'])
         Session().commit()
-        return {'rows': marshal(charge, self.format), 'results': 1}
+        return {'rows': marshal(charge, self.charge_fields), 'results': 1}
 
     def delete(self, id):
         self.utilbill_processor.delete_charge(id)
