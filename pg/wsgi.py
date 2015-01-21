@@ -123,11 +123,12 @@ id_parser.add_argument('id', type=int, required=True)
 
 class UtilBillListResource(BaseResource):
     def get(self):
+        args = id_parser.parse_args()
         s = Session()
-        # TODO: pre-join with Charge to make this faster, and get rid of limit
-        utilbills = s.query(UtilBill).join(UtilityAccount).order_by(
-            UtilityAccount.account,
-            desc(UtilBill.period_start)).limit(100).all()
+        # TODO: pre-join with Charge to make this faster
+        utilbills = s.query(UtilBill).join(UtilityAccount).filter(
+            UtilityAccount.id == args['id']).order_by(
+            desc(UtilBill.period_start), desc(UtilBill.id)).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 

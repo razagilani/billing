@@ -21,9 +21,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
-    },{
+    }, {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
+    },{
+        ref: 'accountLabel',
+        selector: '[id=utilbillAccountLabel]'
     },{
         ref: 'utilbillCompute',
         selector: '[action=utilbillCompute]'
@@ -46,6 +49,18 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             'panel[name=utilityBillsTab]': {
                 activate: this.handleActivate
+            },
+            '[action=utilbillPrevious]': {
+                click: function() {
+                    this.currentAccountId--;
+                    this.updateCurrentAccountId();
+                }
+            },
+            '[action=utilbillNext]': {
+                click: function() {
+                    this.currentAccountId++;
+                    this.updateCurrentAccountId();
+                }
             },
             '[action=resetUploadUtilityBillForm]': {
                 click: this.handleReset
@@ -92,8 +107,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         if (selected != null) {
             var processed = selected.get('processed')
-            this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
-            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            //this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
+            //this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
             //this.getUtilbillRemove().setDisabled(!hasSelections || processed);
             //var utility = selected.data.utility;
@@ -107,9 +122,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
         } else {
-            this.getUtilbillCompute().setDisabled(true);
-            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
-            this.getUtilbillRemove().setDisabled(!hasSelections);
+            //this.getUtilbillCompute().setDisabled(true);
+            //this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            //this.getUtilbillRemove().setDisabled(!hasSelections);
         }
     },
 
@@ -117,10 +132,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        // TODO: pick account
-        var selectedAccount = '20001';
-        if (!selectedAccount || !selectedAccount.length)
-            return;
+        this.currentAccountId = 1;
+        this.getAccountLabel().setText(this.currentAccountId);
+
         var store = this.getUtilityBillsStore();
 
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
@@ -242,6 +256,18 @@ Ext.define('ReeBill.controller.UtilityBills', {
         utility_grid = combo.findParentByType('grid');
         selected = utility_grid.getSelectionModel().getSelection()[0];
         combo.setValue(selected.get('utility').name);
-    }
+    },
 
+    updateCurrentAccountId: function() {
+        this.getAccountLabel().setText(this.currentAccountId);
+        // TODO: minimum/maximum account number
+        if (this.currentAccountId == 1) {
+            // TODO prev button
+        } else if (this.currentAccountId == 10) {
+            // TODO next button
+        };
+        var store = this.getUtilityBillsStore();
+        store.getProxy().setExtraParam('id', this.currentAccountId)
+        store.reload();
+    }
 });

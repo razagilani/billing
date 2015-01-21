@@ -7,8 +7,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         'ReeBill.store.Utilities',
         'ReeBill.store.RateClasses'
     ],
-    title: 'Utility Bills',
-    alias: 'widget.utilityBills',    
+    alias: 'widget.utilityBills',
     store: 'UtilityBillsMemory',
     
     plugins: [
@@ -176,21 +175,31 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             overflowHandler: 'Menu'
         },
         items: [{
-            xtype: 'button',
-            action: 'utilbillCompute',
-            text: 'Compute',
-            disabled: true
+            xtype: 'label',
+            text: '',
+            padding: 5,
+            id: 'utilbillAccountLabel'
         },{
             xtype: 'button',
-            action: 'utilbillRemove',
-            iconCls: 'silk-delete',
-            text: 'Delete',
-            disabled: false,
+            action: 'utilbillPrevious',
+            text: 'Previous',
+            disabled: false
         },{
             xtype: 'button',
-            action: 'utilbillToggleProcessed',
-            text: 'Toggle Processed',
-            disabled: true
+            action: 'utilbillNext',
+            text: 'Next',
+            disabled: false
+        //},{
+        //    xtype: 'button',
+        //    action: 'utilbillRemove',
+        //    iconCls: 'silk-delete',
+        //    text: 'Delete',
+        //    disabled: false,
+        //},{
+        //    xtype: 'button',
+        //    action: 'utilbillToggleProcessed',
+        //    text: 'Toggle Processed',
+        //    disabled: true
         }]
     }],
 
