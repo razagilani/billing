@@ -4,16 +4,12 @@ from unittest import TestCase
 from uuid import uuid5
 from uuid import NAMESPACE_DNS
 
-from mock import Mock, patch
+from mock import Mock
 
-from core.model import UtilBill, UtilityAccount
-from core import altitude
+from core.model import UtilBill
 from pg.export_altitude import PGAltitudeExporter
-#from core.altitude import AltitudeGUID
 
 
-# @patch('billing.core.altitude.get_guid_for_utility', new=lambda x: '1')
-# @patch('billing.core.altitude.get_guid_for_supplier', new=lambda x: '1')
 class TestExportAltitude(TestCase):
     def setUp(self):
         u1 = Mock(autospec=UtilBill)
