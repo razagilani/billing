@@ -100,6 +100,11 @@ class MyResource(Resource):
             'processed': ub.processed,
             }
 
+    # fields that require special behavior:
+    # - pdf_url is a different callable that is different for each utility
+    # bill, therefore can't use CallableField
+    # - next_estimated_meter_read_date can be done by making a function here
+    # to calculate it, but would be better as a UtilBill method
     utilbill_fields = {
         'id': Integer,
         'account': String,
