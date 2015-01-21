@@ -6,33 +6,37 @@ from sqlalchemy import desc
 
 from core import init_config, init_model, init_logging, config
 
-
-# TODO: is it necessary to specify file path?
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from reebill.utilbill_processor import UtilbillProcessor
 
-p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(filepath=p)
-init_config(filepath=p)
-init_model()
-
-import sys
-
 from datetime import datetime, timedelta
-from util.dateutils import ISO_8601_DATE, date_to_datetime
 from core.model import Session, UtilityAccount, Charge
-from reebill import journal
 from core.model import UtilBill
 
 from flask import Flask, url_for
-from flask.ext.restful import Api, Resource, fields, marshal_with
+from flask.ext.restful import Api, Resource, marshal_with, marshal
 from flask.ext.restful.reqparse import RequestParser
+from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
+    Boolean
 
 
-app = Flask(__name__)
-api = Api(app)
+class CallableField(Raw):
+    '''Field type that wraps another field type: it calls the attribute,
+    then formats the return value with the other field.
+    '''
+    def __init__(self, result_field, attribute=None):
+        super(CallableField, self).__init__(attribute=attribute)
+        self.result_field = result_field
+
+    def format(self, value):
+        return self.result_field.format(value())
+
+class CapitalizedString(String):
+    '''Like String, but first letter is capitalized.'''
+    def format(self, value):
+        return value.capitalize()
 
 class MyResource(Resource):
     def __init__(self):
@@ -87,6 +91,31 @@ class MyResource(Resource):
             'processed': ub.processed,
             }
 
+    utilbill_fields = {
+        'id': Integer,
+        'account': String,
+        'period_start': DateTime,
+        'period_end': DateTime,
+        'service': CapitalizedString(default='Unknown'),
+        'total_energy': CallableField(Float, attribute='get_total_energy'),
+        'total_charges': Float(attribute='target_total'),
+        'computed_total': CallableField(Float, attribute='get_total_charges'),
+        # TODO: should these be names or ids or objects?
+        'utility': CallableField(String, attribute='get_utility_name'),
+        'supplier': CallableField(String, attribute='get_suuplier_name'),
+        'rate_class': CallableField(String, attribute='get_rate_class_name'),
+        # TODO:
+        #'pdf_url': self.bill_file_handler.get_s3_url(ub),
+        'service_address': String,
+        # TODO
+        # 'next_estimated_meter_read_date': (ub.period_end + timedelta(
+        #     30)).isoformat(),
+        'supply_total': 0, # TODO
+        'utility_account_number': CallableField(
+            String, attribute='get_utility_account_number'),
+        'secondary_account_number': '', # TODO
+        'processed': Boolean,
+        }
 # TODO: remove redundant parser code
 # http://flask-restful.readthedocs.org/en/0.3.1/reqparse.html#parser-inheritance
 
@@ -225,82 +254,20 @@ class RateClassesResource(MyResource):
         print rate_classes
         return {'rows': rate_classes, 'results': len(rate_classes)}
 
-api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
-api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
-api.add_resource(SuppliersResource, '/utilitybills/suppliers')
-api.add_resource(UtilitiesResource, '/utilitybills/utilities')
-api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
-api.add_resource(ChargeListResource, '/utilitybills/charges')
-api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
-
-
 if __name__ == '__main__':
-    app.run(debug=True)
-    url_for('static', filename='index.html')
+    p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+    init_logging(filepath=p)
+    init_config(filepath=p)
+    init_model()
 
-    # class CherryPyRoot(object):
-    #     utilitybills = app
+    app = Flask(__name__)
+    api = Api(app)
+    api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
+    api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
+    api.add_resource(SuppliersResource, '/utilitybills/suppliers')
+    api.add_resource(UtilitiesResource, '/utilitybills/utilities')
+    api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
+    api.add_resource(ChargeListResource, '/utilitybills/charges')
+    api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-    #ui_root = join(dirname(realpath(__file__)), 'ui')
-    # cherrypy_conf = {
-    #     '/': {
-    #         'tools.sessions.on': True,
-    #         'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-    #     },
-    #     '/utilitybills/index.html': {
-    #         'tools.staticfile.on': True,
-    #         'tools.staticfile.filename': join(ui_root, "index.html")
-    #     },
-    #     '/utilitybills/static': {
-    #         'tools.staticdir.on': True,
-    #         'tools.staticdir.dir': join(ui_root, "static")
-    #     },
-    # }
-    #
-    # cherrypy.config.update({
-    #     'server.socket_host': app.config.get("reebill", "socket_host"),
-    #     'server.socket_port': app.config.get("reebill", "socket_port")})
-    # cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
-    # cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
-    #                                  stream=sys.stdout)
-    # cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
-else:
-    # WSGI Mode
-    ui_root = join(dirname(realpath(__file__)), 'ui')
-    cherrypy_conf = {
-        '/': {
-            'tools.sessions.on': True,
-            'tools.staticdir.root': ui_root,
-            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-        },
-        '/login.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "login.html")
-        },
-        '/index.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "index.html")
-        },
-        '/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': 'static'
-        },
-        '/static/revision.txt': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "../../revision.txt")
-        }
 
-    }
-    cherrypy.config.update({
-        'environment': 'embedded',
-        'tools.sessions.on': True,
-        'tools.sessions.timeout': 240,
-        'request.show_tracebacks': True
-
-    })
-
-    if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
-        cherrypy.engine.start()
-        atexit.register(cherrypy.engine.stop)
-    application = cherrypy.Application(
-        ReebillWSGI(), script_name=None, config=cherrypy_conf)
