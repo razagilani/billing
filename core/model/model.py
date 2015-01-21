@@ -3,7 +3,7 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 import sqlalchemy
@@ -457,6 +457,15 @@ class UtilBill(Base):
         '''Return name of this bill's utility.
         '''
         return self.utility.name
+
+    def get_estimated_next_meter_read_date(self):
+        '''Return approximate date of next meter read (which is usually the
+        end date of the next utility bill after this one), or None if no
+        estimate can be made.
+        '''
+        if self.period_end is None:
+            return None
+        return self.period_end + timedelta(days=30)
 
     def get_rate_class_name(self):
         '''Return name of this bill's rate class or None if the rate class is
