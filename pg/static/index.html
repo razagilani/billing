@@ -6,18 +6,18 @@
 <title>ReeBill</title>
 
 <!-- PDF viewer -->
-<link rel="stylesheet" href="static/ext/lib/pdf.js/TextLayer.css">
-<script src="static/ext/lib/pdf.js/pdf.js"></script>
-<script src="static/ext/lib/pdf.js/TextLayerBuilder.js"></script>
-<script src="static/ext/lib/pdf.js/compatibility.js"></script>
+<link rel="stylesheet" href="ext/lib/pdf.js/TextLayer.css">
+<script src="ext/lib/pdf.js/pdf.js"></script>
+<script src="ext/lib/pdf.js/TextLayerBuilder.js"></script>
+<script src="ext/lib/pdf.js/compatibility.js"></script>
 
 <!-- Ext JS Style -->
-<link rel="stylesheet" type="text/css" href="static/ext/resources/css/ext-all-classic.css">
-<script type="text/javascript" src="static/ext/ext-all-dev.js"></script>
-<script type="text/javascript" src="static/ext/src/grid/column/CheckColumn.js"></script>
+<link rel="stylesheet" type="text/css" href="ext/resources/css/ext-all-classic.css">
+<script type="text/javascript" src="ext/ext-all-dev.js"></script>
+<script type="text/javascript" src="ext/src/grid/column/CheckColumn.js"></script>
 
 <!--Favicons-->
-<link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+<link rel="icon" type="image/x-icon" href="images/favicon.ico">
 
 <script type="text/javascript">
     (function(){
@@ -39,20 +39,20 @@
         var xmlHttp = new XMLHttpRequest();
         var v = Math.random() * 100000000000000000;
         var url = window.location.origin +
-                '/utilitybills/static/revision.txt?_dc='
+                '/utilitybills/revision.txt?_dc='
                 + v;
         xmlHttp.open("GET", url, true);
         xmlHttp.onreadystatechange = function () {
             if (xmlHttp.readyState == 4) {
                 var css = [
-                    "static/style/style.css",
-                    "static/style/icons.css"
+                    "style/style.css",
+                    "style/icons.css"
                 ];
 
                 var js = [
-                    "static/app/config.js",
-                    "static/app/utils.js",
-                    "static/app/app.js"
+                    "app/config.js",
+                    "app/utils.js",
+                    "app/app.js"
                 ];
 
                 var ver;
