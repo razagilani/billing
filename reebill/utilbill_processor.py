@@ -316,8 +316,14 @@ class UtilbillProcessor(object):
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
 
-        if utility_bill.is_attached() or not utility_bill.editable():
-            raise ValueError("Can't delete an attached or processed utility bill.")
+        # don't delete a utility bill that can't be edited, i.e. is "processed".
+        # every utility bill with a reebill should be processed, so it should
+        # not be necessary to check whether the utility bill has a reebill here
+        # (avoiding the need to use parts of the ReeBill data model outside
+        # of ReeBill)
+        if not utility_bill.editable():
+            raise BillingError(
+                "Can't delete an attached or processed utility bill.")
 
         self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
 

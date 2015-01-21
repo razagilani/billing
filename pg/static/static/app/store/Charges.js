@@ -6,8 +6,6 @@ Ext.define('ReeBill.store.Charges', {
     autoLoad: false,
     autoSync: true,
 
-    groupField: 'group',
-
 	proxy: {
 		type: 'rest',
 
