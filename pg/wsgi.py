@@ -12,6 +12,7 @@ from core.utilbill_loader import UtilBillLoader
 from reebill.utilbill_processor import UtilbillProcessor
 
 from datetime import datetime, timedelta
+from dateutil import parser as dateutil_parser
 from core.model import Session, UtilityAccount, Charge
 from core.model import UtilBill
 
@@ -134,8 +135,9 @@ class UtilBillResource(MyResource):
 
     def put(self, id):
         parser = id_parser.copy()
-        parser.add_argument('period_start', type=date)
-        parser.add_argument('period_end', type=date)
+        parse_date = lambda s: dateutil_parser.parse(s).date()
+        parser.add_argument('period_start', type=parse_date)
+        parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
         parser.add_argument('processed', type=bool)
         parser.add_argument('rate_class', type=str) # TODO: what type?
