@@ -18,11 +18,11 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
-from billing.core import ureg
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
+from util.units import ureg, convert_to_therms
 
 
 __all__ = [
@@ -248,8 +248,6 @@ class ReeBill(Base):
         return result
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
-        assert isinstance(register_binding, basestring)
-        assert isinstance(new_quantity, (float, int))
         reading = self.get_reading_by_register_binding(register_binding)
         unit_string = reading.unit.lower()
 
@@ -260,55 +258,20 @@ class ReeBill(Base):
         else:
             # in all other cases, 'new_quantity' will be in BTU: convert to unit
             # of the reading
-            try:
-                new_quantity_with_unit = new_quantity * ureg.btu
-                unit = ureg.parse_expression(unit_string)
-                converted_quantity = new_quantity_with_unit.to(unit)
-                reading.renewable_quantity = converted_quantity.magnitude
-            except UndefinedUnitError:
-                raise ValueError('Unknown energy unit: "%s"' % unit_string)
+            new_quantity_with_unit = new_quantity * ureg.btu
+            unit = ureg.parse_expression(unit_string)
+            converted_quantity = new_quantity_with_unit.to(unit)
+            reading.renewable_quantity = converted_quantity.magnitude
 
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
-        total_therms = 0
-        for reading in self.readings:
-            quantity = reading.renewable_quantity
-            unit_string = reading.unit.lower()
-            #ureg.load_definitions('/home/raza/workspace-skyline/billing/unit_defs.txt')
-            assert isinstance(quantity, (float, int))
-            assert isinstance(unit_string, basestring)
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            try:
-                unit = ureg.parse_expression(unit_string)
-                if unit == ureg.ccf and ccf_conversion_factor is not None:
-                    total_therms += ccf_conversion_factor * quantity * unit.to(ureg.therm).magnitude
-                else:
-                    total_therms += quantity * unit.to(ureg.therm).magnitude
-            except UndefinedUnitError:
-                raise ValueError('Unknown energy unit: "%s"' % unit_string)
-
-        return total_therms
+        return sum(convert_to_therms(
+            r.renewable_quantity, r.unit,
+            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def get_total_conventional_energy(self, ccf_conversion_factor=None):
-        # TODO remove duplicate code with the above
-        total_therms = 0
-        for reading in self.readings:
-            quantity = reading.conventional_quantity
-            unit_string = reading.unit.lower()
-            assert isinstance(quantity, (float, int))
-            assert isinstance(unit_string, basestring)
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            try:
-                unit = ureg.parse_expression(unit_string)
-                if unit == ureg.ccf and ccf_conversion_factor is not None:
-                    total_therms += ccf_conversion_factor * quantity * unit.to(ureg.therm).magnitude
-                else:
-                    total_therms += quantity * unit.to(ureg.therm).magnitude
-            except UndefinedUnitError:
-                raise ValueError('Unknown energy unit: "%s"' % unit_string)
-
-        return total_therms
+        return sum(convert_to_therms(
+            r.conventional_quantity, r.unit,
+            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
