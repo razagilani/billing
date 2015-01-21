@@ -26,8 +26,13 @@ class CallableField(Raw):
     '''Field type that wraps another field type: it calls the attribute,
     then formats the return value with the other field.
     '''
-    def __init__(self, result_field, attribute=None):
-        super(CallableField, self).__init__(attribute=attribute)
+    def __init__(self, result_field, *args, **kwargs):
+        '''
+        :param result_field: field instance (not class) to format the result of
+        calling the attribute.
+        '''
+        super(CallableField, self).__init__(*args, **kwargs)
+        assert isinstance(result_field, Raw)
         self.result_field = result_field
 
     def format(self, value):
@@ -116,6 +121,7 @@ class MyResource(Resource):
         'secondary_account_number': '', # TODO
         'processed': Boolean,
         }
+
 # TODO: remove redundant parser code
 # http://flask-restful.readthedocs.org/en/0.3.1/reqparse.html#parser-inheritance
 
