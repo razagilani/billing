@@ -194,6 +194,7 @@ class ChargeListResource(BaseResource):
         args = parser.parse_args()
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
+        # TODO: return only supply charges here
         rows = [marshal(c, self.charge_fields) for c in utilbill.charges]
         return {'rows': rows, 'results': len(rows)}
 
