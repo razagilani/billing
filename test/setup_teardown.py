@@ -5,33 +5,36 @@ import logging
 from os.path import join
 from subprocess import CalledProcessError, Popen
 from time import sleep
+import subprocess
 
 from mock import Mock
 import mongoengine
-
 from boto.s3.connection import S3Connection
-import subprocess
+from reebill.payment_dao import PaymentDAO
+from reebill.reebill_dao import ReeBillDAO
 
 from test import init_test_config
 from util.file_utils import make_directories_if_necessary
 
 
+from core import init_model
 init_test_config()
+init_model()
 
 
-from core import init_config, init_model
 from test import testing_utils as test_utils
 from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
-from reebill.state import StateDB, Session, UtilBill, \
+from reebill.state import Session, UtilBill, \
     Register, Address, ReeBillCustomer
 from core.model import Utility
 from core.bill_file_handler import BillFileHandler
 from reebill.fetch_bill_data import RenewableEnergyGetter
-from reebill.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
+from core.utilbill_processor import UtilbillProcessor
+from reebill.views import Views
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -72,6 +75,8 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        init_test_config()
+        init_model()
         from core import config
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
@@ -94,6 +99,9 @@ class TestCaseWithSetup(test_utils.TestCase):
         # running and occupying the same port)
         sleep(0.5)
         cls.check_fakes3_process()
+        # stdin, stout = cls.fakes3_process.communicate()
+        # print stdin.read()
+        pass
 
     @classmethod
     def tearDownClass(cls):
@@ -305,7 +313,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
-        self.state_db = StateDB(logger)
+        self.state_db = ReeBillDAO(logger)
         s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                   config.get('aws_s3', 'aws_secret_access_key'),
                                   is_secure=config.get('aws_s3', 'is_secure'),
@@ -364,29 +372,29 @@ class TestCaseWithSetup(test_utils.TestCase):
                 config.get('reebill', 'teva_accounts'))
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
-
         journal_dao = journal.JournalDAO()
+        self.payment_dao = PaymentDAO()
 
         self.utilbill_processor = UtilbillProcessor(
             self.pricing_model, self.billupload, self.nexus_util,
             logger=logger)
+        self.views = Views(self.state_db, self.billupload, self.nexus_util,
+                           journal_dao)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, logger=logger)
+            self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+            reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
-        ReebillDAO, FuzzyPricingModel, StateDB, Splinter, Process,
+        ReebillDAO, FuzzyPricingModel, ReeBillDAO, Splinter, Process,
         NexusUtil."""
         # make sure FakeS3 server is still running (in theory one of the
         # tests or some other process could cause it to exit)
         self.__class__.check_fakes3_process()
 
-        init_config('test/tstsettings.cfg')
-        init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
@@ -398,9 +406,9 @@ class TestCaseWithSetup(test_utils.TestCase):
         '''Clears out databases.'''
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
+        Session.remove()
         self.session.rollback()
         self.truncate_tables(self.session)
-        Session.remove()
 
         self.temp_dir.cleanup()
 
