@@ -15,10 +15,8 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    #op.alter_column('reebill', 'reebill_customer_id', existing_type=sa.Integer(), nullable=False)
-    pass
+    op.alter_column('reebill', 'reebill_customer_id', existing_type=sa.Integer(), nullable=False)
 
 
 def downgrade():
-     #op.alter_column('reebill', 'reebill_customer_id', existing_type=sa.Integer(), nullable=True)
-     pass
+     op.alter_column('reebill', 'reebill_customer_id', existing_type=sa.Integer(), nullable=True)
