@@ -826,6 +826,27 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # add some RSIs to the UPRS, and charges to match
 
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Some Supplier',
+                                                         rate_class='rate class')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Other Supplier',
+                                                         processed=True)
+        # no other attributes of a utilbill can be changed if
+        # update_utilbill_metadata is called with processed = True
+        self.assertEqual('Some Supplier', self.utilbill_processor.
+                         _get_utilbill(utilbill_data['id']).
+                         supplier.name)
+        self.assertRaises(ProcessedBillError,
+                          self.utilbill_processor.add_charge,
+                          utilbill_data['id'])
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Other Supplier',
+                                                         processed=False)
+
+        self.assertEqual('Other Supplier',
+                         self.utilbill_processor.
+                         _get_utilbill(utilbill_data['id']).supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
