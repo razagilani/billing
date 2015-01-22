@@ -681,21 +681,22 @@ class ReebillProcessor(object):
                 bill_file_paths)
 
     def get_issuable_reebills(self):
-        """ Returns a cursor of issuable reebills
-            for the earliest unissued version-0 reebill account.
-        """
+        '''Return a Query of "issuable" reebills (lowest-sequence bill for
+        each account that is unissued and is not a correction).
+        '''
         session = Session()
         unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == 0,
-                                                          ReeBill.version == 0)
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(
+            ReeBill.issued == 0, ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
-                unissued_v0_reebills.c.reebill_customer_id.label('reebill_customer_id'),
-                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
-        return session.query(ReeBill)\
-                .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)
+            unissued_v0_reebills.c.reebill_customer_id.label(
+                'reebill_customer_id'),
+            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
+            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
+        return session.query(ReeBill).filter(
+            ReeBill.reebill_customer_id == min_sequence.c.reebill_customer_id) \
+            .filter(ReeBill.sequence == min_sequence.c.sequence)
 
     def get_issuable_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries
