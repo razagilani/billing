@@ -10,6 +10,7 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 from datetime import date, datetime
 from os.path import dirname, realpath, join
 from boto.s3.connection import S3Connection
+from flask.ext.admin.contrib.sqla import ModelView
 
 from sqlalchemy import desc
 
@@ -18,11 +19,14 @@ from core import initialize
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
+from reebill.state import ReeBillCustomer
+from reebill.state import ReeBill
 from reebill.utilbill_processor import UtilbillProcessor
 
 from datetime import datetime, timedelta
 from dateutil import parser as dateutil_parser
-from core.model import Session, UtilityAccount, Charge, Supplier, Utility
+from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
+    RateClass
 from core.model import UtilBill
 
 from flask import Flask, url_for
@@ -30,6 +34,7 @@ from flask.ext.restful import Api, Resource, marshal_with, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
     Boolean
+from flask.ext.admin import Admin, expose, BaseView
 
 
 # TODO: would be even better to make flask-restful automatically call any
@@ -266,5 +271,16 @@ if __name__ == '__main__':
     api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
     api.add_resource(ChargeListResource, '/utilitybills/charges')
     api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+
+    admin = Admin(app)
+
+    admin.add_view(ModelView(UtilityAccount, Session()))
+    admin.add_view(ModelView(UtilBill, Session(), name='Utility Bill'))
+    admin.add_view(ModelView(Utility, Session()))
+    admin.add_view(ModelView(Supplier, Session()))
+    admin.add_view(ModelView(RateClass, Session()))
+    admin.add_view(ModelView(ReeBillCustomer, Session(),
+                   name='ReeBill Account'))
+    admin.add_view(ModelView(ReeBill, Session(), name='Reebill'))
 
     app.run(debug=True)
