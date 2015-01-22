@@ -477,4 +477,13 @@ class UtilBillTest(TestCase):
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
 
+    def test_get_estimated_next_meter_read_date(self):
+        utilbill = UtilBill(self.utility_account, UtilBill.Complete,
+                            'gas', self.utility, self.supplier, self.rate_class,
+                            Address(), Address())
+        self.assertEqual(None, utilbill.get_estimated_next_meter_read_date())
+
+        utilbill.period_end = date(2000,1,1)
+        self.assertEqual(date(2000,1,31), utilbill.get_estimated_next_meter_read_date())
+
 
