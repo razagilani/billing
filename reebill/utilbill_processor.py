@@ -422,10 +422,10 @@ class UtilbillProcessor(object):
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
         utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session.delete(register)
-            session.commit()
-            self.compute_utility_bill(utilbill_id)
+        utilbill.check_editable()
+        session.delete(register)
+        session.commit()
+        self.compute_utility_bill(utilbill_id)
 
     def add_charge(self, utilbill_id, **charge_kwargs):
         """Add a new charge to the given utility bill. charge_kwargs are
