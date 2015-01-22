@@ -203,6 +203,12 @@ class Utility(Base):
         self.name = name
         self.address = address
 
+    def __repr__(self):
+        return '<Utility(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
+
 
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
@@ -219,6 +225,12 @@ class Supplier(Base):
     def __init__(self, name, address):
         self.name = name
         self.address = address
+
+    def __repr__(self):
+        return '<Supplier(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
 
 
 class RateClass(Base):
@@ -238,6 +250,12 @@ class RateClass(Base):
     def __init__(self, name, utility):
         self.name = name
         self.utility = utility
+
+    def __repr__(self):
+        return '<RateClass(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
 
 
 class UtilityAccount(Base):
