@@ -12,7 +12,7 @@ from core.model import (UtilBill, Address, Session,
 from reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
-from reebill.utilbill_processor import ACCOUNT_NAME_REGEX
+from core.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
 class ReebillProcessor(object):
@@ -28,9 +28,10 @@ class ReebillProcessor(object):
     the UI-related methods), except maybe the first two can stay in the same
     class.
     '''
-    def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
-                 ree_getter, journal_dao, logger=None):
+    def __init__(self, state_db, payment_dao, nexus_util, bill_mailer,
+                 reebill_file_handler, ree_getter, journal_dao, logger=None):
         self.state_db = state_db
+        self.payment_dao = payment_dao
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
@@ -41,7 +42,7 @@ class ReebillProcessor(object):
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
         '''Wrapper to create_payment method in state.py'''
-        return self.state_db.create_payment(account, date_applied, description,
+        return self.payment_dao.create_payment(account, date_applied, description,
             credit, date_received)
 
     def update_payment(self, id, date_applied, description, credit):
@@ -85,40 +86,6 @@ class ReebillProcessor(object):
             'actual_total': reebill_charge.a_total,
             'total': reebill_charge.h_total,
         } for reebill_charge in reebill.charges]
-
-    def get_reebill_metadata_json(self, account):
-        """Returns data describing all reebills for the given account, as list
-        of JSON-ready dictionaries.
-        """
-        session = Session()
-
-        # this subquery gets (customer_id, sequence, version) for all the
-        # reebills whose version is the maximum in their (customer, sequence,
-        # version) group.
-        latest_versions_sq = session.query(ReeBill.reebill_customer_id,
-                ReeBill.sequence,
-                functions.max(ReeBill.version).label('max_version'))\
-                .join(ReeBillCustomer).join(UtilityAccount)\
-                .filter(UtilityAccount.account == account)\
-                .order_by(ReeBill.reebill_customer_id,
-                          ReeBill.sequence).group_by(
-                ReeBill.reebill_customer, ReeBill.sequence).subquery()
-
-        # query ReeBill joined to the above subquery to get only
-        # maximum-version bills, and also outer join to ReeBillCharge to get
-        # sum of 0 or more charges associated with each reebill
-        q = session.query(ReeBill).join(latest_versions_sq, and_(
-                ReeBill.reebill_customer_id ==
-                latest_versions_sq.c.reebill_customer_id,
-                ReeBill.sequence == latest_versions_sq.c.sequence,
-                ReeBill.version == latest_versions_sq.c.max_version)
-        ).outerjoin(ReeBillCharge)\
-        .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
-
-        return [dict(rb.column_dict().items() +
-                     [('total_error',
-                       self.get_total_error(account, rb.sequence))])
-                for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
@@ -203,11 +170,11 @@ class ReebillProcessor(object):
             present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
-                payments = self.state_db.get_total_payment_since(
+                payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
             else:
-                payments = self.state_db.get_total_payment_since(
+                payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, end=present_v0_issue_date,
                         payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
@@ -236,12 +203,12 @@ class ReebillProcessor(object):
                         version=0):
                     present_v0_issue_date = self.state_db.get_reebill(account,
                             reebill.sequence, version=0).issue_date
-                    payments = self.state_db.get_total_payment_since(
+                    payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
                         end=present_v0_issue_date, payment_objects=True)
                     self.compute_reebill_payments(payments, reebill)
                 else:
-                    payments = self.state_db. \
+                    payments = self.payment_dao. \
                             get_total_payment_since(account,
                             predecessor.issue_date, payment_objects=True)
                     self.compute_reebill_payments(payments, reebill)
@@ -394,19 +361,6 @@ class ReebillProcessor(object):
 
         return reebill
 
-    def list_all_versions(self, account, sequence):
-        ''' Returns all Reebills with sequence and account ordered by versions
-            a list of dictionaries
-        '''
-        session = Session()
-        q = session.query(ReeBill).join(ReeBillCustomer)\
-            .join(UtilityAccount).with_lockmode('read')\
-            .filter(UtilityAccount.account == account)\
-            .filter(ReeBill.sequence == sequence)\
-            .order_by(desc(ReeBill.version))
-
-        return [rb.column_dict() for rb in q]
-
     def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
         un-issued versions of reebills > 0 for the given account."""
@@ -459,14 +413,6 @@ class ReebillProcessor(object):
         return sum(adjustment for (sequence, version, adjustment) in
                 self.get_unissued_corrections(account))
 
-    def get_total_error(self, account, sequence):
-        '''Returns the net difference between the total of the latest
-        version (issued or not) and version 0 of the reebill given by account,
-        sequence.'''
-        earliest = self.state_db.get_reebill(account, sequence, version=0)
-        latest = self.state_db.get_reebill(account, sequence, version='max')
-        return latest.total - earliest.total
-
     def get_late_charge(self, reebill, day=None):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
@@ -504,7 +450,7 @@ class ReebillProcessor(object):
                 .filter(ReeBill.reebill_customer == reebill_customer)\
                 .filter(ReeBill.sequence == seq - 1).one()[0]
         source_balance = min_balance_due - \
-                self.state_db.get_total_payment_since(acc,
+                self.payment_dao.get_total_payment_since(acc,
                 predecessor0.issue_date)
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
@@ -680,7 +626,7 @@ class ReebillProcessor(object):
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_dir_path,
                 bill_file_paths)
 
-    def get_issuable_reebills(self):
+    def _get_issuable_reebills(self):
         """ Returns a list of issuable reebills
             for the earliest unissued version-0 reebill account.
         """
@@ -698,27 +644,6 @@ class ReebillProcessor(object):
                 .filter(ReeBill.sequence==min_sequence.c.sequence)\
                 .filter(ReeBill.processed == 1).all()
 
-        return issuable_reebills
-
-    def get_issuable_reebills_dict(self):
-        """ Returns a list of issuable reebill dictionaries
-            of the earliest unissued version-0 reebill account. If
-            proccessed == True, only processed Reebills are returned
-            account can be used to get issuable bill for an account
-        """
-        session = Session()
-        unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.customer_id).filter(ReeBill.issued == 0,
-                                                          ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-                unissued_v0_reebills.c.customer_id.label('customer_id'),
-                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)
-        issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
     def issue_and_mail(self, apply_corrections, account, sequence,
@@ -779,7 +704,7 @@ class ReebillProcessor(object):
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''
-        bills = self. get_issuable_reebills()
+        bills = self. _get_issuable_reebills()
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
@@ -834,53 +759,6 @@ class ReebillProcessor(object):
         """
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.customer.bill_email_recipient = recepients
-
-    def list_account_status(self, account=None):
-        """ Returns a list of dictonaries (containing Account, Nexus Codename,
-          Casual name, Primus Name, Utility Service Address, Date of last
-          issued bill, Days since then and the last event) and the length
-          of the list for all accounts. If account is given, the only the
-          accounts dictionary is returned """
-        grid_data = self.state_db.get_accounts_grid_data(account)
-        name_dicts = self.nexus_util.all_names_for_accounts(
-                [row[1] for row in grid_data])
-
-        rows_dict = {}
-        for id, acc, account_number, fb_utility_name, fb_rate_class, \
-            fb_service_address, _, _, \
-                issue_date, rate_class, service_address, periodend in grid_data:
-            rows_dict[acc] = {
-                'account': acc,
-                'utility_account_id': id,
-                'utility_account_number': account_number,
-                'fb_utility_name': fb_utility_name,
-                'fb_rate_class': fb_rate_class,
-                'fb_service_address': fb_service_address,
-                'codename': name_dicts[acc].get('codename', ''),
-                'casualname': name_dicts[acc].get('casualname', ''),
-                'primusname': name_dicts[acc].get('primus', ''),
-                'lastperiodend': periodend,
-                'provisionable': False,
-                'lastissuedate': issue_date if issue_date else '',
-                'lastrateclass': rate_class if rate_class else '',
-                'lastutilityserviceaddress': str(service_address) if
-                service_address else '',
-                'lastevent': '',
-            }
-
-        if account is not None:
-            events = [(account, self.journal_dao.last_event_summary(account))]
-        else:
-            events = self.journal_dao.get_all_last_events()
-        for acc, last_event in events:
-            # filter out events that belong to an unknown account (this could
-            # not be done in JournalDAO.get_all_last_events() because it only
-            # has access to Mongo)
-            if acc in rows_dict:
-                rows_dict[acc]['lastevent'] = last_event
-
-        rows = list(rows_dict.itervalues())
-        return len(rows), rows
 
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)

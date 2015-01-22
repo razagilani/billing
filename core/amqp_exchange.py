@@ -18,7 +18,7 @@ from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
-from reebill.utilbill_processor import UtilbillProcessor
+from core.utilbill_processor import UtilbillProcessor
 
 __all__ = [
     'consume_utilbill_file_mq',
