@@ -4,7 +4,6 @@ from datetime import datetime, date
 from itertools import chain
 import traceback
 
-from pint import UnitRegistry, UndefinedUnitError
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
@@ -13,7 +12,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError
 from core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Utility, RateClass, Charge, UtilityAccount
+    UtilBill, Charge
 from util.units import ureg, convert_to_therms
 
 
@@ -29,7 +28,8 @@ class ReeBill(Base):
     __tablename__ = 'reebill'
 
     id = Column(Integer, primary_key=True)
-    reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
+    reebill_customer_id = Column(Integer,ForeignKey('reebill_customer.id'),
+                                 nullable=False)
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
@@ -57,8 +57,8 @@ class ReeBill(Base):
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
 
-    reebill_customer = relationship("ReeBillCustomer", backref=backref('reebills',
-        order_by=id))
+    reebill_customer = relationship("ReeBillCustomer",
+                                    backref=backref('reebills', order_by=id))
 
     billing_address = relationship('Address', uselist=False,
         cascade='all',
@@ -108,9 +108,9 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill',
                             cascade='all, delete-orphan')
 
-    def __init__(self, reebill_customer, sequence, version=0, discount_rate=None,
-                 late_charge_rate=None, billing_address=None,
-                 service_address=None, utilbills=[]):
+    def __init__(self, reebill_customer, sequence, version=0,
+                 discount_rate=None, late_charge_rate=None,
+                 billing_address=None, service_address=None, utilbills=[]):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
