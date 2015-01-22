@@ -1,7 +1,7 @@
 import requests
 
 from test import init_test_config
-from exc import DuplicateFileError, ProcessedBillError
+from exc import DuplicateFileError, ProcessedBillError, BillingError
 
 init_test_config()
 
@@ -1005,11 +1005,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         start, end = date(2012, 1, 1), date(2012, 2, 1)
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
-        self.utilbill_processor.upload_utility_bill(account, StringIO("test1"), start, end,
-                                         'gas')
+        u = self.utilbill_processor.upload_utility_bill(
+            account, StringIO( "test1"), start, end, 'gas')
         utilbills_data, count = self.utilbill_processor.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
+
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
@@ -1037,7 +1039,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'total_adjustment': 0,
                                           'total_error': 0.0
                                       }, reebills_data[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
@@ -1047,12 +1049,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # attached to that utility bill instead.
         self.reebill_processor.issue(account, 1)
         self.reebill_processor.new_version(account, 1)
-        self.utilbill_processor.upload_utility_bill(account, StringIO("test2"),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
+        u = self.utilbill_processor.upload_utility_bill(
+            account, StringIO("test2"), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
         # TODO this may not accurately reflect the way reebills get
         # attached to different utility bills; see
         # https://www.pivotaltracker.com/story/show/51935657
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
