@@ -1,11 +1,12 @@
+'''The goal of this file is to collect in one place all the code for to
+serializing data into JSON for the ReeBill UI. Some of that code is still in
+other files.
+'''
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
 from reebill.state import ReeBill, ReeBillCustomer, ReeBillCharge
-from exc import NoSuchBillException, DuplicateFileError, BillingError, \
-    ProcessedBillError
-from core.utilbill_loader import UtilBillLoader
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'

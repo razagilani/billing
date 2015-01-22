@@ -1090,7 +1090,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # add a payment of $30 30 days ago (10 days after 1st reebill was
         # issued). the late fee above is now wrong; it should be 50% of
         # the unpaid $20 instead of 50% of the entire $50.
-        self.reebill_processor.create_payment(acc, datetime.utcnow() - timedelta(30),
+        self.payment_dao.create_payment(acc, datetime.utcnow() - timedelta(30),
                                     'backdated payment', 30)
 
         # now a new version of the 2nd reebill should have a different late
@@ -1381,7 +1381,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           }, reebill_data[0])
         self.assertAlmostEqual(energy_quantity, reebill_data[0]['ree_quantity'])
         # add a payment so payment_received is not 0
-        self.reebill_processor.create_payment(account, date(2013, 2, 17),
+        self.payment_dao.create_payment(account, date(2013, 2, 17),
                                     'a payment for the first reebill', payment_amount)
 
         # 2nd reebill
@@ -1518,8 +1518,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         reebill_2 = self.reebill_processor.roll_reebill(account)
 
         # 1 payment applied today at 1:00, 1 payment applied at 2:00
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 1), 'one',
+                                        10)
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 2), 'two',
+                                        12)
 
         # 1st reebill has both payments applied to it, 2nd has neither
         self.reebill_processor.compute_reebill(account, 1)
@@ -1536,7 +1538,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(0, reebill_2.payment_received)
 
         # now later payments apply to the 2nd bill
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 3), 'three', 30)
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 3), 'three', 30)
         self.reebill_processor.compute_reebill(account, 2)
         self.assertEqual(30, reebill_2.payment_received)
 
@@ -1549,7 +1551,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # a payment that is backdated to before a corrected bill was issued
         # does not appear on the corrected version
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 2, 30),
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 2, 30),
                                     'backdated payment', 230)
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.compute_reebill(account, 2)
@@ -1567,8 +1569,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               start_date=date(2000, 1, 1))
 
         # 1 payment applied today at 1:00, 1 payment applied at 2:00
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
-        self.reebill_processor.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 1), 'one',
+                                        10)
+        self.payment_dao.create_payment(account, datetime(2000, 1, 1, 2), 'two',
+                                        12)
 
         #self.reebill_processor.compute_reebill(account, 1)
 
@@ -1577,7 +1581,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(len(payments), 2)
         self.assertEqual(payments[0]['credit'], 10)
         self.assertEqual(payments[1]['credit'], 12)
-        self.reebill_processor.update_payment(payments[0]['id'], payments[0][
+        self.payment_dao.update_payment(payments[0]['id'], payments[0][
             'date_applied'], 'changed credit', 20)
         payments = [p.column_dict() for p in self.payment_dao.get_payments(
             account)]
@@ -1589,9 +1593,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1)
         payment = self.payment_dao.get_payments(account)[0].column_dict()
-        self.assertRaises(IssuedBillError, self.reebill_processor.update_payment,
+        self.assertRaises(IssuedBillError, self.payment_dao.update_payment,
                           payment['id'], payment['date_applied'], 'update', 20)
-        self.assertRaises(IssuedBillError, self.reebill_processor.delete_payment,
+        self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
 
     def test_tou_metering(self):

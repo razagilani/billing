@@ -1,8 +1,11 @@
+'''CRUD for Payment objects.
+'''
 from datetime import datetime
 
 from sqlalchemy import and_
 
 from core.model import Session, UtilityAccount
+from exc import IssuedBillError
 from reebill.state import ReeBillCustomer, Payment
 
 
@@ -30,10 +33,13 @@ class PaymentDAO(object):
         session.flush()
         return new_payment
 
-    def delete_payment(self, oid):
-        '''Deletes the payment with id 'oid'.'''
+    def delete_payment(self, id):
+        '''Deletes the payment with the given id.'''
         session = Session()
-        payment = session.query(Payment).filter(Payment.id == oid).one()
+        payment = session.query(Payment).filter(Payment.id == id).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be deleted after they are'
+                                  'applied to an issued reebill')
         session.delete(payment)
 
     def find_payment(self, account, periodbegin, periodend):
@@ -95,3 +101,13 @@ class PaymentDAO(object):
             .filter(Payment.reebill_id == reebill_id).order_by(
             Payment.date_received).all()
         return payments
+
+    def update_payment(self, id, date_applied, description, credit):
+        session = Session()
+        payment = session.query(Payment).filter_by(id=id).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be changed after they are'
+                                  'applied to an issued reebill')
+        payment.date_applied = date_applied
+        payment.description = description
+        payment.credit = credit

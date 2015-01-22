@@ -8,10 +8,11 @@ from core import init_model
 init_model()
 
 from StringIO import StringIO
-from datetime import date, datetime
+from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
+from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
+    RateClass
 from core.model import Session
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup

@@ -9,7 +9,7 @@ from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
-from reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
+from reebill.state import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
@@ -38,37 +38,6 @@ class ReebillProcessor(object):
         self.reebill_file_handler = reebill_file_handler
         self.logger = logger
         self.journal_dao = journal_dao
-
-    def create_payment(self, account, date_applied, description,
-            credit, date_received=None):
-        '''Wrapper to create_payment method in state.py'''
-        return self.payment_dao.create_payment(account, date_applied, description,
-            credit, date_received)
-
-    def update_payment(self, id, date_applied, description, credit):
-        session = Session()
-        payment = session.query(Payment).filter_by(id=id).one()
-        if payment.reebill_id is not None:
-            raise IssuedBillError('payments cannot be changed after they are'
-                                  'applied to an issued reebill')
-        payment.date_applied = date_applied
-        payment.description = description
-        payment.credit = credit
-
-    def delete_payment(self, oid):
-        '''Wrapper to delete_payment method in state.py'''
-        session = Session()
-        payment = session.query(Payment).filter_by(id=oid).one()
-        if payment.reebill_id is not None:
-            raise IssuedBillError('payments cannot be deleted after they are'
-                                  'applied to an issued reebill')
-        self.state_db.delete_payment(oid)
-
-    def get_payments(self, account):
-        '''Wrapper to state_db.payments'''
-        payments = self.state_db.payments(account)
-        return [payment.column_dict() for payment in payments]
-
 
     # TODO rename this to something that makes sense
     def get_hypothetical_matched_charges(self, reebill_id):
