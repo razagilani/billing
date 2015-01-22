@@ -819,7 +819,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # add some RSIs to the UPRS, and charges to match
 
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='some supplier',
+                                                         supplier='Some Supplier',
                                                          rate_class='rate class')
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
                                                          supplier='Other Supplier',
