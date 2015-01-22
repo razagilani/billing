@@ -8,17 +8,14 @@ import unittest
 import mock
 import logging
 
-from billing.reebill.excel_export import Exporter
-from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import ReeBill, Payment
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import testing_utils
-from billing import init_config, init_model
-from billing.reebill.reebill_dao import ReeBillDAO
-from billing.reebill.payment_dao import PaymentDAO
+from core import init_config, init_model
+from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
+    Supplier, RateClass, UtilityAccount
+from reebill.excel_export import Exporter
+from reebill.state import ReeBill, Payment
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
 
-from billing.core.model import Session, UtilityAccount, Utility, Supplier, \
-    Address, RateClass, UtilBill
 
 
 class ExporterSheetTest(unittest.TestCase):

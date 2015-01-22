@@ -7,10 +7,10 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from billing.core.model import (UtilBill, Address, Session,
+from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
-from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
-from billing.exc import IssuedBillError, NotIssuable, \
+from reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
+from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 

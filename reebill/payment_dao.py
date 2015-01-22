@@ -2,8 +2,8 @@ from datetime import datetime
 
 from sqlalchemy import and_
 
-from billing.core.model import Session, UtilityAccount
-from billing.reebill.state import ReeBillCustomer, Payment
+from core.model import Session, UtilityAccount
+from reebill.state import ReeBillCustomer, Payment
 
 
 class PaymentDAO(object):

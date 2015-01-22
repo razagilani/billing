@@ -5,12 +5,12 @@ import pymongo
 from sqlalchemy import desc
 import tablib
 import traceback
-from billing.reebill import state
-from billing.reebill.state import UtilBill
-from billing.util import dateutils
-from billing.util.monthmath import approximate_month
-from billing.exc import *
-from billing.core.model import Session, UtilityAccount
+from reebill import state
+from reebill.state import UtilBill
+from util import dateutils
+from util.monthmath import approximate_month
+from exc import *
+from core.model import Session, UtilityAccount
 
 import pprint
 
@@ -430,13 +430,13 @@ def main(export_func, filename, account=None):
                 Account number (optional, uses all accounts or standard range)
     Saves output in "spreadsheet.xls".'''
     from os.path import dirname, realpath, join
-    from billing import init_config, init_model, init_logging
+    from core import init_config, init_model, init_logging
 
     p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
     init_logging(path=p)
     init_config(filename=p)
     init_model()
-    from billing import config
+    from core import config
     import logging
 
     logger = logging.getLogger('reebill')

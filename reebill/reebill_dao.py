@@ -4,15 +4,18 @@ Utility functions to interact with state database
 from datetime import datetime
 
 from sqlalchemy.orm import aliased
+from pint import UnitRegistry, UndefinedUnitError
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_, func
 from sqlalchemy.sql.expression import desc
 
-from billing.exc import IssuedBillError
-from billing.core.model import Address, Session, UtilBill, Utility, RateClass, \
-    UtilityAccount
-from billing.reebill.state import ReeBillCustomer, ReeBill
-from billing.util.monthmath import Month
+from exc import IssuedBillError, RegisterError, ProcessedBillError
+from core.model import Base, Address, Register, Session, Evaluation, \
+    UtilBill, Utility, RateClass, Charge, UtilityAccount
+from reebill.state import ReeBill
+from reebill.state import ReeBillCustomer
+from util.units import ureg, convert_to_therms
+
 
 
 class ReeBillDAO(object):
