@@ -681,7 +681,7 @@ class ReebillProcessor(object):
                 bill_file_paths)
 
     def get_issuable_reebills(self):
-        """ Returns a list of issuable reebills
+        """ Returns a cursor of issuable reebills
             for the earliest unissued version-0 reebill account.
         """
         session = Session()
@@ -693,12 +693,9 @@ class ReebillProcessor(object):
                 unissued_v0_reebills.c.reebill_customer_id.label('reebill_customer_id'),
                 func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
                 .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
-        issuable_reebills = session.query(ReeBill)\
+        return session.query(ReeBill)\
                 .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)\
-                .filter(ReeBill.processed == 1).all()
-
-        return issuable_reebills
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
 
     def get_issuable_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries
@@ -706,20 +703,7 @@ class ReebillProcessor(object):
             proccessed == True, only processed Reebills are returned
             account can be used to get issuable bill for an account
         """
-        session = Session()
-        unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.customer_id).filter(ReeBill.issued == 0,
-                                                          ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-                unissued_v0_reebills.c.customer_id.label('customer_id'),
-                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)
-        issuable_reebills = [r.column_dict() for r in reebills.all()]
-        return issuable_reebills
+        return [r.column_dict() for r in self.get_issuable_reebills().all()]
 
     def issue_and_mail(self, apply_corrections, account, sequence,
                        recipients=None):
@@ -779,7 +763,7 @@ class ReebillProcessor(object):
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''
-        bills = self. get_issuable_reebills()
+        bills = self.get_issuable_reebills().filter_by(processed=True).all()
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
