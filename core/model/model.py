@@ -859,9 +859,9 @@ class Charge(Base):
                    other.rsi_binding,
                    other.rate,
                    other.quantity_formula,
-                   other.description,
-                   other.group,
-                   other.unit,
+                   description=other.description,
+                   group=other.group,
+                   unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)

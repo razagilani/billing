@@ -59,34 +59,38 @@ class UtilbillProcessor(object):
                 raise BillingError("Bill with unknown supplier or rate class "
                                    "can't become processed")
             utilbill.processed = processed
+            #since the bill has become processed no other changes to the bill can be made
+            # so return the util bill without raising an error
+            if processed:
+                return utilbill
 
-        if utilbill.editable():
-            if target_total is not None:
-                utilbill.target_total = target_total
+        utilbill.check_editable()
+        if target_total is not None:
+            utilbill.target_total = target_total
 
-            if service is not None:
-                utilbill.service = service
+        if service is not None:
+            utilbill.service = service
 
-            if supplier is not None:
-                utilbill.supplier = self.get_create_supplier(supplier)
+        if supplier is not None:
+            utilbill.supplier = self.get_create_supplier(supplier)
 
-            if rate_class is not None:
-                utilbill.rate_class = self.get_create_rate_class(
-                    rate_class, utilbill.utility)
+        if rate_class is not None:
+            utilbill.rate_class = self.get_create_rate_class(
+                rate_class, utilbill.utility)
 
-            if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.get_create_utility(utility)
-                utilbill.supplier = None
-                utilbill.rate_class = None
+        if utility is not None and isinstance(utility, basestring):
+            utilbill.utility = self.get_create_utility(utility)
+            utilbill.supplier = None
+            utilbill.rate_class = None
 
-            period_start = period_start if period_start else \
-                utilbill.period_start
-            period_end = period_end if period_end else utilbill.period_end
+        period_start = period_start if period_start else \
+            utilbill.period_start
+        period_end = period_end if period_end else utilbill.period_end
 
-            UtilBill.validate_utilbill_period(period_start, period_end)
-            utilbill.period_start = period_start
-            utilbill.period_end = period_end
-            self.compute_utility_bill(utilbill.id)
+        UtilBill.validate_utilbill_period(period_start, period_end)
+        utilbill.period_start = period_start
+        utilbill.period_end = period_end
+        self.compute_utility_bill(utilbill.id)
         return  utilbill
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
@@ -425,18 +429,18 @@ class UtilbillProcessor(object):
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
         utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session.delete(register)
-            session.commit()
-            self.compute_utility_bill(utilbill_id)
+        utilbill.check_editable()
+        session.delete(register)
+        session.commit()
+        self.compute_utility_bill(utilbill_id)
 
     def add_charge(self, utilbill_id, **charge_kwargs):
         """Add a new charge to the given utility bill. charge_kwargs are
         passed as keyword arguments to the charge"""
         utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            charge = utilbill.add_charge(**charge_kwargs)
-            self.compute_utility_bill(utilbill_id)
+        utilbill.check_editable()
+        charge = utilbill.add_charge(**charge_kwargs)
+        self.compute_utility_bill(utilbill_id)
         return charge
 
     def update_charge(self, fields, charge_id=None, utilbill_id=None,
