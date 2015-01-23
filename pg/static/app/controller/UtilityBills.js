@@ -37,7 +37,13 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'utilbillToggleProcessed',
         selector: '[action=utilbillToggleProcessed]'
-    }],    
+    },{
+        ref: 'utilbillPrevious',
+        selector: '[action=utilbillPrevious]'
+    },{
+        ref: 'utilbillNext',
+        selector: '[action=utilbillNext]'
+    }],
     
     init: function() {
         this.application.on({
@@ -49,7 +55,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 selectionchange: this.handleRowSelect
             },
             'grid[id=accountsGrid]': {
-                activate: this.handleAccountsActivate
+                activate: this.handleAccountsActivate,
+                selectionchange: this.handleAccountRowSelect
             },
             'panel[name=utilityBillsTab]': {
                 activate: this.handleActivate
@@ -95,6 +102,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             scope: this
         });
+
+        this.getAccountsStore().on('load', function() {
+            this.getAccountsGrid().getSelectionModel().select(0);
+        }, this, {single: true});
     },
 
     /**
@@ -147,12 +158,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     handleAccountsActivate: function() {
-        this.getAccountsStore().on('load', function() {
-            var accountGrid = this.getAccountsGrid();
-            accountGrid.getSelectionModel().select(0);
-        }, this);
         var accountStore = this.getAccountsStore();
         accountStore.reload();
+    },
+
+    handleAccountRowSelect: function(selectionModel, records) {
+        this.setButtonsDisabled(this.getAccountsStore().indexOf(records[0]));
     },
 
     /**
@@ -253,23 +264,40 @@ Ext.define('ReeBill.controller.UtilityBills', {
         combo.setValue(selected.get('utility').name);
     },
 
-    decrementAccount: function() {
+    moveIndex: function(offset) {
         var accountStore = this.getAccountsStore();
         var accountGrid = this.getAccountsGrid();
         var selectedRecord = accountGrid.getSelectionModel().getSelection()[0];
         var recordIndex = accountStore.indexOf(selectedRecord);
-        var newRecord = accountStore.getAt(recordIndex - 1);
-        accountGrid.getSelectionModel().select(newRecord);
+        return recordIndex + offset;
+    },
+
+    /* Update disabled/enabled state of "Previous" and "Next" buttons according
+     to the index of the currently selected record.
+     */
+    setButtonsDisabled: function(newRecordIndex) {
+        this.getUtilbillPrevious().setDisabled(newRecordIndex === 0);
+        this.getUtilbillNext().setDisabled(
+                newRecordIndex === this.getAccountsStore().count() - 1);
+    },
+
+    /* Select previous row in acocunt grid and reload the grid.
+     */
+    decrementAccount: function() {
+        var newRecordIndex = this.moveIndex(-1);
+        this.setButtonsDisabled(newRecordIndex);
+        var newRecord = this.getAccountsStore().getAt(newRecordIndex);
+        this.getAccountsGrid().getSelectionModel().select(newRecord);
         this.updateCurrentAccountId(newRecord);
     },
 
+    /* Select next row in acocunt grid and reload the grid.
+     */
     incrementAccount: function() {
-        var accountStore = this.getAccountsStore();
-        var accountGrid = this.getAccountsGrid();
-        var selectedRecord = accountGrid.getSelectionModel().getSelection()[0];
-        var recordIndex = accountStore.indexOf(selectedRecord);
-        var newRecord = accountStore.getAt(recordIndex + 1);
-        accountGrid.getSelectionModel().select(newRecord);
+        var newRecordIndex = this.moveIndex(1);
+        this.setButtonsDisabled(newRecordIndex);
+        var newRecord = this.getAccountsStore().getAt(newRecordIndex);
+        this.getAccountsGrid().getSelectionModel().select(newRecord);
         this.updateCurrentAccountId(newRecord);
     },
 
