@@ -274,29 +274,29 @@ class RateClassesResource(BaseResource):
         rows = marshal(rate_classes, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
+app = Flask(__name__)
+
+initialize()
+
+api = Api(app)
+api.add_resource(AccountResource, '/utilitybills/accounts')
+api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
+api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
+api.add_resource(SuppliersResource, '/utilitybills/suppliers')
+api.add_resource(UtilitiesResource, '/utilitybills/utilities')
+api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
+api.add_resource(ChargeListResource, '/utilitybills/charges')
+api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+
+admin = Admin(app)
+admin.add_view(ModelView(UtilityAccount, Session()))
+admin.add_view(ModelView(UtilBill, Session(), name='Utility Bill'))
+admin.add_view(ModelView(Utility, Session()))
+admin.add_view(ModelView(Supplier, Session()))
+admin.add_view(ModelView(RateClass, Session()))
+admin.add_view(ModelView(ReeBillCustomer, Session(),
+               name='ReeBill Account'))
+admin.add_view(ModelView(ReeBill, Session(), name='Reebill'))
+
 if __name__ == '__main__':
-    initialize()
-
-    app = Flask(__name__)
-    api = Api(app)
-    api.add_resource(AccountResource, '/utilitybills/accounts')
-    api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
-    api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
-    api.add_resource(SuppliersResource, '/utilitybills/suppliers')
-    api.add_resource(UtilitiesResource, '/utilitybills/utilities')
-    api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
-    api.add_resource(ChargeListResource, '/utilitybills/charges')
-    api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
-
-    admin = Admin(app)
-
-    admin.add_view(ModelView(UtilityAccount, Session()))
-    admin.add_view(ModelView(UtilBill, Session(), name='Utility Bill'))
-    admin.add_view(ModelView(Utility, Session()))
-    admin.add_view(ModelView(Supplier, Session()))
-    admin.add_view(ModelView(RateClass, Session()))
-    admin.add_view(ModelView(ReeBillCustomer, Session(),
-                   name='ReeBill Account'))
-    admin.add_view(ModelView(ReeBill, Session(), name='Reebill'))
-
     app.run(debug=True)
