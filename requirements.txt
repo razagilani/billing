@@ -10,6 +10,8 @@ certifi==0.0.8
 chardet==1.1
 ecdsa==0.10
 formencode==1.3.0a1
+Flask==0.10.1
+Flask-RESTful==0.3.1
 greenlet==0.4.0
 # this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4)
 git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f
