@@ -3,7 +3,7 @@ Ext.define('ReeBill.store.Accounts', {
     requires: ['ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
 
-    autoLoad: true,
+    autoLoad: false,
     autoSync: true,
 
 	proxy: {
@@ -42,7 +42,7 @@ Ext.define('ReeBill.store.Accounts', {
 
     sorters: [{
         property: 'account',
-        direction: 'DESC'
+        direction: 'ASC'
     }]
 
 });
