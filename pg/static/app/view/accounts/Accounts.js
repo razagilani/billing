@@ -1,12 +1,9 @@
 Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-    requires: [
-        'ReeBill.store.AccountsMemory',
-        'ReeBill.store.AccountsFilter',
-        'Ext.toolbar.PagingMemoryToolbar'],
-    title: 'Accounts Processing Status',
+    requires: [],
+    title: 'Accounts',
     alias: 'widget.accounts',   
-    store: 'AccountsMemory',
+    store: 'Accounts',
 
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -24,79 +21,16 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     },
     
     columns: [{
-        header: 'Account',
+        header: 'Nextily Account Number',
         dataIndex: 'account',
         width: 100
-    },
-      {
+    }, {
         header: 'Utility Account Number',
         dataIndex: 'utility_account_number',
         editor: {
             xtype: 'textfield'
         },
         width: 100
-      },{
-        header: 'Codename',
-        dataIndex: 'codename',
-        width: 120
-    },{
-        header: 'Casual Name',
-        dataIndex: 'casualname',
-        width: 200
-    },{
-        header: 'Primus Name',
-        dataIndex: 'primusname',
-        width: 120
-    },{
-        header: 'Utility Service Address',
-        dataIndex: 'lastutilityserviceaddress',
-        width: 200
-    },{
-        header: 'Last Issued',
-        dataIndex: 'lastissuedate',
-        width: 120,
-        renderer: function(value) {
-            return Ext.util.Format.date(value, 'Y-m-d');
-        },
-    },{
-        header: 'Days Since',
-        tooltip: 'Days Since Last Issued Utility Bill',
-        dataIndex: 'lastperiodend',
-        renderer: function(value){
-            if(value === Infinity){
-                return ''
-            }
-            return value
-        },
-        align: 'right',
-        width: 100
-    },{
-        header: 'Last Event',
-        dataIndex: 'lastevent',
-        minWidth: 350,
-        flex:1
-    }],
+    }]
 
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'AccountsMemory',
-        refreshStore: 'Accounts',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}',
-        items: ['->',{
-            xtype: 'combo',
-            name: 'accountsFilter',
-            fieldLabel: 'Filter',
-            labelWidth: 50,
-            width: 400,
-            value: '',
-            editable: false,
-            store: 'AccountsFilter',
-            triggerAction: 'all',
-            valueField: 'value',
-            displayField: 'label',
-            forceSelection: true
-        }]
-    }
 });

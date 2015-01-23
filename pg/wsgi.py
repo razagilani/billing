@@ -10,6 +10,7 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 from datetime import date, datetime
 from os.path import dirname, realpath, join
 from boto.s3.connection import S3Connection
+from pg.pg_model import PGAccount
 
 from sqlalchemy import desc
 
@@ -140,6 +141,16 @@ id_parser.add_argument('id', type=int, required=True)
 # TODO: determine when argument to put/post/delete methods are created
 # instead of RequestParser arguments
 
+class AccountResource(BaseResource):
+    def get(self):
+        accounts = Session().query(UtilityAccount).join(PGAccount).order_by(
+            UtilityAccount.account).all()
+        return marshal(accounts, {
+            'id': Integer,
+            'account': String,
+            'utility_account_number': String(attribute='account_number')
+        })
+
 class UtilBillListResource(BaseResource):
     def get(self):
         args = id_parser.parse_args()
@@ -261,6 +272,7 @@ if __name__ == '__main__':
 
     app = Flask(__name__)
     api = Api(app)
+    api.add_resource(AccountResource, '/utilitybills/accounts')
     api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
     api.add_resource(UtilBillResource, '/utilitybills/utilitybills/<int:id>')
     api.add_resource(SuppliersResource, '/utilitybills/suppliers')

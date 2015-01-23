@@ -53,6 +53,8 @@ Ext.define('ReeBill.view.Viewport', {
                 },
 
                 items: [{
+                    xtype: 'accounts'
+               },{
                     xtype: 'panel',
                     name: 'utilityBillsTab',
                     title: 'Utility Bills',
