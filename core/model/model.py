@@ -603,6 +603,13 @@ class UtilBill(Base):
         '''
         return [c for c in self.charges if c.has_charge and c.type == 'supply']
 
+    def get_distribution_charges(self):
+        '''Return a list of Charges that are for distribution (rather than
+        supply, or other), excluding charges that are "fake" (
+        has_charge == False).
+        '''
+        return [c for c in self.charges if c.has_charge and c.type == 'distribution']
+
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
         errors.
