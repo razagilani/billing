@@ -116,6 +116,7 @@ class TestCaseWithSetup(test_utils.TestCase):
             "reading",
             "reebill_charge",
             "reebill_customer",
+            "pg_account",
             "utility_account",
             "rate_class",
             "supplier",
