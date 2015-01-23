@@ -54,12 +54,14 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 click: function() {
                     this.currentAccountId--;
                     this.updateCurrentAccountId();
+                    this.getUtilityBillsStore().reload();
                 }
             },
             '[action=utilbillNext]': {
                 click: function() {
                     this.currentAccountId++;
                     this.updateCurrentAccountId();
+                    this.getUtilityBillsStore().reload();
                 }
             },
             '[action=resetUploadUtilityBillForm]': {
@@ -133,7 +135,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleActivate: function() {
         this.currentAccountId = 1;
-        this.getAccountLabel().setText(this.currentAccountId);
+        //this.getAccountLabel().setText(this.currentAccountId);
+        this.updateCurrentAccountId();
 
         var store = this.getUtilityBillsStore();
 
@@ -144,18 +147,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }else{
             selectedNode = store.find('id', selectedBill[0].getId());
         }
-        store.reload({
-            scope: this,
-            callback: function(){
-                /*
-                this is being done in the following way because of the bug reported here
-                http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
-                this bug is fixed in extjs 4.2.3 and higher
-                 */
-                this.getUtilityBillsGrid().getSelectionModel().deselectAll();
-                this.getUtilityBillsGrid().getSelectionModel().select(selectedNode);
-            }
-        });
     },
 
     /**
@@ -268,6 +259,5 @@ Ext.define('ReeBill.controller.UtilityBills', {
         };
         var store = this.getUtilityBillsStore();
         store.getProxy().setExtraParam('id', this.currentAccountId)
-        store.reload();
     }
 });
