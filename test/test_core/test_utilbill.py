@@ -455,7 +455,7 @@ class UtilBillTest(TestCase):
                             Address(), Address(), period_start=date(2000,1,1),
                             period_end=date(2000,2,1))
         the_charges = [
-            Charge(utilbill, 'A', 1, '1', type='distribution'),
+            Charge(utilbill, 'A', 1, '', target_total=1, type='distribution'),
             Charge(utilbill, 'B', 1, '4', type='distribution'),
             # a Charge does not count as a real charge if has_charge=False.
             Charge(utilbill, 'C', 1, '3', type='supply', has_charge=False),
@@ -470,12 +470,20 @@ class UtilBillTest(TestCase):
         # charges"
         self.assertEqual(the_charges[3:5], utilbill.get_supply_charges())
 
-        # but it does not count toward the "supply total"
+        # but it does not count toward the "supply target total"
         utilbill.compute_charges()
-        self.assertEqual(5, utilbill.get_supply_total())
+        self.assertEqual(5, utilbill.get_supply_target_total())
 
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
         self.assertEqual(the_charges[0:2], utilbill.get_distribution_charges())
+    def test_get_estimated_next_meter_read_date(self):
+        utilbill = UtilBill(self.utility_account, UtilBill.Complete,
+                            'gas', self.utility, self.supplier, self.rate_class,
+                            Address(), Address())
+        self.assertEqual(None, utilbill.get_estimated_next_meter_read_date())
+
+        utilbill.period_end = date(2000,1,1)
+        self.assertEqual(date(2000,1,31), utilbill.get_estimated_next_meter_read_date())
 
 
