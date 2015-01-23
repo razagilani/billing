@@ -7,7 +7,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         'RateClasses',
         'Suppliers',
         'Utilities',
-        'Services'
+        'Services',
+        'Accounts'
     ],
 
     views: [
@@ -42,27 +43,22 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.application.on({
             scope: this
         });
-        
+
         this.control({
             'grid[id=utilityBillsGrid]': {
                 selectionchange: this.handleRowSelect
+            },
+            'grid[id=accountsGrid]': {
+                activate: this.handleAccountsActivate
             },
             'panel[name=utilityBillsTab]': {
                 activate: this.handleActivate
             },
             '[action=utilbillPrevious]': {
-                click: function() {
-                    this.currentAccountId--;
-                    this.updateCurrentAccountId();
-                    this.getUtilityBillsStore().reload();
-                }
+                click: this.decrementAccount
             },
             '[action=utilbillNext]': {
-                click: function() {
-                    this.currentAccountId++;
-                    this.updateCurrentAccountId();
-                    this.getUtilityBillsStore().reload();
-                }
+                click: this.incrementAccount
             },
             '[action=resetUploadUtilityBillForm]': {
                 click: this.handleReset
@@ -134,11 +130,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        this.currentAccountId = 1;
-        //this.getAccountLabel().setText(this.currentAccountId);
-        this.updateCurrentAccountId();
+        var selectedAccountRecord = this.getAccountsGrid()
+                .getSelectionModel().getSelection()[0];
+        this.updateCurrentAccountId(selectedAccountRecord);
 
         var store = this.getUtilityBillsStore();
+        store.reload();
 
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var selectedNode;
@@ -147,6 +144,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }else{
             selectedNode = store.find('id', selectedBill[0].getId());
         }
+    },
+
+    handleAccountsActivate: function() {
+        this.getAccountsStore().on('load', function() {
+            var accountGrid = this.getAccountsGrid();
+            accountGrid.getSelectionModel().select(0);
+        }, this);
+        var accountStore = this.getAccountsStore();
+        accountStore.reload();
     },
 
     /**
@@ -233,8 +239,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         selected.set('rate_class', rate_class_store.getAt(0).data.name);
     },
 
-
-
     handleRateClassExpand: function(combo, record, index){
         utility_grid = combo.findParentByType('grid');
         selected = utility_grid.getSelectionModel().getSelection()[0];
@@ -249,15 +253,39 @@ Ext.define('ReeBill.controller.UtilityBills', {
         combo.setValue(selected.get('utility').name);
     },
 
-    updateCurrentAccountId: function() {
-        this.getAccountLabel().setText(this.currentAccountId);
+    decrementAccount: function() {
+        var accountStore = this.getAccountsStore();
+        var accountGrid = this.getAccountsGrid();
+        var selectedRecord = accountGrid.getSelectionModel().getSelection()[0];
+        var recordIndex = accountStore.indexOf(selectedRecord);
+        var newRecord = accountStore.getAt(recordIndex - 1);
+        accountGrid.getSelectionModel().select(newRecord);
+        this.updateCurrentAccountId(newRecord);
+    },
+
+    incrementAccount: function() {
+        var accountStore = this.getAccountsStore();
+        var accountGrid = this.getAccountsGrid();
+        var selectedRecord = accountGrid.getSelectionModel().getSelection()[0];
+        var recordIndex = accountStore.indexOf(selectedRecord);
+        var newRecord = accountStore.getAt(recordIndex + 1);
+        accountGrid.getSelectionModel().select(newRecord);
+        this.updateCurrentAccountId(newRecord);
+    },
+
+    updateCurrentAccountId: function(selectedAccountRecord) {
+        var id = selectedAccountRecord.get('id');
+        var nextility_account_number = selectedAccountRecord.get('account');
+        this.getAccountLabel().setText(id + ' ' + nextility_account_number);
+        var store = this.getUtilityBillsStore();
+        store.getProxy().setExtraParam('id', id);
+        store.reload();
+
         // TODO: minimum/maximum account number
         if (this.currentAccountId == 1) {
             // TODO prev button
         } else if (this.currentAccountId == 10) {
             // TODO next button
         };
-        var store = this.getUtilityBillsStore();
-        store.getProxy().setExtraParam('id', this.currentAccountId)
     }
 });

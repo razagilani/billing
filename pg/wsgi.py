@@ -59,6 +59,8 @@ class CapString(String):
 
 class IsoDatetime(Raw):
     def format(self, value):
+        if value is None:
+            return None
         return value.isoformat()
 
 class BaseResource(Resource):
