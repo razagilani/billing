@@ -1,7 +1,6 @@
 Ext.define('ReeBill.store.Accounts', {
-    extend: 'Ext.data.SyncStore',
-    memoryStore: 'AccountsMemory',
-    requires: ['ReeBill.store.Preferences', 'ReeBill.model.Account'],
+    extend: 'Ext.data.Store',
+    requires: ['ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
 
     autoLoad: true,
@@ -16,7 +15,7 @@ Ext.define('ReeBill.store.Accounts', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/reebill/accounts',
+        url: 'http://' + window.location.host + '/utilitybills/accounts',
 
         reader: {
             type: 'json',
