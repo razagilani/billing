@@ -3,7 +3,7 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 import sqlalchemy
@@ -203,6 +203,12 @@ class Utility(Base):
         self.name = name
         self.address = address
 
+    def __repr__(self):
+        return '<Utility(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
+
 
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
@@ -219,6 +225,12 @@ class Supplier(Base):
     def __init__(self, name, address):
         self.name = name
         self.address = address
+
+    def __repr__(self):
+        return '<Supplier(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
 
 
 class RateClass(Base):
@@ -238,6 +250,12 @@ class RateClass(Base):
     def __init__(self, name, utility):
         self.name = name
         self.utility = utility
+
+    def __repr__(self):
+        return '<RateClass(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
 
 
 class UtilityAccount(Base):
@@ -457,6 +475,15 @@ class UtilBill(Base):
         '''
         return self.utility.name
 
+    def get_estimated_next_meter_read_date(self):
+        '''Return approximate date of next meter read (which is usually the
+        end date of the next utility bill after this one), or None if no
+        estimate can be made.
+        '''
+        if self.period_end is None:
+            return None
+        return self.period_end + timedelta(days=30)
+
     def get_rate_class_name(self):
         '''Return name of this bill's rate class or None if the rate class is
         None (unknown).
@@ -617,12 +644,14 @@ class UtilBill(Base):
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
 
-    def get_supply_total(self):
-        '''Return the total amount of all supply charges, excluding any charge
-        that has an error or has_charge=False.
+    def get_supply_target_total(self):
+        '''Return the sum of the 'target_total' of all supply
+        charges (excluding any charge with has_charge == False).
+        This is the total supply cost shown on the bill, not calculated from
+        formula and rate.
         '''
-        return sum(c.total for c in self.get_supply_charges()
-                   if c.total is not None and c.has_charge)
+        return sum(c.target_total for c in self.get_supply_charges()
+                   if c.target_total is not None and c.has_charge)
 
     def get_total_energy_consumption(self):
         '''Return total energy consumption, i.e. value of the "REG_TOTAL"
@@ -748,15 +777,22 @@ class Charge(Base):
     group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
-    rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
+
+    quantity_formula = Column(String(1000), nullable=False)
+    rate = Column(Float, nullable=False)
+
+    # amount of the charge calculated from the quantity formula and rate
     total = Column(Float)
+
     # description of error in computing the quantity and/or rate formula.
     # either this or quantity and rate should be null at any given time,
     # never both or neither.
     error = Column(String(255))
 
-    quantity_formula = Column(String(1000), nullable=False)
+    # actual charge amount shown on the bill, if known
+    target_total = Column(Float)
+
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
@@ -788,8 +824,9 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', unit='',
-            has_charge=True, shared=False, roundrule="", type='other'):
+    def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
+                 target_total=None, description='', group='', unit='',
+                 has_charge=True, shared=False, roundrule="", type='other'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -809,6 +846,7 @@ class Charge(Base):
         self.unit = unit
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
+        self.target_total = target_total
         self.has_charge = has_charge
         self.shared = shared
         self.rate=rate
@@ -825,9 +863,9 @@ class Charge(Base):
                    other.rsi_binding,
                    other.rate,
                    other.quantity_formula,
-                   other.description,
-                   other.group,
-                   other.unit,
+                   description=other.description,
+                   group=other.group,
+                   unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)

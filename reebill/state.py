@@ -18,12 +18,11 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
-from core import ureg
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
-from util.units import convert_to_therms
+from util.units import ureg, convert_to_therms
 
 
 __all__ = [
