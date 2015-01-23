@@ -52,9 +52,9 @@ def mark_charges_as_distribution_or_supply(session):
 def upgrade():
     log.info('Beginning upgrade to version 24')
 
-    alembic_upgrade('556352363426')
+    alembic_upgrade('572b9c75caf3')
 
-    init_model(schema_revision='556352363426')
+    init_model(schema_revision='572b9c75caf3')
     session = Session()
     create_pg_accounts(session)
     mark_charges_as_distribution_or_supply(session)

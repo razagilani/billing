@@ -70,10 +70,10 @@ Ext.define('ReeBill.controller.Charges', {
             },
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
-            },
-            'groupTextField':{
-                specialkey: this.handleGroupTextFieldEnter
             }
+            /*'groupTextField':{
+                specialkey: this.handleGroupTextFieldEnter
+            }*/
         });
 
         this.getChargesStore().on({
@@ -120,12 +120,12 @@ Ext.define('ReeBill.controller.Charges', {
     /**
      * Handle a special key press in the GroupTextField
      */
-    handleGroupTextFieldEnter: function(f, e) {
+   handleGroupTextFieldEnter: function(f, e) {
         var field = this.getGroupTextField();
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
         if (e.getKey() == e.ENTER) {
-            selected.set('group', field.getValue());
+            selected.set('', field.getValue());
             this.getChargesGrid().focus();
         }
     },
@@ -154,7 +154,6 @@ Ext.define('ReeBill.controller.Charges', {
 
         if(hasSelections && selected !== undefined){
             groupTextField.setDisabled(false);
-            groupTextField.setValue(selected.get('group'));
             formulaField.setDisabled(false);
             formulaField.setValue(selected.get('quantity_formula'));
         }else{
