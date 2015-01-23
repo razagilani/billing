@@ -183,7 +183,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             xtype: 'button',
             action: 'utilbillPrevious',
             text: 'Previous',
-            disabled: false
+            disabled: true
         },{
             xtype: 'button',
             action: 'utilbillNext',
