@@ -449,21 +449,10 @@ class ReebillVersionsResource(RESTResource):
 
 class ReebillsResource(RESTResource):
 
-    def handle_get(self, account, start, limit, sort='account', dir='DESC',
-                   *vpath, **params):
-        start, limit = int(start), int(limit)
-
+    def handle_get(self, account, *vpath, **params):
         '''Handles GET requests for reebill grid data.'''
-        # this is inefficient but length is always <= 120 rows
-        rows = sorted(self.reebill_processor.get_reebill_metadata_json(
-            account), key=itemgetter(sort))
-        if dir == 'DESC':
-            rows.reverse()
-
-        # "limit" means number of rows to return, so the real limit is
-        # start + limit
-        result = rows[start: start + limit]
-        return True, {'rows': result, 'results': len(rows)}
+        rows = self.reebill_processor.get_reebill_metadata_json(account)
+        return True, {'rows': rows, 'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
         """ Handles Reebill creation """
