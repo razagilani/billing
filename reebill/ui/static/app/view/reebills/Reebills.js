@@ -26,27 +26,22 @@ Ext.define('ReeBill.view.reebills.Reebills', {
 
     columns: [{
         header: 'Sequence',
-        sortable: true,
         dataIndex: 'sequence',
         width: 90
     },{
         header: 'Corrections',
-        sortable: false,
         dataIndex: 'corrections',
         width: 100
     },{
         header: 'Start Date',
-        sortable: false,
         dataIndex: 'period_start',
         width: 120
     },{
         header: 'End Date',
-        sortable: false,
         dataIndex: 'period_end',
         width: 120
     },{
         header: 'Issue Date',
-        sortable: false,
         dataIndex: 'issue_date',
         width: 100,
         renderer: function(value) {
@@ -61,24 +56,20 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         }
     },{
         header: 'Hypo',
-        sortable: false,
         dataIndex: 'hypothetical_total',
         width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
         header: 'Actual',
-        sortable: false,
         dataIndex: 'actual_total',
         width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
         header: 'RE&E',
-        sortable: false,
         dataIndex: 'ree_quantity',
         width: 120,
-        flex: 1,
         align: 'right',
         renderer: function(value) {
             if (typeof(value) == 'number')
@@ -88,14 +79,12 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         }
     },{
         header: 'RE&E Value',
-        sortable: false,
         dataIndex: 'ree_value',
         width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
         header: 'RE&E Charges',
-        sortable: false,
         dataIndex: 'ree_charge',
         align: 'right',
         width: 120,
@@ -157,13 +146,5 @@ Ext.define('ReeBill.view.reebills.Reebills', {
             action: 'email',
             disabled: true
         }]
-    }],
-
-    bbar: {
-        xtype: 'pagingtoolbar',
-        pageSize: 25,
-        store: 'Reebills',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}'
-    }
+    }]
 });
