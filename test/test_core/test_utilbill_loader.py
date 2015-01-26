@@ -32,7 +32,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
     def tearDown(self):
         self.session.commit()
-        # clear out tables in mysql test database (not relying on StateDB)
+        # clear out tables in mysql test database (not relying on ReeBillDAO)
         #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         #self._clear_tables(mysql_connection)
 
