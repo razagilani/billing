@@ -640,39 +640,24 @@ class UtilBillResource(RESTResource):
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
 
         elif action == '':
+            period_start = None
             if 'period_start' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id,
-                    period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date())
+                period_start = datetime.strptime(row['period_start'], ISO_8601_DATE).date()
 
+            period_end = None
             if 'period_end' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id,
-                    period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date())
+                period_end = datetime.strptime(row['period_end'], ISO_8601_DATE).date()
 
-            if 'service' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, service=row['service'].lower())
-
-            if 'target_total' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, target_total=row['target_total'])
-
-            if 'processed' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, processed=row['processed'])
-
-            if 'rate_class' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, rate_class=row['rate_class'])
-
-            if 'utility' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, utility=row['utility'])
-
-            if 'supplier' in row:
-                ub = self.utilbill_processor.update_utilbill_metadata(
-                    utilbill_id, supplier=row['supplier'])
+            ub = self.utilbill_processor.update_utilbill_metadata(
+                utilbill_id,
+                period_start=period_start,
+                period_end=period_end,
+                service=row['service'].lower() if 'service' in row else None,
+                target_total=row.get('target_total', None),
+                processed=row.get('processed', None),
+                rate_class=row.get('rate_class', None),
+                utility=row.get('utility', None),
+                supplier=row.get('supplier', None))
 
         result = ub.column_dict()
         # Reset the action parameters, so the client can coviniently submit
