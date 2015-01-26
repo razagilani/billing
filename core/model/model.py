@@ -8,7 +8,8 @@ import json
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm.interfaces import MapperExtension
+from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
@@ -86,6 +87,11 @@ def check_schema_revision(schema_revision=None):
         raise DatabaseError("Database schema revision mismatch."
                             " Require revision %s; current revision %s"
                             % (schema_revision, current_revision))
+
+class Callback(MapperExtension):
+    def before_update(self, mapper, connection, instance):
+        if object_session(instance).is_modified(instance, include_collections=False):
+            instance.date_modified = datetime.now()
 
 class Evaluation(object):
     """A data structure to hold inputs for calculating charges. It can hold
@@ -326,6 +332,7 @@ class UtilityAccount(Base):
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
+    __mapper_args__ = {'extension':Callback()}
 
     id = Column(Integer, primary_key=True)
 

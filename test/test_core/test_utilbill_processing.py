@@ -137,6 +137,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                     date(2013, 2, 1), 'Gas',
                                                     total=100,
                                                     )
+        date_modified = utilbill.date_modified
 
         doc = self.utilbill_processor.get_all_utilbills_json('99999', 0, 30)[0][0]
         assert utilbill.period_start == doc['period_start'] == date(2013, 1,
@@ -160,6 +161,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                           self.utilbill_processor.update_utilbill_metadata,
                           utilbill.id, period_end=date(2014, 2, 1))
 
+        #since the updates to utilbill fialed, date_modified should be the old one
+        self.assertEqual(utilbill.date_modified, date_modified)
+
         # change start date
         # TODO: this fails to actually move the file because
         # get_utilbill_file_path, called by move_utilbill, is using the
@@ -168,6 +172,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # new it's path are the same.
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               period_start=date(2013, 1, 2))
+        # the date_modified should have been updated
+        self.assertNotEqual(utilbill.date_modified, date_modified)
+        # the difference in two dates must be in microseconds since the small
+        # delay between the time of creation of utility bill and it's update
+        # of period_start
+        self.assertGreater(utilbill.date_modified.microsecond, date_modified.microsecond)
+
         self.assertEqual(date(2013, 1, 2), utilbill.period_start)
 
         # check that file really exists at the expected path
