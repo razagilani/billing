@@ -880,6 +880,11 @@ class Charge(Base):
                 else e.message
             raise FormulaError(message)
 
+    def __repr__(self):
+        return 'Charge<(%s, "%s" * %s = %s, %s)>' % (
+            self.rsi_binding, self.quantity_formula, self.rate, self.total,
+            self.target_total)
+
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
          in `quantity_formula` as parsed by Python"""
@@ -908,8 +913,6 @@ class Charge(Base):
                 evaluation.exception.message
         return evaluation
 
-    def __repr__(self):
-        return '<Charge "%s">' % (self.rsi_binding)
     def get_create_utility(self, utility_name):
         session = Session()
         try:
