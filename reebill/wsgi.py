@@ -631,30 +631,50 @@ class UtilBillResource(RESTResource):
 
     def handle_put(self, utilbill_id, *vpath, **params):
         row = cherrypy.request.json
-        action = row.pop('action')
-        action_value = row.pop('action_value')
-        result= {}
+        action = row.pop('action', '')
 
         if action == 'regenerate_charges':
             ub = self.utilbill_processor.regenerate_uprs(utilbill_id)
-            result = ub.column_dict()
 
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
-            result = ub.column_dict()
 
-        elif action == '': 
-            result = self.utilbill_processor.update_utilbill_metadata(
-                utilbill_id,
-                period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date(),
-                period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date(),
-                service=row['service'].lower(),
-                target_total=row['target_total'],
-                processed=row['processed'],
-                rate_class=row['rate_class'],
-                utility=row['utility'],
-                supplier=row['supplier']).column_dict()
+        elif action == '':
+            if 'period_start' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id,
+                    period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date())
 
+            if 'period_end' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id,
+                    period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date())
+
+            if 'service' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, service=row['service'].lower())
+
+            if 'target_total' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, target_total=row['target_total'])
+
+            if 'processed' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, processed=row['processed'])
+
+            if 'rate_class' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, rate_class=row['rate_class'])
+
+            if 'utility' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, utility=row['utility'])
+
+            if 'supplier' in row:
+                ub = self.utilbill_processor.update_utilbill_metadata(
+                    utilbill_id, supplier=row['supplier'])
+
+        result = ub.column_dict()
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
         result['action'] = ''
