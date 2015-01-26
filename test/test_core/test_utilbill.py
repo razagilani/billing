@@ -459,9 +459,9 @@ class UtilBillTest(TestCase):
             Charge(utilbill, 'B', 1, '4', type='distribution'),
             # a Charge does not count as a real charge if has_charge=False.
             Charge(utilbill, 'C', 1, '3', type='supply', has_charge=False),
-            Charge(utilbill, 'D', 1, '5', type='supply'),
+            Charge(utilbill, 'D', 1, '5', target_total=5, type='supply'),
             Charge(utilbill, 'E', 1, 'syntax error', type='supply'),
-            Charge(utilbill, 'F', 1, '7', type='other'),
+            Charge(utilbill, 'F', 1, '7', type='distribution'),
         ]
         utilbill.charges = the_charges
         self.assertEqual(the_charges, utilbill.charges)
@@ -476,7 +476,7 @@ class UtilBillTest(TestCase):
 
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
-        self.assertEqual(the_charges[0:2], utilbill.get_distribution_charges())
+        self.assertEqual(3, len(utilbill.get_distribution_charges()))
 
     def test_get_estimated_next_meter_read_date(self):
         utilbill = UtilBill(self.utility_account, UtilBill.Complete,

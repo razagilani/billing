@@ -537,7 +537,7 @@ class UtilBill(Base):
                             "New Charge - Insert description here"),
                         group=charge_kwargs.get("group", ''),
                         unit=charge_kwargs.get('unit', "dollars"),
-                        type=charge_kwargs.get('type', "")
+                        type=charge_kwargs.get('type', "supply")
                         )
         session.add(charge)
         registers = self.registers
@@ -827,7 +827,7 @@ class Charge(Base):
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
                  target_total=None, description='', group='', unit='',
-                 has_charge=True, shared=False, roundrule="", type='other'):
+                 has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
