@@ -2,10 +2,12 @@ from os.path import dirname, realpath, join
 import smtplib
 
 from boto.s3.connection import S3Connection
+
 from core import init_config, init_model, init_logging
-from core.utilbill_loader import UtilBillLoader
+
 
 # TODO: is it necessary to specify file path?
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
@@ -31,7 +33,10 @@ from util.dateutils import ISO_8601_DATE
 from nexusapi.nexus_util import NexusUtil
 from util.dictutils import deep_map
 from reebill.bill_mailer import Mailer
-from reebill import state, fetch_bill_data as fbd
+from reebill import fetch_bill_data as fbd
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
+from reebill.views import Views
 from core.pricing import FuzzyPricingModel
 from core.model import Session
 from core.utilbill_loader import UtilBillLoader
@@ -131,7 +136,7 @@ class WebResource(object):
 
         # create an instance representing the database
         self.payment_dao = PaymentDAO()
-        self.state_db = state.ReeBillDAO(logger=self.logger)
+        self.state_db = ReeBillDAO(logger=self.logger)
 
         s3_connection = S3Connection(
                 config.get('aws_s3', 'aws_access_key_id'),
