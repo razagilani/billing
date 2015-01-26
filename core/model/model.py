@@ -73,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '556352363426'
+_schema_revision = '572b9c75caf3'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -528,7 +528,8 @@ class UtilBill(Base):
                             'description',
                             "New Charge - Insert description here"),
                         group=charge_kwargs.get("group", ''),
-                        unit=charge_kwargs.get('unit', "dollars")
+                        unit=charge_kwargs.get('unit', "dollars"),
+                        type=charge_kwargs.get('type', "supply")
                         )
         session.add(charge)
         registers = self.registers
@@ -767,7 +768,7 @@ class Charge(Base):
     CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     # allowed values for "type" field of charges
-    CHARGE_TYPES = ['supply', 'distribution', 'other']
+    CHARGE_TYPES = ['supply', 'distribution']
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -825,7 +826,7 @@ class Charge(Base):
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
                  target_total=None, description='', group='', unit='',
-                 has_charge=True, shared=False, roundrule="", type='other'):
+                 has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
