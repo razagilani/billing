@@ -73,10 +73,6 @@ class ReeBill(Base):
     reebill_customer = relationship("ReeBillCustomer", backref=backref('reebills',
         order_by=id))
 
-    # deprecated: do not use
-    customer = relationship("Customer", backref=backref('reebills',
-        order_by=id))
-
     billing_address = relationship('Address', uselist=False,
         cascade='all',
         primaryjoin='ReeBill.billing_address_id==Address.id')

@@ -7,7 +7,7 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from billing.core.model import (Customer, UtilBill, Address, Session,
+from billing.core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
 from billing.reebill.state import (ReeBill, ReeBillCharge, Payment, Reading, ReeBillCustomer)
 from billing.exc import IssuedBillError, NotIssuable, \
@@ -818,7 +818,7 @@ class ReebillProcessor(object):
             email recipient(s)
         """
         reebill = self.state_db.get_reebill(account, sequence)
-        reebill.customer.bill_email_recipient = recepients
+        reebill.reebill_customer.bill_email_recipient = recepients
 
     def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,

@@ -9,7 +9,7 @@ import os.path
 
 from testfixtures import TempDirectory
 
-from billing.core.model import Address, Customer, UtilBill, \
+from billing.core.model import Address, UtilBill, \
     Register, UtilityAccount
 from billing.reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
 from billing.reebill.reebill_file_handler import ReebillFileHandler
