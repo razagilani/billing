@@ -174,9 +174,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               period_start=date(2013, 1, 2))
         # the date_modified should have been updated
         self.assertNotEqual(utilbill.date_modified, date_modified)
-        # the difference in two dates must be in microseconds since the small
-        # delay between the time of creation of utility bill and it's update
-        # of period_start
+        # utibill.date_modified must be greater than old value of
+        # date_modified
         self.assertGreater(utilbill.date_modified, date_modified)
 
         self.assertEqual(date(2013, 1, 2), utilbill.period_start)
