@@ -391,6 +391,8 @@ class UtilBill(Base):
     utility_account = relationship("UtilityAccount", backref=backref('utilbill',
             order_by=id, cascade='delete'))
 
+    # the 'supplier' attribute should not move to UtilityAccount because
+    # it can change from one bill to the next.
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
@@ -399,6 +401,9 @@ class UtilBill(Base):
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
+
+    # the 'utility' attribute may move to UtilityAccount where it would
+    # make more sense for it to be.
     utility = relationship('Utility')
 
     @staticmethod
@@ -465,13 +470,9 @@ class UtilBill(Base):
         self.date_modified = datetime.utcnow()
 
     def get_utility(self):
-        # the 'utility' attribute may move to UtilityAccount where it would
-        # make more sense for it to be.
         return self.utility
 
     def get_supplier(self):
-        # the 'supplier' attribute may move to UtilityAccount where it would
-        # make more sense for it to be.
         return self.supplier
 
     def get_utility_name(self):
