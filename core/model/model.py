@@ -90,10 +90,12 @@ def check_schema_revision(schema_revision=None):
 
 class UtilbillCallback(MapperExtension):
     '''This class is used to update the date_modified field of UtilBill Model,
-    whenever any updates are made to utibill record.
+    whenever any updates are made to UtilBills.
+    See http://docs.sqlalchemy.org/en/rel_0_6/orm/interfaces.html.
     '''
     def before_update(self, mapper, connection, instance):
-        if object_session(instance).is_modified(instance, include_collections=False):
+        if object_session(instance).is_modified(instance,
+                                                include_collections=False):
             instance.date_modified = datetime.utcnow()
 
 class Evaluation(object):
@@ -335,7 +337,7 @@ class UtilityAccount(Base):
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
-    __mapper_args__ = {'extension':UtilbillCallback()}
+    __mapper_args__ = {'extension': UtilbillCallback()}
 
     id = Column(Integer, primary_key=True)
 
