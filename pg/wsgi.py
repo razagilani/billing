@@ -38,6 +38,7 @@ from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
 from flask.ext.admin import Admin, expose, BaseView
 
 
+
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
