@@ -30,14 +30,13 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 
-from flask import Flask, url_for
+from flask import Flask, url_for, request, flash, session, redirect
 from flask.ext.restful import Api, Resource, marshal_with, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
     Boolean
 from flask.ext.admin import Admin, expose, BaseView
-
-
+from flask_oauth import OAuth
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -151,6 +150,11 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
+        access_token = session.get('access_token')
+        if access_token is None:
+            return redirect(url_for('login'))
+
+
         accounts = Session().query(UtilityAccount).join(PGAccount).order_by(
             UtilityAccount.account).all()
         return marshal(accounts, {
@@ -279,6 +283,51 @@ app = Flask(__name__)
 
 initialize()
 
+# TODO put in config file
+GOOGLE_CLIENT_ID = '200184066735-e6k7dtb6t4h3mec9pji0bri7doruflmc.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = 'hz2k2XJbNRYhh7zntVSOIa05'
+REDIRECT_URI = '/authorized'
+oauth = OAuth()
+google = oauth.remote_app(
+    'google',
+    base_url='https://www.google.com/accounts/',
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    request_token_url=None,
+    request_token_params={
+        'scope': 'https://www.googleapis.com/auth/userinfo.email '
+                 'https://www.googleapis.com/auth/userinfo.profile',
+        'response_type': 'code'},
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_method='POST',
+    access_token_params={'grant_type': 'authorization_code'},
+    consumer_key=GOOGLE_CLIENT_ID,
+    consumer_secret=GOOGLE_CLIENT_SECRET)
+
+@app.route('/login')
+def login():
+    return google.authorize(callback=url_for('oauth_authorized',
+        next=request.args.get('next') or request.referrer or None))
+
+@app.route('/oauth-authorized')
+@google.authorized_handler
+def oauth_authorized(resp):
+    next_url = request.args.get('next') or url_for('index')
+    if resp is None:
+        flash(u'You denied the request to sign in.')
+        return redirect(next_url)
+
+    session['twitter_token'] = (
+        resp['oauth_token'],
+        resp['oauth_token_secret']
+    )
+    session['twitter_user'] = resp['screen_name']
+
+    flash('You were signed in as %s' % resp['screen_name'])
+    return redirect(next_url)
+
+
+
+
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
 api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
@@ -288,6 +337,12 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+
+
+
+
+
+app.secret_key = 'example secret key'
 
 admin = Admin(app)
 admin.add_view(ModelView(UtilityAccount, Session()))
