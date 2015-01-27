@@ -88,10 +88,13 @@ def check_schema_revision(schema_revision=None):
                             " Require revision %s; current revision %s"
                             % (schema_revision, current_revision))
 
-class Callback(MapperExtension):
+class UtilbillCallback(MapperExtension):
+    '''This class is used to update the date_modified field of UtilBill Model,
+    whenever any updates are made to utibill record.
+    '''
     def before_update(self, mapper, connection, instance):
         if object_session(instance).is_modified(instance, include_collections=False):
-            instance.date_modified = datetime.now()
+            instance.date_modified = datetime.utcnow()
 
 class Evaluation(object):
     """A data structure to hold inputs for calculating charges. It can hold
@@ -332,7 +335,7 @@ class UtilityAccount(Base):
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
-    __mapper_args__ = {'extension':Callback()}
+    __mapper_args__ = {'extension':UtilbillCallback()}
 
     id = Column(Integer, primary_key=True)
 
