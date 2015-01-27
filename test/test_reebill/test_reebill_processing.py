@@ -1329,6 +1329,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         for i in range(2):
             self.reebill_processor.bind_renewable_energy(account, 1)
             self.reebill_processor.compute_reebill(account, 1)
+            self.reebill_processor.update_bill_email_recipient(account, 1, 'test@someone.com')
             reebill_data = self.reebill_processor.get_reebill_metadata_json(account)
             self.assertDictContainsSubset({
                                               'sequence': 1,
@@ -1350,7 +1351,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               'ree_quantity': energy_quantity,
                                               'balance_due': energy_quantity * .5,
                                               'balance_forward': 0.,
-                                              'corrections': '(never issued)'}, reebill_data[0])
+                                              'corrections': '(never issued)',
+                                              'mailto': 'test@someone.com'}, reebill_data[0])
 
         self.reebill_processor.issue(account, 1, issue_date=datetime(2013, 2, 15))
         reebill_data = self.reebill_processor.get_reebill_metadata_json(account)
@@ -1375,6 +1377,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'balance_due': energy_quantity * .5,
                                           'balance_forward': 0.0,
                                           'corrections': '-',
+                                          'email_recipient': 'test@someone.com'
                                           }, reebill_data[0])
 
         # add a payment so payment_received is not 0
