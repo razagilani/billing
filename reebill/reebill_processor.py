@@ -733,7 +733,7 @@ class ReebillProcessor(object):
             email recipient(s)
         """
         reebill = self.state_db.get_reebill(account, sequence)
-        reebill.customer.bill_email_recipient = recepients
+        reebill.reebill_customer.bill_email_recipient = recepients
 
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
