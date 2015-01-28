@@ -458,21 +458,10 @@ class ReebillVersionsResource(RESTResource):
 
 class ReebillsResource(RESTResource):
 
-    def handle_get(self, account, start, limit, sort='account', dir='DESC',
-                   *vpath, **params):
-        start, limit = int(start), int(limit)
-
+    def handle_get(self, account, *vpath, **params):
         '''Handles GET requests for reebill grid data.'''
-        # this is inefficient but length is always <= 120 rows
-        rows = sorted(self.utilbill_views.get_reebill_metadata_json(account),
-                      key=itemgetter(sort))
-        if dir == 'DESC':
-            rows.reverse()
-
-        # "limit" means number of rows to return, so the real limit is
-        # start + limit
-        result = rows[start: start + limit]
-        return True, {'rows': result, 'results': len(rows)}
+        rows = self.reebill_processor.get_reebill_metadata_json(account)
+        return True, {'rows': rows, 'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
         """ Handles Reebill creation """
@@ -640,30 +629,35 @@ class UtilBillResource(RESTResource):
 
     def handle_put(self, utilbill_id, *vpath, **params):
         row = cherrypy.request.json
-        action = row.pop('action')
-        action_value = row.pop('action_value')
-        result= {}
+        action = row.pop('action', '')
 
         if action == 'regenerate_charges':
             ub = self.utilbill_processor.regenerate_uprs(utilbill_id)
-            result = ub.column_dict()
 
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
-            result = ub.column_dict()
 
-        elif action == '': 
-            result = self.utilbill_processor.update_utilbill_metadata(
+        elif action == '':
+            period_start = None
+            if 'period_start' in row:
+                period_start = datetime.strptime(row['period_start'], ISO_8601_DATE).date()
+
+            period_end = None
+            if 'period_end' in row:
+                period_end = datetime.strptime(row['period_end'], ISO_8601_DATE).date()
+
+            ub = self.utilbill_processor.update_utilbill_metadata(
                 utilbill_id,
-                period_start=datetime.strptime(row['period_start'], ISO_8601_DATE).date(),
-                period_end=datetime.strptime(row['period_end'], ISO_8601_DATE).date(),
-                service=row['service'].lower(),
-                target_total=row['target_total'],
-                processed=row['processed'],
-                rate_class=row['rate_class'],
-                utility=row['utility'],
-                supplier=row['supplier']).column_dict()
+                period_start=period_start,
+                period_end=period_end,
+                service=row['service'].lower() if 'service' in row else None,
+                target_total=row.get('target_total', None),
+                processed=row.get('processed', None),
+                rate_class=row.get('rate_class', None),
+                utility=row.get('utility', None),
+                supplier=row.get('supplier', None))
 
+        result = ub.column_dict()
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
         result['action'] = ''

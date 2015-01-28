@@ -60,7 +60,7 @@ class Base(object):
                 if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
     def __eq__(self, other):
-        if not isinstance(other, Base):
+        if type(self) is not type(other):
             return False
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])

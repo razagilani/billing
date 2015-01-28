@@ -49,9 +49,10 @@ class UtilbillProcessor(object):
 
         #toggle processed state of utility bill
         if processed is not None:
-            if utilbill.rate_class is None or utilbill.supplier is None:
-                raise BillingError("Bill with unknown supplier or rate class "
-                                   "can't become processed")
+            if processed and None in (utilbill.utility, utilbill.rate_class,
+                                      utilbill.supplier):
+                raise BillingError("Bill with unknown Utility, Supplier or "
+                                   "Rate Class can't become processed")
             utilbill.processed = processed
             #since the bill has become processed no other changes to the bill can be made
             # so return the util bill without raising an error
