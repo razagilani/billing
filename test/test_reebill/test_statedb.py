@@ -254,7 +254,8 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
                 (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
-        self.assertEqual(sorted([p, q]), sorted(self.payment_dao.payments(acc)))
+        self.assertEqual(sorted([p, q]),
+                         sorted(self.payment_dao.get_payments(acc)))
 
         # update feb 1: move it to mar 1
         q.date_applied = datetime(2012,3,1)

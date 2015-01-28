@@ -1596,8 +1596,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1)
         payment = self.payment_dao.get_payments(account)[0].column_dict()
-        self.assertRaises(IssuedBillError, self.payment_dao.update_payment,
-                          payment['id'], payment['date_applied'], 'update', 20)
         self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
 
