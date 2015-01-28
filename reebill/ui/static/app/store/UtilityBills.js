@@ -23,6 +23,10 @@ Ext.define('ReeBill.store.UtilityBills', {
 			totalProperty: 'results'
 		},
 
+        writer: {
+          writeAllFields: false
+        },
+
         listeners:{
             exception: utils.makeProxyExceptionHandler('UtilityBills'),
             scope: this
