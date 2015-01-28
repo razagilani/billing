@@ -1769,8 +1769,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'EATF',
             'DELIVERY_TAX'
         ]
-        self.assertEqual(0.06 * sum(map(get_total, non_tax_rsi_bindings)),
-                         get_total('SALES_TAX'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_total, non_tax_rsi_bindings)), 2),
+            get_total('SALES_TAX'))
 
         # ##############################################################
         # check that each hypothetical charge was computed correctly:
@@ -1788,16 +1789,19 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         h_quantity = self.reebill_processor.get_reebill_metadata_json(
             account)[0]['ree_quantity']
         self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
-        self.assertEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
-        self.assertEqual(0.01399 * h_quantity, get_h_total('SETF'))
-        self.assertEqual(0.006 * h_quantity, get_h_total('EATF'))
-        self.assertEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
+        self.assertEqual(round(0.03059 * h_quantity, 2),
+                         get_h_total('RIGHT_OF_WAY'))
+        self.assertEqual(round(0.01399 * h_quantity, 2), get_h_total('SETF'))
+        self.assertEqual(round(0.006 * h_quantity, 2), get_h_total('EATF'))
+        self.assertEqual(round(0.07777 * h_quantity, 2),
+                         get_h_total('DELIVERY_TAX'))
         self.assertEqual(23.14, get_h_total('PUC'))
-        self.assertEqual(.2935 * h_quantity,
+        self.assertEqual(round(.2935 * h_quantity, 2),
                          get_h_total('DISTRIBUTION_CHARGE'))
-        self.assertEqual(.7653 * h_quantity, get_h_total('PGC'))
-        self.assertEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
-                         get_h_total('SALES_TAX'))
+        self.assertEqual(round(.7653 * h_quantity, 2), get_h_total('PGC'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)), 2),
+            get_h_total('SALES_TAX'))
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'

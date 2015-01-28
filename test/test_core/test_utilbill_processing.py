@@ -976,8 +976,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'EATF',
             'DELIVERY_TAX'
         ]
-        self.assertEqual(0.06 * sum(map(get_total, non_tax_rsi_bindings)),
-                         get_total('SALES_TAX'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_total, non_tax_rsi_bindings)), 2),
+            get_total('SALES_TAX'))
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'

@@ -5,6 +5,7 @@ Also contains some related classes that do not correspond to database tables.
 import ast
 from datetime import datetime
 import json
+from math import floor
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
@@ -110,7 +111,8 @@ class ChargeEvaluation(Evaluation):
             self.total = None
         else:
             assert exception is None
-            self.total = quantity * rate
+            # round to nearest cent
+            self.total = round(quantity * rate, 2)
 
         self.quantity = quantity
         self.rate = rate
