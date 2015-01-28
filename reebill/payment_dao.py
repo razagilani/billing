@@ -1,5 +1,3 @@
-'''CRUD for Payment objects.
-'''
 from datetime import datetime
 
 from sqlalchemy import and_
@@ -10,6 +8,9 @@ from reebill.state import ReeBillCustomer, Payment
 
 
 class PaymentDAO(object):
+    '''CRUD for Payment objects. Some of these methods are used only in tests
+    and should be removed.
+    '''
     def create_payment(self, account, date_applied, description,
                        credit, date_received=None):
         '''Adds a new payment, returns the new Payment object. By default,
@@ -63,7 +64,8 @@ class PaymentDAO(object):
                          Payment.date_applied < periodend)).all()
         return payments
 
-    def get_total_payment_since(self, account, start, end=None, payment_objects=False):
+    def get_total_payment_since(self, account, start, end=None,
+                                payment_objects=False):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
@@ -83,7 +85,7 @@ class PaymentDAO(object):
             return payments.all()
         return float(sum(payment.credit for payment in payments.all()))
 
-    def payments(self, account):
+    def get_payments(self, account):
         '''Returns list of all payments for the given account ordered by
         date_received.'''
         session = Session()
@@ -92,8 +94,6 @@ class PaymentDAO(object):
             .filter(UtilityAccount.account == account).order_by(
             Payment.date_received).all()
         return payments
-
-    get_payments = payments
 
     def get_payments_for_reebill_id(self, reebill_id):
         session = Session()
