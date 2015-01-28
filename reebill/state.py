@@ -597,7 +597,8 @@ class ReeBillCharge(Base):
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
         self.unit = unit
         self.rate = rate
-        self.a_total, self.h_total = a_total, h_total
+        self.a_total = None if a_total is None else round(a_total, 2)
+        self.h_total = None if h_total is None else round(h_total, 2)
 
 class Reading(Base):
     '''Stores utility register readings and renewable energy offsetting the
