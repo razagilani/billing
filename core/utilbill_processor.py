@@ -3,10 +3,11 @@ from datetime import datetime,date
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from billing.core.model import UtilBill, Address, Charge, Register, Session, \
+from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from billing.exc import NoSuchBillException, DuplicateFileError, BillingError
-from billing.core.utilbill_loader import UtilBillLoader
+from exc import NoSuchBillException, DuplicateFileError, BillingError, \
+    ProcessedBillError
+from core.utilbill_loader import UtilBillLoader
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -29,7 +30,7 @@ class UtilbillProcessor(object):
 
     # TODO this method might be replaced by the UtilbillLoader method
     def _get_utilbill(self, utilbill_id):
-        return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
+        return UtilBillLoader().get_utilbill_by_id(utilbill_id)
 
     ############################################################################
     # methods that are actually for "processing" UtilBills
@@ -52,34 +53,38 @@ class UtilbillProcessor(object):
                 raise BillingError("Bill with unknown supplier or rate class "
                                    "can't become processed")
             utilbill.processed = processed
+            #since the bill has become processed no other changes to the bill can be made
+            # so return the util bill without raising an error
+            if processed:
+                return utilbill
 
-        if utilbill.editable():
-            if target_total is not None:
-                utilbill.target_total = target_total
+        utilbill.check_editable()
+        if target_total is not None:
+            utilbill.target_total = target_total
 
-            if service is not None:
-                utilbill.service = service
+        if service is not None:
+            utilbill.service = service
 
-            if supplier is not None:
-                utilbill.supplier = self.get_create_supplier(supplier)
+        if supplier is not None:
+            utilbill.supplier = self.get_create_supplier(supplier)
 
-            if rate_class is not None:
-                utilbill.rate_class = self.get_create_rate_class(
-                    rate_class, utilbill.utility)
+        if rate_class is not None:
+            utilbill.rate_class = self.get_create_rate_class(
+                rate_class, utilbill.utility)
 
-            if utility is not None and isinstance(utility, basestring):
-                utilbill.utility = self.get_create_utility(utility)
-                utilbill.supplier = None
-                utilbill.rate_class = None
+        if utility is not None and isinstance(utility, basestring):
+            utilbill.utility = self.get_create_utility(utility)
+            utilbill.supplier = None
+            utilbill.rate_class = None
 
-            period_start = period_start if period_start else \
-                utilbill.period_start
-            period_end = period_end if period_end else utilbill.period_end
+        period_start = period_start if period_start else \
+            utilbill.period_start
+        period_end = period_end if period_end else utilbill.period_end
 
-            UtilBill.validate_utilbill_period(period_start, period_end)
-            utilbill.period_start = period_start
-            utilbill.period_end = period_end
-            self.compute_utility_bill(utilbill.id)
+        UtilBill.validate_utilbill_period(period_start, period_end)
+        utilbill.period_start = period_start
+        utilbill.period_end = period_end
+        self.compute_utility_bill(utilbill.id)
         return  utilbill
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
@@ -111,7 +116,7 @@ class UtilbillProcessor(object):
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
         try:
-            predecessor = UtilBillLoader(session).get_last_real_utilbill(
+            predecessor = UtilBillLoader().get_last_real_utilbill(
                 utility_account.account, end=start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
@@ -263,7 +268,7 @@ class UtilbillProcessor(object):
         assert isinstance(service_address, (Address, type(None)))
 
         s = Session()
-        if UtilBillLoader(s).count_utilbills_with_hash(sha256_hexdigest) != 0:
+        if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
@@ -293,7 +298,7 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return UtilBillLoader(Session()).get_last_real_utilbill(
+        return UtilBillLoader().get_last_real_utilbill(
             account, end=datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
@@ -309,8 +314,14 @@ class UtilbillProcessor(object):
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
 
-        if utility_bill.is_attached() or not utility_bill.editable():
-            raise ValueError("Can't delete an attached or processed utility bill.")
+        # don't delete a utility bill that can't be edited, i.e. is "processed".
+        # every utility bill with a reebill should be processed, so it should
+        # not be necessary to check whether the utility bill has a reebill here
+        # (avoiding the need to use parts of the ReeBill data model outside
+        # of ReeBill)
+        if not utility_bill.editable():
+            raise BillingError(
+                "Can't delete an attached or processed utility bill.")
 
         self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
 
@@ -412,18 +423,18 @@ class UtilbillProcessor(object):
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
         utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            session.delete(register)
-            session.commit()
-            self.compute_utility_bill(utilbill_id)
+        utilbill.check_editable()
+        session.delete(register)
+        session.commit()
+        self.compute_utility_bill(utilbill_id)
 
     def add_charge(self, utilbill_id, **charge_kwargs):
         """Add a new charge to the given utility bill. charge_kwargs are
         passed as keyword arguments to the charge"""
         utilbill = self._get_utilbill(utilbill_id)
-        if utilbill.editable():
-            charge = utilbill.add_charge(**charge_kwargs)
-            self.compute_utility_bill(utilbill_id)
+        utilbill.check_editable()
+        charge = utilbill.add_charge(**charge_kwargs)
+        self.compute_utility_bill(utilbill_id)
         return charge
 
     def update_charge(self, fields, charge_id=None, utilbill_id=None,
@@ -438,13 +449,13 @@ class UtilbillProcessor(object):
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
         utilbill = self._get_utilbill(charge.utilbill.id)
-        if utilbill.editable():
-            for k, v in fields.iteritems():
-                if k not in Charge.column_names():
-                    raise AttributeError("Charge has no attribute '%s'" % k)
-                setattr(charge, k, v)
-            session.flush()
-            self.compute_utility_bill(charge.utilbill.id)
+        utilbill.check_editable()
+        for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
+            setattr(charge, k, v)
+        session.flush()
+        self.compute_utility_bill(charge.utilbill.id)
         return charge
 
     def delete_charge(self, charge_id):

@@ -10,30 +10,31 @@ import subprocess
 from mock import Mock
 import mongoengine
 from boto.s3.connection import S3Connection
+from reebill.payment_dao import PaymentDAO
+from reebill.reebill_dao import ReeBillDAO
 
-from billing.test import init_test_config
-from billing.util.file_utils import make_directories_if_necessary
+from test import init_test_config
+from util.file_utils import make_directories_if_necessary
 
 
+from core import init_model
 init_test_config()
+init_model()
 
 
-from billing import init_config, init_model
-from billing.test import testing_utils as test_utils
-from billing.core import pricing
-from billing.core.model import Supplier, RateClass, UtilityAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.reebill import journal
-from billing.reebill.state import Session, UtilBill, \
+from test import testing_utils as test_utils
+from core import pricing
+from core.model import Supplier, RateClass, UtilityAccount
+from core.utilbill_loader import UtilBillLoader
+from reebill import journal
+from reebill.state import Session, UtilBill, \
     Register, Address, ReeBillCustomer
-from billing.reebill.reebill_dao import ReeBillDAO
-from billing.reebill.payment_dao import PaymentDAO
-from billing.core.model import Utility
-from billing.core.bill_file_handler import BillFileHandler
-from billing.reebill.fetch_bill_data import RenewableEnergyGetter
+from core.model import Utility
+from core.bill_file_handler import BillFileHandler
+from reebill.fetch_bill_data import RenewableEnergyGetter
+from reebill.reebill_processor import ReebillProcessor
 from core.utilbill_processor import UtilbillProcessor
 from reebill.views import Views
-from billing.reebill.reebill_processor import ReebillProcessor
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -57,7 +58,7 @@ def init_logging():
 
 init_logging()
 
-from billing.reebill.reebill_file_handler import ReebillFileHandler
+from reebill.reebill_file_handler import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
@@ -74,7 +75,9 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        from billing import config
+        init_test_config()
+        init_model()
+        from core import config
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
         cls.fakes3_root_dir = TempDirectory()
@@ -96,6 +99,9 @@ class TestCaseWithSetup(test_utils.TestCase):
         # running and occupying the same port)
         sleep(0.5)
         cls.check_fakes3_process()
+        # stdin, stout = cls.fakes3_process.communicate()
+        # print stdin.read()
+        pass
 
     @classmethod
     def tearDownClass(cls):
@@ -117,7 +123,6 @@ class TestCaseWithSetup(test_utils.TestCase):
             "utilbill",
             "reading",
             "reebill_charge",
-            "customer",
             "reebill_customer",
             "utility_account",
             "rate_class",
@@ -302,7 +307,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.
         """
-        from billing import config
+        from core import config
 
         logger = logging.getLogger('test')
 
@@ -316,7 +321,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   host=config.get('aws_s3', 'host'),
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
-        utilbill_loader = UtilBillLoader(Session())
+        utilbill_loader = UtilBillLoader()
         url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.billupload = BillFileHandler(s3_connection,
@@ -390,8 +395,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         # tests or some other process could cause it to exit)
         self.__class__.check_fakes3_process()
 
-        init_config('test/tstsettings.cfg')
-        init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
@@ -403,9 +406,9 @@ class TestCaseWithSetup(test_utils.TestCase):
         '''Clears out databases.'''
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
+        Session.remove()
         self.session.rollback()
         self.truncate_tables(self.session)
-        Session.remove()
 
         self.temp_dir.cleanup()
 

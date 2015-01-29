@@ -1,12 +1,12 @@
 import unittest
 from datetime import date
 
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing import init_config, init_model
-from billing.core.model import Customer, UtilBill, Session, \
+from test.setup_teardown import TestCaseWithSetup
+from core import init_config, init_model
+from core.model import UtilBill, Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.exc import NoSuchBillException
+from core.utilbill_loader import UtilBillLoader
+from exc import NoSuchBillException
 
 
 class UtilbillLoaderTest(TestCaseWithSetup):
@@ -28,7 +28,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session.commit()
 
         self.session = Session()
-        self.ubl = UtilBillLoader(self.session)
+        self.ubl = UtilBillLoader()
 
     def tearDown(self):
         self.session.commit()

@@ -16,7 +16,7 @@ name).
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
 
-from billing.core.model import Base, Session, Utility, UtilityAccount
+from core.model import Base, Session, Utility, UtilityAccount, Supplier
 
 
 class AltitudeGUID(String):
@@ -91,6 +91,13 @@ def _altitude_to_billing(altitude_class, billing_class):
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
 get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
 
+def _billing_to_altitude(billing_class, altitude_class):
+    return lambda guid: Session().query(altitude_class).join(
+        billing_class).filter(altitude_class.guid==guid).first()
+get_guid_for_utility = _billing_to_altitude(Utility, AltitudeUtility)
+get_guid_for_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)
+
+
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount
     identified by the GUID with the given UtilityAccount, or create a new
@@ -111,3 +118,4 @@ def update_altitude_account_guids(utility_account, guids):
     s.add_all([AltitudeAccount(utility_account, guid)
                for guid in set(guids) - existing_account_guids])
     s.flush()
+

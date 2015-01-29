@@ -17,15 +17,14 @@ import zlib
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from billing import init_config
-from billing import init_model
+from core import init_config, init_model
 
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session
-from billing.core.utilbill_loader import UtilBillLoader
+from core.bill_file_handler import BillFileHandler
+from core.model import Session
+from core.utilbill_loader import UtilBillLoader
 
 init_config()
-from billing import config
+from core import config
 
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
@@ -382,8 +381,7 @@ def download(args):
 
 def get_key_names_for_account(account_id):
     init_model()
-    session = Session()
-    ubl = UtilBillLoader(session)
+    ubl = UtilBillLoader()
     utilbills = ubl.get_utilbills_for_account_id(account_id)
     return [BillFileHandler.get_key_name_for_utilbill(u) for u in utilbills]
 
@@ -441,7 +439,7 @@ def restore_files(args):
             file.seek(0)
             dest_key.set_contents_from_file(file)
         else:
-            print 'Destination already has key {0}, not copying'.format(key.name)
+            print 'Destination already has key {0}, not copying'.format(key_name)
 
 def backup_local(args):
     backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))
