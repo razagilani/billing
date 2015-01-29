@@ -10,9 +10,11 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
-from billing.core.model import Base, Address, Register, Session, Evaluation, \
+from exc import IssuedBillError, RegisterError, ProcessedBillError
+from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
+from util.units import ureg, convert_to_therms
+
 
 __all__ = [
     'Payment',
@@ -26,9 +28,8 @@ class ReeBill(Base):
     __tablename__ = 'reebill'
 
     id = Column(Integer, primary_key=True)
-    reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    # deprecated: do not use
-    customer_id = Column(Integer, ForeignKey('customer.id'))
+    reebill_customer_id = Column(Integer,ForeignKey('reebill_customer.id'),
+                                 nullable=False)
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
@@ -56,12 +57,8 @@ class ReeBill(Base):
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
 
-    reebill_customer = relationship("ReeBillCustomer", backref=backref('reebills',
-        order_by=id))
-
-    # deprecated: do not use
-    customer = relationship("Customer", backref=backref('reebills',
-        order_by=id))
+    reebill_customer = relationship("ReeBillCustomer",
+                                    backref=backref('reebills', order_by=id))
 
     billing_address = relationship('Address', uselist=False,
         cascade='all',
@@ -111,9 +108,9 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill',
                             cascade='all, delete-orphan')
 
-    def __init__(self, reebill_customer, sequence, version=0, discount_rate=None,
-                 late_charge_rate=None, billing_address=None,
-                 service_address=None, utilbills=[]):
+    def __init__(self, reebill_customer, sequence, version=0,
+                 discount_rate=None, late_charge_rate=None,
+                 billing_address=None, service_address=None, utilbills=[]):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
@@ -239,114 +236,30 @@ class ReeBill(Base):
         return result
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
-        assert isinstance(register_binding, basestring)
-        assert isinstance(new_quantity, (float, int))
         reading = self.get_reading_by_register_binding(register_binding)
-        unit = reading.unit.lower()
+        unit_string = reading.unit.lower()
 
-        # Thermal: convert quantity to therms according to unit, and add it to
-        # the total
-        if unit == 'therms':
-            new_quantity /= 1e5
-        elif unit == 'btu':
-            # TODO physical constants must be global
-            pass
-        elif unit == 'kwh':
-            # TODO physical constants must be global
-            new_quantity /= 1e5
-            new_quantity /= .0341214163
-        elif unit == 'ccf':
-            # deal with non-energy unit "CCF" by converting to therms with
-            # conversion factor 1
-            # TODO: 28825375 - need the conversion factor for this
-            # print ("Register in reebill %s-%s-%s contains gas measured "
-            #        "in ccf: energy value is wrong; time to implement "
-            #        "https://www.pivotaltracker.com/story/show/28825375") \
-            #       % (self.account, self.sequence, self.version)
-            new_quantity /= 1e5
-        # PV: Unit is kilowatt; no conversion needs to happen
-        elif unit == 'kwd':
-            pass
+        if unit_string == 'kwd':
+            # for demand in PV bills, 'new_quantity' will be in kilowatts
+            # (kwd); no conversion is needed.
+            reading.renewable_quantity = new_quantity
         else:
-            raise ValueError('Unknown energy unit: "%s"' % unit)
-
-        reading.renewable_quantity = new_quantity
+            # in all other cases, 'new_quantity' will be in BTU: convert to unit
+            # of the reading
+            new_quantity_with_unit = new_quantity * ureg.btu
+            unit = ureg.parse_expression(unit_string)
+            converted_quantity = new_quantity_with_unit.to(unit)
+            reading.renewable_quantity = converted_quantity.magnitude
 
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
-        total_therms = 0
-        for reading in self.readings:
-            quantity = reading.renewable_quantity
-            unit = reading.unit.lower()
-            assert isinstance(quantity, (float, int))
-            assert isinstance(unit, basestring)
-
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / 100000.0
-            elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity * .0341214163
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    # print ("Register in reebill %s-%s-%s contains gas measured "
-                    #        "in ccf: energy value is wrong; time to implement "
-                    #        "https://www.pivotaltracker.com/story/show/28825375"
-                    #       ) % (self.customer.account, self.sequence,
-                    #       self.version)
-                    # assume conversion factor is 1
-                    total_therms += quantity
-            elif unit == 'kwd':
-                # power does not count toward total energy
-                pass
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)
-
-        return total_therms
+        return sum(convert_to_therms(
+            r.renewable_quantity, r.unit,
+            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def get_total_conventional_energy(self, ccf_conversion_factor=None):
-        # TODO remove duplicate code with the above
-        total_therms = 0
-        for reading in self.readings:
-            quantity = reading.conventional_quantity
-            unit = reading.unit.lower()
-            assert isinstance(quantity, (float, int))
-            assert isinstance(unit, basestring)
-
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / 100000.0
-            elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity * .0341214163
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    # print ("Register in reebill %s-%s-%s contains gas measured "
-                    #        "in ccf: energy value is wrong; time to implement "
-                    #        "https://www.pivotaltracker.com/story/show/28825375"
-                    #       ) % (self.customer.account, self.sequence,
-                    #       self.version)
-                    # assume conversion factor is 1
-                    total_therms += quantity
-            elif unit == 'kwd':
-                # power does not count toward total energy
-                pass
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % unit)
-        return total_therms
+        return sum(convert_to_therms(
+            r.conventional_quantity, r.unit,
+            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
@@ -677,7 +590,6 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
-    customer_id = Column(Integer, ForeignKey('customer.id'))
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
@@ -685,9 +597,6 @@ class Payment(Base):
     credit = Column(Float)
 
     reebill_customer = relationship("ReeBillCustomer", backref=backref('payments',
-        order_by=id))
-
-    customer = relationship("Customer", backref=backref('payments',
         order_by=id))
 
     reebill = relationship("ReeBill", backref=backref('payments',

@@ -66,10 +66,6 @@ class reebill(Schema):
     # account numbers for bills whose PDFs are rendered using the "teva" format
     teva_accounts = String()
 
-    # path for utility bills on local file system (not used after migrating
-    # to S3)
-    utilitybillpath = Directory()
-
 class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
@@ -148,6 +144,11 @@ class logger_reebill(Schema):
     qualname = String()
     propagate = Int()
 
+class logger_amqp_utilbill_file(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
 class handler_consoleHandler(Schema):
     level = String()
     formatter = String()
@@ -165,6 +166,12 @@ class handler_fileHandler(Schema):
     formatter = String()
     args = String()
 handler_fileHandler.add_field('class', String())
+
+class handler_amqp_utilbill_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_amqp_utilbill_file_handler.add_field('class', String())
 
 class formatter_simpleFormatter(Schema):
     format = String()

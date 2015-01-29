@@ -1,16 +1,19 @@
 import requests
 
-from billing.test import init_test_config
-from billing.exc import DuplicateFileError
+from test import init_test_config
+from exc import DuplicateFileError, ProcessedBillError, BillingError
 
 init_test_config()
+from core import init_model
+init_model()
 
 from StringIO import StringIO
-from datetime import date, datetime
+from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, RateClass
-from billing.core.model.model import Session, Customer
+from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
+    RateClass
+from core.model import Session
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 
@@ -36,6 +39,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             }
         # Create new account "88888" based on template account "99999",
         # which was created in setUp
+        init_test_config()
+        init_model()
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
             service_address, '100000', '12345')
@@ -821,6 +826,27 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # add some RSIs to the UPRS, and charges to match
 
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Some Supplier',
+                                                         rate_class='rate class')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Other Supplier',
+                                                         processed=True)
+        # no other attributes of a utilbill can be changed if
+        # update_utilbill_metadata is called with processed = True
+        self.assertEqual('Some Supplier', self.utilbill_processor.
+                         _get_utilbill(utilbill_data['id']).
+                         supplier.name)
+        self.assertRaises(ProcessedBillError,
+                          self.utilbill_processor.add_charge,
+                          utilbill_data['id'])
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='Other Supplier',
+                                                         processed=False)
+
+        self.assertEqual('Other Supplier',
+                         self.utilbill_processor.
+                         _get_utilbill(utilbill_data['id']).supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
@@ -873,6 +899,21 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 },
                             ], charges):
             self.assertDictContainsSubset(x, y)
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         rate_class='some rate class')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         supplier='some supplier')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
+                                                         processed=True)
+        self.assertRaises(ProcessedBillError, self.utilbill_processor.update_charge, {
+                                       'rsi_binding': 'C',
+                                       'description':'not shared',
+                                       'quantity_formula': '6',
+                                       'rate': 7,
+                                       'unit':'therms',
+                                       'group': 'All Charges',
+                                       'shared': False
+                                   }, utilbill_id=utilbill_data['id'], rsi_binding='B')
 
     def test_compute_realistic_charges(self):
         '''Tests computing utility bill charges and reebill charge for a
@@ -972,11 +1013,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         start, end = date(2012, 1, 1), date(2012, 2, 1)
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
-        self.utilbill_processor.upload_utility_bill(account, StringIO("test1"), start, end,
-                                         'gas')
+        u = self.utilbill_processor.upload_utility_bill(
+            account, StringIO( "test1"), start, end, 'gas')
         utilbills_data, count = self.views.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
+
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
@@ -997,14 +1040,14 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'prior_balance': 0,
                                           'processed': 0,
                                           'ree_charge': 0.0,
-                                          'ree_quantity': 22.602462036826545,
+                                          'ree_quantity': 22.602462036826555,
                                           'ree_value': 0,
                                           'sequence': 1,
                                           'services': [],
                                           'total_adjustment': 0,
                                           'total_error': 0.0
                                       }, reebills_data[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
@@ -1014,12 +1057,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # attached to that utility bill instead.
         self.reebill_processor.issue(account, 1)
         self.reebill_processor.new_version(account, 1)
-        self.utilbill_processor.upload_utility_bill(account, StringIO("test2"),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
+        u = self.utilbill_processor.upload_utility_bill(
+            account, StringIO("test2"), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
         # TODO this may not accurately reflect the way reebills get
         # attached to different utility bills; see
         # https://www.pivotaltracker.com/story/show/51935657
-        self.assertRaises(ValueError,
+        self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])

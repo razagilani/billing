@@ -1,4 +1,4 @@
-from billing.test import init_test_config
+from test import init_test_config
 init_test_config()
 
 from datetime import date
@@ -9,17 +9,14 @@ import os.path
 
 from testfixtures import TempDirectory
 
-from billing.core.model import Address, Customer, UtilBill, \
+from core.model import Address, UtilBill, \
     Register, UtilityAccount
-from billing.reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
-from billing.reebill.reebill_file_handler import ReebillFileHandler
-from billing import init_config
-
-init_config(filepath='test/tstsettings.cfg')
+from reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
+from reebill.reebill_file_handler import ReebillFileHandler
 
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
-        from billing import config
+        from core import config
         self.temp_dir = TempDirectory()
         self.file_handler = ReebillFileHandler(
                 self.temp_dir.path,
