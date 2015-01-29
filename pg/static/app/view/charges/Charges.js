@@ -13,7 +13,9 @@ Ext.define('ReeBill.view.charges.Charges', {
     alias: 'widget.charges',
     store: 'Charges',
     preventHeader: true,
-    
+
+    height: 300,
+
     plugins: [{
         ptype: 'cellediting',
         clicksToEdit: 2
