@@ -431,11 +431,6 @@ class UtilBillTest(TestCase):
         self.assertRaises(ProcessedBillError, utilbill.compute_charges())
         self.assertFalse(utilbill.editable())
 
-    @unittest.skip('')
-    def test_date_modified(self):
-        # TODO BILL-5878
-        raise NotImplementedError
-
     def test_get_total_energy_consumption(self):
         utilbill = UtilBill(self.utility_account, UtilBill.Complete,
                             'gas', self.utility, self.supplier, self.rate_class,

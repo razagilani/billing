@@ -365,8 +365,12 @@ class UtilBill(Base):
     # correctly when the calculated total matches this number
     target_total = Column(Float)
 
+    # date when this bill was added to the database
     date_received = Column(DateTime)
+
+    # date when the bill was last updated in the database, initially None.
     date_modified = Column(DateTime)
+
     account_number = Column(String(1000), nullable=False)
     sha256_hexdigest = Column(String(64), nullable=False)
 
