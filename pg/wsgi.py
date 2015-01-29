@@ -37,6 +37,8 @@ from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
     Boolean
 from flask.ext.admin import Admin, expose, BaseView
 from flask_oauth import OAuth
+from urllib2 import Request, urlopen, URLError
+import json
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -150,10 +152,6 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-        access_token = session.get('access_token')
-        if access_token is None:
-            return redirect(url_for('login'))
-
 
         accounts = Session().query(UtilityAccount).join(PGAccount).order_by(
             UtilityAccount.account).all()
@@ -284,9 +282,9 @@ app = Flask(__name__)
 initialize()
 
 # TODO put in config file
-GOOGLE_CLIENT_ID = '200184066735-e6k7dtb6t4h3mec9pji0bri7doruflmc.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'hz2k2XJbNRYhh7zntVSOIa05'
-REDIRECT_URI = '/authorized'
+GOOGLE_CLIENT_ID = '505739702221-k1omtf12eet1l2qlnup87pdiafllcm4o.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = 'SolurwdgNlMkwbXt4gZ_OYpC'
+REDIRECT_URI = '/oauth2callback'
 oauth = OAuth()
 google = oauth.remote_app(
     'google',
@@ -294,8 +292,7 @@ google = oauth.remote_app(
     authorize_url='https://accounts.google.com/o/oauth2/auth',
     request_token_url=None,
     request_token_params={
-        'scope': 'https://www.googleapis.com/auth/userinfo.email '
-                 'https://www.googleapis.com/auth/userinfo.profile',
+        'scope': 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         'response_type': 'code'},
     access_token_url='https://accounts.google.com/o/oauth2/token',
     access_token_method='POST',
@@ -305,28 +302,48 @@ google = oauth.remote_app(
 
 @app.route('/login')
 def login():
-    return google.authorize(callback=url_for('oauth_authorized',
-        next=request.args.get('next') or request.referrer or None))
+    return google.authorize(callback=url_for('oauth2callback',
+        _external=True))
 
-@app.route('/oauth-authorized')
+@app.route('/logout')
+def logout():
+    session.pop('access_token', None)
+    return redirect(url_for('login'))
+
+@app.route('/oauth2callback')
 @google.authorized_handler
-def oauth_authorized(resp):
-    next_url = request.args.get('next') or url_for('index')
+def oauth2callback(resp):
     if resp is None:
         flash(u'You denied the request to sign in.')
-        return redirect(next_url)
+        return redirect(url_for('login'))
 
-    session['twitter_token'] = (
-        resp['oauth_token'],
-        resp['oauth_token_secret']
-    )
-    session['twitter_user'] = resp['screen_name']
+    session['access_token'] = resp['access_token'], ''
+    
+    return redirect(url_for('index'))
 
-    flash('You were signed in as %s' % resp['screen_name'])
-    return redirect(next_url)
+@app.route('/')
+def index():
+    access_token = session.get('access_token')
+    if access_token is None:
+        return redirect(url_for('login'))
 
-
-
+    headers = {'Authorization': 'OAuth '+access_token[0]}
+    req = Request('https://www.googleapis.com/oauth2/v1/userinfo',
+                  None, headers)
+    try:
+        res = urlopen(req)
+    except URLError, e:
+        if e.code == 401:
+            # Unauthorized - bad token
+            session.pop('access_token', None)
+            return redirect(url_for('login'))
+        return redirect(url_for('static', filename='index.html'))
+    # return res.read()
+    userInfoFromGoogle = res.read()
+    googleEmail = json.loads(userInfoFromGoogle)
+    session['email'] = googleEmail['email']
+    print googleEmail['email']
+    return redirect(url_for('static', filename='index.html'))
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
