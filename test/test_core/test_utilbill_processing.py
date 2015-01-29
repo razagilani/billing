@@ -136,12 +136,15 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
 
     def test_update_utilbill_metadata(self):
-        utilbill = self.utilbill_processor.upload_utility_bill('99999',
-                                                    StringIO('January 2013'),
-                                                    date(2013, 1, 1),
-                                                    date(2013, 2, 1), 'Gas',
-                                                    total=100,
-                                                    )
+        utilbill = self.utilbill_processor.upload_utility_bill(
+            '99999', StringIO('January 2013'), date(2013, 1, 1),
+            date(2013, 2, 1), 'Gas', total=100)
+
+        # NOTE: UtilBill.date_modified gets updated when SQLAlchemy updates
+        # the object in the database, so it can't be tested in a unit test
+        # that only changes data in memory. it would be good to test the
+        # date_modified feature apart from the unrelated stuff in this test,
+        # but this works.
         date_modified = utilbill.date_modified
 
         doc = self.views.get_all_utilbills_json('99999', 0, 30)[0][0]
