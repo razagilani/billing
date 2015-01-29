@@ -433,12 +433,11 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    # TODO remove uprs_id, doc_id
-    def __init__(self, utility_account, state, service, utility, supplier, rate_class,
-                 billing_address, service_address, period_start=None,
-                 period_end=None, doc_id=None, uprs_id=None,
-                 target_total=0, date_received=None, processed=False,
-                 reebill=None, sha256_hexdigest='', due_date=None):
+    def __init__(self, utility_account, state, service, utility, supplier,
+                 rate_class, billing_address, service_address,
+                 period_start=None, period_end=None, target_total=0,
+                 date_received=None, processed=False, sha256_hexdigest='',
+                 due_date=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -455,14 +454,12 @@ class UtilBill(Base):
         self.period_end = period_end
         self.target_total = target_total
         self.date_received = date_received
-        self.account_number = utility_account.account_number
         self.processed = processed
-        self.document_id = doc_id
-        self.uprs_document_id = uprs_id
         self.due_date = due_date
+        self.account_number = utility_account.account_number
 
         # TODO: empty string as default value for sha256_hexdigest is
-        # probably a bad idea. if we are writing tests that involve puttint
+        # probably a bad idea. if we are writing tests that involve putting
         # UtilBills in an actual database then we should probably have actual
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
@@ -531,19 +528,16 @@ class UtilBill(Base):
         n = 1
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
-        charge = Charge(utilbill=self,
-                        rsi_binding=charge_kwargs.get(
-                            'rsi_binding', "New Charge %s" % n),
-                        rate=charge_kwargs.get('rate', 0.0),
-                        quantity_formula=charge_kwargs.get(
-                            'quantity_formula', ''),
-                        description=charge_kwargs.get(
-                            'description',
-                            "New Charge - Insert description here"),
-                        group=charge_kwargs.get("group", ''),
-                        unit=charge_kwargs.get('unit', "dollars"),
-                        type=charge_kwargs.get('type', "supply")
-                        )
+        charge = Charge(
+            utilbill=self,
+            rsi_binding=charge_kwargs.get('rsi_binding', "New Charge %s" % n),
+            rate=charge_kwargs.get('rate', 0.0),
+            quantity_formula=charge_kwargs.get('quantity_formula', ''),
+            description=charge_kwargs.get(
+                'description', "New Charge - Insert description here"),
+            group=charge_kwargs.get("group", ''),
+            unit=charge_kwargs.get('unit', "dollars"),
+            type=charge_kwargs.get('type', "supply"))
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
@@ -641,7 +635,8 @@ class UtilBill(Base):
         supply, or other), excluding charges that are "fake" (
         has_charge == False).
         '''
-        return [c for c in self.charges if c.has_charge and c.type == 'distribution']
+        return [c for c in self.charges
+                if c.has_charge and c.type == 'distribution']
 
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
@@ -769,7 +764,6 @@ class Register(Base):
         result = json.loads(self.active_periods)
         assert all(key in result for key in keys)
         return result
-
 
 
 class Charge(Base):
@@ -933,12 +927,4 @@ class Charge(Base):
             self.error = None if evaluation.exception is None else \
                 evaluation.exception.message
         return evaluation
-
-    def get_create_utility(self, utility_name):
-        session = Session()
-        try:
-            utility = session.query(Utility).filter_by(name=utility_name).one()
-        except NoResultFound:
-            utility = Utility(utility_name, Address('', '', '', '', ''))
-        return utility
 
