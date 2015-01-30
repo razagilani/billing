@@ -618,7 +618,13 @@ class UtilBill(Base):
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
         if not self.processable():
-            raise NotProcessable('Utility bill cannot be marked as processed')
+            attrs = ['utility', 'rate_class', 'supplier',
+                     'period_start', 'period_end']
+            missing_attrs = ', '.join(
+                [attr for attr in attrs if getattr(self, attr) is None])
+            raise NotProcessable("The following fields have to be entered "
+                                 "before this utility bill can be marked as "
+                                 "processed: " + missing_attrs)
 
     def editable(self):
         if self.processed:
