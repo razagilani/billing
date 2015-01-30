@@ -28,6 +28,7 @@ class TestExportAltitude(TestCase):
         u1.service_address.postal_code = '10000'
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
+        u1.supply_choice_id = None
 
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
@@ -45,6 +46,7 @@ class TestExportAltitude(TestCase):
         u2.service_address.postal_code = '20000'
         u2.date_received = None
         u2.date_modified = None
+        u2.supply_choice_id = '123xyz'
 
         self.utilbills = [u1, u2]
 
@@ -72,6 +74,7 @@ class TestExportAltitude(TestCase):
                              10,
                              100,
                              'rate class 1',
+                             None,
                              '1 Fake St.',
                              'Washington',
                              'DC',
@@ -91,6 +94,7 @@ class TestExportAltitude(TestCase):
                              20,
                              200,
                              'rate class 2',
+                             '123xyz',
                              '2 Fake St.',
                              'Washington',
                              'DC',

@@ -386,6 +386,13 @@ class UtilBill(Base):
     # TODO: not being used at all
     date_scraped = Column(DateTime)
 
+    # a number seen on some bills, also known as "secondary account number". the
+    # only example of it we have seen is on BGE bills where it is called
+    # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
+    # shown on electric bills and gas bills). this sounds like a foreign key
+    # but is not.
+    supply_choice_id = Column(String)
+
     # cascade for UtilityAccount relationship does NOT include "save-update"
     # to allow more control over when UtilBills get added--for example,
     # when uploading a new utility bill, the new UtilBill object should only
