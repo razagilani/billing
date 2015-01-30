@@ -7,7 +7,8 @@ from pg.pg_model import PGAccount
 def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a PGAccount.
     '''
-    return Session().query(UtilBill).join(UtilityAccount).join(PGAccount)
+    return Session().query(UtilBill).join(UtilityAccount).join(
+        PGAccount)
 
 class PGAltitudeExporter(object):
 
@@ -47,6 +48,7 @@ class PGAltitudeExporter(object):
             'total_usage',
             'total_supply_charge',
             'rate_class',
+            'secondary_account_number',
             'service_address_street',
             'service_address_city',
             'service_address_state',
@@ -54,29 +56,38 @@ class PGAltitudeExporter(object):
             'create_date',
             'modified_date',
         ])
+        def format_date(d):
+            if d is None:
+                return ''
+            return d.isoformat()
+        def format_guid(g):
+            if g is None:
+                return ''
+            return g
         for ub in utilbills:
             append_row_as_dict(dataset, {
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid': str(self._uuid_func()),
-                'utility_guid': self._altitude_converter.get_guid_for_utility(
-                    ub.get_utility()),
-                'supplier_guid': self._altitude_converter.get_guid_for_supplier(
-                    ub.get_supplier()),
+                'utility_guid':
+                    format_guid(self._altitude_converter.get_guid_for_utility(
+                        ub.get_utility())),
+                'supplier_guid':
+                    format_guid(self._altitude_converter.get_guid_for_supplier(
+                        ub.get_supplier())),
                 'service_type': ub.service,
                 'utility_account_number': ub.get_utility_account_number(),
-                'billing_period_start_date': ub.period_start.isoformat(),
-                'billing_period_end_date': ub.period_end.isoformat(),
+                'billing_period_start_date':  format_date(ub.period_start),
+                'billing_period_end_date': format_date(ub.period_end),
                 'total_usage': ub.get_total_energy_consumption(),
-                'total_supply_charge': ub.get_supply_total(),
+                'total_supply_charge': ub.get_supply_target_total(),
                 'rate_class': ub.get_rate_class_name(),
+                'secondary_account_number': ub.supply_choice_id,
                 'service_address_street': ub.service_address.street,
                 'service_address_city': ub.service_address.city,
                 'service_address_state': ub.service_address.state,
                 'service_address_postal_code': ub.service_address.postal_code,
-                'create_date': ('' if ub.date_received is None else
-                                ub.date_received.isoformat()),
-                'modified_date': ('' if ub.date_modified is None else
-                                  ub.date_modified.isoformat()),
+                'create_date': format_date(ub.date_received),
+                'modified_date': format_date(ub.date_modified),
             })
         return dataset
 
