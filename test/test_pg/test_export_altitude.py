@@ -20,7 +20,7 @@ class TestExportAltitude(TestCase):
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
         u1.get_total_energy_consumption.return_value = 10
-        u1.get_supply_total.return_value = 100
+        u1.get_supply_target_total.return_value = 100
         u1.get_rate_class_name.return_value = 'rate class 1'
         u1.service_address.street = '1 Fake St.'
         u1.service_address.city = 'Washington'
@@ -38,7 +38,7 @@ class TestExportAltitude(TestCase):
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
         u2.get_total_energy_consumption.return_value = 20
-        u2.get_supply_total.return_value = 200
+        u2.get_supply_target_total.return_value = 200
         u2.get_rate_class_name.return_value = 'rate class 2'
         u2.service_address.street = '2 Fake St.'
         u2.service_address.city = 'Washington'

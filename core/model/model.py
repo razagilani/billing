@@ -389,8 +389,8 @@ class UtilBill(Base):
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
     # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
-    # shown on electric bills and gas bills). this sounds like a foreign key
-    # but is not.
+    # shown on electric bills and gas bills). this is not a foreign key
+    # despite the name.
     supply_choice_id = Column(String)
 
     # cascade for UtilityAccount relationship does NOT include "save-update"
