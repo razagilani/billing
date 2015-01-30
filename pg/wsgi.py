@@ -8,9 +8,14 @@ http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
 from datetime import date, datetime
+from functools import partial
 from os.path import dirname, realpath, join
 from boto.s3.connection import S3Connection
 from flask.ext.admin.contrib.sqla import ModelView
+from flask.ext.admin.model import BaseModelView
+from flask.ext.principal import Need, identity_loaded, Permission
+from sqlalchemy.sql.functions import current_user
+from wtforms import TextField, Form
 from pg.pg_model import PGAccount
 
 from sqlalchemy import desc
@@ -27,7 +32,7 @@ from reebill.utilbill_processor import UtilbillProcessor
 from datetime import datetime, timedelta
 from dateutil import parser as dateutil_parser
 from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
-    RateClass
+    RateClass, Address
 from core.model import UtilBill
 
 from flask import Flask, url_for, request, flash, session, redirect
@@ -35,7 +40,7 @@ from flask.ext.restful import Api, Resource, marshal_with, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
     Boolean
-from flask.ext.admin import Admin, expose, BaseView
+from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
 from flask_oauth import OAuth
 from urllib2 import Request, urlopen, URLError
 import json
@@ -318,7 +323,6 @@ def oauth2callback(resp):
         return redirect(url_for('login'))
 
     session['access_token'] = resp['access_token'], ''
-    
     return redirect(url_for('index'))
 
 @app.route('/')
@@ -342,7 +346,6 @@ def index():
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
-    print googleEmail['email']
     return redirect(url_for('static', filename='index.html'))
 
 api = Api(app)
@@ -355,21 +358,94 @@ api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-
-
-
-
 app.secret_key = 'example secret key'
 
-admin = Admin(app)
-admin.add_view(ModelView(UtilityAccount, Session()))
-admin.add_view(ModelView(UtilBill, Session(), name='Utility Bill'))
-admin.add_view(ModelView(Utility, Session()))
-admin.add_view(ModelView(Supplier, Session()))
-admin.add_view(ModelView(RateClass, Session()))
-admin.add_view(ModelView(ReeBillCustomer, Session(),
-               name='ReeBill Account'))
-admin.add_view(ModelView(ReeBill, Session(), name='Reebill'))
+
+class MyAdminIndexView(AdminIndexView):
+
+    @expose('/')
+    def index(self):
+        try:
+            if session['access_token'] is None:
+                return redirect(url_for('login', next=request.url))
+            else:
+                return super(MyAdminIndexView, self).index()
+        except KeyError:
+            return redirect(url_for('login', next=request.url))
+
+
+
+class CustomModelView(ModelView):
+    # Disable create, update and delete on model
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    def is_accessible(self):
+        try:
+            if session['access_token'] is None:
+                return False
+            else:
+                return True
+        except KeyError:
+            return False
+
+    def _handle_view(self, name, **kwargs):
+        if not self.is_accessible():
+            return redirect(url_for('login', next=request.url))
+
+    def __init__(self, model, session, **kwargs):
+        super(CustomModelView, self).__init__(model, session, **kwargs)
+
+class LoginModelView(ModelView):
+    def is_accessible(self):
+        try:
+            if session['access_token'] is None:
+                return False
+            else:
+                return True
+        except KeyError:
+            return False
+
+    def _handle_view(self, name, **kwargs):
+        if not self.is_accessible():
+            return redirect(url_for('login', next=request.url))
+
+    def __init__(self, model, session, **kwargs):
+        super(LoginModelView, self).__init__(model, session, **kwargs)
+
+class SupplierModelView(LoginModelView):
+    form_columns = ('name',)
+
+    def __init__(self, session, **kwargs):
+        super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
+
+class UtilityModelView(LoginModelView):
+    form_columns = ('name',)
+
+    def __init__(self, session, **kwargs):
+        super(UtilityModelView, self).__init__(Utility, session, **kwargs)
+
+class ReeBillCustomerModelView(LoginModelView):
+    form_columns = ('name', 'discountrate', 'latechargerate', 'bill_email_recipient', 'service', )
+
+    def __init__(self, session, **kwargs):
+        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer , session, **kwargs)
+
+class RateClassModelView(LoginModelView):
+
+    def __init__(self, session, **kwargs):
+        super(RateClassModelView, self).__init__(RateClass, session, **kwargs)
+
+
+admin = Admin(app, index_view=MyAdminIndexView())
+admin.add_view(CustomModelView(UtilityAccount, Session()))
+admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
+admin.add_view(UtilityModelView(Session()))
+admin.add_view(SupplierModelView(Session()))
+admin.add_view(RateClassModelView(Session()))
+admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
+admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
 
 if __name__ == '__main__':
     app.run(debug=True)
