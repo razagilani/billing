@@ -8,7 +8,7 @@ def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a PGAccount.
     '''
     return Session().query(UtilBill).join(UtilityAccount).join(
-        PGAccount).limit(1000)
+        PGAccount)
 
 class PGAltitudeExporter(object):
 
