@@ -182,7 +182,7 @@ class UtilbillProcessor(object):
             Address.from_other(billing_address),
             Address.from_other(service_address),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow().date())
+            date_received=datetime.utcnow())
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
