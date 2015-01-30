@@ -2,6 +2,7 @@ from uuid import uuid4
 from datetime import timedelta
 from tablib import Dataset
 from core.model import Session, UtilBill, UtilityAccount
+from util.dateutils import ISO_8601_DATETIME
 from pg.pg_model import PGAccount
 
 def _load_pg_utilbills():
@@ -59,7 +60,7 @@ class PGAltitudeExporter(object):
         def format_date(d):
             if d is None:
                 return ''
-            return d.isoformat()
+            return d.strftime(ISO_8601_DATETIME)
         def format_guid(g):
             if g is None:
                 return ''
