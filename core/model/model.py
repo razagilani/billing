@@ -20,7 +20,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    ProcessedBillError
+    ProcessedBillError, NotProcessable
 
 
 __all__ = [
@@ -608,6 +608,17 @@ class UtilBill(Base):
         # all charges should be computed before the exception is raised
         if raise_exception and exception:
             raise exception
+
+    def processable(self):
+        '''Returns False if a bill is missing any of the required fields
+        '''
+        return None not in (self.utility, self.rate_class, self.supplier,
+                            self.period_start, self.period_end)
+
+    def check_processable(self):
+        '''Raises NotProcessable if this bill cannot be marked as processed.'''
+        if not self.processable():
+            raise NotProcessable('Utility bill cannot be marked as processed')
 
     def editable(self):
         if self.processed:
