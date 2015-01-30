@@ -9,7 +9,7 @@ from core import init_model
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, ProcessedBillError
+from exc import RSIError, ProcessedBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from reebill.state import Payment, ReeBillCustomer
@@ -87,6 +87,20 @@ class UtilBillTest(TestCase):
         utilbill.processed = True
         self.assertTrue(utilbill.processed)
         self.assertRaises(ProcessedBillError, utilbill.check_editable)
+
+    def test_processable(self):
+        utility_account = UtilityAccount(
+            'someone', '98989', self.utility, self.supplier,
+            RateClass('FB Test Rate Class', self.utility), Address(), Address())
+        for attr in ('period_start', 'period_end', 'rate_class', 'utility',
+                     'supplier'):
+            ub = UtilBill(
+                utility_account, UtilBill.Complete, 'gas', self.utility,
+                self.supplier, RateClass('rate class', self.utility), Address(),
+                Address(), period_start=date(2000, 1, 1),
+                period_end=date(2000, 2, 1))
+            setattr(ub, attr, None)
+            self.assertRaises(NotProcessable, ub.check_processable)
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
