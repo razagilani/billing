@@ -102,6 +102,13 @@ class UtilBillTest(TestCase):
             setattr(ub, attr, None)
             self.assertRaises(NotProcessable, ub.check_processable)
 
+        ub = UtilBill(
+            utility_account, UtilBill.Complete, 'gas', self.utility,
+            self.supplier, RateClass('rate class', self.utility), Address(),
+            Address(), period_start=date(2000, 1, 1),
+            period_end=date(2000, 2, 1))
+        self.assertTrue(ub.processable())
+
     def test_add_charge(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
