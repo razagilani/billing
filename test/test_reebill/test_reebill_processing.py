@@ -214,24 +214,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
     def tearDownClass(cls):
         cls.fakes3_manager.stop()
 
-    def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
-        """Upload a dummy-utilbill, add a charge, and calculate charges
-        """
-        utilbill = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('a utility bill %s %s %s' % (
-                acc, begin_date, end_date)), begin_date, end_date, 'gas')
-        Session().add(utilbill)
-        self.utilbill_processor.add_charge(utilbill.id)
-        self.utilbill_processor.update_charge(
-            {
-                'rsi_binding': 'A',
-                'quantity_formula': 'REG_TOTAL.quantity',
-                'rate': 1
-            }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
-        self.utilbill_processor.compute_utility_bill(utilbill.id)
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                                         processed=True)
-
     def test_list_account_status(self):
         # NOTE this test does not add any data to the database beyond what is
         # inserted in setup
@@ -324,9 +306,26 @@ class ReebillProcessingTest(testing_utils.TestCase):
         acc = '99999'
 
         # create 3 utility bills: Jan, Feb, Mar
+        def setup_dummy_utilbill_calc_charges(acc, begin_date, end_date):
+            """Upload a dummy-utilbill, add a charge, and calculate charges
+            """
+            utilbill = self.utilbill_processor.upload_utility_bill(
+                acc, StringIO('a utility bill %s %s %s' % (
+                    acc, begin_date, end_date)), begin_date, end_date, 'gas')
+            Session().add(utilbill)
+            self.utilbill_processor.add_charge(utilbill.id)
+            self.utilbill_processor.update_charge(
+                {
+                    'rsi_binding': 'A',
+                    'quantity_formula': 'REG_TOTAL.quantity',
+                    'rate': 1
+                }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
+            self.utilbill_processor.compute_utility_bill(utilbill.id)
+            self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                             processed=True)
         for i in range(3):
-            self.setup_dummy_utilbill_calc_charges(acc, date(2000, i + 1, 1),
-                                                   date(2000, i + 2, 1))
+            setup_dummy_utilbill_calc_charges(acc, date(2000, i + 1, 1),
+                                              date(2000, i + 2, 1))
 
         # create 1st reebill and issue it
         self.reebill_processor.roll_reebill(acc, start_date=date(2000, 1, 1))
@@ -1794,7 +1793,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
                                total_reading.renewable_quantity)
-        self.assertEqual('BTU', tou_reading.unit)
+        self.assertEqual('btu', tou_reading.unit)
         self.assertAlmostEqual(tou_renewable_btu,
                                tou_reading.renewable_quantity)
 
