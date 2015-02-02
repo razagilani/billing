@@ -464,323 +464,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
                                                          date(2013, 1, 1)))
 
-    def test_issue(self):
-        '''Tests issuing of reebills.'''
-        acc = '99999'
-        # two utilbills, with reebills
-        ub1 = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('january 2000'), date(2000, 1, 1), date(2000, 2, 1),
-            'gas')
-        ub2 = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub1.id,
-                                                         processed=True)
-        self.utilbill_processor.update_utilbill_metadata(ub2.id,
-                                                         processed=True)
-        one = self.reebill_processor.roll_reebill(acc,
-                                                  start_date=date(2000, 1, 1))
-        two = self.reebill_processor.roll_reebill(acc)
-
-        # neither reebill should be issued yet
-        self.assertEquals(False, self.state_db.is_issued(acc, 1))
-        self.assertEquals(None, one.issue_date)
-        self.assertEquals(None, one.due_date)
-        self.assertEqual(None, one.email_recipient)
-        self.assertEquals(False, self.state_db.is_issued(acc, 2))
-        self.assertEquals(None, two.issue_date)
-        self.assertEquals(None, two.due_date)
-        self.assertEqual(None, two.email_recipient)
-
-        # two should not be issuable until one_doc is issued
-        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
-
-        # issue one
-        self.reebill_processor.issue(acc, 1, issue_date=datetime(2001, 4, 1))
-
-        self.assertEquals(True, one.issued)
-        self.assertEquals(True, one.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 1))
-        self.assertEquals(datetime(2001, 4, 1), one.issue_date)
-        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
-        self.assertEquals('example@example.com', one.email_recipient)
-
-        customer = self.state_db.get_reebill_customer(acc)
-        customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
-
-        # issue two
-        self.reebill_processor.issue(acc, 2,
-                                     issue_date=datetime(2001, 5, 1, 12))
-
-        # re-load from mongo to see updated issue date and due date
-        self.assertEquals(True, two.issued)
-        self.assertEquals(True, two.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals(datetime(2001, 5, 1, 12), two.issue_date)
-        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
-        self.assertEquals('test1@example.com, test2@exmaple.com',
-                          two.email_recipient)
-
-    def test_issue_2_at_once(self):
-        '''Tests issuing one bill immediately after another, without
-        recomputing it. In bug 64403990, a bill could be issued with a wrong
-        "prior balance" because it was not recomputed before issuing to
-        reflect a change to its predecessor.
-        '''
-        acc = '99999'
-        # first reebill is needed so the others get computed correctly
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('january 2000'), date(2000, 1, 1), date(2000, 2, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id,
-                                                         processed=True)
-        self.reebill_processor.roll_reebill(acc, start_date=date(2000, 1, 1))
-        self.reebill_processor.issue(acc, 1, datetime(2000, 2, 15))
-
-        # two more utility bills and reebills
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('march 2000'), date(2000, 3, 1), date(2000, 4, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        two = self.reebill_processor.roll_reebill(acc)
-        three = self.reebill_processor.roll_reebill(acc)
-
-        # add a payment, shown on bill #2
-        self.payment_dao.create_payment(acc, date(2000, 2, 16), 'a payment',
-                                        100)
-        # TODO bill shows 0 because bill has no energy in it and
-        # payment_received is 0
-        self.reebill_processor.compute_reebill(acc, 2)
-        self.assertEqual(100, two.payment_received)
-        self.assertEqual(-100, two.balance_due)
-
-        # the payment does not appear on #3, since #3 has not be
-        # recomputed
-        self.assertEqual(0, three.payment_received)
-        self.assertEqual(0, three.prior_balance)
-        self.assertEqual(0, three.balance_forward)
-        self.assertEqual(0, three.balance_due)
-
-        # make bills processed before issuing to test alternate methods of
-        # issuing.
-        # it is necessary to compute bill 3 before it becomes processed
-        # because that is not done by update_sequential_account_info
-        self.reebill_processor.compute_reebill(acc, 3)
-        self.reebill_processor.update_sequential_account_info(acc, 2, processed=True)
-        self.reebill_processor.update_sequential_account_info(acc, 3, processed=True)
-
-        # issue #2 and #3, using two different methods
-        # (the second is the equivalent of "Issue All Processed Reebills" in
-        # the UI)
-        self.reebill_processor.issue_and_mail(True, account=acc, sequence=2)
-        self.reebill_processor.issue_processed_and_mail(True)
-
-        # #2 is still correct, and #3 should be too because it was
-        # automatically recomputed before issuing
-        self.assertEqual(100, two.payment_received)
-        self.assertEqual(-100, two.balance_due)
-        self.assertEqual(-100, three.prior_balance)
-        self.assertEqual(0, three.payment_received)
-        self.assertEqual(-100, three.balance_forward)
-        self.assertEqual(-100, three.balance_due)
-
-    def test_issue_and_mail(self):
-        '''Tests issuing and mailing of reebills.'''
-        acc = '99999'
-        # two utilbills, with reebills
-        self.reebill_processor.bill_mailer = Mock()
-        self.reebill_processor.reebill_file_handler = Mock()
-        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
-        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
-        temp_dir = TempDirectory()
-        self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
-                temp_dir.path
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('january 2000'), date(2000, 1, 1), date(2000, 2, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        one = self.reebill_processor.roll_reebill(
-            acc, start_date=date(2000, 1, 1))
-        two = self.reebill_processor.roll_reebill(acc)
-
-        # neither reebill should be issued yet
-        self.assertEquals(False, self.state_db.is_issued(acc, 1))
-        self.assertEquals(None, one.issue_date)
-        self.assertEquals(None, one.due_date)
-        self.assertEqual(None, one.email_recipient)
-        self.assertEquals(False, self.state_db.is_issued(acc, 2))
-        self.assertEquals(None, two.issue_date)
-        self.assertEquals(None, two.due_date)
-        self.assertEqual(None, two.email_recipient)
-
-        # two should not be issuable until one_doc is issued
-        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
-        self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
-                          False, acc, 2)
-        one.email_recipient = 'one@example.com, one@gmail.com'
-
-        # issue and email one
-        self.reebill_processor.issue_and_mail(False, account=acc, sequence=1,
-                                    recipients=one.email_recipient)
-
-        self.assertEquals(True, one.issued)
-        self.assertEquals(True, one.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 1))
-        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
-        # make a correction on reebill #1. this time 20 therms of renewable
-        # energy instead of 10 were consumed.
-        self.reebill_processor.ree_getter.quantity = 20
-        self.reebill_processor.new_version(acc, 1)
-
-        customer = self.state_db.get_reebill_customer(acc)
-        two.email_recipient = 'test1@example.com, test2@exmaple.com'
-
-        # issue and email two
-        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 2
-        # issuing a reebill that has corrections with apply_corrections False raises ConfirmAdjustment Exception
-        self.assertRaises(ConfirmAdjustment, self.reebill_processor.issue_and_mail,False, account=acc, sequence=2,
-                                    recipients=two.email_recipient)
-        #ValueError is Raised if an issued Bill is issued again
-        self.assertRaises(ValueError, self.reebill_processor.issue_and_mail,True, account=acc, sequence=1,
-                                    recipients=two.email_recipient)
-        self.reebill_processor.toggle_reebill_processed(acc, 2, True)
-        self.assertEqual(True, two.processed)
-        self.reebill_processor.issue_processed_and_mail(True)
-        # re-load from mongo to see updated issue date and due date
-        self.assertEquals(True, two.issued)
-        self.assertEquals(True, two.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
-
-        temp_dir.cleanup()
-
-    def test_issue_processed_and_mail(self):
-        '''Tests issuing and mailing of processed reebills.'''
-        acc = '99999'
-        # two utilbills, with reebills
-        self.reebill_processor.bill_mailer = Mock()
-        self.reebill_processor.reebill_file_handler = Mock()
-        self.reebill_processor.reebill_file_handler.render_max_version \
-            .return_value = 1
-        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
-        temp_dir = TempDirectory()
-        self.reebill_processor.reebill_file_handler\
-            .get_file_path.return_value = \
-                temp_dir.path
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('january 2000'), date(2000, 1, 1),
-            date(2000, 2, 1), 'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        one = self.reebill_processor.roll_reebill(acc,
-                                                  start_date=date(2000, 1, 1))
-        one.processed = 1
-        two = self.reebill_processor.roll_reebill(acc)
-        two.processed = 1
-
-        # neither reebill should be issued yet
-        self.assertEquals(False, self.state_db.is_issued(acc, 1))
-        self.assertEquals(None, one.issue_date)
-        self.assertEquals(None, one.due_date)
-        self.assertEqual(None, one.email_recipient)
-        self.assertEquals(False, self.state_db.is_issued(acc, 2))
-        self.assertEquals(None, two.issue_date)
-        self.assertEquals(None, two.due_date)
-        self.assertEqual(None, two.email_recipient)
-
-        # two should not be issuable until one_doc is issued
-        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
-        one.email_recipient = 'one@example.com, one@gmail.com'
-
-        # issue and email one
-        self.reebill_processor.issue_processed_and_mail(False)
-
-        self.assertEquals(True, one.issued)
-        self.assertEquals(True, one.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 1))
-        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
-
-        customer = self.state_db.get_reebill_customer(acc)
-        two.email_recipient = 'test1@example.com, test2@exmaple.com'
-
-        # issue and email two
-        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 2
-        self.reebill_processor.issue_processed_and_mail(False)
-
-        # re-load from mongo to see updated issue date and due date
-        self.assertEquals(True, two.issued)
-        self.assertEquals(True, two.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
-
-        temp_dir.cleanup()
-
-    def test_delete_reebill(self):
-        account = '99999'
-        # create 2 utility bills for Jan-Feb 2012
-        utilbill = self.utilbill_processor.upload_utility_bill(
-            account, StringIO( 'january 2000'), date(2000, 1, 1),
-            date(2000, 2, 1), 'gas')
-        ub2 = self.utilbill_processor.upload_utility_bill(
-            account, StringIO('february 2000'), date(2000, 2, 1),
-            date(2000, 3, 1), 'gas')
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                                         processed=True)
-        self.utilbill_processor.update_utilbill_metadata(ub2.id,
-                                                         processed=True)
-        utilbill = Session().query(UtilBill).join(UtilityAccount) \
-            .filter(UtilityAccount.account==account)\
-            .order_by(UtilBill.period_start).first()
-
-        reebill = self.reebill_processor.roll_reebill(account,
-                                            start_date=date(2000, 1, 1))
-        self.reebill_processor.roll_reebill(account)
-
-        # only the last reebill is deletable: deleting the 2nd one should
-        # succeed, but deleting the 1st one should fail
-        with self.assertRaises(IssuedBillError):
-            self.reebill_processor.delete_reebill(account, 1)
-        self.reebill_processor.delete_reebill(account, 2)
-        with self.assertRaises(NoResultFound):
-            self.state_db.get_reebill(account, 2, version=0)
-        self.assertEquals(1, Session().query(ReeBill).count())
-        self.assertEquals([(1,)], Session().query(ReeBill.sequence).all())
-        self.assertEquals([utilbill], reebill.utilbills)
-
-        # issued reebill should not be deletable
-        self.reebill_processor.issue(account, 1)
-        self.assertEqual(1, reebill.issued)
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-        self.assertRaises(IssuedBillError, self.reebill_processor.delete_reebill,
-                          account, 1)
-
-        # create a new verison and delete it, returning to just version 0
-        self.reebill_processor.new_version(account, 1)
-        Session().query(ReeBill).filter_by(version=1).one()
-        self.assertEqual(1, self.state_db.max_version(account, 1))
-        self.assertFalse(self.state_db.is_issued(account, 1))
-        self.reebill_processor.delete_reebill(account, 1)
-        self.assertEqual(0, self.state_db.max_version(account, 1))
-        self.assertTrue(self.state_db.is_issued(account, 1))
-
-        # original version should still be attached to utility bill
-        # TODO this will have to change. see
-        # https://www.pivotaltracker.com/story/show/31629749
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-
     def test_correction_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
             earliest unissued bill.'''
@@ -1008,57 +691,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                         service_address, '99999', '123')
         self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
-
-    def test_uncomputable_correction_bug(self):
-        '''Regresssion test for
-            https://www.pivotaltracker.com/story/show/53434901.'''
-        account = '99999'
-        # create reebill and utility bill
-        self.utilbill_processor.upload_utility_bill(
-            account, StringIO('January 2000'), date(2000, 1, 1),
-            date(2000, 2, 1), 'gas')
-        utilbill_id = self.views.get_all_utilbills_json(
-            account, 0, 30)[0][0]['id']
-        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
-                                                         processed=True)
-        self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
-        self.reebill_processor.bind_renewable_energy(account, 1)
-        self.reebill_processor.compute_reebill(account, 1)
-        self.reebill_processor.issue(account, 1)
-
-        # create new version
-        self.reebill_processor.new_version(account, 1)
-        self.assertEquals(1, self.state_db.max_version(account, 1))
-
-        # initially, reebill version 1 can be computed without an error
-        self.reebill_processor.compute_reebill(account, 1, version=1)
-
-        # put it in an un-computable state by adding a charge with a syntax
-        # error in its formula. it should now raise an RSIError.
-        # (computing a utility bill doesn't raise an exception by default, but
-        # computing a reebill based on the utility bill does.)
-        # NOTE it is possible to un-process a utility bill after a reebill
-        # has been created from it
-        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
-                                                         processed=False)
-        charge = self.utilbill_processor.add_charge(utilbill_id)
-        self.utilbill_processor.update_charge({
-                                       'quantity_formula': '1 + ',
-                                       'rsi_binding': 'some_rsi'
-                                   }, charge_id=charge.id)
-        with self.assertRaises(FormulaSyntaxError):
-            self.reebill_processor.compute_reebill(account, 1, version=1)
-
-        # delete the new version
-        self.reebill_processor.delete_reebill(account, 1)
-        reebill_data = self.views.get_reebill_metadata_json(account)
-        self.assertEquals(0, reebill_data[0]['version'])
-
-        # try to create a new version again: it should succeed, even though
-        # there was a KeyError due to a missing RSI when computing the bill
-        self.reebill_processor.new_version(account, 1)
-        reebill_data = self.views.get_reebill_metadata_json(account)
-        self.assertEquals(1, reebill_data[0]['version'])
 
     def test_correction_issuing(self):
         """Test creating corrections on reebills, and issuing them to create
@@ -1344,6 +976,359 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
+        #self.utilbill.processed = True
+
+    def test_issue(self):
+        '''Tests issuing of reebills.'''
+        acc = '99999'
+        # two utilbills, with reebills
+        ub2 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        self.utilbill_processor.update_utilbill_metadata(ub2.id,
+                                                         processed=True)
+        one = self.reebill_processor.roll_reebill(acc,
+                                                  start_date=date(2000, 1, 1))
+        two = self.reebill_processor.roll_reebill(acc)
+
+        # neither reebill should be issued yet
+        self.assertEquals(False, self.state_db.is_issued(acc, 1))
+        self.assertEquals(None, one.issue_date)
+        self.assertEquals(None, one.due_date)
+        self.assertEqual(None, one.email_recipient)
+        self.assertEquals(False, self.state_db.is_issued(acc, 2))
+        self.assertEquals(None, two.issue_date)
+        self.assertEquals(None, two.due_date)
+        self.assertEqual(None, two.email_recipient)
+
+        # two should not be issuable until one_doc is issued
+        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
+
+        # issue one
+        self.reebill_processor.issue(acc, 1, issue_date=datetime(2001, 4, 1))
+
+        self.assertEquals(True, one.issued)
+        self.assertEquals(True, one.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 1))
+        self.assertEquals(datetime(2001, 4, 1), one.issue_date)
+        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
+        self.assertEquals('example@example.com', one.email_recipient)
+
+        customer = self.state_db.get_reebill_customer(acc)
+        customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
+
+        # issue two
+        self.reebill_processor.issue(acc, 2,
+                                     issue_date=datetime(2001, 5, 1, 12))
+
+        # re-load from mongo to see updated issue date and due date
+        self.assertEquals(True, two.issued)
+        self.assertEquals(True, two.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 2))
+        self.assertEquals(datetime(2001, 5, 1, 12), two.issue_date)
+        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+        self.assertEquals('test1@example.com, test2@exmaple.com',
+                          two.email_recipient)
+
+    def test_issue_2_at_once(self):
+        '''Tests issuing one bill immediately after another, without
+        recomputing it. In bug 64403990, a bill could be issued with a wrong
+        "prior balance" because it was not recomputed before issuing to
+        reflect a change to its predecessor.
+        '''
+        acc = self.account
+        # first reebill is needed so the others get computed correctly
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        self.reebill_processor.roll_reebill(acc, start_date=date(2000, 1, 1))
+        self.reebill_processor.issue(acc, 1, datetime(2000, 2, 15))
+
+        # two more utility bills and reebills
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('march 2000'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        two = self.reebill_processor.roll_reebill(acc)
+        three = self.reebill_processor.roll_reebill(acc)
+
+        # add a payment, shown on bill #2
+        self.payment_dao.create_payment(acc, date(2000, 2, 16), 'a payment',
+                                        100)
+        # TODO bill shows 0 because bill has no energy in it and
+        # payment_received is 0
+        self.reebill_processor.compute_reebill(acc, 2)
+        self.assertEqual(100, two.payment_received)
+        self.assertEqual(-100, two.balance_due)
+
+        # the payment does not appear on #3, since #3 has not be
+        # recomputed
+        self.assertEqual(0, three.payment_received)
+        self.assertEqual(0, three.prior_balance)
+        self.assertEqual(0, three.balance_forward)
+        self.assertEqual(0, three.balance_due)
+
+        # make bills processed before issuing to test alternate methods of
+        # issuing.
+        # it is necessary to compute bill 3 before it becomes processed
+        # because that is not done by update_sequential_account_info
+        self.reebill_processor.compute_reebill(acc, 3)
+        self.reebill_processor.update_sequential_account_info(acc, 2, processed=True)
+        self.reebill_processor.update_sequential_account_info(acc, 3, processed=True)
+
+        # issue #2 and #3, using two different methods
+        # (the second is the equivalent of "Issue All Processed Reebills" in
+        # the UI)
+        self.reebill_processor.issue_and_mail(True, account=acc, sequence=2)
+        self.reebill_processor.issue_processed_and_mail(True)
+
+        # #2 is still correct, and #3 should be too because it was
+        # automatically recomputed before issuing
+        self.assertEqual(100, two.payment_received)
+        self.assertEqual(-100, two.balance_due)
+        self.assertEqual(-100, three.prior_balance)
+        self.assertEqual(0, three.payment_received)
+        self.assertEqual(-100, three.balance_forward)
+        self.assertEqual(-100, three.balance_due)
+
+    def test_issue_and_mail(self):
+        '''Tests issuing and mailing of reebills.'''
+        acc = self.account
+        # two utilbills, with reebills
+        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.reebill_file_handler = Mock()
+        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
+        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+        temp_dir = TempDirectory()
+        self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
+            temp_dir.path
+        self.utilbill_processor.update_utilbill_metadata(
+            self.utilbill.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        one = self.reebill_processor.roll_reebill(
+            acc, start_date=date(2000, 1, 1))
+        two = self.reebill_processor.roll_reebill(acc)
+
+        # neither reebill should be issued yet
+        self.assertEquals(False, self.state_db.is_issued(acc, 1))
+        self.assertEquals(None, one.issue_date)
+        self.assertEquals(None, one.due_date)
+        self.assertEqual(None, one.email_recipient)
+        self.assertEquals(False, self.state_db.is_issued(acc, 2))
+        self.assertEquals(None, two.issue_date)
+        self.assertEquals(None, two.due_date)
+        self.assertEqual(None, two.email_recipient)
+
+        # two should not be issuable until one_doc is issued
+        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
+        self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
+                          False, acc, 2)
+        one.email_recipient = 'one@example.com, one@gmail.com'
+
+        # issue and email one
+        self.reebill_processor.issue_and_mail(False, account=acc, sequence=1,
+                                              recipients=one.email_recipient)
+
+        self.assertEquals(True, one.issued)
+        self.assertEquals(True, one.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 1))
+        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
+        # make a correction on reebill #1. this time 20 therms of renewable
+        # energy instead of 10 were consumed.
+        self.reebill_processor.ree_getter.quantity = 20
+        self.reebill_processor.new_version(acc, 1)
+
+        customer = self.state_db.get_reebill_customer(acc)
+        two.email_recipient = 'test1@example.com, test2@exmaple.com'
+
+        # issue and email two
+        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 2
+        # issuing a reebill that has corrections with apply_corrections False raises ConfirmAdjustment Exception
+        self.assertRaises(ConfirmAdjustment, self.reebill_processor.issue_and_mail,False, account=acc, sequence=2,
+                          recipients=two.email_recipient)
+        #ValueError is Raised if an issued Bill is issued again
+        self.assertRaises(ValueError, self.reebill_processor.issue_and_mail,True, account=acc, sequence=1,
+                          recipients=two.email_recipient)
+        self.reebill_processor.toggle_reebill_processed(acc, 2, True)
+        self.assertEqual(True, two.processed)
+        self.reebill_processor.issue_processed_and_mail(True)
+        # re-load from mongo to see updated issue date and due date
+        self.assertEquals(True, two.issued)
+        self.assertEquals(True, two.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 2))
+        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+
+        temp_dir.cleanup()
+
+    def test_issue_processed_and_mail(self):
+        '''Tests issuing and mailing of processed reebills.'''
+        acc = self.account
+        # two utilbills, with reebills
+        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.reebill_file_handler = Mock()
+        self.reebill_processor.reebill_file_handler.render_max_version \
+            .return_value = 1
+        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+        temp_dir = TempDirectory()
+        self.reebill_processor.reebill_file_handler \
+            .get_file_path.return_value = \
+            temp_dir.path
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        one = self.reebill_processor.roll_reebill(acc,
+                                                  start_date=date(2000, 1, 1))
+        one.processed = 1
+        two = self.reebill_processor.roll_reebill(acc)
+        two.processed = 1
+
+        # neither reebill should be issued yet
+        self.assertEquals(False, self.state_db.is_issued(acc, 1))
+        self.assertEquals(None, one.issue_date)
+        self.assertEquals(None, one.due_date)
+        self.assertEqual(None, one.email_recipient)
+        self.assertEquals(False, self.state_db.is_issued(acc, 2))
+        self.assertEquals(None, two.issue_date)
+        self.assertEquals(None, two.due_date)
+        self.assertEqual(None, two.email_recipient)
+
+        # two should not be issuable until one_doc is issued
+        self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
+        one.email_recipient = 'one@example.com, one@gmail.com'
+
+        # issue and email one
+        self.reebill_processor.issue_processed_and_mail(False)
+
+        self.assertEquals(True, one.issued)
+        self.assertEquals(True, one.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 1))
+        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
+
+        customer = self.state_db.get_reebill_customer(acc)
+        two.email_recipient = 'test1@example.com, test2@exmaple.com'
+
+        # issue and email two
+        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 2
+        self.reebill_processor.issue_processed_and_mail(False)
+
+        # re-load from mongo to see updated issue date and due date
+        self.assertEquals(True, two.issued)
+        self.assertEquals(True, two.processed)
+        self.assertEquals(True, self.state_db.is_issued(acc, 2))
+        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+
+        temp_dir.cleanup()
+
+    def test_delete_reebill(self):
+        account = self.account
+        # create 2 utility bills for Jan-Feb 2012
+        ub2 = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('february 2000'), date(2000, 2, 1),
+            date(2000, 3, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        self.utilbill_processor.update_utilbill_metadata(ub2.id,
+                                                         processed=True)
+        utilbill = Session().query(UtilBill).join(UtilityAccount) \
+            .filter(UtilityAccount.account==account) \
+            .order_by(UtilBill.period_start).first()
+
+        reebill = self.reebill_processor.roll_reebill(account,
+                                                      start_date=date(2000, 1, 1))
+        self.reebill_processor.roll_reebill(account)
+
+        # only the last reebill is deletable: deleting the 2nd one should
+        # succeed, but deleting the 1st one should fail
+        with self.assertRaises(IssuedBillError):
+            self.reebill_processor.delete_reebill(account, 1)
+        self.reebill_processor.delete_reebill(account, 2)
+        with self.assertRaises(NoResultFound):
+            self.state_db.get_reebill(account, 2, version=0)
+        self.assertEquals(1, Session().query(ReeBill).count())
+        self.assertEquals([(1,)], Session().query(ReeBill.sequence).all())
+        self.assertEquals([utilbill], reebill.utilbills)
+
+        # issued reebill should not be deletable
+        self.reebill_processor.issue(account, 1)
+        self.assertEqual(1, reebill.issued)
+        self.assertEqual([utilbill], reebill.utilbills)
+        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertRaises(IssuedBillError, self.reebill_processor.delete_reebill,
+                          account, 1)
+
+        # create a new verison and delete it, returning to just version 0
+        self.reebill_processor.new_version(account, 1)
+        Session().query(ReeBill).filter_by(version=1).one()
+        self.assertEqual(1, self.state_db.max_version(account, 1))
+        self.assertFalse(self.state_db.is_issued(account, 1))
+        self.reebill_processor.delete_reebill(account, 1)
+        self.assertEqual(0, self.state_db.max_version(account, 1))
+        self.assertTrue(self.state_db.is_issued(account, 1))
+
+        # original version should still be attached to utility bill
+        # TODO this will have to change. see
+        # https://www.pivotaltracker.com/story/show/31629749
+        self.assertEqual([utilbill], reebill.utilbills)
+        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+
+    def test_uncomputable_correction_bug(self):
+        '''Regresssion test for
+            https://www.pivotaltracker.com/story/show/53434901.'''
+        account = self.account
+        # create reebill and utility bill
+        utilbill_id = self.views.get_all_utilbills_json(
+            account, 0, 30)[0][0]['id']
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=True)
+        self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
+        self.reebill_processor.bind_renewable_energy(account, 1)
+        self.reebill_processor.compute_reebill(account, 1)
+        self.reebill_processor.issue(account, 1)
+
+        # create new version
+        self.reebill_processor.new_version(account, 1)
+        self.assertEquals(1, self.state_db.max_version(account, 1))
+
+        # initially, reebill version 1 can be computed without an error
+        self.reebill_processor.compute_reebill(account, 1, version=1)
+
+        # put it in an un-computable state by adding a charge with a syntax
+        # error in its formula. it should now raise an RSIError.
+        # (computing a utility bill doesn't raise an exception by default, but
+        # computing a reebill based on the utility bill does.)
+        # NOTE it is possible to un-process a utility bill after a reebill
+        # has been created from it
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=False)
+        charge = self.utilbill_processor.add_charge(utilbill_id)
+        self.utilbill_processor.update_charge({
+                                                  'quantity_formula': '1 + ',
+                                                  'rsi_binding': 'some_rsi'
+                                              }, charge_id=charge.id)
+        with self.assertRaises(FormulaSyntaxError):
+            self.reebill_processor.compute_reebill(account, 1, version=1)
+
+        # delete the new version
+        self.reebill_processor.delete_reebill(account, 1)
+        reebill_data = self.views.get_reebill_metadata_json(account)
+        self.assertEquals(0, reebill_data[0]['version'])
+
+        # try to create a new version again: it should succeed, even though
+        # there was a KeyError due to a missing RSI when computing the bill
+        self.reebill_processor.new_version(account, 1)
+        reebill_data = self.views.get_reebill_metadata_json(account)
+        self.assertEquals(1, reebill_data[0]['version'])
 
     def test_late_charge_correction(self):
         acc = self.account
@@ -1784,7 +1769,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         })
         self.utilbill_processor.update_utilbill_metadata(u.id,
                                                          processed=True)
-        self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
+        self.reebill_processor.roll_reebill(account,
+                                            start_date=date(2000, 1, 1))
 
         # the reebill starts with one reading corresponding to "reg_total"
         # so the "update readings" feature must be used to get all 3
@@ -1805,9 +1791,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
                                total_reading.renewable_quantity)
-        self.assertAlmostEqual('btu', tou_reading.unit)
-        self.assertAlmostEqual(tou_renewable_btu, tou_reading.renewable_quantity)
-
+        self.assertEqual('BTU', tou_reading.unit)
+        self.assertAlmostEqual(tou_renewable_btu,
+                               tou_reading.renewable_quantity)
 
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
