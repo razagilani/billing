@@ -289,23 +289,21 @@ app = Flask(__name__)
 initialize()
 
 # TODO put in config file
-GOOGLE_CLIENT_ID = '505739702221-k1omtf12eet1l2qlnup87pdiafllcm4o.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'SolurwdgNlMkwbXt4gZ_OYpC'
-REDIRECT_URI = '/oauth2callback'
+from core import config
 oauth = OAuth()
 google = oauth.remote_app(
     'google',
-    base_url='https://www.google.com/accounts/',
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-    request_token_url=None,
+    base_url=config.get('power_and_gas', 'base_url'),
+    authorize_url=config.get('power_and_gas', 'authorize_url'),
+    request_token_url=config.get('power_and_gas', 'request_token_url'),
     request_token_params={
-        'scope': 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        'response_type': 'code'},
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    access_token_method='POST',
-    access_token_params={'grant_type': 'authorization_code'},
-    consumer_key=GOOGLE_CLIENT_ID,
-    consumer_secret=GOOGLE_CLIENT_SECRET)
+        'scope': config.get('power_and_gas', 'request_token_params_scope'),
+        'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
+    access_token_url=config.get('power_and_gas', 'access_token_url'),
+    access_token_method=config.get('power_and_gas', 'access_token_method'),
+    access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
+    consumer_key=config.get('power_and_gas', 'google_client_id'),
+    consumer_secret=config.get('power_and_gas', 'google_client_secret'))
 
 @app.route('/login')
 def login():
@@ -325,7 +323,8 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    return google.authorize(callback=url_for('oauth2callback',
+    return google.authorize(callback=url_for(
+        config.get('power_and_gas', 'redirect_uri'),
         _external=True))
 
 @app.route('/logout')
@@ -336,7 +335,7 @@ def logout():
 @app.route('/oauth2callback')
 @google.authorized_handler
 def oauth2callback(resp):
-    next_url = session.pop('next_url', 'index')
+    next_url = session.pop('next_url', url_for('index'))
     if resp is None:
         flash(u'You denied the request to sign in.')
         return redirect(next_url)
@@ -351,7 +350,7 @@ def index():
         return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
-    req = Request('https://www.googleapis.com/oauth2/v1/userinfo',
+    req = Request(config.get('power_and_gas', 'google_user_info_url'),
                   None, headers)
     try:
         res = urlopen(req)
