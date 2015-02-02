@@ -105,12 +105,15 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 acc, begin_date, end_date)), begin_date, end_date, 'gas')
         self.session.add(utilbill)
         self.utilbill_processor.add_charge(utilbill.id)
-        self.utilbill_processor.update_charge({
-                                       'rsi_binding': 'A',
-                                       'quantity_formula': 'REG_TOTAL.quantity',
-                                       'rate': 1
-                                   }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            {
+                'rsi_binding': 'A',
+                'quantity_formula': 'REG_TOTAL.quantity',
+                'rate': 1
+            }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
         self.utilbill_processor.compute_utility_bill(utilbill.id)
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                         processed=True)
 
     def test_list_account_status(self):
         utility_account_9 = Session().query(UtilityAccount).filter_by(
@@ -280,9 +283,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # create a 3rd bill without issuing bill2. bill3 should have None
         # as its late charge for all dates
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('March 2000'),
-                                         date(2000, 3, 1), date(2000, 4, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('March 2000'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         bill3 = self.reebill_processor.roll_reebill(acc)
         self.assertEqual(0, self.reebill_processor.get_late_charge(bill3,
                                                             date(1999, 12, 31)))
@@ -347,13 +351,18 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         '''Tests issuing of reebills.'''
         acc = '99999'
         # two utilbills, with reebills
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('january 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('february 2012'),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
-        one = self.reebill_processor.roll_reebill(acc, start_date=date(2012, 1, 1))
+        ub1 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('january 2012'), date(2012, 1, 1), date(2012, 2, 1),
+            'gas')
+        ub2 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2012'), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub1.id,
+                                                         processed=True)
+        self.utilbill_processor.update_utilbill_metadata(ub2.id,
+                                                         processed=True)
+        one = self.reebill_processor.roll_reebill(acc,
+                                                  start_date=date(2012, 1, 1))
         two = self.reebill_processor.roll_reebill(acc)
 
         # neither reebill should be issued yet
@@ -402,19 +411,23 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         '''
         acc = '99999'
         # first reebill is needed so the others get computed correctly
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('january 2000'),
-                                         date(2000, 1, 1), date(2000, 2, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('january 2000'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id,
+                                                         processed=True)
         self.reebill_processor.roll_reebill(acc, start_date=date(2000, 1, 1))
         self.reebill_processor.issue(acc, 1, datetime(2000, 2, 15))
 
         # two more utility bills and reebills
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('february 2000'),
-                                         date(2000, 2, 1), date(2000, 3, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('march 2000'),
-                                         date(2000, 3, 1), date(2000, 4, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('march 2000'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         two = self.reebill_processor.roll_reebill(acc)
         three = self.reebill_processor.roll_reebill(acc)
 
@@ -468,13 +481,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         temp_dir = TempDirectory()
         self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
                 temp_dir.path
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('january 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('february 2012'),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
-        one = self.reebill_processor.roll_reebill(acc, start_date=date(2012, 1, 1))
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('january 2012'), date(2012, 1, 1), date(2012, 2, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2012'), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        one = self.reebill_processor.roll_reebill(
+            acc, start_date=date(2012, 1, 1))
         two = self.reebill_processor.roll_reebill(acc)
 
         # neither reebill should be issued yet
@@ -533,18 +549,23 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # two utilbills, with reebills
         self.reebill_processor.bill_mailer = Mock()
         self.reebill_processor.reebill_file_handler = Mock()
-        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
+        self.reebill_processor.reebill_file_handler.render_max_version \
+            .return_value = 1
         self.reebill_processor.reebill_file_handler.get_file_path = Mock()
         temp_dir = TempDirectory()
-        self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
+        self.reebill_processor.reebill_file_handler\
+            .get_file_path.return_value = \
                 temp_dir.path
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('january 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('february 2012'),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
-        one = self.reebill_processor.roll_reebill(acc, start_date=date(2012, 1, 1))
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('january 2012'), date(2012, 1, 1),
+            date(2012, 2, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('february 2012'), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        one = self.reebill_processor.roll_reebill(acc,
+                                                  start_date=date(2012, 1, 1))
         one.processed = 1
         two = self.reebill_processor.roll_reebill(acc)
         two.processed = 1
@@ -589,12 +610,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     def test_delete_reebill(self):
         account = '99999'
         # create 2 utility bills for Jan-Feb 2012
-        self.utilbill_processor.upload_utility_bill(account, StringIO('january 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(account, StringIO('february 2012'),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
+        utilbill = self.utilbill_processor.upload_utility_bill(
+            account, StringIO( 'january 2012'), date(2012, 1, 1),
+            date(2012, 2, 1), 'gas')
+        ub2 = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('february 2012'), date(2012, 2, 1),
+            date(2012, 3, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                         processed=True)
+        self.utilbill_processor.update_utilbill_metadata(ub2.id,
+                                                         processed=True)
         utilbill = self.session.query(UtilBill).join(UtilityAccount) \
             .filter(UtilityAccount.account==account)\
             .order_by(UtilBill.period_start).first()
@@ -782,9 +807,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             '99999', 0, 30))
 
         # upload a utility bill
-        self.utilbill_processor.upload_utility_bill('99999', StringIO('January 2013'),
-                                         date(2013, 1, 1), date(2013, 2, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            '99999', StringIO('January 2013'), date(2013, 1, 1),
+            date(2013, 2, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         utilbill_data = self.views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
@@ -793,7 +819,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'computed_total': 0,
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
-                                          'processed': 0,
+                                          'processed': True,
                                           'rate_class':
                                               self.views.get_rate_class('Test Rate Class Template').name,
                                           'reebills': [],
@@ -813,22 +839,20 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({'issue_date': None, 'sequence': 1, 'version': 0},
                                       utilbill_data['reebills'][0])
 
-        self.assertDictContainsSubset({
-                                          'account': '99999',
-                                          'computed_total': 0,
-                                          'period_end': date(2013, 2, 1),
-                                          'period_start': date(2013, 1, 1),
-                                          'processed': 0,
-                                          'rate_class': self.views.
-                                            get_rate_class('Test Rate Class Template').
-                                            name,
-                                          'service': 'Gas', 'state': 'Final',
-                                          'total_charges': 0.0,
-                                          'utility': self.views.
-                                            get_utility('Test Utility Company '
-                                                        'Template').
-                                            column_dict(),
-                                          }, utilbill_data)
+        self.assertDictContainsSubset(
+            {
+                'account': '99999',
+                'computed_total': 0,
+                'period_end': date(2013, 2, 1),
+                'period_start': date(2013, 1, 1),
+                'processed': True,
+                'rate_class': self.views.get_rate_class(
+                    'Test Rate Class Template').name,
+                'service': 'Gas', 'state': 'Final',
+                'total_charges': 0.0,
+                'utility': self.views.get_utility(
+                    'Test Utility Company Template').column_dict(),
+            }, utilbill_data)
 
 
         # TODO: fields not checked above that should be checked some other
@@ -876,8 +900,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             date(2013, 2, 1), 'gas')
         utilbill_id = self.views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=True)
         self.reebill_processor.roll_reebill(account, start_date=date(2013, 1, 1))
-        # bind, compute, issue
         self.reebill_processor.bind_renewable_energy(account, 1)
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1)
@@ -893,6 +918,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # error in its formula. it should now raise an RSIError.
         # (computing a utility bill doesn't raise an exception by default, but
         # computing a reebill based on the utility bill does.)
+        # NOTE it is possible to un-process a utility bill after a reebill
+        # has been created from it
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=False)
         charge = self.utilbill_processor.add_charge(utilbill_id)
         self.utilbill_processor.update_charge({
                                        'quantity_formula': '1 + ',
@@ -938,6 +967,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.utilbill_processor.update_register(ub.registers[0].id,
                                                     {'quantity': 100})
             self.utilbill_processor.compute_utility_bill(ub.id)
+            self.utilbill_processor.update_utilbill_metadata(ub.id,
+                                                             processed=True)
 
         for seq, reg_tot, strd in [(1, 100, base_date),
                                    (2, 200, None),
@@ -1038,27 +1069,31 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # first utility bill (ensure that an RSI and a charge exist,
         # and mark as "processed" so next utility bill will have them too
-        u1 = self.utilbill_processor.upload_utility_bill(acc, StringIO('January 2012'),
-                                              date(2012, 1, 1),
-                                              date(2012, 2, 1), 'gas')
-
+        u1 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('January 2012'), date(2012, 1, 1),
+            date(2012, 2, 1), 'gas')
         charge = self.utilbill_processor.add_charge(u1.id)
-        self.utilbill_processor.update_charge(dict(rsi_binding='THE_CHARGE',
-                                        quantity_formula="REG_TOTAL.quantity",
-                                        unit='therms', rate=1,
-                                        group='All Charges'), charge_id=charge.id)
+        self.utilbill_processor.update_charge(
+            dict(rsi_binding='THE_CHARGE',
+                 quantity_formula="REG_TOTAL.quantity",
+                 unit='therms', rate=1, group='All Charges'),
+            charge_id=charge.id)
 
         self.utilbill_processor.update_utilbill_metadata(u1.id,
                                               processed=True)
+        self.utilbill_processor.update_utilbill_metadata(u1.id, processed=True)
+
 
         # 2nd utility bill
-        self.utilbill_processor.upload_utility_bill(acc, StringIO('February 2012'),
-                                         date(2012, 2, 1), date(2012, 3, 1),
-                                         'gas')
+        u2 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('February 2012'), date(2012, 2, 1), date(2012, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(u2.id, processed=True)
 
         # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
         # (so it's 10 days late)
-        one = self.reebill_processor.roll_reebill(acc, start_date=date(2012, 1, 1))
+        one = self.reebill_processor.roll_reebill(acc,
+                                                  start_date=date(2012, 1, 1))
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
@@ -1121,23 +1156,22 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         account = '99999'
         self.reebill_processor.ree_getter = MockReeGetter(100)
 
-        self.utilbill_processor.upload_utility_bill(account, StringIO('April 2013'),
-                                         date(2013, 4, 4), date(2013, 5, 2),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('April 2013'), date(2013, 4, 4), date(2013, 5, 2),
+            'gas')
         # add a register to the first utility bill so there are 2,
         # REG_TOTAL and OTHER
-        id_1 = self.views.get_all_utilbills_json(
-            account, 0, 30)[0][0]['id']
+        id_1 = self.views.get_all_utilbills_json(account, 0, 30)[0][0]['id']
         register = self.utilbill_processor.new_register(
             id_1, meter_identifier='M60324', identifier='R')
         self.utilbill_processor.update_register(register.id,
                                                 {'register_binding': 'OTHER'})
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         # 2nd utility bill should have the same registers as the first
-        utilbill = self.utilbill_processor.upload_utility_bill(account,
-                                                    StringIO('May 2013'),
-                                                    date(2013, 5, 2),
-                                                    date(2013, 6, 3), 'gas')
+        utilbill = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('May 2013'), date(2013, 5, 2), date(2013, 6, 3),
+            'gas')
 
         # create reebill based on first utility bill
         reebill1 = self.reebill_processor.roll_reebill(account,
@@ -1155,6 +1189,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                           utilbill.registers)[0]
         self.utilbill_processor.delete_register(register.id)
 
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                         processed=True)
         # 2nd reebill should NOT have a reading corresponding to the
         # additional register, which was removed
         reebill2 = self.reebill_processor.roll_reebill(account)
@@ -1164,16 +1200,17 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
         self.assertEqual(reebill1.readings[0].aggregate_function,
                          reebill2.readings[0].aggregate_function)
-        self.assertDictContainsSubset({
-                                          'sequence': 1,
-                                          'version': 0,
-                                          'issue_date': datetime(2013, 5, 1),
-                                          }, utilbill_data[1]['reebills'][0])
-        self.assertDictContainsSubset({
-                                          'sequence': 2,
-                                          'version': 0,
-                                          'issue_date': None,
-                                          }, utilbill_data[0]['reebills'][0])
+        self.assertDictContainsSubset(
+            {
+                'sequence': 1,
+                'version': 0,
+                'issue_date': datetime(2013, 5, 1),
+            }, utilbill_data[1]['reebills'][0])
+        self.assertDictContainsSubset(
+            {'sequence': 2,
+             'version': 0,
+             'issue_date': None,
+            }, utilbill_data[0]['reebills'][0])
 
         reebill_2_data, reebill_1_data = self.views.get_reebill_metadata_json(
             account)
@@ -1214,9 +1251,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(['Final', 'Final', 'Final'],
                          [u['state'] for u in utilbill_data])
 
-        self.utilbill_processor.upload_utility_bill(account, StringIO('June 2013'),
-                                         date(2013, 6, 3), date(2013, 7, 1),
-                                         'gas', state=UtilBill.UtilityEstimated)
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('June 2013'), date(2013, 6, 3), date(2013, 7, 1),
+            'gas', state=UtilBill.UtilityEstimated)
         utilbill_data, count = self.views.get_all_utilbills_json(account,
                 0, 30)
         self.assertEqual(4, count)
@@ -1224,7 +1261,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                          [u['state'] for u in utilbill_data])
         last_utilbill_id, formerly_hyp_utilbill_id = (u['id'] for u in
                                                       utilbill_data[:2])
-
+        self.utilbill_processor.update_utilbill_metadata(ub.id,
+                                                         processed=True)
         self.reebill_processor.roll_reebill(account)
 
         # if a utiltity bill has an error in its charges, an exception should
@@ -1233,6 +1271,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         last_utilbill_id = utilbill_data[0]['id']
         charge = self.utilbill_processor.add_charge(last_utilbill_id)
         charge.quantity_formula = '1 +'
+        self.utilbill_processor.update_utilbill_metadata(last_utilbill_id,
+                                                         processed=True)
         self.reebill_processor.roll_reebill(account)
         self.reebill_processor.compute_reebill(account, 2)
 
@@ -1240,6 +1280,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # Shift later_utilbill a few days into the future so that there is
         # a time gap after the last attached utilbill
+        self.utilbill_processor.update_utilbill_metadata(
+            formerly_hyp_utilbill_id, processed=False)
+        self.utilbill_processor.update_utilbill_metadata(
+            last_utilbill_id, processed=False)
         self.utilbill_processor.update_utilbill_metadata(
             formerly_hyp_utilbill_id, period_start=date(2013, 6, 8))
         self.utilbill_processor.update_utilbill_metadata(last_utilbill_id,
@@ -1252,14 +1296,16 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
     def test_list_all_versions(self):
         account = '99999'
-        utilbill = self.utilbill_processor.upload_utility_bill(account,
-                                                    StringIO('May 2013'),
-                                                    date(2013, 5, 2),
-                                                    date(2013, 6, 3), 'gas')
+        utilbill = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('May 2013'), date(2013, 5, 2), date(2013, 6, 3),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                         processed=True)
         reebill = self.reebill_processor.roll_reebill(
             account, start_date=date(2013, 4, 4))
         self.reebill_processor.compute_reebill(account, 1)
-        self.reebill_processor.issue(account, 1, issue_date=datetime(2013, 5, 1))
+        self.reebill_processor.issue(account, 1,
+                                     issue_date=datetime(2013, 5, 1))
         self.reebill_processor.new_version(account, 1)
         reebill_data = self.views.list_all_versions(account, 1)
         dicts = [{
@@ -1505,15 +1551,18 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             bills are issued in the same day.
             """
         account = '99999'
-        self.utilbill_processor.upload_utility_bill(account, StringIO('January'),
-                                         date(2000, 1, 1), date(2000, 2, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(account, StringIO('February'),
-                                         date(2000, 2, 1), date(2000, 3, 1),
-                                         'gas')
-        self.utilbill_processor.upload_utility_bill(account, StringIO('March'),
-                                         date(2000, 3, 1), date(2000, 4, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('January'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('February'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('March'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         # create 2 reebills
         reebill_1 = self.reebill_processor.roll_reebill(account,
@@ -1564,9 +1613,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     def test_payments(self):
         '''tests creating, updating, deleting and retrieving payments'''
         account = '99999'
-        self.utilbill_processor.upload_utility_bill(account, StringIO('January'),
-                                         date(2000, 1, 1), date(2000, 2, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('January'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+
         # create a reebill
         reebill = self.reebill_processor.roll_reebill(account,
                                               start_date=date(2000, 1, 1))
@@ -1645,6 +1696,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'meter_identifier': '',
             'active_periods': active_periods
         })
+        self.utilbill_processor.update_utilbill_metadata(u.id,
+                                                         processed=True)
         self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
 
         # the reebill starts with one reading corresponding to "reg_total"
@@ -1674,12 +1727,14 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         This can be expanded or merged into another test method later on.
         '''
         account = '99999'
-        self.utilbill_processor.upload_utility_bill(account, StringIO('January'),
-                                         date(2000, 1, 1), date(2000, 2, 1),
-                                         'gas')
+        ub = self.utilbill_processor.upload_utility_bill(
+            account, StringIO('January'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         self.reebill_processor.roll_reebill(account, start_date=date(2000, 1, 1))
         self.reebill_processor.update_reebill_readings(account, 1)
-        self.reebill_processor.update_sequential_account_info(account, 1, processed=True)
+        self.reebill_processor.update_sequential_account_info(account, 1,
+                                                              processed=True)
         with self.assertRaises(ProcessedBillError):
             self.reebill_processor.update_reebill_readings(account, 1)
         self.reebill_processor.issue(account, 1)
@@ -1746,6 +1801,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.utilbill_processor.add_charge(utilbill_id)
             self.utilbill_processor.update_charge(
                 fields, utilbill_id=utilbill_id, rsi_binding="New Charge 1")
+
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=True)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -1908,6 +1966,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 'quantity_formula': 'REG_2.quantity',
                 'rate': 1
         }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_utilbill_metadata(utilbill_id,
+                                                         processed=True)
 
         reebill = self.reebill_processor.roll_reebill(
             '99999', start_date=date(2000,1,1))

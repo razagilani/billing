@@ -227,19 +227,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # change processed state
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                                         processed=False)
+        self.assertEqual(False, utilbill.processed)
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               processed=True)
         self.assertEqual(True, utilbill.processed)
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                            processed=False)
-        self.assertEqual(False, utilbill.processed)
-
-        # even when the utility bill is attached to an issued reebill, only
-        # the editable document gets changed
-        reebill = self.reebill_processor.roll_reebill('99999',
-                                            start_date=date(2013, 1, 1))
-        self.reebill_processor.issue('99999', 1)
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                                         service='water')
 
     def test_update_account_number(self):
         s = Session()
