@@ -61,7 +61,7 @@ class PGAltitudeExporter(object):
             if d is None:
                 return ''
             return d.strftime(ISO_8601_DATETIME)
-        def format_guid(g):
+        def format_possible_none(g):
             if g is None:
                 return ''
             return g
@@ -70,10 +70,10 @@ class PGAltitudeExporter(object):
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid': str(self._uuid_func()),
                 'utility_guid':
-                    format_guid(self._altitude_converter.get_guid_for_utility(
+                    format_possible_none(self._altitude_converter.get_guid_for_utility(
                         ub.get_utility())),
                 'supplier_guid':
-                    format_guid(self._altitude_converter.get_guid_for_supplier(
+                    format_possible_none(self._altitude_converter.get_guid_for_supplier(
                         ub.get_supplier())),
                 'service_type': ub.service,
                 'utility_account_number': ub.get_utility_account_number(),
@@ -81,8 +81,9 @@ class PGAltitudeExporter(object):
                 'billing_period_end_date': format_date(ub.period_end),
                 'total_usage': ub.get_total_energy_consumption(),
                 'total_supply_charge': ub.get_supply_target_total(),
-                'rate_class': ub.get_rate_class_name(),
-                'secondary_account_number': ub.supply_choice_id,
+                'rate_class': format_possible_none(ub.get_rate_class_name()),
+                'secondary_account_number': format_possible_none(
+                    ub.supply_choice_id),
                 'service_address_street': ub.service_address.street,
                 'service_address_city': ub.service_address.city,
                 'service_address_state': ub.service_address.state,
