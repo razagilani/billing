@@ -390,7 +390,6 @@ class UtilbillProcessor(object):
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s" % register_id)
         session = Session()
 
         #Register to be updated
@@ -401,21 +400,14 @@ class UtilbillProcessor(object):
                   'identifier', 'estimated', 'reg_type', 'register_binding',
                   'meter_identifier']:
             val = rows.get(k, getattr(register, k))
-            self.logger.debug("Setting attribute %s on register %s to %s" %
-                              (k, register.id, val))
             setattr(register, k, val)
         if 'active_periods' in rows and rows['active_periods'] is not None:
             active_periods_str = json.dumps(rows['active_periods'])
-            self.logger.debug("Setting attribute active_periods on register"
-                              " %s to %s" % (register.id, active_periods_str))
             register.active_periods = active_periods_str
-        self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(register.utilbill_id)
         return register
 
     def delete_register(self, register_id):
-        self.logger.info("Running Process.delete_register %s" %
-                         register_id)
         session = Session()
         register = session.query(Register).filter(
             Register.id == register_id).one()
