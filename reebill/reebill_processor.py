@@ -11,7 +11,8 @@ from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount)
 from reebill.state import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError
+    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
+    BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
@@ -255,6 +256,9 @@ class ReebillProcessor(object):
                             "utility bill following %s") % utilbill)
                 new_utilbills.append(successor)
             new_sequence = last_reebill_row.sequence + 1
+
+        if not all(r.processed for r in new_utilbills):
+            raise BillingError('Utility bill must be processed')
 
         # currently only one service is supported
         assert len(new_utilbills) == 1
