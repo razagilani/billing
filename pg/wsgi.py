@@ -10,6 +10,8 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 from datetime import date, datetime
 from functools import partial
 from os.path import dirname, realpath, join
+import urllib
+from urlparse import urlparse
 from boto.s3.connection import S3Connection
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.admin.model import BaseModelView
@@ -307,6 +309,22 @@ google = oauth.remote_app(
 
 @app.route('/login')
 def login():
+    next_path = request.args.get('next')
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        request_components = urlparse(request.url)
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
     return google.authorize(callback=url_for('oauth2callback',
         _external=True))
 
@@ -318,12 +336,13 @@ def logout():
 @app.route('/oauth2callback')
 @google.authorized_handler
 def oauth2callback(resp):
+    next_url = session.pop('next_url', 'index')
     if resp is None:
         flash(u'You denied the request to sign in.')
-        return redirect(url_for('login'))
+        return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
-    return redirect(url_for('index'))
+    return redirect(next_url)
 
 @app.route('/')
 def index():
@@ -342,7 +361,7 @@ def index():
             session.pop('access_token', None)
             return redirect(url_for('login'))
         return redirect(url_for('static', filename='index.html'))
-    # return res.read()
+    #TODO: display googleEmail as Username in utilbill tab
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
@@ -371,6 +390,7 @@ class MyAdminIndexView(AdminIndexView):
             else:
                 return super(MyAdminIndexView, self).index()
         except KeyError:
+            print request.url
             return redirect(url_for('login', next=request.url))
 
 
