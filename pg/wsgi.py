@@ -227,7 +227,7 @@ class ChargeListResource(BaseResource):
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
         # TODO: return only supply charges here
-        rows = [marshal(c, self.charge_fields) for c in utilbill.charges]
+        rows = [marshal(c, self.charge_fields) for c in utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):
@@ -361,7 +361,7 @@ def index():
             session.pop('access_token', None)
             return redirect(url_for('login'))
         return redirect(url_for('static', filename='index.html'))
-    #TODO: display googleEmail as Username in utilbill tab
+    #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
