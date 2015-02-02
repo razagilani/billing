@@ -2082,7 +2082,19 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # when there was only one register
         self.assertEqual(energy_2, 2 * energy_1)
 
-    pass
+    def test_processed_utilbill(self):
+        '''A Reebill can only ony be created with a utility bill that is
+        processed.
+        '''
+        # not processed: bad
+        with self.assertRaises(BillingError):
+            self.reebill_processor.roll_reebill(
+                self.account, start_date=self.utilbill.period_start)
+
+        # processed: good
+        self.utilbill.processed = True
+        self.reebill_processor.roll_reebill(
+            self.account, start_date=self.utilbill.period_start)
 
 if __name__ == '__main__':
     unittest.main()
