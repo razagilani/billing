@@ -104,6 +104,11 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
                           utilbills_data[0]['id'])
 
 def do_setup(self):
+    '''It is not possible to inherit the setUp method from a TestCase
+    subclass. Instead, test classes that need to share setup code can call this.
+    When ReebillProcessingTest is only one class, this can go back into that
+    class' setUp.
+    '''
     from core import config
 
     TestCaseWithSetup.truncate_tables()
@@ -144,26 +149,22 @@ def do_setup(self):
             'olap': 'example-1',
             'casualname': 'Example 1',
             'primus': '1785 Massachusetts Ave.',
-            },
-        {
+        }, {
             'billing': '88888',
             'olap': 'example-2',
             'casualname': 'Example 2',
             'primus': '1786 Massachusetts Ave.',
-            },
-        {
+        }, {
             'billing': '100000',
             'olap': 'example-3',
             'casualname': 'Example 3',
             'primus': '1787 Massachusetts Ave.',
-            },
-        {
-            'billing': '100001',
+        }, {'billing': '100001',
             'olap': 'example-4',
             'casualname': 'Example 4',
             'primus': '1788 Massachusetts Ave.',
-            },
-        ])
+        },
+    ])
     bill_mailer = Mock()
 
     self.temp_dir = TempDirectory()
@@ -185,17 +186,13 @@ def do_setup(self):
 
     # example data to be used in most tests below
     self.account = '99999'
-    # self.utilbill = self.utilbill_processor.upload_utility_bill(
-    #     self.account, StringIO('January 2000'), date(2000, 1, 1),
-    #     date(2000, 2, 1), 'gas')
-    # self.utilbill.processed = True
 
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
-    These testse unavoidably involve creating/editing utility bills, because
+    These tests unavoidably involve creating/editing utility bills, because
     those are needed to create reebills, but that should become part of the
-    setup process for each testj and there is no need to make assertions about
+    setup process for each test and there is no need to make assertions about
     the behavior of code that only involves utility bills.
     '''
     @classmethod
@@ -808,6 +805,10 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
 
 class ReeBillProcessingTestWithBills(testing_utils.TestCase):
+    '''This class is like ReeBillProcessingTest but includes methods that
+    share test data to reduce duplicate code. As many methods as possible from
+    ReeBillProcessingTest should be moved here.
+    '''
     @classmethod
     def setUpClass(cls):
         from test import init_test_config
