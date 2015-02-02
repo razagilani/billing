@@ -233,6 +233,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                                          processed=True)
 
     def test_list_account_status(self):
+        # NOTE this test does not add any data to the database beyond what is
+        # inserted in setup
+
         utility_account_9 = Session().query(UtilityAccount).filter_by(
             account='99999').one()
         utility_account_0 = Session().query(UtilityAccount).filter_by(
@@ -311,158 +314,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
         }], data)
-
-    def test_get_late_charge(self):
-        '''Tests computation of late charges.
-        '''
-        # TODO: when possible, convert this into a unit test that checks the
-        # get_late_charge method, whatever class it may belong to by then
-        # (ReeBill?). See 69883814.
-        acc = '99999'
-        # create utility bill with a charge in it
-        u = self.utilbill_processor.upload_utility_bill(acc, StringIO('January 2000'),
-                                             date(2000, 1, 1), date(2000, 2, 1),
-                                             'gas')
-        self.utilbill_processor.add_charge(u.id)
-        self.utilbill_processor.update_charge({
-                                       'rsi_binding': 'THE_CHARGE',
-                                       'quantity_formula': 'REG_TOTAL.quantity',
-                                       'unit': 'therms',
-                                       'rate': 1,
-                                       'group': 'All Charges',
-                                       }, utilbill_id=u.id, rsi_binding='New Charge 1')
-        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
-
-        # create first reebill
-        bill1 = self.reebill_processor.roll_reebill(acc, start_date=date(2000, 1, 1))
-        self.reebill_processor.update_sequential_account_info(acc, 1,
-                                                    discount_rate=.5, late_charge_rate=.34)
-        self.reebill_processor.ree_getter = MockReeGetter(100)
-        self.reebill_processor.bind_renewable_energy(acc, 1)
-        self.reebill_processor.compute_reebill(acc, 1)
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
-                                                         date(1999, 12, 31)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
-                                                         date(2000, 1, 1)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
-                                                         date(2000, 1, 2)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
-                                                         date(2000, 2, 1)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
-                                                         date(2000, 2, 2)))
-
-        # issue first reebill, so a later bill can have a late charge
-        # based on the customer's failure to pay bill1 by its due date,
-        # i.e. 30 days after the issue date.
-        self.reebill_processor.issue(acc, bill1.sequence, issue_date=datetime(2000, 4, 1))
-        self.assertEqual(date(2000, 5, 1), bill1.due_date)
-        self.assertEqual(50, bill1.balance_due)
-        # create 2nd utility bill and reebill
-        u2 = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('February 2000'), date(2000, 2, 1), date(2000, 3, 1),
-            'gas')
-        Session().flush()
-
-        self.utilbill_processor.update_utilbill_metadata(u2.id, processed=True)
-        bill2 = self.reebill_processor.roll_reebill(acc)
-        self.reebill_processor.update_sequential_account_info(acc, 2,
-                                                    discount_rate=.5, late_charge_rate=.34)
-        self.reebill_processor.ree_getter = MockReeGetter(200)
-        self.reebill_processor.bind_renewable_energy(acc, 2)
-        self.reebill_processor.compute_reebill(acc, 2)
-        assert bill2.discount_rate == 0.5
-        assert bill2.ree_charge == 100
-
-        # bill2's late charge should be 0 before bill1's due date; on/after
-        # the due date, it's balance * late charge rate, i.e.
-        # 50 * .34 = 17
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(1999, 12, 31)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 1, 2)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 3, 31)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 4, 1)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 4, 2)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 4, 30)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2000, 5, 1)))
-        self.assertEqual(17, self.reebill_processor.get_late_charge(bill2,
-                                                          date(2000, 5, 2)))
-        self.assertEqual(17, self.reebill_processor.get_late_charge(bill2,
-                                                          date(2013, 1, 1)))
-
-        # in order to get late charge of a 3rd bill, bill2 must be computed
-        self.reebill_processor.compute_reebill(acc, 2)
-
-        # create a 3rd bill without issuing bill2. bill3 should have None
-        # as its late charge for all dates
-        ub = self.utilbill_processor.upload_utility_bill(
-            acc, StringIO('March 2000'), date(2000, 3, 1), date(2000, 4, 1),
-            'gas')
-        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
-        bill3 = self.reebill_processor.roll_reebill(acc)
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill3,
-                                                            date(1999, 12, 31)))
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill3,
-                                                            date(2013, 1, 1)))
-
-        # late charge should be based on the version with the least total
-        # of the bill from which it derives. on 2013-01-15, make a version
-        # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
-        # 2 with a higher total, and check that the late charge comes from
-        # version 1.
-        self.reebill_processor.new_version(acc, 1)
-        bill1_1 = self.state_db.get_reebill(acc, 1, version=1)
-        self.reebill_processor.ree_getter = MockReeGetter(100)
-        self.reebill_processor.bind_renewable_energy(acc, 1)
-        bill1_1.discount_rate = 0.75
-        self.reebill_processor.compute_reebill(acc, 1, version=1)
-        self.assertEqual(25, bill1_1.ree_charge)
-        self.assertEqual(25, bill1_1.balance_due)
-        self.reebill_processor.issue(acc, 1, issue_date=datetime(2013, 3, 15))
-        late_charge_source_amount = bill1_1.balance_due
-
-        self.reebill_processor.new_version(acc, 1)
-        self.reebill_processor.bind_renewable_energy(acc, 2)
-        self.reebill_processor.update_sequential_account_info(acc, 1,
-                                                    discount_rate=.25)
-        bill1_2 = self.state_db.get_reebill(acc, 1, version=2)
-        self.reebill_processor.compute_reebill(acc, 1, version=2)
-        self.assertEqual(75, bill1_2.ree_charge)
-        self.assertEqual(75, bill1_2.balance_due)
-        self.reebill_processor.issue(acc, 1)
-
-        # note that the issue date on which the late charge in bill2 is
-        # based is the issue date of version 0--it doesn't matter when the
-        # corrections were issued.
-        late_charge = self.reebill_processor.get_late_charge(bill2, date(2013, 4, 18))
-        self.assertEqual(late_charge_source_amount * bill2.late_charge_rate,
-                         late_charge)
-
-        # add a payment between 2000-01-01 (when bill1 version 0 was
-        # issued) and 2013-01-01 (the present), to make sure that payment
-        # is deducted from the balance on which the late charge is based
-        self.payment_dao.create_payment(acc, date(2000, 6, 5),
-                                     'a $10 payment in june', 10)
-        self.assertEqual((late_charge_source_amount - 10) *
-                         bill2.late_charge_rate,
-                         self.reebill_processor.get_late_charge(bill2, date(2013, 1, 1)))
-
-        # Pay off the bill, make sure the late charge is 0
-        self.payment_dao.create_payment(acc, date(2000, 6, 6),
-                                    'a $40 payment in june', 40)
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2013, 1, 1)))
-
-        #Overpay the bill, make sure the late charge is still 0
-        self.payment_dao.create_payment(acc, date(2000, 6, 7),
-                                    'a $40 payment in june', 40)
-        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
-                                                         date(2013, 1, 1)))
 
     def test_correction_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
@@ -977,6 +828,158 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
         #self.utilbill.processed = True
+
+    def test_get_late_charge(self):
+        '''Tests computation of late charges.
+        '''
+        # TODO: when possible, convert this into a unit test that checks the
+        # get_late_charge method, whatever class it may belong to by then
+        # (ReeBill?). See 69883814.
+        acc = '99999'
+        # create utility bill with a charge in it
+        self.utilbill_processor.add_charge(self.utilbill.id)
+        self.utilbill_processor.update_charge(
+            {
+                'rsi_binding': 'THE_CHARGE',
+                'quantity_formula': 'REG_TOTAL.quantity',
+                'unit': 'therms',
+                'rate': 1,
+                'group': 'All Charges',
+            }, utilbill_id=self.utilbill.id, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+
+        # create first reebill
+        bill1 = self.reebill_processor.roll_reebill(acc, start_date=date(
+            2000, 1, 1))
+        self.reebill_processor.update_sequential_account_info(acc, 1,
+                                                              discount_rate=.5, late_charge_rate=.34)
+        self.reebill_processor.ree_getter = MockReeGetter(100)
+        self.reebill_processor.bind_renewable_energy(acc, 1)
+        self.reebill_processor.compute_reebill(acc, 1)
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
+                                                                   date(1999, 12, 31)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
+                                                                   date(2000, 1, 1)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
+                                                                   date(2000, 1, 2)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
+                                                                   date(2000, 2, 1)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill1,
+                                                                   date(2000, 2, 2)))
+
+        # issue first reebill, so a later bill can have a late charge
+        # based on the customer's failure to pay bill1 by its due date,
+        # i.e. 30 days after the issue date.
+        self.reebill_processor.issue(acc, bill1.sequence, issue_date=datetime(2000, 4, 1))
+        self.assertEqual(date(2000, 5, 1), bill1.due_date)
+        self.assertEqual(50, bill1.balance_due)
+        # create 2nd utility bill and reebill
+        u2 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('February 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        Session().flush()
+
+        self.utilbill_processor.update_utilbill_metadata(u2.id, processed=True)
+        bill2 = self.reebill_processor.roll_reebill(acc)
+        self.reebill_processor.update_sequential_account_info(acc, 2,
+                                                              discount_rate=.5, late_charge_rate=.34)
+        self.reebill_processor.ree_getter = MockReeGetter(200)
+        self.reebill_processor.bind_renewable_energy(acc, 2)
+        self.reebill_processor.compute_reebill(acc, 2)
+        assert bill2.discount_rate == 0.5
+        assert bill2.ree_charge == 100
+
+        # bill2's late charge should be 0 before bill1's due date; on/after
+        # the due date, it's balance * late charge rate, i.e.
+        # 50 * .34 = 17
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(1999, 12, 31)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 1, 2)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 3, 31)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 4, 1)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 4, 2)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 4, 30)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2000, 5, 1)))
+        self.assertEqual(17, self.reebill_processor.get_late_charge(bill2,
+                                                                    date(2000, 5, 2)))
+        self.assertEqual(17, self.reebill_processor.get_late_charge(bill2,
+                                                                    date(2013, 1, 1)))
+
+        # in order to get late charge of a 3rd bill, bill2 must be computed
+        self.reebill_processor.compute_reebill(acc, 2)
+
+        # create a 3rd bill without issuing bill2. bill3 should have None
+        # as its late charge for all dates
+        ub = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('March 2000'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        bill3 = self.reebill_processor.roll_reebill(acc)
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill3,
+                                                                   date(1999, 12, 31)))
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill3,
+                                                                   date(2013, 1, 1)))
+
+        # late charge should be based on the version with the least total
+        # of the bill from which it derives. on 2013-01-15, make a version
+        # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
+        # 2 with a higher total, and check that the late charge comes from
+        # version 1.
+        self.reebill_processor.new_version(acc, 1)
+        bill1_1 = self.state_db.get_reebill(acc, 1, version=1)
+        self.reebill_processor.ree_getter = MockReeGetter(100)
+        self.reebill_processor.bind_renewable_energy(acc, 1)
+        bill1_1.discount_rate = 0.75
+        self.reebill_processor.compute_reebill(acc, 1, version=1)
+        self.assertEqual(25, bill1_1.ree_charge)
+        self.assertEqual(25, bill1_1.balance_due)
+        self.reebill_processor.issue(acc, 1, issue_date=datetime(2013, 3, 15))
+        late_charge_source_amount = bill1_1.balance_due
+
+        self.reebill_processor.new_version(acc, 1)
+        self.reebill_processor.bind_renewable_energy(acc, 2)
+        self.reebill_processor.update_sequential_account_info(acc, 1,
+                                                              discount_rate=.25)
+        bill1_2 = self.state_db.get_reebill(acc, 1, version=2)
+        self.reebill_processor.compute_reebill(acc, 1, version=2)
+        self.assertEqual(75, bill1_2.ree_charge)
+        self.assertEqual(75, bill1_2.balance_due)
+        self.reebill_processor.issue(acc, 1)
+
+        # note that the issue date on which the late charge in bill2 is
+        # based is the issue date of version 0--it doesn't matter when the
+        # corrections were issued.
+        late_charge = self.reebill_processor.get_late_charge(bill2, date(2013, 4, 18))
+        self.assertEqual(late_charge_source_amount * bill2.late_charge_rate,
+                         late_charge)
+
+        # add a payment between 2000-01-01 (when bill1 version 0 was
+        # issued) and 2013-01-01 (the present), to make sure that payment
+        # is deducted from the balance on which the late charge is based
+        self.payment_dao.create_payment(acc, date(2000, 6, 5),
+                                        'a $10 payment in june', 10)
+        self.assertEqual((late_charge_source_amount - 10) *
+                         bill2.late_charge_rate,
+                         self.reebill_processor.get_late_charge(bill2, date(2013, 1, 1)))
+
+        # Pay off the bill, make sure the late charge is 0
+        self.payment_dao.create_payment(acc, date(2000, 6, 6),
+                                        'a $40 payment in june', 40)
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2013, 1, 1)))
+
+        #Overpay the bill, make sure the late charge is still 0
+        self.payment_dao.create_payment(acc, date(2000, 6, 7),
+                                        'a $40 payment in june', 40)
+        self.assertEqual(0, self.reebill_processor.get_late_charge(bill2,
+                                                                   date(2013, 1, 1)))
 
     def test_issue(self):
         '''Tests issuing of reebills.'''
