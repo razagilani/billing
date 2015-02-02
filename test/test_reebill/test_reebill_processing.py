@@ -1,14 +1,29 @@
 import unittest
+import logging
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
+from boto.s3.connection import S3Connection
 
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
+from core import pricing
+from core.bill_file_handler import BillFileHandler
+from core.utilbill_loader import UtilBillLoader
+from core.utilbill_processor import UtilbillProcessor
+from nexusapi.nexus_util import MockNexusUtil
+from reebill import journal
+from reebill.fetch_bill_data import RenewableEnergyGetter
+from reebill.payment_dao import PaymentDAO
+from reebill.reebill_dao import ReeBillDAO
+from reebill.reebill_file_handler import ReebillFileHandler
+from reebill.reebill_processor import ReebillProcessor
+from reebill.views import Views
+from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
 from reebill.state import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
     BillingError
@@ -89,7 +104,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
                           utilbills_data[0]['id'])
 
 
-class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
+class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
     These testse unavoidably involve creating/editing utility bills, because
@@ -97,13 +112,106 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     setup process for each testj and there is no need to make assertions about
     the behavior of code that only involves utility bills.
     '''
+    @classmethod
+    def setUpClass(cls):
+        from test import init_test_config
+        from core import init_model
+        init_test_config()
+        init_model()
+        cls.fakes3_manager = FakeS3Manager()
+        cls.fakes3_manager.start()
+
+    def setUp(self):
+        from core import config
+
+        TestCaseWithSetup.truncate_tables()
+        TestCaseWithSetup.insert_data()
+
+        logger = logging.getLogger('test')
+        logger.addHandler(logging.NullHandler())
+        logger.propagate = False
+
+        # TODO most or all of these dependencies do not need to be instance
+        # variables because they're not accessed outside __init__
+        self.state_db = ReeBillDAO(logger)
+        s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                     config.get('aws_s3', 'aws_secret_access_key'),
+                                     is_secure=config.get('aws_s3', 'is_secure'),
+                                     port=config.get('aws_s3', 'port'),
+                                     host=config.get('aws_s3', 'host'),
+                                     calling_format=config.get('aws_s3',
+                                                               'calling_format'))
+        utilbill_loader = UtilBillLoader()
+        url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+            config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
+        self.billupload = BillFileHandler(s3_connection,
+                                          config.get('aws_s3', 'bucket'),
+                                          utilbill_loader, url_format)
+
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                                     installs=[mock_install_1, mock_install_2])
+
+        self.pricing_model = pricing.FuzzyPricingModel(utilbill_loader)
+
+        # TODO: 64956642 do not hard code nexus names
+        self.nexus_util = MockNexusUtil([
+            {
+                'billing': '99999',
+                'olap': 'example-1',
+                'casualname': 'Example 1',
+                'primus': '1785 Massachusetts Ave.',
+                },
+            {
+                'billing': '88888',
+                'olap': 'example-2',
+                'casualname': 'Example 2',
+                'primus': '1786 Massachusetts Ave.',
+                },
+            {
+                'billing': '100000',
+                'olap': 'example-3',
+                'casualname': 'Example 3',
+                'primus': '1787 Massachusetts Ave.',
+                },
+            {
+                'billing': '100001',
+                'olap': 'example-4',
+                'casualname': 'Example 4',
+                'primus': '1788 Massachusetts Ave.',
+                },
+            ])
+        bill_mailer = Mock()
+
+        self.temp_dir = TempDirectory()
+        reebill_file_handler = ReebillFileHandler(
+            config.get('reebill', 'reebill_file_path'),
+            config.get('reebill', 'teva_accounts'))
+
+        ree_getter = RenewableEnergyGetter(self.splinter, logger)
+        journal_dao = journal.JournalDAO()
+        self.payment_dao = PaymentDAO()
+
+        self.utilbill_processor = UtilbillProcessor(
+            self.pricing_model, self.billupload, self.nexus_util)
+        self.views = Views(self.state_db, self.billupload, self.nexus_util,
+                           journal_dao)
+        self.reebill_processor = ReebillProcessor(
+            self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+            reebill_file_handler, ree_getter, journal_dao, logger=logger)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fakes3_manager.stop()
+
     def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
         """Upload a dummy-utilbill, add a charge, and calculate charges
         """
         utilbill = self.utilbill_processor.upload_utility_bill(
             acc, StringIO('a utility bill %s %s %s' % (
                 acc, begin_date, end_date)), begin_date, end_date, 'gas')
-        self.session.add(utilbill)
+        Session().add(utilbill)
         self.utilbill_processor.add_charge(utilbill.id)
         self.utilbill_processor.update_charge(
             {
@@ -241,10 +349,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(date(2000, 5, 1), bill1.due_date)
         self.assertEqual(50, bill1.balance_due)
         # create 2nd utility bill and reebill
-        u2 = self.utilbill_processor.upload_utility_bill(acc, StringIO('February 2000'),
-                                              date(2000, 2, 1),
-                                              date(2000, 3, 1), 'gas')
-        self.session.flush()
+        u2 = self.utilbill_processor.upload_utility_bill(
+            acc, StringIO('February 2000'), date(2000, 2, 1), date(2000, 3, 1),
+            'gas')
+        Session().flush()
 
         self.utilbill_processor.update_utilbill_metadata(u2.id, processed=True)
         bill2 = self.reebill_processor.roll_reebill(acc)
@@ -505,7 +613,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # two should not be issuable until one_doc is issued
         self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
-        self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail, False, acc, 2)
+        self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
+                          False, acc, 2)
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
@@ -620,7 +729,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                          processed=True)
         self.utilbill_processor.update_utilbill_metadata(ub2.id,
                                                          processed=True)
-        utilbill = self.session.query(UtilBill).join(UtilityAccount) \
+        utilbill = Session().query(UtilBill).join(UtilityAccount) \
             .filter(UtilityAccount.account==account)\
             .order_by(UtilBill.period_start).first()
 
@@ -635,7 +744,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.reebill_processor.delete_reebill(account, 2)
         with self.assertRaises(NoResultFound):
             self.state_db.get_reebill(account, 2, version=0)
-        self.assertEquals(1, self.session.query(ReeBill).count())
+        self.assertEquals(1, Session().query(ReeBill).count())
         self.assertEquals([(1,)], Session().query(ReeBill.sequence).all())
         self.assertEquals([utilbill], reebill.utilbills)
 
@@ -649,7 +758,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # create a new verison and delete it, returning to just version 0
         self.reebill_processor.new_version(account, 1)
-        self.session.query(ReeBill).filter_by(version=1).one()
+        Session().query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, self.state_db.max_version(account, 1))
         self.assertFalse(self.state_db.is_issued(account, 1))
         self.reebill_processor.delete_reebill(account, 1)
@@ -1677,7 +1786,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'gas')
 
         # modify registers of this utility bill so they are TOU
-        u = self.session.query(UtilBill).join(UtilityAccount). \
+        u = Session().query(UtilBill).join(UtilityAccount). \
             filter_by(account=account).one()
         active_periods = {
             'active_periods_weekday': [[9, 9]],
@@ -1714,7 +1823,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         tou_renewable_btu = 9 + 11 + 11
 
         # check reading of the reebill corresponding to the utility register
-        reebill = self.session.query(ReeBill).one()
+        reebill = Session().query(ReeBill).one()
         total_reading, tou_reading = reebill.readings
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
@@ -1990,7 +2099,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # (bug BILL-5814)
         self.reebill_processor.issue('99999', 1, issue_date=datetime(2000,2,5))
         self.reebill_processor.new_version('99999', 1)
-        reebill = self.session.query(ReeBill).filter_by(version=1).one()
+        reebill = Session().query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, len(reebill.readings))
         self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
         self.assertAlmostEqual(energy_1,
