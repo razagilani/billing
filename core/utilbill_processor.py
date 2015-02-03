@@ -47,17 +47,14 @@ class UtilbillProcessor(object):
         utilbill = self._get_utilbill(utilbill_id)
         assert utilbill.utility is not None
 
-        #toggle processed state of utility bill
-        if processed is not None:
-            if processed and None in (utilbill.utility, utilbill.rate_class,
-                                      utilbill.supplier):
-                raise BillingError("Bill with unknown Utility, Supplier or "
-                                   "Rate Class can't become processed")
+        if processed is True:
+            utilbill.check_processable()
             utilbill.processed = processed
-            #since the bill has become processed no other changes to the bill can be made
-            # so return the util bill without raising an error
-            if processed:
-                return utilbill
+            # since the bill has become processed no other changes to the bill
+            # can be made so return the util bill without raising an error
+            return utilbill
+        elif processed is False:
+            utilbill.processed = processed
 
         utilbill.check_editable()
         if target_total is not None:
@@ -182,7 +179,7 @@ class UtilbillProcessor(object):
             Address.from_other(billing_address),
             Address.from_other(service_address),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow().date())
+            date_received=datetime.utcnow())
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
