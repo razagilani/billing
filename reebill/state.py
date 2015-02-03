@@ -631,7 +631,7 @@ class Payment(Base):
 
     def __repr__(self):
         return '<Payment(%s, received=%s, applied=%s, %s, %s)>' \
-               % (self.customer.account, self.date_received, \
+               % (self.reebill_customer.get_account(), self.date_received, \
                   self.date_applied, self.description, self.credit)
 
     def column_dict(self):
