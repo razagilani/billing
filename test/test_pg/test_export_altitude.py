@@ -20,7 +20,7 @@ class TestExportAltitude(TestCase):
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
         u1.get_total_energy_consumption.return_value = 10
-        u1.get_supply_total.return_value = 100
+        u1.get_supply_target_total.return_value = 100
         u1.get_rate_class_name.return_value = 'rate class 1'
         u1.service_address.street = '1 Fake St.'
         u1.service_address.city = 'Washington'
@@ -28,6 +28,7 @@ class TestExportAltitude(TestCase):
         u1.service_address.postal_code = '10000'
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
+        u1.supply_choice_id = None
 
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
@@ -37,7 +38,7 @@ class TestExportAltitude(TestCase):
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
         u2.get_total_energy_consumption.return_value = 20
-        u2.get_supply_total.return_value = 200
+        u2.get_supply_target_total.return_value = 200
         u2.get_rate_class_name.return_value = 'rate class 2'
         u2.service_address.street = '2 Fake St.'
         u2.service_address.city = 'Washington'
@@ -45,6 +46,7 @@ class TestExportAltitude(TestCase):
         u2.service_address.postal_code = '20000'
         u2.date_received = None
         u2.date_modified = None
+        u2.supply_choice_id = '123xyz'
 
         self.utilbills = [u1, u2]
 
@@ -67,17 +69,18 @@ class TestExportAltitude(TestCase):
                              'B' * 36,
                              'electric',
                              '1',
-                             '2000-01-01T00:00:00',
-                             '2000-02-01T00:00:00',
+                             '2000-01-01T00:00:00Z',
+                             '2000-02-01T00:00:00Z',
                              10,
                              100,
                              'rate class 1',
+                             '',
                              '1 Fake St.',
                              'Washington',
                              'DC',
                              '10000',
-                             '2001-01-01T00:00:00',
-                             '2001-01-02T00:00:00',
+                             '2001-01-01T00:00:00Z',
+                             '2001-01-02T00:00:00Z',
                          ), dataset[0])
         self.assertEqual((
                              '22222',
@@ -86,11 +89,12 @@ class TestExportAltitude(TestCase):
                              'B' * 36,
                              'gas',
                              '2',
-                             '2000-01-15T00:00:00',
-                             '2000-02-15T00:00:00',
+                             '2000-01-15T00:00:00Z',
+                             '2000-02-15T00:00:00Z',
                              20,
                              200,
                              'rate class 2',
+                             '123xyz',
                              '2 Fake St.',
                              'Washington',
                              'DC',
