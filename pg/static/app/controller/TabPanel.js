@@ -1,18 +1,10 @@
 Ext.define('ReeBill.controller.TabPanel', {
     extend: 'Ext.app.Controller',
 
-    stores: [
-        'IssuableReebills',
-    ],
-
     views: [
-        'issuablereebills.IssuableReebills',
         'accounts.Accounts',
-        'reebills.Reebills',
         'utilitybills.UtilityBills',
-        'payments.Payments',
         'charges.Charges',
-        'reebillcharges.ReebillCharges',
         'metersandregisters.UtilityBillRegisters'
     ],
 
@@ -42,9 +34,6 @@ Ext.define('ReeBill.controller.TabPanel', {
                 }
             },
             'grid[id=utilityBillsGrid]': {
-                selectionchange: this.setTabs
-            },
-            'grid[id=reebillsGrid]': {
                 selectionchange: this.setTabs
             }
         });
