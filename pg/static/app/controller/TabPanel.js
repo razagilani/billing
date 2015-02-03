@@ -6,13 +6,9 @@ Ext.define('ReeBill.controller.TabPanel', {
     ],
 
     views: [
-        'issuablereebills.IssuableReebills',
         'accounts.Accounts',
-        'reebills.Reebills',
         'utilitybills.UtilityBills',
-        'payments.Payments',
         'charges.Charges',
-        'reebillcharges.ReebillCharges',
         'metersandregisters.UtilityBillRegisters'
     ],
 
@@ -50,21 +46,5 @@ Ext.define('ReeBill.controller.TabPanel', {
         });
 
     },
-
-    /**
-     * Handle the tab panel changes.
-     */
-    setTabs: function() {
-        var utilityBillSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-
-        //this.getUtilityBillsTab().setDisabled(!accountSelections || !accountSelections.length);
-        //this.getReebillsTab().setDisabled(!accountSelections || !accountSelections.length);
-        //this.getPaymentsGrid().setDisabled(!accountSelections || !accountSelections.length);
-        //
-        //this.getMetersTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
-        //this.getChargesTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
-        //
-        //this.getReebillChargesTab().setDisabled(!reebillSelections || !reebillSelections.length);
-    }
 
 });
