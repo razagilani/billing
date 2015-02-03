@@ -16,9 +16,6 @@ Ext.define('ReeBill.controller.Charges', {
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
     },{
-        ref: 'reebillsGrid',
-        selector: 'grid[id=reebillsGrid]'
-    },{
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{

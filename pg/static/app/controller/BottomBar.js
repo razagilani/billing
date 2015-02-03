@@ -6,8 +6,7 @@ Ext.define('ReeBill.controller.BottomBar', {
     views:[
         'Viewport',
         'accounts.Accounts',
-        'accounts.AccountForm',
-        'reebills.Reebills'
+        'accounts.AccountForm'
     ],
     
     refs: [{
@@ -37,9 +36,6 @@ Ext.define('ReeBill.controller.BottomBar', {
     },{
         ref: 'revisionTBLabel',
         selector: 'tbtext[name=revisionTBLabel]'
-    },{
-        ref: 'reebillsGrid',
-        selector: 'grid[id=reebillsGrid]'
     }],
     
     init: function() {
@@ -51,9 +47,6 @@ Ext.define('ReeBill.controller.BottomBar', {
         this.control({
             'grid[id=accountsGrid]': {
                 selectionchange: this.handleAccountSelect
-            },
-            'grid[id=reebillsGrid]': {
-                selectionchange: this.handleReebillSelect
             },
             'grid[id=utilityBillsGrid]': {
                 selectionchange: this.handleUtilityBillSelect
@@ -81,17 +74,6 @@ Ext.define('ReeBill.controller.BottomBar', {
             rLabel.setText('');
             var uLabel = this.getUbSequenceTBLabel();
             uLabel.setText('')
-        }
-    },
-
-    /**
-     * Handle the Reebill selection.
-     */
-    handleReebillSelect: function() {
-        var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
-        if (selected){
-            var label = this.getRbSequenceVersionTBLabel();
-            label.setText(selected.get('sequence')+'-'+selected.get('version')+ ' (RB)');
         }
     },
 
