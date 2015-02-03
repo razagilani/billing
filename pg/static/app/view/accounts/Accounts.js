@@ -23,18 +23,25 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     columns: [{
         header: 'ID',
         dataIndex: 'id',
-        width: 100
+        width: 50
     }, {
         header: 'Nextily Account Number',
         dataIndex: 'account',
-        width: 100
+        width: 150
     }, {
         header: 'Utility Account Number',
         dataIndex: 'utility_account_number',
         editor: {
             xtype: 'textfield'
         },
-        width: 100
+        width: 150
+    }, {
+        header: 'Service Address',
+        dataIndex: 'utility_account_number',
+        editor: {
+            xtype: 'textfield'
+        },
+        width: 150
     }]
 
 });
