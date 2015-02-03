@@ -40,15 +40,14 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        TestCaseWithSetup.truncate_tables(Session())
+        TestCaseWithSetup.truncate_tables()
 
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
-        s = Session()
-        s.rollback()
-        TestCaseWithSetup.truncate_tables(s)
+        Session().rollback()
+        TestCaseWithSetup.truncate_tables()
 
     def test_get_utility_from_guid(self):
         s = Session()
