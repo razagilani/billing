@@ -35,6 +35,7 @@ voluptuous==0.8.6
 Pint==0.6
 Flask-Admin==1.0.9
 Flask-OAuth==0.12
+Flask-Principal==0.4.0
 
 reportlab==2.5
 # PIL seems to be required for reportlab, but the reportlab package does not
