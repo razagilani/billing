@@ -62,10 +62,47 @@ from reebill.reebill_file_handler import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
+class FakeS3Manager(object):
+    '''Encapsulates starting and stopping the FakeS3 server process for tests
+    that use it.
+    This replaces the code related to TestCaseWithSetup.
+    '''
+    def start(self):
+        from core import config
+        self.fakes3_root_dir = TempDirectory()
+        bucket_name = config.get('aws_s3', 'bucket')
+        make_directories_if_necessary(join(self.fakes3_root_dir.path,
+                                           bucket_name))
+
+        # start FakeS3 as a subprocess
+        # redirect both stdout and stderr because it prints all its log
+        # messages to both
+        self.fakes3_command = 'fakes3 --port %s --root %s' % (
+            config.get('aws_s3', 'port'), self.fakes3_root_dir.path)
+        self.fakes3_process = Popen(self.fakes3_command.split(),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+
+        # make sure FakeS3 is actually running (and did not immediately exit
+        # because, for example, another instance of it is already
+        # running and occupying the same port)
+        sleep(0.5)
+        self.check()
+
+    def check(self):
+        exit_status = self.fakes3_process.poll()
+        if exit_status is not None:
+            raise CalledProcessError(exit_status, self.fakes3_command)
+
+    def stop(self):
+        self.fakes3_process.kill()
+        self.fakes3_process.wait()
+        self.fakes3_root_dir.cleanup()
 
 class TestCaseWithSetup(test_utils.TestCase):
-    '''Contains setUp/tearDown code for all test cases that need to use ReeBill
-    databases.'''
+    '''Shared setup and teardown code for various tests. This class should go
+    away, so don't add any new uses of it.
+    '''
 
     @classmethod
     def check_fakes3_process(cls):
@@ -110,7 +147,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         cls.fakes3_root_dir.cleanup()
 
     @staticmethod
-    def truncate_tables(session):
+    def truncate_tables():
+        session = Session()
         for t in [
             "altitude_utility",
             "altitude_supplier",
@@ -144,7 +182,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def insert_data():
         session = Session()
-        TestCaseWithSetup.truncate_tables(session)
+        TestCaseWithSetup.truncate_tables()
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
                      '123 Test Street',
@@ -398,7 +436,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
-        self.truncate_tables(self.session)
+        self.truncate_tables()
         TestCaseWithSetup.insert_data()
         self.session.flush()
 
@@ -408,8 +446,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # fails to commit the SQLAlchemy session
         Session.remove()
         self.session.rollback()
-        self.truncate_tables(self.session)
-
+        self.truncate_tables()
         self.temp_dir.cleanup()
 
 
