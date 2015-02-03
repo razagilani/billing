@@ -3,7 +3,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
     stores: [
         'UtilityBills',
-        'ReeBillVersions',
         'RateClasses',
         'Suppliers',
         'Utilities',
