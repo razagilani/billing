@@ -155,7 +155,8 @@ class AccountResource(BaseResource):
         return marshal(accounts, {
             'id': Integer,
             'account': String,
-            'utility_account_number': String(attribute='account_number')
+            'utility_account_number': String(attribute='account_number'),
+            'utility': String(attribute='fb_utility')
         })
 
 class UtilBillListResource(BaseResource):
