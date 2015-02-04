@@ -1,18 +1,20 @@
 '''Tests for ReeBill-specific data-access objects, including the database.
 Currently the only one is StateDB.
 '''
-from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-from billing.core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import ReeBillCustomer
+from reebill.payment_dao import PaymentDAO
+from reebill.reebill_dao import ReeBillDAO
+from test.setup_teardown import init_logging, TestCaseWithSetup
+from core.model.model import Utility, Supplier, RateClass, UtilityAccount
+from reebill.state import ReeBillCustomer
 
 init_logging()
 import unittest
 from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
-from billing import init_config, init_model
-from billing.reebill import state
-from billing.core.model import UtilBill, Session, Address
-from billing.reebill.state import ReeBill
+from core import init_config, init_model
+from reebill import state
+from core.model import UtilBill, Session, Address
+from reebill.state import ReeBill
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -30,7 +32,7 @@ class StateDBTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.truncate_tables(self.session)
+        TestCaseWithSetup.truncate_tables()
         blank_address = Address()
         test_utility = Utility('FB Test Utility Name', blank_address)
         test_supplier = Supplier('FB Test Suplier', blank_address)
@@ -44,11 +46,12 @@ class StateDBTest(TestCaseWithSetup):
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
-        self.state_db = state.StateDB()
+        self.state_db = ReeBillDAO()
+        self.payment_dao = PaymentDAO()
 
     def tearDown(self):
         self.session.rollback()
-        self.truncate_tables(self.session)
+        self.truncate_tables()
 
     def test_versions(self):
         '''Tests max_version(), max_issued_version(), increment_version(), and
@@ -219,14 +222,14 @@ class StateDBTest(TestCaseWithSetup):
     def test_payments(self):
         acc = '99999'
         # one payment on jan 15
-        self.state_db.create_payment(acc, date(2012,1,15), 'payment 1', 100)
-        self.assertEqual([], self.state_db.find_payment(acc,
+        self.payment_dao.create_payment(acc, date(2012,1,15), 'payment 1', 100)
+        self.assertEqual([], self.payment_dao.find_payment(acc,
                 date(2011,12,1), date(2012,1,14)))
-        self.assertEqual([], self.state_db.find_payment(acc,
+        self.assertEqual([], self.payment_dao.find_payment(acc,
                 date(2012,1,16), date(2012,2,1)))
-        self.assertEqual([], self.state_db.find_payment(acc,
+        self.assertEqual([], self.payment_dao.find_payment(acc,
                 date(2012,2,1), date(2012,1,1)))
-        payments = self.state_db.find_payment(acc, date(2012,1,1),
+        payments = self.payment_dao.find_payment(acc, date(2012,1,1),
                 date(2012,2,1))
         p = payments[0]
         self.assertEqual(1, len(payments))
@@ -238,26 +241,27 @@ class StateDBTest(TestCaseWithSetup):
         #self.assertEqual(True, p.to_dict()['editable'])
 
         # another payment on feb 1
-        self.state_db.create_payment(acc, date(2012, 2, 1),
+        self.payment_dao.create_payment(acc, date(2012, 2, 1),
                 'payment 2', 150)
-        self.assertEqual([p], self.state_db.find_payment(acc,
+        self.assertEqual([p], self.payment_dao.find_payment(acc,
                 date(2012,1,1), date(2012,1,31)))
-        self.assertEqual([], self.state_db.find_payment(acc,
+        self.assertEqual([], self.payment_dao.find_payment(acc,
                 date(2012,2,2), date(2012,3,1)))
-        payments = self.state_db.find_payment(acc, date(2012,1,16),
+        payments = self.payment_dao.find_payment(acc, date(2012,1,16),
                 date(2012,3,1))
         self.assertEqual(1, len(payments))
         q = payments[0]
         self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
                 (q.reebill_customer.get_account(), q.date_applied, q.description,
                 q.credit))
-        self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
+        self.assertEqual(sorted([p, q]),
+                         sorted(self.payment_dao.get_payments(acc)))
 
         # update feb 1: move it to mar 1
         q.date_applied = datetime(2012,3,1)
         q.description = 'new description'
         q.credit = 200
-        payments = self.state_db.find_payment(acc, datetime(2012,1,16),
+        payments = self.payment_dao.find_payment(acc, datetime(2012,1,16),
                 datetime(2012,3,2))
         self.assertEqual(1, len(payments))
         q = payments[0]
@@ -266,8 +270,8 @@ class StateDBTest(TestCaseWithSetup):
                 q.credit))
 
         # delete jan 15
-        self.state_db.delete_payment(p.id)
-        self.assertEqual([q], self.state_db.find_payment(acc,
+        self.payment_dao.delete_payment(p.id)
+        self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
 

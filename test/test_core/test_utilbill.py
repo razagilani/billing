@@ -1,17 +1,18 @@
 '''Unit tests for the UtilBill class and other code that will eventually be
 included in it.
 '''
+import unittest
 from test import init_test_config
 init_test_config()
-from billing import init_model
+from core import init_model
 
 from datetime import date
 from unittest import TestCase
 
-from billing.exc import RSIError, ProcessedBillError
-from billing.core.model import UtilBill, Session, Charge,\
+from exc import RSIError, ProcessedBillError, NotProcessable
+from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from billing.reebill.state import Payment, ReeBillCustomer
+from reebill.state import Payment, ReeBillCustomer
 
 class UtilBillTest(TestCase):
 
@@ -26,6 +27,10 @@ class UtilBillTest(TestCase):
 
         self.utility = Utility('utility', Address())
         self.supplier = Supplier('supplier', Address())
+        self.utility_account = UtilityAccount(
+            'someone', '98989', self.utility, self.supplier,
+            RateClass('FB Test Rate Class', self.utility), Address(), Address())
+        self.rate_class = RateClass('rate class', self.utility)
 
     def tearDown(self):
         Session.remove()
@@ -82,6 +87,27 @@ class UtilBillTest(TestCase):
         utilbill.processed = True
         self.assertTrue(utilbill.processed)
         self.assertRaises(ProcessedBillError, utilbill.check_editable)
+
+    def test_processable(self):
+        utility_account = UtilityAccount(
+            'someone', '98989', self.utility, self.supplier,
+            RateClass('FB Test Rate Class', self.utility), Address(), Address())
+        for attr in ('period_start', 'period_end', 'rate_class', 'utility',
+                     'supplier'):
+            ub = UtilBill(
+                utility_account, UtilBill.Complete, 'gas', self.utility,
+                self.supplier, RateClass('rate class', self.utility), Address(),
+                Address(), period_start=date(2000, 1, 1),
+                period_end=date(2000, 2, 1))
+            setattr(ub, attr, None)
+            self.assertRaises(NotProcessable, ub.check_processable)
+
+        ub = UtilBill(
+            utility_account, UtilBill.Complete, 'gas', self.utility,
+            self.supplier, RateClass('rate class', self.utility), Address(),
+            Address(), period_start=date(2000, 1, 1),
+            period_end=date(2000, 2, 1))
+        self.assertTrue(ub.processable())
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
@@ -425,3 +451,56 @@ class UtilBillTest(TestCase):
         utilbill.processed = True
         self.assertRaises(ProcessedBillError, utilbill.compute_charges())
         self.assertFalse(utilbill.editable())
+
+    def test_get_total_energy_consumption(self):
+        utilbill = UtilBill(self.utility_account, UtilBill.Complete,
+                            'gas', self.utility, self.supplier, self.rate_class,
+                            Address(), Address(), period_start=date(2000,1,1),
+                            period_end=date(2000,2,1))
+        utilbill.registers = [
+            Register(utilbill, '', '', 'therms', False, '', '', '',
+                     register_binding='X', quantity=1),
+            Register(utilbill, '', '', 'kWh', False, '', '', '',
+                     register_binding='REG_TOTAL', quantity=2),
+        ]
+        self.assertEqual(2, utilbill.get_total_energy_consumption())
+
+    def test_charge_types(self):
+        utilbill = UtilBill(self.utility_account, UtilBill.Complete,
+                            'gas', self.utility, self.supplier, self.rate_class,
+                            Address(), Address(), period_start=date(2000,1,1),
+                            period_end=date(2000,2,1))
+        the_charges = [
+            Charge(utilbill, 'A', 1, '', target_total=1, type='distribution'),
+            Charge(utilbill, 'B', 1, '4', type='distribution'),
+            # a Charge does not count as a real charge if has_charge=False.
+            Charge(utilbill, 'C', 1, '3', type='supply', has_charge=False),
+            Charge(utilbill, 'D', 1, '5', target_total=5, type='supply'),
+            Charge(utilbill, 'E', 1, 'syntax error', type='supply'),
+            Charge(utilbill, 'F', 1, '7', type='distribution'),
+        ]
+        utilbill.charges = the_charges
+        self.assertEqual(the_charges, utilbill.charges)
+
+        # supply charge with a syntax error counts as one of the "supply
+        # charges"
+        self.assertEqual(the_charges[3:5], utilbill.get_supply_charges())
+
+        # but it does not count toward the "supply target total"
+        utilbill.compute_charges()
+        self.assertEqual(5, utilbill.get_supply_target_total())
+
+        # TODO: test methods that use other charge types (distribution,
+        # other) here when they are added.
+        self.assertEqual(3, len(utilbill.get_distribution_charges()))
+
+    def test_get_estimated_next_meter_read_date(self):
+        utilbill = UtilBill(self.utility_account, UtilBill.Complete,
+                            'gas', self.utility, self.supplier, self.rate_class,
+                            Address(), Address())
+        self.assertEqual(None, utilbill.get_estimated_next_meter_read_date())
+
+        utilbill.period_end = date(2000,1,1)
+        self.assertEqual(date(2000,1,31), utilbill.get_estimated_next_meter_read_date())
+
+

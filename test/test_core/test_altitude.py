@@ -2,15 +2,15 @@ from unittest import TestCase
 from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
-from billing import init_model
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import init_test_config
+from core import init_config, init_model
+from test.setup_teardown import TestCaseWithSetup
+from test import init_test_config
 init_test_config()
 init_model()
 
-from billing.core.model import Utility, Supplier, Address, Session, \
+from core.model import Utility, Supplier, Address, Session, \
     UtilityAccount, RateClass
-from billing.core.altitude import AltitudeUtility, AltitudeSupplier,\
+from core.altitude import AltitudeUtility, AltitudeSupplier,\
     get_utility_from_guid, update_altitude_account_guids, AltitudeAccount
 
 
@@ -40,15 +40,14 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        TestCaseWithSetup.truncate_tables(Session())
+        TestCaseWithSetup.truncate_tables()
 
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
-        s = Session()
-        s.rollback()
-        TestCaseWithSetup.truncate_tables(s)
+        Session().rollback()
+        TestCaseWithSetup.truncate_tables()
 
     def test_get_utility_from_guid(self):
         s = Session()

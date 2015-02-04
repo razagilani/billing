@@ -1,9 +1,9 @@
 from datetime import date
 from mock import Mock
 
-from billing.core.model import Charge, UtilBill, Address, \
+from core.model import Charge, UtilBill, Address, \
     ChargeEvaluation, UtilityAccount
-from billing.exc import FormulaError
+from exc import FormulaError
 from test import testing_utils
 
 
@@ -36,7 +36,8 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,
-                                  roundrule="rounding")
+                                  roundrule="rounding",
+                                  type='supply')
         self.charge = Charge(**self.charge_params)
         self.context = {'SOME_VAR': ChargeEvaluation(quantity=2, rate=3),
                         'OTHER_VAR': ChargeEvaluation(quantity=4, rate=5),
