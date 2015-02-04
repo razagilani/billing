@@ -218,23 +218,16 @@ class ReeBillDAO(object):
             return False
         return True
 
-    def query_all_reebills_for_account(self, account):
+    def get_all_reebills_for_account(self, account):
         """
-        Returns a query of all Reebill objects for UtilityAccount 'account'
+        Returns a list of all Reebill objects for 'account' (string).
         odered by sequence and version ascending
         """
         session = Session()
         query = session.query(ReeBill).join(ReeBillCustomer).join(
-            UtilityAccount).filter(UtilityAccount.account == account)
-        return query
-
-    def get_all_reebills_for_account(self, account):
-        """
-        Returns a list of all Reebill objects for UtilityAccount 'account'
-        odered by sequence and version ascending
-        """
-        return self.query_all_reebills_for_account(account)\
-            .order_by(ReeBill.sequence.asc(), ReeBill.version.asc()).all()
+            UtilityAccount).filter(UtilityAccount.account == account)\
+            .order_by(ReeBill.sequence.asc(), ReeBill.version.asc())
+        return query.all()
 
     def get_reebill(self, account, sequence, version='max'):
         '''Returns the ReeBill object corresponding to the given account,
