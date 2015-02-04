@@ -65,14 +65,15 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'charges',
-                        id: 'chargesGrid',
-                        region: 'south'
-                    },{
                         xtype: 'utilityBills',
                         id: 'utilityBillsGrid',
                         region: 'center',
                         collapsible: false
+                    },{
+                        xtype: 'charges',
+                        id: 'chargesGrid',
+                        region: 'south',
+                        height: 150
                     }]
                 },{
                     xtype: 'panel',
