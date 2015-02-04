@@ -18,6 +18,7 @@ from flask.ext.admin.model import BaseModelView
 from flask.ext.principal import Need, identity_loaded, Permission
 from sqlalchemy.sql.functions import current_user
 from wtforms import TextField, Form
+from pg.admin import MyAdminIndexView
 from pg.pg_model import PGAccount
 
 from sqlalchemy import desc
@@ -288,22 +289,26 @@ app = Flask(__name__)
 
 initialize()
 
-# TODO put in config file
-from core import config
-oauth = OAuth()
-google = oauth.remote_app(
-    'google',
-    base_url=config.get('power_and_gas', 'base_url'),
-    authorize_url=config.get('power_and_gas', 'authorize_url'),
-    request_token_url=config.get('power_and_gas', 'request_token_url'),
-    request_token_params={
-        'scope': config.get('power_and_gas', 'request_token_params_scope'),
-        'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
-    access_token_url=config.get('power_and_gas', 'access_token_url'),
-    access_token_method=config.get('power_and_gas', 'access_token_method'),
-    access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
-    consumer_key=config.get('power_and_gas', 'google_client_id'),
-    consumer_secret=config.get('power_and_gas', 'google_client_secret'))
+
+def google_oauth_init():
+    from core import config
+    oauth = OAuth()
+    google = oauth.remote_app(
+        'google',
+        base_url=config.get('power_and_gas', 'base_url'),
+        authorize_url=config.get('power_and_gas', 'authorize_url'),
+        request_token_url=config.get('power_and_gas', 'request_token_url'),
+        request_token_params={
+            'scope': config.get('power_and_gas', 'request_token_params_scope'),
+            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
+        access_token_url=config.get('power_and_gas', 'access_token_url'),
+        access_token_method=config.get('power_and_gas', 'access_token_method'),
+        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
+        consumer_key=config.get('power_and_gas', 'google_client_id'),
+        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
+    return google, config
+
+google, config = google_oauth_init()
 
 @app.route('/login')
 def login():
@@ -347,12 +352,14 @@ def oauth2callback(resp):
 def index():
     access_token = session.get('access_token')
     if access_token is None:
+        # user is not logged in so redirect to login page
         return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
     req = Request(config.get('power_and_gas', 'google_user_info_url'),
                   None, headers)
     try:
+        # get info about currently logged in user
         res = urlopen(req)
     except URLError, e:
         if e.code == 401:
@@ -377,22 +384,6 @@ api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
 app.secret_key = 'example secret key'
-
-
-class MyAdminIndexView(AdminIndexView):
-
-    @expose('/')
-    def index(self):
-        try:
-            if session['access_token'] is None:
-                return redirect(url_for('login', next=request.url))
-            else:
-                return super(MyAdminIndexView, self).index()
-        except KeyError:
-            print request.url
-            return redirect(url_for('login', next=request.url))
-
-
 
 class CustomModelView(ModelView):
     # Disable create, update and delete on model
@@ -468,3 +459,4 @@ admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
 
 if __name__ == '__main__':
     app.run(debug=True)
+
