@@ -43,7 +43,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
 from reebill.users import UserDAO
-from reebill.utilbill_processor import UtilbillProcessor
+from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from reebill.excel_export import Exporter
@@ -460,7 +460,7 @@ class ReebillsResource(RESTResource):
 
     def handle_get(self, account, *vpath, **params):
         '''Handles GET requests for reebill grid data.'''
-        rows = self.reebill_processor.get_reebill_metadata_json(account)
+        rows = self.utilbill_views.get_reebill_metadata_json(account)
         return True, {'rows': rows, 'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
@@ -597,7 +597,7 @@ class ReebillsResource(RESTResource):
 class UtilBillResource(RESTResource):
 
     def handle_get(self, account, *vpath, **params):
-        rows, total_count = self.utilbill_processor.get_all_utilbills_json(
+        rows, total_count = self.utilbill_views.get_all_utilbills_json(
             account)
         return True, {'rows': rows, 'results': total_count}
 
@@ -686,7 +686,7 @@ class RegistersResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
-        registers_json = self.utilbill_processor.get_registers_json(utilbill_id)
+        registers_json = self.utilbill_views.get_registers_json(utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
     def handle_post(self, *vpath, **params):
@@ -712,7 +712,7 @@ class RegistersResource(RESTResource):
 class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
-        charges = self.utilbill_processor.get_utilbill_charges_json(utilbill_id)
+        charges = self.utilbill_views.get_utilbill_charges_json(utilbill_id)
         return True, {'rows': charges, 'results': len(charges)}
 
     def handle_put(self, charge_id, *vpath, **params):
@@ -732,21 +732,21 @@ class ChargesResource(RESTResource):
 class SuppliersResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        suppliers = self.utilbill_processor.get_all_suppliers_json()
+        suppliers = self.utilbill_views.get_all_suppliers_json()
         return True, {'rows': suppliers, 'results': len(suppliers)}
 
 
 class UtilitiesResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        utilities = self.utilbill_processor.get_all_utilities_json()
+        utilities = self.utilbill_views.get_all_utilities_json()
         return True, {'rows': utilities, 'results': len(utilities)}
 
 
 class RateClassesResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        rate_classes = self.utilbill_processor.get_all_rate_classes_json()
+        rate_classes = self.utilbill_views.get_all_rate_classes_json()
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
@@ -754,19 +754,19 @@ class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        rows = self.reebill_processor.get_payments(account)
+        rows = [payment.column_dict() for payment in self.payment_dao.get_payments(account)]
         return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
         d = cherrypy.request.json['date_received']
         d = datetime.strptime(d, '%Y-%m-%d %H:%M:%S')
         print "\n\n\n\n", d, type(d)
-        new_payment = self.reebill_processor.create_payment(account, d, "New Entry", 0, d)
+        new_payment = self.payment_dao.create_payment(account, d, "New Entry", 0, d)
         return True, {"rows": new_payment.column_dict(), 'results': 1}
 
     def handle_put(self, payment_id, *vpath, **params):
         row = cherrypy.request.json
-        self.reebill_processor.update_payment(
+        self.payment_dao.update_payment(
             int(payment_id),
             row['date_applied'],
             row['description'],
@@ -775,7 +775,7 @@ class PaymentsResource(RESTResource):
         return True, {"rows": row, 'results': 1}
 
     def handle_delete(self, payment_id, *vpath, **params):
-        self.reebill_processor.delete_payment(payment_id)
+        self.payment_dao.delete_payment(payment_id)
         return True, {}
 
 
