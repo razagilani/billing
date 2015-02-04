@@ -67,7 +67,7 @@ Ext.define('ReeBill.view.Viewport', {
                     items: [{
                         xtype: 'charges',
                         id: 'chargesGrid',
-                        region: 'north'
+                        region: 'south'
                     },{
                         xtype: 'utilityBills',
                         id: 'utilityBillsGrid',
@@ -125,7 +125,7 @@ Ext.define('ReeBill.view.Viewport', {
                     },{
                         text: 'Logout',
                         handler: function(){
-                            window.location.pathname = 'utilitybills/logout';
+                            window.location.pathname = '/logout';
                         }
                     },'->',{
                         xtype: 'tbtext',
