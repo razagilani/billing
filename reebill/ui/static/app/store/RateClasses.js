@@ -31,7 +31,7 @@ Ext.define('ReeBill.store.RateClasses', {
 
     sorters: [{
         property: 'name',
-        direction: 'DESC'
+        direction: 'ASC'
     }]
 
 });

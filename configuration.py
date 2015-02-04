@@ -70,6 +70,20 @@ class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
+class power_and_gas(Schema):
+    google_client_id = String()
+    google_client_secret = String()
+    google_user_info_url = URL()
+    redirect_uri = String()
+    base_url = URL()
+    authorize_url = URL()
+    request_token_url = URL()
+    request_token_params_scope = String()
+    request_token_params_resp_type = String()
+    access_token_url = URL()
+    access_token_method = String()
+    access_token_params_grant_type = String()
+
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
