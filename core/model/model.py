@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey, func
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
