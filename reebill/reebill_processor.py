@@ -120,8 +120,10 @@ class ReebillProcessor(object):
         reebill.utilbill.compute_charges()
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
-        reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
-        reebill.ree_savings = reebill.ree_value * reebill.discount_rate
+        reebill.ree_charge = round(
+            reebill.ree_value * (1 - reebill.discount_rate), 2)
+        reebill.ree_savings = round(reebill.ree_value * reebill.discount_rate,
+                                    2)
 
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:

@@ -229,7 +229,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
-            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'utilityserviceaddress': '123 Test Street, Test City, XX 12345',
             'utility_account_number': '1',
             'codename': '',
             'primusname': '1785 Massachusetts Ave.',
@@ -240,7 +240,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'fb_rate_class': 'Other Rate Class',
             'fb_utility_name': 'Other Utility',
             'casualname': 'Example 4',
-            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'utilityserviceaddress': '123 Test Street, Test City, XX 12345',
             'utility_account_number': '',
             'codename': '',
             'primusname': '1788 Massachusetts Ave.',
@@ -251,7 +251,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 3',
-            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'utilityserviceaddress': '123 Test Street, Test City, XX 12345',
             'utility_account_number': '2',
             'codename': '',
             'primusname': '1787 Massachusetts Ave.',
@@ -267,7 +267,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
-            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'utilityserviceaddress': '123 Test Street, Test City, XX 12345',
             'utility_account_number': '1',
             'codename': '',
             'primusname': '1785 Massachusetts Ave.',
@@ -1893,8 +1893,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             'EATF',
             'DELIVERY_TAX'
         ]
-        self.assertEqual(0.06 * sum(map(get_total, non_tax_rsi_bindings)),
-                         get_total('SALES_TAX'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_total, non_tax_rsi_bindings)), 2),
+            get_total('SALES_TAX'))
 
         # ##############################################################
         # check that each hypothetical charge was computed correctly:
@@ -1912,16 +1913,19 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         h_quantity = self.views.get_reebill_metadata_json(
             account)[0]['ree_quantity']
         self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
-        self.assertAlmostEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
-        self.assertAlmostEqual(0.01399 * h_quantity, get_h_total('SETF'))
-        self.assertAlmostEqual(0.006 * h_quantity, get_h_total('EATF'))
-        self.assertAlmostEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
-        self.assertAlmostEqual(23.14, get_h_total('PUC'))
-        self.assertAlmostEqual(.2935 * h_quantity,
-                               get_h_total('DISTRIBUTION_CHARGE'))
-        self.assertAlmostEqual(.7653 * h_quantity, get_h_total('PGC'))
-        self.assertAlmostEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
-                               get_h_total('SALES_TAX'))
+        self.assertEqual(round(0.03059 * h_quantity, 2),
+                         get_h_total('RIGHT_OF_WAY'))
+        self.assertEqual(round(0.01399 * h_quantity, 2), get_h_total('SETF'))
+        self.assertEqual(round(0.006 * h_quantity, 2), get_h_total('EATF'))
+        self.assertEqual(round(0.07777 * h_quantity, 2),
+                         get_h_total('DELIVERY_TAX'))
+        self.assertEqual(23.14, get_h_total('PUC'))
+        self.assertEqual(round(.2935 * h_quantity, 2),
+                         get_h_total('DISTRIBUTION_CHARGE'))
+        self.assertEqual(round(.7653 * h_quantity, 2), get_h_total('PGC'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)), 2),
+            get_h_total('SALES_TAX'))
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'
