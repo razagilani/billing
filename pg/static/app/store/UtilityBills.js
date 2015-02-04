@@ -51,5 +51,8 @@ Ext.define('ReeBill.store.UtilityBills', {
     sorters: [{
         property: 'period_end',
         direction: 'DESC'
-    }]
+    },{
+        property: 'id',
+        direction: 'DESC'
+    },]
 });

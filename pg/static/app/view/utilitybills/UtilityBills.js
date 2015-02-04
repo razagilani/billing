@@ -1,14 +1,7 @@
 Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
-    requires: [
-        'Ext.toolbar.PagingMemoryToolbar',
-        'ReeBill.store.Suppliers',
-        'ReeBill.store.Services',
-        'ReeBill.store.Utilities',
-        'ReeBill.store.RateClasses'
-    ],
     alias: 'widget.utilityBills',
-    store: 'UtilityBillsMemory',
+    store: 'UtilityBills',
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -32,9 +25,19 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'Name',
-        dataIndex: 'name',
-        hidden: true
+        header: 'Service',
+        dataIndex: 'service',
+        editor: {
+            xtype: 'combo',
+            name: 'service',
+            store: 'Services',
+            triggerAction: 'all',
+            valueField: 'name',
+            displayField: 'value',
+            queryMode: 'local',
+            forceSelection: true,
+            selectOnFocus: true
+        }
     },{
         header: 'Start',
         dataIndex: 'period_start',
@@ -77,33 +80,32 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         width: 100,
         renderer: Ext.util.Format.usMoney
     }, {
-        header: 'Service Address',
-        dataIndex: 'service_address'
-        },{
-            header: 'Next Meter Read',
-            dataIndex: 'next_estimated_meter_read_date'
-        },{
-            header: 'Total Supply',
-            dataIndex: 'supply_total'
-        },{
-            header: 'Utility Account Number',
-            dataIndex: 'utility_account_number'
-        },{
-            header: 'Secondary Utility Account Number',
-            dataIndex: 'secondary_account_number'
-    }, {
-        header: 'Service',
-        dataIndex: 'service',
+        header: 'Next Meter Read',
+        dataIndex: 'next_estimated_meter_read_date'
+    },{
+        header: 'Total Supply',
+        dataIndex: 'supply_total',
+        renderer: Ext.util.Format.usMoney
+    },{
+        header: 'Utility',
+        dataIndex: 'utility',
         editor: {
             xtype: 'combo',
-            name: 'service',
-            store: 'Services',
-            triggerAction: 'all',
+            store: 'Utilities',
+            itemId: 'utility_combo',
+            displayField: 'name',
             valueField: 'name',
-            displayField: 'value',
-            queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('utility').name;
         }
     },{
         header: 'Rate Class',
@@ -126,47 +128,15 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         width: 125,
         flex: 1
     },{
-            header: 'Utility',
-            dataIndex: 'utility',
-            editor: {
-                xtype: 'combo',
-                store: 'Utilities',
-                itemId: 'utility_combo',
-                displayField: 'name',
-                valueField: 'name',
-                triggerAction: 'all',
-                forceSelection: false,
-                typeAhead: true,
-                typeAheadDelay : 1,
-                autoSelect: false,
-                regex: /[a-zA-Z0-9]+/,
-                minChars: 1
-            },
-            width: 100,
-            renderer: function(value, metaData, record) {
-                return record.get('utility').name;
-            }
-        }
-        //,{
-        //    header: 'Supplier',
-        //    dataIndex: 'supplier',
-        //    emptyText: 'Unknown Supplier',
-        //    editor: {
-        //        xtype: 'combo',
-        //        store: 'Suppliers',
-        //        itemId: 'supplier_combo',
-        //        displayField: 'name',
-        //        valueField: 'name',
-        //        triggerAction: 'all',
-        //        forceSelection: false,
-        //        typeAhead: true,
-        //        typeAheadDelay : 1,
-        //        autoSelect: false,
-        //        regex: /[a-zA-Z0-9]+/,
-        //        minChars: 1
-        //    },
-        //    width: 100
-    ],
+        header: 'Utility Account Number',
+        dataIndex: 'utility_account_number'
+    },{
+        header: 'Secondary Utility Account Number',
+        dataIndex: 'secondary_account_number'
+    }, {
+        header: 'Service Address',
+        dataIndex: 'service_address'
+    }],
 
     dockedItems: [{
         dock: 'top',
@@ -175,40 +145,21 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             overflowHandler: 'Menu'
         },
         items: [{
-            xtype: 'label',
-            text: '',
-            padding: 5,
-            id: 'utilbillAccountLabel'
-        },{
-            xtype: 'button',
-            action: 'utilbillPrevious',
-            text: 'Previous',
-            disabled: true
-        },{
-            xtype: 'button',
-            action: 'utilbillNext',
-            text: 'Next',
-            disabled: false
-        //},{
-        //    xtype: 'button',
-        //    action: 'utilbillRemove',
-        //    iconCls: 'silk-delete',
-        //    text: 'Delete',
-        //    disabled: false,
-        //},{
-        //    xtype: 'button',
-        //    action: 'utilbillToggleProcessed',
-        //    text: 'Toggle Processed',
-        //    disabled: true
-        }]
-    }],
-
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'UtilityBillsMemory',
-        refreshStore: 'UtilityBills',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}'
-    }
+                xtype: 'label',
+                text: '',
+                padding: 5,
+                id: 'utilbillAccountLabel'
+            },{
+                xtype: 'button',
+                action: 'utilbillPrevious',
+                text: 'Previous',
+                disabled: true
+            },{
+                xtype: 'button',
+                action: 'utilbillNext',
+                text: 'Next',
+                disabled: false
+            }
+        ]
+    }]
 });
