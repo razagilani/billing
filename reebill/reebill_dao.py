@@ -233,8 +233,8 @@ class ReeBillDAO(object):
         Returns a list of all Reebill objects for UtilityAccount 'account'
         odered by sequence and version ascending
         """
-        return self.order_by(ReeBill.sequence.asc(), ReeBill.version.asc())\
-            .query_all_reebills_for_account(account).all()
+        return self.query_all_reebills_for_account(account)\
+            .order_by(ReeBill.sequence.asc(), ReeBill.version.asc()).all()
 
     def get_reebill(self, account, sequence, version='max'):
         '''Returns the ReeBill object corresponding to the given account,
