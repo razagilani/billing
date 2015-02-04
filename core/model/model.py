@@ -74,7 +74,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '572b9c75caf3'
+_schema_revision = '2d65c7c19345'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -256,6 +256,7 @@ class RateClass(Base):
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
+    service = Column(String(45), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -356,10 +357,11 @@ class UtilBill(Base):
         nullable=True)
 
     state = Column(Integer, nullable=False)
-    service = Column(String(45), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
     due_date = Column(Date)
+    #TODO: remove service from utilbill model after release 24 is deployed
+    service = Column(String(45), nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
