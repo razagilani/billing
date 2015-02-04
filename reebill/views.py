@@ -107,10 +107,9 @@ class Views(object):
           accounts dictionary is returned """
         session = Session()
         utility_accounts = session.query(UtilityAccount)
-
         if account is not None:
-            utility_accounts.filter(UtilityAccount.account == account)\
-
+            utility_accounts = utility_accounts.filter(
+                UtilityAccount.account == account)
 
         name_dicts = self._nexus_util.all_names_for_accounts(
              ua.account for ua in utility_accounts)
