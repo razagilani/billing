@@ -305,6 +305,9 @@ def oauth2callback(resp):
 
 @app.route('/')
 def index():
+    '''this displays the home page if user is logged in
+     otherwise redirects user to the login page
+    '''
     access_token = session.get('access_token')
     if access_token is None:
         # user is not logged in so redirect to login page
@@ -337,7 +340,6 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
-
 
 admin = Admin(app, index_view=MyAdminIndexView())
 admin.add_view(CustomModelView(UtilityAccount, Session()))
