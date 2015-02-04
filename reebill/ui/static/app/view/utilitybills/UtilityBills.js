@@ -140,7 +140,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
         },
-        width: 100,
+        width: 150,
         renderer: function(value, metaData, record) {
             return record.get('utility').name;
         }
@@ -162,7 +162,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
         },
-        width: 100
+        width: 150
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -181,7 +181,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
         },
-        width: 125,
+        minWidth: 250,
         flex: 1
     }],
 

@@ -18,6 +18,8 @@ from flask.ext.admin.model import BaseModelView
 from flask.ext.principal import Need, identity_loaded, Permission
 from sqlalchemy.sql.functions import current_user
 from wtforms import TextField, Form
+from pg.admin import MyAdminIndexView, CustomModelView, UtilityModelView, SupplierModelView, RateClassModelView, \
+    ReeBillCustomerModelView
 from pg.pg_model import PGAccount
 
 from sqlalchemy import desc
@@ -29,7 +31,7 @@ from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from reebill.state import ReeBillCustomer
 from reebill.state import ReeBill
-from reebill.utilbill_processor import UtilbillProcessor
+from core.utilbill_processor import UtilbillProcessor
 
 from datetime import datetime, timedelta
 from dateutil import parser as dateutil_parser
@@ -46,6 +48,7 @@ from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
 from flask_oauth import OAuth
 from urllib2 import Request, urlopen, URLError
 import json
+from pg.admin import make_admin
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -281,60 +284,18 @@ class UtilitiesResource(BaseResource):
 
 class RateClassesResource(BaseResource):
     def get(self):
-        rate_classes = self.utilbill_processor.get_all_rate_classes_json()
+        rate_classes = Session.query(RateClass).all()
         rows = marshal(rate_classes, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__)
-
-initialize()
-
-# TODO put in config file
-from core import config
-oauth = OAuth()
-google = oauth.remote_app(
-    'google',
-    base_url=config.get('power_and_gas', 'base_url'),
-    authorize_url=config.get('power_and_gas', 'authorize_url'),
-    request_token_url=config.get('power_and_gas', 'request_token_url'),
-    request_token_params={
-        'scope': config.get('power_and_gas', 'request_token_params_scope'),
-        'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
-    access_token_url=config.get('power_and_gas', 'access_token_url'),
-    access_token_method=config.get('power_and_gas', 'access_token_method'),
-    access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
-    consumer_key=config.get('power_and_gas', 'google_client_id'),
-    consumer_secret=config.get('power_and_gas', 'google_client_secret'))
-
-@app.route('/login')
-def login():
-    next_path = request.args.get('next')
-    if next_path:
-        # Since passing along the "next" URL as a GET param requires
-        # a different callback for each page, and Google requires
-        # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
-        request_components = urlparse(request.url)
-        path = urllib.unquote(next_path)
-        if path[0] == '/':
-            # This first slash is unnecessary since we force it in when we
-            # format next_url.
-            path = path[1:]
-
-        next_url = "{path}".format(
-            path=path,)
-        session['next_url'] = next_url
-    return google.authorize(callback=url_for(
-        config.get('power_and_gas', 'redirect_uri'),
-        _external=True))
+app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
     return redirect(url_for('login'))
 
-@app.route('/oauth2callback')
-@google.authorized_handler
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
@@ -346,14 +307,19 @@ def oauth2callback(resp):
 
 @app.route('/')
 def index():
+    '''this displays the home page if user is logged in
+     otherwise redirects user to the login page
+    '''
     access_token = session.get('access_token')
     if access_token is None:
+        # user is not logged in so redirect to login page
         return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
     req = Request(config.get('power_and_gas', 'google_user_info_url'),
                   None, headers)
     try:
+        # get info about currently logged in user
         res = urlopen(req)
     except URLError, e:
         if e.code == 401:
@@ -377,95 +343,59 @@ api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-app.secret_key = 'example secret key'
-
-
-class MyAdminIndexView(AdminIndexView):
-
-    @expose('/')
-    def index(self):
-        try:
-            if session['access_token'] is None:
-                return redirect(url_for('login', next=request.url))
-            else:
-                return super(MyAdminIndexView, self).index()
-        except KeyError:
-            print request.url
-            return redirect(url_for('login', next=request.url))
-
-
-
-class CustomModelView(ModelView):
-    # Disable create, update and delete on model
-    can_create = False
-    can_delete = False
-    can_edit = False
-
-    def is_accessible(self):
-        try:
-            if session['access_token'] is None:
-                return False
-            else:
-                return True
-        except KeyError:
-            return False
-
-    def _handle_view(self, name, **kwargs):
-        if not self.is_accessible():
-            return redirect(url_for('login', next=request.url))
-
-    def __init__(self, model, session, **kwargs):
-        super(CustomModelView, self).__init__(model, session, **kwargs)
-
-class LoginModelView(ModelView):
-    def is_accessible(self):
-        try:
-            if session['access_token'] is None:
-                return False
-            else:
-                return True
-        except KeyError:
-            return False
-
-    def _handle_view(self, name, **kwargs):
-        if not self.is_accessible():
-            return redirect(url_for('login', next=request.url))
-
-    def __init__(self, model, session, **kwargs):
-        super(LoginModelView, self).__init__(model, session, **kwargs)
-
-class SupplierModelView(LoginModelView):
-    form_columns = ('name',)
-
-    def __init__(self, session, **kwargs):
-        super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
-
-class UtilityModelView(LoginModelView):
-    form_columns = ('name',)
-
-    def __init__(self, session, **kwargs):
-        super(UtilityModelView, self).__init__(Utility, session, **kwargs)
-
-class ReeBillCustomerModelView(LoginModelView):
-    form_columns = ('name', 'discountrate', 'latechargerate', 'bill_email_recipient', 'service', )
-
-    def __init__(self, session, **kwargs):
-        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer , session, **kwargs)
-
-class RateClassModelView(LoginModelView):
-
-    def __init__(self, session, **kwargs):
-        super(RateClassModelView, self).__init__(RateClass, session, **kwargs)
-
-
-admin = Admin(app, index_view=MyAdminIndexView())
-admin.add_view(CustomModelView(UtilityAccount, Session()))
-admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
-admin.add_view(UtilityModelView(Session()))
-admin.add_view(SupplierModelView(Session()))
-admin.add_view(RateClassModelView(Session()))
-admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
-admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
+def google_oauth_init(config):
+    oauth = OAuth()
+    google = oauth.remote_app(
+        'google',
+        base_url=config.get('power_and_gas', 'base_url'),
+        authorize_url=config.get('power_and_gas', 'authorize_url'),
+        request_token_url=config.get('power_and_gas', 'request_token_url'),
+        request_token_params={
+            'scope': config.get('power_and_gas', 'request_token_params_scope'),
+            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
+        access_token_url=config.get('power_and_gas', 'access_token_url'),
+        access_token_method=config.get('power_and_gas', 'access_token_method'),
+        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
+        consumer_key=config.get('power_and_gas', 'google_client_id'),
+        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
+    global oauth2callback
+    oauth2callback = google.authorized_handler(oauth2callback)
+    oauth2callback = app.route('/oauth2callback')(oauth2callback)
+    return google
 
 if __name__ == '__main__':
+    initialize()
+    from core import config
+
+    google = google_oauth_init(config)
+
+    def make_google_redirect_response():
+        return google.authorize(callback=url_for(
+            config.get('power_and_gas', 'redirect_uri'),
+            _external=True))
+
+    @app.route('/login')
+    def login():
+        next_path = request.args.get('next')
+        if next_path:
+            # Since passing along the "next" URL as a GET param requires
+            # a different callback for each page, and Google requires
+            # whitelisting each allowed callback page, therefore, it can't pass it
+            # as a GET param. Instead, the url is sanitized and put into the session.
+            request_components = urlparse(request.url)
+            path = urllib.unquote(next_path)
+            if path[0] == '/':
+                # This first slash is unnecessary since we force it in when we
+                # format next_url.
+                path = path[1:]
+
+            next_url = "{path}".format(
+                path=path,)
+            session['next_url'] = next_url
+        return make_google_redirect_response()
+
+    # enable admin UI
+    make_admin(app)
+
     app.run(debug=True)
+

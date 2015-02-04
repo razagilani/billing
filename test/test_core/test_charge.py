@@ -36,7 +36,8 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,
-                                  roundrule="rounding")
+                                  roundrule="rounding",
+                                  type='supply')
         self.charge = Charge(**self.charge_params)
         self.context = {'SOME_VAR': ChargeEvaluation(quantity=2, rate=3),
                         'OTHER_VAR': ChargeEvaluation(quantity=4, rate=5),
@@ -106,6 +107,15 @@ class ChargeUnitTests(testing_utils.TestCase):
         c = Charge(self.bill, 'X', 3, '', '', '', 'kWh')
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
+
+    def test_rounding(self):
+        c = Charge(self.bill, 'A', 1, quantity_formula='.005')
+        self.assertEqual(.005, c.evaluate({}).quantity)
+        self.assertEqual(.01, c.evaluate({}).total)
+
+        c = Charge(self.bill, 'A', 1, quantity_formula='-.005')
+        self.assertEqual(-.005, c.evaluate({}).quantity)
+        self.assertEqual(-.01, c.evaluate({}).total)
 
 
 

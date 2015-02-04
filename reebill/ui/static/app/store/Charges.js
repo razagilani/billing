@@ -6,26 +6,20 @@ Ext.define('ReeBill.store.Charges', {
     autoLoad: false,
     autoSync: true,
 
-    groupField: 'group',
+    groupField: 'type',
 
 	proxy: {
 		type: 'rest',
 
         pageParam: false,
-        startParam: false,
-        limitParam: false,
 
-        url: 'http://'+window.location.host+'/utilitybills/charges',
+        url: 'http://'+window.location.host+'/reebill/charges',
 
 		reader: {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
 		},
-
-        writer: {
-            writeAllFields: false
-        },
 
         listeners:{
             exception: utils.makeProxyExceptionHandler('Charges'),

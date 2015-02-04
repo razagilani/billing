@@ -16,7 +16,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.truncate_tables(self.session)
+        TestCaseWithSetup.truncate_tables()
         blank_address = Address()
         utility =  Utility('Test Utility', Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
@@ -32,7 +32,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
     def tearDown(self):
         self.session.commit()
-        # clear out tables in mysql test database (not relying on StateDB)
+        # clear out tables in mysql test database (not relying on ReeBillDAO)
         #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         #self._clear_tables(mysql_connection)
 
