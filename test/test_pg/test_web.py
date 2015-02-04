@@ -6,7 +6,7 @@ from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register
 from brokerage import wsgi
-from brokerage.pg_model import PGAccount
+from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
@@ -52,7 +52,7 @@ class TestPGWeb(unittest.TestCase):
                              Address(), Address(), '3')
         ua1.id, ua2.id, ua3.id = 1, 2, 3
         s.add_all([ua1, ua2, ua3])
-        s.add_all([PGAccount(ua1), PGAccount(ua2)])
+        s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
         ub1 = UtilBill(ua1, UtilBill.Complete, 'electric', utility, None,
                        None, Address(), Address(street='1 Example St.'))
         ub2 = UtilBill(ua1, UtilBill.Complete, 'electric', utility, None,
