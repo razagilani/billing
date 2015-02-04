@@ -34,7 +34,7 @@ class UtilBillLoader(object):
         if end is not None:
             cursor = cursor.filter(UtilBill.period_end <= end)
         if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
+            cursor = cursor.filter(UtilBill.get_service() == service)
         if utility is not None:
             cursor = cursor.filter(UtilBill.utility == utility)
         if rate_class is not None:

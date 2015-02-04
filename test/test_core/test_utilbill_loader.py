@@ -22,7 +22,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
                             Supplier('Test Supplier', Address()),
-                            RateClass('FB Test Rate Class', utility),
+                            RateClass('FB Test Rate Class', utility, 'gas'),
                             blank_address, blank_address)
         self.session.add(self.utility_account)
         self.session.commit()
@@ -42,8 +42,9 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         supplier = utility_account.fb_supplier
         pepco = Utility('pepco', Address())
         other_supplier = Supplier('Other Supplier', Address())
-        rateclass1 = RateClass('DC Non Residential Non Heat', washington_gas)
-        rateclass2 = RateClass('whatever', pepco)
+        rateclass1 = RateClass('DC Non Residential Non Heat', washington_gas,
+                               'gas')
+        rateclass2 = RateClass('whatever', pepco, 'electric')
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
@@ -51,7 +52,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # one bill
         empty_address = Address()
-        gas_bill_1 = UtilBill(utility_account, 0, 'gas', washington_gas, supplier,
+        gas_bill_1 = UtilBill(utility_account, 0, washington_gas, supplier,
                               rateclass1, empty_address, empty_address,
                               period_start=date(2000,1,1),
                               period_end=date(2000,2,1))
@@ -64,7 +65,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2000,1,31))
 
         # two bills
-        electric_bill = UtilBill(utility_account, 0, 'electric', pepco, other_supplier,
+        electric_bill = UtilBill(utility_account, 0, pepco, other_supplier,
                                  rateclass2, empty_address, empty_address,
                                  period_start=date(2000,1,2),
                                  period_end=date(2000,2,2))

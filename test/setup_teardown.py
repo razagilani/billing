@@ -246,7 +246,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
                         other_supplier])
         session.flush()
-        rate_class = RateClass('Test Rate Class Template', uc)
+        rate_class = RateClass('Test Rate Class Template', uc, 'gas')
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
@@ -266,7 +266,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         session.add(utility_account2)
         session.add(reebill_customer2)
 
-        u1 = UtilBill(utility_account2, UtilBill.Complete, 'gas', uc, supplier,
+        u1 = UtilBill(utility_account2, UtilBill.Complete, uc, supplier,
                              rate_class,
                              ub_ba1, ub_sa1,
                              period_start=date(2012, 1, 1),
@@ -275,7 +275,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 2, 3),
                              processed=True)
 
-        u2 = UtilBill(utility_account2, UtilBill.Complete, 'gas', uc, supplier,
+        u2 = UtilBill(utility_account2, UtilBill.Complete, uc, supplier,
                              rate_class,
                              ub_ba2, ub_sa2,
                              period_start=date(2012, 2, 1),
@@ -330,7 +330,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
 
-        u = UtilBill(utility_account4, UtilBill.Complete, 'gas', other_uc,
+        u = UtilBill(utility_account4, UtilBill.Complete, other_uc,
                                         other_supplier,
                          other_rate_class, ub_ba, ub_sa,
                          period_start=date(2012, 1, 1),

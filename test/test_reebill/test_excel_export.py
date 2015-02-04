@@ -329,7 +329,7 @@ class ExporterDataBookTest(unittest.TestCase):
         supplier = Supplier('New Supplier', Address())
         s.add(supplier)
 
-        rate_class = RateClass('New Rate Class', utility)
+        rate_class = RateClass('New Rate Class', utility, 'electric')
         s.add(rate_class)
 
         utility_account = UtilityAccount(
@@ -346,7 +346,7 @@ class ExporterDataBookTest(unittest.TestCase):
 
         s.add(
             UtilBill(
-                utility_account, UtilBill.Estimated, 'electric', utility,
+                utility_account, UtilBill.Estimated, utility,
                 supplier, rate_class, Address(), Address(),
                 period_start=date(2010, 11, 1), period_end=date(2011, 2, 3),
                 date_received=datetime.utcnow().date()
