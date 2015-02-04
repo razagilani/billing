@@ -3,9 +3,9 @@ import pymongo
 import mongoengine
 from datetime import date, datetime, timedelta
 from time import sleep
-from billing.reebill import journal
-from billing.util.dateutils import ISO_8601_DATE
-from billing.test import testing_utils
+from reebill import journal
+from util.dateutils import ISO_8601_DATE
+from test import testing_utils
 
 class JournalTest(testing_utils.TestCase):
 

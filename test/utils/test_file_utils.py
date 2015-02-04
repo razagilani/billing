@@ -2,7 +2,7 @@
 '''
 from unittest import TestCase
 from testfixtures import TempDirectory
-from billing.util.file_utils import make_directories_if_necessary
+from util.file_utils import make_directories_if_necessary
 from os.path import sep, join
 from os import access, F_OK
 from errno import ENOTDIR

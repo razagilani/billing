@@ -5,12 +5,12 @@ import pymongo
 from sqlalchemy import desc
 import tablib
 import traceback
-from billing.reebill import state
-from billing.reebill.state import UtilBill
-from billing.util import dateutils
-from billing.util.monthmath import approximate_month
-from billing.exc import *
-from billing.core.model import Session, UtilityAccount
+from reebill import state
+from reebill.state import UtilBill
+from util import dateutils
+from util.monthmath import approximate_month
+from exc import *
+from core.model import Session, UtilityAccount
 
 import pprint
 
@@ -23,9 +23,10 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 
-    def __init__(self, state_db, verbose=False):
+    def __init__(self, state_db, payment_dao, verbose=False):
         # objects for database access
         self.state_db = state_db
+        self.payment_dao = payment_dao
         self.verbose = verbose
 
     def export_account_charges(self, output_file, account=None,
@@ -321,7 +322,7 @@ class Exporter(object):
                     continue
 
                 applicable_payments = \
-                    self.state_db.get_payments_for_reebill_id(reebill.id)
+                    self.payment_dao.get_payments_for_reebill_id(reebill.id)
 
                 savings = 0
                 if reebill.ree_value and reebill.ree_charge:
@@ -429,17 +430,17 @@ def main(export_func, filename, account=None):
                 Account number (optional, uses all accounts or standard range)
     Saves output in "spreadsheet.xls".'''
     from os.path import dirname, realpath, join
-    from billing import init_config, init_model, init_logging
+    from core import init_config, init_model, init_logging
 
     p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
     init_logging(path=p)
     init_config(filename=p)
     init_model()
-    from billing import config
+    from core import config
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.StateDB(logger=logger)
+    state_db = state.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
