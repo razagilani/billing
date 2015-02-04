@@ -167,75 +167,6 @@ class ReeBillDAO(object):
             max_sequence = 0
         return max_sequence
 
-    def get_accounts_grid_data(self, account=None):
-        '''Returns the Account, fb_utility_name, fb_rate_class,
-        and fb_service_address of every customer,
-        the Sequence, Version and Issue date of the highest-sequence,
-        highest-version issued ReeBill object,
-        the rate class, the service address of the latest
-        (i.e. last-ending ) utility bill for each customer, and the period_end
-        of the latest *processed* utility bill
-        If account is given, the query is filtered by it.
-        This is a way of speeding up the AccountsGrid in the UI
-        '''
-        session = Session()
-        sequence_sq = session.query(
-            ReeBill.reebill_customer_id, func.max(
-                ReeBill.sequence).label('max_sequence'))\
-            .filter(ReeBill.issued == 1)\
-            .group_by(ReeBill.reebill_customer_id).subquery()
-        version_sq = session.query(
-            ReeBill.reebill_customer_id, ReeBill.sequence, ReeBill.issue_date,
-            func.max(ReeBill.version).label('max_version'))\
-            .filter(ReeBill.issued == 1)\
-            .group_by(ReeBill.sequence, ReeBill.reebill_customer_id)\
-            .subquery()
-        utilbill_sq = session.query(
-            UtilBill.utility_account_id,
-            func.max(UtilBill.period_end).label('max_period_end'))\
-        .group_by(UtilBill.utility_account_id)\
-        .subquery()
-        processed_utilbill_sq = session.query(
-            UtilBill.utility_account_id,
-            func.max(UtilBill.period_end).label('max_period_end_processed'))\
-        .filter(UtilBill.processed == 1)\
-        .group_by(UtilBill.utility_account_id)\
-        .subquery()
-        rate_class = aliased(RateClass)
-
-        q = session.query(UtilityAccount.id,
-                          UtilityAccount.account,
-                          UtilityAccount.account_number,
-                          Utility.name,
-                          RateClass.name,
-                          UtilityAccount.fb_service_address,
-                          sequence_sq.c.max_sequence,
-                          version_sq.c.max_version,
-                          version_sq.c.issue_date,
-                          rate_class.name,
-                          Address,
-                          processed_utilbill_sq.c.max_period_end_processed)\
-        .outerjoin(ReeBillCustomer, ReeBillCustomer.utility_account_id==UtilityAccount.id)\
-        .outerjoin(RateClass, RateClass.id==UtilityAccount.fb_rate_class_id)\
-        .outerjoin(Utility, Utility.id == UtilityAccount.fb_utility_id)\
-        .outerjoin(sequence_sq, ReeBillCustomer.id == sequence_sq.c.reebill_customer_id)\
-        .outerjoin(version_sq, and_(ReeBillCustomer.id == version_sq.c.reebill_customer_id,
-                   sequence_sq.c.max_sequence == version_sq.c.sequence))\
-        .outerjoin(utilbill_sq, UtilityAccount.id == utilbill_sq.c.utility_account_id)\
-        .outerjoin(UtilBill, and_(
-            UtilBill.utility_account_id == utilbill_sq.c.utility_account_id,
-            UtilBill.period_end == utilbill_sq.c.max_period_end))\
-        .outerjoin(rate_class, rate_class.id == UtilBill.rate_class_id)\
-        .outerjoin(Address, UtilBill.service_address_id == Address.id)\
-        .outerjoin(processed_utilbill_sq,
-                   ReeBillCustomer.utility_account_id == processed_utilbill_sq.c.utility_account_id)\
-        .order_by(desc(UtilityAccount.account))
-
-        if account is not None:
-            q = q.filter(UtilityAccount.account == account)
-
-        return q.all()
-
     def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
@@ -287,16 +218,23 @@ class ReeBillDAO(object):
             return False
         return True
 
+    def query_all_reebills_for_account(self, account):
+        """
+        Returns a query of all Reebill objects for UtilityAccount 'account'
+        odered by sequence and version ascending
+        """
+        session = Session()
+        query = session.query(ReeBill).join(ReeBillCustomer).join(
+            UtilityAccount).filter(UtilityAccount.account == account)
+        return query
+
     def get_all_reebills_for_account(self, account):
         """
         Returns a list of all Reebill objects for UtilityAccount 'account'
         odered by sequence and version ascending
         """
-        session = Session()
-        query = session.query(ReeBill).join(ReeBillCustomer).join(
-            UtilityAccount).filter(UtilityAccount.account == account).order_by(
-            ReeBill.sequence.asc(), ReeBill.version.asc())
-        return query.all()
+        return self.order_by(ReeBill.sequence.asc(), ReeBill.version.asc())\
+            .query_all_reebills_for_account(account).all()
 
     def get_reebill(self, account, sequence, version='max'):
         '''Returns the ReeBill object corresponding to the given account,

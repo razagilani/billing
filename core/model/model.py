@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, func
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -335,6 +335,19 @@ class UtilityAccount(Base):
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
                % (self.name, self.account)
+
+    def get_service_address(self):
+        '''
+        Gets the service address of the first bill that was added to
+        the account. If the account doesn't have any bills it return
+        self.fb_service_address. A better way might be to pick the most
+        recently modified bill since service addresses don't change, however we
+        decided agaist it for the sake of simplicity and speed.
+        '''
+        session = Session.object_session(self)
+        ub = session.query(UtilBill)\
+            .filter(UtilBill.utility_account_id == self.id).first()
+        return self.fb_service_address if ub is None else ub.service_address
 
 
 class UtilBill(Base):

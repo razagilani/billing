@@ -105,32 +105,30 @@ class Views(object):
           issued bill, Days since then and the last event) and the length
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
-        grid_data = self._reebill_dao.get_accounts_grid_data(account)
+        session = Session()
+        utility_accounts = session.query(UtilityAccount)
+
+        if account is not None:
+            utility_accounts.filter(UtilityAccount.account == account)\
+
+
         name_dicts = self._nexus_util.all_names_for_accounts(
-            [row[1] for row in grid_data])
+             ua.account for ua in utility_accounts)
 
         rows_dict = {}
-        for id, acc, account_number, fb_utility_name, fb_rate_class, \
-            fb_service_address, _, _, \
-            issue_date, rate_class, service_address, periodend in grid_data:
-            rows_dict[acc] = {
-                'account': acc,
-                'utility_account_id': id,
-                'utility_account_number': account_number,
-                'fb_utility_name': fb_utility_name,
-                'fb_rate_class': fb_rate_class,
-                'fb_service_address': fb_service_address,
-                'codename': name_dicts[acc].get('codename', ''),
-                'casualname': name_dicts[acc].get('casualname', ''),
-                'primusname': name_dicts[acc].get('primus', ''),
-                'lastperiodend': periodend,
-                'provisionable': False,
-                'lastissuedate': issue_date if issue_date else '',
-                'lastrateclass': rate_class if rate_class else '',
-                'lastutilityserviceaddress': str(service_address) if
-                service_address else '',
+        for ua in utility_accounts:
+            rows_dict[ua.account] = {
+                'account': ua.account,
+                'utility_account_id': ua.id,
+                'fb_utility_name': ua.fb_utility.name,
+                'fb_rate_class': ua.fb_rate_class.name if ua.fb_rate_class else '',
+                'utility_account_number': ua.account_number,
+                'codename': name_dicts[ua.account].get('codename', ''),
+                'casualname': name_dicts[ua.account].get('casualname', ''),
+                'primusname': name_dicts[ua.account].get('primus', ''),
+                'utilityserviceaddress': str(ua.get_service_address()),
                 'lastevent': '',
-                }
+            }
 
         if account is not None:
             events = [(account, self._journal_dao.last_event_summary(account))]
