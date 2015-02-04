@@ -8,6 +8,7 @@ from core import init_model
 from datetime import date
 from unittest import TestCase
 
+from test.setup_teardown import TestCaseWithSetup
 from exc import RSIError, ProcessedBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
@@ -17,12 +18,7 @@ class UtilityAccountTest(TestCase):
 
     def setUp(self):
         init_model()
-        session = Session()
-        session.query(Register).delete()
-        session.query(UtilBill).delete()
-        session.query(Payment).delete()
-        session.query(ReeBillCustomer).delete()
-        session.query(UtilityAccount).delete()
+        TestCaseWithSetup.truncate_tables()
 
         self.utility = Utility('utility', Address())
         self.supplier = Supplier('supplier', Address())
