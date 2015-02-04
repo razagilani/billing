@@ -55,8 +55,12 @@ class TestExportAltitude(TestCase):
             .return_value = 'A' * 36
         altitude_converter.get_guid_for_supplier\
             .return_value = 'B' * 36
-        uuid_func = lambda: uuid5(NAMESPACE_DNS, 'example.com')
-        self.uuid = str(uuid_func())
+        self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
+                      str(uuid5(NAMESPACE_DNS, 'b'))]
+        def uuid_func(count=[0]):
+            result = self.uuids[count[0]]
+            count[0] += 1
+            return result
         self.pgae = PGAltitudeExporter(uuid_func, altitude_converter)
 
     def test_get_dataset(self):
@@ -64,7 +68,7 @@ class TestExportAltitude(TestCase):
         self.assertEqual(2, len(dataset))
         self.assertEqual((
                              '11111',
-                             self.uuid,
+                             self.uuids[0],
                              'A' * 36,
                              'B' * 36,
                              'electric',
@@ -84,7 +88,7 @@ class TestExportAltitude(TestCase):
                          ), dataset[0])
         self.assertEqual((
                              '22222',
-                             self.uuid,
+                             self.uuids[1],
                              'A' * 36,
                              'B' * 36,
                              'gas',
