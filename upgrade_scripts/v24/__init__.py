@@ -53,12 +53,11 @@ def mark_charges_as_distribution_or_supply(session):
 def copy_service_to_rate_class(session):
     '''copies service from utilbill to rate_class table'''
 
-    for rate_class in session.query(RateClass).all():
-        if rate_class.utility_id is not None:
-            utilbill = session.query(UtilBill).join(Utility).\
-                filter(UtilBill.utility_id==rate_class.utility_id).first()
-        log.info('setting rate_class %s service to %s' %(rate_class.name, utilbill.service))
-        rate_class.service = utilbill.service
+    for utilbill in session.query(UtilBill).all():
+        if utilbill.rate_class is not None:
+            log.info('setting rate_class %s service to %s' %
+                     (utilbill.rate_class.name, utilbill.service))
+            utilbill.rate_class.service = utilbill.service
 
 def upgrade():
     log.info('Beginning upgrade to version 24')

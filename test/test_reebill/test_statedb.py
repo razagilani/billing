@@ -38,7 +38,7 @@ class StateDBTest(TestCaseWithSetup):
         test_supplier = Supplier('FB Test Suplier', blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
                             test_utility, test_supplier,
-                            RateClass('FB Test Rate Class', test_utility),
+                            RateClass('FB Test Rate Class', test_utility, 'gas'),
                             blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
                             'thermal', 'example@example.com',
@@ -317,16 +317,16 @@ class StateDBTest(TestCaseWithSetup):
         # address to the other customer
         washgas = Utility('washgas', Address())
         supplier = Supplier('supplier', Address())
-        rateclass2 = RateClass('DC Non Residential Non Heat', washgas)
-        rateclass3 = RateClass('', washgas)
-        gas_bill_1 = UtilBill(utility_account1, 0, 'gas', washgas, supplier,
+        rateclass2 = RateClass('DC Non Residential Non Heat', washgas, 'gas')
+        rateclass3 = RateClass('', washgas, 'gas')
+        gas_bill_1 = UtilBill(utility_account1, 0, washgas, supplier,
                 rateclass2, empty_address, empty_address,
                 period_start=date(2000, 1, 1), period_end=date(2000, 2, 1),
                 processed=True)
-        gas_bill_2 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
+        gas_bill_2 = UtilBill(utility_account2, 0, washgas, supplier,
                 rateclass2, empty_address, empty_address,
                 period_start=date(2000, 3, 1), period_end=date(2000, 4, 1))
-        gas_bill_3 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
+        gas_bill_3 = UtilBill(utility_account2, 0, washgas, supplier,
                 rateclass3, fake_address, fake_address,
                 period_start=date(2000, 4, 1), period_end=date(2000, 5, 1),
                 processed=True)
