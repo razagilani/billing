@@ -29,8 +29,6 @@ Ext.application({
         'Units',
         'UtilityBillRegisters',
         'UtilityBills',
-        'UtilityBillsMemory', // not sure if we need this
-        'Timestamps' // ???
     ],
 
     launch: function() {}

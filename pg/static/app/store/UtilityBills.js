@@ -1,6 +1,5 @@
 Ext.define('ReeBill.store.UtilityBills', {
-    extend: 'Ext.data.SyncStore',
-    memoryStore: 'UtilityBillsMemory',
+    extend: 'Ext.data.Store',
     requires: ['ReeBill.model.UtilityBill'],
     model: 'ReeBill.model.UtilityBill',
 
