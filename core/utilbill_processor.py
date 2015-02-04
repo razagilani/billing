@@ -1,6 +1,6 @@
 import json
 from datetime import datetime,date
-from sqlalchemy import desc
+
 from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
@@ -20,11 +20,6 @@ class UtilbillProcessor(object):
     - CRUD on child objects of UtilBill that are closely associated
     with UtilBills, like charges and registers.
     - CRUD on utilities, suppliers, rate classes.
-    - Generating JSON data for the ReeBill UI.
-    Only methods that do the first or the first two things should stay in
-    here; the others should eventually be moved. This file should be inside
-    "core" (not "reebill") so the "utility bill processing" methods can be used
-    outside of ReeBill.
     '''
     def __init__(self, pricing_model, bill_file_handler, nexus_util,
                  logger=None):
@@ -52,17 +47,14 @@ class UtilbillProcessor(object):
         utilbill = self._get_utilbill(utilbill_id)
         assert utilbill.utility is not None
 
-        #toggle processed state of utility bill
-        if processed is not None:
-            assert processed in (True, False)
-            if None in (utilbill.rate_class, utilbill.supplier) and processed:
-                raise BillingError("Bill with unknown supplier or rate class "
-                                   "can't become processed")
+        if processed is True:
+            utilbill.check_processable()
             utilbill.processed = processed
-            #since the bill has become processed no other changes to the bill can be made
-            # so return the util bill without raising an error
-            if processed:
-                return utilbill
+            # since the bill has become processed no other changes to the bill
+            # can be made so return the util bill without raising an error
+            return utilbill
+        elif processed is False:
+            utilbill.processed = processed
 
         utilbill.check_editable()
         if target_total is not None:
@@ -122,8 +114,12 @@ class UtilbillProcessor(object):
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
         try:
+            # previously this was filtered by service so only bills with the
+            # same service could be used by predecessors. now any bill for the
+            # same UtilityAccount is used, because realistically they will all
+            # have the same service.
             predecessor = UtilBillLoader().get_last_real_utilbill(
-                utility_account.account, end=start, service=service)
+                utility_account.account, end=start)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -187,10 +183,11 @@ class UtilbillProcessor(object):
             Address.from_other(billing_address),
             Address.from_other(service_address),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow().date())
+            date_received=datetime.utcnow())
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
+
         for register in predecessor.registers if predecessor else []:
             # no need to append this Register to new_utilbill.Registers because
             # SQLAlchemy does it automatically
@@ -198,6 +195,20 @@ class UtilbillProcessor(object):
                      register.unit, False, register.reg_type,
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
+        # a register called "REG_TOTAL" is always required to exist but may be
+        # missing from some existing bills. there is no way to tell what unit
+        # it is supposed to measure energy in because the rate class may not
+        # be known.
+        if predecessor is None or 'REG_TOTAL' not in (
+                r.register_binding for r in predecessor.registers):
+            if service == 'electric':
+                unit = 'kWh'
+            else:
+                assert service == 'gas'
+                unit = 'therms'
+            Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
+                     register_binding='REG_TOTAL')
+
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -398,7 +409,6 @@ class UtilbillProcessor(object):
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s" % register_id)
         session = Session()
 
         #Register to be updated
@@ -409,21 +419,14 @@ class UtilbillProcessor(object):
                   'identifier', 'estimated', 'reg_type', 'register_binding',
                   'meter_identifier']:
             val = rows.get(k, getattr(register, k))
-            self.logger.debug("Setting attribute %s on register %s to %s" %
-                              (k, register.id, val))
             setattr(register, k, val)
         if 'active_periods' in rows and rows['active_periods'] is not None:
             active_periods_str = json.dumps(rows['active_periods'])
-            self.logger.debug("Setting attribute active_periods on register"
-                              " %s to %s" % (register.id, active_periods_str))
             register.active_periods = active_periods_str
-        self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(register.utilbill_id)
         return register
 
     def delete_register(self, register_id):
-        self.logger.info("Running Process.delete_register %s" %
-                         register_id)
         session = Session()
         register = session.query(Register).filter(
             Register.id == register_id).one()
@@ -541,62 +544,4 @@ class UtilbillProcessor(object):
         return utility_account
 
 
-    ############################################################################
-    # "view" methods: return JSON dictionaries for ReeBill UI
-    # TODO: move to another file in reebill/
-    ############################################################################
 
-    def get_utilbill_charges_json(self, utilbill_id):
-        """Returns a list of dictionaries of charges for the utility bill given
-        by  'utilbill_id' (MySQL id)."""
-        session = Session()
-        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        return [charge.column_dict() for charge in utilbill.charges]
-
-    def get_registers_json(self, utilbill_id):
-        """Returns a dictionary of register information for the utility bill
-        having the specified utilbill_id."""
-        l = []
-        session = Session()
-        for r in session.query(Register).join(UtilBill,
-                                              Register.utilbill_id == UtilBill.id). \
-                filter(UtilBill.id == utilbill_id).all():
-            l.append(r.column_dict())
-        return l
-
-    def get_all_utilbills_json(self, account, start=None, limit=None):
-        # result is a list of dictionaries of the form {account: account
-        # number, name: full name, period_start: date, period_end: date,
-        # sequence: reebill sequence number (if present)}
-        s = Session()
-        utilbills = s.query(UtilBill).join(UtilityAccount).filter_by(
-            account=account).order_by(UtilityAccount.account,
-                                      desc(UtilBill.period_start)).all()
-        data = [dict(ub.column_dict(),
-                     pdf_url=self.bill_file_handler.get_s3_url(ub))
-                for ub in utilbills]
-        return data, len(utilbills)
-
-    def get_all_suppliers_json(self):
-        session = Session()
-        return [s.column_dict() for s in session.query(Supplier).all()]
-
-    def get_all_utilities_json(self):
-        session = Session()
-        return [u.column_dict() for u in session.query(Utility).all()]
-
-    def get_all_rate_classes_json(self):
-        session = Session()
-        return [r.column_dict() for r in session.query(RateClass).all()]
-
-    def get_utility(self, name):
-        session = Session()
-        return session.query(Utility).filter(Utility.name == name).one()
-
-    def get_supplier(self, name):
-        session = Session()
-        return session.query(Supplier).filter(Supplier.name == name).one()
-
-    def get_rate_class(self, name):
-        session = Session()
-        return session.query(RateClass).filter(RateClass.name == name).one()

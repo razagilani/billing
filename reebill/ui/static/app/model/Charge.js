@@ -1,7 +1,7 @@
 Ext.define('ReeBill.model.Charge', {
     extend: 'Ext.data.Model',
     fields: [
-        {name: 'group', type: 'string'},
+        {name: 'type', type: 'string'},
         {name: 'rsi_binding', type: 'string'},
         {name: 'description', type: 'string'},
         {name: 'quantity', type: 'float'},

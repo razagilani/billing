@@ -86,6 +86,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         header: 'Total Supply',
         dataIndex: 'supply_total',
         renderer: Ext.util.Format.usMoney
+        width: 150,
     },{
         header: 'Utility',
         dataIndex: 'utility',

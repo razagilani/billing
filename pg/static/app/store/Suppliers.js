@@ -31,7 +31,7 @@ Ext.define('ReeBill.store.Suppliers', {
 
     sorters: [{
         property: 'name',
-        direction: 'DESC'
+        direction: 'ASC'
     }]
 
 });

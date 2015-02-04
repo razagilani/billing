@@ -16,9 +16,6 @@ Ext.define('ReeBill.controller.Charges', {
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
     },{
-        ref: 'reebillsGrid',
-        selector: 'grid[id=reebillsGrid]'
-    },{
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
@@ -70,10 +67,10 @@ Ext.define('ReeBill.controller.Charges', {
             },
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
-            },
-            'groupTextField':{
-                specialkey: this.handleGroupTextFieldEnter
             }
+            /*'groupTextField':{
+                specialkey: this.handleGroupTextFieldEnter
+            }*/
         });
 
         this.getChargesStore().on({
@@ -120,12 +117,12 @@ Ext.define('ReeBill.controller.Charges', {
     /**
      * Handle a special key press in the GroupTextField
      */
-    handleGroupTextFieldEnter: function(f, e) {
+   handleGroupTextFieldEnter: function(f, e) {
         var field = this.getGroupTextField();
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
         if (e.getKey() == e.ENTER) {
-            selected.set('group', field.getValue());
+            selected.set('', field.getValue());
             this.getChargesGrid().focus();
         }
     },

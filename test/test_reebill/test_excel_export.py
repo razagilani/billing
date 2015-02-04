@@ -12,15 +12,19 @@ from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
 from reebill.excel_export import Exporter
-from reebill.state import StateDB, ReeBill, Payment
+from reebill.state import ReeBill, Payment
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
+
 
 
 class ExporterSheetTest(unittest.TestCase):
 
     def setUp(self):
         #Set up the mock
-        self.mock_StateDB = mock.create_autospec(StateDB)
-        self.exp = Exporter(self.mock_StateDB)
+        self.mock_StateDB = mock.create_autospec(ReeBillDAO)
+        self.payment_dao = mock.Mock(autospec=PaymentDAO)
+        self.exp = Exporter(self.mock_StateDB, self.payment_dao)
 
     def test_get_reebill_details_dataset(self):
 
@@ -66,7 +70,8 @@ class ExporterSheetTest(unittest.TestCase):
             else:
                 return []
 
-        self.mock_StateDB.get_payments_for_reebill_id.side_effect = get_payments_for_reebill_id
+        self.payment_dao.get_payments_for_reebill_id.side_effect = \
+            get_payments_for_reebill_id
         self.mock_StateDB.get_all_reebills_for_account.side_effect = cycle([
             [make_reebill(1, 1)],   # For account '10003'
             [make_reebill(2, 2), make_reebill(3, 3), make_reebill(4, 4)] # 10004
@@ -314,7 +319,8 @@ class ExporterDataBookTest(unittest.TestCase):
         init_config('test/tstsettings.cfg')
         init_model()
         logger = logging.getLogger('test')
-        self.exp = Exporter(StateDB(logger))
+
+        self.exp = Exporter(ReeBillDAO(logger=logger), PaymentDAO())
 
         s = Session()
         utility = Utility('New Utility', Address())
