@@ -747,7 +747,8 @@ class Register(Base):
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
-    utilbill = relationship("UtilBill", backref='registers')
+    utilbill = relationship(
+        "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
 
     def __init__(self, utilbill, description, identifier, unit,
                 estimated, reg_type, active_periods, meter_identifier,
