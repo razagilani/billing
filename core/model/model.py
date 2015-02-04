@@ -690,8 +690,6 @@ class UtilBill(Base):
     def set_total_energy(self, quantity):
         total_register = next(r for r in self.registers if
                               r.register_binding == 'REG_TOTAL')
-        # TODO: maybe create REG_TOTAL register if it doesn't exist.
-        # this is hard because the unit is not known.
         total_register.quantity = quantity
 
     def get_supply_target_total(self):
