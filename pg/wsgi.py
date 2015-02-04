@@ -287,59 +287,13 @@ class RateClassesResource(BaseResource):
         return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__)
-
-initialize()
-
-
-def google_oauth_init():
-    from core import config
-    oauth = OAuth()
-    google = oauth.remote_app(
-        'google',
-        base_url=config.get('power_and_gas', 'base_url'),
-        authorize_url=config.get('power_and_gas', 'authorize_url'),
-        request_token_url=config.get('power_and_gas', 'request_token_url'),
-        request_token_params={
-            'scope': config.get('power_and_gas', 'request_token_params_scope'),
-            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
-        access_token_url=config.get('power_and_gas', 'access_token_url'),
-        access_token_method=config.get('power_and_gas', 'access_token_method'),
-        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
-        consumer_key=config.get('power_and_gas', 'google_client_id'),
-        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
-    return google, config
-
-google, config = google_oauth_init()
-
-@app.route('/login')
-def login():
-    next_path = request.args.get('next')
-    if next_path:
-        # Since passing along the "next" URL as a GET param requires
-        # a different callback for each page, and Google requires
-        # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
-        request_components = urlparse(request.url)
-        path = urllib.unquote(next_path)
-        if path[0] == '/':
-            # This first slash is unnecessary since we force it in when we
-            # format next_url.
-            path = path[1:]
-
-        next_url = "{path}".format(
-            path=path,)
-        session['next_url'] = next_url
-    return google.authorize(callback=url_for(
-        config.get('power_and_gas', 'redirect_uri'),
-        _external=True))
+app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
     return redirect(url_for('login'))
 
-@app.route('/oauth2callback')
-@google.authorized_handler
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
@@ -394,6 +348,56 @@ admin.add_view(RateClassModelView(Session()))
 admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
 admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
 
+def google_oauth_init(config):
+    oauth = OAuth()
+    google = oauth.remote_app(
+        'google',
+        base_url=config.get('power_and_gas', 'base_url'),
+        authorize_url=config.get('power_and_gas', 'authorize_url'),
+        request_token_url=config.get('power_and_gas', 'request_token_url'),
+        request_token_params={
+            'scope': config.get('power_and_gas', 'request_token_params_scope'),
+            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
+        access_token_url=config.get('power_and_gas', 'access_token_url'),
+        access_token_method=config.get('power_and_gas', 'access_token_method'),
+        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
+        consumer_key=config.get('power_and_gas', 'google_client_id'),
+        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
+    global oauth2callback
+    oauth2callback = google.authorized_handler(oauth2callback)
+    oauth2callback = app.route('/oauth2callback')(oauth2callback)
+    return google
+
 if __name__ == '__main__':
+    initialize()
+    from core import config
+
+    google = google_oauth_init(config)
+
+    def make_google_redirect_response():
+        return google.authorize(callback=url_for(
+            config.get('power_and_gas', 'redirect_uri'),
+            _external=True))
+
+    @app.route('/login')
+    def login():
+        next_path = request.args.get('next')
+        if next_path:
+            # Since passing along the "next" URL as a GET param requires
+            # a different callback for each page, and Google requires
+            # whitelisting each allowed callback page, therefore, it can't pass it
+            # as a GET param. Instead, the url is sanitized and put into the session.
+            request_components = urlparse(request.url)
+            path = urllib.unquote(next_path)
+            if path[0] == '/':
+                # This first slash is unnecessary since we force it in when we
+                # format next_url.
+                path = path[1:]
+
+            next_url = "{path}".format(
+                path=path,)
+            session['next_url'] = next_url
+        return make_google_redirect_response()
+
     app.run(debug=True)
 
