@@ -31,7 +31,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.pg_model import PGAccount
+from brokerage.brokerage_model import BrokerageAccount
 
 
 # TODO: would be even better to make flask-restful automatically call any
@@ -147,7 +147,7 @@ id_parser.add_argument('id', type=int, required=True)
 class AccountResource(BaseResource):
     def get(self):
 
-        accounts = Session().query(UtilityAccount).join(PGAccount).order_by(
+        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
             UtilityAccount.account).all()
         return marshal(accounts, {
             'id': Integer,

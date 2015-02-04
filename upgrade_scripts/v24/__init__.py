@@ -8,7 +8,7 @@ import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
 from boto.s3.connection import S3Connection
-from pg.pg_model import PGAccount
+from brokerage.brokerage_model import BrokerageAccount
 from upgrade_scripts import alembic_upgrade
 import logging
 from core import config, init_model
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 def create_pg_accounts(session):
     for ua in session.query(UtilityAccount).filter(
                     UtilityAccount.account >= '20000').all():
-        session.add(PGAccount(ua))
+        session.add(BrokerageAccount(ua))
 
 
 def mark_charges_as_distribution_or_supply(session):
