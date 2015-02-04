@@ -3,7 +3,7 @@ from datetime import timedelta
 from tablib import Dataset
 from core.model import Session, UtilBill, UtilityAccount
 from util.dateutils import ISO_8601_DATETIME
-from pg.pg_model import PGAccount
+from brokerage.pg_model import PGAccount
 
 def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a PGAccount.

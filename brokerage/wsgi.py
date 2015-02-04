@@ -18,9 +18,9 @@ from flask.ext.admin.model import BaseModelView
 from flask.ext.principal import Need, identity_loaded, Permission
 from sqlalchemy.sql.functions import current_user
 from wtforms import TextField, Form
-from pg.admin import MyAdminIndexView, CustomModelView, UtilityModelView, SupplierModelView, RateClassModelView, \
+from brokerage.admin import MyAdminIndexView, CustomModelView, UtilityModelView, SupplierModelView, RateClassModelView, \
     ReeBillCustomerModelView
-from pg.pg_model import PGAccount
+from brokerage.pg_model import PGAccount
 
 from sqlalchemy import desc
 
@@ -48,7 +48,7 @@ from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
 from flask_oauth import OAuth
 from urllib2 import Request, urlopen, URLError
 import json
-from pg.admin import make_admin
+from brokerage.admin import make_admin
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally

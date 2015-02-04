@@ -5,8 +5,8 @@ from json import loads
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register
-from pg import wsgi
-from pg.pg_model import PGAccount
+from brokerage import wsgi
+from brokerage.pg_model import PGAccount
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
