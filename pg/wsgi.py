@@ -48,6 +48,7 @@ from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
 from flask_oauth import OAuth
 from urllib2 import Request, urlopen, URLError
 import json
+from pg.admin import make_admin
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -341,15 +342,6 @@ api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-admin = Admin(app, index_view=MyAdminIndexView())
-admin.add_view(CustomModelView(UtilityAccount, Session()))
-admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
-admin.add_view(UtilityModelView(Session()))
-admin.add_view(SupplierModelView(Session()))
-admin.add_view(RateClassModelView(Session()))
-admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
-admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
-
 def google_oauth_init(config):
     oauth = OAuth()
     google = oauth.remote_app(
@@ -400,6 +392,9 @@ if __name__ == '__main__':
                 path=path,)
             session['next_url'] = next_url
         return make_google_redirect_response()
+
+    # enable admin UI
+    make_admin(app)
 
     app.run(debug=True)
 
