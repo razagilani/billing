@@ -1,6 +1,5 @@
-'''Unit tests for the UtilBill class and other code that will eventually be
-included in it.
-'''
+""" Unit tests for the UtilityAccount class
+"""
 import unittest
 from test import init_test_config
 init_test_config()
