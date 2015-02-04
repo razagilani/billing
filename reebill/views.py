@@ -1,6 +1,7 @@
 '''The goal of this file is to collect in one place all the code for to
 serializing data into JSON for the ReeBill UI. Some of that code is still in
 other files.
+            if None in (utilbill.rate_class, utilbill.supplier) and processed:
 '''
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
@@ -86,15 +87,15 @@ class Views(object):
         """
         session = Session()
         unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.customer_id).filter(ReeBill.issued == 0,
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == 0,
                                                           ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
-            unissued_v0_reebills.c.customer_id.label('customer_id'),
+            unissued_v0_reebills.c.reebill_customer_id.label('reebill_customer_id'),
             func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
-            .group_by(unissued_v0_reebills.c.customer_id).subquery()
+            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
         reebills = session.query(ReeBill) \
-            .filter(ReeBill.customer_id==min_sequence.c.customer_id) \
+            .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
             .filter(ReeBill.sequence==min_sequence.c.sequence)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
