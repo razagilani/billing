@@ -361,8 +361,6 @@ class UtilBill(Base):
     period_start = Column(Date)
     period_end = Column(Date)
     due_date = Column(Date)
-    #TODO: remove service from utilbill model after release 24 is deployed
-    service = Column(String(45), nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -697,7 +695,9 @@ class UtilBill(Base):
         return total_register.quantity
 
     def get_service(self):
-        return self.rate_class.service
+        if self.rate_class is not None:
+            return self.rate_class.service
+        return None
 
     # TODO: move UI-related code to views.py
     def column_dict(self):

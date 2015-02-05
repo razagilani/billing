@@ -355,8 +355,8 @@ class StateDBTest(TestCaseWithSetup):
         # Now Attach a reebill to one and issue it , and a utilbill with a
         # different rateclass to the other
         reebill = ReeBill(reebill_customer1, 1, 0, utilbills=[gas_bill_1])
-        newrateclass = RateClass('New Rateclass', washgas)
-        gas_bill_4 = UtilBill(utility_account2, 0, 'gas', washgas, supplier,
+        newrateclass = RateClass('New Rateclass', washgas, 'gas')
+        gas_bill_4 = UtilBill(utility_account2, 0, washgas, supplier,
                 newrateclass, fake_address, fake_address,
                 period_start=date(2000, 5, 1), period_end=date(2000, 6, 1),
                 processed=True)

@@ -308,7 +308,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
-        other_rate_class = RateClass('Other Rate Class', other_uc)
+        other_rate_class = RateClass('Other Rate Class', other_uc, 'gas')
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)

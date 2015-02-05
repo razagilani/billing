@@ -152,8 +152,8 @@ class UtilbillProcessor(object):
         # passed as an argument, or 'electric' by default
         # TODO: this doesn't really make sense; probably the "service" field
         # should belong to the rate class.
-        if service is None:
-            service = getattr(predecessor, 'service', None)
+        if service is None and predecessor is not None:
+            service = predecessor.get_service()
         if service is None:
             service = 'electric'
 
@@ -175,7 +175,7 @@ class UtilbillProcessor(object):
             rate_class = utility_account.fb_rate_class
 
         new_utilbill = UtilBill(
-            utility_account, state, service, utility, supplier, rate_class,
+            utility_account, state, utility, supplier, rate_class,
             Address.from_other(billing_address),
             Address.from_other(service_address),
             period_start=start, period_end=end, target_total=total,
@@ -500,7 +500,7 @@ class UtilbillProcessor(object):
             result = session.query(RateClass).filter_by(
                 name=rate_class_name).one()
         except NoResultFound:
-            result = RateClass(rate_class_name, utility)
+            result = RateClass(rate_class_name, utility, 'gas')
         return result
 
     def create_utility(self, name):
