@@ -13,7 +13,7 @@ from upgrade_scripts import alembic_upgrade
 import logging
 from core import config, init_model
 from core.model.model import Session, Utility, \
-    Address, UtilBill, Supplier, RateClass, UtilityAccount, Charge
+    Address, UtilBill, Supplier, RateClass, UtilityAccount, Charge, Register
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +48,21 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s distribution charges' % distribution_count
     print 'Found %s other charges' % other_count
 
+def add_reg_total(session):
+    for u in session.query(UtilBill).join(UtilityAccount).join(BrokerageAccount).all():
+        if 'REG_TOTAL' in (r.register_binding for r in u.registers):
+            continue
+        reg_total = Register(u, '', '', 'kWh', False, '', None, '',
+                             register_binding='REG_TOTAL')
+        # TODO will have to be changed to u.get_service()
+        # when branch to move service column is merged in
+        if u.rate_class is None or u.service == 'electric':
+            u.registers.append(reg_total)
+        else:
+            assert u.service == 'gas'
+            reg_total.unit = 'therms'
+            u.registers.append(reg_total)
+    print 'Added REG_TOTAL to brokerage bills'
 
 def upgrade():
     log.info('Beginning upgrade to version 24')
@@ -57,6 +72,7 @@ def upgrade():
     init_model(schema_revision='572b9c75caf3')
     session = Session()
     create_pg_accounts(session)
+    add_reg_total(session)
     mark_charges_as_distribution_or_supply(session)
 
     session.commit()
