@@ -49,6 +49,11 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s other charges' % other_count
 
 def add_reg_total(session):
+    '''All new bills are required to have a REG_TOTAL register. This makes
+    ensures that all the existing brokerage bills have it. A dubious method
+    is used to determine what the energy unit should be, but currently
+    there is no better way.
+    '''
     for u in session.query(UtilBill).join(UtilityAccount).join(BrokerageAccount).all():
         if 'REG_TOTAL' in (r.register_binding for r in u.registers):
             continue
