@@ -28,7 +28,7 @@ Ext.application({
         'Charges',
         'Units',
         'UtilityBillRegisters',
-        'UtilityBills',
+        'UtilityBills'
     ],
 
     launch: function() {}
