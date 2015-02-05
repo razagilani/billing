@@ -125,7 +125,7 @@ class BaseResource(Resource):
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
-            #'secondary_account_number': '', # TODO
+            'supply_choice_id': String,
             'processed': Boolean,
         }
 
@@ -152,7 +152,10 @@ class AccountResource(BaseResource):
         return marshal(accounts, {
             'id': Integer,
             'account': String,
-            'utility_account_number': String(attribute='account_number')
+            'utility_account_number': String(attribute='account_number'),
+            'utility': String(attribute='fb_utility'),
+            'service_address': CallableField(String(),
+                                             attribute='get_service_address')
         })
 
 class UtilBillListResource(BaseResource):
@@ -177,9 +180,9 @@ class UtilBillResource(BaseResource):
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
         parser.add_argument('processed', type=bool)
-        parser.add_argument('rate_class', type=str) # TODO: what type?
-        parser.add_argument('utility', type=str) # TODO: what type?
-        parser.add_argument('supplier', type=str) # TODO: what type?
+        parser.add_argument('rate_class', type=str)
+        parser.add_argument('utility', type=str)
+        parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
@@ -194,7 +197,7 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supplier=row['supplier'],
+            supply_choice_id=row['supply_choice_id']
             )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
@@ -268,7 +271,10 @@ class UtilitiesResource(BaseResource):
 class RateClassesResource(BaseResource):
     def get(self):
         rate_classes = Session.query(RateClass).all()
-        rows = marshal(rate_classes, {'id': Integer, 'name': String})
+        rows = marshal(rate_classes, {
+            'id': Integer,
+            'name': String,
+            'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__, static_url_path='')
