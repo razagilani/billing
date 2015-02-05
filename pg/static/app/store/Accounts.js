@@ -42,7 +42,7 @@ Ext.define('ReeBill.store.Accounts', {
 
     sorters: [{
         property: 'account',
-        direction: 'ASC'
+        direction: 'DESC'
     }]
 
 });

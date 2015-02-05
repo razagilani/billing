@@ -169,7 +169,9 @@ class AccountResource(BaseResource):
             'id': Integer,
             'account': String,
             'utility_account_number': String(attribute='account_number'),
-            'utility': String(attribute='fb_utility')
+            'utility': String(attribute='fb_utility'),
+            'service_address': CallableField(String(),
+                                             attribute='get_service_address')
         })
 
 class UtilBillListResource(BaseResource):
