@@ -114,25 +114,25 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.assertEqual(0, self.ubl.count_utilbills_with_hash(hash))
 
         self.session.add(
-            UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
+            UtilBill(self.utility_account, 0, self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('RC1',  self.utility_account.fb_utility),
+                     RateClass('RC1',  self.utility_account.fb_utility, 'gas'),
                      Address(), Address(), period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1), sha256_hexdigest=hash))
         self.assertEqual(1, self.ubl.count_utilbills_with_hash(hash))
 
         self.session.add(
-            UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
+            UtilBill(self.utility_account, 0, self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('RC2', self.utility_account.fb_utility),
+                     RateClass('RC2', self.utility_account.fb_utility, 'gas'),
                      Address(), Address(), period_start=date(2000, 2, 1),
                      period_end=date(2000, 3, 1), sha256_hexdigest=hash))
         self.assertEqual(2, self.ubl.count_utilbills_with_hash(hash))
 
         self.session.add(
-            UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
+            UtilBill(self.utility_account, 0, self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('RC3', self.utility_account.fb_utility),
+                     RateClass('RC3', self.utility_account.fb_utility, 'gas'),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='somethingelse'))
@@ -150,15 +150,15 @@ class UtilbillLoaderTest(TestCaseWithSetup):
             self.utility_account.fb_service_address)
         self.session.add(other_account)
         bills = [
-            UtilBill(self.utility_account, 0, 'gas', self.utility_account.fb_utility,
+            UtilBill(self.utility_account, 0, self.utility_account.fb_utility,
                      self.utility_account.fb_supplier,
-                     RateClass('RC1', self.utility_account.fb_utility),
+                     RateClass('RC1', self.utility_account.fb_utility, 'gas'),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='abc'),
-            UtilBill(other_account, 0, 'gas', self.utility_account.fb_utility,
+            UtilBill(other_account, 0, self.utility_account.fb_utility,
                      other_account.fb_supplier,
-                     RateClass('RC2', other_account.fb_utility),
+                     RateClass('RC2', other_account.fb_utility, 'gas'),
                      Address(), Address(), period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='def'),
