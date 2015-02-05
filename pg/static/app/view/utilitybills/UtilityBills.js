@@ -104,8 +104,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             queryMode: 'local',
             forceSelection: true,
             selectOnFocus: true
-        width: 150,
-        }
+        },
+        width: 150
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
