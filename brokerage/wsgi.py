@@ -271,7 +271,7 @@ class RateClassesResource(BaseResource):
         rows = marshal(rate_classes, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
@@ -309,12 +309,11 @@ def index():
             # Unauthorized - bad token
             session.pop('access_token', None)
             return redirect(url_for('login'))
-        return redirect(url_for('static', filename='index.html'))
     #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
-    return redirect(url_for('static', filename='index.html'))
+    return app.send_static_file('index.html')
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')

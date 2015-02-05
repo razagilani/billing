@@ -117,13 +117,9 @@ Ext.define('ReeBill.view.Viewport', {
                     xtype: 'toolbar',
                     dock: 'bottom',
 
-                    items:["Logged in as :",
+                    items:[
                     {
-                        xtype: 'tbtext',
-                        name: 'userTBLabel',
-                        text: 'Username'
-                    },{
-                        text: 'Logout',
+                        text: 'Log Out',
                         handler: function(){
                             window.location.pathname = '/logout';
                         }
@@ -132,10 +128,6 @@ Ext.define('ReeBill.view.Viewport', {
                         name: 'revisionTBLabel',
                         text: VERSION.date + ' ' + VERSION.user + ' ' + VERSION.version + ' ' + VERSION.deploy_env
                     },'->',{
-                        xtype: 'tbtext',
-                        name: 'accountTBLabel',
-                        text: 'No Account Selected'
-                    },{
                         xtype: 'tbtext',
                         name: 'ubSequenceTBLabel',
                         text: ''
