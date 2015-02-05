@@ -4,16 +4,13 @@ Ext.define('ReeBill.controller.UtilityBills', {
     stores: [
         'UtilityBills',
         'RateClasses',
-        'Suppliers',
         'Utilities',
         'Services',
         'Accounts'
     ],
 
     views: [
-        'utilitybills.UtilityBills',
-        'utilitybills.UploadUtilityBill'
-    ],
+        'utilitybills.UtilityBills'    ],
     
     refs: [{
         ref: 'uploadUtilityBillForm',
