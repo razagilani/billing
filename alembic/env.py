@@ -24,7 +24,7 @@ from core.model import Base
 # modules.
 import core.altitude
 import reebill.state
-import pg.pg_model
+import brokerage.brokerage_model
 
 target_metadata = Base.metadata
 

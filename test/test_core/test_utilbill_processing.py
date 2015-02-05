@@ -1,4 +1,5 @@
 import requests
+from sqlalchemy import desc
 
 from test import init_test_config
 from exc import DuplicateFileError, ProcessedBillError, BillingError
@@ -12,7 +13,7 @@ from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
-    RateClass
+    RateClass, Register
 from core.model import Session
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
@@ -352,7 +353,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
-                                get_rate_class('Test Rate Class Template').name,
+                                get_rate_class('Residential-R').name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -416,7 +417,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
-                                get_rate_class('Test Rate Class Template').
+                                get_rate_class('Residential-R').
                                 name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
@@ -446,8 +447,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         for x, y in zip(dictionaries, utilbills_data):
             self.assertDictContainsSubset(x, y)
 
-        # 4th bill: utility and rate_class will be taken from the last bill
-        # with the same service. the file has no extension.
+        # 4th bill: utility and rate_class will be taken from the last bill,
+        # regardless of service.
         last_bill_id = utilbills_data[0]['id']
         file4 = StringIO('Yet another file')
         self.utilbill_processor.upload_utility_bill(account, file4, date(2012, 4, 1),
@@ -457,24 +458,22 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             account, 0, 30)
         self.assertEqual(4, count)
         last_utilbill = utilbills_data[0]
-        self.assertDictContainsSubset({
-                                          'state': 'Final',
-                                          'service': 'Gas',
-                                          'utility': self.views.
-                                            get_utility('Test Utility Company Template').column_dict(),
-                                          'supplier': self.views.
-                                            get_supplier('Test Supplier').name,
-                                          'rate_class': self.views.
-                                            get_rate_class('Test Rate Class Template').
-                                            name,
-                                          'period_start': date(2012, 4, 1),
-                                          'period_end': date(2012, 5, 1),
-                                          'total_charges': 0,
-                                          'computed_total': 0,
-                                          'processed': 0,
-                                          'account': '99999',
-                                          'reebills': [],
-                                          }, last_utilbill)
+        self.assertDictContainsSubset(
+            {
+                'state': 'Final',
+                'service': 'Gas',
+                'utility': self.views.get_utility('washgas').column_dict(),
+                'supplier': self.views.get_supplier('supplier').name,
+                'rate_class': self.views.get_rate_class(
+                    'DC Non Residential Non Heat').name,
+                'period_start': date(2012, 4, 1),
+                'period_end': date(2012, 5, 1),
+                'total_charges': 0,
+                'computed_total': 0,
+                'processed': 0,
+                'account': '99999',
+                'reebills': [],
+            }, last_utilbill)
 
         # make sure files can be accessed for these bills (except the
         # estimated one)
@@ -504,6 +503,46 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.delete_utility_bill_by_id(ids[0])
         _, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
+
+    def test_upload_uility_bill_without_reg_total(self):
+        '''Check that a register called "REG_TOTAL" is added to new bills
+        even though some old bills don't have it.
+        '''
+        account = '99999'
+        s = Session()
+
+        files = [StringIO(c) for c in 'abc']
+
+        # upload a first utility bill to serve as the "predecessor" for the
+        # next one. this will have only a register called "OTHER" so
+        # "REG_TOTAL" is missing.
+        self.utilbill_processor.upload_utility_bill(
+            account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric',
+            utility='pepco', rate_class='Residential-R', supplier='supplier')
+        u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
+        while len(u.registers) > 0:
+            del u.registers[0]
+        u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
+                 register_binding='OTHER')]
+        self.assertEqual(set(['OTHER']),
+                         set(r.register_binding for r in u.registers))
+
+        for service, energy_unit in [('gas', 'therms'), ('electric', 'kWh')]:
+            # the next utility bill will still have "REG_TOTAL" (in addition to "OTHER"),
+            # and its unit will be 'energy_unit'
+            self.utilbill_processor.upload_utility_bill(
+                account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service,
+                utility='pepco', rate_class='Residential-R', supplier='supplier')
+            u = s.query(UtilBill).join(UtilityAccount).filter(
+                UtilityAccount.account == account).order_by(
+                desc(UtilBill.period_start)).first()
+            self.assertEqual(set(['REG_TOTAL', 'OTHER']),
+                             set(r.register_binding for r in u.registers))
+            reg_total = next(r for r in u.registers if r.register_binding == 'REG_TOTAL')
+            self.assertEqual(energy_unit, reg_total.unit)
+            s.delete(u)
+            s.flush()
+
 
     def test_create_utility_bill_for_existing_file(self):
         account = '99999'
@@ -1010,8 +1049,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'EATF',
             'DELIVERY_TAX'
         ]
-        self.assertEqual(0.06 * sum(map(get_total, non_tax_rsi_bindings)),
-                         get_total('SALES_TAX'))
+        self.assertEqual(
+            round(0.06 * sum(map(get_total, non_tax_rsi_bindings)), 2),
+            get_total('SALES_TAX'))
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'

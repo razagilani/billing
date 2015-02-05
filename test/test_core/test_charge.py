@@ -108,5 +108,14 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
 
+    def test_rounding(self):
+        c = Charge(self.bill, 'A', 1, quantity_formula='.005')
+        self.assertEqual(.005, c.evaluate({}).quantity)
+        self.assertEqual(.01, c.evaluate({}).total)
+
+        c = Charge(self.bill, 'A', 1, quantity_formula='-.005')
+        self.assertEqual(-.005, c.evaluate({}).quantity)
+        self.assertEqual(-.01, c.evaluate({}).total)
+
 
 

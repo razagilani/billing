@@ -180,6 +180,7 @@ Ext.define('ReeBill.controller.Charges', {
             description: 'Enter Description',
             rate: 0,
             unit: 'dollars',
+            type: 'supply',
             utilbill_id: selectedBill[0].internalId
         });
         store.sync({success:function(batch){

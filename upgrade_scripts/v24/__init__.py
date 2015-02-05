@@ -11,11 +11,12 @@ from time import sleep
 from boto.s3.connection import S3Connection
 from sqlalchemy.sql.schema import MetaData, Table
 from sqlalchemy.sql.expression import select
-from pg.pg_model import PGAccount
 from upgrade_scripts import alembic_upgrade
 import logging
 from core import init_model
-from core.model.model import Session,UtilityAccount, Charge, RateClass, Utility, UtilBill
+from core.model.model import Session,UtilityAccount, Charge, RateClass, \
+    Utility, UtilBill
+from brokerage.brokerage_model import BrokerageAccount
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ log = logging.getLogger(__name__)
 def create_pg_accounts(session):
     for ua in session.query(UtilityAccount).filter(
                     UtilityAccount.account >= '20000').all():
-        session.add(PGAccount(ua))
+        session.add(BrokerageAccount(ua))
 
 def read_utilbill_data(session):
     meta = MetaData()
