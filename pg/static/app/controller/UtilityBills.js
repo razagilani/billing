@@ -25,15 +25,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         ref: 'accountLabel',
         selector: '[id=utilbillAccountLabel]'
     },{
-        ref: 'utilbillCompute',
-        selector: '[action=utilbillCompute]'
-    },{
-        ref: 'utilbillRemove',
-        selector: '[action=utilbillRemove]'
-    },{
-        ref: 'utilbillToggleProcessed',
-        selector: '[action=utilbillToggleProcessed]'
-    },{
         ref: 'utilbillPrevious',
         selector: '[action=utilbillPrevious]'
     },{
@@ -63,38 +54,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
             '[action=utilbillNext]': {
                 click: this.incrementAccount
             },
-            '[action=resetUploadUtilityBillForm]': {
-                click: this.handleReset
-            },
-            '[action=submitUploadUtilityBillForm]': {
-                click: this.handleSubmit
-            },
-            '[action=utilbillCompute]': {
-                click: this.handleCompute
-            },
-            '[action=utilbillRemove]': {
-                click: this.handleDelete
-            },
-            '[action=utilbillToggleProcessed]': {
-                click: this.handleToggleProcessed
-            },
             '#rate_class_combo': {
                 focus: this.handleRateClassComboFocus
             }
         });
 
-        this.getUtilityBillsStore().on({
-            beforeload: function(store){
-                var grid = this.getUtilityBillsGrid();
-                grid.setLoading(true);
-            },
-            load: function(store) {
-                var grid = this.getUtilityBillsGrid();
-                grid.setLoading(false);
-            },
-            scope: this
-        });
-
+        // This assures that there is never no account selected
         this.getAccountsStore().on('load', function() {
             this.getAccountsGrid().getSelectionModel().select(0);
         }, this, {single: true});
@@ -104,33 +69,20 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the row selection.
      */
     handleRowSelect: function(combo, recs) {
-        var hasSelections = recs.length > 0;
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         if (selected != null) {
-            var processed = selected.get('processed')
-            //this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
-            //this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
-
-            //this.getUtilbillRemove().setDisabled(!hasSelections || processed);
-            //var utility = selected.data.utility;
-            //rate_class_store = Ext.getStore("RateClasses");
-            //rate_class_store.clearFilter(true);
-            //rate_class_store.filter('utility_id', utility.id);
+            var processed = selected.get('processed');
 
             var chargesStore = Ext.getStore("Charges");
             var proxy = chargesStore.getProxy();
             var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
-        } else {
-            //this.getUtilbillCompute().setDisabled(true);
-            //this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
-            //this.getUtilbillRemove().setDisabled(!hasSelections);
         }
     },
 
     /**
-     * Handle the panel being activated.
+     * Handle the utility bill panel being activated.
      */
     handleActivate: function() {
         var selectedAccountRecord = this.getAccountsGrid()
@@ -149,6 +101,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }
     },
 
+    /**
+     * Handle the acounts panel being activated. In the future this might move
+     * into its own controller
+     */
     handleAccountsActivate: function() {
         var accountStore = this.getAccountsStore();
         accountStore.reload();
@@ -156,81 +112,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
     handleAccountRowSelect: function(selectionModel, records) {
         this.setButtonsDisabled(this.getAccountsStore().indexOf(records[0]));
-    },
-
-    /**
-     * Handle the compute button being clicked.
-     */
-    handleReset: function() {
-        this.initalizeUploadForm(); 
-    },
-
-    /**
-     * Handle the submit button being clicked.
-     */
-    handleSubmit: function() {
-        var scope = this,
-            store = this.getUtilityBillsStore();
-
-        this.getUploadUtilityBillForm().getForm().submit({
-            url: 'http://'+window.location.host+'/utilitybills/utilitybills',
-            success: function() {
-                store.reload();
-            },
-            failure: function(form, action) {
-                utils.makeServerExceptionWindow(
-                    'Unknown', 'Error', action.response.responseXML.body.innerHTML);
-            }
-        }); 
-    },
-
-    /**
-     * Handle the compute button being clicked.
-     */
-    handleCompute: function() {
-        var scope = this,
-            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-
-        if (!selected)
-            return;
-
-        selected.set('action', 'compute');
-    },
-
-    /**
-     * Handle the delete button being clicked.
-     */
-    handleDelete: function() {
-        var scope = this,
-            store = this.getUtilityBillsStore(),
-            grid = this.getUtilityBillsGrid(),
-            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-
-        if (!selected)
-            return;
-
-        Ext.Msg.confirm('Confirm deletion',
-            'Are you sure you want to delete the selected utility bill?',
-            function(answer) {
-                if (answer == 'yes') {
-                    store.remove(selected)
-                    grid.fireEvent('deselect', selected, 0);
-                }
-            });
-    },
-    
-    /**
-     * Handle the toggle processed button being clicked.
-     */
-    handleToggleProcessed: function() {
-        var grid = this.getUtilityBillsGrid(),
-            selected = grid.getSelectionModel().getSelection()[0];
-
-        if (!selected)
-            return;
-        selected.set('processed', !selected.get('processed'));
-        var processed = selected.get('processed');
-        this.getUtilbillCompute().setDisabled(processed);
     },
 
     handleRateClassComboFocus: function(combo) {
