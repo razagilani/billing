@@ -25,6 +25,17 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
+        header: 'Utility Account Number',
+        dataIndex: 'utility_account_number',
+        width: 125
+    },{
+        header: 'Secondary Utility Account Number',
+        dataIndex: 'supply_choice_id',
+        editor: {
+            xtype: 'textfield'
+        },
+        width: 125
+    },{
         header: 'Service',
         dataIndex: 'service',
         editor: {
@@ -79,14 +90,11 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 100,
         renderer: Ext.util.Format.usMoney
-    }, {
-        header: 'Next Meter Read',
-        dataIndex: 'next_estimated_meter_read_date'
     },{
         header: 'Total Supply',
         dataIndex: 'supply_total',
         renderer: Ext.util.Format.usMoney,
-        width: 150
+        width: 100
     },{
         header: 'Utility',
         dataIndex: 'utility',
@@ -123,17 +131,15 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
         },
-        width: 125,
-        flex: 1
-    },{
-        header: 'Utility Account Number',
-        dataIndex: 'utility_account_number'
-    },{
-        header: 'Secondary Utility Account Number',
-        dataIndex: 'secondary_account_number'
+        width: 200
+    }, {
+        header: 'Next Meter Read',
+        dataIndex: 'next_estimated_meter_read_date'
     }, {
         header: 'Service Address',
-        dataIndex: 'service_address'
+        dataIndex: 'service_address',
+        minWidth: 500,
+        flex: 1
     }],
 
     dockedItems: [{

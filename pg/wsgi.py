@@ -141,7 +141,7 @@ class BaseResource(Resource):
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
-            #'secondary_account_number': '', # TODO
+            'supply_choice_id': String, # TODO
             'processed': Boolean,
         }
 
