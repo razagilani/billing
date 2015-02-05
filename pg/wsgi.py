@@ -196,9 +196,9 @@ class UtilBillResource(BaseResource):
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
         parser.add_argument('processed', type=bool)
-        parser.add_argument('rate_class', type=str) # TODO: what type?
-        parser.add_argument('utility', type=str) # TODO: what type?
-        parser.add_argument('supplier', type=str) # TODO: what type?
+        parser.add_argument('rate_class', type=str)
+        parser.add_argument('utility', type=str)
+        parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
@@ -213,7 +213,7 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supplier=row['supplier'],
+            supply_choice_id=row['supply_choice_id']
             )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
