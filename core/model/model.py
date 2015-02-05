@@ -5,6 +5,7 @@ Also contains some related classes that do not correspond to database tables.
 import ast
 from datetime import datetime, timedelta
 import json
+from math import floor
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
@@ -121,7 +122,8 @@ class ChargeEvaluation(Evaluation):
             self.total = None
         else:
             assert exception is None
-            self.total = quantity * rate
+            # round to nearest cent
+            self.total = round(quantity * rate, 2)
 
         self.quantity = quantity
         self.rate = rate
@@ -168,7 +170,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s' % (self.street, self.city, self.state)
+        return '%s, %s, %s %s' % (self.street, self.city, self.state,
+                               self.postal_code)
 
     def column_dict(self):
         raise NotImplementedError
@@ -337,6 +340,19 @@ class UtilityAccount(Base):
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
                % (self.name, self.account)
+
+    def get_service_address(self):
+        '''
+        Gets the service address of the first bill that was added to
+        the account. If the account doesn't have any bills it return
+        self.fb_service_address. A better way might be to pick the most
+        recently modified bill since service addresses don't change, however we
+        decided agaist it for the sake of simplicity and speed.
+        '''
+        session = Session.object_session(self)
+        ub = session.query(UtilBill)\
+            .filter(UtilBill.utility_account_id == self.id).first()
+        return self.fb_service_address if ub is None else ub.service_address
 
 
 class UtilBill(Base):
@@ -513,6 +529,9 @@ class UtilBill(Base):
             return None
         return self.supplier.name
 
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
+
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
         confused with utility account number. This  may go away since it is
@@ -673,6 +692,21 @@ class UtilBill(Base):
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
 
+    def get_total_energy(self):
+        # NOTE: this may have been implemented already on another branch;
+        # remove duplicate when merged
+        try:
+            total_register = next(r for r in self.registers if
+                                  r.register_binding == 'REG_TOTAL')
+        except StopIteration:
+            return 0
+        return total_register.quantity
+
+    def set_total_energy(self, quantity):
+        total_register = next(r for r in self.registers if
+                              r.register_binding == 'REG_TOTAL')
+        total_register.quantity = quantity
+
     def get_supply_target_total(self):
         '''Return the sum of the 'target_total' of all supply
         charges (excluding any charge with has_charge == False).
@@ -752,7 +786,8 @@ class Register(Base):
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
-    utilbill = relationship("UtilBill", backref='registers')
+    utilbill = relationship(
+        "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
 
     def __init__(self, utilbill, description, identifier, unit,
                 estimated, reg_type, active_periods, meter_identifier,

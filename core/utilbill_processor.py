@@ -114,8 +114,12 @@ class UtilbillProcessor(object):
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
         try:
+            # previously this was filtered by service so only bills with the
+            # same service could be used by predecessors. now any bill for the
+            # same UtilityAccount is used, because realistically they will all
+            # have the same service.
             predecessor = UtilBillLoader().get_last_real_utilbill(
-                utility_account.account, end=start, service=service)
+                utility_account.account, end=start)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -183,6 +187,7 @@ class UtilbillProcessor(object):
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
+
         for register in predecessor.registers if predecessor else []:
             # no need to append this Register to new_utilbill.Registers because
             # SQLAlchemy does it automatically
@@ -190,6 +195,20 @@ class UtilbillProcessor(object):
                      register.unit, False, register.reg_type,
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
+        # a register called "REG_TOTAL" is always required to exist but may be
+        # missing from some existing bills. there is no way to tell what unit
+        # it is supposed to measure energy in because the rate class may not
+        # be known.
+        if predecessor is None or 'REG_TOTAL' not in (
+                r.register_binding for r in predecessor.registers):
+            if service == 'electric':
+                unit = 'kWh'
+            else:
+                assert service == 'gas'
+                unit = 'therms'
+            Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
+                     register_binding='REG_TOTAL')
+
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
