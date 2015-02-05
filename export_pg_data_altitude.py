@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from uuid import uuid4
 from core import init_config, init_model
 from core import altitude
-from pg.export_altitude import PGAltitudeExporter, _load_pg_utilbills
+from brokerage.export_altitude import PGAltitudeExporter, _load_pg_utilbills
 
 if __name__ == '__main__':
     init_config()

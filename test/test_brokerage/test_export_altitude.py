@@ -7,7 +7,7 @@ from uuid import NAMESPACE_DNS
 from mock import Mock
 
 from core.model import UtilBill
-from pg.export_altitude import PGAltitudeExporter
+from brokerage.export_altitude import PGAltitudeExporter
 
 
 class TestExportAltitude(TestCase):

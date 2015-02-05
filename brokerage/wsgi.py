@@ -7,48 +7,32 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
-from datetime import date, datetime
-from functools import partial
-from os.path import dirname, realpath, join
 import urllib
 from urlparse import urlparse
-from boto.s3.connection import S3Connection
-from flask.ext.admin.contrib.sqla import ModelView
-from flask.ext.admin.model import BaseModelView
-from flask.ext.principal import Need, identity_loaded, Permission
-from sqlalchemy.sql.functions import current_user
-from wtforms import TextField, Form
-from pg.admin import MyAdminIndexView, CustomModelView, UtilityModelView, SupplierModelView, RateClassModelView, \
-    ReeBillCustomerModelView
-from pg.pg_model import PGAccount
+from urllib2 import Request, urlopen, URLError
+import json
 
+from boto.s3.connection import S3Connection
 from sqlalchemy import desc
+from dateutil import parser as dateutil_parser
+from flask import Flask, url_for, request, flash, session, redirect
+from flask.ext.restful import Api, Resource, marshal
+from flask.ext.restful.reqparse import RequestParser
+from flask.ext.restful.fields import Integer, String, Float, Raw, \
+    Boolean
+from flask_oauth import OAuth
 
 from core import initialize
-
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
-from reebill.state import ReeBillCustomer
-from reebill.state import ReeBill
 from core.utilbill_processor import UtilbillProcessor
-
-from datetime import datetime, timedelta
-from dateutil import parser as dateutil_parser
 from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
-    RateClass, Address
+    RateClass
 from core.model import UtilBill
+from brokerage.admin import make_admin
+from brokerage.brokerage_model import BrokerageAccount
 
-from flask import Flask, url_for, request, flash, session, redirect
-from flask.ext.restful import Api, Resource, marshal_with, marshal
-from flask.ext.restful.reqparse import RequestParser
-from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
-    Boolean
-from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
-from flask_oauth import OAuth
-from urllib2 import Request, urlopen, URLError
-import json
-from pg.admin import make_admin
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -163,7 +147,7 @@ id_parser.add_argument('id', type=int, required=True)
 class AccountResource(BaseResource):
     def get(self):
 
-        accounts = Session().query(UtilityAccount).join(PGAccount).order_by(
+        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
             UtilityAccount.account).all()
         return marshal(accounts, {
             'id': Integer,
@@ -246,11 +230,11 @@ class ChargeResource(BaseResource):
 
         s = Session()
         charge = s.query(Charge).filter_by(id=id).one()
-        if 'rsi_binding' in args:
+        if args['rsi_binding'] is not None:
             # convert name to all caps with underscores instead of spaces
             charge.rsi_binding = args['rsi_binding'].strip().upper().replace(
                 ' ', '_')
-        if 'target_total' in args:
+        if args['target_total'] is not None:
             charge.target_total = args['target_total']
         s.commit()
         return {'rows': marshal(charge, self.charge_fields), 'results': 1}
@@ -293,7 +277,7 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
@@ -331,12 +315,11 @@ def index():
             # Unauthorized - bad token
             session.pop('access_token', None)
             return redirect(url_for('login'))
-        return redirect(url_for('static', filename='index.html'))
     #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
-    return redirect(url_for('static', filename='index.html'))
+    return app.send_static_file('index.html')
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
