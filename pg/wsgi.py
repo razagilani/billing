@@ -243,11 +243,11 @@ class ChargeResource(BaseResource):
 
         s = Session()
         charge = s.query(Charge).filter_by(id=id).one()
-        if 'rsi_binding' in args:
+        if args['rsi_binding'] is not None:
             # convert name to all caps with underscores instead of spaces
             charge.rsi_binding = args['rsi_binding'].strip().upper().replace(
                 ' ', '_')
-        if 'target_total' in args:
+        if args['target_total'] is not None:
             charge.target_total = args['target_total']
         s.commit()
         return {'rows': marshal(charge, self.charge_fields), 'results': 1}
