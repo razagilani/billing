@@ -3,7 +3,12 @@ Ext.define('ReeBill.view.Viewport', {
     layout: 'fit',
     componentCls: 'panel-noborder',
 
-    requires: ['Ext.panel.PDF'],
+    requires: [
+        'Ext.panel.PDF',
+        'ReeBill.view.accounts.Accounts',
+        'ReeBill.view.utilitybills.UtilityBills',
+        'ReeBill.view.charges.Charges'
+    ],
 
     initComponent: function() {
         this.items = {
@@ -66,28 +71,6 @@ Ext.define('ReeBill.view.Viewport', {
                         id: 'chargesGrid',
                         region: 'south',
                         height: 150
-                    }]
-                },{
-                    xtype: 'panel',
-                    name: 'metersTab',
-                    title: 'Meters and Registers',
-                    layout: 'border',
-                    disabled: true,
-                    defaults: {
-                        collapsible: true,
-                        split: true
-                    },
-                    items: [{
-                        xtype: 'utilityBillRegisters',
-                        id: 'utilityBillRegistersGrid',
-                        region: 'center',
-                        collapsible: false
-                    },{
-                        xtype: 'TOUMetering',
-                        id: 'TOUMeteringForm',
-                        region: 'south',
-                        collapsible:false,
-                        floatable: false,
                     }]
                 }],
 

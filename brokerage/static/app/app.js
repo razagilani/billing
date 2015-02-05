@@ -13,9 +13,7 @@ Ext.application({
 
     controllers: [
         'UtilityBills',
-        'UtilityBillRegisters',
         'Charges',
-        'TabPanel',
         'Viewer'
     ],
 
@@ -26,7 +24,6 @@ Ext.application({
         'RateClasses',
         'Charges',
         'Units',
-        'UtilityBillRegisters',
         'UtilityBills'
     ],
 
