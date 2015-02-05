@@ -28,15 +28,7 @@ Ext.define('ReeBill.view.Viewport', {
                 collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
-            //},{
-            //    region: 'east',
-            //    xtype: 'pdfpanel',
-            //    name: 'reebillViewer',
-            //    collapsible: true,
-            //    collapsed: true,
-            //    cache: false,
-            //    src: '',
-            //    width: Ext.getBody().getWidth() * 0.3
+
             },{
                 xtype: 'tabpanel',
                 region: 'center',
@@ -97,21 +89,6 @@ Ext.define('ReeBill.view.Viewport', {
                         collapsible:false,
                         floatable: false,
                     }]
-                //},{
-                //    xtype: 'panel',
-                //    name: 'chargesTab',
-                //    title: 'Charges',
-                //    layout: 'border',
-                //    disabled: true,
-                //    defaults: {
-                //        collapsible: true,
-                //        split: true
-                //    },
-                //    items: [{
-                //        xtype: 'charges',
-                //        id: 'chargesGrid',
-                //        region: 'center'
-                //    }]
                 }],
 
                 dockedItems: [{
