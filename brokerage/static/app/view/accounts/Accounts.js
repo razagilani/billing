@@ -26,7 +26,7 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         width: 50,
         items: utils.makeGridFilterTextField('id')
     }, {
-        header: 'Billing Account Number',
+        header: 'Nextility Account Number',
         dataIndex: 'account',
         width: 150,
         items: utils.makeGridFilterTextField('account')
