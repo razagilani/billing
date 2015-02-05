@@ -3,13 +3,13 @@ from datetime import timedelta
 from tablib import Dataset
 from core.model import Session, UtilBill, UtilityAccount
 from util.dateutils import ISO_8601_DATETIME
-from pg.pg_model import PGAccount
+from brokerage.brokerage_model import BrokerageAccount
 
 def _load_pg_utilbills():
-    '''Return an iterator of all UtilBills that have a PGAccount.
+    '''Return an iterator of all UtilBills that have a BrokerageAccount.
     '''
     return Session().query(UtilBill).join(UtilityAccount).join(
-        PGAccount)
+        BrokerageAccount)
 
 class PGAltitudeExporter(object):
 
