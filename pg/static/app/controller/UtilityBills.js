@@ -42,7 +42,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 selectionchange: this.handleRowSelect
             },
             'grid[id=accountsGrid]': {
-                activate: this.handleAccountsActivate,
                 selectionchange: this.handleAccountRowSelect
             },
             'panel[name=utilityBillsTab]': {
@@ -71,11 +70,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleRowSelect: function(combo, recs) {
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         if (selected != null) {
-            var processed = selected.get('processed');
-
             var chargesStore = Ext.getStore("Charges");
             var proxy = chargesStore.getProxy();
-            var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
         }
@@ -85,33 +81,17 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the utility bill panel being activated.
      */
     handleActivate: function() {
-        var selectedAccountRecord = this.getAccountsGrid()
-                .getSelectionModel().getSelection()[0];
-        this.updateCurrentAccountId(selectedAccountRecord);
-
         var store = this.getUtilityBillsStore();
         store.reload();
-
-        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedNode;
-        if (!selectedBill || !selectedBill.length) {
-            selectedNode = -1;
-        }else{
-            selectedNode = store.find('id', selectedBill[0].getId());
-        }
     },
 
     /**
-     * Handle the acounts panel being activated. In the future this might move
-     * into its own controller
+     * Handle a row in the acounts panel being selected.
+     * In the future this might move into its own controller
      */
-    handleAccountsActivate: function() {
-        var accountStore = this.getAccountsStore();
-        accountStore.reload();
-    },
-
     handleAccountRowSelect: function(selectionModel, records) {
         this.setButtonsDisabled(this.getAccountsStore().indexOf(records[0]));
+        this.updateCurrentAccountId(records[0]);
     },
 
     handleRateClassComboFocus: function(combo) {
@@ -124,6 +104,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_classes_store.filter('utility_id', utility.get('id'));
     },
 
+    /**
+     * Finds the store index of the record that is offset by 'offset' from
+     * the currently selected record
+     */
     moveIndex: function(offset) {
         var accountStore = this.getAccountsStore();
         var accountGrid = this.getAccountsGrid();
@@ -148,7 +132,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.setButtonsDisabled(newRecordIndex);
         var newRecord = this.getAccountsStore().getAt(newRecordIndex);
         this.getAccountsGrid().getSelectionModel().select(newRecord);
-        this.updateCurrentAccountId(newRecord);
     },
 
     /* Select next row in acocunt grid and reload the grid.
@@ -158,9 +141,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.setButtonsDisabled(newRecordIndex);
         var newRecord = this.getAccountsStore().getAt(newRecordIndex);
         this.getAccountsGrid().getSelectionModel().select(newRecord);
-        this.updateCurrentAccountId(newRecord);
     },
 
+    /**
+     * Updates the labels indicating the currently selected account on the
+     * utility bill grid
+     */
     updateCurrentAccountId: function(selectedAccountRecord) {
         var id = selectedAccountRecord.get('id');
         var nextility_account_number = selectedAccountRecord.get('account');
@@ -168,12 +154,5 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var store = this.getUtilityBillsStore();
         store.getProxy().setExtraParam('id', id);
         store.reload();
-
-        // TODO: minimum/maximum account number
-        if (this.currentAccountId == 1) {
-            // TODO prev button
-        } else if (this.currentAccountId == 10) {
-            // TODO next button
-        };
     }
 });

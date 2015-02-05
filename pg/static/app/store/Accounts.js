@@ -3,7 +3,7 @@ Ext.define('ReeBill.store.Accounts', {
     requires: ['ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
 
-    autoLoad: false,
+    autoLoad: true,
     autoSync: true,
 
 	proxy: {
