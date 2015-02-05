@@ -34,6 +34,6 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'next_estimated_meter_read_date'},
         {name: 'supply_total'},
         {name: 'utility_account_number'},
-        {name: 'secondary_utility_account_number'},
+        {name: 'supply_choice_id'}
     ]
 });
