@@ -415,8 +415,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.payment_dao = PaymentDAO()
 
         self.utilbill_processor = UtilbillProcessor(
-            self.pricing_model, self.billupload, self.nexus_util,
-            logger=logger)
+            self.pricing_model, self.billupload, logger=logger)
         self.views = Views(self.state_db, self.billupload, self.nexus_util,
                            journal_dao)
         self.reebill_processor = ReebillProcessor(

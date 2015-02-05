@@ -7,48 +7,31 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
-from datetime import date, datetime
-from functools import partial
-from os.path import dirname, realpath, join
 import urllib
-from urlparse import urlparse
+from urllib2 import Request, urlopen, URLError
+import json
+
 from boto.s3.connection import S3Connection
-from flask.ext.admin.contrib.sqla import ModelView
-from flask.ext.admin.model import BaseModelView
-from flask.ext.principal import Need, identity_loaded, Permission
-from sqlalchemy.sql.functions import current_user
-from wtforms import TextField, Form
-from pg.admin import MyAdminIndexView, CustomModelView, UtilityModelView, SupplierModelView, RateClassModelView, \
-    ReeBillCustomerModelView
-from pg.pg_model import PGAccount
-
 from sqlalchemy import desc
+from dateutil import parser as dateutil_parser
+from flask import Flask, url_for, request, flash, session, redirect
+from flask.ext.restful import Api, Resource, marshal
+from flask.ext.restful.reqparse import RequestParser
+from flask.ext.restful.fields import Integer, String, Float, Raw, \
+    Boolean
+from flask_oauth import OAuth
 
+from pg.pg_model import PGAccount
 from core import initialize
-
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
-from reebill.state import ReeBillCustomer
-from reebill.state import ReeBill
 from core.utilbill_processor import UtilbillProcessor
-
-from datetime import datetime, timedelta
-from dateutil import parser as dateutil_parser
 from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
-    RateClass, Address
+    RateClass
 from core.model import UtilBill
-
-from flask import Flask, url_for, request, flash, session, redirect
-from flask.ext.restful import Api, Resource, marshal_with, marshal
-from flask.ext.restful.reqparse import RequestParser
-from flask.ext.restful.fields import Integer, String, Float, DateTime, Raw, \
-    Boolean
-from flask.ext.admin import Admin, expose, BaseView, AdminIndexView
-from flask_oauth import OAuth
-from urllib2 import Request, urlopen, URLError
-import json
 from pg.admin import make_admin
+
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -381,7 +364,6 @@ if __name__ == '__main__':
             # a different callback for each page, and Google requires
             # whitelisting each allowed callback page, therefore, it can't pass it
             # as a GET param. Instead, the url is sanitized and put into the session.
-            request_components = urlparse(request.url)
             path = urllib.unquote(next_path)
             if path[0] == '/':
                 # This first slash is unnecessary since we force it in when we
