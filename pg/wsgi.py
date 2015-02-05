@@ -168,7 +168,8 @@ class AccountResource(BaseResource):
         return marshal(accounts, {
             'id': Integer,
             'account': String,
-            'utility_account_number': String(attribute='account_number')
+            'utility_account_number': String(attribute='account_number'),
+            'utility': String(attribute='fb_utility')
         })
 
 class UtilBillListResource(BaseResource):
@@ -284,7 +285,10 @@ class UtilitiesResource(BaseResource):
 class RateClassesResource(BaseResource):
     def get(self):
         rate_classes = Session.query(RateClass).all()
-        rows = marshal(rate_classes, {'id': Integer, 'name': String})
+        rows = marshal(rate_classes, {
+            'id': Integer,
+            'name': String,
+            'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__)

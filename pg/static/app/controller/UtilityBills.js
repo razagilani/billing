@@ -81,12 +81,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
             '[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
             },
-            '#utility_combo':{
-                select: this.handleUtilityComboChanged,
-                focus: this.handleUtilityComboFocus
-            },
             '#rate_class_combo': {
-                expand: this.handleRateClassExpand
+                focus: this.handleRateClassComboFocus
             }
         });
 
@@ -240,27 +236,14 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.getUtilbillCompute().setDisabled(processed);
     },
 
-    handleUtilityComboChanged: function(utility_combo, record){
-        var rate_class_store = Ext.getStore("RateClasses");
-        rate_class_store.clearFilter(true);
-        rate_class_store.filter('utility_id', record[0].data.id);
-        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var utility_store = this.getUtilityBillsStore();
-        selected.set('rate_class', rate_class_store.getAt(0).data.name);
-    },
-
-    handleRateClassExpand: function(combo, record, index){
-        utility_grid = combo.findParentByType('grid');
-        selected = utility_grid.getSelectionModel().getSelection()[0];
-        rate_class_store = Ext.getStore('RateClasses');
-        rate_class_store.clearFilter(true);
-        rate_class_store.filter('utility_id', selected.get('utility').id);
-    },
-
-    handleUtilityComboFocus: function(combo) {
-        utility_grid = combo.findParentByType('grid');
-        selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('utility').name);
+    handleRateClassComboFocus: function(combo) {
+        var utility_bill_grid = combo.findParentByType('grid');
+        var selected = utility_bill_grid.getSelectionModel().getSelection()[0];
+        var utilities_store = this.getUtilitiesStore();
+        var utility = utilities_store.findRecord('name', selected.get('utility'));
+        var rate_classes_store = this.getRateClassesStore();
+        rate_classes_store.clearFilter(true);
+        rate_classes_store.filter('utility_id', utility.get('id'));
     },
 
     moveIndex: function(offset) {
