@@ -8,7 +8,6 @@ http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
 import urllib
-from urlparse import urlparse
 from urllib2 import Request, urlopen, URLError
 import json
 
@@ -22,6 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
+from pg.pg_model import PGAccount
 from core import initialize
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
@@ -53,14 +53,12 @@ class CallableField(Raw):
     def format(self, value):
         return self.result_field.format(value())
 
-
 class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
         if value is None:
             return None
         return value.capitalize()
-
 
 class IsoDatetime(Raw):
     def format(self, value):
@@ -375,7 +373,6 @@ if __name__ == '__main__':
             # a different callback for each page, and Google requires
             # whitelisting each allowed callback page, therefore, it can't pass it
             # as a GET param. Instead, the url is sanitized and put into the session.
-            request_components = urlparse(request.url)
             path = urllib.unquote(next_path)
             if path[0] == '/':
                 # This first slash is unnecessary since we force it in when we
