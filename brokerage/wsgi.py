@@ -51,13 +51,15 @@ class CallableField(Raw):
         self.result_field = result_field
 
     def format(self, value):
-        return self.result_field.format(value())
+        value = value()
+        if value is None:
+            # 'default' comes from a kwarg to Raw.__init__
+            return self.default
+        return self.result_field.format(value)
 
 class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
-        if value is None:
-            return None
         return value.capitalize()
 
 class IsoDatetime(Raw):
@@ -107,8 +109,8 @@ class BaseResource(Resource):
             'account': String,
             'period_start': IsoDatetime,
             'period_end': IsoDatetime,
-            'service': CallableField(CapString(),
-                                     attribute='get_service'),
+            'service': CallableField(
+                CapString(), attribute='get_service', default='Unknown'),
             'total_energy': CallableField(Float(),
                                           attribute='get_total_energy'),
             'total_charges': Float(attribute='target_total'),
@@ -116,9 +118,10 @@ class BaseResource(Resource):
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
             'utility': CallableField(String(), attribute='get_utility_name'),
-            'supplier': CallableField(String(), attribute='get_supplier_name'),
-            'rate_class': CallableField(String(),
-                                        attribute='get_rate_class_name'),
+            'supplier': CallableField(String(), attribute='get_supplier_name',
+                                      default='Unknown'),
+            'rate_class': CallableField(
+                String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_estimated_meter_read_date': CallableField(
@@ -137,7 +140,6 @@ class BaseResource(Resource):
             'rsi_binding': String,
             'target_total': Float,
         }
-
 
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.

@@ -58,7 +58,7 @@ class TestPGWeb(unittest.TestCase):
         ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
                        rate_class, Address(), Address(street='1 Example St.'))
         ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
-                       rate_class, Address(), Address(street='2 Example St.'))
+                       None, Address(), Address(street='2 Example St.'))
         ub1.id = 1
         ub2.id = 2
         register1 = Register(ub1, "ABCDEF description",
@@ -124,10 +124,10 @@ class TestPGWeb(unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
+                  'rate_class': None,
+                  'service': 'Unknown',
                   'service_address': '2 Example St., ,  ',
-                  'supplier': 'None',
+                  'supplier': None,
                   'supply_total': 0.0,
                   'total_charges': 0.0,
                   'total_energy': 150.0,
@@ -146,7 +146,7 @@ class TestPGWeb(unittest.TestCase):
                   'rate_class': 'Some Rate Class',
                   'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
-                  'supplier': 'None',
+                  'supplier': None,
                   'supply_total': 2.0,
                   'total_charges': 0.0,
                   'total_energy': 150.0,
@@ -217,7 +217,7 @@ class TestPGWeb(unittest.TestCase):
                   'rate_class': 'Some Rate Class',
                   'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
-                  'supplier': 'None',
+                  'supplier': None,
                   'supply_total': 2.0,
                   'total_charges': 0.0,
                   'total_energy': 150.0,
