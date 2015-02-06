@@ -257,9 +257,11 @@ class RateClass(Base):
     '''
     __tablename__ = 'rate_class'
 
+    SERVICES = ('gas', 'electric')
+
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(String(45), nullable=False)
+    service = Column(Enum(*SERVICES), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
