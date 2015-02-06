@@ -106,24 +106,22 @@ def add_reg_total(session):
 def upgrade():
     log.info('Beginning upgrade to version 24')
 
-
     log.info('upgrading schema to revision 5a356721c95e')
     alembic_upgrade('5a356721c95e')
+
     init_model(schema_revision='5a356721c95e')
     session = Session()
     conflicting_service_bills = bills_with_service_conflicts(session)
     print_utilbills_with_conflicting_rate_classes(conflicting_service_bills)
-    utilbill_data = read_utilbill_data(session)
 
     create_pg_accounts(session)
     add_reg_total(session)
     mark_charges_as_distribution_or_supply(session)
+    utilbill_data = read_utilbill_data(session)
     copy_service_to_rate_class(utilbill_data, session)
     session.commit()
 
+    # drop column utilbill.service
     log.info('upgrading schema to revision 2d65c7c19345')
-    init_model(schema_revision='5a356721c95e')
     alembic_upgrade('2d65c7c19345')
-
-    session.commit()
 
