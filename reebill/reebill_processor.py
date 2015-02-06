@@ -8,7 +8,7 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
 from reebill.state import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
@@ -249,7 +249,7 @@ class ReebillProcessor(object):
                 successor = session.query(UtilBill)\
                     .filter(UtilBill.utility_account == reebill_customer.utility_account)\
                     .filter(not_(UtilBill._utilbill_reebills.any()))\
-                    .filter(UtilBill.service == utilbill.service)\
+                    .filter(RateClass.service == utilbill.get_service())\
                     .filter(UtilBill.utility == utilbill.utility)\
                     .filter(UtilBill.period_start >= utilbill.period_end)\
                     .order_by(UtilBill.period_end).first()

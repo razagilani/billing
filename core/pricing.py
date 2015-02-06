@@ -73,7 +73,6 @@ class FuzzyPricingModel(PricingModel):
 
         all_utilbills = [utilbill for utilbill in
                          self._utilbill_loader.load_real_utilbills(
-                            service=service,
                             utility=utility,
                             rate_class=rate_class,
                             processed=True
@@ -149,16 +148,16 @@ class FuzzyPricingModel(PricingModel):
         :utilbill: a :class:`processing.state.UtilBill` instance
         """
         result = self._get_probable_shared_charges(utilbill.utility,
-                utilbill.service, utilbill.rate_class,
+                utilbill.get_service(), utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
                 ignore=lambda ub:ub.id == utilbill.id)
 
         # add any charges from the predecessor that are not already there
         try:
             predecessor = self._utilbill_loader.get_last_real_utilbill(
-                    utilbill.utility_account.account, end=utilbill.period_start,
-                service=utilbill.service, utility=utilbill.utility,
-                rate_class=utilbill.rate_class, processed=True)
+                utilbill.utility_account.account, end=utilbill.period_start,
+                utility=utilbill.utility, rate_class=utilbill.rate_class,
+                processed=True)
         except NoSuchBillException:
             # if there's no predecessor, there are no charges to add
             pass
