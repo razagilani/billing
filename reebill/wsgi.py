@@ -234,8 +234,7 @@ class WebResource(object):
         self.utilbill_views = Views(self.state_db, self.bill_file_handler,
                                     self.nexus_util, self.journal_dao)
         self.utilbill_processor = UtilbillProcessor(
-            self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
-            logger=self.logger)
+            self.ratestructure_dao, self.bill_file_handler, logger=self.logger)
         self.reebill_processor = ReebillProcessor(
             self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,

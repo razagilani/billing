@@ -5,8 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
-from exc import NoSuchBillException, DuplicateFileError, BillingError, \
-    ProcessedBillError
+from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
 
@@ -21,11 +20,9 @@ class UtilbillProcessor(object):
     with UtilBills, like charges and registers.
     - CRUD on utilities, suppliers, rate classes.
     '''
-    def __init__(self, pricing_model, bill_file_handler, nexus_util,
-                 logger=None):
+    def __init__(self, pricing_model, bill_file_handler, logger=None):
         self.pricing_model = pricing_model
         self.bill_file_handler = bill_file_handler
-        self.nexus_util = nexus_util
         self.logger = logger
 
     # TODO this method might be replaced by the UtilbillLoader method
