@@ -35,11 +35,16 @@ def read_utilbill_data(session):
     return result
 
 def bills_with_service_conflicts(session):
-    sql_query = "select distinct u.id, u.service, u.rate_class_id from utilbill" \
+    sql_query1 = "select distinct u.id, u.service, u.rate_class_id from utilbill" \
+                " u, utilbill u1 where u.rate_class_id = u1.rate_class_id" \
+                " and u.service != u1.service group by u.rate_class_id " \
+                "order by u.rate_class_id"
+    result1 = session.execute(sql_query1)
+    sql_query2 = "select distinct u.id, u.service, u.rate_class_id from utilbill" \
                 " u, utilbill u1 where u.rate_class_id = u1.rate_class_id" \
                 " and u.service != u1.service order by u.rate_class_id"
-    result = session.execute(sql_query)
-    return result
+    result2 = session.execute(sql_query2)
+    return result1, result2.rowcount
 
 def mark_charges_as_distribution_or_supply(session):
     supply = ['supply', 'Supply', 'SUPPLY', 'generation', 'Generation',
@@ -65,14 +70,14 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s distribution charges' % distribution_count
     print 'Found %s other charges' % other_count
 
-def print_utilbills_with_conflicting_rate_classes(bills):
+def print_utilbills_with_conflicting_rate_classes(bills, billscount):
     print '---- bills with conflicting rate_classes ----'
     for id, service, rate_class in bills:
         print ('utilbill_id: %s, service: %s, rate_class_id: %s'
                % (id, service, rate_class))
     print '---- bills with conflicting rate_classes ----'
     print 'Total number of bills with conflicting service %s' %\
-          (bills.rowcount)
+          (billscount)
 
 def copy_service_to_rate_class(utilbill_data, session):
     '''copies service from utilbill to rate_class table'''
@@ -111,8 +116,9 @@ def upgrade():
 
     init_model(schema_revision='5a356721c95e')
     session = Session()
-    conflicting_service_bills = bills_with_service_conflicts(session)
-    print_utilbills_with_conflicting_rate_classes(conflicting_service_bills)
+    conflicting_service_bills, count = bills_with_service_conflicts(session)
+    print_utilbills_with_conflicting_rate_classes(conflicting_service_bills,
+                                                  count)
 
     create_pg_accounts(session)
     add_reg_total(session)
