@@ -74,9 +74,10 @@ class UtilbillProcessor(object):
                 rate_class, utilbill.utility)
 
         if utility is not None and isinstance(utility, basestring):
-            utilbill.utility = self.get_create_utility(utility)
-            utilbill.supplier = None
-            utilbill.rate_class = None
+            utilbill.utility, new_utility = self.get_create_utility(utility)
+            if new_utility:
+                utilbill.supplier = None
+                utilbill.rate_class = None
 
         period_start = period_start if period_start else \
             utilbill.period_start
@@ -240,7 +241,7 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility = self.get_create_utility(utility)
+            utility, new_utility = self.get_create_utility(utility)
         if rate_class is not None:
             rate_class = self.get_create_rate_class(rate_class, utility)
         if supplier is not None:
@@ -493,7 +494,8 @@ class UtilbillProcessor(object):
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
             result = Utility(name, Address('', '', '', '', ''))
-        return result
+            return result, True
+        return result, False
 
     def get_create_supplier(self, name):
         session = Session()
