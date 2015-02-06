@@ -53,10 +53,14 @@ class CallableField(Raw):
     def format(self, value):
         return self.result_field.format(value())
 
+
 class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
+        if value is None:
+            return None
         return value.capitalize()
+
 
 class IsoDatetime(Raw):
     def format(self, value):
