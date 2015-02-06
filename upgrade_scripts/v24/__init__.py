@@ -28,10 +28,17 @@ def create_pg_accounts(session):
 
 def read_utilbill_data(session):
     meta = MetaData()
-    utilbilll_table = Table('utilbill', meta, autoload=True,
+    utilbill_table = Table('utilbill', meta, autoload=True,
         autoload_with=session.connection())
-    result = session.execute(select([utilbilll_table.c.service,
-        utilbilll_table.c.rate_class_id]))
+    result = session.execute(select([utilbill_table.c.service,
+        utilbill_table.c.rate_class_id]))
+    return result
+
+def bills_with_service_conflicts(session):
+    sql_query = "select distinct u.id, u.service, u.rate_class_id from utilbill" \
+                " u, utilbill u1 where u.rate_class_id = u1.rate_class_id" \
+                " and u.service != u1.service order by u.rate_class_id"
+    result = session.execute(sql_query)
     return result
 
 def mark_charges_as_distribution_or_supply(session):
@@ -58,14 +65,21 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s distribution charges' % distribution_count
     print 'Found %s other charges' % other_count
 
+def print_utilbills_with_conflicting_rate_classes(bills):
+    print '---- bills with conflicting rate_classes ----'
+    for id, service, rate_class in bills:
+        print ('utilbill_id: %s, service: %s, rate_class_id: %s'
+               % (id, service, rate_class))
+    print '---- bills with conflicting rate_classes ----'
+    print 'Total number of bills with conflicting service %s' %\
+          (bills.rowcount)
+
 def copy_service_to_rate_class(utilbill_data, session):
     '''copies service from utilbill to rate_class table'''
 
     for service, rate_class_id in utilbill_data:
         if rate_class_id is not None:
             rate_class = session.query(RateClass).filter(RateClass.id==rate_class_id).one()
-            log.info('setting rate_class %s service to %s' %
-                     (rate_class.name, service))
             rate_class.service = service
 
 def upgrade():
@@ -76,6 +90,8 @@ def upgrade():
     alembic_upgrade('5a356721c95e')
     init_model(schema_revision='5a356721c95e')
     session = Session()
+    conflicting_service_bills = bills_with_service_conflicts(session)
+    print_utilbills_with_conflicting_rate_classes(conflicting_service_bills)
     utilbill_data = read_utilbill_data(session)
 
     create_pg_accounts(session)
