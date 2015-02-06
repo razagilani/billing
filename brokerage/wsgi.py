@@ -283,7 +283,7 @@ app.secret_key = 'sgdsdgs'
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
-    return redirect(url_for('login'))
+    return app.send_static_file('logout.html')
 
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
