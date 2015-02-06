@@ -205,6 +205,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               service='electricity')
         self.assertEqual('electricity', utilbill.service)
 
+        # change supply_choice_id
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                              supply_choice_id='some choice id')
+        self.assertEqual('some choice id', utilbill.supply_choice_id)
+
         # change "total" aka "total_charges"
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               target_total=200)

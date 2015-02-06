@@ -13,24 +13,18 @@ Ext.application({
 
     controllers: [
         'UtilityBills',
-        'UtilityBillRegisters',
         'Charges',
-        'TabPanel',
         'Viewer'
     ],
 
     stores: [
         'Accounts',
-        'Suppliers',
         'Services',
         'Utilities',
         'RateClasses',
         'Charges',
         'Units',
-        'UtilityBillRegisters',
-        'UtilityBills',
-        'UtilityBillsMemory', // not sure if we need this
-        'Timestamps' // ???
+        'UtilityBills'
     ],
 
     launch: function() {}

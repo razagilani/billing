@@ -100,9 +100,16 @@ class TestPGWeb(unittest.TestCase):
     def test_accounts(self):
         rv = self.app.get(URL_PREFIX + 'accounts')
         self.assertJson(
-            [{'utility_account_number': '1', 'account': '11111', 'id': 1},
-             {'utility_account_number': '2', 'account': '22222', 'id': 2},
-            ], rv.data)
+            [{'account': '11111',
+              'id': 1,
+              'service_address': '1 Example St., ,  ',
+              'utility': 'Example Utility',
+              'utility_account_number': '1'},
+             {'account': '22222',
+              'id': 2,
+              'service_address': ', ,  ',
+              'utility': 'Example Utility',
+              'utility_account_number': '2'}], rv.data)
 
     def test_utilbills_list(self):
         rv = self.app.get(URL_PREFIX + 'utilitybills?id=1')
@@ -125,7 +132,8 @@ class TestPGWeb(unittest.TestCase):
                   'total_charges': 0.0,
                   'total_energy': 150.0,
                   'utility': 'Example Utility',
-                  'utility_account_number': '1'
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
                  },
                  {'account': None,
                   'computed_total': 0.0,
@@ -143,7 +151,8 @@ class TestPGWeb(unittest.TestCase):
                   'total_charges': 0.0,
                   'total_energy': 150.0,
                   'utility': 'Example Utility',
-                  'utility_account_number': '1'
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
                  }
              ], }, rv.data)
 
@@ -213,7 +222,8 @@ class TestPGWeb(unittest.TestCase):
                   'total_charges': 0.0,
                   'total_energy': 150.0,
                   'utility': 'Example Utility',
-                  'utility_account_number': '1'
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
                  },
              'results': 1,
             }, rv.data)

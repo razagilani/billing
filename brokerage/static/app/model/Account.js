@@ -4,5 +4,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'id', type: 'int'},
         {name: 'account', type: 'string'},
         {name: 'utility_account_number', type: 'string'},
+        {name: 'utility', type: 'string'},
+        {name: 'service_address', type: 'string'},
     ]
 });
