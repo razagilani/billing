@@ -71,11 +71,11 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s other charges' % other_count
 
 def print_utilbills_with_conflicting_rate_classes(bills, billscount):
-    print '---- bills with conflicting rate_classes ----'
+    print '---- rate_classes with conflicting service ----'
     for id, service, rate_class in bills:
         print ('utilbill_id: %s, service: %s, rate_class_id: %s'
                % (id, service, rate_class))
-    print '---- bills with conflicting rate_classes ----'
+    print '---- rate_classes with conflicting service ----'
     print 'Total number of bills with conflicting service %s' %\
           (billscount)
 
