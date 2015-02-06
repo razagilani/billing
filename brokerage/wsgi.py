@@ -21,7 +21,6 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from pg.pg_model import PGAccount
 from core import initialize
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
