@@ -152,7 +152,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         assert utilbill.period_start == doc['period_start'] == date(2013, 1,
                                                                     1)
         assert utilbill.period_end == doc['period_end'] == date(2013, 2, 1)
-        assert utilbill.service.lower() == doc['service'].lower() == 'gas'
+        assert utilbill.get_service().lower() == doc['service'].lower() == 'gas'
         assert utilbill.utility.name == doc['utility']['name'] == \
                'Test Utility Company Template'
         assert utilbill.target_total == 100
@@ -205,6 +205,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                               service='electricity')
         self.assertEqual('electricity', utilbill.service)
 
+        # change supply_choice_id
+        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
+                                              supply_choice_id='some choice id')
+        self.assertEqual('some choice id', utilbill.supply_choice_id)
+
         # change "total" aka "total_charges"
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               target_total=200)
@@ -240,7 +245,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '1000001',
                 utility, supplier,
-                RateClass('rate class', utility), Address(),
+                RateClass('rate class', utility, 'gas'), Address(),
                 Address())
         s.add(utility_account)
         s.commit()
@@ -304,7 +309,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(1, count)
         self.assertDictContainsSubset({
                                           'state': 'Final',
-                                          'service': 'Electric',
+                                          'service': 'Gas',
                                           'utility': self.views.
                                             get_utility('pepco').
                                             column_dict(),
@@ -347,7 +352,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbills_data, _ = self.views.get_all_utilbills_json(account, 0, 30)
         dictionaries = [{
                             'state': 'Final',
-                            'service': 'Electric',
+                            'service': 'Gas',
                             'utility': self.views.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.views.
@@ -363,7 +368,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'reebills': [],
                             }, {
                             'state': 'Final',
-                            'service': 'Electric',
+                            'service': 'Gas',
                             'utility': self.views.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.views.
@@ -411,7 +416,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'reebills': [],
                             }, {
                             'state': 'Final',
-                            'service': 'Electric',
+                            'service': 'Gas',
                             'utility': self.views.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.views.
@@ -428,7 +433,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'reebills': [],
                             }, {
                             'state': 'Final',
-                            'service': 'Electric',
+                            'service': 'Gas',
                             'utility': self.views.
                                 get_utility('pepco').column_dict(),
                             'supplier': self.views.
@@ -461,7 +466,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset(
             {
                 'state': 'Final',
-                'service': 'Electric',
+                'service': 'Gas',
                 'utility': self.views.get_utility('washgas').column_dict(),
                 'supplier': self.views.get_supplier('supplier').name,
                 'rate_class': self.views.get_rate_class(
@@ -563,7 +568,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(1, count)
         self.assertDictContainsSubset({
             'state': 'Final',
-            'service': 'Electric',
+            'service': 'Gas',
             'utility': customer.fb_utility.column_dict(),
             'supplier': customer.fb_supplier.name,
             'rate_class': customer.fb_rate_class.name,
@@ -609,7 +614,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(2, count)
         self.assertDictContainsSubset({
                                           'state': 'Final',
-                                          'service': 'Electric',
+                                          'service': 'Gas',
                                           'utility': customer.fb_utility.column_dict(),
                                           'supplier': customer.fb_supplier.name,
                                           'rate_class': customer.fb_rate_class.name,

@@ -75,7 +75,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '572b9c75caf3'
+_schema_revision = '2d65c7c19345'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -257,15 +257,19 @@ class RateClass(Base):
     '''
     __tablename__ = 'rate_class'
 
+    SERVICES = ('gas', 'electric')
+
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
+    service = Column(Enum(*SERVICES), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
 
-    def __init__(self, name, utility):
+    def __init__(self, name, utility, service):
         self.name = name
         self.utility = utility
+        self.service = service
 
     def __repr__(self):
         return '<RateClass(%s)>' % self.name
@@ -372,7 +376,6 @@ class UtilBill(Base):
         nullable=True)
 
     state = Column(Integer, nullable=False)
-    service = Column(String(45), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
     due_date = Column(Date)
@@ -460,7 +463,7 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    def __init__(self, utility_account, state, service, utility, supplier,
+    def __init__(self, utility_account, state, utility, supplier,
                  rate_class, billing_address, service_address,
                  period_start=None, period_end=None, target_total=0,
                  date_received=None, processed=False, sha256_hexdigest='',
@@ -471,7 +474,6 @@ class UtilBill(Base):
         # automatically adds from the database column
         self.utility_account = utility_account
         self.state = state
-        self.service = service
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
@@ -546,7 +548,7 @@ class UtilBill(Base):
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
-            self.utility_account.account, self.service, self.period_start,
+            self.utility_account.account, self.get_service(), self.period_start,
             self.period_end, self.state)
 
     def is_attached(self):
@@ -728,6 +730,11 @@ class UtilBill(Base):
             return 0
         return total_register.quantity
 
+    def get_service(self):
+        if self.rate_class is not None:
+            return self.rate_class.service
+        return None
+
     # TODO: move UI-related code to views.py
     def column_dict(self):
         # human-readable names for utilbill states (used in UI)
@@ -738,8 +745,8 @@ class UtilBill(Base):
         }[self.state]
         result = dict(super(UtilBill, self).column_dict().items() +
                     [('account', self.utility_account.account),
-                     ('service', 'Unknown' if self.service is None
-                                           else self.service.capitalize()),
+                     ('service', 'Unknown' if self.get_service() is None
+                                           else self.get_service().capitalize()),
                      ('total_charges', self.target_total),
                      ('computed_total', self.get_total_charges()),
                      ('reebills', [ur.reebill.column_dict() for ur
