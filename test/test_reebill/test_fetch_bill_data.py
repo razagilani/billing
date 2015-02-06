@@ -60,7 +60,7 @@ class FetchTest(unittest.TestCase):
             'someone', '12345', Mock(autospec=Utility), Mock(autospec=Supplier), Mock(autospec=RateClass), Address(), Address())
         reebill_customer = ReeBillCustomer('someone', 0.5, 0.1, 'thermal',
                             'example@example.com', utility_account)
-        utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', 'washgas',
+        utilbill = UtilBill(utility_account, UtilBill.Complete, 'washgas',
                 'supplier', 'DC Non Residential Non Heat', Address(), Address(),
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
