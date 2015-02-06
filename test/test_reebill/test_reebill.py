@@ -10,14 +10,15 @@ class ReebillTest(unittest.TestCase):
     def setUp(self):
         washgas = Utility('washgas', Address('', '', '', '', ''))
         supplier = Supplier('supplier', Address())
-        c_rate_class = RateClass('Test Rate Class', washgas)
+        c_rate_class = RateClass('Test Rate Class', washgas, 'gas')
         utility_account = UtilityAccount('someaccount', '11111',
                             washgas, supplier, c_rate_class,
                             Address(), Address())
         reebill_customer = ReeBillCustomer('someone', '11111', 0.5, 0.1,
                             'example@example.com', utility_account)
-        u_rate_class = RateClass('DC Non Residential Non Heat', washgas)
-        self.utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', washgas,
+        u_rate_class = RateClass('DC Non Residential Non Heat', washgas,
+                                 'gas')
+        self.utilbill = UtilBill(utility_account, UtilBill.Complete, washgas,
                                  supplier,
                                  u_rate_class,
                                  period_start=date(2000, 1, 1),

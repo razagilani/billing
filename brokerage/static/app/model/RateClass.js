@@ -4,10 +4,5 @@ Ext.define('ReeBill.model.RateClass', {
         {name: 'name', type: 'string'},
         {name: 'id', type: 'int'},
         {name: 'utility_id', type: 'int'}
-    ],
-    belongsTo: [{
-            name: 'rateclasses',
-            model: 'Utility',
-            associationKey: 'rateclasses'
-        }]
+    ]
 });

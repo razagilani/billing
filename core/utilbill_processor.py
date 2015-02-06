@@ -39,7 +39,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None):
+            processed=None, supply_choice_id=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -63,6 +63,9 @@ class UtilbillProcessor(object):
         if service is not None:
             utilbill.service = service
 
+        if supply_choice_id is not None:
+            utilbill.supply_choice_id = supply_choice_id
+
         if supplier is not None:
             utilbill.supplier = self.get_create_supplier(supplier)
 
@@ -71,9 +74,10 @@ class UtilbillProcessor(object):
                 rate_class, utilbill.utility)
 
         if utility is not None and isinstance(utility, basestring):
-            utilbill.utility = self.get_create_utility(utility)
-            utilbill.supplier = None
-            utilbill.rate_class = None
+            utilbill.utility, new_utility = self.get_create_utility(utility)
+            if new_utility:
+                utilbill.supplier = None
+                utilbill.rate_class = None
 
         period_start = period_start if period_start else \
             utilbill.period_start
@@ -156,8 +160,8 @@ class UtilbillProcessor(object):
         # passed as an argument, or 'electric' by default
         # TODO: this doesn't really make sense; probably the "service" field
         # should belong to the rate class.
-        if service is None:
-            service = getattr(predecessor, 'service', None)
+        if service is None and predecessor is not None:
+            service = predecessor.get_service()
         if service is None:
             service = 'electric'
 
@@ -179,7 +183,7 @@ class UtilbillProcessor(object):
             rate_class = utility_account.fb_rate_class
 
         new_utilbill = UtilBill(
-            utility_account, state, service, utility, supplier, rate_class,
+            utility_account, state, utility, supplier, rate_class,
             Address.from_other(billing_address),
             Address.from_other(service_address),
             period_start=start, period_end=end, target_total=total,
@@ -237,7 +241,7 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility = self.get_create_utility(utility)
+            utility, new_utility = self.get_create_utility(utility)
         if rate_class is not None:
             rate_class = self.get_create_rate_class(rate_class, utility)
         if supplier is not None:
@@ -490,7 +494,8 @@ class UtilbillProcessor(object):
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
             result = Utility(name, Address('', '', '', '', ''))
-        return result
+            return result, True
+        return result, False
 
     def get_create_supplier(self, name):
         session = Session()
@@ -519,7 +524,7 @@ class UtilbillProcessor(object):
             result = session.query(RateClass).filter_by(
                 name=rate_class_name).one()
         except NoResultFound:
-            result = RateClass(rate_class_name, utility)
+            result = RateClass(rate_class_name, utility, 'gas')
         return result
 
     def create_utility(self, name):

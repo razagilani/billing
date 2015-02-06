@@ -1,15 +1,6 @@
 Ext.define('ReeBill.view.charges.Charges', {
     extend: 'Ext.grid.Panel',
 
-    requires: [
-        'Ext.grid.*',
-        'Ext.data.*',
-        'Ext.dd.*',
-        'ReeBill.view.charges.FormulaField',
-        'ReeBill.view.charges.GroupTextField',
-        'ReeBill.view.charges.RoundRuleTextField'
-    ],
-
     alias: 'widget.charges',
     store: 'Charges',
     preventHeader: true,
@@ -32,15 +23,6 @@ Ext.define('ReeBill.view.charges.Charges', {
         getRowClass: function(record) {
             if (record.get('error')){
                 return 'charges-grid-error';
-            }
-        },
-        plugins:[{
-            ptype: 'gridviewdragdrop'
-        }],
-        listeners: {
-            drop: function(node, data, overModel, dropPosition, eOpts) {
-                data.records[0].set('group', overModel.get('group'));
-                Ext.getStore('Charges').group('group', 'ASC');
             }
         }
     },
@@ -94,21 +76,6 @@ Ext.define('ReeBill.view.charges.Charges', {
             action: 'removeCharge',
             iconCls: 'silk-delete',
             disabled: true
-        //},{
-        //    xtype: 'button',
-        //    text: 'Regenerate',
-        //    action: 'regenerateCharge',
-        //    iconCls: 'silk-wrench'
-        //},{
-        //    xtype: 'button',
-        //    text: 'Recompute',
-        //    action: 'recomputeCharges'
-        //},'-',{
-        //    xtype: 'formulaField',
-        //    name: 'formulaField'
-        //},'-',{
-        //    xtype: 'groupTextField',
-        //    name: 'groupTextField'
         }]
     }]
 });
