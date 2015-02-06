@@ -8,6 +8,12 @@ Ext.define('ReeBill.store.Charges', {
 
 	proxy: {
 		type: 'rest',
+        
+        simpleSortMode: true,
+        pageParam: false,
+        startParam: false,
+        sortParam: false,
+        limitParam: false,
 
         pageParam: false,
 

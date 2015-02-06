@@ -9,7 +9,7 @@ Ext.define('ReeBill.store.RateClasses', {
 	proxy: {
 		type: 'rest',
 
-        simpleSortMode: true,		
+        simpleSortMode: true,
         pageParam: false,
         startParam: false,
         sortParam: false,

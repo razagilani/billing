@@ -3,7 +3,12 @@ Ext.define('ReeBill.view.Viewport', {
     layout: 'fit',
     componentCls: 'panel-noborder',
 
-    requires: ['Ext.panel.PDF'],
+    requires: [
+        'Ext.panel.PDF',
+        'ReeBill.view.accounts.Accounts',
+        'ReeBill.view.utilitybills.UtilityBills',
+        'ReeBill.view.charges.Charges'
+    ],
 
     initComponent: function() {
         this.items = {
@@ -28,15 +33,7 @@ Ext.define('ReeBill.view.Viewport', {
                 collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
-            //},{
-            //    region: 'east',
-            //    xtype: 'pdfpanel',
-            //    name: 'reebillViewer',
-            //    collapsible: true,
-            //    collapsed: true,
-            //    cache: false,
-            //    src: '',
-            //    width: Ext.getBody().getWidth() * 0.3
+
             },{
                 xtype: 'tabpanel',
                 region: 'center',
@@ -65,65 +62,25 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'charges',
-                        id: 'chargesGrid',
-                        region: 'south'
-                    },{
                         xtype: 'utilityBills',
                         id: 'utilityBillsGrid',
                         region: 'center',
                         collapsible: false
-                    }]
-                },{
-                    xtype: 'panel',
-                    name: 'metersTab',
-                    title: 'Meters and Registers',
-                    layout: 'border',
-                    disabled: true,
-                    defaults: {
-                        collapsible: true,
-                        split: true
-                    },
-                    items: [{
-                        xtype: 'utilityBillRegisters',
-                        id: 'utilityBillRegistersGrid',
-                        region: 'center',
-                        collapsible: false
                     },{
-                        xtype: 'TOUMetering',
-                        id: 'TOUMeteringForm',
+                        xtype: 'charges',
+                        id: 'chargesGrid',
                         region: 'south',
-                        collapsible:false,
-                        floatable: false,
+                        height: 150
                     }]
-                //},{
-                //    xtype: 'panel',
-                //    name: 'chargesTab',
-                //    title: 'Charges',
-                //    layout: 'border',
-                //    disabled: true,
-                //    defaults: {
-                //        collapsible: true,
-                //        split: true
-                //    },
-                //    items: [{
-                //        xtype: 'charges',
-                //        id: 'chargesGrid',
-                //        region: 'center'
-                //    }]
                 }],
 
                 dockedItems: [{
                     xtype: 'toolbar',
                     dock: 'bottom',
 
-                    items:["Logged in as :",
+                    items:[
                     {
-                        xtype: 'tbtext',
-                        name: 'userTBLabel',
-                        text: 'Username'
-                    },{
-                        text: 'Logout',
+                        text: 'Log Out',
                         handler: function(){
                             window.location.pathname = '/logout';
                         }
@@ -132,10 +89,6 @@ Ext.define('ReeBill.view.Viewport', {
                         name: 'revisionTBLabel',
                         text: VERSION.date + ' ' + VERSION.user + ' ' + VERSION.version + ' ' + VERSION.deploy_env
                     },'->',{
-                        xtype: 'tbtext',
-                        name: 'accountTBLabel',
-                        text: 'No Account Selected'
-                    },{
                         xtype: 'tbtext',
                         name: 'ubSequenceTBLabel',
                         text: ''
