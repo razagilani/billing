@@ -53,6 +53,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
             '[action=utilbillNext]': {
                 click: this.incrementAccount
             },
+            '#utility_combo':{
+                select: this.handleUtilityComboChanged
+            },
             '#rate_class_combo': {
                 focus: this.handleRateClassComboFocus
             }
@@ -103,6 +106,16 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_classes_store.clearFilter(true);
         rate_classes_store.filter('utility_id', utility.get('id'));
     },
+
+    handleUtilityComboChanged: function(utility_combo, record){
+        var rate_class_store = Ext.getStore("RateClasses");
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter('utility_id', record[0].data.id);
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var utility_store = this.getUtilityBillsStore();
+        selected.set('rate_class', rate_class_store.getAt(0).data.name);
+    },
+
 
     /**
      * Finds the store index of the record that is offset by 'offset' from
