@@ -38,17 +38,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Service',
         dataIndex: 'service',
-        editor: {
-            xtype: 'combo',
-            name: 'service',
-            store: 'Services',
-            triggerAction: 'all',
-            valueField: 'name',
-            displayField: 'value',
-            queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
-        }
+        width: 100
     },{
         header: 'Start',
         dataIndex: 'period_start',
@@ -124,7 +114,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             displayField: 'name',
             valueField: 'name',
             triggerAction: 'all',
-            forceSelection: false,
+            forceSelection: true,
             typeAhead: true,
             typeAheadDelay: 1,
             autoSelect: false,
