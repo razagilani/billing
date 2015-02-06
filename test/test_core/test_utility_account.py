@@ -24,8 +24,9 @@ class UtilityAccountTest(TestCase):
         self.supplier = Supplier('supplier', Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility), Address(), Address())
-        self.rate_class = RateClass('rate class', self.utility)
+            RateClass('FB Test Rate Class', self.utility, 'gas'),
+            Address(), Address())
+        self.rate_class = RateClass('rate class', self.utility, 'gas')
 
     def tearDown(self):
         Session.remove()
@@ -36,7 +37,7 @@ class UtilityAccountTest(TestCase):
         # Assert that the service address of the first bill is returned
         service_address1 = Address('Jules Watson', '123 Main St.',
                                    'Pleasantville', 'Va', '12345')
-        ub1 = UtilBill(self.utility_account, UtilBill.Complete, 'gas',
+        ub1 = UtilBill(self.utility_account, UtilBill.Complete,
                        self.utility, self.supplier, self.rate_class, Address(),
                        service_address1)
         session.add(ub1)
@@ -47,7 +48,7 @@ class UtilityAccountTest(TestCase):
         # The service address of the account should not change
         service_address2 = Address('Arthur Dent', '567 Deer Ct.',
                                    'Springfield', 'Il', '67890')
-        ub2 = UtilBill(self.utility_account, UtilBill.Complete, 'gas',
+        ub2 = UtilBill(self.utility_account, UtilBill.Complete,
                self.utility, self.supplier, self.rate_class, Address(),
                service_address2)
         session.add(ub2)

@@ -53,10 +53,14 @@ class CallableField(Raw):
     def format(self, value):
         return self.result_field.format(value())
 
+
 class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
+        if value is None:
+            return None
         return value.capitalize()
+
 
 class IsoDatetime(Raw):
     def format(self, value):
@@ -105,7 +109,8 @@ class BaseResource(Resource):
             'account': String,
             'period_start': IsoDatetime,
             'period_end': IsoDatetime,
-            'service': CapString(default='Unknown'),
+            'service': CallableField(CapString(),
+                                     attribute='get_service'),
             'total_energy': CallableField(Float(),
                                           attribute='get_total_energy'),
             'total_charges': Float(attribute='target_total'),
@@ -163,8 +168,8 @@ class UtilBillListResource(BaseResource):
         args = id_parser.parse_args()
         s = Session()
         # TODO: pre-join with Charge to make this faster
-        utilbills = s.query(UtilBill).join(UtilityAccount).filter(
-            UtilityAccount.id == args['id']).order_by(
+        utilbills = s.query(UtilBill).join(UtilityAccount).filter\
+            (UtilityAccount.id == args['id']).order_by(
             desc(UtilBill.period_start), desc(UtilBill.id)).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}

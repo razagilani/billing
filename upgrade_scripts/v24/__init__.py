@@ -7,13 +7,16 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+from time import sleep
 from boto.s3.connection import S3Connection
-from brokerage.brokerage_model import BrokerageAccount
+from sqlalchemy.sql.schema import MetaData, Table
+from sqlalchemy.sql.expression import select
 from upgrade_scripts import alembic_upgrade
 import logging
-from core import config, init_model
-from core.model.model import Session, Utility, \
-    Address, UtilBill, Supplier, RateClass, UtilityAccount, Charge
+from core import init_model
+from core.model.model import Session,UtilityAccount, Charge, RateClass, \
+    Utility, UtilBill
+from brokerage.brokerage_model import BrokerageAccount
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +26,20 @@ def create_pg_accounts(session):
                     UtilityAccount.account >= '20000').all():
         session.add(BrokerageAccount(ua))
 
+def read_utilbill_data(session):
+    meta = MetaData()
+    utilbill_table = Table('utilbill', meta, autoload=True,
+        autoload_with=session.connection())
+    result = session.execute(select([utilbill_table.c.service,
+        utilbill_table.c.rate_class_id]))
+    return result
+
+def bills_with_service_conflicts(session):
+    sql_query = "select distinct u.id, u.service, u.rate_class_id from utilbill" \
+                " u, utilbill u1 where u.rate_class_id = u1.rate_class_id" \
+                " and u.service != u1.service order by u.rate_class_id"
+    result = session.execute(sql_query)
+    return result
 
 def mark_charges_as_distribution_or_supply(session):
     supply = ['supply', 'Supply', 'SUPPLY', 'generation', 'Generation',
@@ -48,16 +65,44 @@ def mark_charges_as_distribution_or_supply(session):
     print 'Found %s distribution charges' % distribution_count
     print 'Found %s other charges' % other_count
 
+def print_utilbills_with_conflicting_rate_classes(bills):
+    print '---- bills with conflicting rate_classes ----'
+    for id, service, rate_class in bills:
+        print ('utilbill_id: %s, service: %s, rate_class_id: %s'
+               % (id, service, rate_class))
+    print '---- bills with conflicting rate_classes ----'
+    print 'Total number of bills with conflicting service %s' %\
+          (bills.rowcount)
+
+def copy_service_to_rate_class(utilbill_data, session):
+    '''copies service from utilbill to rate_class table'''
+
+    for service, rate_class_id in utilbill_data:
+        if rate_class_id is not None:
+            rate_class = session.query(RateClass).filter(RateClass.id==rate_class_id).one()
+            rate_class.service = service
 
 def upgrade():
     log.info('Beginning upgrade to version 24')
 
-    alembic_upgrade('572b9c75caf3')
 
-    init_model(schema_revision='572b9c75caf3')
+    log.info('upgrading schema to revision 5a356721c95e')
+    alembic_upgrade('5a356721c95e')
+    init_model(schema_revision='5a356721c95e')
     session = Session()
+    conflicting_service_bills = bills_with_service_conflicts(session)
+    print_utilbills_with_conflicting_rate_classes(conflicting_service_bills)
+    utilbill_data = read_utilbill_data(session)
+
     create_pg_accounts(session)
     mark_charges_as_distribution_or_supply(session)
+    copy_service_to_rate_class(utilbill_data, session)
+    session.commit()
+
+    log.info('upgrading schema to revision 2d65c7c19345')
+    init_model(schema_revision='5a356721c95e')
+    alembic_upgrade('2d65c7c19345')
+
 
     session.commit()
 

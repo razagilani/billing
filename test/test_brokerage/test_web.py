@@ -4,7 +4,7 @@ from json import loads
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
-    Charge, Register
+    Charge, Register, RateClass
 from brokerage import wsgi
 from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
@@ -50,13 +50,15 @@ class TestPGWeb(unittest.TestCase):
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
                              Address(), Address(), '3')
+        rate_class = RateClass('Some Rate Class', utility, 'gas')
+        s.add(rate_class)
         ua1.id, ua2.id, ua3.id = 1, 2, 3
         s.add_all([ua1, ua2, ua3])
         s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
-        ub1 = UtilBill(ua1, UtilBill.Complete, 'electric', utility, None,
-                       None, Address(), Address(street='1 Example St.'))
-        ub2 = UtilBill(ua1, UtilBill.Complete, 'electric', utility, None,
-                       None, Address(), Address(street='2 Example St.'))
+        ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
+                       rate_class, Address(), Address(street='1 Example St.'))
+        ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
+                       rate_class, Address(), Address(street='2 Example St.'))
         ub1.id = 1
         ub2.id = 2
         register1 = Register(ub1, "ABCDEF description",
@@ -122,8 +124,8 @@ class TestPGWeb(unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'None',
-                  'service': 'Electric',
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
                   'service_address': '2 Example St., ,  ',
                   'supplier': 'None',
                   'supply_total': 0.0,
@@ -141,8 +143,8 @@ class TestPGWeb(unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'None',
-                  'service': 'Electric',
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'None',
                   'supply_total': 2.0,
@@ -212,8 +214,8 @@ class TestPGWeb(unittest.TestCase):
                   'period_end': None,
                   'period_start': '2000-01-01',
                   'processed': False,
-                  'rate_class': 'None',
-                  'service': 'Electric',
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'None',
                   'supply_total': 2.0,

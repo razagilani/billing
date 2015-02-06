@@ -39,7 +39,7 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(utility_account, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
+        u = UtilBill(utility_account, UtilBill.Complete, 'Test Utility', 'Test Supplier',
             'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
             period_end=date(2000,2,1))
         u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
