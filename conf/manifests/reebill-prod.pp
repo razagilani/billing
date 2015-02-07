@@ -38,9 +38,13 @@ file { "/home/reebill-${env}/logs":
     owner       => $username,
     group       => $username,
 }
-file { "/etc/httpd/conf.d/${username}.conf":
+file { "/etc/httpd/conf.d/billing-prod.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/reebill-prod.conf"
+    source => "puppet:///modules/conf/vhosts/billing-prod.conf"
+}
+file { "/etc/httpd/conf.d/billentry-prod.conf":
+    ensure => file,
+    source => "puppet:///modules/conf/vhosts/billentry-prod.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
