@@ -21,7 +21,6 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from pg.pg_model import PGAccount
 from core import initialize
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
@@ -288,7 +287,7 @@ app.secret_key = 'sgdsdgs'
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
-    return redirect(url_for('login'))
+    return app.send_static_file('logout.html')
 
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
