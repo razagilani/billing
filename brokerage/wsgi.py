@@ -287,7 +287,7 @@ app.secret_key = 'sgdsdgs'
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
-    return redirect(url_for('login'))
+    return app.send_static_file('logout.html')
 
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
@@ -390,3 +390,36 @@ if __name__ == '__main__':
 
     app.run(debug=True)
 
+else:
+    initialize()
+    from core import config
+
+    google = google_oauth_init(config)
+
+    def make_google_redirect_response():
+        return google.authorize(callback=url_for(
+            config.get('power_and_gas', 'redirect_uri'),
+            _external=True))
+
+    @app.route('/login')
+    def login():
+        next_path = request.args.get('next')
+        if next_path:
+            # Since passing along the "next" URL as a GET param requires
+            # a different callback for each page, and Google requires
+            # whitelisting each allowed callback page, therefore, it can't pass it
+            # as a GET param. Instead, the url is sanitized and put into the session.
+            path = urllib.unquote(next_path)
+            if path[0] == '/':
+                # This first slash is unnecessary since we force it in when we
+                # format next_url.
+                path = path[1:]
+
+            next_url = "{path}".format(
+                path=path,)
+            session['next_url'] = next_url
+        return make_google_redirect_response()
+
+    # enable admin UI
+    make_admin(app)
+    application = app
