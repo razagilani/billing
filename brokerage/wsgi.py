@@ -208,6 +208,7 @@ class UtilBillResource(BaseResource):
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
 
+        Session().commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):

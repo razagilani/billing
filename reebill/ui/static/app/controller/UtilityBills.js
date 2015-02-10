@@ -254,7 +254,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleUtilityComboChanged: function(utility_combo, record){
         var rate_class_store = Ext.getStore("RateClasses");
         rate_class_store.clearFilter(true);
-        rate_class_store.filter('utility_id', record[0].data.id);
+        rate_class_store.filter({property:"utility_id", type: 'int',
+                                    value: record[0].data.id, exactMatch:true});
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var utility_store = this.getUtilityBillsStore();
         selected.set('rate_class', rate_class_store.getAt(0).data.name);
@@ -267,6 +268,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
         selected = utility_grid.getSelectionModel().getSelection()[0];
         rate_class_store = Ext.getStore('RateClasses');
         rate_class_store.clearFilter(true);
+        rate_class_store.filter({property:"utility_id", type: 'int',
+                                    value: selected.get('utility').id,
+                                    exactMatch:true});
         rate_class_store.filter('utility_id', selected.get('utility').id);
     },
 
