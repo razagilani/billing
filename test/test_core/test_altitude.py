@@ -9,9 +9,9 @@ init_test_config()
 init_model()
 
 from core.model import Utility, Supplier, Address, Session, \
-    UtilityAccount, RateClass
+    UtilityAccount, RateClass, UtilBill
 from core.altitude import AltitudeUtility, AltitudeSupplier,\
-    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount
+    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, AltitudeBill
 
 
 class TestAltitudeModelClasses(TestCase):
@@ -113,3 +113,31 @@ class TestWithDB(TestCase):
         c2 = s.query(AltitudeAccount).one()
         self.assertEqual('c', c2.guid)
         self.assertEqual(ua2, c2.utility_account)
+
+class TestAltitudeBillWithDB(TestCase):
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+
+        self.u = Utility('A Utility', Address())
+        utility = Utility('example', None)
+        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None, Address(), Address())
+
+    def test_create_delete(self):
+        """Create an AltitudeBill and check that it gets deleted along with
+        its UtilBill.
+        """
+        s = Session()
+        s.add(self.utilbill)
+        self.assertEqual(0, s.query(AltitudeBill).count())
+
+        ab = AltitudeBill(self.utilbill, 'abcdef')
+        s.add(ab)
+        s.flush()
+        self.assertEqual(1, s.query(AltitudeBill).count())
+
+        s.delete(self.utilbill)
+        self.assertEqual(0, s.query(AltitudeBill).count())
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
