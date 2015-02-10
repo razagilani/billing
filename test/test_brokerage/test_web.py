@@ -145,6 +145,7 @@ class TestPGWeb(unittest.TestCase):
                   'utility_account_number': '3',
                   'supply_choice_id': None
                  },
+                  'supplier': 'Unknown',
              ], }, rv.data)
 
     def test_charges_list(self):
