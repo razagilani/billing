@@ -29,6 +29,12 @@ def upgrade():
                   sa.Column('type', sa.Enum('supply', 'distribution', 'other'),
                             nullable=False))
     op.add_column(u'charge', sa.Column('target_total', sa.Float))
+
+    op.create_table('altitude_bill',
+                    sa.Column('utilbill_id', sa.Integer(),
+                              sa.ForeignKey('utilbill.id'), nullable=False),
+                    sa.Column('guid', sa.String(length=36), nullable=False),
+                    sa.PrimaryKeyConstraint('utilbill_id', 'guid'))
     ### end Alembic commands ###
 
 
@@ -39,4 +45,5 @@ def downgrade():
     op.drop_column(u'charge', 'type')
     op.drop_column(u'charge', 'target_total')
     op.drop_table('brokerage_account')
+    op.drop_table('altitude_bill'),
     ### end Alembic commands ###
