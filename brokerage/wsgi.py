@@ -355,6 +355,9 @@ def google_oauth_init(config):
     oauth2callback = app.route('/oauth2callback')(oauth2callback)
     return google
 
+# apparently needed for Apache
+application = app
+
 if __name__ == '__main__':
     initialize()
     from core import config
