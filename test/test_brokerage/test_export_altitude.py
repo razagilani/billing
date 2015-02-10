@@ -1,13 +1,16 @@
 from StringIO import StringIO
 from datetime import datetime
 from unittest import TestCase
-from uuid import uuid5
+from uuid import uuid5, uuid4
 from uuid import NAMESPACE_DNS
 
 from mock import Mock
+from core import altitude
+from core.altitude import AltitudeBill
 
-from core.model import UtilBill
+from core.model import UtilBill, UtilityAccount, Utility, Address, Session
 from brokerage.export_altitude import PGAltitudeExporter
+from test.setup_teardown import TestCaseWithSetup
 
 
 class TestExportAltitude(TestCase):
@@ -15,7 +18,7 @@ class TestExportAltitude(TestCase):
         u1 = Mock(autospec=UtilBill)
         u1.get_nextility_account_number.return_value = '11111'
         # TODO Altitude GUIDS
-        u1.service = 'electric'
+        u1.get_service.return_value = 'electric'
         u1.get_utility_account_number.return_value = '1'
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
@@ -33,7 +36,7 @@ class TestExportAltitude(TestCase):
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
         # TODO Altitude GUIDS
-        u2.service = 'gas'
+        u2.get_service.return_value = 'gas'
         u2.get_utility_account_number.return_value = '2'
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
@@ -61,6 +64,8 @@ class TestExportAltitude(TestCase):
             result = self.uuids[count[0]]
             count[0] += 1
             return result
+        altitude_converter.get_or_create_guid_for_utilbill.side_effect = [
+            self.uuids[0], self.uuids[1]]
         self.pgae = PGAltitudeExporter(uuid_func, altitude_converter)
 
     def test_get_dataset(self):
@@ -114,3 +119,31 @@ class TestExportAltitude(TestCase):
         self.pgae.write_csv(self.utilbills, s)
         self.assertGreater(s.tell(), 0)
 
+class TestAltitudeBillStorage(TestCase):
+    """Test with the database, involving creating and
+    querying AltitudeBill objects.
+    """
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+        utility = Utility('example', None)
+        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None, Address(), Address())
+        Session().add(self.utilbill)
+        self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
+
+    def test_altitude_bill_consistency(self):
+        """Check that an AlititudeBill is created only once and reused
+        during repeated calls to get_dataset for the same bill.
+        """
+        s = Session()
+        self.assertEqual(0, s.query(AltitudeBill).count())
+
+        dataset_1 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeBill).count())
+
+        dataset_2 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeBill).count())
+        self.assertEqual(dataset_1.csv, dataset_2.csv)
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
