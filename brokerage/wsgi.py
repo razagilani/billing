@@ -21,7 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from pg.pg_model import PGAccount
+from brokerage.brokerage_model import BrokerageAccount
 from core import initialize
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
@@ -392,3 +392,36 @@ if __name__ == '__main__':
 
     app.run(debug=True)
 
+else:
+    initialize()
+    from core import config
+
+    google = google_oauth_init(config)
+
+    def make_google_redirect_response():
+        return google.authorize(callback=url_for(
+            config.get('power_and_gas', 'redirect_uri'),
+            _external=True))
+
+    @app.route('/login')
+    def login():
+        next_path = request.args.get('next')
+        if next_path:
+            # Since passing along the "next" URL as a GET param requires
+            # a different callback for each page, and Google requires
+            # whitelisting each allowed callback page, therefore, it can't pass it
+            # as a GET param. Instead, the url is sanitized and put into the session.
+            path = urllib.unquote(next_path)
+            if path[0] == '/':
+                # This first slash is unnecessary since we force it in when we
+                # format next_url.
+                path = path[1:]
+
+            next_url = "{path}".format(
+                path=path,)
+            session['next_url'] = next_url
+        return make_google_redirect_response()
+
+    # enable admin UI
+    make_admin(app)
+    application = app
