@@ -58,6 +58,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#rate_class_combo': {
                 focus: this.handleRateClassComboFocus
+            },
+            '#service_combo': {
+                blur: this.handleServiceComboBlur
             }
         });
 
@@ -105,6 +108,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var rate_classes_store = this.getRateClassesStore();
         rate_classes_store.clearFilter(true);
         rate_classes_store.filter('utility_id', utility.get('id'));
+    },
+
+    handleServiceComboBlur: function(combo){
+        var utility_bill_grid = combo.findParentByType('grid');
+        utility_bill_grid.getStore().reload();
+        utility_bill_grid.getView().refresh();
     },
 
     handleUtilityComboChanged: function(utility_combo, record){
