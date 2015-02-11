@@ -32,11 +32,7 @@ Ext.define('ReeBill.store.UtilityBills', {
 
         listeners:{
             exception: utils.makeProxyExceptionHandler('UtilityBills'),
-            scope: this,
-            beforesync: function(options)
-            {
-
-            }
+            scope: this
         }
 	},
 
