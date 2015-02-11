@@ -368,9 +368,7 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    return google.authorize(callback=url_for(
-        config.get('power_and_gas', 'redirect_uri'),
-        _external=True))
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
