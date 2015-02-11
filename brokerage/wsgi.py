@@ -325,6 +325,12 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+
+@app.after_request
+def db_commit(response):
+    Session.commit()
+    return response
+
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
 api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
@@ -334,6 +340,7 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+
 
 def google_oauth_init(config):
     oauth = OAuth()
