@@ -83,6 +83,7 @@ class power_and_gas(Schema):
     access_token_url = URL()
     access_token_method = String()
     access_token_params_grant_type = String()
+    disable_google_oauth = StringBool()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
