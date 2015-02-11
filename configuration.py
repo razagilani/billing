@@ -70,7 +70,7 @@ class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
-class power_and_gas(Schema):
+class billentry(Schema):
     google_user_info_url = URL()
 
 class reebillestimatedrevenue(Schema):
