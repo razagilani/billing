@@ -303,6 +303,8 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
+    if config.get('power_and_gas', 'disable_google_oauth'):
+        return app.send_static_file('index.html')
     access_token = session.get('access_token')
     if access_token is None:
         # user is not logged in so redirect to login page
