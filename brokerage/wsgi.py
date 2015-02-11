@@ -327,6 +327,7 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
+    from core import config
     access_token = session.get('access_token')
     if access_token is None:
         # user is not logged in so redirect to login page
@@ -349,6 +350,28 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+@app.route('/login')
+def login():
+    from core import config
+    next_path = request.args.get('next')
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
+    return google.authorize(callback=url_for(
+        config.get('power_and_gas', 'redirect_uri'),
+        _external=True))
+
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
 api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
@@ -362,34 +385,10 @@ api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 # apparently needed for Apache
 application = app
 
+# enable admin UI
+make_admin(app)
+
 if __name__ == '__main__':
     initialize()
-    from core import config
-
-
-    @app.route('/login')
-    def login():
-        next_path = request.args.get('next')
-        if next_path:
-            # Since passing along the "next" URL as a GET param requires
-            # a different callback for each page, and Google requires
-            # whitelisting each allowed callback page, therefore, it can't pass it
-            # as a GET param. Instead, the url is sanitized and put into the session.
-            path = urllib.unquote(next_path)
-            if path[0] == '/':
-                # This first slash is unnecessary since we force it in when we
-                # format next_url.
-                path = path[1:]
-
-            next_url = "{path}".format(
-                path=path,)
-            session['next_url'] = next_url
-        return google.authorize(callback=url_for(
-            config.get('power_and_gas', 'redirect_uri'),
-            _external=True))
-
-    # enable admin UI
-    make_admin(app)
-
     app.run(debug=True)
 
