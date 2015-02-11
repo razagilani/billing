@@ -366,10 +366,6 @@ if __name__ == '__main__':
     initialize()
     from core import config
 
-    def make_google_redirect_response():
-        return google.authorize(callback=url_for(
-            config.get('power_and_gas', 'redirect_uri'),
-            _external=True))
 
     @app.route('/login')
     def login():
@@ -388,7 +384,9 @@ if __name__ == '__main__':
             next_url = "{path}".format(
                 path=path,)
             session['next_url'] = next_url
-        return make_google_redirect_response()
+        return google.authorize(callback=url_for(
+            config.get('power_and_gas', 'redirect_uri'),
+            _external=True))
 
     # enable admin UI
     make_admin(app)
