@@ -33,6 +33,11 @@ Ext.define('ReeBill.controller.UtilityBills', {
     }],
     
     init: function() {
+        this.getUtilityBillsStore().on({
+        beforesync: this.checkService,
+        scope: this
+        });
+
         this.application.on({
             scope: this
         });
@@ -80,6 +85,19 @@ Ext.define('ReeBill.controller.UtilityBills', {
             var proxy = chargesStore.getProxy();
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
+        }
+    },
+
+    checkService: function(options, eOpts){
+        service = options.update[0].get('service');
+        rate_class = options.update[0].get('rate_class');
+        if (service !=null && rate_class=='Unknown') {
+            Ext.MessageBox.show({
+                title: 'Invalid RateClass',
+                msg: 'Please select a Rate Class before selecting service!',
+                buttons: Ext.MessageBox.OK
+       });
+            return false;
         }
     },
 
