@@ -73,7 +73,8 @@ class TestWithDB(TestCase):
     def test_update_altitude_account_guids(self):
         s = Session()
         ua = UtilityAccount('example', '00001', self.u,
-                            Supplier('s', Address()), RateClass('r', self.u, 'electricity'),
+                            Supplier('s', Address()),
+                            RateClass('r', self.u, 'electric'),
                             Address(), Address(), account_number='1')
         s.add(ua)
 
