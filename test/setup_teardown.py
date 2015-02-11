@@ -153,6 +153,7 @@ class TestCaseWithSetup(test_utils.TestCase):
             "altitude_utility",
             "altitude_supplier",
             "altitude_account",
+            "altitude_bill",
             "utilbill_reebill",
             "register",
             "payment",
