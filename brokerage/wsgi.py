@@ -32,6 +32,27 @@ from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
 
+oauth = OAuth()
+
+# hard-coded parameters must be used here because "config" can't be imported
+# in global scope
+google = oauth.remote_app(
+    'google',
+    base_url='https://www.google.com/accounts/',
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    request_token_url='',
+    request_token_params={
+        'scope': ('https://www.googleapis.com/auth/userinfo.email'
+                  'https://www.googleapis.com/auth/userinfo.profile'),
+        'response_type': 'code',
+        },
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_method='POST',
+    access_token_params={'grant_type': 'authorization_code'},
+    consumer_key=('505739702221-k1omtf12eet1l2qlnup87pdiafllcm4o'
+                 '.apps.googleusercontent.com'),
+    consumer_secret='SolurwdgNlMkwbXt4gZ_OYpC')
+
 
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
@@ -290,6 +311,8 @@ def logout():
     session.pop('access_token', None)
     return app.send_static_file('logout.html')
 
+@app.route('/oauth2callback')
+@google.authorized_handler
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
@@ -336,34 +359,12 @@ api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
-def google_oauth_init(config):
-    oauth = OAuth()
-    google = oauth.remote_app(
-        'google',
-        base_url=config.get('power_and_gas', 'base_url'),
-        authorize_url=config.get('power_and_gas', 'authorize_url'),
-        request_token_url=config.get('power_and_gas', 'request_token_url'),
-        request_token_params={
-            'scope': config.get('power_and_gas', 'request_token_params_scope'),
-            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
-        access_token_url=config.get('power_and_gas', 'access_token_url'),
-        access_token_method=config.get('power_and_gas', 'access_token_method'),
-        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
-        consumer_key=config.get('power_and_gas', 'google_client_id'),
-        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
-    global oauth2callback
-    oauth2callback = google.authorized_handler(oauth2callback)
-    oauth2callback = app.route('/oauth2callback')(oauth2callback)
-    return google
-
 # apparently needed for Apache
 application = app
 
 if __name__ == '__main__':
     initialize()
     from core import config
-
-    google = google_oauth_init(config)
 
     def make_google_redirect_response():
         return google.authorize(callback=url_for(
