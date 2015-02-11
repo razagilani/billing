@@ -203,7 +203,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # change service
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               service='electricity')
-        self.assertEqual('electricity', utilbill.service)
+        self.assertEqual('electricity', utilbill.rate_class.service)
 
         # change supply_choice_id
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
