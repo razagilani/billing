@@ -102,7 +102,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
-        emptyText: 'Please pick a Rate Class before entering the service',
+        emptyText: 'Unknown Rate Class',
         editor: {
             xtype: 'combo',
             store: 'RateClasses',
