@@ -120,7 +120,7 @@ class BaseResource(Resource):
             'supplier': CallableField(String(), attribute='get_supplier_name',
                                       default='Unknown'),
             'rate_class': CallableField(
-                String(), attribute='get_rate_class_name', default='Unknown'),
+                String(), attribute='get_rate_class_name', default='Please pick a Rate Class before entering the service'),
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_estimated_meter_read_date': CallableField(

@@ -36,22 +36,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 125
     },{
-        header: 'Service',
-        dataIndex: 'service',
-        editor: {
-            xtype: 'combo',
-            name: 'service',
-            itemId: 'service_combo',
-            store: 'Services',
-            triggerAction: 'all',
-            valueField: 'name',
-            displayField: 'value',
-            queryMode: 'local',
-            forceSelection: false,
-            selectOnFocus: true
-        },
-        width: 100
-    },{
         header: 'Start',
         dataIndex: 'period_start',
         editor: {
@@ -118,7 +102,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
-        emptyText: 'Unknown Rate Class',
+        emptyText: 'Please pick a Rate Class before entering the service',
         editor: {
             xtype: 'combo',
             store: 'RateClasses',
@@ -134,7 +118,23 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         width: 200
-    }, {
+    },{
+        header: 'Service',
+        dataIndex: 'service',
+        editor: {
+            xtype: 'combo',
+            name: 'service',
+            itemId: 'service_combo',
+            store: 'Services',
+            triggerAction: 'all',
+            valueField: 'name',
+            displayField: 'value',
+            queryMode: 'local',
+            forceSelection: false,
+            selectOnFocus: true
+        },
+        width: 100
+    },{
         header: 'Next Meter Read',
         dataIndex: 'next_estimated_meter_read_date'
     }, {
