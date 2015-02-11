@@ -58,7 +58,7 @@ class UtilbillProcessor(object):
             utilbill.target_total = target_total
 
         if service is not None:
-            utilbill.service = service
+            utilbill.rate_class.service = service
 
         if supply_choice_id is not None:
             utilbill.supply_choice_id = supply_choice_id
