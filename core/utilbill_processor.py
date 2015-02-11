@@ -515,7 +515,7 @@ class UtilbillProcessor(object):
         # their primary key. "Unknown Rate Class" is a name sent by the client
         # to the server to identify the rate class that is identified by "null"
         # when sent from the server to the client.
-        if rate_class_name == 'Please pick a Rate Class before entering the service':
+        if rate_class_name == 'Unknown Rate Class':
             return None
         try:
             result = session.query(RateClass).filter_by(
