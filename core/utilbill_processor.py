@@ -73,7 +73,6 @@ class UtilbillProcessor(object):
         if utility is not None and isinstance(utility, basestring):
             utilbill.utility, new_utility = self.get_create_utility(utility)
             if new_utility:
-                utilbill.supplier = None
                 utilbill.rate_class = None
 
         period_start = period_start if period_start else \

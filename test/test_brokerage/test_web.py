@@ -44,6 +44,8 @@ class TestPGWeb(unittest.TestCase):
         TestCaseWithSetup.truncate_tables()
         s = Session()
         utility = Utility('Example Utility', Address())
+        utility1 = Utility('Empty Utility', Address())
+        utility2 = Utility('Some Other Utility',  Address())
         ua1 = UtilityAccount('Account 1', '11111', utility, None, None,
                              Address(), Address(), '1')
         ua2 = UtilityAccount('Account 2', '22222', utility, None, None,
@@ -51,16 +53,24 @@ class TestPGWeb(unittest.TestCase):
         ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
                              Address(), Address(), '3')
         rate_class = RateClass('Some Rate Class', utility, 'gas')
-        s.add(rate_class)
+        rate_class1 = RateClass('Other Rate Class', utility, 'electric')
+        s.add_all([rate_class, rate_class1])
         ua1.id, ua2.id, ua3.id = 1, 2, 3
+        utility.id, utility1.id, utility2.id = 1, 2, 10
+        s.add_all([utility, utility1, utility2])
         s.add_all([ua1, ua2, ua3])
         s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
         ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
                        rate_class, Address(), Address(street='1 Example St.'))
         ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
                        None, Address(), Address(street='2 Example St.'))
+        ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
+                       None, Address(), Address(street='2 Example St.'))
+
         ub1.id = 1
         ub2.id = 2
+        ub3.id = 3
+
         register1 = Register(ub1, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
@@ -87,7 +97,7 @@ class TestPGWeb(unittest.TestCase):
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5])
-        s.add_all([ub1, ub2])
+        s.add_all([ub1, ub2, ub3])
 
         s.commit()
 
@@ -112,13 +122,13 @@ class TestPGWeb(unittest.TestCase):
               'utility_account_number': '2'}], rv.data)
 
     def test_utilbills_list(self):
-        rv = self.app.get(URL_PREFIX + 'utilitybills?id=1')
+        rv = self.app.get(URL_PREFIX + 'utilitybills?id=3')
         self.assertJson(
-            {'results': 2,
+            {'results': 1,
              'rows': [
                  {'account': None,
                   'computed_total': 0.0,
-                  'id': 2,
+                  'id': 3,
                   'next_estimated_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -130,30 +140,11 @@ class TestPGWeb(unittest.TestCase):
                   'supplier': 'Unknown',
                   'supply_total': 0.0,
                   'total_charges': 0.0,
-                  'total_energy': 150.0,
-                  'utility': 'Example Utility',
-                  'utility_account_number': '1',
+                  'total_energy': 0.0,
+                  'utility': 'Empty Utility',
+                  'utility_account_number': '3',
                   'supply_choice_id': None
                  },
-                 {'account': None,
-                  'computed_total': 0.0,
-                  'id': 1,
-                  'next_estimated_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
-                  'service_address': '1 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 2.0,
-                  'total_charges': 0.0,
-                  'total_energy': 150.0,
-                  'utility': 'Example Utility',
-                  'utility_account_number': '1',
-                  'supply_choice_id': None
-                 }
              ], }, rv.data)
 
     def test_charges_list(self):
@@ -228,3 +219,90 @@ class TestPGWeb(unittest.TestCase):
              'results': 1,
             }, rv.data)
 
+    def test_rate_class(self):
+        rv = self.app.get(URL_PREFIX + 'utilitybills?id=3')
+        self.assertJson(
+            {'results': 1,
+             'rows': [
+                 {'account': None,
+                  'computed_total': 0.0,
+                  'id': 3,
+                  'next_estimated_meter_read_date': None,
+                  'pdf_url': '',
+                  'period_end': None,
+                  'period_start': None,
+                  'processed': False,
+                  'rate_class': 'Unknown',
+                  'service': 'Unknown',
+                  'service_address': '2 Example St., ,  ',
+                  'supplier': 'Unknown',
+                  'supply_total': 0.0,
+                  'total_charges': 0.0,
+                  'total_energy': 0.0,
+                  'utility': 'Empty Utility',
+                  'utility_account_number': '3',
+                  'supply_choice_id': None
+                 }
+             ], }, rv.data)
+
+        rv = self.app.put(URL_PREFIX + 'utilitybills/1', data=dict(
+                id = 2,
+                utility = "Empty Utility"
+        ))
+
+        self.assertJson(
+            {
+            "results": 1,
+            "rows": {
+                'account': None,
+                  'computed_total': 85.0,
+                  'id': 1,
+                  'next_estimated_meter_read_date': None,
+                  'pdf_url': '',
+                  'period_end': None,
+                  'period_start': None,
+                  'processed': False,
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
+                  'service_address': '1 Example St., ,  ',
+                  'supplier': 'Unknown',
+                  'supply_total': 2.0,
+                  'total_charges': 0.0,
+                  'total_energy': 150.0,
+                  'utility': 'Empty Utility',
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
+            },
+            }, rv.data
+        )
+
+        rv = self.app.put(URL_PREFIX + 'utilitybills/1', data=dict(
+                id = 10,
+                utility = "Some Other Utility"
+        ))
+
+        self.assertJson(
+            {
+            "results": 1,
+            "rows": {
+                'account': None,
+                  'computed_total': 85.0,
+                  'id': 1,
+                  'next_estimated_meter_read_date': None,
+                  'pdf_url': '',
+                  'period_end': None,
+                  'period_start': None,
+                  'processed': False,
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
+                  'service_address': '1 Example St., ,  ',
+                  'supplier': 'Unknown',
+                  'supply_total': 2.0,
+                  'total_charges': 0.0,
+                  'total_energy': 150.0,
+                  'utility': 'Some Other Utility',
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
+            },
+            }, rv.data
+        )
