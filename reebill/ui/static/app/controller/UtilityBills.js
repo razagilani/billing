@@ -68,9 +68,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#rate_class_combo': {
                 expand: this.handleRateClassExpand
-            },
-            '#service_combo': {
-                change: this.handleServiceComboChange
             }
         });
 
@@ -261,11 +258,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var utility_store = this.getUtilityBillsStore();
         selected.set('rate_class', rate_class_store.getAt(0).data.name);
-    },
-
-    handleServiceComboChange: function(combo, newValue, oldValue){
-        var grid = this.getUtilityBillsGrid();
-        grid.getStore().load();
     },
 
 
