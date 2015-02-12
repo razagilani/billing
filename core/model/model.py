@@ -261,7 +261,7 @@ class RateClass(Base):
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES), nullable=False)
+    service = Column(Enum(*SERVICES, name='services'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -396,7 +396,7 @@ class UtilBill(Base):
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
     # and can be relied upon for rate structure prediction
-    processed = Column(Integer, nullable=False)
+    processed = Column(Boolean, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
     # data automatically. (note this is different from data scraped from the
@@ -778,7 +778,7 @@ class Register(Base):
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
@@ -853,7 +853,7 @@ class Charge(Base):
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
     quantity = Column(Float)
-    unit = Column(Enum(*CHARGE_UNITS), nullable=False)
+    unit = Column(Enum(*CHARGE_UNITS, name='charge_units'), nullable=False)
     rsi_binding = Column(String(255), nullable=False)
 
     quantity_formula = Column(String(1000), nullable=False)
@@ -873,7 +873,7 @@ class Charge(Base):
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
-    type = Column(Enum(*CHARGE_TYPES), nullable=False)
+    type = Column(Enum(*CHARGE_TYPES, name='charge_types'), nullable=False)
 
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
 
