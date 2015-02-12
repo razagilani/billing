@@ -1,9 +1,8 @@
-"""This script should be executed to run the "Billentry" app with the Flask web server
-(meant to be used in development).
+"""This script is used to run the "Billentry" app. This can be used with apache to run as a wsgi application, or executed in development to run with the Flask web server.
 """
 from core import initialize
-from brokerage import billentry
+from brokerage.billentry import application
+initialize()
 
 if __name__ == '__main__':
-    initialize()
-    billentry.application.run(debug=True)
+    application.run(debug=True)

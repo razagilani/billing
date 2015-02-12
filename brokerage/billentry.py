@@ -318,6 +318,7 @@ class RateClassesResource(BaseResource):
         return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__, static_url_path='')
+app.debug = True
 app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
