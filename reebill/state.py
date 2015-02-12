@@ -415,7 +415,7 @@ class ReeBillCustomer(Base):
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
-    service = Column(Enum(*SERVICE_TYPES), nullable=False)
+    service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
@@ -485,7 +485,7 @@ class ReeBillCharge(Base):
     group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
+    unit = Column(Enum(*Charge.CHARGE_UNITS, name='charge_units'), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -527,7 +527,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
+    unit = Column(Enum(*Register.PHYSICAL_UNITS, name='physical_units'), nullable=False)
 
     @staticmethod
     def make_reading_from_register(register):
