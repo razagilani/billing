@@ -133,7 +133,7 @@ class BaseResource(Resource):
                 CapString(), attribute='get_service', default='Unknown'),
             'total_energy': CallableField(Float(),
                                           attribute='get_total_energy'),
-            'total_charges': Float(attribute='target_total'),
+            'target_total': Float(attribute='target_total'),
             'computed_total': CallableField(Float(),
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
@@ -328,6 +328,8 @@ def index():
      otherwise redirects user to the login page
     '''
     from core import config
+    if config.get('power_and_gas', 'disable_google_oauth'):
+        return app.send_static_file('index.html')
     access_token = session.get('access_token')
     if access_token is None:
         # user is not logged in so redirect to login page
@@ -349,6 +351,13 @@ def index():
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
+
+
+@app.after_request
+def db_commit(response):
+    Session.commit()
+    return response
+
 
 @app.route('/login')
 def login():
