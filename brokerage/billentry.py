@@ -21,7 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from core import initialize
+from core import initialize, init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -31,6 +31,41 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
+
+oauth = OAuth()
+
+# Google OAuth URL parameters MUST be configurable because the
+# 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
+# meaning that different instances of the application need to have different
+# values of these. Therefore, the 'config' object must be read and initialized
+# at module scope (an import-time side effect, and also means that
+# init_test_config can't be used to provide different values instead of these).
+from core import config
+if config is None:
+    # initialize 'config' only if it has not been initialized already (which
+    # requires un-importing it and importing it again). this prevents
+    # 'config' from getting re-initialized with non-test data if it was already
+    # initialized with test data by calling 'init_test_config'.
+    del config
+    init_config()
+    from core import config
+
+google = oauth.remote_app(
+    'google',
+    base_url=config.get('billentry', 'base_url'),
+    authorize_url=config.get('billentry', 'authorize_url'),
+    request_token_url=config.get('billentry', 'request_token_url'),
+    request_token_params={
+        'scope': config.get('billentry', 'request_token_params_scope'),
+        'response_type': config.get('billentry',
+                                    'request_token_params_resp_type'),
+        },
+    access_token_url=config.get('billentry', 'access_token_url'),
+    access_token_method=config.get('billentry', 'access_token_method'),
+    access_token_params={
+        'grant_type':config.get('billentry', 'access_token_params_grant_type')},
+    consumer_key=config.get('billentry', 'google_client_id'),
+    consumer_secret=config.get('billentry', 'google_client_secret'))
 
 
 # TODO: would be even better to make flask-restful automatically call any
@@ -290,6 +325,8 @@ def logout():
     session.pop('access_token', None)
     return app.send_static_file('logout.html')
 
+@app.route('/oauth2callback')
+@google.authorized_handler
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
@@ -304,6 +341,7 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
+    from core import config
     if config.get('power_and_gas', 'disable_google_oauth'):
         return app.send_static_file('index.html')
     access_token = session.get('access_token')
@@ -334,6 +372,27 @@ def db_commit(response):
     Session.commit()
     return response
 
+
+@app.route('/login')
+def login():
+    from core import config
+    next_path = request.args.get('next')
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
 api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
@@ -344,92 +403,9 @@ api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 
+# apparently needed for Apache
+application = app
 
-def google_oauth_init(config):
-    oauth = OAuth()
-    google = oauth.remote_app(
-        'google',
-        base_url=config.get('power_and_gas', 'base_url'),
-        authorize_url=config.get('power_and_gas', 'authorize_url'),
-        request_token_url=config.get('power_and_gas', 'request_token_url'),
-        request_token_params={
-            'scope': config.get('power_and_gas', 'request_token_params_scope'),
-            'response_type': config.get('power_and_gas', 'request_token_params_resp_type')},
-        access_token_url=config.get('power_and_gas', 'access_token_url'),
-        access_token_method=config.get('power_and_gas', 'access_token_method'),
-        access_token_params={'grant_type': config.get('power_and_gas', 'access_token_params_grant_type')},
-        consumer_key=config.get('power_and_gas', 'google_client_id'),
-        consumer_secret=config.get('power_and_gas', 'google_client_secret'))
-    global oauth2callback
-    oauth2callback = google.authorized_handler(oauth2callback)
-    oauth2callback = app.route('/oauth2callback')(oauth2callback)
-    return google
+# enable admin UI
+make_admin(app)
 
-if __name__ == '__main__':
-    initialize()
-    from core import config
-
-    google = google_oauth_init(config)
-
-    def make_google_redirect_response():
-        return google.authorize(callback=url_for(
-            config.get('power_and_gas', 'redirect_uri'),
-            _external=True))
-
-    @app.route('/login')
-    def login():
-        next_path = request.args.get('next')
-        if next_path:
-            # Since passing along the "next" URL as a GET param requires
-            # a different callback for each page, and Google requires
-            # whitelisting each allowed callback page, therefore, it can't pass it
-            # as a GET param. Instead, the url is sanitized and put into the session.
-            path = urllib.unquote(next_path)
-            if path[0] == '/':
-                # This first slash is unnecessary since we force it in when we
-                # format next_url.
-                path = path[1:]
-
-            next_url = "{path}".format(
-                path=path,)
-            session['next_url'] = next_url
-        return make_google_redirect_response()
-
-    # enable admin UI
-    make_admin(app)
-
-    app.run(debug=True)
-
-else:
-    initialize()
-    from core import config
-
-    google = google_oauth_init(config)
-
-    def make_google_redirect_response():
-        return google.authorize(callback=url_for(
-            config.get('power_and_gas', 'redirect_uri'),
-            _external=True))
-
-    @app.route('/login')
-    def login():
-        next_path = request.args.get('next')
-        if next_path:
-            # Since passing along the "next" URL as a GET param requires
-            # a different callback for each page, and Google requires
-            # whitelisting each allowed callback page, therefore, it can't pass it
-            # as a GET param. Instead, the url is sanitized and put into the session.
-            path = urllib.unquote(next_path)
-            if path[0] == '/':
-                # This first slash is unnecessary since we force it in when we
-                # format next_url.
-                path = path[1:]
-
-            next_url = "{path}".format(
-                path=path,)
-            session['next_url'] = next_url
-        return make_google_redirect_response()
-
-    # enable admin UI
-    make_admin(app)
-    application = app
