@@ -91,7 +91,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     checkService: function(options, eOpts){
         service = options.update[0].get('service');
         rate_class = options.update[0].get('rate_class');
-        if (service !=null && rate_class=='Unknown') {
+        if ((service =='Gas' || service =='Electric') && rate_class=='Unknown') {
             Ext.MessageBox.show({
                 title: 'Invalid RateClass',
                 msg: 'Please select a Rate Class before selecting service!',
