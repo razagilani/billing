@@ -13,6 +13,8 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 config = None
 
 
+root_path = dirname(dirname(realpath(__file__)))
+
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
     :class:`billing.lib.config.ValidatedConfigParser`.
