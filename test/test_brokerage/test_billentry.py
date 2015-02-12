@@ -5,7 +5,7 @@ from json import loads
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-from brokerage import wsgi
+from brokerage import billentry
 from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
@@ -34,7 +34,7 @@ class TestPGWeb(unittest.TestCase):
         init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
-        wsgi.app.config['TESTING'] = True
+        billentry.app.config['TESTING'] = True
 
     def setUp(self):
         # TODO: this should not have to be done multiple times, but removing it
@@ -101,7 +101,7 @@ class TestPGWeb(unittest.TestCase):
 
         s.commit()
 
-        self.app = wsgi.app.test_client()
+        self.app = billentry.app.test_client()
 
 
     def tearDown(self):
