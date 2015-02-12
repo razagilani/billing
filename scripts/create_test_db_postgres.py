@@ -1,13 +1,18 @@
 """Run this script to create a "test" database based on the SQLAlchemy
-model classes. This does NOT use a copy of the model classes.
+model classes. This does not use a copy of the dev database, like the old
+create_test_db.py.
 """
+from os import chdir
+from os.path import join
+from alembic import command
 from argparse import ArgumentParser
 
+from alembic.config import Config
 from sqlalchemy import create_engine
 
 from test import init_test_config
-from core import init_model
-from core.model import Base
+from core import init_model, root_path
+from core.model import Base, Session
 
 # make sure all model classes are imported
 import core.altitude
@@ -18,7 +23,9 @@ if __name__ == '__main__':
     init_test_config()
     from core import config
 
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description='Create a "test" database based on theSQLAlchemy model '
+                    'classes.')
     parser.add_argument('--echo', action='store_true',
                         help='Print SQL statements used to create the database')
     args = parser.parse_args()
@@ -33,6 +40,12 @@ if __name__ == '__main__':
 
     Base.metadata.drop_all()
     Base.metadata.create_all()
+
+    # "stamp" with current alembic version
+    # TODO: why doesn't this do anything?
+    chdir(root_path)
+    alembic_cfg = Config('alembic.ini')
+    command.stamp(alembic_cfg, 'head')
 
     # check that it worked
     init_model()
