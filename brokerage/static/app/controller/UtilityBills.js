@@ -96,7 +96,18 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 title: 'Invalid RateClass',
                 msg: 'Please select a Rate Class before selecting service!',
                 buttons: Ext.MessageBox.OK
-       });
+            });
+
+            return false;
+        }
+        if(rate_class=='')
+        {
+            Ext.MessageBox.show({
+                title: 'Invalid RateClass',
+                msg: 'Rate Class cannot be empty',
+                buttons: Ext.MessageBox.OK
+            });
+            this.getUtilityBillsStore().reload();
             return false;
         }
     },
