@@ -112,7 +112,7 @@ class BaseResource(Resource):
                 CapString(), attribute='get_service', default='Unknown'),
             'total_energy': CallableField(Float(),
                                           attribute='get_total_energy'),
-            'total_charges': Float(attribute='target_total'),
+            'target_total': Float(attribute='target_total'),
             'computed_total': CallableField(Float(),
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
