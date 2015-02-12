@@ -40,11 +40,11 @@ file { "/home/reebill-${env}/logs":
 }
 file { "/etc/httpd/conf.d/billing-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-dev.conf"
+    source => "puppet:///modules/conf/vhosts/billing-shareddev.conf"
 }
 file { "/etc/httpd/conf.d/billentry-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-dev.conf"
+    source => "puppet:///modules/conf/vhosts/billentry-shareddev.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":

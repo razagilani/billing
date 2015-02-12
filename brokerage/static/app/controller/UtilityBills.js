@@ -91,12 +91,23 @@ Ext.define('ReeBill.controller.UtilityBills', {
     checkService: function(options, eOpts){
         service = options.update[0].get('service');
         rate_class = options.update[0].get('rate_class');
-        if (service !=null && rate_class=='Unknown') {
+        if ((service =='Gas' || service =='Electric') && rate_class=='Unknown') {
             Ext.MessageBox.show({
                 title: 'Invalid RateClass',
                 msg: 'Please select a Rate Class before selecting service!',
                 buttons: Ext.MessageBox.OK
-       });
+            });
+
+            return false;
+        }
+        if(rate_class=='')
+        {
+            Ext.MessageBox.show({
+                title: 'Invalid RateClass',
+                msg: 'Rate Class cannot be empty',
+                buttons: Ext.MessageBox.OK
+            });
+            this.getUtilityBillsStore().reload();
             return false;
         }
     },
