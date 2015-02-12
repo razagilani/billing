@@ -396,7 +396,7 @@ class UtilBill(Base):
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
     # and can be relied upon for rate structure prediction
-    processed = Column(Integer, nullable=False)
+    processed = Column(Boolean, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
     # data automatically. (note this is different from data scraped from the
