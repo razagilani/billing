@@ -72,6 +72,7 @@ class reebillreconciliation(Schema):
 
 class billentry(Schema):
     google_user_info_url = URL()
+    disable_google_oauth = StringBool()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()

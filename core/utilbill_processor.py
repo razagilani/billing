@@ -58,7 +58,7 @@ class UtilbillProcessor(object):
             utilbill.target_total = target_total
 
         if service is not None:
-            utilbill.service = service
+            utilbill.rate_class.service = service
 
         if supply_choice_id is not None:
             utilbill.supply_choice_id = supply_choice_id
@@ -68,7 +68,8 @@ class UtilbillProcessor(object):
 
         if rate_class is not None:
             utilbill.rate_class = self.get_create_rate_class(
-                rate_class, utilbill.utility)
+                rate_class, utilbill.utility, utilbill.get_service() if
+                utilbill.get_service() is not None else 'gas')
 
         if utility is not None and isinstance(utility, basestring):
             utilbill.utility, new_utility = self.get_create_utility(utility)
@@ -239,7 +240,7 @@ class UtilbillProcessor(object):
         if utility is not None:
             utility, new_utility = self.get_create_utility(utility)
         if rate_class is not None:
-            rate_class = self.get_create_rate_class(rate_class, utility)
+            rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
         if supplier is not None:
            supplier = self.get_create_supplier(supplier)
         session = Session()
@@ -507,7 +508,7 @@ class UtilbillProcessor(object):
             result = Supplier(name, Address('', '', '', '', ''))
         return result
 
-    def get_create_rate_class(self, rate_class_name, utility):
+    def get_create_rate_class(self, rate_class_name, utility, service):
         assert isinstance(utility, Utility)
         session = Session()
         # rate classes are identified in the client by name, rather than
@@ -520,7 +521,7 @@ class UtilbillProcessor(object):
             result = session.query(RateClass).filter_by(
                 name=rate_class_name).one()
         except NoResultFound:
-            result = RateClass(rate_class_name, utility, 'gas')
+            result = RateClass(rate_class_name, utility, service)
         return result
 
     def create_utility(self, name):
