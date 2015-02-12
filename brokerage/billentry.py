@@ -21,7 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from core import initialize
+from core import initialize, init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -34,24 +34,38 @@ from brokerage.brokerage_model import BrokerageAccount
 
 oauth = OAuth()
 
-# hard-coded parameters must be used here because "config" can't be imported
-# in global scope
+# Google OAuth URL parameters MUST be configurable because the
+# 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
+# meaning that different instances of the application need to have different
+# values of these. Therefore, the 'config' object must be read and initialized
+# at module scope (an import-time side effect, and also means that
+# init_test_config can't be used to provide different values instead of these).
+from core import config
+if config is None:
+    # initialize 'config' only if it has not been initialized already (which
+    # requires un-importing it and importing it again). this prevents
+    # 'config' from getting re-initialized with non-test data if it was already
+    # initialized with test data by calling 'init_test_config'.
+    del config
+    init_config()
+    from core import config
+
 google = oauth.remote_app(
     'google',
-    base_url='https://www.google.com/accounts/',
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-    request_token_url='',
+    base_url=config.get('billentry', 'base_url'),
+    authorize_url=config.get('billentry', 'authorize_url'),
+    request_token_url=config.get('billentry', 'request_token_url'),
     request_token_params={
-        'scope': ('https://www.googleapis.com/auth/userinfo.email '
-                  'https://www.googleapis.com/auth/userinfo.profile'),
-        'response_type': 'code',
+        'scope': config.get('billentry', 'request_token_params_scope'),
+        'response_type': config.get('billentry',
+                                    'request_token_params_resp_type'),
         },
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    access_token_method='POST',
-    access_token_params={'grant_type': 'authorization_code'},
-    consumer_key=('505739702221-k1omtf12eet1l2qlnup87pdiafllcm4o'
-                 '.apps.googleusercontent.com'),
-    consumer_secret='SolurwdgNlMkwbXt4gZ_OYpC')
+    access_token_url=config.get('billentry', 'access_token_url'),
+    access_token_method=config.get('billentry', 'access_token_method'),
+    access_token_params={
+        'grant_type':config.get('billentry', 'access_token_params_grant_type')},
+    consumer_key=config.get('billentry', 'google_client_id'),
+    consumer_secret=config.get('billentry', 'google_client_secret'))
 
 
 # TODO: would be even better to make flask-restful automatically call any
