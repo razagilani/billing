@@ -386,7 +386,3 @@ application = app
 # enable admin UI
 make_admin(app)
 
-if __name__ == '__main__':
-    initialize()
-    app.run(debug=True)
-
