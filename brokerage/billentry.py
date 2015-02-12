@@ -342,7 +342,7 @@ def index():
      otherwise redirects user to the login page
     '''
     from core import config
-    if config.get('power_and_gas', 'disable_google_oauth'):
+    if config.get('billentry', 'disable_google_oauth'):
         return app.send_static_file('index.html')
     access_token = session.get('access_token')
     if access_token is None:
@@ -350,7 +350,7 @@ def index():
         return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
-    req = Request(config.get('power_and_gas', 'google_user_info_url'),
+    req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
     try:
         # get info about currently logged in user
