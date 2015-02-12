@@ -164,7 +164,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             displayField: 'name',
             valueField: 'name',
             triggerAction: 'all',
-            forceSelection: true,
+            forceSelection: false,
             typeAhead: true,
             typeAheadDelay: 1,
             autoSelect: false,
