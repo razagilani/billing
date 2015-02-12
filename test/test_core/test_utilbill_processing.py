@@ -202,8 +202,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # change service
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              service='electricity')
-        self.assertEqual('electricity', utilbill.service)
+                                              service='electric')
+        self.assertEqual('electric', utilbill.get_service())
 
         # change supply_choice_id
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
@@ -869,7 +869,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
                                               period_start=date(2013, 6, 6),
                                               period_end=date(2013, 8, 8),
-                                              service='electricity',
+                                              service='electric',
                                               utility='BGE',
                                               rate_class='General Service - Schedule C')
 

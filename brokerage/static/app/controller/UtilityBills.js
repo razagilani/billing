@@ -33,6 +33,11 @@ Ext.define('ReeBill.controller.UtilityBills', {
     }],
     
     init: function() {
+        this.getUtilityBillsStore().on({
+        beforesync: this.checkService,
+        scope: this
+        });
+
         this.application.on({
             scope: this
         });
@@ -58,6 +63,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
            '#rate_class_combo': {
                 focus: this.handleRateClassComboFocus
+            },
+            '#service_combo': {
+                blur: this.handleServiceComboBlur
             }
         });
 
@@ -77,6 +85,30 @@ Ext.define('ReeBill.controller.UtilityBills', {
             var proxy = chargesStore.getProxy();
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
+        }
+    },
+
+    checkService: function(options, eOpts){
+        service = options.update[0].get('service');
+        rate_class = options.update[0].get('rate_class');
+        if ((service =='Gas' || service =='Electric') && rate_class=='Unknown') {
+            Ext.MessageBox.show({
+                title: 'Invalid RateClass',
+                msg: 'Please select a Rate Class before selecting service!',
+                buttons: Ext.MessageBox.OK
+            });
+
+            return false;
+        }
+        if(rate_class=='')
+        {
+            Ext.MessageBox.show({
+                title: 'Invalid RateClass',
+                msg: 'Rate Class cannot be empty',
+                buttons: Ext.MessageBox.OK
+            });
+            this.getUtilityBillsStore().reload();
+            return false;
         }
     },
 
@@ -106,6 +138,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_classes_store.clearFilter(true);
         rate_classes_store.filter({property:"utility_id", type: 'int',
                                     value: utility.get('id'), exactMatch:true});
+    },
+
+    handleServiceComboBlur: function(combo){
+        var utility_bill_grid = combo.findParentByType('grid');
+        utility_bill_grid.getStore().reload();
+        utility_bill_grid.getView().refresh();
     },
 
     handleUtilityComboChanged: function(utility_combo, record){
