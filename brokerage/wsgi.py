@@ -304,6 +304,8 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
+    if config.get('power_and_gas', 'disable_google_oauth'):
+        return app.send_static_file('index.html')
     access_token = session.get('access_token')
     if access_token is None:
         # user is not logged in so redirect to login page
@@ -326,6 +328,12 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+
+@app.after_request
+def db_commit(response):
+    Session.commit()
+    return response
+
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
 api.add_resource(UtilBillListResource, '/utilitybills/utilitybills')
@@ -335,6 +343,7 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+
 
 def google_oauth_init(config):
     oauth = OAuth()
