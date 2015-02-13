@@ -82,7 +82,6 @@ Ext.define('ReeBill.controller.Charges', {
         store.sync({success:function(batch){
             var record = batch.operations[0].records[0];
             var plugin = this.getChargesGrid().findPlugin('cellediting');
-            var store = this.getChargesStore();
             plugin.startEdit(record, 2);
         }, scope: this});
         store.resumeAutoSync();
