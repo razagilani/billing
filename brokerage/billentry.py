@@ -12,6 +12,7 @@ from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
+import functools
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect
@@ -31,6 +32,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
+from exc import Unauthenticated
 
 oauth = OAuth()
 
@@ -367,6 +369,15 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+
+@app.before_request
+def before_request():
+    # TODO: remove
+    print '**************************************'
+    print request.endpoint
+    print session.get('access_token')
+    if 'access_token' not in session and request.endpoint not in ('login', 'oauth2callback'):
+        return redirect(url_for('login'))
 
 @app.after_request
 def db_commit(response):
