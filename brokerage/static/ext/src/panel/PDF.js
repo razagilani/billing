@@ -88,7 +88,7 @@ Ext.define('Ext.panel.PDF',{
         if(me.disableWorker){
             PDFJS.disableWorker = true;
         }else{
-            PDFJS.workerSrc = 'static/ext/lib/pdf.js/pdf.worker.js'
+            PDFJS.workerSrc = 'ext/lib/pdf.js/pdf.worker.js'
         }
     },
 
