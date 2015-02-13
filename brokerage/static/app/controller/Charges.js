@@ -24,6 +24,13 @@ Ext.define('ReeBill.controller.Charges', {
     }],
 
     init: function() {
+        this.getChargesStore().on({
+        write: this.updateUtilBillCharges,
+        //update: this.updateUtilBillCharges,
+        scope: this
+        });
+
+
         this.application.on({
             scope: this
         });
@@ -75,9 +82,11 @@ Ext.define('ReeBill.controller.Charges', {
         store.sync({success:function(batch){
             var record = batch.operations[0].records[0];
             var plugin = this.getChargesGrid().findPlugin('cellediting');
+            var store = this.getChargesStore();
             plugin.startEdit(record, 2);
         }, scope: this});
         store.resumeAutoSync();
+
     },
 
     /**
@@ -87,5 +96,18 @@ Ext.define('ReeBill.controller.Charges', {
         var store = this.getChargesStore();
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
         store.remove(selected);
+    },
+
+    /**
+     * Update the UtilBills grid charges field whenever charges
+     * are added/removed from Charges grid
+     */
+
+    updateUtilBillCharges: function(charges_store)
+    {
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        selected.set('supply_total', 0);
     }
+
+
 });
