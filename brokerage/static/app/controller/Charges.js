@@ -106,6 +106,9 @@ Ext.define('ReeBill.controller.Charges', {
     updateUtilBillCharges: function(charges_store)
     {
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        // this is being set to 0 to trigger http PUT for supply_total
+        // and the value sent is ignored by the server as it computes
+        // charges by itself
         selected.set('supply_total', 0);
     }
 
