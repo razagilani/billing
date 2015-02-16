@@ -373,7 +373,7 @@ def index():
 @app.before_request
 def before_request():
     if 'access_token' not in session and request.endpoint not in (
-            'login', 'oauth2callback'):
+            'login', 'oauth2callback', 'logout'):
         return redirect(url_for('login'))
 
 @app.after_request
