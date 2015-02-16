@@ -159,14 +159,9 @@ class BaseResource(Resource):
             'rate_class': CallableField(
                 String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
-            'service_address': String,
             'next_estimated_meter_read_date': CallableField(
                 IsoDatetime(), attribute='get_estimated_next_meter_read_date',
                 default=None),
-            'supply_total': CallableField(Float(),
-                                          attribute='get_supply_target_total'),
-            'utility_account_number': CallableField(
-                String(), attribute='get_utility_account_number'),
             'supply_choice_id': String,
             'processed': Boolean,
         }
