@@ -319,21 +319,32 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
-app = Flask(__name__, static_url_path='')
+class SecuredStaticFlask(Flask):
+
+    def send_static_file(self, filename):
+        # Get user from session
+        access_token = session.get('access_token')
+        if access_token is None:
+            # user is not logged in so redirect to login page
+            return redirect(url_for('login'))
+        else:
+            return super(SecuredStaticFlask, self).send_static_file(filename)
+
+app = SecuredStaticFlask(__name__, static_folder="static", static_path="")
 app.debug = True
 app.secret_key = 'sgdsdgs'
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
-    return app.send_static_file('logout.html')
+    return 'You have successfully logged out'
 
 @app.route('/oauth2callback')
 @google.authorized_handler
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
-        flash(u'You denied the request to sign in.')
+        flash(u'You are denied the request to sign in.')
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
