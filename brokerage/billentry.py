@@ -7,6 +7,7 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
@@ -31,6 +32,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
+from exc import Unauthenticated
 
 oauth = OAuth()
 
@@ -317,7 +319,7 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
-app = Flask(__name__, static_url_path='')
+app = Flask(__name__, static_url_path="")
 app.debug = True
 app.secret_key = 'sgdsdgs'
 
@@ -331,7 +333,8 @@ def logout():
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
-        flash(u'You denied the request to sign in.')
+        # this means that the user didn't allow the google account
+        # the required access
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
@@ -367,6 +370,15 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+
+@app.before_request
+def before_request():
+    from core import config
+    if config.get('billentry', 'disable_google_oauth'):
+        return
+    if 'access_token' not in session and request.endpoint not in (
+            'login', 'oauth2callback', 'logout'):
+        return redirect(url_for('login'))
 
 @app.after_request
 def db_commit(response):
