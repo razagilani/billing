@@ -7,12 +7,12 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-import functools
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect
@@ -372,11 +372,8 @@ def index():
 
 @app.before_request
 def before_request():
-    # TODO: remove
-    print '**************************************'
-    print request.endpoint
-    print session.get('access_token')
-    if 'access_token' not in session and request.endpoint not in ('login', 'oauth2callback'):
+    if 'access_token' not in session and request.endpoint not in (
+            'login', 'oauth2callback'):
         return redirect(url_for('login'))
 
 @app.after_request
