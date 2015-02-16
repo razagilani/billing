@@ -335,7 +335,7 @@ app.secret_key = 'sgdsdgs'
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
-    return app.send_static_file('logout.html')
+    return 'You have successfully logged out'
 
 @app.route('/oauth2callback')
 @google.authorized_handler
