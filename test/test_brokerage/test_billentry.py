@@ -25,11 +25,11 @@ class TestBEUtilBill(unittest.TestCase):
         self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None, rate_class,
                              Address(), Address())
 
-    def test_is_entered(self):
+    def test_entry(self):
         self.assertFalse(self.ub.is_entered())
 
         the_date = datetime(2000,1,1,0)
-        self.ub.enter(self.user, date=the_date)
+        self.ub.enter(self.user, the_date)
         self.assertEqual(the_date, self.ub.get_date())
         self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
