@@ -4,6 +4,8 @@ Revision ID: 150d8bb1183c
 Revises: 2d65c7c19345
 Create Date: 2015-02-17 13:33:37.516374
 
+Put all schema changes related to version 25 in here, if possible--let's try
+not to add too many individual Alembic scripts.
 """
 
 # revision identifiers, used by Alembic.

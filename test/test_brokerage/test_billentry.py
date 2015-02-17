@@ -1,9 +1,8 @@
-from datetime import datetime, date
+from datetime import datetime
 import unittest
 from json import loads
+
 from mock import Mock
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
@@ -12,8 +11,6 @@ from brokerage import billentry
 from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
-
-
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -25,8 +22,8 @@ class TestBEUtilBill(unittest.TestCase):
         ua = UtilityAccount('Account 1', '11111', utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
-                             rate_class, Address(), Address())
+        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None, rate_class,
+                             Address(), Address())
 
     def test_is_entered(self):
         self.assertFalse(self.ub.is_entered())

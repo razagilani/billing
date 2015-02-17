@@ -3,11 +3,9 @@ brokerage-related data and for the "Bill Entry" application.
 
 It might be a good idea to separate these.
 """
-from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from core.model import Base, UtilityAccount, UtilBill
-
 
 class BrokerageAccount(Base):
     '''Table for storing Power & Gas-related data associated with a
@@ -69,10 +67,15 @@ class BEUtilBill(UtilBill):
         self.billentry_user = None
 
     def is_entered(self):
-        """Return True if this utility bill's data are complete enough to be
-        used for requesting quotes for brokerage customers, False otherwise.
+        """Return True if the subset of utility bill's data editable in
+        Bill Entry is complete, False otherwise. This probably also means the
+        bill is complete enough to be submitted to request quotes for brokerage
+        customers.
 
-        If True, the following data about this bill can be considered accurate:
+        Any bill that is "processed" is also "entered", even if it has no
+        'billentry_date' or 'billentry_user'.
+
+        If True, the following data about the bill can be considered accurate:
         - period_start
         - period_end
         - utility
@@ -82,10 +85,8 @@ class BEUtilBill(UtilBill):
         - total energy, i.e. 'quantity' field of the Register whose
           'register_binding' is "REG_TOTAL"
         - target_total
-        - existence and 'rsi_binding' of supply charges (NOT distribution charges)
-        - 'target_total' of supply charges (NOT distribution charges)
-
-        Any bill that is "processed" is also entered.
+        - existence and 'rsi_binding' of supply charges
+        - 'target_total' of supply charges
         """
         # consistency check: all values must be either None or filled in
         entry_values = (self.billentry_date, self.billentry_user)
