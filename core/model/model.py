@@ -359,7 +359,16 @@ class UtilityAccount(Base):
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
-    __mapper_args__ = {'extension': UtilbillCallback()}
+
+    __mapper_args__ = {
+        'extension': UtilbillCallback(),
+
+        # single-table inheritance
+        'polymorphic_identity': 'utilbill',
+        'polymorphic_on': 'discriminator',
+    }
+
+    discriminator = Column(String, nullable=False)
 
     id = Column(Integer, primary_key=True)
 

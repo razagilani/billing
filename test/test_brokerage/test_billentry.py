@@ -9,7 +9,7 @@ from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BillEntryEvent, BillEntryUser, BEUtilBill
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
@@ -20,34 +20,32 @@ class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
     """
     def setUp(self):
-        utility = Utility('Example Utility', Address())
-        rate_class = RateClass('Example Rate Class', utility, 'electric')
+        utility = Mock(autospec=Utility)
+        rate_class = Mock(autospec=RateClass)
         ua = UtilityAccount('Account 1', '11111', utility, None, None,
                             Address(), Address(), '1')
+        self.user = Mock(autospec=BillEntryUser)
         self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
-                           rate_class, Address(), Address())
+                             rate_class, Address(), Address())
 
     def test_is_entered(self):
-        Session = sessionmaker()
-        #Session.configure(bind=create_engine('sqlite:///:memory:'))
-        s = Session()
-        s.add(self.ub)
-
         self.assertFalse(self.ub.is_entered())
 
-        # with one BillEntryEvent, it's "entered"
-        e = BillEntryEvent(date=datetime(2000,1,1,0), user=BillEntryUser())
-        s.add(e)
+        the_date = datetime(2000,1,1,0)
+        self.ub.enter(self.user, date=the_date)
+        self.assertEqual(the_date, self.ub.get_date())
+        self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
 
-        # with no BillEntryEvents, it's not "entered"...
-        s.delete(e)
+        self.ub.un_enter()
+        self.assertEqual(None, self.ub.get_date())
+        self.assertEqual(None, self.ub.get_user())
         self.assertFalse(self.ub.is_entered())
 
-        # ...unless it's "processed"
         self.ub.processed = True
-        self.assertTrue(e, self.ub.is_entered())
-
+        self.assertEqual(None, self.ub.get_date())
+        self.assertEqual(None, self.ub.get_user())
+        self.assertTrue(self.ub.is_entered())
 
 class TestBillEntryWeb(unittest.TestCase):
     """Integration tests for the Bill Entry back end.
