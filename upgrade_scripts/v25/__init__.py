@@ -24,5 +24,5 @@ log = logging.getLogger(__name__)
 def upgrade():
     log.info('Beginning upgrade to version 25')
 
-    log.info('upgrading schema to revision 44260b6956b7')
-    alembic_upgrade('44260b6956b7')
+    log.info('upgrading schema to revision 150d8bb1183c')
+    alembic_upgrade('150d8bb1183c')

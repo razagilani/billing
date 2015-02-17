@@ -42,9 +42,8 @@ class BEUtilBill(UtilBill):
         'polymorphic_on': 'discriminator',
     }
 
-    billentry_date = Column(DateTime, nullable=False)
-    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'),
-                               nullable=False)
+    billentry_date = Column(DateTime)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser)
 
     def get_user(self):
