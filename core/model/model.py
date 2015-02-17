@@ -368,7 +368,7 @@ class UtilBill(Base):
         'polymorphic_on': 'discriminator',
     }
 
-    discriminator = Column(String, nullable=False)
+    discriminator = Column(String(1000), nullable=False)
 
     id = Column(Integer, primary_key=True)
 
