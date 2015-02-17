@@ -52,13 +52,11 @@ class BEUtilBill(UtilBill):
     def get_date(self):
         return self.billentry_date
 
-    def enter(self, user, date=None):
+    def enter(self, user, date):
         """Mark an "un-entered" bill as "entered" by the given user at a
         particular datetime (defaults to utcnow).
         """
         assert not self.is_entered()
-        if date is None:
-            date = datetime.utcnow()
         self.billentry_date = date
         self.billentry_user = user
 
