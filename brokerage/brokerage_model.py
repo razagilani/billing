@@ -3,9 +3,10 @@ brokerage-related data and for the "Bill Entry" application.
 
 It might be a good idea to separate these.
 """
+from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from core.model import Base, UtilityAccount, UtilBill, Session
+from core.model import Base, UtilityAccount, UtilBill
 
 
 class BrokerageAccount(Base):
@@ -31,30 +32,45 @@ class BillEntryUser(Base):
     # TODO: add necessary columns. right now this only exists because it's
     # required by billentry_event.
 
-class BillEntryEvent(Base):
-    """Table for recording when bills become "entered" and who entered them.
-    Named for the Bill Entry application and also because the only event
-    is that of a bill becoming entered.
+class BEUtilBill(UtilBill):
+    """UtilBill subclass that tracks when a bill became "entered" in the
+    Bill Entry application and by whom.
     """
-    __tablename__ = 'billentry_event'
+    __mapper_args__ = {
+        # single-table inheritance
+        'polymorphic_identity': 'beutilbill',
+        'polymorphic_on': 'discriminator',
+    }
 
-    # separate primary key is present just in case there is ever more than
-    # one of these per utility bill.
-    id = Column(Integer, primary_key=True)
-
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
-    date = Column(DateTime, nullable=False)
+    billentry_date = Column(DateTime, nullable=False)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'),
                                nullable=False)
+    billentry_user = relationship(BillEntryUser)
 
-    utilbill = relationship(UtilBill)
-    user = relationship(BillEntryUser)
+    def get_user(self):
+        return self.billentry_user
 
+    def get_date(self):
+        return self.billentry_date
 
-class BEUtilBill(UtilBill):
-    """Bill Entry-specific extensions to the core.model.UtilBill class, not added
-    there because only Bill Entry cares about them.
-    """
+    def enter(self, user, date=None):
+        """Mark an "un-entered" bill as "entered" by the given user at a
+        particular datetime (defaults to utcnow).
+        """
+        assert not self.is_entered()
+        if date is None:
+            date = datetime.utcnow()
+        self.billentry_date = date
+        self.billentry_user = user
+
+    def un_enter(self):
+        """Mark an "entered" bill as an "un-entered" by clearing data about
+        bill entry.
+        """
+        assert self.is_entered()
+        self.billentry_date = None
+        self.billentry_user = None
+
     def is_entered(self):
         """Return True if this utility bill's data are complete enough to be
         used for requesting quotes for brokerage customers, False otherwise.
@@ -74,15 +90,10 @@ class BEUtilBill(UtilBill):
 
         Any bill that is "processed" is also entered.
         """
-        # 'processed' means all data about the bill can be considered accurate,
-        # so it implies 'entered'.
-        if self.processed:
-            return True
+        # consistency check: all values must be either None or filled in
+        entry_values = (self.billentry_date, self.billentry_user)
+        assert all(x is None for x in entry_values) or all(
+            x is not None for x in entry_values)
 
-        s = Session.object_session(self)
-        count = s.query(BillEntryEvent).count()
-        if count == 1:
-            return True
+        return self.processed or (self.billentry_date is not None)
 
-        assert count == 0
-        return False
