@@ -394,8 +394,7 @@ class UtilBill(Base):
     sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
-    # meaning that its rate structure and charges are supposed to be accurate
-    # and can be relied upon for rate structure prediction
+    # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Integer, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
