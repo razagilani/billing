@@ -52,8 +52,8 @@ class BillEntryEvent(Base):
 
 
 class BEUtilBill(UtilBill):
-    """BillEntry-specific extensions to the core.model.UtilBill class, not added
-    there because only BillEntry cares about this.
+    """Bill Entry-specific extensions to the core.model.UtilBill class, not added
+    there because only Bill Entry cares about them.
     """
     def is_entered(self):
         """Return True if this utility bill's data are complete enough to be
@@ -72,10 +72,10 @@ class BEUtilBill(UtilBill):
         - existence and 'rsi_binding' of supply charges (NOT distribution charges)
         - 'target_total' of supply charges (NOT distribution charges)
 
-        Any bill that is "processed" is also entered
+        Any bill that is "processed" is also entered.
         """
-        # 'processed' is a superset of 'entered', meaning all data can be
-        # considered accurate.
+        # 'processed' means all data about the bill can be considered accurate,
+        # so it implies 'entered'.
         if self.processed:
             return True
 
