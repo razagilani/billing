@@ -8,7 +8,8 @@ from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
+    BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
@@ -18,12 +19,12 @@ class TestBEUtilBill(unittest.TestCase):
     """
     def setUp(self):
         utility = Mock(autospec=Utility)
-        rate_class = Mock(autospec=RateClass)
+        self.rate_class = Mock(autospec=RateClass)
         ua = UtilityAccount('Account 1', '11111', utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None, rate_class,
-                             Address(), Address())
+        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
+                             self.rate_class, Address(), Address())
 
     def test_entry(self):
         self.assertFalse(self.ub.is_entered())
@@ -44,9 +45,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(None, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
 
-class TestBillEntryWeb(unittest.TestCase):
-    """Integration tests for the Bill Entry back end.
-    """
+class BillEntryIntegrationTest(object):
     maxDiff = None
 
     # this may change
@@ -65,38 +64,58 @@ class TestBillEntryWeb(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        init_model()
+        #init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
 
     def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
         init_model()
 
-        TestCaseWithSetup.truncate_tables()
+        self.utility = Utility('Example Utility', Address())
+        self.utility.id = 1
+        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
+                                  Address(), Address(), '1')
+        self.ua1.id = 1
+        self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         s = Session()
-        utility = Utility('Example Utility', Address())
+        s.add_all([self.utility, self.ua1])
+        s.commit()
+        # TODO: add more database objects used in multiple subclass setUps
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
+    """Integration tests using REST request handlers related to Bill Entry main
+    page.
+    BillEntryIntegrationTest must be the first superclass for super() to work.
+    """
+    def setUp(self):
+        super(TestBillEntryMain, self).setUp()
+
+        s = Session()
         utility1 = Utility('Empty Utility', Address())
         utility2 = Utility('Some Other Utility',  Address())
-        ua1 = UtilityAccount('Account 1', '11111', utility, None, None,
-                             Address(), Address(), '1')
-        ua2 = UtilityAccount('Account 2', '22222', utility, None, None,
+        ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
                              Address(), Address(), '2')
-        ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
+        ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
                              Address(), Address(), '3')
-        rate_class = RateClass('Some Rate Class', utility, 'gas')
-        rate_class1 = RateClass('Other Rate Class', utility, 'electric')
-        s.add_all([rate_class, rate_class1])
-        ua1.id, ua2.id, ua3.id = 1, 2, 3
-        utility.id, utility1.id, utility2.id = 1, 2, 10
-        s.add_all([utility, utility1, utility2])
-        s.add_all([ua1, ua2, ua3])
-        s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
-        ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
-                       rate_class, Address(), Address(street='1 Example St.'))
-        ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
+        rate_class1 = RateClass('Other Rate Class', self.utility, 'electric')
+        s.add_all([self.rate_class, rate_class1])
+        ua2.id, ua3.id = 2, 3
+        utility1.id, utility2.id = 2, 10
+        s.add_all([self.utility, utility1, utility2, ua2, ua3,
+                   BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
+        ub1 = UtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                       self.rate_class, Address(),
+                       Address(street='1 Example St.'))
+        ub2 = UtilBill(self.ua1, UtilBill.Complete, self.utility, None,
                        None, Address(), Address(street='2 Example St.'))
         ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
                        None, Address(), Address(street='2 Example St.'))
@@ -132,14 +151,7 @@ class TestBillEntryWeb(unittest.TestCase):
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5])
         s.add_all([ub1, ub2, ub3])
-
         s.commit()
-
-        self.app = billentry.app.test_client()
-
-
-    def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
 
     def test_accounts(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
@@ -341,3 +353,48 @@ class TestBillEntryWeb(unittest.TestCase):
             }, rv.data
         )
 
+class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
+    """Integration tests using REST request handlers related to Bill Entry
+    report page.
+    """
+    def setUp(self):
+        super(TestBillEntryReport, self).setUp()
+
+        s = Session()
+        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                         self.rate_class, Address(),
+                         Address(street='1 Example St.'))
+        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                         self.rate_class, Address(),
+                         Address(street='1 Example St.'))
+        self.user1 = BillEntryUser()
+        self.user2 = BillEntryUser()
+        s.add_all([self.ub1, self.ub2, self.user1, self.user2])
+        s.commit()
+
+    def test_report(self):
+        # empty report
+        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
+            datetime(2000,1,1).isoformat(), datetime(2000,2,1).isoformat()))
+        self.assertJson({"results": 0, "rows": []}, rv.data)
+
+        self.ub1.enter(self.user1, datetime(2000,1,10))
+        self.ub2.enter(self.user1, datetime(2000,1,20))
+
+        # no bills in range
+        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
+            datetime(2000,1,11).isoformat(), datetime(2000,1,20).isoformat()))
+        self.assertJson({"results": 0, "rows": []}, rv.data)
+
+        # user1 has 2 bills in range, user2 has none
+        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
+            datetime(2000,1,10).isoformat(), datetime(2000,1,21).isoformat()))
+        self.assertJson({
+            "results": 2,
+            "rows": [
+                {"user_id": self.user1.id, "count": 2},
+                # TODO: user2 does not show up--something is wrong with the
+                # query
+                {"user_id": self.user2.id, "count": 0}
+            ]
+        }, rv.data)
