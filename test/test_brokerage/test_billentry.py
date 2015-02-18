@@ -83,8 +83,15 @@ class BillEntryIntegrationTest(object):
                                   Address(), Address(), '1')
         self.ua1.id = 1
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
+        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                            self.rate_class, Address(),
+                            Address(street='1 Example St.'))
+        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                            None, Address(), Address(street='2 Example St.'))
+        self.ub1.id = 1
+        self.ub2.id = 2
         s = Session()
-        s.add_all([self.utility, self.ua1])
+        s.add_all([self.utility, self.ua1, self.rate_class, self.ub1, self.ub2])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
@@ -112,45 +119,36 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
                    BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
-        ub1 = UtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                       self.rate_class, Address(),
-                       Address(street='1 Example St.'))
-        ub2 = UtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                       None, Address(), Address(street='2 Example St.'))
         ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
                        None, Address(), Address(street='2 Example St.'))
-
-        ub1.id = 1
-        ub2.id = 2
         ub3.id = 3
 
-        register1 = Register(ub1, "ABCDEF description",
+        register1 = Register(self.ub1, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
                 register_binding='REG_TOTAL')
-        register2 = Register(ub2, "ABCDEF description",
+        register2 = Register(self.ub2, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
                 register_binding='REG_TOTAL')
         s.add_all([register1, register2])
-        ub1.registers = [register1]
-        ub2.registers = [register2]
+        self.ub1.registers = [register1]
+        self.ub2.registers = [register2]
 
-        c1 = Charge(ub1, 'CONSTANT', 0.4, '100', unit='dollars',
+        c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
                     type='distribution', target_total=1)
-        c2 = Charge(ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
+        c2 = Charge(self.ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        c3 = Charge(ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
+        c3 = Charge(self.ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
                     'REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
-        c4 = Charge(ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
+        c4 = Charge(self.ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
                     unit='therms', type='distribution')
-        c5 = Charge(ub2, 'BLOCK_2', 0.4,
+        c5 = Charge(self.ub2, 'BLOCK_2', 0.4,
                     'min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
-        s.add_all([c1, c2, c3, c4, c5])
-        s.add_all([ub1, ub2, ub3])
+        s.add_all([c1, c2, c3, c4, c5, ub3])
         s.commit()
 
     def test_accounts(self):
@@ -361,12 +359,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryReport, self).setUp()
 
         s = Session()
-        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                         self.rate_class, Address(),
-                         Address(street='1 Example St.'))
-        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                         self.rate_class, Address(),
-                         Address(street='1 Example St.'))
         self.user1 = BillEntryUser()
         self.user2 = BillEntryUser()
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
