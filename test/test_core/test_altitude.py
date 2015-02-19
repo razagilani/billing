@@ -2,16 +2,16 @@ from unittest import TestCase
 from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
-from billing import init_model
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import init_test_config
+from core import init_config, init_model
+from test.setup_teardown import TestCaseWithSetup
+from test import init_test_config
 init_test_config()
 init_model()
 
-from billing.core.model import Utility, Supplier, Address, Session, \
-    UtilityAccount, RateClass
-from billing.core.altitude import AltitudeUtility, AltitudeSupplier,\
-    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount
+from core.model import Utility, Supplier, Address, Session, \
+    UtilityAccount, RateClass, UtilBill
+from core.altitude import AltitudeUtility, AltitudeSupplier,\
+    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, AltitudeBill
 
 
 class TestAltitudeModelClasses(TestCase):
@@ -40,15 +40,14 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        TestCaseWithSetup.truncate_tables(Session())
+        TestCaseWithSetup.truncate_tables()
 
         self.u = Utility('A Utility', Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
-        s = Session()
-        s.rollback()
-        TestCaseWithSetup.truncate_tables(s)
+        Session().rollback()
+        TestCaseWithSetup.truncate_tables()
 
     def test_get_utility_from_guid(self):
         s = Session()
@@ -74,7 +73,8 @@ class TestWithDB(TestCase):
     def test_update_altitude_account_guids(self):
         s = Session()
         ua = UtilityAccount('example', '00001', self.u,
-                            Supplier('s', Address()), RateClass('r', self.u),
+                            Supplier('s', Address()),
+                            RateClass('r', self.u, 'electric'),
                             Address(), Address(), account_number='1')
         s.add(ua)
 
@@ -114,3 +114,31 @@ class TestWithDB(TestCase):
         c2 = s.query(AltitudeAccount).one()
         self.assertEqual('c', c2.guid)
         self.assertEqual(ua2, c2.utility_account)
+
+class TestAltitudeBillWithDB(TestCase):
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+
+        self.u = Utility('A Utility', Address())
+        utility = Utility('example', None)
+        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None, Address(), Address())
+
+    def test_create_delete(self):
+        """Create an AltitudeBill and check that it gets deleted along with
+        its UtilBill.
+        """
+        s = Session()
+        s.add(self.utilbill)
+        self.assertEqual(0, s.query(AltitudeBill).count())
+
+        ab = AltitudeBill(self.utilbill, 'abcdef')
+        s.add(ab)
+        s.flush()
+        self.assertEqual(1, s.query(AltitudeBill).count())
+
+        s.delete(self.utilbill)
+        self.assertEqual(0, s.query(AltitudeBill).count())
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()

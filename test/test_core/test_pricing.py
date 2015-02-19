@@ -4,10 +4,9 @@ import unittest
 
 from mock import Mock
 
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Charge
-from billing.exc import NoSuchBillException
-from billing.core.model import UtilBill
+from core.pricing import FuzzyPricingModel
+from core.model import Charge, UtilBill, RateClass, Utility, Address
+from exc import NoSuchBillException
 
 
 class FuzzyPricingModelTest(unittest.TestCase):
@@ -56,15 +55,17 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         shared=False,
                                         has_charge=False)
 
+        self.utility = Utility('Utility', Address())
+        self.rate_class = RateClass('Rate Class', self.utility, 'gas')
+
         def make_mock_utilbill(account):
             u = Mock()
             u.customer.account = account
             u.period_start = date(2000,1,1)
             u.period_end = date(2000,2,1)
             u.processed = False
-            u.service = 'gas'
-            u.utility = 'washgas'
-            u.rate_class = 'whatever'
+            u.utility = self.utility
+            u.rate_class = self.rate_class
             return u
 
         self.utilbill_1 = make_mock_utilbill('00001')
@@ -91,9 +92,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.period_start = date(2000, 1, 1)
         u.period_end = date(2000, 2, 1)
         u.processed = False
-        u.service = 'gas'
-        u.utility = 'washgas'
-        u.rate_class = 'whatever'
+        u.utility = self.utility
+        u.rate_class = self.rate_class
         u.charges = []
 
         # with no processed utility bills, predicted rate structure is empty.
@@ -107,10 +107,9 @@ class FuzzyPricingModelTest(unittest.TestCase):
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.get_last_real_utilbill.assert_called_once_with(
                 u.utility_account.account, end=u.period_start,
-                service=u.service, utility=u.utility,
-                rate_class=u.rate_class, processed=True)
+                utility=u.utility, rate_class=u.rate_class, processed=True)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
+                utility=self.utility, rate_class=self.rate_class,
                 processed=True)
         self.assertEqual([], rs)
 
@@ -121,8 +120,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1]
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
+                utility=self.utility, rate_class=self.rate_class, processed=True)
         self.assertEqual([self.charge_a_shared], rs)
 
         # with 2 existing utility bills processed, predicted rate structure
@@ -133,8 +131,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                 self.utilbill_2, self.utilbill_3]
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
+                utility=self.utility, rate_class=self.rate_class, processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
 
         # with 3 processed utility bills
@@ -144,8 +141,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                 self.utilbill_2, self.utilbill_3]
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
+                utility=self.utility, rate_class=self.rate_class, processed=True)
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
         # should be included here
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
@@ -159,8 +155,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                 self.utilbill_2, self.utilbill_3]
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
+                utility=self.utility, rate_class=self.rate_class, processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
 
         # however, when u belongs to the same account as an existing bill,
@@ -176,8 +171,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1
         rs = self.dao.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
+                utility=self.utility, rate_class=self.rate_class, processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], rs)
 
