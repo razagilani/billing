@@ -692,7 +692,7 @@ class ThermalBillDoc(BillDoc):
         # Load registers and match up shadow registers to actual registers
 #        assert len(reebill.utilbills)==1
 #        shadow_registers = reebill_document.get_all_shadow_registers_json()
-#        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
+#        utilbill_doc=self._reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
 #        actual_registers = mongo.get_all_actual_registers_json(
 #           utilbill_doc)
 #        for s_register in shadow_registers:

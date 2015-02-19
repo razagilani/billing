@@ -49,27 +49,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         width: 120
     },{
         header: 'Utility Service Address',
-        dataIndex: 'lastutilityserviceaddress',
+        dataIndex: 'utilityserviceaddress',
         width: 200
-    },{
-        header: 'Last Issued',
-        dataIndex: 'lastissuedate',
-        width: 120,
-        renderer: function(value) {
-            return Ext.util.Format.date(value, 'Y-m-d');
-        },
-    },{
-        header: 'Days Since',
-        tooltip: 'Days Since Last Issued Utility Bill',
-        dataIndex: 'lastperiodend',
-        renderer: function(value){
-            if(value === Infinity){
-                return ''
-            }
-            return value
-        },
-        align: 'right',
-        width: 100
     },{
         header: 'Last Event',
         dataIndex: 'lastevent',
