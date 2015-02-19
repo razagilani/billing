@@ -44,7 +44,7 @@ dao = mongo.ReebillDAO(billdb_config)
 session = state_db.session()
 
 ## check that 10001 multi-service bill is ok
-#reebill = dao.load_reebill('10001', 2)
+#reebill = fpm.load_reebill('10001', 2)
 #for service in reebill.services:
     #print service, reebill.utilbill_period_for_service(service)
 #exit()

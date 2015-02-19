@@ -178,8 +178,8 @@ class FuzzyPricingModel(PricingModel):
             pass
         else:
             for charge in predecessor.charges:
-                if not (charge.shared or charge.rsi_binding in (c.rsi_binding for c in
-                            result)):
+                if not (charge.shared or charge.rsi_binding in (
+                        c.rsi_binding for c in result)):
                     result.append(Charge.formulas_from_other(charge))
 
         return result
