@@ -1,9 +1,10 @@
 from __future__ import division
 from collections import defaultdict
+from datetime import date
 from sys import maxint
 
-from billing.exc import NoSuchBillException
-from billing.core.model import Charge
+from exc import NoSuchBillException
+from core.model import Charge, Utility, RateClass
 
 
 class PricingModel(object):
@@ -68,6 +69,13 @@ class FuzzyPricingModel(PricingModel):
         included.
         :param ignore: an optional function to exclude UPRSs from the input data
         """
+        assert isinstance(utility, Utility)
+        assert isinstance(service, basestring)
+        assert isinstance(rate_class, RateClass)
+        assert isinstance(period[0], date) and isinstance(period[1], date)
+        assert isinstance(threshold, (int, float))
+        assert callable(ignore)
+
         distance_func=self.__class__._manhattan_distance
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
