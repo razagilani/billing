@@ -14,9 +14,9 @@ all almost identical (all their code is determined just by a billing table
 name).
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
-from billing.core.model import Base, Session, Utility, UtilityAccount
+from core.model import Base, Session, Utility, UtilityAccount, Supplier, UtilBill
 
 
 class AltitudeGUID(String):
@@ -84,12 +84,48 @@ class AltitudeAccount(Base):
         self.utility_account = utility_account
         self.guid = guid
 
+class AltitudeBill(Base):
+    __tablename__ = 'altitude_bill'
+
+    utilbill_id = Column('utilbill_id', Integer(), ForeignKey('utilbill.id'),
+                         nullable=False)
+    guid = Column('guid', AltitudeGUID, nullable=False)
+
+    utilbill = relationship(
+        'UtilBill',
+        # delete-orphan so AltitudeBills go away when their UitilBill is deleted,
+        # instead of preventing UtilBills from being deleted.
+        backref=backref('altitude_bills', cascade='all, delete-orphan'))
+
+    def __init__(self, utilbill, guid):
+        self.utilbill = utilbill
+        self.guid = guid
+
+    # compound primary key
+    __table_args__ = (
+        PrimaryKeyConstraint('utilbill_id', 'guid'),
+        {},
+    )
+
 # conversion functions: look up billing entities via Altitude GUIDs
 def _altitude_to_billing(altitude_class, billing_class):
     return lambda guid: Session().query(billing_class).join(
         altitude_class).filter(altitude_class.guid==guid).one()
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
 get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
+
+def _billing_to_altitude(billing_class, altitude_class):
+    def query_func(billing_obj):
+        if billing_obj is None:
+            return None
+        attr_name = billing_class.__name__.lower() + '_id'
+        return Session().query(altitude_class).join(billing_class).filter(
+            getattr(altitude_class, attr_name) == billing_obj.id).first()
+    return query_func
+get_guid_for_utility = _billing_to_altitude(Utility, AltitudeUtility)
+get_guid_for_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)
+get_guid_for_utilbill = _billing_to_altitude(UtilBill, AltitudeBill)
+
 
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount
@@ -111,3 +147,14 @@ def update_altitude_account_guids(utility_account, guids):
     s.add_all([AltitudeAccount(utility_account, guid)
                for guid in set(guids) - existing_account_guids])
     s.flush()
+
+def get_or_create_guid_for_utilbill(utilbill, guid_func):
+    """Find and return a GUID string for the given UtilBill, or if one does
+    not exist, generate one using 'guid_func', store a new AltitudeBill with
+    the GUID string, and return it.
+    """
+    altitude_bill = get_guid_for_utilbill(utilbill)
+    if altitude_bill is None:
+        altitude_bill =  AltitudeBill(utilbill, guid_func())
+        Session().add(altitude_bill)
+    return altitude_bill.guid

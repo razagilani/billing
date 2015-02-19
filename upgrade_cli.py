@@ -13,9 +13,9 @@ parser.add_argument('version',
                     help='The version we are upgrading to.')
 args = parser.parse_args()
 
-from billing import init_logging, init_config
+from core import init_logging, init_config
 init_logging()
 init_config()
 
-from billing.upgrade_scripts import run_upgrade
+from upgrade_scripts import run_upgrade
 run_upgrade(args.version) 

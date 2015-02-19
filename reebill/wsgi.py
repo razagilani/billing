@@ -1,16 +1,19 @@
 from os.path import dirname, realpath, join
 import smtplib
+
 from boto.s3.connection import S3Connection
-from billing import init_config, init_model, init_logging
+
+from core import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
-from billing import config
+from core import config
 import sys
 
 import json
@@ -23,25 +26,28 @@ import functools
 from operator import itemgetter
 from StringIO import StringIO
 import mongoengine
-from billing.skyliner.splinter import Splinter
-from billing.skyliner import mock_skyliner
-from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE
-from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map
-from billing.reebill.bill_mailer import Mailer
-from billing.reebill import state, fetch_bill_data as fbd
-from billing.core.pricing import FuzzyPricingModel
-from billing.core.model import Session
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.core.bill_file_handler import BillFileHandler
-from billing.reebill import journal, reebill_file_handler
-from billing.reebill.users import UserDAO
-from billing.reebill.utilbill_processor import UtilbillProcessor
-from billing.reebill.reebill_processor import ReebillProcessor
-from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
-from billing.reebill.excel_export import Exporter
-from billing.core.model import UtilBill
+from skyliner.splinter import Splinter
+from skyliner import mock_skyliner
+from util import json_util as ju
+from util.dateutils import ISO_8601_DATE
+from nexusapi.nexus_util import NexusUtil
+from util.dictutils import deep_map
+from reebill.bill_mailer import Mailer
+from reebill import fetch_bill_data as fbd
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
+from reebill.views import Views
+from core.pricing import FuzzyPricingModel
+from core.model import Session
+from core.utilbill_loader import UtilBillLoader
+from core.bill_file_handler import BillFileHandler
+from reebill import journal, reebill_file_handler
+from reebill.users import UserDAO
+from core.utilbill_processor import UtilbillProcessor
+from reebill.reebill_processor import ReebillProcessor
+from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
+from reebill.excel_export import Exporter
+from core.model import UtilBill
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 
@@ -129,7 +135,8 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.state_db = state.StateDB(logger=self.logger)
+        self.payment_dao = PaymentDAO()
+        self.state_db = ReeBillDAO(logger=self.logger)
 
         s3_connection = S3Connection(
                 config.get('aws_s3', 'aws_access_key_id'),
@@ -224,11 +231,12 @@ class WebResource(object):
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
+        self.utilbill_views = Views(self.state_db, self.bill_file_handler,
+                                    self.nexus_util, self.journal_dao)
         self.utilbill_processor = UtilbillProcessor(
-            self.ratestructure_dao, self.bill_file_handler, self.nexus_util,
-            logger=self.logger)
+            self.ratestructure_dao, self.bill_file_handler, logger=self.logger)
         self.reebill_processor = ReebillProcessor(
-            self.state_db, self.nexus_util, self.bill_mailer,
+            self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
             self.reebill_file_handler, self.ree_getter, self.journal_dao,
             logger=self.logger)
 
@@ -321,7 +329,7 @@ class AccountsResource(RESTResource):
     def handle_get(self, *vpath, **params):
         """Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab."""
-        count, rows = self.reebill_processor.list_account_status()
+        count, rows = self.utilbill_views.list_account_status()
         return True, {'rows': rows, 'results': count}
 
     def handle_post(self,*vpath, **params):
@@ -355,7 +363,7 @@ class AccountsResource(RESTResource):
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
 
-        count, result = self.reebill_processor.list_account_status(row['account'])
+        count, result = self.utilbill_views.list_account_status(row['account'])
         print count, result
         return True, {'rows': result, 'results': count}
 
@@ -371,7 +379,7 @@ class AccountsResource(RESTResource):
 class IssuableReebills(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        issuable_reebills = self.reebill_processor.get_issuable_reebills_dict()
+        issuable_reebills = self.utilbill_views.get_issuable_reebills_dict()
         return True, {'rows': issuable_reebills,
                       'results': len(issuable_reebills)}
 
@@ -444,14 +452,14 @@ class IssuableReebills(RESTResource):
 class ReebillVersionsResource(RESTResource):
 
     def handle_get(self, account, sequence, *vpath, **params):
-        result = self.reebill_processor.list_all_versions(account, sequence)
+        result = self.utilbill_views.list_all_versions(account, sequence)
         return True, {'rows': result, 'results': len(result)}
 
 class ReebillsResource(RESTResource):
 
     def handle_get(self, account, *vpath, **params):
         '''Handles GET requests for reebill grid data.'''
-        rows = self.reebill_processor.get_reebill_metadata_json(account)
+        rows = self.utilbill_views.get_reebill_metadata_json(account)
         return True, {'rows': rows, 'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
@@ -588,7 +596,7 @@ class ReebillsResource(RESTResource):
 class UtilBillResource(RESTResource):
 
     def handle_get(self, account, *vpath, **params):
-        rows, total_count = self.utilbill_processor.get_all_utilbills_json(
+        rows, total_count = self.utilbill_views.get_all_utilbills_json(
             account)
         return True, {'rows': rows, 'results': total_count}
 
@@ -677,7 +685,7 @@ class RegistersResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
-        registers_json = self.utilbill_processor.get_registers_json(utilbill_id)
+        registers_json = self.utilbill_views.get_registers_json(utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
     def handle_post(self, *vpath, **params):
@@ -703,7 +711,7 @@ class RegistersResource(RESTResource):
 class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
-        charges = self.utilbill_processor.get_utilbill_charges_json(utilbill_id)
+        charges = self.utilbill_views.get_utilbill_charges_json(utilbill_id)
         return True, {'rows': charges, 'results': len(charges)}
 
     def handle_put(self, charge_id, *vpath, **params):
@@ -723,21 +731,21 @@ class ChargesResource(RESTResource):
 class SuppliersResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        suppliers = self.utilbill_processor.get_all_suppliers_json()
+        suppliers = self.utilbill_views.get_all_suppliers_json()
         return True, {'rows': suppliers, 'results': len(suppliers)}
 
 
 class UtilitiesResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        utilities = self.utilbill_processor.get_all_utilities_json()
+        utilities = self.utilbill_views.get_all_utilities_json()
         return True, {'rows': utilities, 'results': len(utilities)}
 
 
 class RateClassesResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        rate_classes = self.utilbill_processor.get_all_rate_classes_json()
+        rate_classes = self.utilbill_views.get_all_rate_classes_json()
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
@@ -745,19 +753,19 @@ class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        rows = self.reebill_processor.get_payments(account)
+        rows = [payment.column_dict() for payment in self.payment_dao.get_payments(account)]
         return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
         d = cherrypy.request.json['date_received']
         d = datetime.strptime(d, '%Y-%m-%d %H:%M:%S')
         print "\n\n\n\n", d, type(d)
-        new_payment = self.reebill_processor.create_payment(account, d, "New Entry", 0, d)
+        new_payment = self.payment_dao.create_payment(account, d, "New Entry", 0, d)
         return True, {"rows": new_payment.column_dict(), 'results': 1}
 
     def handle_put(self, payment_id, *vpath, **params):
         row = cherrypy.request.json
-        self.reebill_processor.update_payment(
+        self.payment_dao.update_payment(
             int(payment_id),
             row['date_applied'],
             row['description'],
@@ -766,7 +774,7 @@ class PaymentsResource(RESTResource):
         return True, {"rows": row, 'results': 1}
 
     def handle_delete(self, payment_id, *vpath, **params):
-        self.reebill_processor.delete_payment(payment_id)
+        self.payment_dao.delete_payment(payment_id)
         return True, {}
 
 
