@@ -1,11 +1,13 @@
 from sqlalchemy import desc
-from billing.core.model import UtilBill, UtilityAccount, Session
-from billing.exc import NoSuchBillException
+from core.model import UtilBill, UtilityAccount, Session, RateClass
+from exc import NoSuchBillException
+
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
     from other classes so they can be more easily tested.
     '''
+
     def get_utilbill_by_id(self, utilbill_id):
         '''Return utilbill with the given id.'''
         return Session().query(UtilBill).filter_by(id=utilbill_id).one()
@@ -15,14 +17,18 @@ class UtilBillLoader(object):
         by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
         state Estimated or lower) are included.
         '''
-        cursor = Session().query(UtilBill).filter(
-            UtilBill.state <= UtilBill.Estimated)
+        cursor = Session().query(UtilBill).join(RateClass) \
+            .filter(UtilBill.state <= UtilBill.Estimated)
         for key, value in kwargs.iteritems():
-            cursor = cursor.filter(getattr(UtilBill, key) == value)
+            if key == 'service':
+                cursor = cursor.filter(RateClass.service == value)
+            else:
+                cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
 
+
     def get_last_real_utilbill(self, account, end=None, service=None,
-                               utility=None, rate_class=None, processed=None):
+            utility=None, rate_class=None, processed=None):
         '''Returns the latest-ending UtilBill, optionally limited to those
         whose end date is before/on 'end', and optionally with
         the given service, utility, rate class, and 'processed' status.
@@ -34,7 +40,8 @@ class UtilBillLoader(object):
         if end is not None:
             cursor = cursor.filter(UtilBill.period_end <= end)
         if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
+            cursor = cursor.join(RateClass).filter(
+                RateClass.service == service)
         if utility is not None:
             cursor = cursor.filter(UtilBill.utility == utility)
         if rate_class is not None:
@@ -58,5 +65,5 @@ class UtilBillLoader(object):
         is identified by utility_account_id.
         '''
         return Session().query(UtilBill).join(
-            UtilityAccount).filter(UtilityAccount.id==utility_account_id)
+            UtilityAccount).filter(UtilityAccount.id == utility_account_id)
 

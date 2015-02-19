@@ -45,7 +45,6 @@ class NoSuchBillException(BillingError):
 class NotUniqueException(BillingError):
     pass
 
-
 class NoRateStructureError(BillingError):
     pass
 
@@ -82,6 +81,10 @@ class NotIssuable(BillStateError):
 class NotComputable(BillStateError):
     '''Trying to compute processed bill'''
 
+
+class NotProcessable(BillStateError):
+    """Trying to mark bill as processed that does not have all
+    neccessary data"""
 
 class RSIError(BillingError):
     """Error involving a Rate Structure Item."""
