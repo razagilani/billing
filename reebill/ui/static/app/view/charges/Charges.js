@@ -22,7 +22,7 @@ Ext.define('ReeBill.view.charges.Charges', {
     features: [{
         ftype: 'groupingsummary',
         groupHeaderTpl: 'Charge Group: {name} ({rows.length} Item{[values.rows.length > 1 ? "s" : ""]})',
-        hideGroupedHeader: true
+        hideGroupedHeader: false
     }, {
         ftype: 'summary'
     }],
@@ -122,12 +122,20 @@ Ext.define('ReeBill.view.charges.Charges', {
         sortable: true,
         width: 100
     },{
-        header: 'Group',
-        dataIndex: 'group',
+        header: 'Type',
+        dataIndex: 'type',
         sortable: true,
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Types',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'name',
+            queryMode: 'local',
+            forceSelection: true
         },
         width: 90
     },{
