@@ -8,6 +8,8 @@ from core.pricing import FuzzyPricingModel
 from core.model import Charge, UtilBill, RateClass, Utility, Address
 from exc import NoSuchBillException
 
+def raise_nsbe(*args, **kwargs):
+    raise NoSuchBillException
 
 class FuzzyPricingModelTest(unittest.TestCase):
     def setUp(self):
@@ -84,7 +86,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.dao = FuzzyPricingModel(self.utilbill_loader)
 
     def test_get_predicted_charges(self):
-
         # utility bill for which to predict a rate structure, using the
         # ones created in setUp
         u = Mock(autospec=UtilBill)
@@ -95,13 +96,12 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
+        u.get_service.return_value = 'gas'
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
         # utility bills with the given attributes is outside the scope of
         # FuzzyPricingModel
-        def raise_nsbe(*args, **kwargs):
-            raise NoSuchBillException
         self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
         self.utilbill_loader.load_real_utilbills.return_value = []
         rs = self.dao.get_predicted_charges(u)
@@ -174,6 +174,33 @@ class FuzzyPricingModelTest(unittest.TestCase):
                 utility=self.utility, rate_class=self.rate_class, processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], rs)
+
+    def test_missing_dates(self):
+        u = Mock(autospec=UtilBill)
+        u.utility_account.account = '00004'
+        u.processed = False
+        u.utility = self.utility
+        u.rate_class = self.rate_class
+        u.charges = []
+        u.get_service.return_value = 'gas'
+
+        self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1]
+
+        # if no dates are known, no shared charges are generated
+        u.period_start, u.period_end = None, None
+        rs = self.dao.get_predicted_charges(u)
+        self.assertEqual([], rs)
+
+        # if only one date is known, that's enough to guess the charges using an
+        # estimate of the other date
+        u.period_start, u.period_end = None, date(2000,2,1)
+        self.assertEqual([self.charge_a_shared],
+                         self.dao.get_predicted_charges(u))
+        u.period_start, u.period_end = date(2000,1,1), None
+        self.assertEqual([self.charge_a_shared],
+                         self.dao.get_predicted_charges(u))
 
 
     # TODO test that RS of the bill being predicted is ignored, whether or not
