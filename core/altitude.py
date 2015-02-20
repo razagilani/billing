@@ -122,10 +122,17 @@ def _billing_to_altitude(billing_class, altitude_class):
         return Session().query(altitude_class).join(billing_class).filter(
             getattr(altitude_class, attr_name) == billing_obj.id).first()
     return query_func
-get_guid_for_utility = _billing_to_altitude(Utility, AltitudeUtility)
-get_guid_for_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)
-get_guid_for_utilbill = _billing_to_altitude(UtilBill, AltitudeBill)
 
+# TODO try to avoid writing a lot of repeated code like this
+def get_guid_for_utility(x):
+    result = _billing_to_altitude(Utility, AltitudeUtility)(x)
+    return None if result is None else result.guid
+def get_guid_for_supplier(x):
+    result = _billing_to_altitude(Supplier, AltitudeSupplier)(x)
+    return None if result is None else result.guid
+def get_guid_for_utilbill(x):
+    result = _billing_to_altitude(UtilBill, AltitudeBill)(x)
+    return None if result is None else result.guid
 
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount
@@ -153,7 +160,7 @@ def get_or_create_guid_for_utilbill(utilbill, guid_func):
     not exist, generate one using 'guid_func', store a new AltitudeBill with
     the GUID string, and return it.
     """
-    altitude_bill = get_guid_for_utilbill(utilbill)
+    altitude_bill = _billing_to_altitude(UtilBill, AltitudeBill)(utilbill)
     if altitude_bill is None:
         altitude_bill =  AltitudeBill(utilbill, guid_func())
         Session().add(altitude_bill)
