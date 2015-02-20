@@ -98,7 +98,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
-        u.get_service.return_value = 'gas'
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
@@ -191,7 +190,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
-        u.get_service.return_value = 'gas'
 
         self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
         self.utilbill_loader.load_real_utilbills.return_value = [
