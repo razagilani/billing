@@ -28,6 +28,10 @@ class PGAltitudeExporter(object):
         '''Write CSV of data to 'file'.
         :param utilbills: iterator of UtilBills to include data from.
         :param file: destination file.
+
+        Note: the entire dataset is loaded into memory and turned into a CSV
+        before being written all at once. This is because it is generated using
+        Tablib, which doesn't support writing incrementally.
         '''
         dataset = self.get_dataset(utilbills)
         file.write(dataset.csv)
@@ -71,11 +75,11 @@ class PGAltitudeExporter(object):
                 'utility_bill_guid':
                     self._altitude_converter.get_or_create_guid_for_utilbill(
                         ub, self._uuid_func),
-                'utility_guid':
-                    format_possible_none(self._altitude_converter.get_guid_for_utility(
+                'utility_guid': format_possible_none(
+                    self._altitude_converter.get_guid_for_utility(
                         ub.get_utility())),
-                'supplier_guid':
-                    format_possible_none(self._altitude_converter.get_guid_for_supplier(
+                'supplier_guid': format_possible_none(
+                    self._altitude_converter.get_guid_for_supplier(
                         ub.get_supplier())),
                 'service_type': ub.get_service(),
                 'utility_account_number': ub.get_utility_account_number(),
