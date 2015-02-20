@@ -13,9 +13,10 @@ from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
+from flask.ext.login import LoginManager, login_user, login_required, logout_user, current_user
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
-from flask import Flask, url_for, request, flash, session, redirect
+from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask.ext.restful import Api, Resource, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, Raw, \
@@ -31,7 +32,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount
+from brokerage.brokerage_model import BrokerageAccount, BillEntryUser
 from exc import Unauthenticated
 
 oauth = OAuth()
@@ -322,10 +323,18 @@ class RateClassesResource(BaseResource):
 app = Flask(__name__, static_url_path="")
 app.debug = True
 app.secret_key = 'sgdsdgs'
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(email):
+    return Session().query(BillEntryUser).filter_by(email=email).first()
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
+    session.pop('user_name', None)
+    logout_user()
     return app.send_static_file('logout.html')
 
 @app.route('/oauth2callback')
@@ -349,9 +358,15 @@ def index():
     if config.get('billentry', 'disable_google_oauth'):
         return app.send_static_file('index.html')
     access_token = session.get('access_token')
-    if access_token is None:
+    user_name = session.get('user_name')
+    if access_token is None and not current_user.is_authenticated():
         # user is not logged in so redirect to login page
-        return redirect(url_for('login'))
+        return current_app.login_manager.unauthorized()
+        #return redirect(url_for('login'))
+
+
+    if user_name is not None:
+        return app.send_static_file('index.html')
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
     req = Request(config.get('billentry', 'google_user_info_url'),
@@ -370,15 +385,17 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
+def is_authenticated():
+    return current_user.is_authenticated() or 'user_email' in session
 
 @app.before_request
 def before_request():
     from core import config
-    if config.get('billentry', 'disable_google_oauth'):
-        return
-    if 'access_token' not in session and request.endpoint not in (
-            'login', 'oauth2callback', 'logout'):
-        return redirect(url_for('login'))
+    if 'access_token' not in session and 'user_name' not in session \
+            and request.endpoint not in (
+            'login', 'oauth2callback', 'logout',
+            'landing_page', 'login_page', 'userlogin'):
+        return redirect(url_for('landing_page'))
 
 @app.after_request
 def db_commit(response):
@@ -405,6 +422,30 @@ def login():
             path=path,)
         session['next_url'] = next_url
     return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+@app.route('/login-page')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/landing-page')
+def landing_page():
+    return render_template('landing_page.html')
+
+@app.route('/userlogin', methods=['GET','POST'])
+def userlogin():
+    email = request.form['email']
+    password = request.form['password']
+    registered_user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
+    if registered_user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login'))
+    if 'rememberme' in request.form:
+        login_user(registered_user,rememberme=True)
+    else:
+        login_user(registered_user)
+    session['user_name'] = str(registered_user)
+    flash('Logged in successfully')
+    return redirect(request.args.get('next') or url_for('index'))
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')

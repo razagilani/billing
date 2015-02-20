@@ -3,7 +3,8 @@ brokerage-related data and for the "Bill Entry" application.
 
 It might be a good idea to separate these.
 """
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+import datetime
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String
 from sqlalchemy.orm import relationship
 from core.model import Base, UtilityAccount, UtilBill
 
@@ -26,9 +27,30 @@ class BillEntryUser(Base):
     """
     __tablename__ = 'billentry_user'
     id = Column(Integer, primary_key=True)
+    password = Column(String(10))
+    email = Column(String(50),unique=True, index=True)
+    registered_on = Column('registered_on', DateTime)
 
-    # TODO: add necessary columns. right now this only exists because it's
-    # required by billentry_event.
+    def __init__(self, email='', password=''):
+        self.email = email
+        self.password = password
+        self.registered_on = datetime.datetime.utcnow()
+
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return unicode(self.id)
+
+    def __repr__(self):
+        return self.email
+
 
 class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the
