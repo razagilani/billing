@@ -127,7 +127,8 @@ class TestAltitudeBillStorage(TestCase):
         TestCaseWithSetup.truncate_tables()
         utility = Utility('example', None)
         ua = UtilityAccount('', '', utility, None, None, Address(), Address())
-        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None, Address(), Address())
+        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None,
+                                 Address(), Address())
         Session().add(self.utilbill)
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
