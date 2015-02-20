@@ -1,16 +1,19 @@
 from StringIO import StringIO
-from datetime import datetime
+from datetime import datetime, date
 from unittest import TestCase
 from uuid import uuid5, uuid4
 from uuid import NAMESPACE_DNS
 
 from mock import Mock
-from core import altitude
-from core.altitude import AltitudeBill
+from core import altitude, init_model
+from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility
 
-from core.model import UtilBill, UtilityAccount, Utility, Address, Session
+from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
+    RateClass, Supplier
 from brokerage.export_altitude import PGAltitudeExporter
+from test import init_test_config
 from test.setup_teardown import TestCaseWithSetup
+from util.dateutils import ISO_8601_DATETIME
 
 
 class TestExportAltitude(TestCase):
@@ -125,18 +128,56 @@ class TestAltitudeBillStorage(TestCase):
     """
     def setUp(self):
         TestCaseWithSetup.truncate_tables()
-        utility = Utility('example', None)
-        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
-        self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None,
-                                 Address(), Address())
-        Session().add(self.utilbill)
+        utility = Utility('Utility', Address())
+        rate_class = RateClass('Rate Class', utility, 'electric')
+        supplier = Supplier('Supplier', Address())
+        ua = UtilityAccount('', '', utility, None, None, Address(),
+                            Address())
+        self.utilbill = UtilBill(
+            ua, UtilBill.Complete, utility, supplier, rate_class,
+            Address(street='1 Billing St.'), Address(street='1 Service St.'),
+            period_start=date(2000,1,1), period_end=date(2000,1,1))
+        self.utilbill.utility_account_number = '12345'
+        altitude_utility = AltitudeUtility(utility, guid='uuu')
+        altitude_supplier = AltitudeSupplier(supplier, guid='sss')
+        altitude_bill = AltitudeBill(self.utilbill, 'bbb')
+        Session().add_all([utility, rate_class, supplier, self.utilbill,
+                          altitude_utility, altitude_supplier, altitude_bill])
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+    def test_export_with_db(self):
+        """Integration test with core.altitude module and database, making sure
+        that CSV file contents are actually what was expected.
+        """
+        s = Session()
+        s.add(self.utilbill)
+
+        csv_file = StringIO()
+        self.pgae.write_csv(s.query(UtilBill).all(), csv_file)
+        expected_csv = (
+            'billing_customer_id,utility_bill_guid,utility_guid,supplier_guid,'
+            'service_type,utility_account_number,billing_period_start_date,'
+            'billing_period_end_date,total_usage,total_supply_charge,'
+            'rate_class,secondary_account_number,service_address_street,'
+            'service_address_city,service_address_state,'
+            'service_address_postal_code,create_date,modified_date\r\n'
+            ',bbb,uuu,sss,electric,,'
+            '2000-01-01T00:00:00Z,2000-01-01T00:00:00Z,0,0,Rate Class,,'
+            '1 Service St.,,,,,%s\r\n' %
+            self.utilbill.date_modified.strftime(ISO_8601_DATETIME))
+        csv_file.seek(0)
+        actual_csv = csv_file.read()
+        self.assertEqual(expected_csv, actual_csv)
 
     def test_altitude_bill_consistency(self):
         """Check that an AlititudeBill is created only once and reused
         during repeated calls to get_dataset for the same bill.
         """
         s = Session()
+        s.query(AltitudeBill).delete()
         self.assertEqual(0, s.query(AltitudeBill).count())
 
         dataset_1 = self.pgae.get_dataset([self.utilbill])
@@ -146,5 +187,3 @@ class TestAltitudeBillStorage(TestCase):
         self.assertEqual(1, s.query(AltitudeBill).count())
         self.assertEqual(dataset_1.csv, dataset_2.csv)
 
-    def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
