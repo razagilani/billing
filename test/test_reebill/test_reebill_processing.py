@@ -1425,7 +1425,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             utilbill_id=id_1,
             rsi_binding='New Charge 1')
         self.utilbill_processor.update_utilbill_metadata(id_1, processed=True)
-        self.utilbill_processor.regenerate_uprs(id_2)
+        self.utilbill_processor.regenerate_charges(id_2)
         self.utilbill_processor.update_utilbill_metadata(id_2, processed=True)
 
         # create, process, and issue reebill
@@ -2034,10 +2034,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEqual(1, len(reebill.readings))
         self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
 
-        self.utilbill_processor.compute_utility_bill(utilbill_id)
         self.reebill_processor.compute_reebill('99999', 1)
         self.reebill_processor.bind_renewable_energy('99999', 1)
-        self.utilbill_processor.compute_utility_bill(utilbill_id)
         self.reebill_processor.compute_reebill('99999', 1)
         energy_1 = self.views.get_reebill_metadata_json(
             '99999')[0]['ree_quantity']
