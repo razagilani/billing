@@ -631,7 +631,7 @@ class UtilBillResource(RESTResource):
         action = row.pop('action', '')
 
         if action == 'regenerate_charges':
-            ub = self.utilbill_processor.regenerate_uprs(utilbill_id)
+            ub = self.utilbill_processor.regenerate_charges(utilbill_id)
 
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
