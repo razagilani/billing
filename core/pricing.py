@@ -1,9 +1,10 @@
 from __future__ import division
 from collections import defaultdict
+from datetime import date, timedelta
 from sys import maxint
 
 from exc import NoSuchBillException
-from core.model import Charge
+from core.model import Charge, Utility, RateClass
 
 
 class PricingModel(object):
@@ -68,6 +69,13 @@ class FuzzyPricingModel(PricingModel):
         included.
         :param ignore: an optional function to exclude UPRSs from the input data
         """
+        assert isinstance(utility, Utility)
+        assert isinstance(service, basestring)
+        assert isinstance(rate_class, RateClass)
+        assert isinstance(period[0], date) and isinstance(period[1], date)
+        assert isinstance(threshold, (int, float))
+        assert callable(ignore)
+
         distance_func=self.__class__._manhattan_distance
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
@@ -147,10 +155,17 @@ class FuzzyPricingModel(PricingModel):
 
         :utilbill: a :class:`processing.state.UtilBill` instance
         """
-        result = self._get_probable_shared_charges(utilbill.utility,
-                utilbill.get_service(), utilbill.rate_class,
-                (utilbill.period_start, utilbill.period_end),
-                ignore=lambda ub:ub.id == utilbill.id)
+        if (utilbill.period_start, utilbill.period_end) == (None, None):
+            # no dates known: no shared charges
+            result = []
+        else:
+            # if only one date is known, the other one is probably about 30 days
+            # away from it, which is enough to guess the charges
+            start = utilbill.period_start or utilbill.period_end - timedelta(30)
+            end = utilbill.period_end or utilbill.period_start + timedelta(30)
+            result = self._get_probable_shared_charges(
+                utilbill.utility, utilbill.get_service(), utilbill.rate_class,
+                (start, end), ignore=lambda ub:ub.id == utilbill.id)
 
         # add any charges from the predecessor that are not already there
         try:
@@ -163,8 +178,8 @@ class FuzzyPricingModel(PricingModel):
             pass
         else:
             for charge in predecessor.charges:
-                if not (charge.shared or charge.rsi_binding in (c.rsi_binding for c in
-                            result)):
+                if not (charge.shared or charge.rsi_binding in (
+                        c.rsi_binding for c in result)):
                     result.append(Charge.formulas_from_other(charge))
 
         return result

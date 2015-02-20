@@ -1,4 +1,4 @@
-'''Tests for rate_structure.py'''
+"""Tests for pricing.py"""
 from datetime import date
 import unittest
 
@@ -8,8 +8,12 @@ from core.pricing import FuzzyPricingModel
 from core.model import Charge, UtilBill, RateClass, Utility, Address
 from exc import NoSuchBillException
 
+def raise_nsbe(*args, **kwargs):
+    raise NoSuchBillException
 
 class FuzzyPricingModelTest(unittest.TestCase):
+    """Unit tests for FuzzyPricingModel.
+    """
     def setUp(self):
         # 3 rate structures, two containing B shared and one containing B
         # unshared. If unshared RSIs count as "absent", B is more absent than
@@ -81,10 +85,9 @@ class FuzzyPricingModelTest(unittest.TestCase):
 
         self.utilbill_3.charges = [self.charge_b_shared]
         self.utilbill_loader = Mock()
-        self.dao = FuzzyPricingModel(self.utilbill_loader)
+        self.fpm = FuzzyPricingModel(self.utilbill_loader)
 
     def test_get_predicted_charges(self):
-
         # utility bill for which to predict a rate structure, using the
         # ones created in setUp
         u = Mock(autospec=UtilBill)
@@ -95,33 +98,33 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
+        u.get_service.return_value = 'gas'
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
         # utility bills with the given attributes is outside the scope of
         # FuzzyPricingModel
-        def raise_nsbe(*args, **kwargs):
-            raise NoSuchBillException
         self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
         self.utilbill_loader.load_real_utilbills.return_value = []
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.get_last_real_utilbill.assert_called_once_with(
                 u.utility_account.account, end=u.period_start,
                 utility=u.utility, rate_class=u.rate_class, processed=True)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 utility=self.utility, rate_class=self.rate_class,
                 processed=True)
-        self.assertEqual([], rs)
+        self.assertEqual([], charges)
 
         # with only the 1st utility bill (containing rsi_a_shared and
         # rsi_b_unshared), only rsi_a_shared should appear in the result
         self.utilbill_loader.reset_mock()
         self.utilbill_loader.load_real_utilbills.return_value = [
             self.utilbill_1]
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class, processed=True)
-        self.assertEqual([self.charge_a_shared], rs)
+                utility=self.utility, rate_class=self.rate_class,
+                processed=True)
+        self.assertEqual([self.charge_a_shared], charges)
 
         # with 2 existing utility bills processed, predicted rate structure
         # includes both A (shared) and B (shared)
@@ -129,22 +132,24 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.return_value = [
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class, processed=True)
-        self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
+                utility=self.utility, rate_class=self.rate_class,
+                processed=True)
+        self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # with 3 processed utility bills
         self.utilbill_loader.reset_mock()
         self.utilbill_loader.load_real_utilbills.return_value = [
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class, processed=True)
+                utility=self.utility, rate_class=self.rate_class,
+                processed=True)
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
         # should be included here
-        self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
+        self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # the same is true when the period of 'u' starts after the period of
         # the existing bills
@@ -153,10 +158,11 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.return_value = [
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class, processed=True)
-        self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
+                utility=self.utility, rate_class=self.rate_class,
+                processed=True)
+        self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # however, when u belongs to the same account as an existing bill,
         # and that bill meets the requirements to be its "predecessor",
@@ -164,20 +170,47 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.reset_mock()
         u.customer.account = '10001'
         self.utilbill_loader.load_real_utilbills.return_value = [
-            self.utilbill_1,
-                                            self.utilbill_2, self.utilbill_3]
+            self.utilbill_1, self.utilbill_2, self.utilbill_3]
         self.utilbill_loader.get_last_real_utilbill.side_effect = None
         self.utilbill_loader.get_last_real_utilbill.return_value = \
             self.utilbill_1
-        rs = self.dao.get_predicted_charges(u)
+        charges = self.fpm.get_predicted_charges(u)
         self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class, processed=True)
+                utility=self.utility, rate_class=self.rate_class,
+                processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
-                self.charge_c_unshared], rs)
+                self.charge_c_unshared], charges)
+
+    def test_missing_dates(self):
+        """Test predicting charges for bills that have a missing start or
+        end date or both.
+        """
+        u = Mock(autospec=UtilBill)
+        u.utility_account.account = '00004'
+        u.processed = False
+        u.utility = self.utility
+        u.rate_class = self.rate_class
+        u.charges = []
+        u.get_service.return_value = 'gas'
+
+        self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1]
+
+        # if no dates are known, no shared charges are generated
+        u.period_start, u.period_end = None, None
+        charges = self.fpm.get_predicted_charges(u)
+        self.assertEqual([], charges)
+
+        # if only one date is known, that's enough to guess the charges using an
+        # estimate of the other date
+        u.period_start, u.period_end = None, date(2000,2,1)
+        self.assertEqual([self.charge_a_shared],
+                         self.fpm.get_predicted_charges(u))
+        u.period_start, u.period_end = date(2000,1,1), None
+        self.assertEqual([self.charge_a_shared],
+                         self.fpm.get_predicted_charges(u))
 
 
-    # TODO test that RS of the bill being predicted is ignored, whether or not
-    # that RS exists in the db yet
-
-if __name__ == '__main__':
-    unittest.main(failfast=True)
+    # TODO test that the bill whose charges are being generated is ignored when
+    # collecting the set of bills to generate charges
