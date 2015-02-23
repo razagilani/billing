@@ -77,9 +77,9 @@ class TestBillEntryWeb(unittest.TestCase):
 
         TestCaseWithSetup.truncate_tables()
         s = Session()
-        utility = Utility('Example Utility', Address())
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility = Utility(name='Example Utility', address=Address())
+        utility1 = Utility(name='Empty Utility', address=Address())
+        utility2 = Utility(name='Some Other Utility', address=Address())
         ua1 = UtilityAccount('Account 1', '11111', utility, None, None,
                              Address(), Address(), '1')
         ua2 = UtilityAccount('Account 2', '22222', utility, None, None,

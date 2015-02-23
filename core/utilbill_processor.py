@@ -488,7 +488,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name, Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address('', '', '', '', ''))
             return result, True
         return result, False
 
