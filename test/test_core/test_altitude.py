@@ -74,7 +74,8 @@ class TestWithDB(TestCase):
         s = Session()
         ua = UtilityAccount('example', '00001', self.u,
                             Supplier('s', Address()),
-                            RateClass('r', self.u, 'electric'),
+                            RateClass(name='r', utility=self.u,
+                                      service='electric'),
                             Address(), Address(), account_number='1')
         s.add(ua)
 

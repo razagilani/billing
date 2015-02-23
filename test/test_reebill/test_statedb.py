@@ -38,7 +38,8 @@ class StateDBTest(TestCaseWithSetup):
         test_supplier = Supplier('FB Test Suplier', blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
                             test_utility, test_supplier,
-                            RateClass('FB Test Rate Class', test_utility, 'gas'),
+                            RateClass(name='FB Test Rate Class',
+                                      utility=test_utility, service='gas'),
                             blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
                             'thermal', 'example@example.com',

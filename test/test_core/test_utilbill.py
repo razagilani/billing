@@ -29,8 +29,10 @@ class UtilBillTest(TestCase):
         self.supplier = Supplier('supplier', Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'), Address(), Address())
-        self.rate_class = RateClass('rate class', self.utility, 'gas')
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
+        self.rate_class = RateClass(name='rate class', utility=self.utility,
+                                    service='gas')
 
     def tearDown(self):
         Session.remove()
@@ -74,12 +76,12 @@ class UtilBillTest(TestCase):
     def test_processed_editable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'), Address(),
-            Address())
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete, self.utility,
-                            self.supplier, RateClass('rate class',
-                                                     self.utility, 'gas'),
-                            Address(), Address(), period_start=date(2000, 1, 1),
+                            self.supplier, RateClass(name='rate class',
+                            utility=self.utility, service='gas'), Address(),
+                            Address(), period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
 
         self.assertFalse(utilbill.processed)
@@ -92,33 +94,35 @@ class UtilBillTest(TestCase):
     def test_processable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'), Address(),
-            Address())
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
         for attr in ('period_start', 'period_end', 'rate_class', 'utility',
                      'supplier'):
             ub = UtilBill(
                 utility_account, UtilBill.Complete, self.utility, self.supplier,
-                RateClass('rate class', self.utility, 'gas'), Address(),
-                Address(), period_start=date(2000, 1, 1),
-                period_end=date(2000, 2, 1))
+                RateClass(name='rate class', utility=self.utility,
+                        service='gas'), Address(), Address(),
+                period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
             setattr(ub, attr, None)
             self.assertRaises(NotProcessable, ub.check_processable)
 
         ub = UtilBill(
             utility_account, UtilBill.Complete, self.utility, self.supplier,
-            RateClass('rate class', self.utility, 'gas'), Address(),
-            Address(), period_start=date(2000, 1, 1),
+            RateClass(name='rate class', utility=self.utility, service='gas')
+            , Address(), Address(), period_start=date(2000, 1, 1),
             period_end=date(2000, 2, 1))
         self.assertTrue(ub.processable())
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'),
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'),
             Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete,
                             self.utility, self.supplier,
-                            RateClass('rate class', self.utility, 'gas'), Address(),
+                            RateClass(name='rate class', utility=self.utility,
+                                      service='gas'), Address(),
                             Address(), period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
 
@@ -163,10 +167,11 @@ class UtilBillTest(TestCase):
         utility = Utility('utility', Address())
         utilbill = UtilBill(UtilityAccount('someone', '98989',
                 fb_utility, 'FB Test Supplier',
-                RateClass('FB Test Rate Class', fb_utility, 'gas'),
+                RateClass(name='FB Test Rate Class', utility=fb_utility,
+                          service='gas'),
                 Address(), Address()), UtilBill.Complete,
                 utility, Supplier('supplier', Address()),
-                RateClass('rate class', utility, 'gas'),
+                RateClass(name='rate class', utility=utility, service='gas'),
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
         register = Register(utilbill, "ABCDEF description",
@@ -357,12 +362,12 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
-                RateClass('rate class', utility, 'gas'), Address(),
-                Address())
+                RateClass(name='rate class', utility=utility, service='gas'),
+                Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete,
-                utility, supplier, RateClass('rate class', utility, 'gas'),
-                Address(), Address(), period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+                utility, supplier, RateClass(name='rate class',
+                utility=utility, service='gas'), Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '',
                 '', 'kWh', False, "total", '', '',
                 quantity=150,
@@ -393,12 +398,12 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
-                RateClass('rate class', utility, 'gas'), Address(),
-                Address())
+                RateClass(name='rate class', utility=utility, service='gas'),
+                Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete,
-                utility, supplier, RateClass('rate class', utility, 'gas')
-                , Address(), Address(), period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+                utility, supplier, RateClass(name='rate class',
+                utility=utility, service='gas'), Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.charges = [
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
@@ -433,12 +438,12 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
-                RateClass('rate class', utility, 'gas'), Address(),
-                Address())
+                RateClass(name='rate class', utility=utility, service='gas'),
+                Address(), Address())
         utilbill = UtilBill(utility_account, UtilBill.Complete,
-                utility, supplier, RateClass('rate class', utility, 'gas'),
-                Address(), Address(), period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+                utility, supplier, RateClass(name='rate class',
+                utility=utility, service='gas'), Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '',
                 '', 'kWh', False, "total", '', '',
                 quantity=150,

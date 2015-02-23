@@ -24,9 +24,10 @@ class UtilityAccountTest(TestCase):
         self.supplier = Supplier('supplier', Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'),
-            Address(), Address())
-        self.rate_class = RateClass('rate class', self.utility, 'gas')
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
+        self.rate_class = RateClass(name='rate class', utility=self.utility,
+                                    service='gas')
 
     def tearDown(self):
         Session.remove()

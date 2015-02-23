@@ -245,8 +245,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '1000001',
                 utility, supplier,
-                RateClass('rate class', utility, 'gas'), Address(),
-                Address())
+                RateClass(name='rate class', utility=utility, service='gas'),
+                Address(), Address())
         s.add(utility_account)
         s.commit()
         self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
