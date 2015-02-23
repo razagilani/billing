@@ -13,7 +13,7 @@ from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-from flask.ext.login import LoginManager, login_user, login_required, logout_user, current_user
+from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
