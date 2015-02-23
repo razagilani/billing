@@ -452,7 +452,7 @@ class UtilBillTest(TestCase):
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)
         utilbill.processed = True
-        self.assertRaises(ProcessedBillError, utilbill.compute_charges())
+        self.assertRaises(ProcessedBillError, utilbill.compute_charges)
         self.assertFalse(utilbill.editable())
 
     def test_get_total_energy_consumption(self):

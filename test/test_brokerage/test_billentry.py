@@ -2,21 +2,55 @@ from datetime import datetime
 import unittest
 from json import loads
 
+from mock import Mock
+
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
 
-# this may change
-URL_PREFIX = '/utilitybills/'
+class TestBEUtilBill(unittest.TestCase):
+    """Unit test for BEUtilBill.
+    """
+    def setUp(self):
+        utility = Mock(autospec=Utility)
+        rate_class = Mock(autospec=RateClass)
+        ua = UtilityAccount('Account 1', '11111', utility, None, None,
+                            Address(), Address(), '1')
+        self.user = Mock(autospec=BillEntryUser)
+        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None, rate_class,
+                             Address(), Address())
 
+    def test_entry(self):
+        self.assertFalse(self.ub.is_entered())
 
-class TestPGWeb(unittest.TestCase):
+        the_date = datetime(2000,1,1,0)
+        self.ub.enter(self.user, the_date)
+        self.assertEqual(the_date, self.ub.get_date())
+        self.assertEqual(self.user, self.ub.get_user())
+        self.assertTrue(self.ub.is_entered())
+
+        self.ub.un_enter()
+        self.assertEqual(None, self.ub.get_date())
+        self.assertEqual(None, self.ub.get_user())
+        self.assertFalse(self.ub.is_entered())
+
+        self.ub.processed = True
+        self.assertEqual(None, self.ub.get_date())
+        self.assertEqual(None, self.ub.get_user())
+        self.assertTrue(self.ub.is_entered())
+
+class TestBillEntryWeb(unittest.TestCase):
+    """Integration tests for the Bill Entry back end.
+    """
     maxDiff = None
+
+    # this may change
+    URL_PREFIX = '/utilitybills/'
 
     def assertJson(self, expected, actual):
         '''AssertEqual for JSON where the things being compared can be in
@@ -108,7 +142,7 @@ class TestPGWeb(unittest.TestCase):
         TestCaseWithSetup.truncate_tables()
 
     def test_accounts(self):
-        rv = self.app.get(URL_PREFIX + 'accounts')
+        rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
               'id': 1,
@@ -122,7 +156,7 @@ class TestPGWeb(unittest.TestCase):
               'utility_account_number': '2'}], rv.data)
 
     def test_utilbills_list(self):
-        rv = self.app.get(URL_PREFIX + 'utilitybills?id=3')
+        rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
         self.assertJson(
             {'results': 1,
              'rows': [
@@ -148,7 +182,7 @@ class TestPGWeb(unittest.TestCase):
              ], }, rv.data)
 
     def test_charges_list(self):
-        rv = self.app.get(URL_PREFIX + 'charges?utilbill_id=1')
+        rv = self.app.get(self.URL_PREFIX + 'charges?utilbill_id=1')
         self.assertJson(
             {'rows': [
                 {"target_total": 2.0,
@@ -157,7 +191,7 @@ class TestPGWeb(unittest.TestCase):
             ],
              'results': 1,
             }, rv.data)
-        rv = self.app.get(URL_PREFIX + 'charges?utilbill_id=2')
+        rv = self.app.get(self.URL_PREFIX + 'charges?utilbill_id=2')
         self.assertJson(
             {'rows': [
                 {
@@ -175,7 +209,7 @@ class TestPGWeb(unittest.TestCase):
             }, rv.data)
 
     def test_charge(self):
-        rv = self.app.put(URL_PREFIX + 'charges/2', data=dict(
+        rv = self.app.put(self.URL_PREFIX + 'charges/2', data=dict(
             id=2,
             rsi_binding='NON_LINEAR',
             target_total=1
@@ -191,7 +225,7 @@ class TestPGWeb(unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
-        rv = self.app.put(URL_PREFIX + 'utilitybills/1', data=dict(
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             period_start=datetime(2000, 1, 1).isoformat()
         ))
@@ -220,7 +254,7 @@ class TestPGWeb(unittest.TestCase):
             }, rv.data)
 
     def test_rate_class(self):
-        rv = self.app.get(URL_PREFIX + 'utilitybills?id=3')
+        rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
         self.assertJson(
             {'results': 1,
              'rows': [
@@ -245,7 +279,7 @@ class TestPGWeb(unittest.TestCase):
                  }
              ], }, rv.data)
 
-        rv = self.app.put(URL_PREFIX + 'utilitybills/1', data=dict(
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
                 utility = "Empty Utility"
         ))
@@ -276,7 +310,7 @@ class TestPGWeb(unittest.TestCase):
             }, rv.data
         )
 
-        rv = self.app.put(URL_PREFIX + 'utilitybills/1', data=dict(
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 10,
                 utility = "Some Other Utility"
         ))
@@ -306,3 +340,4 @@ class TestPGWeb(unittest.TestCase):
             },
             }, rv.data
         )
+
