@@ -241,7 +241,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
     def test_update_account_number(self):
         s = Session()
-        utility = Utility('utility', Address())
+        utility = Utility(name='utility', address=Address())
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '1000001',
                 utility, supplier,
