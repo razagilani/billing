@@ -21,7 +21,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         utility =  Utility(name='Test Utility', address=Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
-                            Supplier('Test Supplier', Address()),
+                            Supplier(name='Test Supplier', address=Address()),
                             RateClass(name='FB Test Rate Class',
                                       utility=utility, service='gas'),
                             blank_address, blank_address)
@@ -42,7 +42,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         washington_gas = utility_account.fb_utility
         supplier = utility_account.fb_supplier
         pepco = Utility(name='pepco', address=Address())
-        other_supplier = Supplier('Other Supplier', Address())
+        other_supplier = Supplier(name='Other Supplier', address=Address())
         rateclass1 = RateClass(name='DC Non Residential Non Heat',
                                utility=washington_gas, service='gas')
         rateclass2 = RateClass(name='whatever', utility=pepco,

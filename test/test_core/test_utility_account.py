@@ -21,7 +21,7 @@ class UtilityAccountTest(TestCase):
         TestCaseWithSetup.truncate_tables()
 
         self.utility = Utility(name='utility', address=Address())
-        self.supplier = Supplier('supplier', Address())
+        self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,

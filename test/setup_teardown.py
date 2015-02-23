@@ -234,7 +234,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'XX', '12345')
 
         uc = Utility(name='Test Utility Company Template', address=ca1)
-        supplier = Supplier('Test Supplier', ca1)
+        supplier = Supplier(name='Test Supplier', address=ca1)
 
         ca2 = Address('Test Other Utilco Address',
                       '123 Utilco Street',
@@ -242,7 +242,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'XX', '12345')
 
         other_uc = Utility(name='Other Utility', address=ca1)
-        other_supplier = Supplier('Other Supplier', ca1)
+        other_supplier = Supplier(name='Other Supplier', address=ca1)
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
@@ -253,8 +253,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
-        reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
-                            'thermal', 'example@example.com', utility_account)
+        reebill_customer = ReeBillCustomer(name='Test Customer',
+                                discount_rate=.12, late_charge_rate=.34,
+                                service='thermal',
+                                bill_email_recipient='example@example.com',
+                                utility_account=utility_account)
         session.add(utility_account)
         session.add(reebill_customer)
 
@@ -262,10 +265,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         utility_account2 = UtilityAccount(
             'Test Customer 2', '100000', uc, supplier, rate_class, fa_ba2,
             fa_sa2, account_number='2')
-        reebill_customer2 = ReeBillCustomer('Test Customer 2',  .12, .34,
-                                            'thermal',
-                                           'example2@example.com',
-                                           utility_account2)
+        reebill_customer2 = ReeBillCustomer(name='Test Customer 2',
+                                discount_rate=.12, late_charge_rate=.34,
+                                service='thermal',
+                                bill_email_recipient='example2@example.com',
+                                utility_account=utility_account2)
         session.add(utility_account2)
         session.add(reebill_customer2)
 
@@ -317,8 +321,10 @@ class TestCaseWithSetup(test_utils.TestCase):
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)
         reebill_customer4 = ReeBillCustomer(
-            'Test Customer 3 No Rate Strucutres', .12, .34, 'thermal',
-            'example2@example.com', utility_account4)
+            name='Test Customer 3 No Rate Strucutres', discount_rate=.12,
+            late_charge_rate=.34, service='thermal',
+            bill_email_recipient='example2@example.com',
+            utility_account=utility_account4)
 
         session.add(utility_account4)
         session.add(reebill_customer4)
