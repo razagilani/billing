@@ -437,8 +437,9 @@ class ReeBillCustomer(Base):
     def set_late_charge_rate(self, value):
         self.latechargerate = value
 
-    def __init__(self, name, discount_rate, late_charge_rate,
-                service, bill_email_recipient, utility_account):
+    def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
+                service='thermal', bill_email_recipient='',
+                utility_account=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
