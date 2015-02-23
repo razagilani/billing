@@ -86,8 +86,10 @@ class TestBillEntryWeb(unittest.TestCase):
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
                              Address(), Address(), '3')
-        rate_class = RateClass('Some Rate Class', utility, 'gas')
-        rate_class1 = RateClass('Other Rate Class', utility, 'electric')
+        rate_class = RateClass(name='Some Rate Class', utility=utility,
+                               service='gas')
+        rate_class1 = RateClass(name='Other Rate Class', utility=utility,
+                                service='electric')
         s.add_all([rate_class, rate_class1])
         ua1.id, ua2.id, ua3.id = 1, 2, 3
         utility.id, utility1.id, utility2.id = 1, 2, 10
