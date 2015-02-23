@@ -59,7 +59,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         shared=False,
                                         has_charge=False)
 
-        self.utility = Utility('Utility', Address())
+        self.utility = Utility(name='Utility', address=Address())
         self.rate_class = RateClass(name='Rate Class', utility=self.utility,
                                     service='gas')
 

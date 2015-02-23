@@ -20,7 +20,7 @@ class UtilityAccountTest(TestCase):
         init_model()
         TestCaseWithSetup.truncate_tables()
 
-        self.utility = Utility('utility', Address())
+        self.utility = Utility(name='utility', address=Address())
         self.supplier = Supplier('supplier', Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,

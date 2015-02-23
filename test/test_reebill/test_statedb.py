@@ -34,7 +34,8 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables()
         blank_address = Address()
-        test_utility = Utility('FB Test Utility Name', blank_address)
+        test_utility = Utility(name='FB Test Utility Name',
+                               address=blank_address)
         test_supplier = Supplier('FB Test Suplier', blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
                             test_utility, test_supplier,
@@ -76,7 +77,7 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility('FB Test Utility', Address())
+        fb_test_utility = Utility(name='FB Test Utility', address=Address())
         fb_test_supplier = Supplier('FB Test Supplier', Address())
         rate_class = session.query(RateClass).one()
         utility_account1 = UtilityAccount('some_account', '11111',
