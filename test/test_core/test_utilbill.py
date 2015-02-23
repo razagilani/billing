@@ -26,7 +26,7 @@ class UtilBillTest(TestCase):
         session.query(UtilityAccount).delete()
 
         self.utility = Utility(name='utility', address=Address())
-        self.supplier = Supplier('supplier', Address())
+        self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
@@ -170,7 +170,7 @@ class UtilBillTest(TestCase):
                 RateClass(name='FB Test Rate Class', utility=fb_utility,
                           service='gas'),
                 Address(), Address()), UtilBill.Complete,
-                utility, Supplier('supplier', Address()),
+                utility, Supplier(name='supplier', address=Address()),
                 RateClass(name='rate class', utility=utility, service='gas'),
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
@@ -359,7 +359,7 @@ class UtilBillTest(TestCase):
 
     def test_compute_charges_independent(self):
         utility = Utility(name='utility', address=Address())
-        supplier = Supplier('supplier', Address())
+        supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
@@ -395,7 +395,7 @@ class UtilBillTest(TestCase):
         All such charges should have errors.
         '''
         utility = Utility(name='utility', address=Address())
-        supplier = Supplier('supplier', Address())
+        supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
@@ -435,7 +435,7 @@ class UtilBillTest(TestCase):
         test for making sure processed bills cannot be edited
         '''
         utility = Utility(name='utility', address=Address())
-        supplier = Supplier('supplier', Address())
+        supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
