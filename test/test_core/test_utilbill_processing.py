@@ -780,7 +780,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(id_a, processed=True)
         self.utilbill_processor.update_utilbill_metadata(id_b, processed=True)
         self.utilbill_processor.update_utilbill_metadata(id_c, processed=True)
-        self.utilbill_processor.regenerate_uprs(id_a_2)
+        self.utilbill_processor.regenerate_charges(id_a_2)
         # the UPRS of A's 2nd bill should now match B and C, i.e. it
         # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
         # because together the other two have greater weight than A's
