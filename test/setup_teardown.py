@@ -248,7 +248,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
                         other_supplier])
         session.flush()
-        rate_class = RateClass('Test Rate Class Template', uc, 'gas')
+        rate_class = RateClass(name='Test Rate Class Template', utility=uc,
+                               service='gas')
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
@@ -310,7 +311,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
-        other_rate_class = RateClass('Other Rate Class', other_uc, 'gas')
+        other_rate_class = RateClass(name='Other Rate Class',
+                                     utility=other_uc, service='gas')
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)
