@@ -4,10 +4,13 @@ from datetime import date
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from reebill.state import ReeBill, ReeBillCustomer
+from test.setup_teardown import TestCaseWithSetup
+
 
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
+        TestCaseWithSetup.truncate_tables()
         washgas = Utility(name='washgas', address=Address('', '', '', '',
                                                           ''))
         supplier = Supplier('supplier', Address())
@@ -46,6 +49,9 @@ class ReebillTest(unittest.TestCase):
         Session().add_all([self.utilbill, self.reebill])
         self.reebill.replace_readings_from_utility_bill_registers(
                 self.utilbill)
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
