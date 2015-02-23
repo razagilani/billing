@@ -523,16 +523,6 @@ class UtilbillProcessor(object):
                                service=service)
         return result
 
-    #def create_utility(self, name):
-        '''Create and return a new Utility with the given name. A new
-        RateClass for the utility is also added.
-        '''
-        '''s = Session()
-        new_utility = Utility(name=name, address=Address())
-        new_rate_class = RateClass('Unknown rate class for %s' % name)
-        new_utility.rate_classes.append(new_rate_class)
-        s.add_all([new_utility, new_rate_class])'''
-
     def update_utility_account_number(self, utility_account_id,
                                       utility_account_number):
         session = Session()
