@@ -77,17 +77,19 @@ class TestBillEntryWeb(unittest.TestCase):
 
         TestCaseWithSetup.truncate_tables()
         s = Session()
-        utility = Utility('Example Utility', Address())
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility = Utility(name='Example Utility', address=Address())
+        utility1 = Utility(name='Empty Utility', address=Address())
+        utility2 = Utility(name='Some Other Utility', address=Address())
         ua1 = UtilityAccount('Account 1', '11111', utility, None, None,
                              Address(), Address(), '1')
         ua2 = UtilityAccount('Account 2', '22222', utility, None, None,
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
                              Address(), Address(), '3')
-        rate_class = RateClass('Some Rate Class', utility, 'gas')
-        rate_class1 = RateClass('Other Rate Class', utility, 'electric')
+        rate_class = RateClass(name='Some Rate Class', utility=utility,
+                               service='gas')
+        rate_class1 = RateClass(name='Other Rate Class', utility=utility,
+                                service='electric')
         s.add_all([rate_class, rate_class1])
         ua1.id, ua2.id, ua3.id = 1, 2, 3
         utility.id, utility1.id, utility2.id = 1, 2, 10

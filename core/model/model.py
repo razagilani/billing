@@ -215,7 +215,7 @@ class Utility(Base):
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -238,7 +238,7 @@ class Supplier(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -266,7 +266,7 @@ class RateClass(Base):
 
     utility = relationship('Utility')
 
-    def __init__(self, name, utility, service):
+    def __init__(self, name='', utility=None, service='gas'):
         self.name = name
         self.utility = utility
         self.service = service

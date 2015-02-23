@@ -323,13 +323,14 @@ class ExporterDataBookTest(unittest.TestCase):
         self.exp = Exporter(ReeBillDAO(logger=logger), PaymentDAO())
 
         s = Session()
-        utility = Utility('New Utility', Address())
+        utility = Utility(name='New Utility', address=Address())
         s.add(utility)
 
-        supplier = Supplier('New Supplier', Address())
+        supplier = Supplier(name='New Supplier', address=Address())
         s.add(supplier)
 
-        rate_class = RateClass('New Rate Class', utility, 'electric')
+        rate_class = RateClass(name='New Rate Class', utility=utility,
+                               service='electric')
         s.add(rate_class)
 
         utility_account = UtilityAccount(

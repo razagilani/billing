@@ -8,16 +8,20 @@ from reebill.state import ReeBill, ReeBillCustomer
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''))
+        washgas = Utility(name='washgas', address=Address('', '', '', '',
+                                                          ''))
         supplier = Supplier('supplier', Address())
-        c_rate_class = RateClass('Test Rate Class', washgas, 'gas')
+        c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
+                                 service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
                             washgas, supplier, c_rate_class,
                             Address(), Address())
-        reebill_customer = ReeBillCustomer('someone', '11111', 0.5, 0.1,
-                            'example@example.com', utility_account)
-        u_rate_class = RateClass('DC Non Residential Non Heat', washgas,
-                                 'gas')
+        reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
+                                late_charge_rate=0.1, service='thermal',
+                                bill_email_recipient='example@example.com',
+                                utility_account=utility_account)
+        u_rate_class = RateClass(name='DC Non Residential Non Heat',
+                                 utility=washgas, service='gas')
         self.utilbill = UtilBill(utility_account, UtilBill.Complete, washgas,
                                  supplier,
                                  u_rate_class,

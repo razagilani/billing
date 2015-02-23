@@ -125,7 +125,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         s = Session()
         guid = '9980ff2b-df6f-4a2f-8e01-e5f0a3ec09af'
-        utility = Utility('Some Utility', Address())
+        utility = Utility(name='Some Utility', address=Address())
         s.add(AltitudeUtility(utility, guid))
 
         message = create_channel_message_body(dict(
