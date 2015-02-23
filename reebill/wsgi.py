@@ -669,7 +669,7 @@ class UtilBillResource(RESTResource):
         journal.UtilBillDeletedEvent.save_instance(
             cherrypy.session['user'], account,
             utilbill.period_start, utilbill.period_end,
-            utilbill.service, deleted_path)
+            utilbill.get_service(), deleted_path)
         return True, {}
 
 
