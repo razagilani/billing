@@ -149,6 +149,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def truncate_tables():
         session = Session()
+        Session.rollback()
         for t in [
             "altitude_utility",
             "altitude_supplier",

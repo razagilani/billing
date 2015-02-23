@@ -129,8 +129,9 @@ class TestAltitudeBillStorage(TestCase):
     def setUp(self):
         TestCaseWithSetup.truncate_tables()
         utility = Utility(name='example', address=None)
-        rate_class = RateClass('Rate Class', utility, 'electric')
-        supplier = Supplier('Supplier', Address())
+        rate_class = RateClass(name='Rate Class', utility=utility,
+                               service='electric')
+        supplier = Supplier(name='Supplier', address=Address())
         ua = UtilityAccount('', '', utility, None, None, Address(),
                             Address())
         self.utilbill = UtilBill(
