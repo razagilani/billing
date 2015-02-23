@@ -25,7 +25,7 @@ class UtilBillTest(TestCase):
         session.query(ReeBillCustomer).delete()
         session.query(UtilityAccount).delete()
 
-        self.utility = Utility('utility', Address())
+        self.utility = Utility(name='utility', address=Address())
         self.supplier = Supplier('supplier', Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
@@ -163,8 +163,8 @@ class UtilBillTest(TestCase):
             " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
-        fb_utility = Utility('FB Test Utility', Address())
-        utility = Utility('utility', Address())
+        fb_utility = Utility(name='FB Test Utility', address=Address())
+        utility = Utility(name='utility', address=Address())
         utilbill = UtilBill(UtilityAccount('someone', '98989',
                 fb_utility, 'FB Test Supplier',
                 RateClass(name='FB Test Rate Class', utility=fb_utility,
@@ -358,7 +358,7 @@ class UtilBillTest(TestCase):
         self.assertEqual(0, utilbill.get_total_charges())
 
     def test_compute_charges_independent(self):
-        utility = Utility('utility', Address())
+        utility = Utility(name='utility', address=Address())
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
@@ -394,7 +394,7 @@ class UtilBillTest(TestCase):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
-        utility = Utility('utility', Address())
+        utility = Utility(name='utility', address=Address())
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
@@ -434,7 +434,7 @@ class UtilBillTest(TestCase):
         '''
         test for making sure processed bills cannot be edited
         '''
-        utility = Utility('utility', Address())
+        utility = Utility(name='utility', address=Address())
         supplier = Supplier('supplier', Address())
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,

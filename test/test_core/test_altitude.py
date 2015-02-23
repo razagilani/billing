@@ -42,7 +42,7 @@ class TestWithDB(TestCase):
         # broken into smaller parts
         TestCaseWithSetup.truncate_tables()
 
-        self.u = Utility('A Utility', Address())
+        self.u = Utility(name='A Utility', address=Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
@@ -59,7 +59,7 @@ class TestWithDB(TestCase):
         s = Session()
         s.add_all([self.u, self.au])
         s.add(AltitudeUtility(self.u, 'def'))
-        v = Utility('Other', Address())
+        v = Utility(name='Other', address=Address())
         s.add(AltitudeUtility(v, 'abc'))
         s.flush()
 
@@ -120,8 +120,8 @@ class TestAltitudeBillWithDB(TestCase):
     def setUp(self):
         TestCaseWithSetup.truncate_tables()
 
-        self.u = Utility('A Utility', Address())
-        utility = Utility('example', None)
+        self.u = Utility(name='A Utility', address=Address())
+        utility = Utility(name='example', address=None)
         ua = UtilityAccount('', '', utility, None, None, Address(), Address())
         self.utilbill = UtilBill(ua, UtilBill.Complete, utility, None, None, Address(), Address())
 

@@ -8,7 +8,8 @@ from reebill.state import ReeBill, ReeBillCustomer
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''))
+        washgas = Utility(name='washgas', address=Address('', '', '', '',
+                                                          ''))
         supplier = Supplier('supplier', Address())
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
                                  service='gas')
