@@ -326,7 +326,7 @@ class ExporterDataBookTest(unittest.TestCase):
         utility = Utility(name='New Utility', address=Address())
         s.add(utility)
 
-        supplier = Supplier('New Supplier', Address())
+        supplier = Supplier(name='New Supplier', address=Address())
         s.add(supplier)
 
         rate_class = RateClass(name='New Rate Class', utility=utility,
