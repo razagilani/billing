@@ -140,12 +140,10 @@ def get_one_altitude_account_guid_for_utility_account(utility_account):
     exactly one, or None otherwise.
     """
     s = Session()
-    try:
-        result = s.query(AltitudeAccount).filter_by(
-            utility_account=utility_account).one()
-    except NoResultFound:
-        return None
-    return result.guid
+    q = s.query(AltitudeAccount).filter_by(utility_account=utility_account)
+    if q.count() == 1:
+        return q.one().guid
+    return None
 
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount

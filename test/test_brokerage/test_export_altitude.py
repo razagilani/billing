@@ -65,7 +65,7 @@ class TestExportAltitude(TestCase):
         altitude_converter.get_guid_for_supplier\
             .return_value = 'B' * 36
         altitude_converter.get_one_altitude_account_guid_for_utility_account\
-            .return_value = 'C' * 36
+            .side_effect = ['C' * 36, None]
         self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
                       str(uuid5(NAMESPACE_DNS, 'b'))]
         def uuid_func(count=[0]):
@@ -102,7 +102,7 @@ class TestExportAltitude(TestCase):
                              '2001-01-02T00:00:00Z',
                          ), dataset[0])
         self.assertEqual((
-                             'C' * 36,
+                             '',
                              '22222',
                              self.uuids[1],
                              'A' * 36,
