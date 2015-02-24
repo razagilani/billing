@@ -36,9 +36,6 @@ Ext.define('ReeBill.controller.Charges', {
     },{
         ref: 'formulaField',
         selector: 'formulaField'
-    },{
-        ref: 'groupTextField',
-        selector: 'groupTextField'
     }],
 
     init: function() {
@@ -71,9 +68,6 @@ Ext.define('ReeBill.controller.Charges', {
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
             }
-            /*'groupTextField':{
-                specialkey: this.handleGroupTextFieldEnter
-            }*/
         });
 
         this.getChargesStore().on({
@@ -118,19 +112,6 @@ Ext.define('ReeBill.controller.Charges', {
     },
 
     /**
-     * Handle a special key press in the GroupTextField
-     */
-   handleGroupTextFieldEnter: function(f, e) {
-        var field = this.getGroupTextField();
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
-
-        if (e.getKey() == e.ENTER) {
-            selected.set('', field.getValue());
-            this.getChargesGrid().focus();
-        }
-    },
-
-    /**
      * Handle the row selection.
      */
     handleRowSelect: function() {
@@ -143,22 +124,18 @@ Ext.define('ReeBill.controller.Charges', {
      },
 
     /**
-     * Update the GroupTextField
+     * Update the textFields
      */
     updateTextFields: function(){
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
-        var groupTextField = this.getGroupTextField();
         var formulaField = this.getFormulaField();
 
         if(hasSelections && selected !== undefined){
-            groupTextField.setDisabled(false);
             formulaField.setDisabled(false);
             formulaField.setValue(selected.get('quantity_formula'));
         }else{
-            groupTextField.setDisabled(true);
-            groupTextField.setValue('');
             formulaField.setDisabled(true);
             formulaField.setValue('');
         }
