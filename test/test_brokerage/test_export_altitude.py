@@ -169,16 +169,16 @@ class TestAltitudeBillStorage(TestCase):
         csv_file = StringIO()
         self.pgae.write_csv(s.query(UtilBill).all(), csv_file)
         expected_csv = (
-            'customer_account_guid,billing_customer_id,utility_bill_guid,utility_guid,supplier_guid,'
-            'service_type,utility_account_number,billing_period_start_date,'
-            'billing_period_end_date,next_estimated_meter_read_date,'
-            'total_usage,total_supply_charge,rate_class,'
-            'secondary_utility_account_number,service_address_street,'
-            'service_address_city,service_address_state,'
+            'customer_account_guid,billing_customer_id,utility_bill_guid,'
+            'utility_guid,supplier_guid,service_type,utility_account_number,'
+            'billing_period_start_date,billing_period_end_date,'
+            'next_estimated_meter_read_date,total_usage,total_supply_charge,'
+            'rate_class,secondary_utility_account_number,'
+            'service_address_street,service_address_city,service_address_state,'
             'service_address_postal_code,create_date,modified_date\r\n'
             'aaa,,bbb,uuu,sss,electric,,'
-            '2000-01-01T00:00:00Z,2000-01-01T00:00:00Z,2000-01-31T00:00:00Z,0,0,Rate Class,,'
-            '1 Service St.,,,,,%s\r\n' %
+            '2000-01-01T00:00:00Z,2000-01-01T00:00:00Z,2000-01-31T00:00:00Z,0,'
+            '0,Rate Class,,1 Service St.,,,,,%s\r\n' %
             self.utilbill.date_modified.strftime(ISO_8601_DATETIME))
         csv_file.seek(0)
         actual_csv = csv_file.read()
