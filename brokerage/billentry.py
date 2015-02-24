@@ -418,8 +418,6 @@ api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 # apparently needed for Apache
 application = app
 
-
-
 # enable admin UI
 admin = make_admin(app)
 
@@ -427,5 +425,4 @@ admin = make_admin(app)
 def handler(error):
     Session.rollback()
     flash('This record cannot be deleted', 'error')
-
     return redirect(url_for('reebillcustomer.index_view'))
