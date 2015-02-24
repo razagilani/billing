@@ -563,6 +563,7 @@ class UtilBill(Base):
         return len(self._utilbill_reebills) > 0
 
     def add_charge(self, **charge_kwargs):
+        self.check_editable()
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
@@ -629,6 +630,7 @@ class UtilBill(Base):
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
         """
+        self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
                    self.registers}
         sorted_charges = self.ordered_charges()
@@ -713,6 +715,7 @@ class UtilBill(Base):
         return total_register.quantity
 
     def set_total_energy(self, quantity):
+        self.check_editable()
         total_register = next(r for r in self.registers if
                               r.register_binding == 'REG_TOTAL')
         total_register.quantity = quantity

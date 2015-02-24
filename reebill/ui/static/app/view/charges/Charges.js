@@ -6,7 +6,6 @@ Ext.define('ReeBill.view.charges.Charges', {
         'Ext.data.*',
         'Ext.dd.*',
         'ReeBill.view.charges.FormulaField',
-        'ReeBill.view.charges.GroupTextField',
         'ReeBill.view.charges.RoundRuleTextField'
     ],
 
@@ -41,8 +40,13 @@ Ext.define('ReeBill.view.charges.Charges', {
         }],
         listeners: {
             drop: function(node, data, overModel, dropPosition, eOpts) {
-                data.records[0].set('group', overModel.get('group'));
-                Ext.getStore('Charges').group('group', 'ASC');
+                if (overModel.store.groupers.keys.length > 0){
+                    var groupByField = overModel.store.groupers.keys[0];
+                    Ext.Array.each(data.records, function(record){
+                        record.set(groupByField, overModel.get(groupByField));
+                    });
+                    Ext.getStore('Charges').group(groupByField, 'ASC');
+                }
             }
         }
     },
@@ -185,9 +189,6 @@ Ext.define('ReeBill.view.charges.Charges', {
         },'-',{
             xtype: 'formulaField',
             name: 'formulaField'
-        },'-',{
-            xtype: 'groupTextField',
-            name: 'groupTextField'
         }]
     }]
 });
