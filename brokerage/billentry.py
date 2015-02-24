@@ -21,6 +21,7 @@ from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
+from sqlalchemy.exc import DatabaseError, InvalidRequestError, IntegrityError
 
 from core import initialize, init_config
 from core.bill_file_handler import BillFileHandler
@@ -370,7 +371,6 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
-
 @app.before_request
 def before_request():
     from core import config
@@ -384,7 +384,6 @@ def before_request():
 def db_commit(response):
     Session.commit()
     return response
-
 
 @app.route('/login')
 def login():
@@ -419,6 +418,14 @@ api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 # apparently needed for Apache
 application = app
 
-# enable admin UI
-make_admin(app)
 
+
+# enable admin UI
+admin = make_admin(app)
+
+@app.errorhandler(AssertionError)
+def handler(error):
+    Session.rollback()
+    flash('This record cannot be deleted', 'error')
+
+    return redirect(url_for('reebillcustomer.index_view'))
