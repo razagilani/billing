@@ -14,7 +14,7 @@ from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_, and_
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect
 from flask.ext.restful import Api, Resource, marshal
@@ -334,13 +334,21 @@ class EntryReportResource(BaseResource):
         end = dateutil_parser.parse(args['end'])
 
         s = Session()
-        q = s.query(BillEntryUser, func.count(BEUtilBill)).outerjoin(
-            BEUtilBill).filter(BEUtilBill.billentry_date >= start).filter(
-            BEUtilBill.billentry_date < end).group_by(BillEntryUser.id)
+        q = s.query(BillEntryUser, func.count(BEUtilBill.id)).outerjoin(
+            BEUtilBill).filter(
+            # without BEUtilBill.id == None, the "where" clause will filter out
+            # all rows that have no BEUtilBill from the joined table expression
+            # before grouping
+            or_(BEUtilBill.id == None,
+                and_(BEUtilBill.billentry_date >= start,
+                     BEUtilBill.billentry_date < end)
+            )).group_by(BillEntryUser.id)
+        print q
         rows = [{
             'user_id': user.id,
             'count': count,
         } for (user, count) in q.all()]
+        print '****', rows
         return {'rows': rows, 'results': len(rows)}
 
 
