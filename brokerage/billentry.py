@@ -424,5 +424,5 @@ admin = make_admin(app)
 @app.errorhandler(AssertionError)
 def handler(error):
     Session.rollback()
-    flash('This record cannot be deleted', 'error')
+    flash('This record cannot be deleted due to database integrity violation', 'error')
     return redirect(url_for('reebillcustomer.index_view'))
