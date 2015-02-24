@@ -71,6 +71,7 @@ class UtilityModelView(LoginModelView):
 
 class ReeBillCustomerModelView(LoginModelView):
     form_columns = ('name', 'discountrate', 'latechargerate', 'bill_email_recipient', 'service', )
+    #can_delete = False
 
     def __init__(self, session, **kwargs):
         super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer , session, **kwargs)
@@ -86,11 +87,11 @@ def make_admin(app):
     the admin UI.
     '''
     admin = Admin(app, index_view=MyAdminIndexView())
-    admin.add_view(CustomModelView(UtilityAccount, Session()))
-    admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
-    admin.add_view(UtilityModelView(Session()))
-    admin.add_view(SupplierModelView(Session()))
-    admin.add_view(RateClassModelView(Session()))
-    admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
-    admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
+    admin.add_view(CustomModelView(UtilityAccount, Session))
+    admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
+    admin.add_view(UtilityModelView(Session))
+    admin.add_view(SupplierModelView(Session))
+    admin.add_view(RateClassModelView(Session))
+    admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
+    admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     return admin
