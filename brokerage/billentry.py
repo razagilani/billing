@@ -424,5 +424,5 @@ admin = make_admin(app)
 @app.errorhandler(AssertionError)
 def handler(error):
     Session.rollback()
-    flash('This record cannot be as %s' %error, 'error')
+    flash('This record cannot be deleted as %s' %error, 'error')
     return redirect(url_for('reebillcustomer.index_view'))
