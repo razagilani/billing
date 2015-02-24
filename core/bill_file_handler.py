@@ -71,7 +71,8 @@ class BillFileHandler(object):
         if utilbill.sha256_hexdigest in (None, ''):
             return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
-                                      key_name=self.get_key_name_for_utilbill(utilbill))
+                                       key_name=self.get_key_name_for_utilbill(
+                                           utilbill))
 
     def check_file_exists(self, utilbill):
         '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
