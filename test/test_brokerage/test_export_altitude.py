@@ -41,7 +41,7 @@ class TestExportAltitude(TestCase):
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
         # TODO Altitude GUIDS
-        u2.get_service.return_value = 'gas'
+        u2.get_service.return_value = None
         u2.get_utility_account_number.return_value = '2'
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
@@ -107,7 +107,7 @@ class TestExportAltitude(TestCase):
                              self.uuids[1],
                              'A' * 36,
                              'B' * 36,
-                             'gas',
+                             '',
                              '2',
                              '2000-01-15T00:00:00Z',
                              '2000-02-15T00:00:00Z',
