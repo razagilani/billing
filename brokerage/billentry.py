@@ -21,9 +21,8 @@ from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
-from sqlalchemy.exc import DatabaseError, InvalidRequestError, IntegrityError
 
-from core import initialize, init_config
+from core import init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -33,7 +32,6 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
-from exc import Unauthenticated
 
 oauth = OAuth()
 
