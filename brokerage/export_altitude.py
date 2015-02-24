@@ -42,6 +42,7 @@ class PGAltitudeExporter(object):
         :param utilbills: iterator of UtilBills to include data from.
         '''
         dataset = Dataset(headers=[
+            'customer_account_guid',
             'billing_customer_id',
             'utility_bill_guid',
             'utility_guid',
@@ -72,6 +73,11 @@ class PGAltitudeExporter(object):
             return g
         for ub in utilbills:
             append_row_as_dict(dataset, {
+                'customer_account_guid': (
+                    format_possible_none(
+                        self._altitude_converter
+                        .get_one_altitude_account_guid_for_utility_account(
+                            ub.utility_account))),
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid':
                     self._altitude_converter.get_or_create_guid_for_utilbill(

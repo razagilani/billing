@@ -6,7 +6,8 @@ from uuid import NAMESPACE_DNS
 
 from mock import Mock
 from core import altitude, init_model
-from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility
+from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
+    AltitudeAccount
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier
@@ -63,6 +64,8 @@ class TestExportAltitude(TestCase):
             .return_value = 'A' * 36
         altitude_converter.get_guid_for_supplier\
             .return_value = 'B' * 36
+        altitude_converter.get_one_altitude_account_guid_for_utility_account\
+            .return_value = 'C' * 36
         self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
                       str(uuid5(NAMESPACE_DNS, 'b'))]
         def uuid_func(count=[0]):
@@ -77,6 +80,7 @@ class TestExportAltitude(TestCase):
         dataset = self.pgae.get_dataset(self.utilbills)
         self.assertEqual(2, len(dataset))
         self.assertEqual((
+                             'C' * 36,
                              '11111',
                              self.uuids[0],
                              'A' * 36,
@@ -98,6 +102,7 @@ class TestExportAltitude(TestCase):
                              '2001-01-02T00:00:00Z',
                          ), dataset[0])
         self.assertEqual((
+                             'C' * 36,
                              '22222',
                              self.uuids[1],
                              'A' * 36,
@@ -142,11 +147,13 @@ class TestAltitudeBillStorage(TestCase):
             Address(street='1 Billing St.'), Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1))
         self.utilbill.utility_account_number = '12345'
+        altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
         altitude_supplier = AltitudeSupplier(supplier, guid='sss')
         altitude_bill = AltitudeBill(self.utilbill, 'bbb')
         Session().add_all([utility, rate_class, supplier, self.utilbill,
-                          altitude_utility, altitude_supplier, altitude_bill])
+                          altitude_account, altitude_utility, altitude_supplier,
+                          altitude_bill])
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
@@ -162,14 +169,14 @@ class TestAltitudeBillStorage(TestCase):
         csv_file = StringIO()
         self.pgae.write_csv(s.query(UtilBill).all(), csv_file)
         expected_csv = (
-            'billing_customer_id,utility_bill_guid,utility_guid,supplier_guid,'
+            'customer_account_guid,billing_customer_id,utility_bill_guid,utility_guid,supplier_guid,'
             'service_type,utility_account_number,billing_period_start_date,'
             'billing_period_end_date,next_estimated_meter_read_date,'
             'total_usage,total_supply_charge,rate_class,'
             'secondary_utility_account_number,service_address_street,'
             'service_address_city,service_address_state,'
             'service_address_postal_code,create_date,modified_date\r\n'
-            ',bbb,uuu,sss,electric,,'
+            'aaa,,bbb,uuu,sss,electric,,'
             '2000-01-01T00:00:00Z,2000-01-01T00:00:00Z,2000-01-31T00:00:00Z,0,0,Rate Class,,'
             '1 Service St.,,,,,%s\r\n' %
             self.utilbill.date_modified.strftime(ISO_8601_DATETIME))
