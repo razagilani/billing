@@ -120,6 +120,21 @@ class BillFileHandlerTest(unittest.TestCase):
             self.file_hash)
         self.assertEqual(0, self.key.delete.call_count)
 
+    def test_delete_missing_file(self):
+        """Test that no exception is raised when trying to delete a file that
+        is already missing--we saw this happen in production.
+
+        This situation could be caused by rolling back a database transaction
+        when an error happened while trying to delete a bill, after the file was
+        deleted, leaving the database pointing to a nonexistent key.
+        """
+        self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 1
+        self.bucket.get_key.return_value = None
+
+        # no exception raised here
+        self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
+
     def test_upload_duplicate_file(self):
         self.utilbill_loader.count_utilbills_with_hash.return_value = 1
 
