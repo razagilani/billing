@@ -53,7 +53,7 @@ class PGAltitudeExporter(object):
             'total_usage',
             'total_supply_charge',
             'rate_class',
-            'secondary_account_number',
+            'secondary_utility_account_number',
             'service_address_street',
             'service_address_city',
             'service_address_state',
@@ -88,7 +88,7 @@ class PGAltitudeExporter(object):
                 'total_usage': ub.get_total_energy_consumption(),
                 'total_supply_charge': ub.get_supply_target_total(),
                 'rate_class': format_possible_none(ub.get_rate_class_name()),
-                'secondary_account_number': format_possible_none(
+                'secondary_utility_account_number': format_possible_none(
                     ub.supply_choice_id),
                 'service_address_street': ub.service_address.street,
                 'service_address_city': ub.service_address.city,
