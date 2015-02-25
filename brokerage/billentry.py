@@ -378,6 +378,10 @@ def before_request():
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
+        if 'admin' in request.full_path:
+            session['admin_url'] = True
+        else:
+            session['admin_url'] = False
         return redirect(url_for('login'))
 
 @app.after_request
@@ -404,6 +408,8 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
+    if session['admin_url']:
+        session['next_url'] = 'admin'
     return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 api = Api(app)
