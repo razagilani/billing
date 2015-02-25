@@ -59,8 +59,9 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         shared=False,
                                         has_charge=False)
 
-        self.utility = Utility('Utility', Address())
-        self.rate_class = RateClass('Rate Class', self.utility, 'gas')
+        self.utility = Utility(name='Utility', address=Address())
+        self.rate_class = RateClass(name='Rate Class', utility=self.utility,
+                                    service='gas')
 
         def make_mock_utilbill(account):
             u = Mock()
