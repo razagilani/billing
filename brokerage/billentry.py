@@ -376,10 +376,9 @@ def before_request():
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
-
         return redirect(url_for('login'))
 
-@app.after_request
+@app.teardown_appcontext
 def db_commit(response):
     # commit the transaction after every request that should change data.
     # this might work equally well in 'teardown_appcontext' as long as it comes
