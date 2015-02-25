@@ -381,7 +381,6 @@ def before_request():
 
 @app.after_request
 def db_commit(response):
-    Session.commit()
     #The Session.remove() method first calls Session.close() on the
     # current Session, which has the effect of releasing any
     # connection/transactional resources owned by the Session first,
