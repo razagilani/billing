@@ -378,7 +378,7 @@ def before_request():
             'login', 'oauth2callback', 'logout'):
         return redirect(url_for('login'))
 
-@app.teardown_appcontext
+@app.after_request
 def db_commit(response):
     # commit the transaction after every request that should change data.
     # this might work equally well in 'teardown_appcontext' as long as it comes
