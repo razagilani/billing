@@ -393,6 +393,10 @@ def db_commit(response):
 @app.route('/login')
 def login():
     from core import config
+    set_next_url()
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+def set_next_url():
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -410,7 +414,6 @@ def login():
         session['next_url'] = next_url
     if session['admin_url']:
         session['next_url'] = 'admin'
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
