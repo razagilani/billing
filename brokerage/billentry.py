@@ -419,8 +419,8 @@ application = app
 # enable admin UI
 admin = make_admin(app)
 
-@app.errorhandler(AssertionError)
-def handler(error):
-    Session.rollback()
-    flash('This record cannot be deleted as %s' %error, 'error')
-    return redirect(url_for('reebillcustomer.index_view'))
+# @app.errorhandler(AssertionError)
+# def handler(error):
+#     Session.rollback()
+#     flash('This record cannot be deleted as %s' %error, 'error')
+#     return redirect(url_for('reebillcustomer.index_view'))
