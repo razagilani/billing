@@ -384,6 +384,9 @@ def db_commit(response):
     # this might work equally well in 'teardown_appcontext' as long as it comes
     # before Session.remove().
     if request.method in ('POST', 'PUT', 'DELETE'):
+        # the Admin UI calls commit() by itself, so whenever a POST/PUT/DELETE
+        # request is made to the Admin UI, commit() will be called twice, but
+        # the second call will have no effect.
         Session.commit()
     return response
 
