@@ -29,8 +29,10 @@ class ReebillFileHandlerTest(TestCase):
         utility_account = UtilityAccount('someaccount', '00001',
                         'Test Utility', 'Test Supplier', 'Test Rate Class',
                         ba, sa)
-        c = ReeBillCustomer('Test Customer', 0.2, 0.1, 'test@example.com',
-                            'thermal', utility_account)
+        c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
+                            late_charge_rate=0.1,
+                            bill_email_recipient='test@example.com',
+                            service='thermal', utility_account=utility_account)
         ba2 = Address.from_other(ba)
         ba2.addressee = 'Reebill Billing Addressee'
         sa2 = Address.from_other(sa)

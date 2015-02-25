@@ -20,13 +20,14 @@ class UtilityAccountTest(TestCase):
         init_model()
         TestCaseWithSetup.truncate_tables()
 
-        self.utility = Utility('utility', Address())
-        self.supplier = Supplier('supplier', Address())
+        self.utility = Utility(name='utility', address=Address())
+        self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'),
-            Address(), Address())
-        self.rate_class = RateClass('rate class', self.utility, 'gas')
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
+        self.rate_class = RateClass(name='rate class', utility=self.utility,
+                                    service='gas')
 
     def tearDown(self):
         Session.remove()
