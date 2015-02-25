@@ -376,16 +376,24 @@ def before_request():
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
+
         return redirect(url_for('login'))
 
 @app.after_request
 def db_commit(response):
     Session.commit()
+    #The Session.remove() method first calls Session.close() on the
+    # current Session, which has the effect of releasing any
+    # connection/transactional resources owned by the Session first,
+    # then discarding the Session itself. Releasing here means that
+    # connections are returned to their connection pool and any transactional
+    # state is rolled back, ultimately using the rollback() method of
+    # the underlying DBAPI connection.
+    Session.remove()
     return response
 
 @app.route('/login')
 def login():
-    from core import config
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -418,9 +426,3 @@ application = app
 
 # enable admin UI
 admin = make_admin(app)
-
-# @app.errorhandler(AssertionError)
-# def handler(error):
-#     Session.rollback()
-#     flash('This record cannot be deleted as %s' %error, 'error')
-#     return redirect(url_for('reebillcustomer.index_view'))
