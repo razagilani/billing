@@ -15,14 +15,14 @@ import json
 from boto.s3.connection import S3Connection
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
-from flask import Flask, url_for, request, flash, session, redirect
+from flask import Flask, url_for, request, flash, session, redirect, request
 from flask.ext.restful import Api, Resource, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from core import initialize, init_config
+from core import init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -32,7 +32,6 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
-from exc import Unauthenticated
 
 oauth = OAuth()
 
@@ -187,9 +186,8 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-
-        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
-            UtilityAccount.account).all()
+        accounts = Session().query(UtilityAccount).join(
+            BrokerageAccount).order_by(UtilityAccount.account).all()
         return marshal(accounts, {
             'id': Integer,
             'account': String,
@@ -259,7 +257,8 @@ class ChargeListResource(BaseResource):
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
         # TODO: return only supply charges here
-        rows = [marshal(c, self.charge_fields) for c in utilbill.get_supply_charges()]
+        rows = [marshal(c, self.charge_fields) for c in
+                utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):
@@ -370,7 +369,6 @@ def index():
     session['email'] = googleEmail['email']
     return app.send_static_file('index.html')
 
-
 @app.before_request
 def before_request():
     from core import config
@@ -382,13 +380,33 @@ def before_request():
 
 @app.after_request
 def db_commit(response):
-    Session.commit()
+    # commit the transaction after every request that should change data.
+    # this might work equally well in 'teardown_appcontext' as long as it comes
+    # before Session.remove().
+    if request.method in ('POST', 'PUT', 'DELETE'):
+        # the Admin UI calls commit() by itself, so whenever a POST/PUT/DELETE
+        # request is made to the Admin UI, commit() will be called twice, but
+        # the second call will have no effect.
+        Session.commit()
     return response
 
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """This is called after every request (after the "after_request" callback).
+    The database session is closed here following the example here:
+    http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/#declarative
+    """
+    #The Session.remove() method first calls Session.close() on the
+    # current Session, which has the effect of releasing any
+    # connection/transactional resources owned by the Session first,
+    # then discarding the Session itself. Releasing here means that
+    # connections are returned to their connection pool and any transactional
+    # state is rolled back, ultimately using the rollback() method of
+    # the underlying DBAPI connection.
+    Session.remove()
 
 @app.route('/login')
 def login():
-    from core import config
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -420,5 +438,4 @@ api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
 application = app
 
 # enable admin UI
-make_admin(app)
-
+admin = make_admin(app)
