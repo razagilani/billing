@@ -376,10 +376,9 @@ def before_request():
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
-
         return redirect(url_for('login'))
 
-@app.after_request
+@app.teardown_appcontext
 def db_commit(response):
     #The Session.remove() method first calls Session.close() on the
     # current Session, which has the effect of releasing any
