@@ -418,7 +418,7 @@ class ReeBillCustomer(Base):
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
-    utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
+    utility_account = relationship('UtilityAccount', uselist=False,
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
 
 
