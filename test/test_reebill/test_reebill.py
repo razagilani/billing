@@ -4,20 +4,27 @@ from datetime import date
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from reebill.state import ReeBill, ReeBillCustomer
+from test.setup_teardown import TestCaseWithSetup
+
 
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''))
+        TestCaseWithSetup.truncate_tables()
+        washgas = Utility(name='washgas', address=Address('', '', '', '',
+                                                          ''))
         supplier = Supplier('supplier', Address())
-        c_rate_class = RateClass('Test Rate Class', washgas, 'gas')
+        c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
+                                 service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
                             washgas, supplier, c_rate_class,
                             Address(), Address())
-        reebill_customer = ReeBillCustomer('someone', '11111', 0.5, 0.1,
-                            'example@example.com', utility_account)
-        u_rate_class = RateClass('DC Non Residential Non Heat', washgas,
-                                 'gas')
+        reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
+                                late_charge_rate=0.1, service='thermal',
+                                bill_email_recipient='example@example.com',
+                                utility_account=utility_account)
+        u_rate_class = RateClass(name='DC Non Residential Non Heat',
+                                 utility=washgas, service='gas')
         self.utilbill = UtilBill(utility_account, UtilBill.Complete, washgas,
                                  supplier,
                                  u_rate_class,
@@ -42,6 +49,9 @@ class ReebillTest(unittest.TestCase):
         Session().add_all([self.utilbill, self.reebill])
         self.reebill.replace_readings_from_utility_bill_registers(
                 self.utilbill)
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
