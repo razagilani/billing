@@ -136,7 +136,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         width: 100
     },{
         header: 'Next Meter Read',
-        dataIndex: 'next_estimated_meter_read_date'
+        dataIndex: 'next_meter_read_date'
     }, {
         header: 'Service Address',
         dataIndex: 'service_address',

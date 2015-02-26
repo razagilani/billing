@@ -160,8 +160,8 @@ class BaseResource(Resource):
                 String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
             'service_address': String,
-            'next_estimated_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+            'next_meter_read_date': CallableField(
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
