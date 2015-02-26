@@ -46,6 +46,14 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertTrue(self.ub.is_entered())
 
 class BillEntryIntegrationTest(object):
+    """Shared code for TestCases that test Bill Entry. Some of this (like
+    assertJson) is not specific to Bill Entry and can be shared with other
+    test cases.
+
+    This is not a subclass of TestCase because inheritance from TestCase
+    subclasses never seems to work. Subclasses should have this as their first
+    superclass and TestCase as the second.
+    """
     maxDiff = None
 
     # this may change
@@ -64,7 +72,6 @@ class BillEntryIntegrationTest(object):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        #init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
