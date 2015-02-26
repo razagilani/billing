@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import unittest
 from json import loads
 
@@ -227,33 +227,43 @@ class TestBillEntryWeb(unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
+        expected = {'rows':
+             {'account': None,
+              'computed_total': 85.0,
+              'id': 1,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': '2000-01-01',
+              'processed': False,
+              'rate_class': 'Some Rate Class',
+              'service': 'Gas',
+              'service_address': '1 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 2.0,
+              'target_total': 0.0,
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_number': '1',
+              'supply_choice_id': None
+             },
+         'results': 1}
+
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             period_start=datetime(2000, 1, 1).isoformat()
         ))
-        self.assertJson(
-            {'rows':
-                 {'account': None,
-                  'computed_total': 85.0,
-                  'id': 1,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': '2000-01-01',
-                  'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
-                  'service_address': '1 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 2.0,
-                  'target_total': 0.0,
-                  'total_energy': 150.0,
-                  'utility': 'Example Utility',
-                  'utility_account_number': '1',
-                  'supply_choice_id': None
-                 },
-             'results': 1,
-            }, rv.data)
+        expected['rows']['period_start'] = '2000-01-01'
+        self.assertJson(expected, rv.data)
+
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id=2,
+            next_meter_read_date=date(2000, 2, 5).isoformat()
+        ))
+        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        self.assertJson(expected, rv.data)
+
+        # TODO: why aren't there tests for editing all the other fields?
 
     def test_rate_class(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
