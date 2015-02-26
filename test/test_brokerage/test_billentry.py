@@ -96,8 +96,9 @@ class TestBillEntryWeb(unittest.TestCase):
         s.add_all([utility, utility1, utility2])
         s.add_all([ua1, ua2, ua3])
         s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
-        ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
-                       rate_class, Address(), Address(street='1 Example St.'))
+        ub1 = UtilBill(ua1, UtilBill.Complete, utility, None, rate_class,
+                       Address(), Address(street='1 Example St.'),
+                       due_date=date(2000, 3, 1))
         ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
                        None, Address(), Address(street='2 Example St.'))
         ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
@@ -164,6 +165,7 @@ class TestBillEntryWeb(unittest.TestCase):
              'rows': [
                  {'account': None,
                   'computed_total': 0.0,
+                  'due_date': None,
                   'id': 3,
                   'next_meter_read_date': None,
                   'pdf_url': '',
@@ -230,6 +232,7 @@ class TestBillEntryWeb(unittest.TestCase):
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
+              'due_date': '2000-03-01',
               'id': 1,
               'next_meter_read_date': None,
               'pdf_url': '',
@@ -240,13 +243,13 @@ class TestBillEntryWeb(unittest.TestCase):
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
-              'supply_choice_id': None
-             },
+              },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
@@ -265,37 +268,40 @@ class TestBillEntryWeb(unittest.TestCase):
 
         # TODO: why aren't there tests for editing all the other fields?
 
-    def test_rate_class(self):
+    def test_update_utilbill_rate_class(self):
+        expected = {'results': 1,
+         'rows': [
+             {'account': None,
+              'computed_total': 0.0,
+              'due_date': None,
+              'id': 3,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Unknown',
+              'service': 'Unknown',
+              'service_address': '2 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 0.0,
+              'target_total': 0.0,
+              'total_energy': 0.0,
+              'utility': 'Empty Utility',
+              'utility_account_number': '3',
+              'supply_choice_id': None
+             }
+         ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
-        self.assertJson(
-            {'results': 1,
-             'rows': [
-                 {'account': None,
-                  'computed_total': 0.0,
-                  'id': 3,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Unknown',
-                  'service': 'Unknown',
-                  'service_address': '2 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 0.0,
-                  'target_total': 0.0,
-                  'total_energy': 0.0,
-                  'utility': 'Empty Utility',
-                  'utility_account_number': '3',
-                  'supply_choice_id': None
-                 }
-             ], }, rv.data)
+        self.assertJson(expected, rv.data)
+
+        # TODO reuse 'expected' in later assertions instead of repeating the
+        # giant dictionary over and over
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
                 utility = "Empty Utility"
         ))
-
         self.assertJson(
             {
             "results": 1,
@@ -303,6 +309,7 @@ class TestBillEntryWeb(unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': '2000-03-01',
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -334,6 +341,7 @@ class TestBillEntryWeb(unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': '2000-03-01',
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
