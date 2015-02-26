@@ -334,15 +334,22 @@ class EntryReportResource(BaseResource):
         end = dateutil_parser.parse(args['end'])
 
         s = Session()
+        # q = s.query(BillEntryUser, func.count(BEUtilBill.id)).outerjoin(
+        #     BEUtilBill).filter(
+        #     # without BEUtilBill.id == None, the "where" clause will filter out
+        #     # all rows that have no BEUtilBill from the joined table expression
+        #     # before grouping
+        #     or_(BEUtilBill.id == None,
+        #         and_(BEUtilBill.billentry_date >= start,
+        #              BEUtilBill.billentry_date < end))
+        #     ).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        utilbill_count_subq = s.query(BEUtilBill).filter(
+            and_(BEUtilBill.billentry_date >= start,
+                 BEUtilBill.billentry_date < end))
+        utilbill_count_subq = utilbill_count_subq.subquery()
         q = s.query(BillEntryUser, func.count(BEUtilBill.id)).outerjoin(
-            BEUtilBill).filter(
-            # without BEUtilBill.id == None, the "where" clause will filter out
-            # all rows that have no BEUtilBill from the joined table expression
-            # before grouping
-            or_(BEUtilBill.id == None,
-                and_(BEUtilBill.billentry_date >= start,
-                     BEUtilBill.billentry_date < end)
-            )).group_by(BillEntryUser.id)
+            utilbill_count_subq).group_by(BillEntryUser.id).order_by(
+            BillEntryUser.id)
         print q
         rows = [{
             'user_id': user.id,

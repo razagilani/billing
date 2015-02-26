@@ -365,10 +365,13 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.commit()
 
     def test_report(self):
-        # empty report
+        # no "entered" bills
         rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
             datetime(2000,1,1).isoformat(), datetime(2000,2,1).isoformat()))
-        self.assertJson({"results": 0, "rows": []}, rv.data)
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 0},
+                                  {"user_id": self.user2.id, "count": 0}]},
+                        rv.data)
 
         self.ub1.enter(self.user1, datetime(2000,1,10))
         self.ub2.enter(self.user1, datetime(2000,1,20))
@@ -376,7 +379,10 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # no bills in range
         rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
             datetime(2000,1,11).isoformat(), datetime(2000,1,20).isoformat()))
-        self.assertJson({"results": 0, "rows": []}, rv.data)
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 0},
+                                  {"user_id": self.user2.id, "count": 0}]},
+                        rv.data)
 
         # user1 has 2 bills in range, user2 has none
         rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
