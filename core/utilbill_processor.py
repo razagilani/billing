@@ -488,7 +488,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name, Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address('', '', '', '', ''))
             return result, True
         return result, False
 
@@ -503,7 +503,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name, Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address('', '', '', '', ''))
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):
@@ -519,18 +519,9 @@ class UtilbillProcessor(object):
             result = session.query(RateClass).filter_by(
                 name=rate_class_name).one()
         except NoResultFound:
-            result = RateClass(rate_class_name, utility, service)
+            result = RateClass(name=rate_class_name, utility=utility,
+                               service=service)
         return result
-
-    def create_utility(self, name):
-        '''Create and return a new Utility with the given name. A new
-        RateClass for the utility is also added.
-        '''
-        s = Session()
-        new_utility = Utility(name=name, address=Address())
-        new_rate_class = RateClass('Unknown rate class for %s' % name)
-        new_utility.rate_classes.append(new_rate_class)
-        s.add_all([new_utility, new_rate_class])
 
     def update_utility_account_number(self, utility_account_id,
                                       utility_account_number):

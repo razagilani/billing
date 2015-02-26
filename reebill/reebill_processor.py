@@ -516,8 +516,10 @@ class ReebillProcessor(object):
 
         if service_type is not None:
             new_reebill_customer = ReeBillCustomer(
-                name, discount_rate, late_charge_rate, service_type,
-                'example@example.com', new_utility_account)
+                name=name, discount_rate=discount_rate,
+                late_charge_rate=late_charge_rate, service=service_type,
+                bill_email_recipient='example@example.com',
+                utility_account=new_utility_account)
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer
