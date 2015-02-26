@@ -365,7 +365,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.commit()
 
     def test_report(self):
-        # no "entered" bills
+        # no "entered" bills yet
         rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
             datetime(2000,1,1).isoformat(), datetime(2000,2,1).isoformat()))
         self.assertJson({"results": 2,
@@ -391,8 +391,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
             "results": 2,
             "rows": [
                 {"user_id": self.user1.id, "count": 2},
-                # TODO: user2 does not show up--something is wrong with the
-                # query
                 {"user_id": self.user2.id, "count": 0}
             ]
         }, rv.data)
