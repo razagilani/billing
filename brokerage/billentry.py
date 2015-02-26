@@ -227,6 +227,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('total_energy', type=float)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
+        parser.add_argument('next_meter_read_date', type=parse_date)
 
         row = parser.parse_args()
         ub = self.utilbill_processor.update_utilbill_metadata(
@@ -238,11 +239,14 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supply_choice_id=row['supply_choice_id']
+            supply_choice_id=row['supply_choice_id'],
             )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
+
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
 
         Session().commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
