@@ -348,9 +348,6 @@ def index():
     if config.get('billentry', 'disable_google_oauth'):
         return app.send_static_file('index.html')
     access_token = session.get('access_token')
-    if access_token is None:
-        # user is not logged in so redirect to login page
-        return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
     req = Request(config.get('billentry', 'google_user_info_url'),
@@ -363,7 +360,7 @@ def index():
             # Unauthorized - bad token
             session.pop('access_token', None)
             return redirect(url_for('login'))
-    #TODO: display googleEmail as Username the bottom panel
+    #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
