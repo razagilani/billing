@@ -429,8 +429,6 @@ def set_next_url():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    if session['admin_url']:
-        session['next_url'] = 'admin'
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
