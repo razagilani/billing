@@ -75,7 +75,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '2d65c7c19345'
+_schema_revision = '150d8bb1183c'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -215,7 +215,7 @@ class Utility(Base):
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -238,7 +238,7 @@ class Supplier(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -266,7 +266,7 @@ class RateClass(Base):
 
     utility = relationship('Utility')
 
-    def __init__(self, name, utility, service):
+    def __init__(self, name='', utility=None, service='gas'):
         self.name = name
         self.utility = utility
         self.service = service
@@ -359,7 +359,16 @@ class UtilityAccount(Base):
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
-    __mapper_args__ = {'extension': UtilbillCallback()}
+
+    __mapper_args__ = {
+        'extension': UtilbillCallback(),
+
+        # single-table inheritance
+        'polymorphic_identity': 'utilbill',
+        'polymorphic_on': 'discriminator',
+    }
+
+    discriminator = Column(String(1000), nullable=False)
 
     id = Column(Integer, primary_key=True)
 
@@ -394,8 +403,7 @@ class UtilBill(Base):
     sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
-    # meaning that its rate structure and charges are supposed to be accurate
-    # and can be relied upon for rate structure prediction
+    # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Integer, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
@@ -555,6 +563,7 @@ class UtilBill(Base):
         return len(self._utilbill_reebills) > 0
 
     def add_charge(self, **charge_kwargs):
+        self.check_editable()
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
@@ -621,6 +630,7 @@ class UtilBill(Base):
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
         """
+        self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
                    self.registers}
         sorted_charges = self.ordered_charges()
@@ -705,6 +715,7 @@ class UtilBill(Base):
         return total_register.quantity
 
     def set_total_energy(self, quantity):
+        self.check_editable()
         total_register = next(r for r in self.registers if
                               r.register_binding == 'REG_TOTAL')
         total_register.quantity = quantity
