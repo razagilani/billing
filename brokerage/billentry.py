@@ -378,10 +378,7 @@ def before_request():
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
-        if 'admin' in request.full_path:
-            session['admin_url'] = True
-        else:
-            session['admin_url'] = False
+        set_next_url()
         return redirect(url_for('login'))
 
 @app.after_request
@@ -393,11 +390,13 @@ def db_commit(response):
 @app.route('/login')
 def login():
     from core import config
-    set_next_url()
     return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 def set_next_url():
-    next_path = request.args.get('next')
+    if request.args.get('next'):
+        next_path = request.args.get('next')
+    else:
+        next_path = request.full_path
     if next_path:
         # Since passing along the "next" URL as a GET param requires
         # a different callback for each page, and Google requires
