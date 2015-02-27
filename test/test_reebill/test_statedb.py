@@ -34,15 +34,19 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables()
         blank_address = Address()
-        test_utility = Utility('FB Test Utility Name', blank_address)
-        test_supplier = Supplier('FB Test Suplier', blank_address)
+        test_utility = Utility(name='FB Test Utility Name',
+                               address=blank_address)
+        test_supplier = Supplier(name='FB Test Suplier', address=blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
                             test_utility, test_supplier,
-                            RateClass('FB Test Rate Class', test_utility, 'gas'),
+                            RateClass(name='FB Test Rate Class',
+                                      utility=test_utility, service='gas'),
                             blank_address, blank_address)
-        self.reebill_customer = ReeBillCustomer('Test Customer',  .12, .34,
-                            'thermal', 'example@example.com',
-                            self.utility_account)
+        self.reebill_customer = ReeBillCustomer(name='Test Customer',
+                                    discount_rate=.12, late_charge_rate=.34,
+                                    service='thermal',
+                                    bill_email_recipient='example@example.com',
+                                    utility_account=self.utility_account)
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
@@ -75,8 +79,8 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility('FB Test Utility', Address())
-        fb_test_supplier = Supplier('FB Test Supplier', Address())
+        fb_test_utility = Utility(name='FB Test Utility', address=Address())
+        fb_test_supplier = Supplier(name='FB Test Supplier', address=Address())
         rate_class = session.query(RateClass).one()
         utility_account1 = UtilityAccount('some_account', '11111',
                 fb_test_utility, fb_test_supplier, rate_class,
@@ -85,10 +89,14 @@ class StateDBTest(TestCaseWithSetup):
                 fb_test_utility, fb_test_supplier, rate_class,
                 Address(), Address())
         self.session.add(utility_account1)
-        self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
-                'thermal', 'customer1@example.com', utility_account1))
-        self.session.add(ReeBillCustomer('someone', 0.5, 0.1,
-                'thermal', 'customer2@example.com', utility_account2))
+        self.session.add(ReeBillCustomer(name='someone', discount_rate=0.5,
+                            late_charge_rate=0.1, service='thermal',
+                            bill_email_recipient='customer1@example.com',
+                            utility_account=utility_account1))
+        self.session.add(ReeBillCustomer(name='someone', discount_rate=0.5,
+                            late_charge_rate=0.1, service='thermal',
+                            bill_email_recipient='customer2@example.com',
+                            utility_account=utility_account2))
         session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
         session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
         session.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
