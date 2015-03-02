@@ -26,6 +26,7 @@ def upgrade():
                                          sa.ForeignKey('billentry_user.id')))
     op.add_column(u'utilbill', sa.Column('discriminator', sa.String(1000),
                                          nullable=False))
+    op.drop_column(u'charge', 'group')
 
 
 def downgrade():
@@ -33,3 +34,7 @@ def downgrade():
     op.drop_column(u'utilbill', 'billentry_user_id')
     op.drop_column(u'utilbill', 'billentry_date')
     op.drop_table('billentry_user')
+
+    # to downgrade, value could be approximately restored by copying the
+    # value of "type"
+    op.add_column(u'charge', 'group')

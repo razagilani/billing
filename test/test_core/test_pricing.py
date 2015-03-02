@@ -27,7 +27,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       rate=1,
                                       quantity_formula='',
                                       description="",
-                                      group='a',
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
@@ -36,7 +35,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         rate=2,
                                         quantity_formula='',
                                         description="",
-                                        group='c',
                                         unit='therms',
                                         shared=False,
                                         has_charge=True)
@@ -45,7 +43,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       rate=2,
                                       quantity_formula='',
                                       description="",
-                                      group='b',
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
@@ -54,7 +51,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         rate=3,
                                         quantity_formula='',
                                         description="",
-                                        group='d',
                                         unit='therms',
                                         shared=False,
                                         has_charge=False)

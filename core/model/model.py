@@ -576,7 +576,6 @@ class UtilBill(Base):
             quantity_formula=charge_kwargs.get('quantity_formula', ''),
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
-            group=charge_kwargs.get("group", ''),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', "supply"))
         session.add(charge)
@@ -862,7 +861,6 @@ class Charge(Base):
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
-    group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rsi_binding = Column(String(255), nullable=False)
@@ -913,13 +911,12 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
-                 target_total=None, description='', group='', unit='',
+                 target_total=None, description='', unit='',
                  has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
-        :param group: The charge group
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
         :param quantity_formula: The RSI quantity formula
@@ -930,7 +927,6 @@ class Charge(Base):
         assert unit is not None
         self.utilbill = utilbill
         self.description = description
-        self.group = group
         self.unit = unit
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
@@ -952,7 +948,6 @@ class Charge(Base):
                    other.rate,
                    other.quantity_formula,
                    description=other.description,
-                   group=other.group,
                    unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,

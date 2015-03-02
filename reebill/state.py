@@ -274,7 +274,7 @@ class ReeBill(Base):
             charge = charge_dct[binding]
             if charge.has_charge:
                 session.add(ReeBillCharge(self, binding, charge.description,
-                        charge.group, charge.quantity, evaluation.quantity,
+                        charge.type, charge.quantity, evaluation.quantity,
                         charge.unit, charge.rate, charge.total,
                         evaluation.total))
 
