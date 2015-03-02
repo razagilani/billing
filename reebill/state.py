@@ -484,9 +484,8 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String(1000), nullable=False)
     description = Column(String(1000), nullable=False)
-    # NOTE alternate name is required because you can't have a column called
-    # "group" in MySQL
-    group = Column(String(1000), name='group_name', nullable=False)
+    # TODO type should be changed to enum, same as model.Charge.type
+    type = Column(String(1000), name='type', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
@@ -494,13 +493,13 @@ class ReeBillCharge(Base):
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+    def __init__(self, reebill, rsi_binding, description, type, a_quantity,
                  h_quantity, unit, rate, a_total, h_total):
         assert unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
         self.description = description
-        self.group = group
+        self.type = type
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
         self.unit = unit
         self.rate = rate

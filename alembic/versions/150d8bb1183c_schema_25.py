@@ -27,6 +27,8 @@ def upgrade():
     op.add_column(u'utilbill', sa.Column('discriminator', sa.String(1000),
                                          nullable=False))
     op.drop_column(u'charge', 'group')
+    op.alter_column(u'reebill_charge', 'group_name', new_column_name='type',
+                    existing_type=sa.String(1000))
 
 
 def downgrade():
@@ -38,3 +40,6 @@ def downgrade():
     # to downgrade, value could be approximately restored by copying the
     # value of "type"
     op.add_column(u'charge', 'group')
+
+    op.alter_column(u'reebill_charge', 'type', 'group_name',
+                    existing_type=sa.String(1000)),
