@@ -363,7 +363,10 @@ class UtilBillListForUserResourece(BaseResource):
 
 app = Flask(__name__, static_url_path="")
 app.debug = True
-app.secret_key = 'sgdsdgs'
+
+# 'config' must be in scope here although it is a bad idea to read it at import
+# time. see how it is initialized at the top of this file.
+app.secret_key = config.get('billentry', 'secret_key')
 
 @app.route('/logout')
 def logout():
