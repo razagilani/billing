@@ -59,8 +59,9 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         shared=False,
                                         has_charge=False)
 
-        self.utility = Utility('Utility', Address())
-        self.rate_class = RateClass('Rate Class', self.utility, 'gas')
+        self.utility = Utility(name='Utility', address=Address())
+        self.rate_class = RateClass(name='Rate Class', utility=self.utility,
+                                    service='gas')
 
         def make_mock_utilbill(account):
             u = Mock()
@@ -98,7 +99,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
-        u.get_service.return_value = 'gas'
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
@@ -191,7 +191,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.utility = self.utility
         u.rate_class = self.rate_class
         u.charges = []
-        u.get_service.return_value = 'gas'
 
         self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
         self.utilbill_loader.load_real_utilbills.return_value = [
