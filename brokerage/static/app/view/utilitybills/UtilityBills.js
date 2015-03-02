@@ -25,10 +25,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'Utility Account Number',
-        dataIndex: 'utility_account_number',
-        width: 125
-    },{
         header: 'Secondary Utility Account Number',
         dataIndex: 'supply_choice_id',
         editor: {
@@ -76,11 +72,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 100,
         renderer: Ext.util.Format.usMoney
-    },{
-        header: 'Total Supply',
-        dataIndex: 'supply_total',
-        renderer: Ext.util.Format.usMoney,
-        width: 100
     },{
         header: 'Utility',
         dataIndex: 'utility',
