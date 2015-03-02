@@ -319,7 +319,7 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
-class EntryReportResource(BaseResource):
+class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
         parser = RequestParser()
@@ -345,7 +345,17 @@ class EntryReportResource(BaseResource):
         } for (user, count) in q.all()]
         return {'rows': rows, 'results': len(rows)}
 
-
+class UtilBillListForUserResourece(BaseResource):
+    """List of bills queried by id of BillEntryUser who "entered" them.
+    """
+    def get(self, id=None):
+        assert isinstance(id, int)
+        s = Session()
+        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
+            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
+                                             desc(UtilBill.id)).all()
+        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+        return {'rows': rows, 'results': len(rows)}
 
 app = Flask(__name__, static_url_path="")
 app.debug = True
@@ -443,7 +453,9 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
-api.add_resource(EntryReportResource, '/utilitybills/report')
+api.add_resource(UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(UtilBillListForUserResourece,
+                 '/utilitybills/user_utilitybills/<int:id>')
 
 # apparently needed for Apache
 application = app
