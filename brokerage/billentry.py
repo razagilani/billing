@@ -7,13 +7,14 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+from datetime import datetime
 import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-from sqlalchemy import desc
+from sqlalchemy import desc, func, or_, and_
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect
 from flask.ext.restful import Api, Resource, marshal
@@ -31,7 +32,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
 from exc import Unauthenticated
 
 oauth = OAuth()
@@ -318,6 +319,34 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
+class EntryReportResource(BaseResource):
+
+    def get(self, *args, **kwargs):
+        parser = RequestParser()
+        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
+        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
+        parser.add_argument('start', type=str, required=True)
+        parser.add_argument('end', type=str, required=True)
+        args = parser.parse_args()
+        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
+        start = dateutil_parser.parse(args['start'])
+        end = dateutil_parser.parse(args['end'])
+
+        s = Session()
+        utilbill_sq = s.query(BEUtilBill.id,
+                              BEUtilBill.billentry_user_id).filter(
+            and_(BEUtilBill.billentry_date >= start,
+                 BEUtilBill.billentry_date < end)).subquery()
+        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        rows = [{
+            'user_id': user.id,
+            'count': count,
+        } for (user, count) in q.all()]
+        return {'rows': rows, 'results': len(rows)}
+
+
+
 app = Flask(__name__, static_url_path="")
 app.debug = True
 app.secret_key = 'sgdsdgs'
@@ -414,6 +443,7 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(EntryReportResource, '/utilitybills/report')
 
 # apparently needed for Apache
 application = app
