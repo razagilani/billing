@@ -2,7 +2,11 @@
 to run as a wsgi application, or executed in development to run with the
 Cherrypy web server.
 """
-from core import initialize
+import sys
+from os.path import join, dirname, realpath
+
+import cherrypy
+from core import initialize, ROOT_PATH
 from reebill.wsgi import ReebillWSGI
 
 # TODO: lots of duplicate code in here
@@ -17,7 +21,7 @@ if __name__ == '__main__':
     class CherryPyRoot(object):
         reebill = app
 
-    ui_root = join(dirname(realpath(__file__)), 'ui')
+    ui_root = join(ROOT_PATH, 'reebill', 'ui')
     cherrypy_conf = {
         '/': {
             'tools.sessions.on': True,
