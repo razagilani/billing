@@ -484,8 +484,7 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String(1000), nullable=False)
     description = Column(String(1000), nullable=False)
-    # TODO type should be changed to enum, same as model.Charge.type
-    type = Column(String(1000), name='type', nullable=False)
+    type = Column(Enum(Charge.CHARGE_TYPES), name='type', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)

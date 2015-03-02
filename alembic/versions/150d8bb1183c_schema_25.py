@@ -28,7 +28,8 @@ def upgrade():
                                          nullable=False))
     op.drop_column(u'charge', 'group')
     op.alter_column(u'reebill_charge', 'group_name', new_column_name='type',
-                    existing_type=sa.String(1000))
+                    existing_type=sa.String(1000),
+                    type_=sa.Enum('supply', 'distribution'))
 
 
 def downgrade():
