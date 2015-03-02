@@ -371,10 +371,12 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         s.commit()
 
-    def test_report(self):
+    def test_report_count_for_user(self):
+        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
+
         # no "entered" bills yet
-        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
-            datetime(2000,1,1).isoformat(), datetime(2000,2,1).isoformat()))
+        rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
+                                        datetime(2000,2,1).isoformat()))
         self.assertJson({"results": 2,
                          "rows": [{"user_id": self.user1.id, "count": 0},
                                   {"user_id": self.user2.id, "count": 0}]},
@@ -384,20 +386,56 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.ub2.enter(self.user1, datetime(2000,1,20))
 
         # no bills in range
-        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
-            datetime(2000,1,11).isoformat(), datetime(2000,1,20).isoformat()))
+        rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
+                                        datetime(2000,1,20).isoformat()))
         self.assertJson({"results": 2,
                          "rows": [{"user_id": self.user1.id, "count": 0},
                                   {"user_id": self.user2.id, "count": 0}]},
                         rv.data)
 
         # user1 has 2 bills in range, user2 has none
-        rv = self.app.get(self.URL_PREFIX + 'report?start=%s&end=%s' % (
-            datetime(2000,1,10).isoformat(), datetime(2000,1,21).isoformat()))
-        self.assertJson({
-            "results": 2,
-            "rows": [
-                {"user_id": self.user1.id, "count": 2},
-                {"user_id": self.user2.id, "count": 0}
-            ]
-        }, rv.data)
+        rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
+                                        datetime(2000,1,21).isoformat()))
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 2},
+                                  {"user_id": self.user2.id, "count": 0}]
+
+                        }, rv.data)
+
+    def test_report_utilbills_for_user(self):
+        url_format = self.URL_PREFIX + 'user_utilitybills/%s'
+
+        # no "entered" bills yet
+        rv = self.app.get(url_format % self.user1.id)
+        self.assertJson({"results": 0, "rows": []}, rv.data)
+
+        # one "entered bill for user1
+        self.ub1.enter(self.user1, datetime(2000,1,10))
+        rv = self.app.get(url_format % self.user1.id)
+        self.assertJson(
+            {"results": 1,
+             'rows':
+                 [{'account': None,
+                  'computed_total': 0,
+                  'id': 1,
+                  'next_estimated_meter_read_date': None,
+                  'pdf_url': '',
+                  'period_end': None,
+                  'period_start': None,
+                  'processed': False,
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
+                  'service_address': '1 Example St., ,  ',
+                  'supplier': 'Unknown',
+                  'supply_total': 0,
+                  'target_total': 0,
+                  'total_energy': 0,
+                  'utility': 'Example Utility',
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
+                 }],
+             }, rv.data)
+
+        # still none for user2
+        rv = self.app.get(url_format % self.user2.id)
+        self.assertJson({"results": 0, "rows": []}, rv.data)
