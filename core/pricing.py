@@ -55,9 +55,9 @@ class FuzzyPricingModel(PricingModel):
         super(FuzzyPricingModel, self).__init__(logger)
         self._utilbill_loader = utilbill_loader
 
-    def _get_probable_shared_charges(self, utility, service,
-            rate_class, period, threshold=RSI_PRESENCE_THRESHOLD,
-            ignore=lambda x: False, verbose=False):
+    def _get_probable_shared_charges(self,utility, rate_class, period,
+                                     threshold=RSI_PRESENCE_THRESHOLD,
+                                     ignore=lambda x: False, verbose=False):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
         instances, each of which is unattached to any
         :py:class:`proessing.state.UtilBill`.
@@ -70,7 +70,6 @@ class FuzzyPricingModel(PricingModel):
         :param ignore: an optional function to exclude UPRSs from the input data
         """
         assert isinstance(utility, Utility)
-        assert isinstance(service, basestring)
         assert isinstance(rate_class, RateClass)
         assert isinstance(period[0], date) and isinstance(period[1], date)
         assert isinstance(threshold, (int, float))
@@ -164,8 +163,8 @@ class FuzzyPricingModel(PricingModel):
             start = utilbill.period_start or utilbill.period_end - timedelta(30)
             end = utilbill.period_end or utilbill.period_start + timedelta(30)
             result = self._get_probable_shared_charges(
-                utilbill.utility, utilbill.get_service(), utilbill.rate_class,
-                (start, end), ignore=lambda ub:ub.id == utilbill.id)
+                utilbill.utility, utilbill.rate_class, (start, end),
+                ignore=lambda ub:ub.id == utilbill.id)
 
         # add any charges from the predecessor that are not already there
         try:
