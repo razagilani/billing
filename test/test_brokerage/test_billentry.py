@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import unittest
 from json import loads
 
@@ -8,7 +8,8 @@ from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
+    BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
@@ -18,12 +19,12 @@ class TestBEUtilBill(unittest.TestCase):
     """
     def setUp(self):
         utility = Mock(autospec=Utility)
-        rate_class = Mock(autospec=RateClass)
+        self.rate_class = Mock(autospec=RateClass)
         ua = UtilityAccount('Account 1', '11111', utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None, rate_class,
-                             Address(), Address())
+        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
+                             self.rate_class, Address(), Address())
 
     def test_entry(self):
         self.assertFalse(self.ub.is_entered())
@@ -44,8 +45,14 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(None, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
 
-class TestBillEntryWeb(unittest.TestCase):
-    """Integration tests for the Bill Entry back end.
+class BillEntryIntegrationTest(object):
+    """Shared code for TestCases that test Bill Entry. Some of this (like
+    assertJson) is not specific to Bill Entry and can be shared with other
+    test cases.
+
+    This is not a subclass of TestCase because inheritance from TestCase
+    subclasses never seems to work. Subclasses should have this as their first
+    superclass and TestCase as the second.
     """
     maxDiff = None
 
@@ -65,83 +72,91 @@ class TestBillEntryWeb(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
 
     def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
         init_model()
 
-        TestCaseWithSetup.truncate_tables()
+        self.utility = Utility('Example Utility', Address())
+        self.utility.id = 1
+        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
+                                  Address(), Address(), '1')
+        self.ua1.id = 1
+        self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
+        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                            self.rate_class, Address(),
+                            Address(street='1 Example St.'))
+        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
+                            None, Address(), Address(street='2 Example St.'))
+        self.ub1.id = 1
+        self.ub2.id = 2
         s = Session()
-        utility = Utility(name='Example Utility', address=Address())
-        utility1 = Utility(name='Empty Utility', address=Address())
-        utility2 = Utility(name='Some Other Utility', address=Address())
-        ua1 = UtilityAccount('Account 1', '11111', utility, None, None,
-                             Address(), Address(), '1')
-        ua2 = UtilityAccount('Account 2', '22222', utility, None, None,
+        s.add_all([self.utility, self.ua1, self.rate_class, self.ub1, self.ub2])
+        s.commit()
+        # TODO: add more database objects used in multiple subclass setUps
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
+    """Integration tests using REST request handlers related to Bill Entry main
+    page.
+    BillEntryIntegrationTest must be the first superclass for super() to work.
+    """
+    def setUp(self):
+        super(TestBillEntryMain, self).setUp()
+
+        s = Session()
+        utility1 = Utility('Empty Utility', Address())
+        utility2 = Utility('Some Other Utility',  Address())
+        ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
                              Address(), Address(), '2')
-        ua3 = UtilityAccount('Not PG', '33333', utility, None, None,
+        ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
                              Address(), Address(), '3')
-        rate_class = RateClass(name='Some Rate Class', utility=utility,
-                               service='gas')
-        rate_class1 = RateClass(name='Other Rate Class', utility=utility,
-                                service='electric')
-        s.add_all([rate_class, rate_class1])
-        ua1.id, ua2.id, ua3.id = 1, 2, 3
-        utility.id, utility1.id, utility2.id = 1, 2, 10
-        s.add_all([utility, utility1, utility2])
-        s.add_all([ua1, ua2, ua3])
-        s.add_all([BrokerageAccount(ua1), BrokerageAccount(ua2)])
-        ub1 = UtilBill(ua1, UtilBill.Complete, utility, None,
-                       rate_class, Address(), Address(street='1 Example St.'))
-        ub2 = UtilBill(ua1, UtilBill.Complete, utility, None,
-                       None, Address(), Address(street='2 Example St.'))
+        rate_class1 = RateClass('Other Rate Class', self.utility, 'electric')
+        s.add_all([self.rate_class, rate_class1])
+        ua2.id, ua3.id = 2, 3
+        utility1.id, utility2.id = 2, 10
+        s.add_all([self.utility, utility1, utility2, ua2, ua3,
+                   BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
         ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
                        None, Address(), Address(street='2 Example St.'))
-
-        ub1.id = 1
-        ub2.id = 2
         ub3.id = 3
 
-        register1 = Register(ub1, "ABCDEF description",
+        register1 = Register(self.ub1, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
                 register_binding='REG_TOTAL')
-        register2 = Register(ub2, "ABCDEF description",
+        register2 = Register(self.ub2, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
                 register_binding='REG_TOTAL')
         s.add_all([register1, register2])
-        ub1.registers = [register1]
-        ub2.registers = [register2]
+        self.ub1.registers = [register1]
+        self.ub2.registers = [register2]
 
-        c1 = Charge(ub1, 'CONSTANT', 0.4, '100', unit='dollars',
+        c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
                     type='distribution', target_total=1)
-        c2 = Charge(ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
+        c2 = Charge(self.ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        c3 = Charge(ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
+        c3 = Charge(self.ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
                     'REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
-        c4 = Charge(ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
+        c4 = Charge(self.ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
                     unit='therms', type='distribution')
-        c5 = Charge(ub2, 'BLOCK_2', 0.4,
+        c5 = Charge(self.ub2, 'BLOCK_2', 0.4,
                     'min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
-        s.add_all([c1, c2, c3, c4, c5])
-        s.add_all([ub1, ub2, ub3])
-
+        s.add_all([c1, c2, c3, c4, c5, ub3])
         s.commit()
-
-        self.app = billentry.app.test_client()
-
-
-    def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
 
     def test_accounts(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
@@ -165,7 +180,7 @@ class TestBillEntryWeb(unittest.TestCase):
                  {'account': None,
                   'computed_total': 0.0,
                   'id': 3,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
@@ -227,33 +242,43 @@ class TestBillEntryWeb(unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
+        expected = {'rows':
+             {'account': None,
+              'computed_total': 85.0,
+              'id': 1,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': '2000-01-01',
+              'processed': False,
+              'rate_class': 'Some Rate Class',
+              'service': 'Gas',
+              'service_address': '1 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 2.0,
+              'target_total': 0.0,
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_number': '1',
+              'supply_choice_id': None
+             },
+         'results': 1}
+
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             period_start=datetime(2000, 1, 1).isoformat()
         ))
-        self.assertJson(
-            {'rows':
-                 {'account': None,
-                  'computed_total': 85.0,
-                  'id': 1,
-                  'next_estimated_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': '2000-01-01',
-                  'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
-                  'service_address': '1 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 2.0,
-                  'target_total': 0.0,
-                  'total_energy': 150.0,
-                  'utility': 'Example Utility',
-                  'utility_account_number': '1',
-                  'supply_choice_id': None
-                 },
-             'results': 1,
-            }, rv.data)
+        expected['rows']['period_start'] = '2000-01-01'
+        self.assertJson(expected, rv.data)
+
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id=2,
+            next_meter_read_date=date(2000, 2, 5).isoformat()
+        ))
+        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        self.assertJson(expected, rv.data)
+
+        # TODO: why aren't there tests for editing all the other fields?
 
     def test_rate_class(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
@@ -263,7 +288,7 @@ class TestBillEntryWeb(unittest.TestCase):
                  {'account': None,
                   'computed_total': 0.0,
                   'id': 3,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
@@ -293,7 +318,7 @@ class TestBillEntryWeb(unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
@@ -324,7 +349,7 @@ class TestBillEntryWeb(unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
@@ -343,3 +368,84 @@ class TestBillEntryWeb(unittest.TestCase):
             }, rv.data
         )
 
+class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
+    """Integration tests using REST request handlers related to Bill Entry
+    report page.
+    """
+    def setUp(self):
+        super(TestBillEntryReport, self).setUp()
+
+        s = Session()
+        self.user1 = BillEntryUser()
+        self.user2 = BillEntryUser()
+        s.add_all([self.ub1, self.ub2, self.user1, self.user2])
+        s.commit()
+
+    def test_report_count_for_user(self):
+        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
+
+        # no "entered" bills yet
+        rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
+                                        datetime(2000,2,1).isoformat()))
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 0},
+                                  {"user_id": self.user2.id, "count": 0}]},
+                        rv.data)
+
+        self.ub1.enter(self.user1, datetime(2000,1,10))
+        self.ub2.enter(self.user1, datetime(2000,1,20))
+
+        # no bills in range
+        rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
+                                        datetime(2000,1,20).isoformat()))
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 0},
+                                  {"user_id": self.user2.id, "count": 0}]},
+                        rv.data)
+
+        # user1 has 2 bills in range, user2 has none
+        rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
+                                        datetime(2000,1,21).isoformat()))
+        self.assertJson({"results": 2,
+                         "rows": [{"user_id": self.user1.id, "count": 2},
+                                  {"user_id": self.user2.id, "count": 0}]
+
+                        }, rv.data)
+
+    def test_report_utilbills_for_user(self):
+        url_format = self.URL_PREFIX + 'user_utilitybills/%s'
+
+        # no "entered" bills yet
+        rv = self.app.get(url_format % self.user1.id)
+        self.assertJson({"results": 0, "rows": []}, rv.data)
+
+        # one "entered bill for user1
+        self.ub1.enter(self.user1, datetime(2000,1,10))
+        rv = self.app.get(url_format % self.user1.id)
+        self.assertJson(
+            {"results": 1,
+             'rows':
+                 [{'account': None,
+                  'computed_total': 0,
+                  'id': 1,
+                  'next_meter_read_date': None,
+                  'pdf_url': '',
+                  'period_end': None,
+                  'period_start': None,
+                  'processed': False,
+                  'rate_class': 'Some Rate Class',
+                  'service': 'Gas',
+                  'service_address': '1 Example St., ,  ',
+                  'supplier': 'Unknown',
+                  'supply_total': 0,
+                  'target_total': 0,
+                  'total_energy': 0,
+                  'utility': 'Example Utility',
+                  'utility_account_number': '1',
+                  'supply_choice_id': None
+                 }],
+             }, rv.data)
+
+        # still none for user2
+        rv = self.app.get(url_format % self.user2.id)
+        self.assertJson({"results": 0, "rows": []}, rv.data)
