@@ -3,7 +3,7 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 from math import floor
 
@@ -420,6 +420,8 @@ class UtilBill(Base):
     # despite the name.
     supply_choice_id = Column(String)
 
+    next_meter_read_date = Column(Date)
+
     # cascade for UtilityAccount relationship does NOT include "save-update"
     # to allow more control over when UtilBills get added--for example,
     # when uploading a new utility bill, the new UtilBill object should only
@@ -475,7 +477,7 @@ class UtilBill(Base):
                  rate_class, billing_address, service_address,
                  period_start=None, period_end=None, target_total=0,
                  date_received=None, processed=False, sha256_hexdigest='',
-                 due_date=None):
+                 due_date=None, next_meter_read_date=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -494,6 +496,7 @@ class UtilBill(Base):
         self.processed = processed
         self.due_date = due_date
         self.account_number = utility_account.account_number
+        self.next_meter_read_date = next_meter_read_date
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -514,14 +517,16 @@ class UtilBill(Base):
         '''
         return self.utility.name
 
-    def get_estimated_next_meter_read_date(self):
-        '''Return approximate date of next meter read (which is usually the
-        end date of the next utility bill after this one), or None if no
-        estimate can be made.
+    def get_next_meter_read_date(self):
+        '''Return date of next meter read (usually equal to the end of the next
+        bill's period), or None of unknown. This may or may not be reported by
+        the utility and is not necessarily accurate.
         '''
-        if self.period_end is None:
-            return None
-        return self.period_end + timedelta(days=30)
+        return self.next_meter_read_date
+
+    def set_next_meter_read_date(self, next_meter_read_date):
+        assert isinstance(next_meter_read_date, date)
+        self.next_meter_read_date = next_meter_read_date
 
     def get_rate_class_name(self):
         '''Return name of this bill's rate class or None if the rate class is

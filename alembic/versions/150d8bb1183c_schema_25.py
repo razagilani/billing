@@ -26,11 +26,11 @@ def upgrade():
                                          sa.ForeignKey('billentry_user.id')))
     op.add_column(u'utilbill', sa.Column('discriminator', sa.String(1000),
                                          nullable=False))
+    op.add_column(u'utilbill', sa.Column('next_meter_read_date', sa.Date()))
     op.drop_column(u'charge', 'group')
     op.alter_column(u'reebill_charge', 'group_name', new_column_name='type',
                     existing_type=sa.String(1000),
                     type_=sa.Enum('supply', 'distribution'))
-
 
 def downgrade():
     op.drop_column(u'utilbill', 'discriminator')
