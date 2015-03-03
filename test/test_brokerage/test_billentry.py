@@ -428,7 +428,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                  [{'account': None,
                   'computed_total': 0,
                   'id': 1,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
