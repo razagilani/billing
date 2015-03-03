@@ -128,6 +128,18 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 100
+    },{
+        header: 'Next Meter Read',
+        dataIndex: 'next_meter_read_date',
+        editor: {
+            xtype: 'datefield',
+            allowBlank: false,
+            format: 'Y-m-d'
+        },
+        width: 100,
+        renderer: function(value) {
+            return Ext.util.Format.date(value, 'Y-m-d');
+        }
     }],
 
     dockedItems: [{
