@@ -28,14 +28,10 @@ class ReeBill(Base):
     __tablename__ = 'reebill'
 
     id = Column(Integer, primary_key=True)
-    reebill_customer_id = Column(Integer,ForeignKey('reebill_customer.id'),
-                                 nullable=False)
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
     issue_date = Column(DateTime)
-
-    # new fields from Mongo
     ree_charge = Column(Float, nullable=False)
     balance_due = Column(Float, nullable=False)
     balance_forward = Column(Float, nullable=False)
@@ -52,14 +48,15 @@ class ReeBill(Base):
     email_recipient = Column(String(1000), nullable=True)
     processed = Column(Boolean, default=False)
 
+    reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'),
+                                 nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
+                                nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
+                                nullable=False)
 
-    reebill_customer = relationship("ReeBillCustomer",
-                                    backref=backref('reebills', order_by=id))
-
+    reebill_customer = relationship(
+        "ReeBillCustomer", backref=backref('reebills', order_by=id))
     billing_address = relationship('Address', uselist=False,
         cascade='all',
         primaryjoin='ReeBill.billing_address_id==Address.id')
@@ -177,7 +174,6 @@ class ReeBill(Base):
         '''
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
-
     def copy_reading_conventional_quantities_from_utility_bill(self):
         """Sets the conventional_quantity of each reading to match the
         corresponding utility bill register quantity."""
@@ -230,7 +226,8 @@ class ReeBill(Base):
         whose 'register_binding' matches 'binding'.
         '''
         try:
-            result = next(r for r in self.readings if r.register_binding == binding)
+            result = next(
+                r for r in self.readings if r.register_binding == binding)
         except StopIteration:
             raise RegisterError('Unknown register binding "%s"' % binding)
         return result
@@ -347,7 +344,7 @@ class ReeBill(Base):
             'service_address': self.service_address.to_dict(),
             'period_start': period_start,
             'period_end': period_end,
-            'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
+            'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'readings': [r.column_dict() for r in self.readings]
@@ -421,9 +418,9 @@ class ReeBillCustomer(Base):
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
-    utility_account = relationship('UtilityAccount', uselist=False, cascade='all',
+    utility_account = relationship(
+        'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-
 
     def get_discount_rate(self):
         return self.discountrate
@@ -594,18 +591,17 @@ class Payment(Base):
     __tablename__ = 'payment'
 
     id = Column(Integer, primary_key=True)
-    reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'), nullable=False)
+    reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'),
+                                 nullable=False)
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
     description = Column(String(45))
     credit = Column(Float)
 
-    reebill_customer = relationship("ReeBillCustomer", backref=backref('payments',
-        order_by=id))
-
-    reebill = relationship("ReeBill", backref=backref('payments',
-        order_by=id))
+    reebill_customer = relationship("ReeBillCustomer",
+                                    backref=backref('payments', order_by=id))
+    reebill = relationship("ReeBill", backref=backref('payments', order_by=id))
 
     '''date_received is the datetime when the payment was recorded.
     date_applied is the date that the payment is "for", from the customer's
@@ -614,8 +610,8 @@ class Payment(Base):
     date_applied as the old one, whose credit is the true amount minus the
     previously-entered amount.'''
 
-    def __init__(self, reebill_customer, date_received, date_applied, description,
-                 credit):
+    def __init__(self, reebill_customer, date_received, date_applied,
+                 description, credit):
         assert isinstance(date_received, datetime)
         assert isinstance(date_applied, date)
         self.reebill_customer = reebill_customer
@@ -635,9 +631,9 @@ class Payment(Base):
         return False
 
     def __repr__(self):
-        return '<Payment(%s, received=%s, applied=%s, %s, %s)>' \
-               % (self.reebill_customer.get_account(), self.date_received, \
-                  self.date_applied, self.description, self.credit)
+        return '<Payment(%s, received=%s, applied=%s, %s, %s)>' % (
+            self.reebill_customer.get_account(), self.date_received,
+            self.date_applied, self.description, self.credit)
 
     def column_dict(self):
         the_dict = super(Payment, self).column_dict()
