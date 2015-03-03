@@ -484,7 +484,12 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String(1000), nullable=False)
     description = Column(String(1000), nullable=False)
-    type = Column(Enum(Charge.CHARGE_TYPES), name='type', nullable=False)
+
+    # this will be one of the enum values in Charge.CHARGE_TYPES for newer
+    # bills, but old bills can have arbitrary strings in this column. this is
+    # not used for anything important.
+    type = Column(String(1000), nullable=False)
+
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)

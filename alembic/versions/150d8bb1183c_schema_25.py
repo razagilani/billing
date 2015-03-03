@@ -29,8 +29,7 @@ def upgrade():
     op.add_column(u'utilbill', sa.Column('next_meter_read_date', sa.Date()))
     op.drop_column(u'charge', 'group')
     op.alter_column(u'reebill_charge', 'group_name', new_column_name='type',
-                    existing_type=sa.String(1000),
-                    type_=sa.Enum('supply', 'distribution'))
+                    existing_type=sa.String(1000))
 
 def downgrade():
     op.drop_column(u'utilbill', 'discriminator')
@@ -42,5 +41,6 @@ def downgrade():
     # value of "type"
     op.add_column(u'charge', 'group')
 
-    op.alter_column(u'reebill_charge', 'type', 'group_name',
-                    existing_type=sa.String(1000)),
+    op.alter_column(u'reebill_charge', 'type', new_column_name='group_name',
+                    existing_type=sa.String(1000))
+
