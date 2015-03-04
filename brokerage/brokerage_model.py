@@ -3,8 +3,9 @@ brokerage-related data and for the "Bill Entry" application.
 
 It might be a good idea to separate these.
 """
+import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, class_mapper
 from core.model import Base, UtilityAccount, UtilBill
 
 class BrokerageAccount(Base):
@@ -34,6 +35,8 @@ class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the
     Bill Entry application and by whom.
     """
+    POLYMORPHIC_IDENTITY = 'beutilbill'
+
     __mapper_args__ = {
         # single-table inheritance
         'polymorphic_identity': 'beutilbill',
@@ -43,6 +46,64 @@ class BEUtilBill(UtilBill):
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser)
+
+    def __init__(self, *args, **kwargs):
+        """No-argument constructor is necessary for create_from_utilbill.
+        """
+        pass
+
+    @classmethod
+    def create_with_utilbill_args(cls, utility_account, state, utility, supplier,
+                                  rate_class, billing_address, service_address,
+                                  period_start=None, period_end=None,
+                                  target_total=0, date_received=None,
+                                  processed=False, sha256_hexdigest='',
+                                  due_date=None, next_meter_read_date=None):
+        """UtilBill constructor interface."""
+        new_instance = cls()
+        # utility bill objects also have an 'id' property that SQLAlchemy
+        # automatically adds from the database column
+        new_instance.utility_account = utility_account
+        new_instance.state = state
+        new_instance.utility = utility
+        new_instance.rate_class = rate_class
+        new_instance.supplier = supplier
+        new_instance.billing_address = billing_address
+        new_instance.service_address = service_address
+        new_instance.period_start = period_start
+        new_instance.period_end = period_end
+        new_instance.target_total = target_total
+        new_instance.date_received = date_received
+        new_instance.processed = processed
+        new_instance.due_date = due_date
+        new_instance.account_number = utility_account.account_number
+        new_instance.next_meter_read_date = next_meter_read_date
+
+        # TODO: empty string as default value for sha256_hexdigest is
+        # probably a bad idea. if we are writing tests that involve putting
+        # UtilBills in an actual database then we should probably have actual
+        # files for them.
+        new_instance.sha256_hexdigest = sha256_hexdigest
+
+        new_instance.date_modified = datetime.utcnow()
+
+    @classmethod
+    def create_from_utilbill(cls, utilbill):
+        """Return a new BEUtilBill, identical to 'utilbill' except for its
+        class.
+        """
+        print type(UtilBill)
+        assert type(utilbill) is UtilBill
+        assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
+        new_beutilbill = BEUtilBill()
+        for col_name in UtilBill.column_names():
+            if col_name in ('id', ):
+                continue
+            # NOTE it should be OK to share the same child objects between
+            # 'utilbill' and 'new_beutilbill' because utilbill is going to be
+            #  deleted
+            setattr(new_beutilbill, col_name, getattr(UtilBill, col_name))
+        return new_beutilbill
 
     def get_user(self):
         return self.billentry_user
