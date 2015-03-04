@@ -57,101 +57,6 @@ google = oauth.remote_app(
     consumer_secret=config.get('billentry', 'google_client_secret'))
 
 
-class ChargeResource(BaseResource):
-
-    def put(self, id=None):
-        parser = id_parser.copy()
-        parser.add_argument('rsi_binding', type=str)
-        parser.add_argument('target_total', type=float)
-        args = parser.parse_args()
-
-        s = Session()
-        charge = s.query(Charge).filter_by(id=id).one()
-        if args['rsi_binding'] is not None:
-            # convert name to all caps with underscores instead of spaces
-            charge.rsi_binding = args['rsi_binding'].strip().upper().replace(
-                ' ', '_')
-        if args['target_total'] is not None:
-            charge.target_total = args['target_total']
-        s.commit()
-        return {'rows': marshal(charge, self.charge_fields), 'results': 1}
-
-    def post(self, id):
-        # TODO: client sends "id" even when its value is meaningless (the
-        # value is always 0, for some reason)
-        parser = id_parser.copy()
-        parser.add_argument('utilbill_id', type=int, required=True)
-        parser.add_argument('rsi_binding', type=str, required=True)
-        args = parser.parse_args()
-        charge = self.utilbill_processor.add_charge(
-            args['utilbill_id'], rsi_binding=args['rsi_binding'])
-        Session().commit()
-        return {'rows': marshal(charge, self.charge_fields), 'results': 1}
-
-    def delete(self, id):
-        self.utilbill_processor.delete_charge(id)
-        Session().commit()
-        return {}
-
-class SuppliersResource(BaseResource):
-    def get(self):
-        suppliers = Session().query(Supplier).all()
-        rows = marshal(suppliers, {'id': Integer, 'name': String})
-        return {'rows': rows, 'results': len(rows)}
-
-class UtilitiesResource(BaseResource):
-    def get(self):
-        utilities = Session().query(Utility).all()
-        rows = marshal(utilities, {'id': Integer, 'name': String})
-        return {'rows': rows, 'results': len(rows)}
-
-class RateClassesResource(BaseResource):
-    def get(self):
-        rate_classes = Session.query(RateClass).all()
-        rows = marshal(rate_classes, {
-            'id': Integer,
-            'name': String,
-            'utility_id': Integer})
-        return {'rows': rows, 'results': len(rows)}
-
-class UtilBillCountForUserResource(BaseResource):
-
-    def get(self, *args, **kwargs):
-        parser = RequestParser()
-        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
-        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
-        parser.add_argument('start', type=str, required=True)
-        parser.add_argument('end', type=str, required=True)
-        args = parser.parse_args()
-        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
-        start = dateutil_parser.parse(args['start'])
-        end = dateutil_parser.parse(args['end'])
-
-        s = Session()
-        utilbill_sq = s.query(BEUtilBill.id,
-                              BEUtilBill.billentry_user_id).filter(
-            and_(BEUtilBill.billentry_date >= start,
-                 BEUtilBill.billentry_date < end)).subquery()
-        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
-            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
-        rows = [{
-            'user_id': user.id,
-            'count': count,
-        } for (user, count) in q.all()]
-        return {'rows': rows, 'results': len(rows)}
-
-class UtilBillListForUserResourece(BaseResource):
-    """List of bills queried by id of BillEntryUser who "entered" them.
-    """
-    def get(self, id=None):
-        assert isinstance(id, int)
-        s = Session()
-        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
-            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
-                                             desc(UtilBill.id)).all()
-        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
-        return {'rows': rows, 'results': len(rows)}
-
 app = Flask(__name__, static_url_path="")
 app.debug = True
 
@@ -249,8 +154,8 @@ api.add_resource(resources.UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(resources.RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
-api.add_resource(UtilBillCountForUserResource, '/utilitybills/users_counts')
-api.add_resource(UtilBillListForUserResourece,
+api.add_resource(resources.UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(resources.UtilBillListForUserResourece,
                  '/utilitybills/user_utilitybills/<int:id>')
 
 # apparently needed for Apache
