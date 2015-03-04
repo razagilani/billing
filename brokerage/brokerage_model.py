@@ -61,7 +61,7 @@ class BEUtilBill(UtilBill):
         # method-of-iterating-over-sqlalchemy-models-defined-columns
         mapper = inspect(utilbill)
         for col_name, value in mapper.attrs.items():
-            if col_name in ('id', 'discriminator'):
+            if col_name in ('discriminator',):
                 continue
             # NOTE it should be OK to share the same child objects between
             # 'utilbill' and 'new_beutilbill' because utilbill is going to be

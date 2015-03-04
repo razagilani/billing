@@ -32,7 +32,7 @@ class TestBEUtilBill(unittest.TestCase):
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
         self.assertIs(BEUtilBill, type(beutilbill))
         for attr_name in UtilBill.column_names():
-            if attr_name in ('id', 'discriminator'):
+            if attr_name in ('discriminator'):
                 continue
             utilbill_value = getattr(utilbill, attr_name)
             beutilbill_value = getattr(beutilbill, attr_name)
@@ -465,11 +465,23 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                                         unittest.TestCase):
 
-    def test_1(self):
+    def test_replace_utilbill_with_beutilbill(self):
         s = Session()
-        self.assertEqual(1, s.query(UtilBill).filter_by(id=self.ub.id).count())
+        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        s.add(u)
+        s.flush() # set u.id
+
+        self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
         self.assertEqual(0,
-                         s.query(BEUtilBill).filter_by(id=self.ub.id).count())
-        new_beutilbill = billentry.replace_utilbill_with_beutilbill(self.ub)
-        self.assertEqual(0, s.query(UtilBill).filter_by(id=self.ub.id).count())
-        self.assertIs(new_beutilbill, s.query(BEUtilBill).one())
+                         s.query(BEUtilBill).filter_by(id=u.id).count())
+
+        the_id = u.id
+        new_beutilbill = billentry.replace_utilbill_with_beutilbill(u)
+
+        # note that new_beutilbill has the same id
+        query_result = s.query(UtilBill).filter_by(id=the_id).one()
+        self.assertIsNone(u.id)
+        self.assertIs(new_beutilbill, query_result)
+        self.assertIsInstance(new_beutilbill, BEUtilBill)
+        self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
+                         new_beutilbill.discriminator)
