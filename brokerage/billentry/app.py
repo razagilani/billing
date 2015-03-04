@@ -1,13 +1,13 @@
 '''
-Flask back-end for utility bill data-entry UI.
+Main file for Bill Entry (Flask web app for y UI).utility bill data entry).
+This file contains the main 'Flask' object and code for things that affect the
+application as a whole, such as authentication.
 
-This file will probably have to move or split apart in order to follow
-recommended file structure as documented here:
+Here are some recommendations on how to structure a Python/Flask project.
 http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
-from datetime import datetime
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
