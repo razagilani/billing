@@ -7,14 +7,16 @@ from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
-    BillEntryUser
+from billentry.billentry_model import BEUtilBill
+from billentry.billentry_model import BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
+
 
 
 # TODO: would be even better to make flask-restful automatically call any

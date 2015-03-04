@@ -5,13 +5,13 @@ import unittest
 from json import loads
 
 from mock import Mock
+from billentry.billentry_model import BillEntryUser, BEUtilBill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
-    BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
