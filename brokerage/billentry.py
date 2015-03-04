@@ -434,6 +434,8 @@ def register_user(access_token):
 def before_request():
     from core import config
     user = current_user
+    if 'NEXTILITY_LOGO.png' in request.full_path:
+        return app.send_static_file('images/NEXTILITY_LOGO.png')
     if not user.is_authenticated() \
             and request.endpoint not in (
             'login', 'oauth2callback', 'logout',
