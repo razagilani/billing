@@ -14,6 +14,8 @@ import json
 
 from boto.s3.connection import S3Connection
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, Permission, RoleNeed, \
+    identity_loaded, UserNeed
 from sqlalchemy import desc
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
@@ -32,8 +34,8 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount, BillEntryUser
-from exc import Unauthenticated
+from brokerage.brokerage_model import BrokerageAccount, BillEntryUser, RoleBEUser, Role
+import xkcdpass.xkcd_password as xp
 
 oauth = OAuth()
 
@@ -325,16 +327,43 @@ app.debug = True
 app.secret_key = 'sgdsdgs'
 login_manager = LoginManager()
 login_manager.init_app(app)
+# load the extension
+principals = Principal(app)
+
+@identity_loaded.connect_via(app)
+def on_identity_loaded(sender, identity):
+    # Set the identity user object
+    identity.user = current_user
+
+    # Add the UserNeed to the identity
+    if hasattr(current_user, 'id'):
+        identity.provides.add(UserNeed(current_user.id))
+
+    # Assuming the User model has a list of roles, update the
+    # identity with the roles that the user provides
+    if hasattr(current_user, 'roles'):
+        for role in current_user.roles:
+            identity.provides.add(RoleNeed(role.name))
 
 @login_manager.user_loader
-def load_user(email):
-    return Session().query(BillEntryUser).filter_by(email=email).first()
+def load_user(id):
+    user = Session().query(BillEntryUser).filter_by(id=id).first()
+    if user:
+        return user
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
     session.pop('user_name', None)
+    current_user.authenticated = False
     logout_user()
+    # Remove session keys set by Flask-Principal
+    for key in ('identity.name', 'identity.auth_type'):
+        session.pop(key, None)
+
+    # Tell Flask-Principal the user is anonymous
+    identity_changed.send(current_app._get_current_object(),
+                          identity=AnonymousIdentity())
     return app.send_static_file('logout.html')
 
 @app.route('/oauth2callback')
@@ -347,6 +376,7 @@ def oauth2callback(resp):
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
+    register_user(resp['access_token'])
     return redirect(next_url)
 
 @app.route('/')
@@ -357,18 +387,15 @@ def index():
     from core import config
     if config.get('billentry', 'disable_google_oauth'):
         return app.send_static_file('index.html')
-    access_token = session.get('access_token')
-    user_name = session.get('user_name')
-    if access_token is None and not current_user.is_authenticated():
+    if not current_user.is_authenticated():
         # user is not logged in so redirect to login page
-        return current_app.login_manager.unauthorized()
-        #return redirect(url_for('login'))
+        #return current_app.login_manager.unauthorized()
+        return redirect(url_for('landing_page'))
 
+    return app.send_static_file('index.html')
 
-    if user_name is not None:
-        return app.send_static_file('index.html')
-
-    headers = {'Authorization': 'OAuth '+access_token[0]}
+def register_user(access_token):
+    headers = {'Authorization': 'OAuth '+access_token}
     req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
     try:
@@ -382,20 +409,36 @@ def index():
     #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
+    s = Session()
     session['email'] = googleEmail['email']
-    return app.send_static_file('index.html')
+    user = s.query(BillEntryUser).filter_by(email=googleEmail['email']).first()
+    if user is None:
+        wordfile = xp.locate_wordfile()
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
+        user = BillEntryUser(email=session['email'],
+                                 password=xp.generate_xkcdpassword(mywords,
+                                                        acrostic="face"))
+        admin_role = s.query(Role).filter_by(name='admin').first()
+        user.roles = [admin_role]
+        s.add(user)
+        s.commit()
+    user.authenticated = True
+    s.flush()
+    login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    return googleEmail['email']
 
-def is_authenticated():
-    return current_user.is_authenticated() or 'user_email' in session
 
 @app.before_request
 def before_request():
     from core import config
-    if 'access_token' not in session and 'user_name' not in session \
+    user = current_user
+    if not user.is_authenticated() \
             and request.endpoint not in (
             'login', 'oauth2callback', 'logout',
-            'landing_page', 'login_page', 'userlogin'):
-        return redirect(url_for('landing_page'))
+            'login_page', 'userlogin'):
+        return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
@@ -405,7 +448,6 @@ def db_commit(response):
 
 @app.route('/login')
 def login():
-    from core import config
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -425,25 +467,24 @@ def login():
 
 @app.route('/login-page')
 def login_page():
-    return render_template('login.html')
-
-@app.route('/landing-page')
-def landing_page():
-    return render_template('landing_page.html')
+    return render_template('login_page.html')
 
 @app.route('/userlogin', methods=['GET','POST'])
 def userlogin():
     email = request.form['email']
     password = request.form['password']
-    registered_user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
-    if registered_user is None:
+    user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
+    if user is None:
         flash('Username or Password is invalid' , 'error')
-        return redirect(url_for('login'))
+        return redirect(url_for('landing_page'))
+    user.authenticated = True
     if 'rememberme' in request.form:
-        login_user(registered_user,rememberme=True)
+        login_user(user,rememberme=True)
     else:
-        login_user(registered_user)
-    session['user_name'] = str(registered_user)
+        login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    session['user_name'] = str(user)
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
 
