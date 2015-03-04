@@ -30,7 +30,7 @@ def upgrade():
                                          sa.ForeignKey('billentry_user.id')))
     op.add_column(u'utilbill', sa.Column('discriminator', sa.String(1000),
                                          nullable=False))
-
+    op.add_column(u'utilbill', sa.Column('next_meter_read_date', sa.Date()))
 
 def downgrade():
     op.drop_column(u'utilbill', 'discriminator')

@@ -7,6 +7,7 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+from datetime import datetime
 import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
@@ -16,7 +17,7 @@ from boto.s3.connection import S3Connection
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, Permission, RoleNeed, \
     identity_loaded, UserNeed
-from sqlalchemy import desc
+from sqlalchemy import desc, func,  or_, and_
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask.ext.restful import Api, Resource, marshal
@@ -34,7 +35,7 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount, BillEntryUser, RoleBEUser, Role
+from brokerage.brokerage_model import BrokerageAccount, BillEntryUser, RoleBEUser, Role, BEUtilBill
 import xkcdpass.xkcd_password as xp
 
 oauth = OAuth()
@@ -163,8 +164,8 @@ class BaseResource(Resource):
                 String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
             'service_address': String,
-            'next_estimated_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+            'next_meter_read_date': CallableField(
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
@@ -190,9 +191,8 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-
-        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
-            UtilityAccount.account).all()
+        accounts = Session().query(UtilityAccount).join(
+            BrokerageAccount).order_by(UtilityAccount.account).all()
         return marshal(accounts, {
             'id': Integer,
             'account': String,
@@ -230,6 +230,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('total_energy', type=float)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
+        parser.add_argument('next_meter_read_date', type=parse_date)
 
         row = parser.parse_args()
         ub = self.utilbill_processor.update_utilbill_metadata(
@@ -241,11 +242,14 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supply_choice_id=row['supply_choice_id']
+            supply_choice_id=row['supply_choice_id'],
             )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
+
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
 
         Session().commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
@@ -261,8 +265,8 @@ class ChargeListResource(BaseResource):
         args = parser.parse_args()
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
-        # TODO: return only supply charges here
-        rows = [marshal(c, self.charge_fields) for c in utilbill.get_supply_charges()]
+        rows = [marshal(c, self.charge_fields) for c in
+                utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):
@@ -322,9 +326,47 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
+class UtilBillCountForUserResource(BaseResource):
+
+    def get(self, *args, **kwargs):
+        parser = RequestParser()
+        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
+        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
+        parser.add_argument('start', type=str, required=True)
+        parser.add_argument('end', type=str, required=True)
+        args = parser.parse_args()
+        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
+        start = dateutil_parser.parse(args['start'])
+        end = dateutil_parser.parse(args['end'])
+
+        s = Session()
+        utilbill_sq = s.query(BEUtilBill.id,
+                              BEUtilBill.billentry_user_id).filter(
+            and_(BEUtilBill.billentry_date >= start,
+                 BEUtilBill.billentry_date < end)).subquery()
+        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        rows = [{
+            'user_id': user.id,
+            'count': count,
+        } for (user, count) in q.all()]
+        return {'rows': rows, 'results': len(rows)}
+
+class UtilBillListForUserResourece(BaseResource):
+    """List of bills queried by id of BillEntryUser who "entered" them.
+    """
+    def get(self, id=None):
+        assert isinstance(id, int)
+        s = Session()
+        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
+            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
+                                             desc(UtilBill.id)).all()
+        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+        return {'rows': rows, 'results': len(rows)}
+
 app = Flask(__name__, static_url_path="")
 app.debug = True
-app.secret_key = 'sgdsdgs'
+app.secret_key = config.get('billentry', 'secret_key')
 login_manager = LoginManager()
 login_manager.init_app(app)
 # load the extension
@@ -390,7 +432,7 @@ def index():
     if not current_user.is_authenticated():
         # user is not logged in so redirect to login page
         #return current_app.login_manager.unauthorized()
-        return redirect(url_for('landing_page'))
+        return redirect(url_for('login_page'))
 
     return app.send_static_file('index.html')
 
@@ -486,7 +528,7 @@ def userlogin():
     user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
     if user is None:
         flash('Username or Password is invalid' , 'error')
-        return redirect(url_for('landing_page'))
+        return redirect(url_for('login_page'))
     user.authenticated = True
     if 'rememberme' in request.form:
         login_user(user,rememberme=True)
@@ -507,6 +549,9 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(UtilBillListForUserResourece,
+                 '/utilitybills/user_utilitybills/<int:id>')
 
 # apparently needed for Apache
 application = app

@@ -502,13 +502,13 @@ class UtilBillTest(TestCase):
         # other) here when they are added.
         self.assertEqual(3, len(utilbill.get_distribution_charges()))
 
-    def test_get_estimated_next_meter_read_date(self):
+    def test_get_next_meter_read_date(self):
         utilbill = UtilBill(self.utility_account, UtilBill.Complete,
                             'gas', self.utility, self.supplier, self.rate_class,
                             Address(), Address())
-        self.assertEqual(None, utilbill.get_estimated_next_meter_read_date())
-
         utilbill.period_end = date(2000,1,1)
-        self.assertEqual(date(2000,1,31), utilbill.get_estimated_next_meter_read_date())
+        self.assertEqual(None, utilbill.get_next_meter_read_date())
 
+        utilbill.set_next_meter_read_date(date(2000,2,5))
+        self.assertEqual(date(2000,2,5), utilbill.get_next_meter_read_date())
 
