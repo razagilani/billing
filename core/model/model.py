@@ -473,11 +473,11 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    def __init__(self, utility_account, state, utility, supplier,
-                 rate_class, billing_address, service_address,
-                 period_start=None, period_end=None, target_total=0,
-                 date_received=None, processed=False, sha256_hexdigest='',
-                 due_date=None, next_meter_read_date=None):
+    def __init__(self, utility_account, utility, rate_class, supplier=None,
+                 period_start=None, period_end=None, billing_address=None,
+                 service_address=None, target_total=0, date_received=None,
+                 processed=False, sha256_hexdigest='', due_date=None,
+                 next_meter_read_date=None, state=Complete):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -487,7 +487,11 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        if billing_address is None:
+            billing_address = Address()
         self.billing_address = billing_address
+        if service_address is None:
+            service_address = Address()
         self.service_address = service_address
         self.period_start = period_start
         self.period_end = period_end

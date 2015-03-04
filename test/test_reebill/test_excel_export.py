@@ -347,10 +347,11 @@ class ExporterDataBookTest(unittest.TestCase):
 
         s.add(
             UtilBill(
-                utility_account, UtilBill.Estimated, utility,
-                supplier, rate_class, Address(), Address(),
+                utility_account, utility,
+                rate_class, supplier=supplier,
                 period_start=date(2010, 11, 1), period_end=date(2011, 2, 3),
-                date_received=datetime.utcnow().date()
+                date_received=datetime.utcnow().date(),
+                state=UtilBill.Estimated,
             )
         )
 
