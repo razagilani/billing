@@ -412,12 +412,18 @@ def register_user(access_token):
     s = Session()
     session['email'] = googleEmail['email']
     user = s.query(BillEntryUser).filter_by(email=googleEmail['email']).first()
+    # if user coming through google auth is not already present in local
+    # database, then create it in the local db and assign the 'admin' role
+    # to the user for proividing access to the Admin UI.
+    # This assumes that internal users are authenticating using google auth.
     if user is None:
+        # generate a random password
         wordfile = xp.locate_wordfile()
         mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
         user = BillEntryUser(email=session['email'],
                                  password=xp.generate_xkcdpassword(mywords,
                                                         acrostic="face"))
+        # add user to the admin role
         admin_role = s.query(Role).filter_by(name='admin').first()
         user.roles = [admin_role]
         s.add(user)
@@ -434,6 +440,8 @@ def register_user(access_token):
 def before_request():
     from core import config
     user = current_user
+    # this is for diaplaying the nextility logo on the
+    # login_page when user is not logged in
     if 'NEXTILITY_LOGO.png' in request.full_path:
         return app.send_static_file('images/NEXTILITY_LOGO.png')
     if not user.is_authenticated() \
