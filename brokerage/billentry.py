@@ -495,6 +495,10 @@ def db_commit(response):
 
 @app.route('/login')
 def login():
+    set_next_url()
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+def set_next_url():
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -510,7 +514,6 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 @app.route('/login-page')
 def login_page():
