@@ -32,12 +32,9 @@ class TestBEUtilBill(unittest.TestCase):
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
         self.assertIs(BEUtilBill, type(beutilbill))
         for attr_name in UtilBill.column_names():
-            if attr_name == 'discriminator':
+            if attr_name in ('id', 'discriminator'):
                 continue
-            print attr_name
             utilbill_value = getattr(utilbill, attr_name)
-            # TODO: for some reason this is an InsturmentedAttribute rather than
-            # the value itself.
             beutilbill_value = getattr(beutilbill, attr_name)
             self.assertEqual(utilbill_value, beutilbill_value)
 
