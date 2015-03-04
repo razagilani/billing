@@ -1,23 +1,24 @@
 from flask import session, url_for, redirect, request
 from flask.ext.admin import AdminIndexView, expose, Admin
+from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
+from flask.ext.principal import Permission, RoleNeed
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
-from brokerage.brokerage_model import BillEntryUser
+from brokerage.brokerage_model import BillEntryUser, Role
 from reebill.state import ReeBillCustomer, ReeBill
 
 
+# Create a permission with a single Need, in this case a RoleNeed.
+admin_permission = Permission(RoleNeed('admin'))
+
 class MyAdminIndexView(AdminIndexView):
 
+    @admin_permission.require()
     @expose('/')
     def index(self):
-        try:
-            if session['access_token'] is None:
-                return redirect(url_for('login', next=request.url))
-            else:
-                return super(MyAdminIndexView, self).index()
-        except KeyError:
-            print request.url
-            return redirect(url_for('login', next=request.url))
+        if login.current_user.is_authenticated():
+            return super(MyAdminIndexView, self).index()
+        return redirect(url_for('login', next=request.url))
 
 class CustomModelView(ModelView):
     # Disable create, update and delete on model
@@ -26,13 +27,7 @@ class CustomModelView(ModelView):
     can_edit = False
 
     def is_accessible(self):
-        try:
-            if session['access_token'] is None:
-                return False
-            else:
-                return True
-        except KeyError:
-            return False
+        return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
         if not self.is_accessible():
@@ -43,13 +38,7 @@ class CustomModelView(ModelView):
 
 class LoginModelView(ModelView):
     def is_accessible(self):
-        try:
-            if session['access_token'] is None:
-                return False
-            else:
-                return True
-        except KeyError:
-            return False
+        return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
         if not self.is_accessible():
@@ -86,6 +75,11 @@ class UserModelView(LoginModelView):
 
     def __init__(self, session, **kwargs):
         super(UserModelView, self).__init__(BillEntryUser, session, **kwargs)
+
+class RoleModelView(LoginModelView):
+
+    def __init__(self, session, **kwargs):
+        super(UserModelView, self).__init__(Role, session, **kwargs)
 
 
 def make_admin(app):
