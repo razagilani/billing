@@ -426,13 +426,10 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    from core import config
-    if config.get('billentry', 'disable_google_oauth'):
-        return app.send_static_file('index.html')
-    if not current_user.is_authenticated():
+    '''if not current_user.is_authenticated():
         # user is not logged in so redirect to login page
         #return current_app.login_manager.unauthorized()
-        return redirect(url_for('login_page'))
+        return redirect(url_for('login_page'))'''
 
     return app.send_static_file('index.html')
 
@@ -480,7 +477,6 @@ def register_user(access_token):
 
 @app.before_request
 def before_request():
-    from core import config
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
