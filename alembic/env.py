@@ -25,6 +25,7 @@ from core.model import Base
 import core.altitude
 import reebill.state
 import brokerage.brokerage_model
+import billentry.billentry_model
 
 target_metadata = Base.metadata
 
