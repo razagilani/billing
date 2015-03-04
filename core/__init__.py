@@ -90,3 +90,5 @@ def initialize():
     init_logging()
     init_config()
     init_model()
+
+ROOT_PATH = dirname(dirname(realpath(__file__)))
