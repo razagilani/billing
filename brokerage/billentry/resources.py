@@ -3,8 +3,9 @@ from boto.s3.connection import S3Connection
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc
-from brokerage.brokerage_model import BrokerageAccount
+from sqlalchemy import desc, and_, func
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
+    BillEntryUser
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
 from core.model import UtilityAccount
@@ -102,7 +103,7 @@ class BaseResource(Resource):
                 String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
             'service_address': String,
-            'next_estimated_meter_read_date': CallableField(
+            'next_meter_read_date': CallableField(
                 IsoDatetime(), attribute='get_estimated_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
@@ -261,4 +262,41 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
+class UtilBillCountForUserResource(BaseResource):
+
+    def get(self, *args, **kwargs):
+        parser = RequestParser()
+        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
+        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
+        parser.add_argument('start', type=str, required=True)
+        parser.add_argument('end', type=str, required=True)
+        args = parser.parse_args()
+        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
+        start = dateutil_parser.parse(args['start'])
+        end = dateutil_parser.parse(args['end'])
+
+        s = Session()
+        utilbill_sq = s.query(BEUtilBill.id,
+                              BEUtilBill.billentry_user_id).filter(
+            and_(BEUtilBill.billentry_date >= start,
+                 BEUtilBill.billentry_date < end)).subquery()
+        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        rows = [{
+                    'user_id': user.id,
+                    'count': count,
+                    } for (user, count) in q.all()]
+        return {'rows': rows, 'results': len(rows)}
+
+class UtilBillListForUserResourece(BaseResource):
+    """List of bills queried by id of BillEntryUser who "entered" them.
+    """
+    def get(self, id=None):
+        assert isinstance(id, int)
+        s = Session()
+        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
+            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
+                                             desc(UtilBill.id)).all()
+        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+        return {'rows': rows, 'results': len(rows)}
 

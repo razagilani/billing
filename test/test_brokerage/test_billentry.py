@@ -275,7 +275,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        expected['rows']['next_meter_read_date'] = None
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
@@ -428,7 +428,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                  [{'account': None,
                   'computed_total': 0,
                   'id': 1,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
