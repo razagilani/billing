@@ -1,7 +1,13 @@
+"""Code to set up the "Admin" UI for the billing database, using Flask-Admin.
+This lets people view or edit anythihg in the database and has nothing to do
+with Bill Entry, but it's part of Bill Entry because that is currently the
+only application that uses Flask.
+"""
 from flask import session, url_for, redirect, request
 from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext.admin.contrib.sqla import ModelView
-from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
+from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, \
+    UtilBill
 from reebill.state import ReeBillCustomer, ReeBill
 
 
@@ -70,10 +76,13 @@ class UtilityModelView(LoginModelView):
         super(UtilityModelView, self).__init__(Utility, session, **kwargs)
 
 class ReeBillCustomerModelView(LoginModelView):
-    form_columns = ('name', 'discountrate', 'latechargerate', 'bill_email_recipient', 'service', )
+    form_columns = (
+        'name', 'discountrate', 'latechargerate', 'bill_email_recipient',
+        'service', )
 
     def __init__(self, session, **kwargs):
-        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer , session, **kwargs)
+        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session,
+                                                       **kwargs)
 
 class RateClassModelView(LoginModelView):
 

@@ -1,3 +1,5 @@
+"""All tests for the Bill Entry application.
+"""
 from datetime import datetime, date
 import unittest
 from json import loads
