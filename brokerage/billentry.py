@@ -367,6 +367,8 @@ class UtilBillListForUserResourece(BaseResource):
 app = Flask(__name__, static_url_path="")
 app.debug = True
 app.secret_key = config.get('billentry', 'secret_key')
+if config.get('billentry', 'disable_authentication'):
+    app.config['TESTING'] = True
 login_manager = LoginManager()
 login_manager.init_app(app)
 # load the extension
@@ -426,11 +428,6 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    '''if not current_user.is_authenticated():
-        # user is not logged in so redirect to login page
-        #return current_app.login_manager.unauthorized()
-        return redirect(url_for('login_page'))'''
-
     return app.send_static_file('index.html')
 
 def register_user(access_token):
@@ -477,6 +474,8 @@ def register_user(access_token):
 
 @app.before_request
 def before_request():
+    if config.get('billentry', 'disable_authentication'):
+        return
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
