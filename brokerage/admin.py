@@ -4,7 +4,7 @@ from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
-from brokerage.brokerage_model import BillEntryUser, Role
+from brokerage.brokerage_model import BillEntryUser, Role, RoleBEUser
 from reebill.state import ReeBillCustomer, ReeBill
 
 
@@ -76,10 +76,14 @@ class UserModelView(LoginModelView):
     def __init__(self, session, **kwargs):
         super(UserModelView, self).__init__(BillEntryUser, session, **kwargs)
 
-class RoleModelView(LoginModelView):
+class RolesModelView(LoginModelView):
+    def __init__(self, session, **kwargs):
+        super(RolesModelView, self).__init__(Role, session, **kwargs)
+
+class UserRolesModelView(LoginModelView):
 
     def __init__(self, session, **kwargs):
-        super(UserModelView, self).__init__(Role, session, **kwargs)
+        super(UserRolesModelView, self).__init__(RoleBEUser, session, **kwargs)
 
 
 def make_admin(app):
@@ -87,12 +91,14 @@ def make_admin(app):
     the admin UI.
     '''
     admin = Admin(app, index_view=MyAdminIndexView())
-    admin.add_view(CustomModelView(UtilityAccount, Session()))
-    admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
-    admin.add_view(UtilityModelView(Session()))
-    admin.add_view(SupplierModelView(Session()))
-    admin.add_view(RateClassModelView(Session()))
-    admin.add_view(UserModelView(Session()))
-    admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
-    admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
+    admin.add_view(CustomModelView(UtilityAccount, Session))
+    admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
+    admin.add_view(UtilityModelView(Session))
+    admin.add_view(SupplierModelView(Session))
+    admin.add_view(RateClassModelView(Session))
+    admin.add_view(UserModelView(Session))
+    admin.add_view(RolesModelView(Session))
+    admin.add_view(UserRolesModelView(Session))
+    admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
+    admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     return admin
