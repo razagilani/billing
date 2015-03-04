@@ -9,7 +9,7 @@ from mock import Mock
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-from brokerage import billentry
+import billentry
 from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
     BillEntryUser
 from test.setup_teardown import TestCaseWithSetup
