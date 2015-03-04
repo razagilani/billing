@@ -273,7 +273,6 @@ class ReeBill(Base):
         for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
-                unit = '' if charge.unit is None else charge.unit
                 session.add(ReeBillCharge(self, binding, charge.description,
                         charge.group, charge.quantity, evaluation.quantity,
                         charge.unit, charge.rate, charge.total,
@@ -282,7 +281,11 @@ class ReeBill(Base):
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
         updates reebill charges."""
-        self.utilbill.compute_charges()
+        # make sure the utility bill charges are up to date by recomputing them
+        # (if the bill is already processed, you can't recompute the charges but
+        # it should not be necessary to recompute the charges anyway.)
+        if self.utilbill.editable():
+            self.utilbill.compute_charges()
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
@@ -437,8 +440,9 @@ class ReeBillCustomer(Base):
     def set_late_charge_rate(self, value):
         self.latechargerate = value
 
-    def __init__(self, name, discount_rate, late_charge_rate,
-                service, bill_email_recipient, utility_account):
+    def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
+                service='thermal', bill_email_recipient='',
+                utility_account=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
