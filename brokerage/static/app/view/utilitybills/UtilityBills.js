@@ -162,5 +162,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                 disabled: false
             }
         ]
+    }],
+
+    sorters: [{
+        property: 'due_date',
+        direction: 'DESC'
     }]
 });
