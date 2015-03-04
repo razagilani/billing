@@ -9,3 +9,5 @@ ipdb
 mock
 nose
 nose-progressive
+awscli # command-line tool from Amazon for working with AWS
+
