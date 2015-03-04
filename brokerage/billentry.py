@@ -370,7 +370,7 @@ def index():
 def before_request():
     from core import config
     if config.get('billentry', 'disable_google_oauth'):
-        set_next_path()
+        set_next_url()
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
