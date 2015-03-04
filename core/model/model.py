@@ -358,13 +358,15 @@ class UtilityAccount(Base):
 
 
 class UtilBill(Base):
+    POLYMORPHIC_IDENTITY = 'utilbill'
+
     __tablename__ = 'utilbill'
 
     __mapper_args__ = {
         'extension': UtilbillCallback(),
 
         # single-table inheritance
-        'polymorphic_identity': 'utilbill',
+        'polymorphic_identity': POLYMORPHIC_IDENTITY,
         'polymorphic_on': 'discriminator',
     }
 

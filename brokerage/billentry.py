@@ -361,6 +361,21 @@ class UtilBillListForUserResourece(BaseResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
+
+def replace_utilbill_with_beutilbill(utilbill):
+    """Return a BEUtilBill object identical to 'utilbill' except for its
+    class, and delete 'utilbill' from the session.
+
+    Do not use 'utilbill' after passing it to this function.
+    """
+    assert type(utilbill) is UtilBill
+    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
+    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+    s = Session.object_session(utilbill)
+    s.add(beutilbill)
+    s.delete(utilbill)
+    return beutilbill
+
 app = Flask(__name__, static_url_path="")
 app.debug = True
 
