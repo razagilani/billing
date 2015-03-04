@@ -42,6 +42,7 @@ class PGAltitudeExporter(object):
         :param utilbills: iterator of UtilBills to include data from.
         '''
         dataset = Dataset(headers=[
+            'customer_account_guid',
             'billing_customer_id',
             'utility_bill_guid',
             'utility_guid',
@@ -50,10 +51,11 @@ class PGAltitudeExporter(object):
             'utility_account_number',
             'billing_period_start_date',
             'billing_period_end_date',
+            'next_estimated_meter_read_date',
             'total_usage',
             'total_supply_charge',
             'rate_class',
-            'secondary_account_number',
+            'secondary_utility_account_number',
             'service_address_street',
             'service_address_city',
             'service_address_state',
@@ -71,6 +73,11 @@ class PGAltitudeExporter(object):
             return g
         for ub in utilbills:
             append_row_as_dict(dataset, {
+                'customer_account_guid': (
+                    format_possible_none(
+                        self._altitude_converter
+                        .get_one_altitude_account_guid_for_utility_account(
+                            ub.utility_account))),
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid':
                     self._altitude_converter.get_or_create_guid_for_utilbill(
@@ -81,14 +88,16 @@ class PGAltitudeExporter(object):
                 'supplier_guid': format_possible_none(
                     self._altitude_converter.get_guid_for_supplier(
                         ub.get_supplier())),
-                'service_type': ub.get_service(),
+                'service_type': format_possible_none(ub.get_service()),
                 'utility_account_number': ub.get_utility_account_number(),
                 'billing_period_start_date':  format_date(ub.period_start),
                 'billing_period_end_date': format_date(ub.period_end),
+                'next_estimated_meter_read_date': format_date(
+                    ub.get_estimated_next_meter_read_date()),
                 'total_usage': ub.get_total_energy_consumption(),
                 'total_supply_charge': ub.get_supply_target_total(),
                 'rate_class': format_possible_none(ub.get_rate_class_name()),
-                'secondary_account_number': format_possible_none(
+                'secondary_utility_account_number': format_possible_none(
                     ub.supply_choice_id),
                 'service_address_street': ub.service_address.street,
                 'service_address_city': ub.service_address.city,
