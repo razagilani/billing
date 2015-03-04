@@ -9,11 +9,13 @@ class MyAdminIndexView(AdminIndexView):
 
     @expose('/')
     def index(self):
+        from core import config
         try:
+            if config.get('billentry', 'disable_google_oauth'):
+                return super(MyAdminIndexView, self).index()
             if session['access_token'] is None:
                 return redirect(url_for('login', next=request.url))
-            else:
-                return super(MyAdminIndexView, self).index()
+            return super(MyAdminIndexView, self).index()
         except KeyError:
             print request.url
             return redirect(url_for('login', next=request.url))
@@ -25,11 +27,13 @@ class CustomModelView(ModelView):
     can_edit = False
 
     def is_accessible(self):
+        from core import config
         try:
-            if session['access_token'] is None:
-                return False
-            else:
+            if config.get('billentry', 'disable_google_oauth'):
                 return True
+            elif session['access_token'] is None:
+                return False
+            return True
         except KeyError:
             return False
 
@@ -42,11 +46,13 @@ class CustomModelView(ModelView):
 
 class LoginModelView(ModelView):
     def is_accessible(self):
+        from core import config
         try:
-            if session['access_token'] is None:
-                return False
-            else:
+            if config.get('billentry', 'disable_google_oauth'):
                 return True
+            elif session['access_token'] is None:
+                return False
+            return True
         except KeyError:
             return False
 

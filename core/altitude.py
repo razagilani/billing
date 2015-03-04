@@ -15,6 +15,7 @@ name).
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import Base, Session, Utility, UtilityAccount, Supplier, UtilBill
 
@@ -133,6 +134,16 @@ def get_guid_for_supplier(x):
 def get_guid_for_utilbill(x):
     result = _billing_to_altitude(UtilBill, AltitudeBill)(x)
     return None if result is None else result.guid
+
+def get_one_altitude_account_guid_for_utility_account(utility_account):
+    """Return one AltitudeAccount for the given UtilityAccount if there is
+    exactly one, or None otherwise.
+    """
+    s = Session()
+    q = s.query(AltitudeAccount).filter_by(utility_account=utility_account)
+    if q.count() == 1:
+        return q.one().guid
+    return None
 
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount
