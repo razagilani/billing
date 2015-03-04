@@ -18,7 +18,7 @@ from flask_oauth import OAuth
 
 from core import init_config
 from core.model import Session
-from brokerage.billentry import resources, admin
+from billentry import admin, resources
 
 
 oauth = OAuth()
