@@ -24,6 +24,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # whose "predecessor" contains it.
         self.charge_a_shared = Charge(utilbill=None,
                                       rsi_binding='A',
+                                      type='distribution',
                                       rate=1,
                                       quantity_formula='',
                                       description="",
@@ -32,6 +33,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       has_charge=True)
         self.charge_b_unshared = Charge(utilbill=None,
                                         rsi_binding='B',
+                                        type='distribution',
                                         rate=2,
                                         quantity_formula='',
                                         description="",
@@ -40,6 +42,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         has_charge=True)
         self.charge_b_shared = Charge(utilbill=None,
                                       rsi_binding='B',
+                                      type='distribution',
                                       rate=2,
                                       quantity_formula='',
                                       description="",
@@ -48,6 +51,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       has_charge=True)
         self.charge_c_unshared = Charge(utilbill=None,
                                         rsi_binding='C',
+                                        type='distribution',
                                         rate=3,
                                         quantity_formula='',
                                         description="",
