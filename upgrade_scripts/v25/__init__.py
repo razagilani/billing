@@ -16,7 +16,7 @@ import logging
 from core import init_model
 from core.model import Session,UtilityAccount, Charge, RateClass, \
     Address, UtilBill, Supplier, RateClass, UtilityAccount, Charge, Register
-from brokerage.brokerage_model import BrokerageAccount
+from brokerage.brokerage_model import BrokerageAccount, Role, BillEntryUser
 
 log = logging.getLogger(__name__)
 
@@ -29,13 +29,18 @@ def set_discriminator(s):
               'on brokerage_account.utility_account_id = utility_account.id '
               'set utilbill.discriminator = "beutilbill"')
 
+def create_admin_role(s):
+    admin_role = Role('admin', 'admin role for accessing Admin UI')
+    s.add(admin_role)
+
 def upgrade():
     log.info('Beginning upgrade to version 25')
 
-    log.info('Upgrading schema to revision 150d8bb1183c')
-    alembic_upgrade('150d8bb1183c')
+    log.info('Upgrading schema to revision 52a7069819cb')
+    alembic_upgrade('52a7069819cb')
 
-    init_model(schema_revision='150d8bb1183c')
+    init_model(schema_revision='52a7069819cb')
     s = Session()
     set_discriminator(s)
+    create_admin_role(s)
     s.commit()

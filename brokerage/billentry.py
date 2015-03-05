@@ -14,9 +14,12 @@ from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-from sqlalchemy import desc, func, or_, and_
+from flask.ext.login import LoginManager, login_user, logout_user, current_user
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, Permission, RoleNeed, \
+    identity_loaded, UserNeed
+from sqlalchemy import desc, func,  or_, and_
 from dateutil import parser as dateutil_parser
-from flask import Flask, url_for, request, flash, session, redirect
+from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask.ext.restful import Api, Resource, marshal
 from flask.ext.restful.reqparse import RequestParser
 from flask.ext.restful.fields import Integer, String, Float, Raw, \
@@ -32,8 +35,8 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
-from exc import Unauthenticated
+from brokerage.brokerage_model import BrokerageAccount, BillEntryUser, RoleBEUser, Role, BEUtilBill
+import xkcdpass.xkcd_password as xp
 
 oauth = OAuth()
 
@@ -364,14 +367,48 @@ class UtilBillListForUserResourece(BaseResource):
 
 app = Flask(__name__, static_url_path="")
 app.debug = True
-
-# 'config' must be in scope here although it is a bad idea to read it at import
-# time. see how it is initialized at the top of this file.
 app.secret_key = config.get('billentry', 'secret_key')
+if config.get('billentry', 'disable_authentication'):
+    app.config['TESTING'] = True
+login_manager = LoginManager()
+login_manager.init_app(app)
+# load the extension
+principals = Principal(app)
+
+@identity_loaded.connect_via(app)
+def on_identity_loaded(sender, identity):
+    # Set the identity user object
+    identity.user = current_user
+
+    # Add the UserNeed to the identity
+    if hasattr(current_user, 'id'):
+        identity.provides.add(UserNeed(current_user.id))
+
+    # Assuming the User model has a list of roles, update the
+    # identity with the roles that the user provides
+    if hasattr(current_user, 'roles'):
+        for role in current_user.roles:
+            identity.provides.add(RoleNeed(role.name))
+
+@login_manager.user_loader
+def load_user(id):
+    user = Session().query(BillEntryUser).filter_by(id=id).first()
+    if user:
+        return user
 
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
+    session.pop('user_name', None)
+    current_user.authenticated = False
+    logout_user()
+    # Remove session keys set by Flask-Principal
+    for key in ('identity.name', 'identity.auth_type'):
+        session.pop(key, None)
+
+    # Tell Flask-Principal the user is anonymous
+    identity_changed.send(current_app._get_current_object(),
+                          identity=AnonymousIdentity())
     return app.send_static_file('logout.html')
 
 @app.route('/oauth2callback')
@@ -384,6 +421,7 @@ def oauth2callback(resp):
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
+    register_user(resp['access_token'])
     return redirect(next_url)
 
 @app.route('/')
@@ -391,15 +429,10 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    from core import config
-    if config.get('billentry', 'disable_google_oauth'):
-        return app.send_static_file('index.html')
-    access_token = session.get('access_token')
-    if access_token is None:
-        # user is not logged in so redirect to login page
-        return redirect(url_for('login'))
+    return app.send_static_file('index.html')
 
-    headers = {'Authorization': 'OAuth '+access_token[0]}
+def register_user(access_token):
+    headers = {'Authorization': 'OAuth '+access_token}
     req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
     try:
@@ -413,18 +446,47 @@ def index():
     #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
+    s = Session()
     session['email'] = googleEmail['email']
-    return app.send_static_file('index.html')
+    user = s.query(BillEntryUser).filter_by(email=googleEmail['email']).first()
+    # if user coming through google auth is not already present in local
+    # database, then create it in the local db and assign the 'admin' role
+    # to the user for proividing access to the Admin UI.
+    # This assumes that internal users are authenticating using google auth.
+    if user is None:
+        # generate a random password
+        wordfile = xp.locate_wordfile()
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
+        user = BillEntryUser(email=session['email'],
+                                 password=xp.generate_xkcdpassword(mywords,
+                                                        acrostic="face"))
+        # add user to the admin role
+        admin_role = s.query(Role).filter_by(name='admin').first()
+        user.roles = [admin_role]
+        s.add(user)
+        s.commit()
+    user.authenticated = True
+    s.flush()
+    login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    return googleEmail['email']
 
 
 @app.before_request
 def before_request():
-    from core import config
-    if config.get('billentry', 'disable_google_oauth'):
+    if config.get('billentry', 'disable_authentication'):
         return
-    if 'access_token' not in session and request.endpoint not in (
-            'login', 'oauth2callback', 'logout'):
-        return redirect(url_for('login'))
+    user = current_user
+    # this is for diaplaying the nextility logo on the
+    # login_page when user is not logged in
+    if 'NEXTILITY_LOGO.png' in request.full_path:
+        return app.send_static_file('images/NEXTILITY_LOGO.png')
+    if not user.is_authenticated() \
+            and request.endpoint not in (
+            'login', 'oauth2callback', 'logout',
+            'login_page', 'userlogin'):
+        return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
@@ -434,7 +496,10 @@ def db_commit(response):
 
 @app.route('/login')
 def login():
-    from core import config
+    set_next_url()
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+def set_next_url():
     next_path = request.args.get('next')
     if next_path:
         # Since passing along the "next" URL as a GET param requires
@@ -450,7 +515,29 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+@app.route('/login-page')
+def login_page():
+    return render_template('login_page.html')
+
+@app.route('/userlogin', methods=['GET','POST'])
+def userlogin():
+    email = request.form['email']
+    password = request.form['password']
+    user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
+    if user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login_page'))
+    user.authenticated = True
+    if 'rememberme' in request.form:
+        login_user(user,rememberme=True)
+    else:
+        login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    session['user_name'] = str(user)
+    flash('Logged in successfully')
+    return redirect(request.args.get('next') or url_for('index'))
 
 api = Api(app)
 api.add_resource(AccountResource, '/utilitybills/accounts')
