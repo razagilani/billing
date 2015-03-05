@@ -25,13 +25,11 @@ class ReebillTest(unittest.TestCase):
                                 utility_account=utility_account)
         u_rate_class = RateClass(name='DC Non Residential Non Heat',
                                  utility=washgas, service='gas')
-        self.utilbill = UtilBill(utility_account, UtilBill.Complete, washgas,
-                                 supplier,
+        self.utilbill = UtilBill(utility_account, washgas,
                                  u_rate_class,
+                                 supplier=supplier,
                                  period_start=date(2000, 1, 1),
-                                 period_end=date(2000, 2, 1),
-                                 billing_address=Address(),
-                                 service_address=Address())
+                                 period_end=date(2000, 2, 1))
         self.register = Register(self.utilbill, '', '', 'therms', False,
                                  'total', [], '', quantity=100,
                                 register_binding='REG_TOTAL')
