@@ -18,13 +18,25 @@ class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
     """
     def setUp(self):
-        utility = Mock(autospec=Utility)
+        self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
-        ua = UtilityAccount('Account 1', '11111', utility, None, None,
+        self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
+        self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
+
+    def test_create_from_utilbill(self):
+        utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
+                             self.rate_class, Address(), Address())
+        beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+        self.assertIs(BEUtilBill, type(beutilbill))
+        for attr_name in UtilBill.column_names():
+            if attr_name in ('discriminator'):
+                continue
+            utilbill_value = getattr(utilbill, attr_name)
+            beutilbill_value = getattr(beutilbill, attr_name)
+            self.assertEqual(utilbill_value, beutilbill_value)
 
     def test_entry(self):
         self.assertFalse(self.ub.is_entered())
@@ -456,3 +468,28 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # still none for user2
         rv = self.app.get(url_format % self.user2.id)
         self.assertJson({"results": 0, "rows": []}, rv.data)
+
+
+class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
+                                        unittest.TestCase):
+
+    def test_replace_utilbill_with_beutilbill(self):
+        s = Session()
+        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        s.add(u)
+        s.flush() # set u.id
+
+        self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0,
+                         s.query(BEUtilBill).filter_by(id=u.id).count())
+
+        the_id = u.id
+        new_beutilbill = billentry.replace_utilbill_with_beutilbill(u)
+
+        # note that new_beutilbill has the same id
+        query_result = s.query(UtilBill).filter_by(id=the_id).one()
+        self.assertIsNone(u.id)
+        self.assertIs(new_beutilbill, query_result)
+        self.assertIsInstance(new_beutilbill, BEUtilBill)
+        self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
+                         new_beutilbill.discriminator)
