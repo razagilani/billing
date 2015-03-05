@@ -55,22 +55,21 @@ class FuzzyPricingModel(PricingModel):
         super(FuzzyPricingModel, self).__init__(logger)
         self._utilbill_loader = utilbill_loader
 
-    def _get_probable_shared_charges(self,utility, rate_class, period,
+    def _get_probable_shared_charges(self, period, relevant_bills,
                                      threshold=RSI_PRESENCE_THRESHOLD,
                                      ignore=lambda x: False, verbose=False):
-        """Constructs and returns a list of :py:class:`processing.state.Charge`
-        instances, each of which is unattached to any
-        :py:class:`proessing.state.UtilBill`.
+        """Constructs and returns a list of :py:class:`Charge`
+        instances, each of which is unattached to any :py:class:`UtilBill`.
 
         The charges returned represent a guess as to which formulas should
         be present on the utilbill.
 
+        :param relevant_bills: iterable of other bills to look at when
+        deciding which charges should be included in this bill.
         :param threshold: the minimum score (between 0 and 1) for an RSI to be
         included.
         :param ignore: an optional function to exclude UPRSs from the input data
         """
-        assert isinstance(utility, Utility)
-        assert isinstance(rate_class, RateClass)
         assert isinstance(period[0], date) and isinstance(period[1], date)
         assert isinstance(threshold, (int, float))
         assert callable(ignore)
@@ -78,15 +77,8 @@ class FuzzyPricingModel(PricingModel):
         distance_func=self.__class__._manhattan_distance
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
-        all_utilbills = [utilbill for utilbill in
-                         self._utilbill_loader.load_real_utilbills(
-                            utility=utility,
-                            rate_class=rate_class,
-                            processed=True
-                         ) if not ignore(utilbill)]
-
         bindings = set()
-        for utilbill in all_utilbills:
+        for utilbill in relevant_bills:
             for charge in utilbill.charges:
                 bindings.add(charge.rsi_binding)
 
@@ -95,7 +87,7 @@ class FuzzyPricingModel(PricingModel):
         closest_occurrence = defaultdict(lambda: (maxint, None))
 
         for binding in bindings:
-            for utilbill in all_utilbills:
+            for utilbill in relevant_bills:
                 distance = distance_func((utilbill.period_start,
                                           utilbill.period_end), period)
                 weight = weight_func(distance)
@@ -119,14 +111,12 @@ class FuzzyPricingModel(PricingModel):
                 # whether the binding was present or not, update total weight
                 total_weight[binding] += weight
 
-
         # include in the result all charges whose normalized weight
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
         result = []
         if verbose:
-            self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
-                    rate_class, period[0], period[1]))
+            self.logger.info('Predicted charges for %s - %s' % period)
             self.logger.info('%35s %s %s' % ('binding:', 'weight:',
                 'normalized weight %:'))
 
@@ -143,6 +133,17 @@ class FuzzyPricingModel(PricingModel):
                 charge = closest_occurrence[binding][1]
                 result.append(Charge.formulas_from_other(charge))
         return result
+
+    def _load_relevant_bills(self, utilbill, ignore_func):
+        if None in (utilbill.utility, utilbill.rate_class):
+            return []
+        return [utilbill for utilbill in
+                         self._utilbill_loader.load_real_utilbills(
+                             utility=utilbill.utility,
+                             rate_class=utilbill.rate_class,
+                             processed=True
+                         ) if not ignore_func(utilbill)]
+
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -163,9 +164,12 @@ class FuzzyPricingModel(PricingModel):
         # away from it, which is enough to guess the charges
         start = utilbill.period_start or utilbill.period_end - timedelta(30)
         end = utilbill.period_end or utilbill.period_start + timedelta(30)
-        result = self._get_probable_shared_charges(
-            utilbill.utility, utilbill.rate_class, (start, end),
-            ignore=lambda ub:ub.id == utilbill.id)
+
+        # only ignore the target bill
+        ignore_func = lambda ub:ub.id == utilbill.id
+        relevant_bills = self._load_relevant_bills(utilbill, ignore_func)
+        result = self._get_probable_shared_charges((start, end), relevant_bills,
+                                                   ignore=ignore_func)
 
         # individual charges:
         # add any charges from the predecessor that are not already there
