@@ -33,6 +33,7 @@ simplejson==2.6.0
 tablib==0.10.0
 tsort==0.0.1
 wsgiref==0.1.2
+xkcdpass==1.2.5
 xlwt==0.7.4
 testfixtures
 voluptuous==0.8.6
