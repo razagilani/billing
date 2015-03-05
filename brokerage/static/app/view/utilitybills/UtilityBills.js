@@ -25,18 +25,20 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'Secondary Utility Account Number',
-        dataIndex: 'supply_choice_id',
+        header: 'Total',
+        dataIndex: 'target_total',
         editor: {
-            xtype: 'textfield'
+            xtype: 'numberfield',
+            allowBlank: false
         },
-        width: 125
+        width: 100,
+        renderer: Ext.util.Format.usMoney
     },{
         header: 'Start',
         dataIndex: 'period_start',
         editor: {
             xtype: 'datefield',
-            allowBlank: false, 
+            allowBlank: false,
             format: 'Y-m-d'
         },
         width: 100,
@@ -48,13 +50,20 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         dataIndex: 'period_end',
         editor: {
             xtype: 'datefield',
-            allowBlank: false, 
+            allowBlank: false,
             format: 'Y-m-d'
         },
         width: 100,
         renderer: function(value) {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
+    },{
+        header: 'Secondary Utility Account Number',
+        dataIndex: 'supply_choice_id',
+        editor: {
+            xtype: 'textfield'
+        },
+        width: 125
     },{
         header: 'Energy',
         dataIndex: 'total_energy',
@@ -64,14 +73,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 100
     },{
-        header: 'Total',
-        dataIndex: 'target_total',
-        editor: {
-            xtype: 'numberfield',
-            allowBlank: false
-        },
-        width: 100,
-        renderer: Ext.util.Format.usMoney
+        header: 'Next Meter Read',
+        dataIndex: 'next_estimated_meter_read_date'
     },{
         header: 'Utility',
         dataIndex: 'utility',

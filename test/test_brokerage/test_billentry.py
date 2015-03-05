@@ -90,11 +90,10 @@ class BillEntryIntegrationTest(object):
                                   Address(), Address(), '1')
         self.ua1.id = 1
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
-        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                            self.rate_class, Address(),
-                            Address(street='1 Example St.'))
-        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                            None, Address(), Address(street='2 Example St.'))
+        self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
+                              service_address=Address(street='1 Example St.'))
+        self.ub2 = BEUtilBill(self.ua1, self.utility, None,
+                            service_address=Address(street='2 Example St.'))
         self.ub1.id = 1
         self.ub2.id = 2
         s = Session()
@@ -126,8 +125,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
                    BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
-        ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
-                       None, Address(), Address(street='2 Example St.'))
+        ub3 = UtilBill(ua3, utility1, None,
+                       service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
         register1 = Register(self.ub1, "ABCDEF description",
