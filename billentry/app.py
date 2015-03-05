@@ -62,21 +62,6 @@ google = oauth.remote_app(
         # only BEUtilBills are counted here because only they have data about
         #  when they were "entered" and who entered them.
 
-def replace_utilbill_with_beutilbill(utilbill):
-    """Return a BEUtilBill object identical to 'utilbill' except for its
-    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
-    None because 'utilbill' no longer corresponds to a row in the database.
-    Do not use 'utilbill' after passing it to this function.
-    """
-    assert type(utilbill) is UtilBill
-    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
-    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
-    s = Session.object_session(utilbill)
-    s.add(beutilbill)
-    s.delete(utilbill)
-    utilbill.id = None
-    return beutilbill
-
 app = Flask(__name__, static_url_path="")
 app.debug = True
 
