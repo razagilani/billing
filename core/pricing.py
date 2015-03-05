@@ -154,18 +154,20 @@ class FuzzyPricingModel(PricingModel):
 
         :utilbill: a :class:`processing.state.UtilBill` instance
         """
+        # shared charges
         if (utilbill.period_start, utilbill.period_end) == (None, None):
             # no dates known: no shared charges
-            result = []
-        else:
-            # if only one date is known, the other one is probably about 30 days
-            # away from it, which is enough to guess the charges
-            start = utilbill.period_start or utilbill.period_end - timedelta(30)
-            end = utilbill.period_end or utilbill.period_start + timedelta(30)
-            result = self._get_probable_shared_charges(
-                utilbill.utility, utilbill.rate_class, (start, end),
-                ignore=lambda ub:ub.id == utilbill.id)
+            return []
 
+        # if only one date is known, the other one is probably about 30 days
+        # away from it, which is enough to guess the charges
+        start = utilbill.period_start or utilbill.period_end - timedelta(30)
+        end = utilbill.period_end or utilbill.period_start + timedelta(30)
+        result = self._get_probable_shared_charges(
+            utilbill.utility, utilbill.rate_class, (start, end),
+            ignore=lambda ub:ub.id == utilbill.id)
+
+        # individual charges:
         # add any charges from the predecessor that are not already there
         try:
             predecessor = self._utilbill_loader.get_last_real_utilbill(
