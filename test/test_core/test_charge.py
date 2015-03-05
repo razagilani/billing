@@ -32,7 +32,6 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   rsi_binding='SOME_RSI',
                                   rate=6,
                                   description='SOME_DESCRIPTION',
-                                  group='SOME_GROUP',
                                   unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
