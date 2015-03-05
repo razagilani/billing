@@ -55,7 +55,7 @@ class FuzzyPricingModel(PricingModel):
         super(FuzzyPricingModel, self).__init__(logger)
         self._utilbill_loader = utilbill_loader
 
-    def _get_probable_shared_charges(self, period, relevant_bills,
+    def _get_probable_shared_charges(self, period, relevant_bills, charge_type,
                                      threshold=RSI_PRESENCE_THRESHOLD,
                                      ignore=lambda x: False, verbose=False):
         """Constructs and returns a list of :py:class:`Charge`
@@ -71,6 +71,7 @@ class FuzzyPricingModel(PricingModel):
         :param ignore: an optional function to exclude UPRSs from the input data
         """
         assert isinstance(period[0], date) and isinstance(period[1], date)
+        assert charge_type in Charge.CHARGE_TYPES
         assert isinstance(threshold, (int, float))
         assert callable(ignore)
 
@@ -82,21 +83,26 @@ class FuzzyPricingModel(PricingModel):
         # 'rsi_binding' (standardized name). in theory charges with the same
         # rsi_binding always have the same type; that could be guaranteed in
         # by a database constraint but it currently isn't.
+        # only rsi_binding values are collected here because only charges
+        # matching the 'charge_type' argument are relevant.
         bindings = set()
         for utilbill in relevant_bills:
             for charge in utilbill.charges:
-                bindings.add((charge.type, charge.rsi_binding))
+                if charge.type == charge_type:
+                    bindings.add(charge.rsi_binding)
 
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (maxint, None))
 
-        for charge_type, binding in bindings:
+        for binding in bindings:
             for utilbill in relevant_bills:
                 distance = distance_func((utilbill.period_start,
                                           utilbill.period_end), period)
                 weight = weight_func(distance)
                 try:
+                    # an "occurrence of the same charge" is one that has the
+                    # same 'rsi_binding' AND the relevant 'type'
                     charge = next(c for c in utilbill.charges if
                                   (c.type, c.rsi_binding) == (
                                   charge_type, binding))
@@ -107,7 +113,7 @@ class FuzzyPricingModel(PricingModel):
                         # binding present in charge and shared: add 1 * weight
                         # to score
                         scores[binding] += weight
-                        # if this distance is closer than the closest occurence
+                        # if this distance is closer than the closest occurrence
                         # seen so far, put charge object in closest_occurrence
                         if distance < closest_occurrence[binding][0]:
                             closest_occurrence[binding] = (distance, charge)
@@ -173,9 +179,20 @@ class FuzzyPricingModel(PricingModel):
 
         # only ignore the target bill
         ignore_func = lambda ub:ub.id == utilbill.id
+
+        # same set of relevant bills for both supply and distribution charges
         relevant_bills = self._load_relevant_bills(utilbill, ignore_func)
-        result = self._get_probable_shared_charges((start, end), relevant_bills,
-                                                   ignore=ignore_func)
+        distribution_charges = self._get_probable_shared_charges(
+            (start, end), relevant_bills, Charge.DISTRIBUTION,
+            ignore=ignore_func)
+        supply_charges = self._get_probable_shared_charges(
+             (start, end), relevant_bills, Charge.SUPPLY, ignore=ignore_func)
+
+        # result is the union by 'rsi_binding' of all the charges in both groups
+        # (supply charges taking priority over distribution over any
+        # distribution charges with the same rsi_binding, in case that happens)
+        result = dict({c.rsi_binding: c for c in distribution_charges},
+                      **{c.rsi_binding: c for c in supply_charges}).values()
 
         # individual charges:
         # add any charges from the predecessor that are not already there
