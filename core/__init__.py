@@ -76,6 +76,7 @@ def import_all_model_modules():
     import core.altitude
     import reebill.state
     import brokerage.brokerage_model
+    import billentry.billentry_model
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
