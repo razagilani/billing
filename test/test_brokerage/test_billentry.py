@@ -6,6 +6,7 @@ from json import loads
 
 from mock import Mock
 from billentry.billentry_model import BillEntryUser, BEUtilBill
+from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
@@ -486,7 +487,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          s.query(BEUtilBill).filter_by(id=u.id).count())
 
         the_id = u.id
-        new_beutilbill = billentry.replace_utilbill_with_beutilbill(u)
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
 
         # note that new_beutilbill has the same id
         query_result = s.query(UtilBill).filter_by(id=the_id).one()
