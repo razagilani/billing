@@ -173,6 +173,7 @@ class BaseResource(Resource):
                 String(), attribute='get_utility_account_number'),
             'supply_choice_id': String,
             'processed': Boolean,
+            'due_date': IsoDatetime,
         }
 
         self.charge_fields = {
