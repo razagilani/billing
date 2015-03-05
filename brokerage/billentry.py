@@ -328,6 +328,7 @@ app.secret_key = 'sgdsdgs'
 
 @app.errorhandler(Exception)
 def internal_server_error(e):
+    from core import config
     # Generate a unique error token that can be used to uniquely identify the
     # errors stacktrace in a logfile
     token = str(uuid.uuid4())
