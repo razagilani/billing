@@ -1,7 +1,8 @@
 """SQLAlchemy model classes used by the Bill Entry application.
 """
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
+import datetime
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, inspect
+from sqlalchemy.orm import relationship, class_mapper
 
 from core.model import Base, UtilBill
 
@@ -19,6 +20,8 @@ class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the
     Bill Entry application and by whom.
     """
+    POLYMORPHIC_IDENTITY = 'beutilbill'
+
     __mapper_args__ = {
         # single-table inheritance
         'polymorphic_identity': 'beutilbill',
@@ -28,6 +31,29 @@ class BEUtilBill(UtilBill):
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser)
+
+    @classmethod
+    def create_from_utilbill(cls, utilbill):
+        """Return a new BEUtilBill, identical to 'utilbill' except for its
+        class.
+        """
+        print type(UtilBill)
+        assert type(utilbill) is UtilBill
+        assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
+        new_beutilbill = BEUtilBill(utilbill.utility_account, utilbill.utility,
+                                    utilbill.rate_class)
+        # https://stackoverflow.com/questions/2537471/
+        # method-of-iterating-over-sqlalchemy-models-defined-columns
+        mapper = inspect(utilbill)
+        for col_name, value in mapper.attrs.items():
+            if col_name in ('discriminator',):
+                continue
+            # NOTE it should be OK to share the same child objects between
+            # 'utilbill' and 'new_beutilbill' because utilbill is going to be
+            #  deleted
+            utilbill_value = mapper.attrs[col_name].value
+            setattr(new_beutilbill, col_name, utilbill_value)
+        return new_beutilbill
 
     def get_user(self):
         return self.billentry_user
