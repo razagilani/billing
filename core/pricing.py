@@ -77,23 +77,29 @@ class FuzzyPricingModel(PricingModel):
         distance_func=self.__class__._manhattan_distance
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
+        # the unique identifier of "the same charge" across more than one bill
+        # is a combination of both 'type' (e.g. "distribution" or "supply") and
+        # 'rsi_binding' (standardized name). in theory charges with the same
+        # rsi_binding always have the same type; that could be guaranteed in
+        # by a database constraint but it currently isn't.
         bindings = set()
         for utilbill in relevant_bills:
             for charge in utilbill.charges:
-                bindings.add(charge.rsi_binding)
+                bindings.add((charge.type, charge.rsi_binding))
 
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (maxint, None))
 
-        for binding in bindings:
+        for charge_type, binding in bindings:
             for utilbill in relevant_bills:
                 distance = distance_func((utilbill.period_start,
                                           utilbill.period_end), period)
                 weight = weight_func(distance)
                 try:
-                    charge = next(c for c in utilbill.charges
-                                  if c.rsi_binding == binding)
+                    charge = next(c for c in utilbill.charges if
+                                  (c.type, c.rsi_binding) == (
+                                  charge_type, binding))
                 except StopIteration:
                     pass
                 else:
