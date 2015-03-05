@@ -36,9 +36,9 @@ class ReebillTest(unittest.TestCase):
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
             Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity',
-                   description='a', group='All Charges', unit='therms'),
+                   description='a', unit='therms'),
             Charge(self.utilbill, 'B', 1, '1', description='b',
-                   group='All Charges', unit='therms', has_charge=False),
+                   unit='therms', has_charge=False),
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,
@@ -78,7 +78,6 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual(2, c.rate)
         self.assertEqual(200, c.a_total)
         self.assertEqual(200, c.h_total)
-        self.assertEqual('All Charges', c.group)
         self.assertEqual(200, self.reebill.get_total_hypothetical_charges())
 
     def test_unit_conversion(self):
