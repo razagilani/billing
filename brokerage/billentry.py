@@ -7,8 +7,6 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
-from datetime import datetime
-import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
@@ -23,7 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from core import initialize, init_config
+from core import init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -32,7 +30,8 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
+    BillEntryUser
 from exc import Unauthenticated
 
 oauth = OAuth()
@@ -202,9 +201,10 @@ class AccountResource(BaseResource):
 
 class UtilBillListResource(BaseResource):
     def get(self):
+        # TODO: there's supposed to be an option to show only bills that
+        # "should be entered", i.e. BEUtilBills
         args = id_parser.parse_args()
         s = Session()
-        # TODO: pre-join with Charge to make this faster
         utilbills = s.query(UtilBill).join(UtilityAccount).filter\
             (UtilityAccount.id == args['id']).order_by(
             desc(UtilBill.period_start), desc(UtilBill.id)).all()
@@ -337,6 +337,8 @@ class UtilBillCountForUserResource(BaseResource):
         start = dateutil_parser.parse(args['start'])
         end = dateutil_parser.parse(args['end'])
 
+        # only BEUtilBills are counted here because only they have data about
+        #  when they were "entered" and who entered them.
         s = Session()
         utilbill_sq = s.query(BEUtilBill.id,
                               BEUtilBill.billentry_user_id).filter(
@@ -361,6 +363,22 @@ class UtilBillListForUserResourece(BaseResource):
                                              desc(UtilBill.id)).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
+
+
+def replace_utilbill_with_beutilbill(utilbill):
+    """Return a BEUtilBill object identical to 'utilbill' except for its
+    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
+    None because 'utilbill' no longer corresponds to a row in the database.
+    Do not use 'utilbill' after passing it to this function.
+    """
+    assert type(utilbill) is UtilBill
+    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
+    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+    s = Session.object_session(utilbill)
+    s.add(beutilbill)
+    s.delete(utilbill)
+    utilbill.id = None
+    return beutilbill
 
 app = Flask(__name__, static_url_path="")
 app.debug = True
@@ -430,7 +448,6 @@ def before_request():
 def db_commit(response):
     Session.commit()
     return response
-
 
 @app.route('/login')
 def login():
