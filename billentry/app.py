@@ -56,6 +56,7 @@ google = oauth.remote_app(
         'scope': config.get('billentry', 'request_token_params_scope'),
         'response_type': config.get('billentry',
                                     'request_token_params_resp_type'),
+        'hd': config.get('billentry', 'authorized_domain')
         },
     access_token_url=config.get('billentry', 'access_token_url'),
     access_token_method=config.get('billentry', 'access_token_method'),
