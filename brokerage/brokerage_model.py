@@ -20,6 +20,3 @@ class BrokerageAccount(Base):
 
     def __init__(self, utility_account):
         self.utility_account = utility_account
-
-
-

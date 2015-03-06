@@ -98,7 +98,7 @@ class BEUtilBill(UtilBill):
 
     __mapper_args__ = {
         # single-table inheritance
-        'polymorphic_identity': 'beutilbill',
+        'polymorphic_identity': POLYMORPHIC_IDENTITY,
         'polymorphic_on': 'discriminator',
     }
 
