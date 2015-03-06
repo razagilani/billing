@@ -3,18 +3,24 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-
 from mock import Mock
+
+# if init_test_config() is not called before "billentry" is imported,
+# "billentry" will call init_config to initialize the config object with the
+# non-test config file. so init_test_config must be called before
+# "billentry" is imported.
+from test import init_test_config
+init_test_config()
+
+import billentry
 from billentry.billentry_model import BillEntryUser, BEUtilBill
 from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-import billentry
 from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
-from test import init_test_config
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -87,6 +93,7 @@ class BillEntryIntegrationTest(object):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True

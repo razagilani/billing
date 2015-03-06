@@ -21,7 +21,8 @@ from core.model import Session
 from billentry import admin, resources
 
 
-oauth = OAuth()
+app = Flask(__name__, static_url_path="")
+app.debug = True
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -39,6 +40,7 @@ if config is None:
     init_config()
     from core import config
 
+oauth = OAuth()
 google = oauth.remote_app(
     'google',
     base_url=config.get('billentry', 'base_url'),
@@ -81,9 +83,6 @@ def replace_utilbill_with_beutilbill(utilbill):
     s.delete(utilbill)
     utilbill.id = None
     return beutilbill
-
-app = Flask(__name__, static_url_path="")
-app.debug = True
 
 # 'config' must be in scope here although it is a bad idea to read it at import
 # time. see how it is initialized at the top of this file.
