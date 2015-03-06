@@ -170,6 +170,7 @@ class TestCaseWithSetup(test_utils.TestCase):
             "supplier",
             "utility",
             "address",
+            "billentry_user",
         ]:
             session.execute("delete from %s" % t)
         session.commit()
@@ -274,18 +275,17 @@ class TestCaseWithSetup(test_utils.TestCase):
         session.add(utility_account2)
         session.add(reebill_customer2)
 
-        u1 = UtilBill(utility_account2, UtilBill.Complete, uc, supplier,
-                             rate_class,
-                             ub_ba1, ub_sa1,
+        u1 = UtilBill(utility_account2, uc,
+                             rate_class, supplier=supplier,
+                             billing_address=ub_ba1, service_address=ub_sa1,
                              period_start=date(2012, 1, 1),
                              period_end=date(2012, 1, 31),
                              target_total=50.00,
                              date_received=date(2011, 2, 3),
                              processed=True)
 
-        u2 = UtilBill(utility_account2, UtilBill.Complete, uc, supplier,
-                             rate_class,
-                             ub_ba2, ub_sa2,
+        u2 = UtilBill(utility_account2, uc, rate_class, supplier=supplier,
+                             billing_address=ub_ba2, service_address=ub_sa2,
                              period_start=date(2012, 2, 1),
                              period_end=date(2012, 2, 28),
                              target_total=65.00,
@@ -341,14 +341,11 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
 
-        u = UtilBill(utility_account4, UtilBill.Complete, other_uc,
-                                        other_supplier,
-                         other_rate_class, ub_ba, ub_sa,
-                         period_start=date(2012, 1, 1),
-                         period_end=date(2012, 1, 31),
-                         target_total=50.00,
-                         date_received=date(2011, 2, 3),
-                         processed=True)
+        u = UtilBill(utility_account4, other_uc, other_rate_class,
+                     supplier=other_supplier, billing_address=ub_ba,
+                     service_address=ub_sa, period_start=date(2012, 1, 1),
+                     period_end=date(2012, 1, 31), target_total=50.00,
+                     date_received=date(2011, 2, 3), processed=True)
         session.add(u)
         session.flush()
         session.commit()

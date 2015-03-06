@@ -7,13 +7,12 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
-import logging
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
 
 from boto.s3.connection import S3Connection
-from sqlalchemy import desc
+from sqlalchemy import desc, func, or_, and_
 from dateutil import parser as dateutil_parser
 from flask import Flask, url_for, request, flash, session, redirect
 from flask.ext.restful import Api, Resource, marshal
@@ -22,7 +21,7 @@ from flask.ext.restful.fields import Integer, String, Float, Raw, \
     Boolean
 from flask_oauth import OAuth
 
-from core import initialize, init_config
+from core import init_config
 from core.bill_file_handler import BillFileHandler
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -31,7 +30,8 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
     RateClass
 from core.model import UtilBill
 from brokerage.admin import make_admin
-from brokerage.brokerage_model import BrokerageAccount
+from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
+    BillEntryUser
 from exc import Unauthenticated
 
 oauth = OAuth()
@@ -160,8 +160,8 @@ class BaseResource(Resource):
                 String(), attribute='get_rate_class_name', default='Unknown'),
             'pdf_url': PDFUrlField,
             'service_address': String,
-            'next_estimated_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+            'next_meter_read_date': CallableField(
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
@@ -169,6 +169,7 @@ class BaseResource(Resource):
                 String(), attribute='get_utility_account_number'),
             'supply_choice_id': String,
             'processed': Boolean,
+            'due_date': IsoDatetime,
         }
 
         self.charge_fields = {
@@ -187,9 +188,8 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-
-        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
-            UtilityAccount.account).all()
+        accounts = Session().query(UtilityAccount).join(
+            BrokerageAccount).order_by(UtilityAccount.account).all()
         return marshal(accounts, {
             'id': Integer,
             'account': String,
@@ -201,9 +201,10 @@ class AccountResource(BaseResource):
 
 class UtilBillListResource(BaseResource):
     def get(self):
+        # TODO: there's supposed to be an option to show only bills that
+        # "should be entered", i.e. BEUtilBills
         args = id_parser.parse_args()
         s = Session()
-        # TODO: pre-join with Charge to make this faster
         utilbills = s.query(UtilBill).join(UtilityAccount).filter\
             (UtilityAccount.id == args['id']).order_by(
             desc(UtilBill.period_start), desc(UtilBill.id)).all()
@@ -227,6 +228,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('total_energy', type=float)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
+        parser.add_argument('next_meter_read_date', type=parse_date)
 
         row = parser.parse_args()
         ub = self.utilbill_processor.update_utilbill_metadata(
@@ -238,11 +240,14 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supply_choice_id=row['supply_choice_id']
+            supply_choice_id=row['supply_choice_id'],
             )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
         self.utilbill_processor.compute_utility_bill(id)
+
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
 
         Session().commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
@@ -258,8 +263,8 @@ class ChargeListResource(BaseResource):
         args = parser.parse_args()
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
-        # TODO: return only supply charges here
-        rows = [marshal(c, self.charge_fields) for c in utilbill.get_supply_charges()]
+        rows = [marshal(c, self.charge_fields) for c in
+                utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
 
 class ChargeResource(BaseResource):
@@ -319,9 +324,68 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
+class UtilBillCountForUserResource(BaseResource):
+
+    def get(self, *args, **kwargs):
+        parser = RequestParser()
+        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
+        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
+        parser.add_argument('start', type=str, required=True)
+        parser.add_argument('end', type=str, required=True)
+        args = parser.parse_args()
+        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
+        start = dateutil_parser.parse(args['start'])
+        end = dateutil_parser.parse(args['end'])
+
+        # only BEUtilBills are counted here because only they have data about
+        #  when they were "entered" and who entered them.
+        s = Session()
+        utilbill_sq = s.query(BEUtilBill.id,
+                              BEUtilBill.billentry_user_id).filter(
+            and_(BEUtilBill.billentry_date >= start,
+                 BEUtilBill.billentry_date < end)).subquery()
+        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        rows = [{
+            'user_id': user.id,
+            'count': count,
+        } for (user, count) in q.all()]
+        return {'rows': rows, 'results': len(rows)}
+
+class UtilBillListForUserResourece(BaseResource):
+    """List of bills queried by id of BillEntryUser who "entered" them.
+    """
+    def get(self, id=None):
+        assert isinstance(id, int)
+        s = Session()
+        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
+            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
+                                             desc(UtilBill.id)).all()
+        rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+        return {'rows': rows, 'results': len(rows)}
+
+
+def replace_utilbill_with_beutilbill(utilbill):
+    """Return a BEUtilBill object identical to 'utilbill' except for its
+    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
+    None because 'utilbill' no longer corresponds to a row in the database.
+    Do not use 'utilbill' after passing it to this function.
+    """
+    assert type(utilbill) is UtilBill
+    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
+    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+    s = Session.object_session(utilbill)
+    s.add(beutilbill)
+    s.delete(utilbill)
+    utilbill.id = None
+    return beutilbill
+
 app = Flask(__name__, static_url_path="")
 app.debug = True
-app.secret_key = 'sgdsdgs'
+
+# 'config' must be in scope here although it is a bad idea to read it at import
+# time. see how it is initialized at the top of this file.
+app.secret_key = config.get('billentry', 'secret_key')
 
 @app.route('/logout')
 def logout():
@@ -385,7 +449,6 @@ def db_commit(response):
     Session.commit()
     return response
 
-
 @app.route('/login')
 def login():
     from core import config
@@ -415,6 +478,9 @@ api.add_resource(UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(ChargeListResource, '/utilitybills/charges')
 api.add_resource(ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(UtilBillListForUserResourece,
+                 '/utilitybills/user_utilitybills/<int:id>')
 
 # apparently needed for Apache
 application = app

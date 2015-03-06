@@ -3,7 +3,7 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 from math import floor
 
@@ -358,13 +358,15 @@ class UtilityAccount(Base):
 
 
 class UtilBill(Base):
+    POLYMORPHIC_IDENTITY = 'utilbill'
+
     __tablename__ = 'utilbill'
 
     __mapper_args__ = {
         'extension': UtilbillCallback(),
 
         # single-table inheritance
-        'polymorphic_identity': 'utilbill',
+        'polymorphic_identity': POLYMORPHIC_IDENTITY,
         'polymorphic_on': 'discriminator',
     }
 
@@ -420,6 +422,8 @@ class UtilBill(Base):
     # despite the name.
     supply_choice_id = Column(String)
 
+    next_meter_read_date = Column(Date)
+
     # cascade for UtilityAccount relationship does NOT include "save-update"
     # to allow more control over when UtilBills get added--for example,
     # when uploading a new utility bill, the new UtilBill object should only
@@ -471,11 +475,11 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    def __init__(self, utility_account, state, utility, supplier,
-                 rate_class, billing_address, service_address,
-                 period_start=None, period_end=None, target_total=0,
-                 date_received=None, processed=False, sha256_hexdigest='',
-                 due_date=None):
+    def __init__(self, utility_account, utility, rate_class, supplier=None,
+                 period_start=None, period_end=None, billing_address=None,
+                 service_address=None, target_total=0, date_received=None,
+                 processed=False, sha256_hexdigest='', due_date=None,
+                 next_meter_read_date=None, state=Complete):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -485,7 +489,11 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        if billing_address is None:
+            billing_address = Address()
         self.billing_address = billing_address
+        if service_address is None:
+            service_address = Address()
         self.service_address = service_address
         self.period_start = period_start
         self.period_end = period_end
@@ -494,6 +502,7 @@ class UtilBill(Base):
         self.processed = processed
         self.due_date = due_date
         self.account_number = utility_account.account_number
+        self.next_meter_read_date = next_meter_read_date
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -514,14 +523,16 @@ class UtilBill(Base):
         '''
         return self.utility.name
 
-    def get_estimated_next_meter_read_date(self):
-        '''Return approximate date of next meter read (which is usually the
-        end date of the next utility bill after this one), or None if no
-        estimate can be made.
+    def get_next_meter_read_date(self):
+        '''Return date of next meter read (usually equal to the end of the next
+        bill's period), or None of unknown. This may or may not be reported by
+        the utility and is not necessarily accurate.
         '''
-        if self.period_end is None:
-            return None
-        return self.period_end + timedelta(days=30)
+        return self.next_meter_read_date
+
+    def set_next_meter_read_date(self, next_meter_read_date):
+        assert isinstance(next_meter_read_date, date)
+        self.next_meter_read_date = next_meter_read_date
 
     def get_rate_class_name(self):
         '''Return name of this bill's rate class or None if the rate class is
@@ -576,7 +587,6 @@ class UtilBill(Base):
             quantity_formula=charge_kwargs.get('quantity_formula', ''),
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
-            group=charge_kwargs.get("group", ''),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', "supply"))
         session.add(charge)
@@ -862,7 +872,6 @@ class Charge(Base):
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
-    group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rsi_binding = Column(String(255), nullable=False)
@@ -913,13 +922,12 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
-                 target_total=None, description='', group='', unit='',
+                 target_total=None, description='', unit='',
                  has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
-        :param group: The charge group
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
         :param quantity_formula: The RSI quantity formula
@@ -930,7 +938,6 @@ class Charge(Base):
         assert unit is not None
         self.utilbill = utilbill
         self.description = description
-        self.group = group
         self.unit = unit
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
@@ -952,7 +959,6 @@ class Charge(Base):
                    other.rate,
                    other.quantity_formula,
                    description=other.description,
-                   group=other.group,
                    unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,

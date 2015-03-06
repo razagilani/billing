@@ -3,6 +3,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 #from logging.config import fileConfig
 
+from core import import_all_model_modules
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -22,9 +24,7 @@ from core.model import Base
 # these, "autogenerate" will create an upgrade script with "drop table"
 # commands to remove all the tables corresponding to classes defined in those
 # modules.
-import core.altitude
-import reebill.state
-import brokerage.brokerage_model
+import_all_model_modules()
 
 target_metadata = Base.metadata
 
