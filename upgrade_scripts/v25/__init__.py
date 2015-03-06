@@ -21,6 +21,14 @@ from brokerage.brokerage_model import BrokerageAccount
 log = logging.getLogger(__name__)
 
 
+def set_discriminator(s):
+    s.execute('update utilbill set discriminator = "utilbill"')
+    s.execute('update utilbill join utility_account '
+              'on utilbill.utility_account_id = utility_account.id '
+              'join brokerage_account '
+              'on brokerage_account.utility_account_id = utility_account.id '
+              'set utilbill.discriminator = "beutilbill"')
+
 def upgrade():
     log.info('Beginning upgrade to version 25')
 
@@ -29,5 +37,5 @@ def upgrade():
 
     init_model(schema_revision='150d8bb1183c')
     s = Session()
-
+    set_discriminator(s)
     s.commit()
