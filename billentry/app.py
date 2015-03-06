@@ -15,9 +15,10 @@ import json
 from flask import Flask, url_for, request, session, redirect
 from flask.ext.restful import Api
 from flask_oauth import OAuth
+from billentry.billentry_model import BEUtilBill
 
 from core import init_config
-from core.model import Session
+from core.model import Session, UtilBill
 from billentry import admin, resources
 
 
@@ -50,6 +51,7 @@ google = oauth.remote_app(
         'scope': config.get('billentry', 'request_token_params_scope'),
         'response_type': config.get('billentry',
                                     'request_token_params_resp_type'),
+        'hd': config.get('billentry', 'authorized_domain')
         },
     access_token_url=config.get('billentry', 'access_token_url'),
     access_token_method=config.get('billentry', 'access_token_method'),
