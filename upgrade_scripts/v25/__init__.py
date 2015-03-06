@@ -7,16 +7,13 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
-from time import sleep
-from boto.s3.connection import S3Connection
-from sqlalchemy.sql.schema import MetaData, Table
-from sqlalchemy.sql.expression import select
-from upgrade_scripts import alembic_upgrade
 import logging
+from billentry.billentry_model import Role
+
+from upgrade_scripts import alembic_upgrade
 from core import init_model
-from core.model import Session,UtilityAccount, Charge, RateClass, \
-    Address, UtilBill, Supplier, RateClass, UtilityAccount, Charge, Register
-from brokerage.brokerage_model import BrokerageAccount, Role, BillEntryUser
+from core.model import Session
+
 
 log = logging.getLogger(__name__)
 

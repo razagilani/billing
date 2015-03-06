@@ -144,8 +144,9 @@ class TestAltitudeBillStorage(TestCase):
         ua = UtilityAccount('', '', utility, None, None, Address(),
                             Address())
         self.utilbill = UtilBill(
-            ua, UtilBill.Complete, utility, supplier, rate_class,
-            Address(street='1 Billing St.'), Address(street='1 Service St.'),
+            ua, utility, rate_class, supplier=supplier,
+            billing_address=Address(street='1 Billing St.'),
+            service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1))
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
