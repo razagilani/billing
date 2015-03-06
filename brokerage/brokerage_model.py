@@ -2,8 +2,9 @@
 """
 from sqlalchemy import Column, Integer, ForeignKey, inspect
 from sqlalchemy.orm import relationship
+from billentry.billentry_model import BEUtilBill
 
-from core.model import Base, UtilityAccount
+from core.model import Base, UtilityAccount, UtilBill
 
 
 class BrokerageAccount(Base):
