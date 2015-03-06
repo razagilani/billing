@@ -1,15 +1,18 @@
+"""All tests for the Bill Entry application.
+"""
 from datetime import datetime, date
 import unittest
 from json import loads
 
 from mock import Mock
+from billentry.billentry_model import BillEntryUser, BEUtilBill
+from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
-    BillEntryUser
+import billentry
+from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
 from test import init_test_config
 
@@ -288,7 +291,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        expected['rows']['next_meter_read_date'] = None
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
@@ -484,7 +487,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          s.query(BEUtilBill).filter_by(id=u.id).count())
 
         the_id = u.id
-        new_beutilbill = billentry.replace_utilbill_with_beutilbill(u)
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
 
         # note that new_beutilbill has the same id
         query_result = s.query(UtilBill).filter_by(id=the_id).one()
