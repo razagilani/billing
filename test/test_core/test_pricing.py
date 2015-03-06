@@ -2,10 +2,10 @@
 from datetime import date
 import unittest
 
-from mock import Mock
+from mock import Mock, call
 
 from core.pricing import FuzzyPricingModel
-from core.model import Charge, UtilBill, RateClass, Utility, Address
+from core.model import Charge, UtilBill, RateClass, Utility, Address, Supplier
 from exc import NoSuchBillException
 
 def raise_nsbe(*args, **kwargs):
@@ -209,6 +209,57 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.period_start, u.period_end = date(2000,1,1), None
         self.assertEqual([self.charge_a_shared],
                          self.fpm.get_predicted_charges(u))
+
+    def test_supply_distribution(self):
+        """Test separate grouping of relevant bills for generating supply and
+        distribution charges.
+        """
+        u = Mock(autospec=UtilBill)
+        u.utility_account.account = '00004'
+        u.period_start = date(2000, 1, 1)
+        u.period_end = date(2000, 2, 1)
+        u.processed = False
+        u.utility = self.utility
+        u.rate_class = self.rate_class
+        u.supplier = Mock(autospec=Supplier)
+        u.charges = []
+
+        # each example bill needs to have a shared charge of both types.
+        self.utilbill_1.charges.append(
+            Charge(self.utilbill_1, 'X', 0, '', type='supply'))
+        self.utilbill_2.charges.append(
+            Charge(self.utilbill_2, 'Y', 0, '', type='supply'))
+        self.utilbill_3.charges.append(
+            Charge(self.utilbill_3, 'Z', 0, '', type='distribution'))
+
+        # 1 bill with same rate class as the target and different supplier,
+        # 1 with both same rate class and supplier, 1 with different rate
+        # class and same supplier
+        # NOTE call order has to be the one asserted below for this to work
+        self.utilbill_loader.load_real_utilbills.side_effect = [
+            [self.utilbill_1, self.utilbill_2],
+            [self.utilbill_2, self.utilbill_3],
+        ]
+        # no predecessor bill, because "un-shared" charges are irrelevant here
+        self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
+
+        charges = self.fpm.get_predicted_charges(u)
+
+        self.utilbill_loader.load_real_utilbills.assert_has_calls([
+            call(utility=u.utility, processed=True),
+            call(supplier=u.supplier, processed=True),
+        ])
+
+        d_charges = set(c for c in charges if c.type == Charge.DISTRIBUTION)
+        s_charges = set(c for c in charges if c.type == Charge.SUPPLY)
+
+        # d_charges has distribution charges of utilbill_1,2 (TODO: not dist charges of those--need to add charges of multiple types to each bill)
+        # and s_charges has supply charges of utilbill_2,3 (TODO: not sup charges of those)
+        self.assertEqual(set(self.utilbill1.charges + self.utilbill2.charges),
+                         d_charges)
+        self.assertEqual(set(self.utilbill2.charges + self.utilbill3.charges),
+                         s_charges)
+
 
 
     # TODO test that the bill whose charges are being generated is ignored when
