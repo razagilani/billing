@@ -404,8 +404,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryReport, self).setUp()
 
         s = Session()
-        self.user1 = BillEntryUser()
-        self.user2 = BillEntryUser()
+        self.user1 = BillEntryUser(email='user1@example.com', )
+        self.user2 = BillEntryUser(email='user2@example2.com')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         s.commit()
 
