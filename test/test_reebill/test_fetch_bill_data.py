@@ -62,8 +62,11 @@ class FetchTest(unittest.TestCase):
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account)
-        utilbill = UtilBill(utility_account, UtilBill.Complete, 'washgas',
-                'supplier', 'DC Non Residential Non Heat', Address(), Address(),
+        # TODO: how can this work with strings where SQLAlchemy objects are
+        # supposed to be?
+        utilbill = UtilBill(utility_account, utility='washgas',
+                rate_class='DC Non Residential Non Heat',
+                supplier='supplier',
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', '', 'therms', False,

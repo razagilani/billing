@@ -1,30 +1,51 @@
+"""All tests for the Bill Entry application.
+"""
 from datetime import datetime, date
 import unittest
 from json import loads
-
 from mock import Mock
+
+# if init_test_config() is not called before "billentry" is imported,
+# "billentry" will call init_config to initialize the config object with the
+# non-test config file. so init_test_config must be called before
+# "billentry" is imported.
+from test import init_test_config
+init_test_config()
+
+import billentry
+from billentry.billentry_model import BillEntryUser, BEUtilBill
+from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
-    BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
-from test import init_test_config
 
 
 class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
     """
     def setUp(self):
-        utility = Mock(autospec=Utility)
+        self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
-        ua = UtilityAccount('Account 1', '11111', utility, None, None,
+        self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
+        self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
+
+    def test_create_from_utilbill(self):
+        utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
+                             self.rate_class, Address(), Address())
+        beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+        self.assertIs(BEUtilBill, type(beutilbill))
+        for attr_name in UtilBill.column_names():
+            if attr_name in ('discriminator'):
+                continue
+            utilbill_value = getattr(utilbill, attr_name)
+            beutilbill_value = getattr(beutilbill, attr_name)
+            self.assertEqual(utilbill_value, beutilbill_value)
 
     def test_entry(self):
         self.assertFalse(self.ub.is_entered())
@@ -72,6 +93,7 @@ class BillEntryIntegrationTest(object):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        init_model()
 
         # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
@@ -90,11 +112,10 @@ class BillEntryIntegrationTest(object):
                                   Address(), Address(), '1')
         self.ua1.id = 1
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
-        self.ub1 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                            self.rate_class, Address(),
-                            Address(street='1 Example St.'))
-        self.ub2 = BEUtilBill(self.ua1, UtilBill.Complete, self.utility, None,
-                            None, Address(), Address(street='2 Example St.'))
+        self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
+                              service_address=Address(street='1 Example St.'))
+        self.ub2 = BEUtilBill(self.ua1, self.utility, None,
+                            service_address=Address(street='2 Example St.'))
         self.ub1.id = 1
         self.ub2.id = 2
         s = Session()
@@ -126,8 +147,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
                    BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
-        ub3 = UtilBill(ua3, UtilBill.Complete, utility1, None,
-                       None, Address(), Address(street='2 Example St.'))
+        ub3 = UtilBill(ua3, utility1, None,
+                       service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
         register1 = Register(self.ub1, "ABCDEF description",
@@ -179,6 +200,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
              'rows': [
                  {'account': None,
                   'computed_total': 0.0,
+                  'due_date': None,
                   'id': 3,
                   'next_meter_read_date': None,
                   'pdf_url': '',
@@ -245,6 +267,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
+              'due_date': None,
               'id': 1,
               'next_meter_read_date': None,
               'pdf_url': '',
@@ -255,13 +278,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
-              'supply_choice_id': None
-             },
+              },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
@@ -275,42 +298,45 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        expected['rows']['next_meter_read_date'] = None
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
 
-    def test_rate_class(self):
+    def test_update_utilbill_rate_class(self):
+        expected = {'results': 1,
+         'rows': [
+             {'account': None,
+              'computed_total': 0.0,
+              'due_date': None,
+              'id': 3,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Unknown',
+              'service': 'Unknown',
+              'service_address': '2 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 0.0,
+              'target_total': 0.0,
+              'total_energy': 0.0,
+              'utility': 'Empty Utility',
+              'utility_account_number': '3',
+              'supply_choice_id': None
+             }
+         ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
-        self.assertJson(
-            {'results': 1,
-             'rows': [
-                 {'account': None,
-                  'computed_total': 0.0,
-                  'id': 3,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Unknown',
-                  'service': 'Unknown',
-                  'service_address': '2 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 0.0,
-                  'target_total': 0.0,
-                  'total_energy': 0.0,
-                  'utility': 'Empty Utility',
-                  'utility_account_number': '3',
-                  'supply_choice_id': None
-                 }
-             ], }, rv.data)
+        self.assertJson(expected, rv.data)
+
+        # TODO reuse 'expected' in later assertions instead of repeating the
+        # giant dictionary over and over
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
                 utility = "Empty Utility"
         ))
-
         self.assertJson(
             {
             "results": 1,
@@ -318,6 +344,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': None,
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -349,6 +376,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': None,
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -427,8 +455,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
              'rows':
                  [{'account': None,
                   'computed_total': 0,
+                  'due_date': None,
                   'id': 1,
-                  'next_estimated_meter_read_date': None,
+                  'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
                   'period_start': None,
@@ -449,3 +478,28 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # still none for user2
         rv = self.app.get(url_format % self.user2.id)
         self.assertJson({"results": 0, "rows": []}, rv.data)
+
+
+class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
+                                        unittest.TestCase):
+
+    def test_replace_utilbill_with_beutilbill(self):
+        s = Session()
+        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        s.add(u)
+        s.flush() # set u.id
+
+        self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0,
+                         s.query(BEUtilBill).filter_by(id=u.id).count())
+
+        the_id = u.id
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
+
+        # note that new_beutilbill has the same id
+        query_result = s.query(UtilBill).filter_by(id=the_id).one()
+        self.assertIsNone(u.id)
+        self.assertIs(new_beutilbill, query_result)
+        self.assertIsInstance(new_beutilbill, BEUtilBill)
+        self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
+                         new_beutilbill.discriminator)
