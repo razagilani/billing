@@ -187,23 +187,27 @@ class FuzzyPricingModel(PricingModel):
         # only ignore the target bill
         ignore_func = lambda ub:ub.id == utilbill.id
 
-        # same set of relevant bills for both supply and distribution charges
+        # get distribution charges
         distribution_relevant_bills = self._load_relevant_bills_distribution(
-            utilbill, ignore_func)
-        supply_relevant_bills = self._load_relevant_bills_supply(
             utilbill, ignore_func)
         distribution_charges = self._get_probable_shared_charges(
             (start, end), distribution_relevant_bills, Charge.DISTRIBUTION,
             ignore=ignore_func)
+        del distribution_relevant_bills
+
+        # get supply charges
+        supply_relevant_bills = self._load_relevant_bills_supply(
+            utilbill, ignore_func)
         supply_charges = self._get_probable_shared_charges(
             (start, end), supply_relevant_bills, Charge.SUPPLY,
             ignore=ignore_func)
+        del supply_relevant_bills
 
-        # result is the union by 'rsi_binding' of all the charges in both groups
-        # (supply charges taking priority over distribution over any
-        # distribution charges with the same rsi_binding, in case that happens)
-        result = dict({c.rsi_binding: c for c in distribution_charges},
-                      **{c.rsi_binding: c for c in supply_charges}).values()
+        # combine distribution and supply charges to get the full set of
+        # shared charges. there shouldn't be any overlap between the two groups.
+        assert set(distribution_charges).intersection(
+            set(supply_charges)) == set()
+        result = distribution_charges + supply_charges
 
         # individual charges:
         # add any charges from the predecessor that are not already there
