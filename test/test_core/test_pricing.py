@@ -222,6 +222,12 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.charges = []
 
         # each example bill has a shared charge of both types.
+        # the relevant bills for distribution are utilbill_1 and utilbill_2,
+        # even though utilbill_3 also has a distribution charge.
+        # the relevant bills for supply are utilbill_2 and utilbill_3.
+        # even though utilbill_1 also has a supply charge.
+        # TODO: would be good to share some of this test data with the other
+        # test methods if possible.
         d1 = Charge(None, 'd1', 0, '', type='distribution', shared=True)
         d2 = Charge(None, 'd2', 0, '', type='distribution', shared=True)
         d3 = Charge(None, 'd3', 0, '', type='distribution', shared=True)
@@ -250,16 +256,13 @@ class FuzzyPricingModelTest(unittest.TestCase):
             call(supplier=u.supplier, processed=True),
         ])
 
-        d_charges = set(c for c in charges if c.type == Charge.DISTRIBUTION)
-        s_charges = set(c for c in charges if c.type == Charge.SUPPLY)
+        d_charges = {c for c in charges if c.type == Charge.DISTRIBUTION}
+        s_charges = {c for c in charges if c.type == Charge.SUPPLY}
 
-        # d_charges has distribution charges of utilbill_1,2 (TODO: not dist charges of those--need to add charges of multiple types to each bill)
-        # and s_charges has supply charges of utilbill_2,3 (TODO: not sup charges of those)
-        self.assertEqual(set(self.utilbill_1.charges + self.utilbill_2.charges),
-                         d_charges)
-        self.assertEqual(set(self.utilbill_2.charges + self.utilbill_3.charges),
-                         s_charges)
-
+        # d_charges has distribution charges of utilbill_1,2
+        # and s_charges has supply charges of utilbill_2,3
+        self.assertEqual({d1, d2}, d_charges)
+        self.assertEqual({s2, s3}, s_charges)
 
 
     # TODO test that the bill whose charges are being generated is ignored when
