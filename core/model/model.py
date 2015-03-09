@@ -69,6 +69,8 @@ class Base(object):
     def __hash__(self):
         """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
         """
+        # NOTE: do not assign non-hashable objects (such as lists) as
+        # attributes!
         return hash((self.__class__.__name__,) + tuple(
             getattr(self, x) for x in self.column_names()))
 
