@@ -86,6 +86,7 @@ class billentry(Schema):
     authorized_domain = String()
     disable_google_oauth = StringBool()
     secret_key = String()
+    wiki_url = String()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
