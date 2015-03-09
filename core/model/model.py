@@ -66,6 +66,12 @@ class Base(object):
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
+    def __hash__(self):
+        """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
+        """
+        return hash((self.__class__.__name__,) + tuple(
+            getattr(self, x) for x in self.column_names()))
+
     # TODO: move UI-related code to views.py
     def column_dict(self):
         '''Return dictionary of names and values for all attributes
