@@ -84,6 +84,7 @@ class billentry(Schema):
     access_token_method = String()
     access_token_params_grant_type = String()
     disable_authentication = StringBool()
+    authorized_domain = String()
     secret_key = String()
 
 class reebillestimatedrevenue(Schema):
