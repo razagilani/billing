@@ -146,7 +146,7 @@ class FuzzyPricingModel(PricingModel):
                 result.append(Charge.formulas_from_other(charge))
         return result
 
-    def _load_relevant_bills(self, utilbill, ignore_func):
+    def _load_relevant_bills_distribution(self, utilbill, ignore_func):
         if None in (utilbill.utility, utilbill.rate_class):
             return []
         return [utilbill for utilbill in
@@ -156,6 +156,13 @@ class FuzzyPricingModel(PricingModel):
                              processed=True
                          ) if not ignore_func(utilbill)]
 
+    def _load_relevant_bills_supply(self, utilbill, ignore_func):
+        if utilbill.supplier is None:
+            return []
+        return [utilbill for utilbill in
+                self._utilbill_loader.load_real_utilbills(
+                    supplier=utilbill.supplier, processed=True
+                ) if not ignore_func(utilbill)]
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -181,12 +188,16 @@ class FuzzyPricingModel(PricingModel):
         ignore_func = lambda ub:ub.id == utilbill.id
 
         # same set of relevant bills for both supply and distribution charges
-        relevant_bills = self._load_relevant_bills(utilbill, ignore_func)
+        distribution_relevant_bills = self._load_relevant_bills_distribution(
+            utilbill, ignore_func)
+        supply_relevant_bills = self._load_relevant_bills_supply(
+            utilbill, ignore_func)
         distribution_charges = self._get_probable_shared_charges(
-            (start, end), relevant_bills, Charge.DISTRIBUTION,
+            (start, end), distribution_relevant_bills, Charge.DISTRIBUTION,
             ignore=ignore_func)
         supply_charges = self._get_probable_shared_charges(
-             (start, end), relevant_bills, Charge.SUPPLY, ignore=ignore_func)
+            (start, end), supply_relevant_bills, Charge.SUPPLY,
+            ignore=ignore_func)
 
         # result is the union by 'rsi_binding' of all the charges in both groups
         # (supply charges taking priority over distribution over any

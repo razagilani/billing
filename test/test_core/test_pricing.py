@@ -110,9 +110,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.get_last_real_utilbill.assert_called_once_with(
                 u.utility_account.account, end=u.period_start,
                 utility=u.utility, rate_class=u.rate_class, processed=True)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        load_calls = [
+            call(utility=self.utility, rate_class=self.rate_class,
+                 processed=True), call(supplier=u.supplier, processed=True)]
+        self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         self.assertEqual([], charges)
 
         # with only the 1st utility bill (containing rsi_a_shared and
@@ -121,9 +122,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.return_value = [
             self.utilbill_1]
         charges = self.fpm.get_predicted_charges(u)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         self.assertEqual([self.charge_a_shared], charges)
 
         # with 2 existing utility bills processed, predicted rate structure
@@ -133,9 +132,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
         charges = self.fpm.get_predicted_charges(u)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # with 3 processed utility bills
@@ -144,9 +141,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
         charges = self.fpm.get_predicted_charges(u)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
         # should be included here
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
@@ -159,9 +154,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
         charges = self.fpm.get_predicted_charges(u)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        self.utilbill_loader.load_real_utilbills.assert_has_calls([
+            call(utility=self.utility, rate_class=self.rate_class,
+                 processed=True),
+            call(supplier=u.supplier, processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # however, when u belongs to the same account as an existing bill,
@@ -175,9 +171,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.get_last_real_utilbill.return_value = \
             self.utilbill_1
         charges = self.fpm.get_predicted_charges(u)
-        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
-                utility=self.utility, rate_class=self.rate_class,
-                processed=True)
+        self.utilbill_loader.load_real_utilbills.assert_has_calls([
+            call(utility=self.utility, rate_class=self.rate_class,
+                 processed=True),
+            call(supplier=u.supplier, processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], charges)
 
@@ -224,13 +221,16 @@ class FuzzyPricingModelTest(unittest.TestCase):
         u.supplier = Mock(autospec=Supplier)
         u.charges = []
 
-        # each example bill needs to have a shared charge of both types.
-        self.utilbill_1.charges.append(
-            Charge(self.utilbill_1, 'X', 0, '', type='supply'))
-        self.utilbill_2.charges.append(
-            Charge(self.utilbill_2, 'Y', 0, '', type='supply'))
-        self.utilbill_3.charges.append(
-            Charge(self.utilbill_3, 'Z', 0, '', type='distribution'))
+        # each example bill has a shared charge of both types.
+        d1 = Charge(None, 'd1', 0, '', type='distribution', shared=True)
+        d2 = Charge(None, 'd2', 0, '', type='distribution', shared=True)
+        d3 = Charge(None, 'd3', 0, '', type='distribution', shared=True)
+        s1 = Charge(None, 's1', 0, '', type='supply', shared=True)
+        s2 = Charge(None, 's2', 0, '', type='supply', shared=True)
+        s3 = Charge(None, 's3', 0, '', type='supply', shared=True)
+        self.utilbill_1.charges = [d1, s1]
+        self.utilbill_2.charges = [d2, s2]
+        self.utilbill_3.charges = [d3, s3]
 
         # 1 bill with same rate class as the target and different supplier,
         # 1 with both same rate class and supplier, 1 with different rate
@@ -246,7 +246,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         charges = self.fpm.get_predicted_charges(u)
 
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
-            call(utility=u.utility, processed=True),
+            call(utility=u.utility, rate_class=u.rate_class, processed=True),
             call(supplier=u.supplier, processed=True),
         ])
 
@@ -255,9 +255,9 @@ class FuzzyPricingModelTest(unittest.TestCase):
 
         # d_charges has distribution charges of utilbill_1,2 (TODO: not dist charges of those--need to add charges of multiple types to each bill)
         # and s_charges has supply charges of utilbill_2,3 (TODO: not sup charges of those)
-        self.assertEqual(set(self.utilbill1.charges + self.utilbill2.charges),
+        self.assertEqual(set(self.utilbill_1.charges + self.utilbill_2.charges),
                          d_charges)
-        self.assertEqual(set(self.utilbill2.charges + self.utilbill3.charges),
+        self.assertEqual(set(self.utilbill_2.charges + self.utilbill_3.charges),
                          s_charges)
 
 
