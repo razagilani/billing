@@ -11,7 +11,8 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
-import xkcdpass as xp
+import bcrypt
+import xkcdpass.xkcd_password  as xp
 
 from flask import Flask, url_for, request, session, redirect
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
@@ -182,8 +183,8 @@ def register_user(access_token):
         wordfile = xp.locate_wordfile()
         mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
         user = BillEntryUser(email=session['email'],
-                                 password=xp.generate_xkcdpassword(mywords,
-                                                        acrostic="face"))
+                                 password=get_hashed_password(xp.generate_xkcdpassword(mywords,
+                                                        acrostic="face")))
         # add user to the admin role
         admin_role = s.query(Role).filter_by(name='admin').first()
         user.roles = [admin_role]
@@ -260,6 +261,11 @@ def userlogin():
     session['user_name'] = str(user)
     flash('Logged in successfully')
     return redirect(request.args.get('next') or url_for('index'))
+
+def get_hashed_password(plain_text_password):
+    # Hash a password for the first time
+    #   (Using bcrypt, the salt is saved into the hash itself)
+    return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
 
 api = Api(app)
 api.add_resource(resources.AccountResource, '/utilitybills/accounts')
