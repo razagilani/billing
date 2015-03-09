@@ -163,6 +163,12 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                 action: 'utilbillNext',
                 text: 'Next',
                 disabled: false
+            },{
+                xtype: 'button',
+                action: 'utilbillHelp',
+                text: 'Show Utility Bill Help',
+                icon: 'icons/icon-question.png',
+                disabled: false
             }
         ]
     }],
