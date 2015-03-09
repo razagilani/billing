@@ -8,7 +8,9 @@ http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
 import logging
+import traceback
 import urllib
+import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 
@@ -32,6 +34,8 @@ from core.model import Session, UtilityAccount, Charge, Supplier, Utility, \
 from core.model import UtilBill
 from brokerage.admin import make_admin
 from brokerage.brokerage_model import BrokerageAccount
+
+LOG_NAME = 'billentry'
 
 oauth = OAuth()
 
@@ -321,6 +325,19 @@ class RateClassesResource(BaseResource):
 app = Flask(__name__, static_url_path="")
 app.debug = True
 app.secret_key = 'sgdsdgs'
+
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
 
 @app.route('/logout')
 def logout():
