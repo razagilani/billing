@@ -166,7 +166,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             },{
                 xtype: 'button',
                 action: 'utilbillHelp',
-                text: 'Help',
+                text: 'Show Utility Bill Help',
                 icon: 'icons/icon-question.png',
                 disabled: false
             }
