@@ -85,6 +85,11 @@ class BaseResource(Resource):
             def output(self, key, obj):
                 return bill_file_handler.get_s3_url(obj)
 
+        class WikiUrlField(Raw):
+            def output(self, key, obj):
+                return config.get('billentry', 'wiki_url') + \
+                       obj.get_utility_name()
+
         # TODO: see if these JSON formatters can be moved to classes that
         # only deal with the relevant objects (UtilBills or Charges). they're
         # here because there's more than one Resource that needs to use each
@@ -119,6 +124,7 @@ class BaseResource(Resource):
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
+            'wiki_url': WikiUrlField
             }
 
         self.charge_fields = {
