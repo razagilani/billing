@@ -1,6 +1,7 @@
 """SQLAlchemy model classes used by the Bill Entry application.
 """
 import datetime
+import bcrypt
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     inspect
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -15,7 +16,7 @@ class BillEntryUser(Base):
     """
     __tablename__ = 'billentry_user'
     id = Column(Integer, primary_key=True)
-    password = Column(String(10))
+    password = Column(String(60))
     email = Column(String(50),unique=True, index=True)
     registered_on = Column('registered_on', DateTime)
     authenticated = Column(Boolean, default=False)
@@ -27,8 +28,14 @@ class BillEntryUser(Base):
 
     def __init__(self, email='', password=''):
         self.email = email
-        self.password = password
+        self.password = self.get_hashed_password(password)
         self.registered_on = datetime.datetime.utcnow()
+
+    def get_hashed_password(self, plain_text_password):
+        # Hash a password for the first time
+        #   (Using bcrypt, the salt is saved into the hash itself)
+        return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
+
 
     def is_authenticated(self):
         """Return True if the user is authenticated."""

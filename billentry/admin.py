@@ -11,10 +11,12 @@ from flask.ext.principal import Permission, RoleNeed
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.state import ReeBillCustomer, ReeBill
+from billentry.common import get_bcrypt_object
 
 
 # Create a permission with a single Need, in this case a RoleNeed.
 admin_permission = Permission(RoleNeed('admin'))
+bcrypt = get_bcrypt_object()
 
 class MyAdminIndexView(AdminIndexView):
 
@@ -83,6 +85,14 @@ class UserModelView(LoginModelView):
 
     def __init__(self, session, **kwargs):
         super(UserModelView, self).__init__(BillEntryUser, session, **kwargs)
+
+    def on_model_change(self, form, model, is_created):
+        model.password = self.get_hashed_password(model.password)
+
+    def get_hashed_password(self, plain_text_password):
+        # Hash a password for the first time
+        #   (Using bcrypt, the salt is saved into the hash itself)
+        return bcrypt.generate_password_hash(plain_text_password)
 
 class RolesModelView(LoginModelView):
     def __init__(self, session, **kwargs):

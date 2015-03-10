@@ -11,7 +11,6 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
-import bcrypt
 import xkcdpass.xkcd_password  as xp
 
 from flask import Flask, url_for, request, session, redirect
@@ -22,6 +21,7 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, P
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask_oauth import OAuth
 from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
+from billentry.common import get_bcrypt_object
 
 from core import init_config
 from core.model import Session, UtilBill
@@ -30,6 +30,7 @@ from billentry import admin, resources
 
 app = Flask(__name__, static_url_path="")
 app.debug = True
+bcrypt = get_bcrypt_object()
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -247,8 +248,11 @@ def login_page():
 def userlogin():
     email = request.form['email']
     password = request.form['password']
-    user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
+    user = Session().query(BillEntryUser).filter_by(email=email).first()
     if user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login_page'))
+    if not check_password(password, user.password):
         flash('Username or Password is invalid' , 'error')
         return redirect(url_for('login_page'))
     user.authenticated = True
@@ -265,7 +269,11 @@ def userlogin():
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
     #   (Using bcrypt, the salt is saved into the hash itself)
-    return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
+    return bcrypt.generate_password_hash(plain_text_password)
+
+def check_password(plain_text_password, hashed_password):
+    # Check hased password. Useing bcrypt, the salt is saved into the hash itself
+    return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 api = Api(app)
 api.add_resource(resources.AccountResource, '/utilitybills/accounts')
