@@ -140,6 +140,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         renderer: function(value) {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
+    },{
+        header: 'Due Date',
+        dataIndex: 'due_date',
+        width: 100,
+        renderer: function(value) {
+            return Ext.util.Format.date(value, 'Y-m-d');
+        },
+        hidden:true
     }],
 
     dockedItems: [{
@@ -163,12 +171,13 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
                 action: 'utilbillNext',
                 text: 'Next',
                 disabled: false
+            },{
+                xtype: 'button',
+                action: 'utilbillHelp',
+                text: 'Show Utility Bill Help',
+                icon: 'icons/icon-question.png',
+                disabled: false
             }
         ]
-    }],
-
-    sorters: [{
-        property: 'due_date',
-        direction: 'DESC'
     }]
 });
