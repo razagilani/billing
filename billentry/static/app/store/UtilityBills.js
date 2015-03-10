@@ -26,10 +26,6 @@ Ext.define('ReeBill.store.UtilityBills', {
             writeAllFields: false
         },
 
-        writer: {
-          writeAllFields: false
-        },
-
         listeners:{
             exception: utils.makeProxyExceptionHandler('UtilityBills'),
             scope: this
@@ -51,11 +47,9 @@ Ext.define('ReeBill.store.UtilityBills', {
         return lastDate;
     },
 
+
     sorters: [{
-        property: 'period_end',
+        property: 'due_date',
         direction: 'DESC'
-    },{
-        property: 'id',
-        direction: 'DESC'
-    },]
+    }]
 });
