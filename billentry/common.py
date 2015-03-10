@@ -7,7 +7,6 @@ If it gets big, it should become a multi-file module as shown there.
 from billentry.billentry_model import BEUtilBill
 from core.model import UtilBill, Session
 
-
 def replace_utilbill_with_beutilbill(utilbill):
     """Return a BEUtilBill object identical to 'utilbill' except for its
     class, and delete 'utilbill' from the session. 'utilbill.id' is set to

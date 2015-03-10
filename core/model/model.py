@@ -4,16 +4,18 @@ Also contains some related classes that do not correspond to database tables.
 '''
 import ast
 from datetime import date, datetime, timedelta
+from itertools import chain
 import json
 from math import floor
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
@@ -80,6 +82,41 @@ class Base(object):
         corresponding to database columns.
         '''
         return {c: getattr(self, c) for c in self.column_names()}
+
+    def clone(self):
+        """Return an object identical to this one except for primary keys and
+        foreign keys.
+        """
+        # recommended way to clone a SQLAlchemy mapped object according to
+        # Michael Bayer, the author:
+        # https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg10895.html
+        # (this code does not completely follow those instructions)
+        cls = self.__class__
+        pk_keys = set(c.key for c in class_mapper(cls).primary_key)
+        foreign_key_columns = chain.from_iterable(
+            c.columns for c in self.__table__.constraints if
+            isinstance(c, ForeignKeyConstraint))
+        foreign_keys = set(col.key for col in foreign_key_columns)
+
+        relevant_attr_names = [x for x in self.column_names() if
+                               x not in pk_keys and x not in foreign_keys]
+
+        # NOTE it is necessary to use __new__ to avoid calling the
+        # constructor here (because the constructor arguments are not known,
+        # and are different for different classes).
+        # MB says to create the object with __new__, but when i do that, i get
+        # a "no attribute '_sa_instance_state'" AttributeError when assigning
+        # the regular attributes below. creating an InstanceState like this
+        # seems to fix the problem, but might not be right way.
+        new_obj = cls.__new__(cls)
+        class_manager = cls._sa_class_manager
+        new_obj._sa_instance_state = InstanceState(new_obj, class_manager)
+
+        # copy regular attributes from self to the new object
+        for attr_name in relevant_attr_names:
+            setattr(new_obj, attr_name, getattr(self, attr_name))
+        return new_obj
+
 Base = declarative_base(cls=Base)
 
 
@@ -964,16 +1001,7 @@ class Charge(Base):
     def formulas_from_other(cls, other):
         """Constructs a charge copying the formulas and data
         from the other charge, but does not set the utilbill"""
-        return cls(None,
-                   other.rsi_binding,
-                   other.rate,
-                   other.quantity_formula,
-                   description=other.description,
-                   unit=other.unit,
-                   has_charge=other.has_charge,
-                   shared=other.shared,
-                   roundrule=other.roundrule,
-                   type=other.type)
+        return other.clone()
 
     @staticmethod
     def _evaluate_formula(formula, context):
