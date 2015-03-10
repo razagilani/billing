@@ -15,11 +15,13 @@ class MyAdminIndexView(AdminIndexView):
 
     @expose('/')
     def index(self):
+        from core import config
         try:
+            if config.get('billentry', 'disable_google_oauth'):
+                return super(MyAdminIndexView, self).index()
             if session['access_token'] is None:
                 return redirect(url_for('login', next=request.url))
-            else:
-                return super(MyAdminIndexView, self).index()
+            return super(MyAdminIndexView, self).index()
         except KeyError:
             print request.url
             return redirect(url_for('login', next=request.url))
@@ -31,11 +33,13 @@ class CustomModelView(ModelView):
     can_edit = False
 
     def is_accessible(self):
+        from core import config
         try:
-            if session['access_token'] is None:
-                return False
-            else:
+            if config.get('billentry', 'disable_google_oauth'):
                 return True
+            elif session['access_token'] is None:
+                return False
+            return True
         except KeyError:
             return False
 
@@ -48,11 +52,13 @@ class CustomModelView(ModelView):
 
 class LoginModelView(ModelView):
     def is_accessible(self):
+        from core import config
         try:
-            if session['access_token'] is None:
-                return False
-            else:
+            if config.get('billentry', 'disable_google_oauth'):
                 return True
+            elif session['access_token'] is None:
+                return False
+            return True
         except KeyError:
             return False
 
@@ -95,11 +101,11 @@ def make_admin(app):
     the admin UI.
     '''
     admin = Admin(app, index_view=MyAdminIndexView())
-    admin.add_view(CustomModelView(UtilityAccount, Session()))
-    admin.add_view(CustomModelView(UtilBill, Session(), name='Utility Bill'))
-    admin.add_view(UtilityModelView(Session()))
-    admin.add_view(SupplierModelView(Session()))
-    admin.add_view(RateClassModelView(Session()))
-    admin.add_view(ReeBillCustomerModelView(Session(), name='ReeBill Account'))
-    admin.add_view(CustomModelView(ReeBill, Session(), name='Reebill'))
+    admin.add_view(CustomModelView(UtilityAccount, Session))
+    admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
+    admin.add_view(UtilityModelView(Session))
+    admin.add_view(SupplierModelView(Session))
+    admin.add_view(RateClassModelView(Session))
+    admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
+    admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     return admin
