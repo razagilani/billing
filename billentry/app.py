@@ -79,7 +79,7 @@ google = oauth.remote_app(
 
 app.secret_key = config.get('billentry', 'secret_key')
 if config.get('billentry', 'disable_authentication'):
-    app.config['TESTING'] = True
+    app.config['LOGIN_DISABLED'] = True
 login_manager = LoginManager()
 login_manager.init_app(app)
 # load the extension
@@ -103,8 +103,7 @@ def on_identity_loaded(sender, identity):
 @login_manager.user_loader
 def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
-    if user:
-        return user
+    return user
 
 @app.route('/logout')
 def logout():
@@ -129,7 +128,10 @@ def oauth2callback(resp):
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
-    register_user(resp['access_token'])
+    # any user who logs in through OAuth gets automatically created
+    # (with a random password) if there is no existing user with
+    # the same email address.
+    create_user_in_db(resp['access_token'])
     return redirect(next_url)
 
 @app.route('/')
@@ -139,7 +141,7 @@ def index():
     '''
     return app.send_static_file('index.html')
 
-def register_user(access_token):
+def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth '+access_token}
     req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
@@ -153,10 +155,10 @@ def register_user(access_token):
             return redirect(url_for('login'))
     #TODO: display googleEmail as Username the bottom panel
     userInfoFromGoogle = res.read()
-    googleEmail = json.loads(userInfoFromGoogle)
+    userInfo = json.loads(userInfoFromGoogle)
     s = Session()
-    session['email'] = googleEmail['email']
-    user = s.query(BillEntryUser).filter_by(email=googleEmail['email']).first()
+    session['email'] = userInfo['email']
+    user = s.query(BillEntryUser).filter_by(email=userInfo['email']).first()
     # if user coming through google auth is not already present in local
     # database, then create it in the local db and assign the 'admin' role
     # to the user for proividing access to the Admin UI.
@@ -178,21 +180,20 @@ def register_user(access_token):
     login_user(user)
     # Tell Flask-Principal the identity changed
     identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
-    return googleEmail['email']
+    return userInfo['email']
 
 @app.before_request
 def before_request():
+    from core import config
     if config.get('billentry', 'disable_authentication'):
         return
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
-    if 'NEXTILITY_LOGO.png' in request.full_path:
-        return app.send_static_file('images/NEXTILITY_LOGO.png')
     if not user.is_authenticated() \
             and request.endpoint not in (
             'login', 'oauth2callback', 'logout',
-            'login_page', 'userlogin'):
+            'login_page', 'userlogin', 'static'):
         return redirect(url_for('login_page'))
 
 @app.after_request

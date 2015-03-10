@@ -19,9 +19,9 @@ from sqlalchemy.dialects import mysql
 def upgrade():
     op.create_table('billentry_user',
                     sa.Column('id', sa.Integer(), nullable=False),
-                    sa.Column('password', sa.String(length=60), nullable=True),
-                    sa.Column('email', sa.String(length=50), nullable=True),
-                    sa.Column('registered_on', sa.DateTime(), nullable=True),
+                    sa.Column('password', sa.String(length=60), nullable=False),
+                    sa.Column('email', sa.String(length=50), nullable=False),
+                    sa.Column('registered_on', sa.DateTime(), nullable=False),
                     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_billentry_users_email'), 'billentry_user', ['email'], unique=True)
