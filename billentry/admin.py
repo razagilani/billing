@@ -43,6 +43,7 @@ class CustomModelView(ModelView):
     def __init__(self, model, session, **kwargs):
         super(CustomModelView, self).__init__(model, session, **kwargs)
 
+
 class LoginModelView(ModelView):
     def is_accessible(self):
         return login.current_user.is_authenticated()
@@ -54,17 +55,20 @@ class LoginModelView(ModelView):
     def __init__(self, model, session, **kwargs):
         super(LoginModelView, self).__init__(model, session, **kwargs)
 
+
 class SupplierModelView(LoginModelView):
     form_columns = ('name',)
 
     def __init__(self, session, **kwargs):
         super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
 
+
 class UtilityModelView(LoginModelView):
     form_columns = ('name',)
 
     def __init__(self, session, **kwargs):
         super(UtilityModelView, self).__init__(Utility, session, **kwargs)
+
 
 class ReeBillCustomerModelView(LoginModelView):
     form_columns = (
@@ -74,11 +78,6 @@ class ReeBillCustomerModelView(LoginModelView):
     def __init__(self, session, **kwargs):
         super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session,
                                                        **kwargs)
-
-class RateClassModelView(LoginModelView):
-
-    def __init__(self, session, **kwargs):
-        super(RateClassModelView, self).__init__(RateClass, session, **kwargs)
 
 class UserModelView(LoginModelView):
     form_columns = ('email', 'password', )
@@ -94,15 +93,6 @@ class UserModelView(LoginModelView):
         #   (Using bcrypt, the salt is saved into the hash itself)
         return bcrypt.generate_password_hash(plain_text_password)
 
-class RolesModelView(LoginModelView):
-    def __init__(self, session, **kwargs):
-        super(RolesModelView, self).__init__(Role, session, **kwargs)
-
-class UserRolesModelView(LoginModelView):
-
-    def __init__(self, session, **kwargs):
-        super(UserRolesModelView, self).__init__(RoleBEUser, session, **kwargs)
-
 
 def make_admin(app):
     '''Return a new Flask 'Admin' object associated with 'app' representing
@@ -113,10 +103,10 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Session))
     admin.add_view(SupplierModelView(Session))
-    admin.add_view(RateClassModelView(Session))
+    admin.add_view(LoginModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
-    admin.add_view(RolesModelView(Session))
-    admin.add_view(UserRolesModelView(Session))
+    admin.add_view(LoginModelView(Role, Session, name= 'BillEntry Role'))
+    admin.add_view(LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
     admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
     admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     return admin
