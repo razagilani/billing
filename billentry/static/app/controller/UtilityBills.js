@@ -30,6 +30,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'utilbillNext',
         selector: '[action=utilbillNext]'
+    },{
+        ref: 'utilbillHelp',
+        selector: '[action=utilbillHelp]'
     }],
     
     init: function() {
@@ -57,6 +60,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '[action=utilbillNext]': {
                 click: this.incrementAccount
+            },
+            '[action=utilbillHelp]': {
+                click: this.handleUtilbillHelp
             },
             '#utility_combo':{
                 select: this.handleUtilityComboChanged
@@ -210,5 +216,27 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var store = this.getUtilityBillsStore();
         store.getProxy().setExtraParam('id', id);
         store.reload();
+    },
+
+    handleUtilbillHelp: function(){
+        var margin = 35;
+        var width = 850;
+        var store = this.getUtilityBillsStore();
+        var win = Ext.create('Ext.window.Window', {
+            overflowY: 'auto',
+            width: width,
+            height: Ext.getBody().getViewSize().height - margin * 2,
+            title: "Utility Bill Help",
+            layout: 'fit',
+            items: [{
+                xtype : "component",
+                autoEl : {
+                    tag : "iframe",
+                    src : store.getAt(0).get('wiki_url')
+                }
+            }]
+        });
+        win.show();
+        win.setPosition(Ext.getBody().getViewSize().width - width - margin, margin);
     }
 });

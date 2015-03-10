@@ -216,7 +216,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 0.0,
                   'utility': 'Empty Utility',
                   'utility_account_number': '3',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Empty Utility'
                  },
              ], }, rv.data)
 
@@ -284,6 +285,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
+              'wiki_url': 'http://example.com/utility:Example Utility'
               },
          'results': 1}
 
@@ -324,7 +326,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'total_energy': 0.0,
               'utility': 'Empty Utility',
               'utility_account_number': '3',
-              'supply_choice_id': None
+              'supply_choice_id': None,
+              'wiki_url': 'http://example.com/utility:Empty Utility'
              }
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
@@ -359,7 +362,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 150.0,
                   'utility': 'Empty Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Empty Utility'
             },
             }, rv.data
         )
@@ -391,7 +395,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 150.0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Some Other Utility'
             },
             }, rv.data
         )
@@ -471,7 +476,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 0,
                   'utility': 'Example Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Example Utility'
                  }],
              }, rv.data)
 
