@@ -96,9 +96,13 @@ class BillEntryIntegrationTest(object):
     def setUpClass(cls):
         init_test_config()
         init_model()
-
-        # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # are using the before_request callback instead
+        billentry.app.config['LOGIN_DISABLED'] = True
+        # TODO: this should prevent the method decorated with
+        # "app.errorhandler" from running, but doesn't
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -512,14 +516,23 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
-class TestBillEnrtyAuthentication(BillEntryIntegrationTest,
-                                 unittest.TestCase):
+class TestBillEnrtyAuthentication(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        cls.app = billentry.app.test_client()
 
     def setUp(self):
+        TestCaseWithSetup.truncate_tables()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
         s.commit()
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
 
     def test_user_login(self):
         response = self.app.get('/')

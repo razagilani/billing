@@ -8,7 +8,10 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+import logging
+import traceback
 import urllib
+import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 
@@ -26,10 +29,10 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
+LOG_NAME = 'billentry'
 
 
 app = Flask(__name__, static_url_path="")
-app.debug = True
 bcrypt = get_bcrypt_object()
 
 # Google OAuth URL parameters MUST be configurable because the
@@ -78,8 +81,8 @@ google = oauth.remote_app(
         #  when they were "entered" and who entered them.
 
 app.secret_key = config.get('billentry', 'secret_key')
-if config.get('billentry', 'disable_authentication'):
-    app.config['LOGIN_DISABLED'] = True
+app.config['LOGIN_DISABLED'] = config.get('billentry',
+                                          'disable_authentication')
 login_manager = LoginManager()
 login_manager.init_app(app)
 # load the extension
@@ -104,6 +107,19 @@ def on_identity_loaded(sender, identity):
 def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
     return user
+
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
 
 @app.route('/logout')
 def logout():
@@ -152,8 +168,8 @@ def create_user_in_db(access_token):
         if e.code == 401:
             # Unauthorized - bad token
             session.pop('access_token', None)
-            return redirect(url_for('login'))
-    #TODO: display googleEmail as Username the bottom panel
+            return redirect(url_for('aouth_login'))
+    #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
     userInfo = json.loads(userInfoFromGoogle)
     s = Session()
@@ -176,7 +192,7 @@ def create_user_in_db(access_token):
         s.add(user)
         s.commit()
     user.authenticated = True
-    s.flush()
+    s.commit()
     login_user(user)
     # Tell Flask-Principal the identity changed
     identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
@@ -185,24 +201,50 @@ def create_user_in_db(access_token):
 @app.before_request
 def before_request():
     from core import config
-    if config.get('billentry', 'disable_authentication'):
+    if app.config['LOGIN_DISABLED']:
+        set_next_url()
         return
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
     if not user.is_authenticated() \
             and request.endpoint not in (
-            'login', 'oauth2callback', 'logout',
-            'login_page', 'userlogin', 'static'):
+            'oauth_login', 'oauth2callback', 'logout',
+            'login_page', 'locallogin', 'static'):
         return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
-    Session.commit()
+    # commit the transaction after every request that should change data.
+    # this might work equally well in 'teardown_appcontext' as long as it comes
+    # before Session.remove().
+    if request.method in ('POST', 'PUT', 'DELETE'):
+        # the Admin UI calls commit() by itself, so whenever a POST/PUT/DELETE
+        # request is made to the Admin UI, commit() will be called twice, but
+        # the second call will have no effect.
+        Session.commit()
     return response
 
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """This is called after every request (after the "after_request" callback).
+    The database session is closed here following the example here:
+    http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/#declarative
+    """
+    #The Session.remove() method first calls Session.close() on the
+    # current Session, which has the effect of releasing any
+    # connection/transactional resources owned by the Session first,
+    # then discarding the Session itself. Releasing here means that
+    # connections are returned to their connection pool and any transactional
+    # state is rolled back, ultimately using the rollback() method of
+    # the underlying DBAPI connection.
+    # TODO: this is necessary to make the tests pass but it's not good to
+    # have testing-related stuff in the main code
+    if app.config['TESTING'] is not True:
+        Session.remove()
+
 @app.route('/login')
-def login():
+def oauth_login():
     set_next_url()
     return google.authorize(callback=url_for('oauth2callback', _external=True))
 
@@ -228,7 +270,7 @@ def login_page():
     return render_template('login_page.html')
 
 @app.route('/userlogin', methods=['GET','POST'])
-def userlogin():
+def locallogin():
     email = request.form['email']
     password = request.form['password']
     user = Session().query(BillEntryUser).filter_by(email=email).first()
@@ -277,4 +319,3 @@ application = app
 
 # enable admin UI
 admin.make_admin(app)
-
