@@ -66,6 +66,14 @@ class Base(object):
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
+    def __hash__(self):
+        """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
+        """
+        # NOTE: do not assign non-hashable objects (such as lists) as
+        # attributes!
+        return hash((self.__class__.__name__,) + tuple(
+            getattr(self, x) for x in self.column_names()))
+
     # TODO: move UI-related code to views.py
     def column_dict(self):
         '''Return dictionary of names and values for all attributes
@@ -866,7 +874,8 @@ class Charge(Base):
     CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     # allowed values for "type" field of charges
-    CHARGE_TYPES = ['supply', 'distribution']
+    SUPPLY, DISTRIBUTION = 'supply', 'distribution'
+    CHARGE_TYPES = [SUPPLY, DISTRIBUTION]
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -950,6 +959,7 @@ class Charge(Base):
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
 
+    # TODO rename this
     @classmethod
     def formulas_from_other(cls, other):
         """Constructs a charge copying the formulas and data
@@ -962,7 +972,8 @@ class Charge(Base):
                    unit=other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,
-                   roundrule=other.roundrule)
+                   roundrule=other.roundrule,
+                   type=other.type)
 
     @staticmethod
     def _evaluate_formula(formula, context):
