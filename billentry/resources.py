@@ -143,7 +143,6 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-
         accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
             UtilityAccount.account).all()
         return marshal(accounts, {

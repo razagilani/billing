@@ -14,6 +14,7 @@ from reebill.state import ReeBillCustomer, ReeBill
 from billentry.common import get_bcrypt_object
 
 
+
 # Create a permission with a single Need, in this case a RoleNeed.
 admin_permission = Permission(RoleNeed('admin'))
 bcrypt = get_bcrypt_object()
@@ -23,7 +24,10 @@ class MyAdminIndexView(AdminIndexView):
     @admin_permission.require()
     @expose('/')
     def index(self):
+        from core import config
         if login.current_user.is_authenticated():
+            if config.get('billentry', 'disable_authentication'):
+                return super(MyAdminIndexView, self).index()
             return super(MyAdminIndexView, self).index()
         return redirect(url_for('login', next=request.url))
 
