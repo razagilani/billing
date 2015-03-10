@@ -124,8 +124,6 @@ def load_user(id):
 
 @app.route('/logout')
 def logout():
-    session.pop('access_token', None)
-    session.pop('user_name', None)
     current_user.authenticated = False
     logout_user()
     # Remove session keys set by Flask-Principal
@@ -257,7 +255,7 @@ def userlogin():
         return redirect(url_for('login_page'))
     user.authenticated = True
     if 'rememberme' in request.form:
-        login_user(user,rememberme=True)
+        login_user(user,remember=True)
     else:
         login_user(user)
     # Tell Flask-Principal the identity changed
