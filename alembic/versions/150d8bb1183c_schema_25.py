@@ -19,7 +19,7 @@ from sqlalchemy.dialects import mysql
 def upgrade():
     op.create_table('billentry_user',
                     sa.Column('id', sa.Integer(), nullable=False),
-                    sa.Column('password', sa.String(length=10), nullable=True),
+                    sa.Column('password', sa.String(length=60), nullable=True),
                     sa.Column('email', sa.String(length=50), nullable=True),
                     sa.Column('registered_on', sa.DateTime(), nullable=True),
                     sa.PrimaryKeyConstraint('id')
