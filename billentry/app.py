@@ -11,20 +11,20 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 import urllib
 from urllib2 import Request, urlopen, URLError
 import json
-import xkcdpass.xkcd_password  as xp
 
-from flask import Flask, url_for, request, session, redirect
+import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
-from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, Permission, RoleNeed, \
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, \
+    RoleNeed, \
     identity_loaded, UserNeed
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask_oauth import OAuth
-from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
-from billentry.common import get_bcrypt_object
 
+from billentry.billentry_model import BillEntryUser, Role
+from billentry.common import get_bcrypt_object
 from core import init_config
-from core.model import Session, UtilBill
+from core.model import Session
 from billentry import admin, resources
 
 
@@ -76,22 +76,6 @@ google = oauth.remote_app(
         # "should be entered", i.e. BEUtilBills
         # only BEUtilBills are counted here because only they have data about
         #  when they were "entered" and who entered them.
-
-
-def replace_utilbill_with_beutilbill(utilbill):
-    """Return a BEUtilBill object identical to 'utilbill' except for its
-    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
-    None because 'utilbill' no longer corresponds to a row in the database.
-    Do not use 'utilbill' after passing it to this function.
-    """
-    assert type(utilbill) is UtilBill
-    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
-    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
-    s = Session.object_session(utilbill)
-    s.add(beutilbill)
-    s.delete(utilbill)
-    utilbill.id = None
-    return beutilbill
 
 app.secret_key = config.get('billentry', 'secret_key')
 if config.get('billentry', 'disable_authentication'):
