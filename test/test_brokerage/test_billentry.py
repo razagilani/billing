@@ -94,9 +94,10 @@ class BillEntryIntegrationTest(object):
     def setUpClass(cls):
         init_test_config()
         init_model()
-
-        # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
+        # TODO: this should prevent the method decorated with
+        # "app.errorhandler" from running, but doesn't
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
