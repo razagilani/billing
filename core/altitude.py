@@ -166,7 +166,7 @@ def update_altitude_account_guids(utility_account, guids):
                for guid in set(guids) - existing_account_guids])
     s.flush()
 
-def get_or_create_guid_for_utilbill(utilbill, guid_func):
+def get_or_create_guid_for_utilbill(utilbill, guid_func, session):
     """Find and return a GUID string for the given UtilBill, or if one does
     not exist, generate one using 'guid_func', store a new AltitudeBill with
     the GUID string, and return it.
@@ -174,5 +174,6 @@ def get_or_create_guid_for_utilbill(utilbill, guid_func):
     altitude_bill = _billing_to_altitude(UtilBill, AltitudeBill)(utilbill)
     if altitude_bill is None:
         altitude_bill =  AltitudeBill(utilbill, guid_func())
-        Session().add(altitude_bill)
+        session.add(altitude_bill)
+
     return altitude_bill.guid
