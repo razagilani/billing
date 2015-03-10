@@ -8,7 +8,10 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+import logging
+import traceback
 import urllib
+import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 
@@ -20,10 +23,12 @@ from billentry.billentry_model import BEUtilBill
 from core import init_config
 from core.model import Session, UtilBill
 from billentry import admin, resources
+LOG_NAME = 'billentry'
 
 
 app = Flask(__name__, static_url_path="")
-app.debug = True
+# TODO: delete
+#app.debug = True
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -90,6 +95,19 @@ def replace_utilbill_with_beutilbill(utilbill):
 # time. see how it is initialized at the top of this file.
 app.secret_key = config.get('billentry', 'secret_key')
 
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
+
 @app.route('/logout')
 def logout():
     session.pop('access_token', None)
@@ -116,9 +134,6 @@ def index():
     if config.get('billentry', 'disable_google_oauth'):
         return app.send_static_file('index.html')
     access_token = session.get('access_token')
-    if access_token is None:
-        # user is not logged in so redirect to login page
-        return redirect(url_for('login'))
 
     headers = {'Authorization': 'OAuth '+access_token[0]}
     req = Request(config.get('billentry', 'google_user_info_url'),
@@ -131,7 +146,7 @@ def index():
             # Unauthorized - bad token
             session.pop('access_token', None)
             return redirect(url_for('login'))
-    #TODO: display googleEmail as Username the bottom panel
+    #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
     googleEmail = json.loads(userInfoFromGoogle)
     session['email'] = googleEmail['email']
@@ -141,19 +156,52 @@ def index():
 def before_request():
     from core import config
     if config.get('billentry', 'disable_google_oauth'):
+        set_next_url()
         return
     if 'access_token' not in session and request.endpoint not in (
             'login', 'oauth2callback', 'logout'):
+        set_next_url()
         return redirect(url_for('login'))
 
 @app.after_request
 def db_commit(response):
-    Session.commit()
+    # commit the transaction after every request that should change data.
+    # this might work equally well in 'teardown_appcontext' as long as it comes
+    # before Session.remove().
+    if request.method in ('POST', 'PUT', 'DELETE'):
+        # the Admin UI calls commit() by itself, so whenever a POST/PUT/DELETE
+        # request is made to the Admin UI, commit() will be called twice, but
+        # the second call will have no effect.
+        Session.commit()
     return response
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """This is called after every request (after the "after_request" callback).
+    The database session is closed here following the example here:
+    http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/#declarative
+    """
+    #The Session.remove() method first calls Session.close() on the
+    # current Session, which has the effect of releasing any
+    # connection/transactional resources owned by the Session first,
+    # then discarding the Session itself. Releasing here means that
+    # connections are returned to their connection pool and any transactional
+    # state is rolled back, ultimately using the rollback() method of
+    # the underlying DBAPI connection.
+    # TODO: this is necessary to make the tests pass but it's not good to
+    # have testing-related stuff in the main code
+    if app.config['TESTING'] is not True:
+        Session.remove()
 
 @app.route('/login')
 def login():
-    next_path = request.args.get('next')
+    return google.authorize(callback=url_for('oauth2callback', _external=True))
+
+def set_next_url():
+    if request.args.get('next'):
+        next_path = request.args.get('next')
+    else:
+        next_path = request.full_path
     if next_path:
         # Since passing along the "next" URL as a GET param requires
         # a different callback for each page, and Google requires
@@ -168,7 +216,6 @@ def login():
         next_url = "{path}".format(
             path=path,)
         session['next_url'] = next_url
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 api = Api(app)
 api.add_resource(resources.AccountResource, '/utilitybills/accounts')
@@ -189,4 +236,3 @@ application = app
 
 # enable admin UI
 admin.make_admin(app)
-

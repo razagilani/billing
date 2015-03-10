@@ -85,6 +85,7 @@ class billentry(Schema):
     access_token_params_grant_type = String()
     authorized_domain = String()
     disable_google_oauth = StringBool()
+    show_traceback_on_error = StringBool()
     secret_key = String()
     wiki_url = String()
 
@@ -162,6 +163,12 @@ class logger_reebill(Schema):
     qualname = String()
     propagate = Int()
 
+class logger_billentry(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+    propagate = Int()
+
 class logger_amqp_utilbill_file(Schema):
     level = String()
     handlers = String()
@@ -184,6 +191,12 @@ class handler_fileHandler(Schema):
     formatter = String()
     args = String()
 handler_fileHandler.add_field('class', String())
+
+class handler_billentry_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_billentry_file_handler.add_field('class', String())
 
 class handler_amqp_utilbill_file_handler(Schema):
     level = String()
