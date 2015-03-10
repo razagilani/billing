@@ -41,6 +41,7 @@ class PGAltitudeExporter(object):
         exported.
         :param utilbills: iterator of UtilBills to include data from.
         '''
+        session = Session()
         dataset = Dataset(headers=[
             'customer_account_guid',
             'billing_customer_id',
@@ -81,7 +82,7 @@ class PGAltitudeExporter(object):
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid':
                     self._altitude_converter.get_or_create_guid_for_utilbill(
-                        ub, self._uuid_func),
+                        ub, self._uuid_func, session),
                 'utility_guid': format_possible_none(
                     self._altitude_converter.get_guid_for_utility(
                         ub.get_utility())),
@@ -106,6 +107,7 @@ class PGAltitudeExporter(object):
                 'create_date': format_date(ub.date_received),
                 'modified_date': format_date(ub.date_modified),
             })
+        session.commit()
         return dataset
 
 # TODO maybe this is built into tablib already or should be added there.
