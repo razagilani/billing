@@ -205,12 +205,20 @@ def before_request():
         set_next_url()
         return
     user = current_user
+    ALLOWED_URLS = [
+        'oauth_login',
+        'oauth2callback',
+        'logout',
+        'login_page',
+        'locallogin'
+    ]
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
+    if 'css' in request.path or 'images' in request.path:
+        return app.send_static_file(request.path[1:])
+
     if not user.is_authenticated() \
-            and request.endpoint not in (
-            'oauth_login', 'oauth2callback', 'logout',
-            'login_page', 'locallogin', 'static'):
+            and request.endpoint not in ALLOWED_URLS:
         return redirect(url_for('login_page'))
 
 @app.after_request
