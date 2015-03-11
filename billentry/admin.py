@@ -27,7 +27,7 @@ class MyAdminIndexView(AdminIndexView):
         if config.get('billentry', 'disable_authentication'):
                 return super(MyAdminIndexView, self).index()
         if login.current_user.is_authenticated():
-            with admin_permission.require(http_exception=403):
+            with admin_permission.require():
                 return super(MyAdminIndexView, self).index()
         return redirect(url_for('login', next=request.url))
 

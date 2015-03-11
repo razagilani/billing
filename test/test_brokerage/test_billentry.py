@@ -517,12 +517,19 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          new_beutilbill.discriminator)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
+    URL_PREFIX = 'http://localhost'
+
     @classmethod
     def setUpClass(cls):
         init_test_config()
         init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
         cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
 
     def setUp(self):
         TestCaseWithSetup.truncate_tables()
@@ -534,12 +541,42 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
     def tearDown(self):
         TestCaseWithSetup.truncate_tables()
 
-    def test_user_login(self):
+    def test_oauth_login(self):
+        # just an example of a URL the user was trying to go to
+        original_url = '/admin'
+
+        # first the user tries to go to 'original_url', and gets redirected to
+        # /login-page
+        rv = self.app.get(original_url)
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # then the user clicks on the "Log in with Google" link, whose URL is
+        #  /login, and gets redirected to Google's OAuth URL
+        rv = self.app.get('/login')
+        self.assertEqual(302, rv.status_code)
+        # not checking arguments in the URL
+        self.assertTrue(rv.location.startswith(self.authorize_url))
+
+        # /oauth2callback is the URL that Google redirects to after the user
+        # authenticates. we aren't simulating the valid OAuth data that
+        # Google would provide, so the response is invalid
+        rv = self.app.get('/oauth2callback')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # after unsuccessful login, the user still can't get to a normal page
+        rv = self.app.get('/')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+    def test_local_login(self):
         response = self.app.get('/')
         # because user is not logged in so a redirect to login-page should
         # happen
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
+
         # valid data for user login
         data = {'email':'user1@test.com', 'password': 'password'}\
         # post request for user login with valid credentials
@@ -548,7 +585,11 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         # on successful login user is routed to the next url
         self.assertTrue(response.status_code == 302)
-        self.assertEqual ('http://localhost/', response.location)
+        self.assertEqual('http://localhost/', response.location)
+
+        # user successfully gets index.html
+        response = self.app.get(self.URL_PREFIX + '/')
+        self.assertEqual(200, response.status_code)
 
         # logout user
         self.app.get('/logout')
