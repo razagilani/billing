@@ -155,7 +155,14 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    return app.send_static_file('index.html')
+    response = app.send_static_file('index.html')
+    # telling the client not to cache index.html prevents a problem where a
+    # request for this page after logging out will appear to succeed, causing
+    # the client to make AJAX requests to which the server responds with
+    # redirects to the login page, causing the login page to be shown in an
+    # error message window.
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth '+access_token}
@@ -200,26 +207,26 @@ def create_user_in_db(access_token):
 
 @app.before_request
 def before_request():
-    from core import config
     if app.config['LOGIN_DISABLED']:
         set_next_url()
         return
     user = current_user
-    ALLOWED_URLS = [
+    # this is for diaplaying the nextility logo on the
+    # login_page when user is not logged in
+    print '****** path', request.path, 'endpoint', request.endpoint
+    ALLOWED_ENDPOINTS = [
         'oauth_login',
         'oauth2callback',
         'logout',
         'login_page',
-        'locallogin'
+        'locallogin',
+        # special endpoint name for all static files--not a URL
+        'static'
     ]
-    # this is for diaplaying the nextility logo on the
-    # login_page when user is not logged in
-    if 'css' in request.path or 'images' in request.path:
-        return app.send_static_file(request.path[1:])
-
-    if not user.is_authenticated() \
-            and request.endpoint not in ALLOWED_URLS:
-        return redirect(url_for('login_page'))
+    if not user.is_authenticated():
+        if ('index.html' in request.path or request.endpoint == '/' or not
+                        request.endpoint in ALLOWED_ENDPOINTS):
+            return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
