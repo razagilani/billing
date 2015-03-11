@@ -200,18 +200,26 @@ def create_user_in_db(access_token):
 
 @app.before_request
 def before_request():
-    from core import config
     if app.config['LOGIN_DISABLED']:
         set_next_url()
         return
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
-    if not user.is_authenticated() \
-            and request.endpoint not in (
-            'oauth_login', 'oauth2callback', 'logout',
-            'login_page', 'locallogin', 'static'):
-        return redirect(url_for('login_page'))
+    ALLOWED_ENDPOINTS = [
+        'oauth_login',
+        'oauth2callback',
+        'logout',
+        'login_page',
+        'locallogin',
+        # special endpoint name for all static files--not a URL
+        'static'
+    ]
+    if not user.is_authenticated():
+        if 'index.html' in request.path or not request.endpoint in ALLOWED_ENDPOINTS:
+        # if not request.endpoint in ALLOWED_ENDPOINTS or (
+        #             'index.html' in request.path):
+            return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
