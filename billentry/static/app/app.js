@@ -27,6 +27,35 @@ Ext.application({
         'UtilityBills'
     ],
 
-    launch: function() {}
+    refs: [{
+        ref: 'utilityBillViewer',
+        selector: 'pdfpanel[name=utilityBillViewer]'
+    }],
+
+    launch: function() {
+        // Application Wide keyboard shortcuts
+        var map = new Ext.util.KeyMap({
+            target: document,
+            binding: [{
+                key: "a",
+                ctrl: true,
+                shift: true,
+                fn: function(){
+                    var p = this.getUtilityBillViewer();
+                    p.scrollBy(0, -p.getHeight(), true);
+                },
+                scope: this
+            },{
+                key: "z",
+                ctrl: true,
+                shift: true,
+                fn: function(){
+                    var p = this.getUtilityBillViewer();
+                    p.scrollBy(0, p.getHeight(), true);
+                },
+                scope: this
+            }]
+        });
+    }
 });
 

@@ -8,28 +8,32 @@ http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 '''
+import logging
+import traceback
 import urllib
+import uuid
 from urllib2 import Request, urlopen, URLError
 import json
-import bcrypt
-import xkcdpass.xkcd_password  as xp
 
-from flask import Flask, url_for, request, session, redirect
+import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
-from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, Permission, RoleNeed, \
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, \
+    RoleNeed, \
     identity_loaded, UserNeed
 from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
 from flask_oauth import OAuth
-from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
 
+from billentry.billentry_model import BillEntryUser, Role
+from billentry.common import get_bcrypt_object
 from core import init_config
-from core.model import Session, UtilBill
+from core.model import Session
 from billentry import admin, resources
+LOG_NAME = 'billentry'
 
 
 app = Flask(__name__, static_url_path="")
-app.debug = True
+bcrypt = get_bcrypt_object()
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -76,25 +80,9 @@ google = oauth.remote_app(
         # only BEUtilBills are counted here because only they have data about
         #  when they were "entered" and who entered them.
 
-
-def replace_utilbill_with_beutilbill(utilbill):
-    """Return a BEUtilBill object identical to 'utilbill' except for its
-    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
-    None because 'utilbill' no longer corresponds to a row in the database.
-    Do not use 'utilbill' after passing it to this function.
-    """
-    assert type(utilbill) is UtilBill
-    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
-    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
-    s = Session.object_session(utilbill)
-    s.add(beutilbill)
-    s.delete(utilbill)
-    utilbill.id = None
-    return beutilbill
-
 app.secret_key = config.get('billentry', 'secret_key')
-if config.get('billentry', 'disable_authentication'):
-    app.config['TESTING'] = True
+app.config['LOGIN_DISABLED'] = config.get('billentry',
+                                          'disable_authentication')
 login_manager = LoginManager()
 login_manager.init_app(app)
 # load the extension
@@ -118,13 +106,23 @@ def on_identity_loaded(sender, identity):
 @login_manager.user_loader
 def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
-    if user:
-        return user
+    return user
+
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
 
 @app.route('/logout')
 def logout():
-    session.pop('access_token', None)
-    session.pop('user_name', None)
     current_user.authenticated = False
     logout_user()
     # Remove session keys set by Flask-Principal
@@ -146,7 +144,10 @@ def oauth2callback(resp):
         return redirect(next_url)
 
     session['access_token'] = resp['access_token'], ''
-    register_user(resp['access_token'])
+    # any user who logs in through OAuth gets automatically created
+    # (with a random password) if there is no existing user with
+    # the same email address.
+    create_user_in_db(resp['access_token'])
     return redirect(next_url)
 
 @app.route('/')
@@ -154,9 +155,16 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    return app.send_static_file('index.html')
+    response = app.send_static_file('index.html')
+    # telling the client not to cache index.html prevents a problem where a
+    # request for this page after logging out will appear to succeed, causing
+    # the client to make AJAX requests to which the server responds with
+    # redirects to the login page, causing the login page to be shown in an
+    # error message window.
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
-def register_user(access_token):
+def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth '+access_token}
     req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
@@ -167,13 +175,13 @@ def register_user(access_token):
         if e.code == 401:
             # Unauthorized - bad token
             session.pop('access_token', None)
-            return redirect(url_for('login'))
-    #TODO: display googleEmail as Username the bottom panel
+            return redirect(url_for('aouth_login'))
+    #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
-    googleEmail = json.loads(userInfoFromGoogle)
+    userInfo = json.loads(userInfoFromGoogle)
     s = Session()
-    session['email'] = googleEmail['email']
-    user = s.query(BillEntryUser).filter_by(email=googleEmail['email']).first()
+    session['email'] = userInfo['email']
+    user = s.query(BillEntryUser).filter_by(email=userInfo['email']).first()
     # if user coming through google auth is not already present in local
     # database, then create it in the local db and assign the 'admin' role
     # to the user for proividing access to the Admin UI.
@@ -191,34 +199,67 @@ def register_user(access_token):
         s.add(user)
         s.commit()
     user.authenticated = True
-    s.flush()
+    s.commit()
     login_user(user)
     # Tell Flask-Principal the identity changed
     identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
-    return googleEmail['email']
+    return userInfo['email']
 
 @app.before_request
 def before_request():
-    if config.get('billentry', 'disable_authentication'):
+    if app.config['LOGIN_DISABLED']:
+        set_next_url()
         return
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
-    if 'NEXTILITY_LOGO.png' in request.full_path:
-        return app.send_static_file('images/NEXTILITY_LOGO.png')
-    if not user.is_authenticated() \
-            and request.endpoint not in (
-            'login', 'oauth2callback', 'logout',
-            'login_page', 'userlogin'):
-        return redirect(url_for('login_page'))
+    print '****** path', request.path, 'endpoint', request.endpoint
+    ALLOWED_ENDPOINTS = [
+        'oauth_login',
+        'oauth2callback',
+        'logout',
+        'login_page',
+        'locallogin',
+        # special endpoint name for all static files--not a URL
+        'static'
+    ]
+    if not user.is_authenticated():
+        if ('index.html' in request.path or request.endpoint == '/' or not
+                        request.endpoint in ALLOWED_ENDPOINTS):
+            return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
-    Session.commit()
+    # commit the transaction after every request that should change data.
+    # this might work equally well in 'teardown_appcontext' as long as it comes
+    # before Session.remove().
+    if request.method in ('POST', 'PUT', 'DELETE'):
+        # the Admin UI calls commit() by itself, so whenever a POST/PUT/DELETE
+        # request is made to the Admin UI, commit() will be called twice, but
+        # the second call will have no effect.
+        Session.commit()
     return response
 
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """This is called after every request (after the "after_request" callback).
+    The database session is closed here following the example here:
+    http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/#declarative
+    """
+    #The Session.remove() method first calls Session.close() on the
+    # current Session, which has the effect of releasing any
+    # connection/transactional resources owned by the Session first,
+    # then discarding the Session itself. Releasing here means that
+    # connections are returned to their connection pool and any transactional
+    # state is rolled back, ultimately using the rollback() method of
+    # the underlying DBAPI connection.
+    # TODO: this is necessary to make the tests pass but it's not good to
+    # have testing-related stuff in the main code
+    if app.config['TESTING'] is not True:
+        Session.remove()
+
 @app.route('/login')
-def login():
+def oauth_login():
     set_next_url()
     return google.authorize(callback=url_for('oauth2callback', _external=True))
 
@@ -244,16 +285,19 @@ def login_page():
     return render_template('login_page.html')
 
 @app.route('/userlogin', methods=['GET','POST'])
-def userlogin():
+def locallogin():
     email = request.form['email']
     password = request.form['password']
-    user = Session().query(BillEntryUser).filter_by(email=email, password=password).first()
+    user = Session().query(BillEntryUser).filter_by(email=email).first()
     if user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login_page'))
+    if not check_password(password, user.password):
         flash('Username or Password is invalid' , 'error')
         return redirect(url_for('login_page'))
     user.authenticated = True
     if 'rememberme' in request.form:
-        login_user(user,rememberme=True)
+        login_user(user,remember=True)
     else:
         login_user(user)
     # Tell Flask-Principal the identity changed
@@ -265,7 +309,11 @@ def userlogin():
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
     #   (Using bcrypt, the salt is saved into the hash itself)
-    return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
+    return bcrypt.generate_password_hash(plain_text_password)
+
+def check_password(plain_text_password, hashed_password):
+    # Check hased password. Useing bcrypt, the salt is saved into the hash itself
+    return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 api = Api(app)
 api.add_resource(resources.AccountResource, '/utilitybills/accounts')
@@ -286,4 +334,3 @@ application = app
 
 # enable admin UI
 admin.make_admin(app)
-

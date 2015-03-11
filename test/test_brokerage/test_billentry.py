@@ -3,6 +3,8 @@
 from datetime import datetime, date
 import unittest
 from json import loads
+from flask import url_for
+from flask.ext.login import current_user
 from mock import Mock
 
 # if init_test_config() is not called before "billentry" is imported,
@@ -94,9 +96,13 @@ class BillEntryIntegrationTest(object):
     def setUpClass(cls):
         init_test_config()
         init_model()
-
-        # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
         billentry.app.config['TESTING'] = True
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # are using the before_request callback instead
+        billentry.app.config['LOGIN_DISABLED'] = True
+        # TODO: this should prevent the method decorated with
+        # "app.errorhandler" from running, but doesn't
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -509,3 +515,71 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
+
+class TestBillEnrtyAuthentication(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        cls.app = billentry.app.test_client()
+
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
+        s.commit()
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+    def test_user_login(self):
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin?next=admin', content_type='multipart/form-data',
+                                                    data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual ('http://localhost/admin', response.location)
+
+        # logout user
+        self.app.get('/logout')
+
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid email for user login
+        data = {'email':'user2@test.com', 'password': 'password'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin', content_type='multipart/form-data',
+                                                    data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid password for user login
+        data = {'email':'user1@test.com', 'password': 'password1'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin', content_type='multipart/form-data',
+                                                    data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+
+
