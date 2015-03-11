@@ -1,6 +1,7 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
-from sqlalchemy import Column, Integer, ForeignKey
+import datetime
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean
 from sqlalchemy.orm import relationship
 
 from core.model import Base, UtilityAccount
