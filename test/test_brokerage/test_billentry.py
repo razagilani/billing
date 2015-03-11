@@ -3,6 +3,8 @@
 from datetime import datetime, date
 import unittest
 from json import loads
+from flask import url_for
+from flask.ext.login import current_user
 from mock import Mock
 
 # if init_test_config() is not called before "billentry" is imported,
@@ -95,6 +97,9 @@ class BillEntryIntegrationTest(object):
         init_test_config()
         init_model()
         billentry.app.config['TESTING'] = True
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # are using the before_request callback instead
+        billentry.app.config['LOGIN_DISABLED'] = True
         # TODO: this should prevent the method decorated with
         # "app.errorhandler" from running, but doesn't
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
@@ -410,8 +415,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryReport, self).setUp()
 
         s = Session()
-        self.user1 = BillEntryUser()
-        self.user2 = BillEntryUser()
+        self.user1 = BillEntryUser(email='user1@example.com', )
+        self.user2 = BillEntryUser(email='user2@example2.com')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         s.commit()
 
@@ -510,3 +515,113 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
+
+class TestBillEnrtyAuthentication(unittest.TestCase):
+    URL_PREFIX = 'http://localhost'
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
+
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
+        s.commit()
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+    def test_oauth_login(self):
+        # just an example of a URL the user was trying to go to
+        original_url = '/admin'
+
+        # first the user tries to go to 'original_url', and gets redirected to
+        # /login-page
+        rv = self.app.get(original_url)
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # then the user clicks on the "Log in with Google" link, whose URL is
+        #  /login, and gets redirected to Google's OAuth URL
+        rv = self.app.get('/login')
+        self.assertEqual(302, rv.status_code)
+        # not checking arguments in the URL
+        self.assertTrue(rv.location.startswith(self.authorize_url))
+
+        # /oauth2callback is the URL that Google redirects to after the user
+        # authenticates. we aren't simulating the valid OAuth data that
+        # Google would provide, so the response is invalid
+        rv = self.app.get('/oauth2callback')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # after unsuccessful login, the user still can't get to a normal page
+        rv = self.app.get('/')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+    def test_local_login(self):
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual('http://localhost/', response.location)
+
+        # user successfully gets index.html
+        response = self.app.get(self.URL_PREFIX + '/')
+        self.assertEqual(200, response.status_code)
+
+        # logout user
+        self.app.get('/logout')
+
+        # TODO: when a user gets redirected to the login page,
+        # test redirection to the page the user originally wanted to go to.
+
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid email for user login
+        data = {'email':'user2@test.com', 'password': 'password'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid password for user login
+        data = {'email':'user1@test.com', 'password': 'password1'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+
+

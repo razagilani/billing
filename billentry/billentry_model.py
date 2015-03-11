@@ -1,10 +1,14 @@
 """SQLAlchemy model classes used by the Bill Entry application.
 """
 import datetime
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, inspect
-from sqlalchemy.orm import relationship, class_mapper
+import bcrypt
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
+    inspect
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import relationship, backref
 
 from core.model import Base, UtilBill
+
 
 
 class BillEntryUser(Base):
@@ -12,9 +16,86 @@ class BillEntryUser(Base):
     """
     __tablename__ = 'billentry_user'
     id = Column(Integer, primary_key=True)
+    password = Column(String(60), nullable=False)
+    email = Column(String(50),unique=True, index=True, nullable=False)
+    registered_on = Column('registered_on', DateTime, nullable=False)
+    authenticated = Column(Boolean, default=False)
 
-    # TODO: add necessary columns. right now this only exists because it's
-    # required by billentry_event.
+    # association proxy of "role_beuser" collection
+    # to "role" attribute
+    roles = association_proxy('billentry_role_user', 'billentry_role')
+
+
+    def __init__(self, email='', password=''):
+        self.email = email
+        self.password = self.get_hashed_password(password)
+        self.registered_on = datetime.datetime.utcnow()
+
+    def get_hashed_password(self, plain_text_password):
+        # Hash a password for the first time
+        #   (Using bcrypt, the salt is saved into the hash itself)
+        return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
+
+
+    def is_authenticated(self):
+        """Return True if the user is authenticated."""
+        return self.authenticated
+
+    def is_active(self):
+        """True, as all users are active."""
+        return True
+
+    def is_anonymous(self):
+        """False, as anonymous users aren't supported."""
+        return False
+
+    def get_id(self):
+        return unicode(self.id)
+
+    def __repr__(self):
+        return '<User %s>' % self.email
+
+
+class RoleBEUser(Base):
+    '''Class corresponding to the "roles_user" table which represents the
+    many-to-many relationship between "billentry_user" and "roles"'''
+    __tablename__ = 'billentry_role_user'
+
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'), primary_key=True)
+    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'), primary_key=True)
+
+    # bidirectional attribute/collection of "billentry_user"/"role_beuser"
+    beuser = relationship(BillEntryUser,
+                          backref=backref('billentry_role_user'))
+
+    # reference to the "Role" object
+    billentry_role = relationship("Role")
+
+    def __init__(self, billentry_role=None, beuser=None):
+        # RoleBEUSer has only 'role' in its __init__ because the
+        # relationship goes Role -> RoleBEUser -> BILLEntryUser. NOTE if the
+        # 'role' argument is actually a BillEntryUser, Role's relationship to
+        # RoleBEUser will cause a stack overflow in SQLAlchemy code
+        # (without this check).
+        assert isinstance(billentry_role, Role)
+
+        self.billentry_role = billentry_role
+        self.beuser = beuser
+
+
+class Role(Base):
+    __tablename__ = 'billentry_role'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(10), unique=True)
+    description = Column(String(100))
+
+
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+
+    def __repr__(self):
+        return '<Role %s>' % self.name
 
 class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the

@@ -15,20 +15,26 @@ import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 
-from flask import Flask, url_for, request, session, redirect
+import xkcdpass.xkcd_password  as xp
+from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
-from flask_oauth import OAuth
-from billentry.billentry_model import BEUtilBill
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
+    Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
+from flask import Flask, url_for, request, flash, session, redirect, \
+    render_template, current_app
+from flask_oauth import OAuth, OAuthException
 
+from billentry.billentry_model import BillEntryUser, Role
+from billentry.common import get_bcrypt_object
 from core import init_config
-from core.model import Session, UtilBill
+from core.model import Session
 from billentry import admin, resources
+
 LOG_NAME = 'billentry'
 
 
 app = Flask(__name__, static_url_path="")
-# TODO: delete
-#app.debug = True
+bcrypt = get_bcrypt_object()
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -75,42 +81,45 @@ google = oauth.remote_app(
         # only BEUtilBills are counted here because only they have data about
         #  when they were "entered" and who entered them.
 
-
-def replace_utilbill_with_beutilbill(utilbill):
-    """Return a BEUtilBill object identical to 'utilbill' except for its
-    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
-    None because 'utilbill' no longer corresponds to a row in the database.
-    Do not use 'utilbill' after passing it to this function.
-    """
-    assert type(utilbill) is UtilBill
-    assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
-    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
-    s = Session.object_session(utilbill)
-    s.add(beutilbill)
-    s.delete(utilbill)
-    utilbill.id = None
-    return beutilbill
-
-# 'config' must be in scope here although it is a bad idea to read it at import
-# time. see how it is initialized at the top of this file.
 app.secret_key = config.get('billentry', 'secret_key')
+app.config['LOGIN_DISABLED'] = config.get('billentry',
+                                          'disable_authentication')
+login_manager = LoginManager()
+login_manager.init_app(app)
+# load the extension
+principals = Principal(app)
 
-@app.errorhandler(Exception)
-def internal_server_error(e):
-    from core import config
-    # Generate a unique error token that can be used to uniquely identify the
-    # errors stacktrace in a logfile
-    token = str(uuid.uuid4())
-    logger = logging.getLogger(LOG_NAME)
-    logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
-    if config.get('billentry', 'show_traceback_on_error'):
-        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
+@identity_loaded.connect_via(app)
+def on_identity_loaded(sender, identity):
+    # Set the identity user object
+    identity.user = current_user
+
+    # Add the UserNeed to the identity
+    if hasattr(current_user, 'id'):
+        identity.provides.add(UserNeed(current_user.id))
+
+    # Assuming the User model has a list of roles, update the
+    # identity with the roles that the user provides
+    if hasattr(current_user, 'roles'):
+        for role in current_user.roles:
+            identity.provides.add(RoleNeed(role.name))
+
+@login_manager.user_loader
+def load_user(id):
+    user = Session().query(BillEntryUser).filter_by(id=id).first()
+    return user
 
 @app.route('/logout')
 def logout():
-    session.pop('access_token', None)
+    current_user.authenticated = False
+    logout_user()
+    # Remove session keys set by Flask-Principal
+    for key in ('identity.name', 'identity.auth_type'):
+        session.pop(key, None)
+
+    # Tell Flask-Principal the user is anonymous
+    identity_changed.send(current_app._get_current_object(),
+                          identity=AnonymousIdentity())
     return app.send_static_file('logout.html')
 
 @app.route('/oauth2callback')
@@ -118,11 +127,16 @@ def logout():
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
-        # this means that the user didn't allow the google account
-        # the required access
-        return redirect(next_url)
+        # this means that the user didn't allow the OAuth provider
+        # the required access, or the redirect request from the OAuth
+        # provider was invalid
+        return redirect(url_for('login_page'))
 
-    session['access_token'] = resp['access_token'], ''
+    session['access_token'] = resp['access_token']
+    # any user who logs in through OAuth gets automatically created
+    # (with a random password) if there is no existing user with
+    # the same email address.
+    create_user_in_db(resp['access_token'])
     return redirect(next_url)
 
 @app.route('/')
@@ -130,12 +144,17 @@ def index():
     '''this displays the home page if user is logged in
      otherwise redirects user to the login page
     '''
-    from core import config
-    if config.get('billentry', 'disable_google_oauth'):
-        return app.send_static_file('index.html')
-    access_token = session.get('access_token')
+    response = app.send_static_file('index.html')
+    # telling the client not to cache index.html prevents a problem where a
+    # request for this page after logging out will appear to succeed, causing
+    # the client to make AJAX requests to which the server responds with
+    # redirects to the login page, causing the login page to be shown in an
+    # error message window.
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
-    headers = {'Authorization': 'OAuth '+access_token[0]}
+def create_user_in_db(access_token):
+    headers = {'Authorization': 'OAuth '+access_token}
     req = Request(config.get('billentry', 'google_user_info_url'),
                   None, headers)
     try:
@@ -145,23 +164,57 @@ def index():
         if e.code == 401:
             # Unauthorized - bad token
             session.pop('access_token', None)
-            return redirect(url_for('login'))
+            return redirect(url_for('oauth_login'))
     #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
-    googleEmail = json.loads(userInfoFromGoogle)
-    session['email'] = googleEmail['email']
-    return app.send_static_file('index.html')
+    userInfo = json.loads(userInfoFromGoogle)
+    s = Session()
+    session['email'] = userInfo['email']
+    user = s.query(BillEntryUser).filter_by(email=userInfo['email']).first()
+    # if user coming through google auth is not already present in local
+    # database, then create it in the local db and assign the 'admin' role
+    # to the user for proividing access to the Admin UI.
+    # This assumes that internal users are authenticating using google auth.
+    if user is None:
+        # generate a random password
+        wordfile = xp.locate_wordfile()
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
+        user = BillEntryUser(email=session['email'],
+                                 password=get_hashed_password(xp.generate_xkcdpassword(mywords,
+                                                        acrostic="face")))
+        # add user to the admin role
+        admin_role = s.query(Role).filter_by(name='admin').first()
+        user.roles = [admin_role]
+        s.add(user)
+        s.commit()
+    user.authenticated = True
+    s.commit()
+    login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    return userInfo['email']
 
 @app.before_request
 def before_request():
-    from core import config
-    if config.get('billentry', 'disable_google_oauth'):
-        set_next_url()
+    if app.config['LOGIN_DISABLED']:
         return
-    if 'access_token' not in session and request.endpoint not in (
-            'login', 'oauth2callback', 'logout'):
-        set_next_url()
-        return redirect(url_for('login'))
+    user = current_user
+    # this is for diaplaying the nextility logo on the
+    # login_page when user is not logged in
+    ALLOWED_ENDPOINTS = [
+        'oauth_login',
+        'oauth2callback',
+        'logout',
+        'login_page',
+        'locallogin',
+        # special endpoint name for all static files--not a URL
+        'static'
+    ]
+    if not user.is_authenticated():
+        if ('index.html' in request.path or request.endpoint == '/' or not
+                        request.endpoint in ALLOWED_ENDPOINTS):
+            set_next_url()
+            return redirect(url_for('login_page'))
 
 @app.after_request
 def db_commit(response):
@@ -194,14 +247,13 @@ def shutdown_session(exception=None):
         Session.remove()
 
 @app.route('/login')
-def login():
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
+def oauth_login():
+    callback_url = url_for('oauth2callback', _external=True)
+    result = google.authorize(callback=callback_url)
+    return result
 
 def set_next_url():
-    if request.args.get('next'):
-        next_path = request.args.get('next')
-    else:
-        next_path = request.full_path
+    next_path = request.args.get('next') or request.path
     if next_path:
         # Since passing along the "next" URL as a GET param requires
         # a different callback for each page, and Google requires
@@ -217,6 +269,61 @@ def set_next_url():
             path=path,)
         session['next_url'] = next_url
 
+@app.route('/login-page')
+def login_page():
+    return render_template('login_page.html')
+
+@app.errorhandler(PermissionDenied)
+@app.errorhandler(OAuthException)
+def page_not_found(e):
+    return render_template('403.html'), 403
+
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
+
+@app.route('/userlogin', methods=['GET','POST'])
+def locallogin():
+    email = request.form['email']
+    password = request.form['password']
+    user = Session().query(BillEntryUser).filter_by(email=email).first()
+    if user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login_page'))
+    if not check_password(password, user.password):
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login_page'))
+    user.authenticated = True
+    if 'rememberme' in request.form:
+        login_user(user,remember=True)
+    else:
+        login_user(user)
+    # Tell Flask-Principal the identity changed
+    identity_changed.send(current_app._get_current_object(),
+                          identity=Identity(user.id))
+    session['user_name'] = str(user)
+    flash('Logged in successfully')
+    next_url = session.pop('next_url', url_for('index'))
+    return redirect(next_url)
+
+def get_hashed_password(plain_text_password):
+    # Hash a password for the first time
+    #   (Using bcrypt, the salt is saved into the hash itself)
+    return bcrypt.generate_password_hash(plain_text_password)
+
+def check_password(plain_text_password, hashed_password):
+    # Check hased password. Using bcrypt, the salt is saved into the hash itself
+    return bcrypt.check_password_hash(hashed_password, plain_text_password)
+
 api = Api(app)
 api.add_resource(resources.AccountResource, '/utilitybills/accounts')
 api.add_resource(resources.UtilBillListResource, '/utilitybills/utilitybills')
@@ -227,7 +334,8 @@ api.add_resource(resources.UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(resources.RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
-api.add_resource(resources.UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(resources.UtilBillCountForUserResource,
+                 '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResourece,
                  '/utilitybills/user_utilitybills/<int:id>')
 
