@@ -543,15 +543,18 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # valid data for user login
         data = {'email':'user1@test.com', 'password': 'password'}\
         # post request for user login with valid credentials
-        response = self.app.post('/userlogin?next=admin', content_type='multipart/form-data',
-                                                    data=data)
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
 
         # on successful login user is routed to the next url
         self.assertTrue(response.status_code == 302)
-        self.assertEqual ('http://localhost/admin', response.location)
+        self.assertEqual ('http://localhost/', response.location)
 
         # logout user
         self.app.get('/logout')
+
+        # TODO: when a user gets redirected to the login page,
+        # test redirection to the page the user originally wanted to go to.
 
         response = self.app.get('/')
         # because user is not logged in so a redirect to login-page should
@@ -559,14 +562,12 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
 
-        self.assertEqual('http://localhost/login-page', response.location)
-
         # invalid email for user login
         data = {'email':'user2@test.com', 'password': 'password'}
 
         # post request for user login with invalid credentials
-        response = self.app.post('/userlogin', content_type='multipart/form-data',
-                                                    data=data)
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
         # the login should fail and user should be redirected to login-page
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
@@ -575,8 +576,8 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         data = {'email':'user1@test.com', 'password': 'password1'}
 
         # post request for user login with invalid credentials
-        response = self.app.post('/userlogin', content_type='multipart/form-data',
-                                                    data=data)
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
         # the login should fail and user should be redirected to login-page
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
