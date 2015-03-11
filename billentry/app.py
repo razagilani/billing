@@ -208,7 +208,6 @@ def create_user_in_db(access_token):
 @app.before_request
 def before_request():
     if app.config['LOGIN_DISABLED']:
-        set_next_url()
         return
     user = current_user
     # this is for diaplaying the nextility logo on the
@@ -225,6 +224,7 @@ def before_request():
     if not user.is_authenticated():
         if ('index.html' in request.path or request.endpoint == '/' or not
                         request.endpoint in ALLOWED_ENDPOINTS):
+            set_next_url()
             return redirect(url_for('login_page'))
 
 @app.after_request
@@ -259,11 +259,10 @@ def shutdown_session(exception=None):
 
 @app.route('/login')
 def oauth_login():
-    set_next_url()
     return google.authorize(callback=url_for('oauth2callback', _external=True))
 
 def set_next_url():
-    next_path = request.args.get('next')
+    next_path = request.args.get('next') or request.path
     if next_path:
         # Since passing along the "next" URL as a GET param requires
         # a different callback for each page, and Google requires
@@ -303,7 +302,8 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
     session['user_name'] = str(user)
     flash('Logged in successfully')
-    return redirect(request.args.get('next') or url_for('index'))
+    next_url = session.pop('next_url', url_for('index'))
+    return redirect(next_url)
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
