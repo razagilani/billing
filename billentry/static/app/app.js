@@ -30,6 +30,12 @@ Ext.application({
     refs: [{
         ref: 'utilityBillViewer',
         selector: 'pdfpanel[name=utilityBillViewer]'
+    },{
+        ref: 'applicationTabPanel',
+        selector: 'tabpanel[name=applicationTab]'
+    },{
+        ref: 'utilityBillsGrid',
+        selector: 'grid[id=utilityBillsGrid]'
     }],
 
     launch: function() {
@@ -52,6 +58,18 @@ Ext.application({
                 fn: function(){
                     var p = this.getUtilityBillViewer();
                     p.scrollBy(0, p.getHeight(), true);
+                },
+                scope: this
+            },{
+                key: "c",
+                fn: function(){
+                    var activeTab = this.getApplicationTabPanel().getActiveTab();
+                    var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+
+                    if (activeTab.name !== 'utilityBillsTab' || !selectedBill || !selectedBill.length)
+                        return;
+
+                    this.getController('Charges').handleNew();
                 },
                 scope: this
             }]

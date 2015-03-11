@@ -35,7 +35,8 @@ Ext.define('ReeBill.view.charges.Charges', {
         dataIndex: 'rsi_binding',
         editor: {
             xtype: 'textfield',
-            allowBlank: false
+            allowBlank: false,
+            selectOnFocus: true
         },
         width: 180
     },{
@@ -46,7 +47,8 @@ Ext.define('ReeBill.view.charges.Charges', {
         editor: {
             xtype: 'numberfield',
             allowBlank: false,
-            step: 0.01
+            step: 0.01,
+            selectOnFocus: true
         },
         summaryType: function(records){
             var sum = 0;
