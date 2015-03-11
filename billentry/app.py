@@ -19,10 +19,10 @@ import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
-    Principal, RoleNeed, identity_loaded, UserNeed
+    Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app
-from flask_oauth import OAuth
+from flask_oauth import OAuth, OAuthException
 
 from billentry.billentry_model import BillEntryUser, Role
 from billentry.common import get_bcrypt_object
@@ -109,19 +109,6 @@ def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
     return user
 
-@app.errorhandler(Exception)
-def internal_server_error(e):
-    from core import config
-    # Generate a unique error token that can be used to uniquely identify the
-    # errors stacktrace in a logfile
-    token = str(uuid.uuid4())
-    logger = logging.getLogger(LOG_NAME)
-    logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
-    if config.get('billentry', 'show_traceback_on_error'):
-        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
-
 @app.route('/logout')
 def logout():
     current_user.authenticated = False
@@ -140,11 +127,12 @@ def logout():
 def oauth2callback(resp):
     next_url = session.pop('next_url', url_for('index'))
     if resp is None:
-        # this means that the user didn't allow the google account
-        # the required access
-        return redirect(next_url)
+        # this means that the user didn't allow the OAuth provider
+        # the required access, or the redirect request from the OAuth
+        # provider was invalid
+        return redirect(url_for('login_page'))
 
-    session['access_token'] = resp['access_token'], ''
+    session['access_token'] = resp['access_token']
     # any user who logs in through OAuth gets automatically created
     # (with a random password) if there is no existing user with
     # the same email address.
@@ -176,7 +164,7 @@ def create_user_in_db(access_token):
         if e.code == 401:
             # Unauthorized - bad token
             session.pop('access_token', None)
-            return redirect(url_for('aouth_login'))
+            return redirect(url_for('oauth_login'))
     #TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
     userInfo = json.loads(userInfoFromGoogle)
@@ -260,7 +248,9 @@ def shutdown_session(exception=None):
 
 @app.route('/login')
 def oauth_login():
-    return google.authorize(callback=url_for('oauth2callback', _external=True))
+    callback_url = url_for('oauth2callback', _external=True)
+    result = google.authorize(callback=callback_url)
+    return result
 
 def set_next_url():
     next_path = request.args.get('next') or request.path
@@ -283,9 +273,23 @@ def set_next_url():
 def login_page():
     return render_template('login_page.html')
 
-@app.errorhandler(403)
+@app.errorhandler(PermissionDenied)
+@app.errorhandler(OAuthException)
 def page_not_found(e):
     return render_template('403.html'), 403
+
+@app.errorhandler(Exception)
+def internal_server_error(e):
+    from core import config
+    # Generate a unique error token that can be used to uniquely identify the
+    # errors stacktrace in a logfile
+    token = str(uuid.uuid4())
+    logger = logging.getLogger(LOG_NAME)
+    logger.exception('Exception in BillEntry (Token: %s): ', token)
+    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    if config.get('billentry', 'show_traceback_on_error'):
+        error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
+    return error_message, 500
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
