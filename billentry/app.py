@@ -284,8 +284,7 @@ def login_page():
 
 @app.errorhandler(403)
 def page_not_found(e):
-    session['redirected_from'] = request.url
-    return redirect(url_for('index'))
+    return render_template('403.html'), 403
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
