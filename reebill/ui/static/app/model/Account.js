@@ -14,6 +14,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'primusname', type: 'string'},
 
         // Needed when a new account is created
+        {name: 'name', type: 'string'},
         {name: 'ba_addressee', type: 'string'},
         {name: 'ba_city', type: 'string'},
         {name: 'ba_postal_code', type: 'string'},
