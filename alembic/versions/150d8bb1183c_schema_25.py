@@ -19,8 +19,12 @@ from sqlalchemy.dialects import mysql
 def upgrade():
     op.create_table('billentry_user',
                     sa.Column('id', sa.Integer(), nullable=False),
+                    sa.Column('password', sa.String(length=60), nullable=False),
+                    sa.Column('email', sa.String(length=50), nullable=False),
+                    sa.Column('registered_on', sa.DateTime(), nullable=False),
                     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_billentry_users_email'), 'billentry_user', ['email'], unique=True)
     op.add_column(u'utilbill', sa.Column('billentry_date', sa.DateTime()))
     op.add_column(u'utilbill', sa.Column('billentry_user_id', sa.Integer(),
                                          sa.ForeignKey('billentry_user.id')))
@@ -35,6 +39,7 @@ def downgrade():
     op.drop_column(u'utilbill', 'discriminator')
     op.drop_column(u'utilbill', 'billentry_user_id')
     op.drop_column(u'utilbill', 'billentry_date')
+    op.drop_index(op.f('ix_billentry_users_email'), table_name='billentry_users')
     op.drop_table('billentry_user')
 
     # to downgrade, value could be approximately restored by copying the
