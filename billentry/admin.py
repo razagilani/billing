@@ -21,14 +21,14 @@ bcrypt = get_bcrypt_object()
 
 class MyAdminIndexView(AdminIndexView):
 
-    @admin_permission.require()
     @expose('/')
     def index(self):
         from core import config
-        if login.current_user.is_authenticated():
-            if config.get('billentry', 'disable_authentication'):
+        if config.get('billentry', 'disable_authentication'):
                 return super(MyAdminIndexView, self).index()
-            return super(MyAdminIndexView, self).index()
+        if login.current_user.is_authenticated():
+            with admin_permission.require():
+                return super(MyAdminIndexView, self).index()
         return redirect(url_for('login', next=request.url))
 
 class CustomModelView(ModelView):
@@ -38,6 +38,9 @@ class CustomModelView(ModelView):
     can_edit = False
 
     def is_accessible(self):
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+            return True
         return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
@@ -50,6 +53,9 @@ class CustomModelView(ModelView):
 
 class LoginModelView(ModelView):
     def is_accessible(self):
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+            return True
         return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
