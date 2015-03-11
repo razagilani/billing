@@ -29,7 +29,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         dataIndex: 'target_total',
         editor: {
             xtype: 'numberfield',
-            allowBlank: false
+            allowBlank: false,
+            selectOnFocus: true
         },
         width: 100,
         renderer: Ext.util.Format.usMoney
@@ -39,7 +40,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         editor: {
             xtype: 'datefield',
             allowBlank: false,
-            format: 'Y-m-d'
+            format: 'Y-m-d',
+            selectOnFocus: true
         },
         width: 100,
         renderer: function(value) {
@@ -51,7 +53,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         editor: {
             xtype: 'datefield',
             allowBlank: false,
-            format: 'Y-m-d'
+            format: 'Y-m-d',
+            selectOnFocus: true
         },
         width: 100,
         renderer: function(value) {
@@ -61,7 +64,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         header: 'Secondary Utility Account Number',
         dataIndex: 'supply_choice_id',
         editor: {
-            xtype: 'textfield'
+            xtype: 'textfield',
+            selectOnFocus: true
         },
         width: 125
     },{
@@ -69,12 +73,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         dataIndex: 'total_energy',
         editor: {
             xtype: 'numberfield',
-            allowBlank: false
+            allowBlank: false,
+            selectOnFocus: true
         },
         width: 100
-    },{
-        header: 'Next Meter Read',
-        dataIndex: 'next_estimated_meter_read_date'
     },{
         header: 'Utility',
         dataIndex: 'utility',
@@ -90,7 +92,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             typeAheadDelay : 1,
             autoSelect: false,
             regex: /[a-zA-Z0-9]+/,
-            minChars: 1
+            minChars: 1,
+            selectOnFocus: true
         },
         width: 100
     },{
@@ -109,7 +112,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             typeAheadDelay: 1,
             autoSelect: false,
             regex: /[a-zA-Z0-9]+/,
-            minChars: 1
+            minChars: 1,
+            selectOnFocus: true
         },
         width: 200
     },{
@@ -134,7 +138,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         editor: {
             xtype: 'datefield',
             allowBlank: false,
-            format: 'Y-m-d'
+            format: 'Y-m-d',
+            selectOnFocus: true
         },
         width: 100,
         renderer: function(value) {
