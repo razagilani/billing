@@ -304,7 +304,8 @@ def locallogin():
     else:
         login_user(user)
     # Tell Flask-Principal the identity changed
-    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    identity_changed.send(current_app._get_current_object(),
+                          identity=Identity(user.id))
     session['user_name'] = str(user)
     flash('Logged in successfully')
     next_url = session.pop('next_url', url_for('index'))
@@ -316,7 +317,7 @@ def get_hashed_password(plain_text_password):
     return bcrypt.generate_password_hash(plain_text_password)
 
 def check_password(plain_text_password, hashed_password):
-    # Check hased password. Useing bcrypt, the salt is saved into the hash itself
+    # Check hased password. Using bcrypt, the salt is saved into the hash itself
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 api = Api(app)
@@ -329,7 +330,8 @@ api.add_resource(resources.UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(resources.RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
-api.add_resource(resources.UtilBillCountForUserResource, '/utilitybills/users_counts')
+api.add_resource(resources.UtilBillCountForUserResource,
+                 '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResourece,
                  '/utilitybills/user_utilitybills/<int:id>')
 
