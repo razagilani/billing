@@ -18,10 +18,10 @@ import json
 import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
-from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, Principal, \
-    RoleNeed, \
-    identity_loaded, UserNeed
-from flask import Flask, url_for, request, flash, session, redirect, render_template, current_app
+from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
+    Principal, RoleNeed, identity_loaded, UserNeed
+from flask import Flask, url_for, request, flash, session, redirect, \
+    render_template, current_app
 from flask_oauth import OAuth
 
 from billentry.billentry_model import BillEntryUser, Role
@@ -29,6 +29,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
+
 LOG_NAME = 'billentry'
 
 
