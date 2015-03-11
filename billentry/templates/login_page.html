@@ -2,10 +2,12 @@
 <html>
 <head lang="en">
     <meta charset="UTF-8">
+    <script type="text/javascript" src="ext/ext-all-dev.js"></script>
+    <link rel="stylesheet" type="text/css"
+          href="ext/resources/css/ext-all-classic.css">
     <title>Select Login method</title>
-</head>
 
-<style type="text/css">
+    <style type="text/css">
         body, html{
             background: #fff !important;
         }
@@ -19,43 +21,96 @@
         }
         .middlebox{
             display: table-cell;
-            vertical-align: bottom;
+            vertical-align: middle;
         }
         .innerbox {
             margin-left: auto;
             margin-right: auto;
             width: 300px;
         }
+        #oauthlink{
+            text-align: center;
+        }
+        #oauthlink a{
+            color: #00A4E4;
+            text-decoration: none;
+        }#oauthlink a:hover{
+            text-decoration: underline;
+        }
     </style>
+    <script type="text/javascript">
+            Ext.require([
+                'Ext.form.*',
+                'Ext.data.*'
+            ]);
+            Ext.onReady(function() {
+                Ext.create('Ext.form.Panel', {
+                    url: 'http://' + location.host + '/userlogin',
+                    border: false,
+                    width: 300,
+                    renderTo: 'loginform',
+                    frame: false,
+                    frameHeader: false,
+                    standardSubmit: true,
+                    bodyStyle: {
+                        background: '#fff',
+                        padding: '5px'
+                    },
+                     layout: {
+                        type: 'vbox',
+                        align: 'stretch',
+                        padding: 5
+                    },
+                    defaultType: 'textfield',
+                    items: [
+                        {
+                            name:'email',
+                            fieldLabel:'Email Address',
+                            msgTarget:'side'
+                        },{
+                            name:'password',
+                            fieldLabel:'Password',
+                            inputType:'password',
+                            msgTarget:'side',
+                        },{
+                            name: 'rememberme',
+                            xtype: 'checkbox',
+                            fieldLabel: 'Remember Me'
+                        }
+                    ],
+                    buttons: [
+                        {
+                            text: 'Sign In',
+                            type: 'submit',
+                            formBind: true,
+                            handler: function () {
+                                var form = this.up('form').getForm();
+                                form.submit();
+                            }
+                        }
+                    ]
+                });
+            });
+        </script>
+</head>
 <body>
-<p align="center">
-    <img src="images/NEXTILITY_LOGO.png" width='300' align="center">
+    <p align="center">
+        <img src="images/NEXTILITY_LOGO.png" width='300' align="center">
     </p>
-        <div class='outerbox'>
-            <div class="middlebox">
-                <div class="innerbox" id="loginform">
+    <div class='outerbox'>
+        <div class="middlebox">
+            <div class="innerbox">
+                <div id="loginform">
 
-                    <form action="/userlogin" method=post>
-
-                      Email Address: <input type="text" id="email" name="email"
-                        placeholder="Enter email" required>
-
-                      Password: <input type="password" id="password" name="password" class="input-xlarge"
-                        placeholder="Enter Password" required>
-                        </br>
-
-                        Remember Me: <input type="checkbox" name="rememberme" value="rememberme" >
-
-                        </br>
-                      <button type="submit" class="btn btn-success">Signin</button>
-
-                  </form>
-                    <p>
-                    <a href="/login"> login using google oauth </a>
-                    </p>
+                </div>
+                <div id="oauthlink">
+                    <h3>
+                        <a href="/login"> Login with Google </a>
+                    </h3>
                 </div>
             </div>
         </div>
+    </div>
 
 </body>
 </html>
