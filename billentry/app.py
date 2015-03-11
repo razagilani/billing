@@ -213,7 +213,6 @@ def before_request():
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
-    print '****** path', request.path, 'endpoint', request.endpoint
     ALLOWED_ENDPOINTS = [
         'oauth_login',
         'oauth2callback',
