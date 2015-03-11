@@ -37,6 +37,14 @@
         }#oauthlink a:hover{
             text-decoration: underline;
         }
+        .flashmessages{
+            width: 100%;
+            min-height: 20px;
+            background: #E7C3C3;
+            color: #A94442;
+            border-radius: 5px;
+            padding: 10px;
+        }
     </style>
     <script type="text/javascript">
             Ext.require([
@@ -100,6 +108,15 @@
     <div class='outerbox'>
         <div class="middlebox">
             <div class="innerbox">
+                {% with messages = get_flashed_messages() %}
+                  {% if messages %}
+                    <div class="flashmessages">
+                    {% for message in messages %}
+                      <p>{{ message }}</p>
+                    {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
                 <div id="loginform">
 
                 </div>
