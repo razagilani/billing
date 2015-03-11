@@ -282,6 +282,11 @@ def set_next_url():
 def login_page():
     return render_template('login_page.html')
 
+@app.errorhandler(403)
+def page_not_found(e):
+    session['redirected_from'] = request.url
+    return redirect(url_for('index'))
+
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
     email = request.form['email']
