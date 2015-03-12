@@ -90,6 +90,8 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
     # http://alembic.readthedocs.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
     alembic_cfg = Config(path.join(root_path, "alembic.ini"))
     stamp(alembic_cfg, 'head')
+
+    # just to check that it worked
     init_model()
 
 def upgrade():
