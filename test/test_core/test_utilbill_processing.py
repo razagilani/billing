@@ -241,12 +241,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
     def test_update_account_number(self):
         s = Session()
-        utility = Utility('utility', Address())
-        supplier = Supplier('supplier', Address())
+        utility = Utility(name='utility', address=Address())
+        supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '1000001',
                 utility, supplier,
-                RateClass('rate class', utility, 'gas'), Address(),
-                Address())
+                RateClass(name='rate class', utility=utility, service='gas'),
+                Address(), Address())
         s.add(utility_account)
         s.commit()
         self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
@@ -733,7 +733,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '1',
                                        'rate': 11.2,
                                        'shared': True,
-                                       'group': 'A',
                                        }, utilbill_id=id_a, rsi_binding='New Charge 1')
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'NOT_SHARED',
@@ -741,7 +740,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '1',
                                        'rate': 3,
                                        'shared': False,
-                                       'group': 'B',
                                        }, utilbill_id=id_a, rsi_binding='New Charge 2')
         for i in (id_b, id_c):
             self.utilbill_processor.add_charge(i)
@@ -752,7 +750,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'quantity_formula': '750.10197727',
                                            'rate': 220.16,
                                            'shared': True,
-                                           'group': 'C',
                                            }, utilbill_id=i, rsi_binding='New Charge 1')
             self.utilbill_processor.update_charge({
                                            'rsi_binding': 'PGC',
@@ -760,7 +757,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'quantity_formula': '750.10197727',
                                            'rate': 0.7563,
                                            'shared': True,
-                                           'group': 'D',
                                            }, utilbill_id=i, rsi_binding='New Charge 2')
 
         # create utility bill and reebill #2 for A
@@ -780,7 +776,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(id_a, processed=True)
         self.utilbill_processor.update_utilbill_metadata(id_b, processed=True)
         self.utilbill_processor.update_utilbill_metadata(id_c, processed=True)
-        self.utilbill_processor.regenerate_uprs(id_a_2)
+        self.utilbill_processor.regenerate_charges(id_a_2)
         # the UPRS of A's 2nd bill should now match B and C, i.e. it
         # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
         # because together the other two have greater weight than A's
@@ -902,7 +898,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'description':'UPRS only',
                                        'quantity_formula': '2',
                                        'rate': 3,
-                                       'group': 'All Charges',
                                        'unit':'kWh'
                                    },
                                    utilbill_id=utilbill_data['id'],
@@ -915,7 +910,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'group': 'All Charges',
                                        'shared': False
                                    }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
@@ -934,7 +928,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 'rate': 3,
                                 'total': 6,
                                 'description': 'UPRS only',
-                                'group': 'All Charges',
                                 'error': None,
                                 }, {
                                 'rsi_binding': 'B',
@@ -943,7 +936,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 'rate': 7,
                                 'total': 42,
                                 'description': 'not shared',
-                                'group': 'All Charges',
                                 'error': None,
                                 },
                             ], charges):
@@ -960,7 +952,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'group': 'All Charges',
                                        'shared': False
                                    }, utilbill_id=utilbill_data['id'], rsi_binding='B')
 

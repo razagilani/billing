@@ -20,13 +20,14 @@ class UtilityAccountTest(TestCase):
         init_model()
         TestCaseWithSetup.truncate_tables()
 
-        self.utility = Utility('utility', Address())
-        self.supplier = Supplier('supplier', Address())
+        self.utility = Utility(name='utility', address=Address())
+        self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
-            RateClass('FB Test Rate Class', self.utility, 'gas'),
-            Address(), Address())
-        self.rate_class = RateClass('rate class', self.utility, 'gas')
+            RateClass(name='FB Test Rate Class', utility=self.utility,
+                      service='gas'), Address(), Address())
+        self.rate_class = RateClass(name='rate class', utility=self.utility,
+                                    service='gas')
 
     def tearDown(self):
         Session.remove()
@@ -37,9 +38,9 @@ class UtilityAccountTest(TestCase):
         # Assert that the service address of the first bill is returned
         service_address1 = Address('Jules Watson', '123 Main St.',
                                    'Pleasantville', 'Va', '12345')
-        ub1 = UtilBill(self.utility_account, UtilBill.Complete,
-                       self.utility, self.supplier, self.rate_class, Address(),
-                       service_address1)
+        ub1 = UtilBill(self.utility_account,
+                       self.utility, self.rate_class, supplier=self.supplier,
+                       service_address=service_address1)
         session.add(ub1)
         session.flush()
         self.assertEqual(service_address1,
@@ -48,9 +49,9 @@ class UtilityAccountTest(TestCase):
         # The service address of the account should not change
         service_address2 = Address('Arthur Dent', '567 Deer Ct.',
                                    'Springfield', 'Il', '67890')
-        ub2 = UtilBill(self.utility_account, UtilBill.Complete,
-               self.utility, self.supplier, self.rate_class, Address(),
-               service_address2)
+        ub2 = UtilBill(self.utility_account,
+               self.utility, self.rate_class, supplier=self.supplier,
+               service_address=service_address2)
         session.add(ub2)
         session.flush()
         self.assertEqual(service_address1,
