@@ -134,8 +134,8 @@ class Exporter(object):
         book = tablib.Databook()
         def list_utilbills(account):
             session = Session()
-            query = session.query(UtilBill).with_lockmode('read').join(UtilityAccount) \
-                .filter(UtilityAccount.account == account) \
+            query = session.query(UtilBill).with_lockmode('read').join(
+                UtilityAccount).filter(UtilBill.utility_account == account) \
                 .order_by(UtilityAccount.account, desc(UtilBill.period_start))
             return query.all()
 
@@ -171,7 +171,7 @@ class Exporter(object):
                 # Find the register whose binding is reg_total and get the quantity and units
                 for register in ub.registers:
                     if register.register_binding.lower() == 'reg_total':
-                        units = register.quantity_units
+                        units = register.unit
                         quantity = register.quantity
             except NoSuchBillException:
                 units = quantity = "ERROR"
