@@ -120,7 +120,8 @@ def logout():
     # Tell Flask-Principal the user is anonymous
     identity_changed.send(current_app._get_current_object(),
                           identity=AnonymousIdentity())
-    return app.send_static_file('logout.html')
+    flash('You Logged out successfully')
+    return redirect(url_for('login_page'))
 
 @app.route('/oauth2callback')
 @google.authorized_handler
@@ -311,7 +312,6 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(),
                           identity=Identity(user.id))
     session['user_name'] = str(user)
-    flash('Logged in successfully')
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
