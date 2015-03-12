@@ -117,7 +117,6 @@ class ReebillProcessor(object):
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
-        reebill.utilbill.compute_charges()
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
         reebill.ree_charge = round(

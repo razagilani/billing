@@ -20,18 +20,18 @@ class ChargeUnitTests(testing_utils.TestCase):
     """Unit Tests for the :class:`billing.processing.state.Charge` class"""
 
     def setUp(self):
+        # TOOD: how can this work with strings as utility, rate class, supplier?
         self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
                                  'FB Test Supplier', 'FB Test Rate Class',
-                                 Address(), Address()), UtilBill.Complete,
-                                 'utility', 'supplier', 'rate class',
-                                 Address(), Address(),
+                                 Address(), Address()),
+                                 'utility', 'rate class',
+                                 supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
         self.charge_params = dict(utilbill=self.bill,
                                   rsi_binding='SOME_RSI',
                                   rate=6,
                                   description='SOME_DESCRIPTION',
-                                  group='SOME_GROUP',
                                   unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,

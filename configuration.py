@@ -83,8 +83,11 @@ class billentry(Schema):
     access_token_url = URL()
     access_token_method = String()
     access_token_params_grant_type = String()
-    disable_google_oauth = StringBool()
+    disable_authentication = StringBool()
+    authorized_domain = String()
     show_traceback_on_error = StringBool()
+    secret_key = String()
+    wiki_url = String()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()

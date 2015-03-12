@@ -105,8 +105,8 @@ class ReebillFileHandler(object):
                 raise
 
     def _generate_document(self, reebill):
-        # charges must be sorted by group in order for 'groupby' to work below
-        sorted_charges = sorted(reebill.charges, key=attrgetter('group'))
+        # charges must be sorted by type in order for 'groupby' to work below
+        sorted_charges = sorted(reebill.charges, key=attrgetter('type'))
 
         def get_utilbill_register_data_for_reebill_reading(reading):
             utilbill = reading.reebill.utilbill
@@ -178,14 +178,14 @@ class ReebillFileHandler(object):
                     in groupby(reebill.readings, key=lambda r: \
                     get_utilbill_register_data_for_reebill_reading(r))],
             'hypothetical_chargegroups': {
-                group_name: [{
+                type: [{
                     'description': charge.description,
                     'quantity': charge.h_quantity,
                     'rate': charge.rate,
                     'total': charge.h_total
                 } for charge in charges]
-            for group_name, charges in groupby(sorted_charges,
-                                               key=attrgetter('group'))},
+            for type, charges in groupby(sorted_charges,
+                                               key=attrgetter('type'))},
         }
 
     def _get_skin_directory_name_for_account(self, account):

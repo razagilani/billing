@@ -94,7 +94,7 @@ class PGAltitudeExporter(object):
                 'billing_period_start_date':  format_date(ub.period_start),
                 'billing_period_end_date': format_date(ub.period_end),
                 'next_estimated_meter_read_date': format_date(
-                    ub.get_estimated_next_meter_read_date()),
+                    ub.get_next_meter_read_date()),
                 'total_usage': ub.get_total_energy_consumption(),
                 'total_supply_charge': ub.get_supply_target_total(),
                 'rate_class': format_possible_none(ub.get_rate_class_name()),

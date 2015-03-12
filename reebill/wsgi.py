@@ -6,6 +6,7 @@ from boto.s3.connection import S3Connection
 from core import init_config, init_model, init_logging
 
 
+
 # TODO: is it necessary to specify file path?
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
@@ -23,7 +24,6 @@ import ConfigParser
 from datetime import datetime
 import logging
 import functools
-from operator import itemgetter
 from StringIO import StringIO
 import mongoengine
 from skyliner.splinter import Splinter
@@ -631,7 +631,7 @@ class UtilBillResource(RESTResource):
         action = row.pop('action', '')
 
         if action == 'regenerate_charges':
-            ub = self.utilbill_processor.regenerate_uprs(utilbill_id)
+            ub = self.utilbill_processor.regenerate_charges(utilbill_id)
 
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
