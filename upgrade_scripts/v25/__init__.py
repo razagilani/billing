@@ -1,27 +1,45 @@
-import logging
-from os import path
+"""Upgrade script for version 25.
 
+Script must define `upgrade`, the function for upgrading.
+
+Important: For the purpose of allowing schema migration, this module will be
+imported with the data model uninitialized! Therefore this module should not
+import any other code that that expects an initialized data model without first
+calling :func:`.billing.init_model`.
+"""
+import logging
 from alembic.command import stamp
 from alembic.config import Config
-from sqlalchemy import create_engine
-from sqlalchemy.exc import DataError
-from core import init_model, root_path
+from os import path
+from billentry.billentry_model import Role
 
-from core.model import Base, Session
+from upgrade_scripts import alembic_upgrade
+from core import init_model, root_path
+from core.model import Session
+
 
 log = logging.getLogger(__name__)
 
-MYSQL_URI = 'mysql://dev:dev@localhost:3306/skyline_dev'
-PG_URI = 'postgresql://dev@localhost/dev'
 
-def upgrade():
-    log.info('Beginning upgrade to version 25')
+def set_discriminator(s):
+    s.execute('update utilbill set discriminator = "utilbill"')
+    s.execute('update utilbill join utility_account '
+              'on utilbill.utility_account_id = utility_account.id '
+              'join brokerage_account '
+              'on brokerage_account.utility_account_id = utility_account.id '
+              'set utilbill.discriminator = "beutilbill"')
 
+def create_admin_role(s):
+    admin_role = Role('admin', 'admin role for accessing Admin UI')
+    s.add(admin_role)
+
+def migrate_to_postgres(s):
     # import all modules that contain model classes, to make Base recognize
     # their tables
     import core.altitude
     import reebill.state
     import brokerage.brokerage_model
+    import billentry.billentry_model
 
     mysql_engine = create_engine(MYSQL_URI)
     pg_engine = create_engine(PG_URI)
@@ -69,3 +87,15 @@ def upgrade():
     alembic_cfg = Config(path.join(root_path, "alembic.ini"))
     stamp(alembic_cfg, '2d65c7c19345')
     init_model()
+
+def upgrade():
+    log.info('Beginning upgrade to version 25')
+
+    log.info('Upgrading schema to revision 52a7069819cb')
+    alembic_upgrade('52a7069819cb')
+
+    init_model(schema_revision='52a7069819cb')
+    s = Session()
+    set_discriminator(s)
+    create_admin_role(s)
+    s.commit()

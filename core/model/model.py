@@ -3,17 +3,19 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from itertools import chain
 import json
 from math import floor
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
@@ -66,16 +68,59 @@ class Base(object):
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
+    def __hash__(self):
+        """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
+        """
+        # NOTE: do not assign non-hashable objects (such as lists) as
+        # attributes!
+        return hash((self.__class__.__name__,) + tuple(
+            getattr(self, x) for x in self.column_names()))
+
     # TODO: move UI-related code to views.py
     def column_dict(self):
         '''Return dictionary of names and values for all attributes
         corresponding to database columns.
         '''
         return {c: getattr(self, c) for c in self.column_names()}
+
+    def clone(self):
+        """Return an object identical to this one except for primary keys and
+        foreign keys.
+        """
+        # recommended way to clone a SQLAlchemy mapped object according to
+        # Michael Bayer, the author:
+        # https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg10895.html
+        # (this code does not completely follow those instructions)
+        cls = self.__class__
+        pk_keys = set(c.key for c in class_mapper(cls).primary_key)
+        foreign_key_columns = chain.from_iterable(
+            c.columns for c in self.__table__.constraints if
+            isinstance(c, ForeignKeyConstraint))
+        foreign_keys = set(col.key for col in foreign_key_columns)
+
+        relevant_attr_names = [x for x in self.column_names() if
+                               x not in pk_keys and x not in foreign_keys]
+
+        # NOTE it is necessary to use __new__ to avoid calling the
+        # constructor here (because the constructor arguments are not known,
+        # and are different for different classes).
+        # MB says to create the object with __new__, but when i do that, i get
+        # a "no attribute '_sa_instance_state'" AttributeError when assigning
+        # the regular attributes below. creating an InstanceState like this
+        # seems to fix the problem, but might not be right way.
+        new_obj = cls.__new__(cls)
+        class_manager = cls._sa_class_manager
+        new_obj._sa_instance_state = InstanceState(new_obj, class_manager)
+
+        # copy regular attributes from self to the new object
+        for attr_name in relevant_attr_names:
+            setattr(new_obj, attr_name, getattr(self, attr_name))
+        return new_obj
+
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '2d65c7c19345'
+_schema_revision = '52a7069819cb'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -215,7 +260,7 @@ class Utility(Base):
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -238,7 +283,7 @@ class Supplier(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name='', address=None):
         self.name = name
         self.address = address
 
@@ -266,7 +311,7 @@ class RateClass(Base):
 
     utility = relationship('Utility')
 
-    def __init__(self, name, utility, service):
+    def __init__(self, name='', utility=None, service='gas'):
         self.name = name
         self.utility = utility
         self.service = service
@@ -358,8 +403,19 @@ class UtilityAccount(Base):
 
 
 class UtilBill(Base):
+    POLYMORPHIC_IDENTITY = 'utilbill'
+
     __tablename__ = 'utilbill'
-    __mapper_args__ = {'extension': UtilbillCallback()}
+
+    __mapper_args__ = {
+        'extension': UtilbillCallback(),
+
+        # single-table inheritance
+        'polymorphic_identity': POLYMORPHIC_IDENTITY,
+        'polymorphic_on': 'discriminator',
+    }
+
+    discriminator = Column(String(1000), nullable=False)
 
     id = Column(Integer, primary_key=True)
 
@@ -394,8 +450,7 @@ class UtilBill(Base):
     sha256_hexdigest = Column(String(64), nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
-    # meaning that its rate structure and charges are supposed to be accurate
-    # and can be relied upon for rate structure prediction
+    # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Boolean, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
@@ -411,6 +466,8 @@ class UtilBill(Base):
     # shown on electric bills and gas bills). this is not a foreign key
     # despite the name.
     supply_choice_id = Column(String)
+
+    next_meter_read_date = Column(Date)
 
     # cascade for UtilityAccount relationship does NOT include "save-update"
     # to allow more control over when UtilBills get added--for example,
@@ -463,11 +520,11 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
-    def __init__(self, utility_account, state, utility, supplier,
-                 rate_class, billing_address, service_address,
-                 period_start=None, period_end=None, target_total=0,
-                 date_received=None, processed=False, sha256_hexdigest='',
-                 due_date=None):
+    def __init__(self, utility_account, utility, rate_class, supplier=None,
+                 period_start=None, period_end=None, billing_address=None,
+                 service_address=None, target_total=0, date_received=None,
+                 processed=False, sha256_hexdigest='', due_date=None,
+                 next_meter_read_date=None, state=Complete):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -477,7 +534,11 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        if billing_address is None:
+            billing_address = Address()
         self.billing_address = billing_address
+        if service_address is None:
+            service_address = Address()
         self.service_address = service_address
         self.period_start = period_start
         self.period_end = period_end
@@ -486,6 +547,7 @@ class UtilBill(Base):
         self.processed = processed
         self.due_date = due_date
         self.account_number = utility_account.account_number
+        self.next_meter_read_date = next_meter_read_date
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -506,14 +568,16 @@ class UtilBill(Base):
         '''
         return self.utility.name
 
-    def get_estimated_next_meter_read_date(self):
-        '''Return approximate date of next meter read (which is usually the
-        end date of the next utility bill after this one), or None if no
-        estimate can be made.
+    def get_next_meter_read_date(self):
+        '''Return date of next meter read (usually equal to the end of the next
+        bill's period), or None of unknown. This may or may not be reported by
+        the utility and is not necessarily accurate.
         '''
-        if self.period_end is None:
-            return None
-        return self.period_end + timedelta(days=30)
+        return self.next_meter_read_date
+
+    def set_next_meter_read_date(self, next_meter_read_date):
+        assert isinstance(next_meter_read_date, date)
+        self.next_meter_read_date = next_meter_read_date
 
     def get_rate_class_name(self):
         '''Return name of this bill's rate class or None if the rate class is
@@ -555,6 +619,7 @@ class UtilBill(Base):
         return len(self._utilbill_reebills) > 0
 
     def add_charge(self, **charge_kwargs):
+        self.check_editable()
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
@@ -567,7 +632,6 @@ class UtilBill(Base):
             quantity_formula=charge_kwargs.get('quantity_formula', ''),
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
-            group=charge_kwargs.get("group", ''),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', "supply"))
         session.add(charge)
@@ -621,6 +685,7 @@ class UtilBill(Base):
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
         """
+        self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
                    self.registers}
         sorted_charges = self.ordered_charges()
@@ -705,6 +770,7 @@ class UtilBill(Base):
         return total_register.quantity
 
     def set_total_energy(self, quantity):
+        self.check_editable()
         total_register = next(r for r in self.registers if
                               r.register_binding == 'REG_TOTAL')
         total_register.quantity = quantity
@@ -845,13 +911,13 @@ class Charge(Base):
     CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     # allowed values for "type" field of charges
-    CHARGE_TYPES = ['supply', 'distribution']
+    SUPPLY, DISTRIBUTION = 'supply', 'distribution'
+    CHARGE_TYPES = [SUPPLY, DISTRIBUTION]
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
-    group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS, name='charge_units'), nullable=False)
     rsi_binding = Column(String(255), nullable=False)
@@ -902,13 +968,12 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
-                 target_total=None, description='', group='', unit='',
+                 target_total=None, description='', unit='',
                  has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
-        :param group: The charge group
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
         :param quantity_formula: The RSI quantity formula
@@ -919,7 +984,6 @@ class Charge(Base):
         assert unit is not None
         self.utilbill = utilbill
         self.description = description
-        self.group = group
         self.unit = unit
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
@@ -932,20 +996,12 @@ class Charge(Base):
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
 
+    # TODO rename this
     @classmethod
     def formulas_from_other(cls, other):
         """Constructs a charge copying the formulas and data
         from the other charge, but does not set the utilbill"""
-        return cls(None,
-                   other.rsi_binding,
-                   other.rate,
-                   other.quantity_formula,
-                   description=other.description,
-                   group=other.group,
-                   unit=other.unit,
-                   has_charge=other.has_charge,
-                   shared=other.shared,
-                   roundrule=other.roundrule)
+        return other.clone()
 
     @staticmethod
     def _evaluate_formula(formula, context):
