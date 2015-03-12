@@ -11,13 +11,10 @@ from alembic.config import Config
 from sqlalchemy import create_engine
 
 from test import init_test_config
-from core import init_model, root_path
+from core import init_model, root_path, import_all_model_modules
 from core.model import Base, Session
 
-# make sure all model classes are imported
-import core.altitude
-import reebill.state
-import brokerage.brokerage_model
+import_all_model_modules()
 
 if __name__ == '__main__':
     init_test_config()
@@ -34,7 +31,7 @@ if __name__ == '__main__':
     # the alembic_version table exists
     # because it requires the alembic_version table
     # to already exist in the database
-    uri = config.get('db', 'uri')
+    uri = 'postgresql://dev@localhost/test'
     engine = create_engine(uri, echo=args.echo)
     Base.metadata.bind = engine
 
@@ -45,6 +42,7 @@ if __name__ == '__main__':
     # TODO: why doesn't this do anything?
     chdir(root_path)
     alembic_cfg = Config('alembic.ini')
+    alembic_cfg.set_main_option('sqlalchemy.url', uri)
     command.stamp(alembic_cfg, 'head')
 
     # check that it worked
