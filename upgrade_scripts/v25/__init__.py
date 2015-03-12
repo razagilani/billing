@@ -11,11 +11,12 @@ import logging
 from alembic.command import stamp
 from alembic.config import Config
 from os import path
+from sqlalchemy import create_engine
 from billentry.billentry_model import Role
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model, root_path
-from core.model import Session
+from core.model import Session, Base
 
 
 log = logging.getLogger(__name__)
