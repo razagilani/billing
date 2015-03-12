@@ -34,18 +34,19 @@ def create_admin_role(s):
     admin_role = Role('admin', 'admin role for accessing Admin UI')
     s.add(admin_role)
 
-def migrate_to_postgres(s):
+def migrate_to_postgres(old_db_config, old_uri, new_uri):
+    """Create all tables in the Postgres database defined by "uri" in the
+    config file and copy data from MySQL (the database defined by "old_uri").
+    """
     # import all modules that contain model classes, to make Base recognize
     # their tables
-    import core.altitude
-    import reebill.state
-    import brokerage.brokerage_model
-    import billentry.billentry_model
+    from core import import_all_model_modules
+    import_all_model_modules()
 
-    mysql_engine = create_engine(MYSQL_URI)
-    pg_engine = create_engine(PG_URI)
+    mysql_engine = create_engine(old_uri)
+    pg_engine = create_engine(new_uri)
     sorted_tables = Base.metadata.sorted_tables
-    assert len(sorted_tables) == 19
+    assert len(sorted_tables) == 22
 
     log.info('Dropping/creating PostgreSQL tables')
     for table in reversed(sorted_tables):
@@ -85,18 +86,34 @@ def migrate_to_postgres(s):
         assert mysql_engine.execute(count_query).fetchall() \
                == pg_engine.execute(count_query).fetchall()
 
+    # "stamp" the database with the current revision as described here:
+    # http://alembic.readthedocs.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
     alembic_cfg = Config(path.join(root_path, "alembic.ini"))
-    stamp(alembic_cfg, '2d65c7c19345')
+    stamp(alembic_cfg, 'head')
     init_model()
 
 def upgrade():
     log.info('Beginning upgrade to version 25')
 
-    log.info('Upgrading schema to revision 52a7069819cb')
-    alembic_upgrade('52a7069819cb')
+    from core import config
+    old_uri = config.get('db', 'old_uri')
+    new_uri = config.get('db', 'uri')
+    assert old_uri.startswith('mysql://')
+    assert new_uri.startswith('postgresql://')
+    old_db_config = Config('alembic.ini')
+    old_db_config.set_main_option("sqlalchemy.url", old_uri)
 
-    init_model(schema_revision='52a7069819cb')
+    log.info('Upgrading schema to revision 52a7069819cb')
+    alembic_upgrade('52a7069819cb', config=old_db_config)
+
+    init_model(uri=old_uri, schema_revision='52a7069819cb')
     s = Session()
     set_discriminator(s)
     create_admin_role(s)
     s.commit()
+
+    log.info('Migrating to Postgres')
+    migrate_to_postgres(old_db_config, old_uri, new_uri)
+
+    # init model with Postgres just to check that it worked correctly
+    init_model(new_uri)
