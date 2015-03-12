@@ -123,7 +123,7 @@ class ReeBillDAO(object):
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.version > 0) \
-            .filter(ReeBill.issued == False).all()
+            .filter(ReeBill.issued == False).order_by(ReeBill.sequence).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
