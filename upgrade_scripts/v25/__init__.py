@@ -21,6 +21,7 @@ from core.model import Session, Base
 
 log = logging.getLogger(__name__)
 
+REVISION = '58383ed620d3'
 
 def set_discriminator(s):
     s.execute('update utilbill set discriminator = "utilbill"')
@@ -105,10 +106,10 @@ def upgrade():
     old_db_config = Config('alembic.ini')
     old_db_config.set_main_option("sqlalchemy.url", old_uri)
 
-    log.info('Upgrading schema to revision 52a7069819cb')
-    alembic_upgrade('52a7069819cb', config=old_db_config)
+    log.info('Upgrading schema to revision %s' % REVISION)
+    alembic_upgrade(REVISION, config=old_db_config)
 
-    init_model(uri=old_uri, schema_revision='52a7069819cb')
+    init_model(uri=old_uri, schema_revision=REVISION)
     s = Session()
     set_discriminator(s)
     create_admin_role(s)

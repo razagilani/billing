@@ -63,7 +63,7 @@ class ReeBillDAO(object):
         reebill_customer = self.get_reebill_customer(account)
         result = session.query(func.max(ReeBill.version)) \
             .filter(ReeBill.reebill_customer == reebill_customer) \
-            .filter(ReeBill.issued == True).one()[0]
+            .filter(ReeBill.issued == 1).one()[0]
         # SQLAlchemy returns None if no reebills with that customer are issued
         if result is None:
             return None
@@ -123,7 +123,7 @@ class ReeBillDAO(object):
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.version > 0) \
-            .filter(ReeBill.issued == False).all()
+            .filter(ReeBill.issued == 0).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
@@ -155,10 +155,10 @@ class ReeBillDAO(object):
         session = Session()
         customer = self.get_customer(account)
         if include_corrections:
-            filter_logic = sqlalchemy.or_(ReeBill.issued == True,
-                sqlalchemy.and_(ReeBill.issued == False, ReeBill.version > 0))
+            filter_logic = sqlalchemy.or_(ReeBill.issued == 1,
+                sqlalchemy.and_(ReeBill.issued == 0, ReeBill.version > 0))
         else:
-            filter_logic = ReeBill.issued == True
+            filter_logic = ReeBill.issued == 1
 
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
             .filter(ReeBill.customer_id == customer.id) \
@@ -174,10 +174,10 @@ class ReeBillDAO(object):
         reebill = self.get_reebill(account, sequence)
         if issue_date is None:
             issue_date = datetime.utcnow()
-        if reebill.issued == True:
+        if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
-        reebill.issued = True
+        reebill.issued = 1
         reebill.processed = True
         reebill.issue_date = issue_date
 
@@ -203,7 +203,7 @@ class ReeBillDAO(object):
             # NOTE: reebill.issued is an int, and it converts the entire
             # expression to an int unless explicitly cast! see
             # https://www.pivotaltracker.com/story/show/35965271
-            return bool(reebill.issued == True)
+            return bool(reebill.issued == 1)
         except NoResultFound:
             if nonexistent is not None:
                 return nonexistent
