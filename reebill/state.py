@@ -29,7 +29,7 @@ class ReeBill(Base):
 
     id = Column(Integer, primary_key=True)
     sequence = Column(Integer, nullable=False)
-    issued = Column(Integer, nullable=False)
+    issued = Column(Boolean, nullable=False)
     version = Column(Integer, nullable=False)
     issue_date = Column(DateTime)
     ree_charge = Column(Float, nullable=False)
@@ -111,7 +111,7 @@ class ReeBill(Base):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
-        self.issued = 0
+        self.issued = False
         if discount_rate:
             self.discount_rate = discount_rate
         else:
@@ -356,8 +356,7 @@ class ReeBill(Base):
             else:
                 the_dict['corrections'] = '#%s not issued' % self.version
         else:
-            the_dict['corrections'] = '-' if self.issued else '(never ' \
-                                                                 'issued)'
+            the_dict['corrections'] = '-' if self.issued else '(never issued)'
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
