@@ -289,7 +289,7 @@ class ExporterSheetTest(unittest.TestCase):
         register1 = mock.Mock(autospec=Register)
         register1.description = ''
         register1.quantity = 561.9
-        register1.quantity_units = 'therms'
+        register1.unit = 'therms'
         register1.estimated = False
         register1.reg_type = 'total'
         register1.register_binding = 'REG_TOTAL'
@@ -373,7 +373,9 @@ class ExporterDataBookTest(unittest.TestCase):
 
         # export_energy_usage
         self.exp.export_energy_usage(string_io)
-        self.exp.export_energy_usage(string_io, '20001')
+        the_account = Session().query(UtilityAccount).filter_by(
+            account='20001').one()
+        self.exp.export_energy_usage(string_io, the_account)
 
         # export_reebill_details
         self.exp.export_reebill_details(string_io)
