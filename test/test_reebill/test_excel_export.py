@@ -323,13 +323,14 @@ class ExporterDataBookTest(unittest.TestCase):
         self.exp = Exporter(ReeBillDAO(logger=logger), PaymentDAO())
 
         s = Session()
-        utility = Utility('New Utility', Address())
+        utility = Utility(name='New Utility', address=Address())
         s.add(utility)
 
-        supplier = Supplier('New Supplier', Address())
+        supplier = Supplier(name='New Supplier', address=Address())
         s.add(supplier)
 
-        rate_class = RateClass('New Rate Class', utility, 'electric')
+        rate_class = RateClass(name='New Rate Class', utility=utility,
+                               service='electric')
         s.add(rate_class)
 
         utility_account = UtilityAccount(
@@ -346,10 +347,11 @@ class ExporterDataBookTest(unittest.TestCase):
 
         s.add(
             UtilBill(
-                utility_account, UtilBill.Estimated, utility,
-                supplier, rate_class, Address(), Address(),
+                utility_account, utility,
+                rate_class, supplier=supplier,
                 period_start=date(2010, 11, 1), period_end=date(2011, 2, 3),
-                date_received=datetime.utcnow().date()
+                date_received=datetime.utcnow().date(),
+                state=UtilBill.Estimated,
             )
         )
 

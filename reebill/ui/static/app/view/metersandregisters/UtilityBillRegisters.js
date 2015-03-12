@@ -23,14 +23,6 @@ Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
     },
     
     columns: [{
-        header: 'Service',
-        renderer: function(value){
-            console.log()
-            var selectedBill = ReeBill.getApplication().getController('UtilityBills')
-                .getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-            return selectedBill.get('service');
-        },
-    },{
         header: 'Meter ID',
         dataIndex: 'meter_identifier',
         sortable: false,

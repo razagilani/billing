@@ -21,3 +21,4 @@ skyliner/logs/*
 skyliner/cache/*
 .hg
 logs
+mq/config.yml

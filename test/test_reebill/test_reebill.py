@@ -4,36 +4,41 @@ from datetime import date
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from reebill.state import ReeBill, ReeBillCustomer
+from test.setup_teardown import TestCaseWithSetup
+
 
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''))
+        TestCaseWithSetup.truncate_tables()
+        washgas = Utility(name='washgas', address=Address('', '', '', '',
+                                                          ''))
         supplier = Supplier('supplier', Address())
-        c_rate_class = RateClass('Test Rate Class', washgas, 'gas')
+        c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
+                                 service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
                             washgas, supplier, c_rate_class,
                             Address(), Address())
-        reebill_customer = ReeBillCustomer('someone', '11111', 0.5, 0.1,
-                            'example@example.com', utility_account)
-        u_rate_class = RateClass('DC Non Residential Non Heat', washgas,
-                                 'gas')
-        self.utilbill = UtilBill(utility_account, UtilBill.Complete, washgas,
-                                 supplier,
+        reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
+                                late_charge_rate=0.1, service='thermal',
+                                bill_email_recipient='example@example.com',
+                                utility_account=utility_account)
+        u_rate_class = RateClass(name='DC Non Residential Non Heat',
+                                 utility=washgas, service='gas')
+        self.utilbill = UtilBill(utility_account, washgas,
                                  u_rate_class,
+                                 supplier=supplier,
                                  period_start=date(2000, 1, 1),
-                                 period_end=date(2000, 2, 1),
-                                 billing_address=Address(),
-                                 service_address=Address())
+                                 period_end=date(2000, 2, 1))
         self.register = Register(self.utilbill, '', '', 'therms', False,
-                                 'total', [], '', quantity=100,
+                                 'total', None, '', quantity=100,
                                 register_binding='REG_TOTAL')
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
             Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity',
-                   description='a', group='All Charges', unit='therms'),
+                   description='a', unit='therms'),
             Charge(self.utilbill, 'B', 1, '1', description='b',
-                   group='All Charges', unit='therms', has_charge=False),
+                   unit='therms', has_charge=False),
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,
@@ -42,6 +47,9 @@ class ReebillTest(unittest.TestCase):
         Session().add_all([self.utilbill, self.reebill])
         self.reebill.replace_readings_from_utility_bill_registers(
                 self.utilbill)
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
@@ -70,7 +78,6 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual(2, c.rate)
         self.assertEqual(200, c.a_total)
         self.assertEqual(200, c.h_total)
-        self.assertEqual('All Charges', c.group)
         self.assertEqual(200, self.reebill.get_total_hypothetical_charges())
 
     def test_unit_conversion(self):

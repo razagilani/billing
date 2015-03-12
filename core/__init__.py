@@ -69,6 +69,17 @@ def init_logging(filepath='settings.cfg'):
     log.debug('Initialized logging')
 
 
+def import_all_model_modules():
+    """Import all modules that contain SQLAlchemy model classes. In some
+    cases SQLAlchemy requires these classes to be imported so it can be aware
+    of them, even if they are not used.
+    """
+    import core.model
+    import core.altitude
+    import reebill.state
+    import brokerage.brokerage_model
+    import billentry.billentry_model
+
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
     """
@@ -77,6 +88,7 @@ def init_model(uri=None, schema_revision=None):
     import logging
     log = logging.getLogger(__name__)
 
+    import_all_model_modules()
 
     uri = uri if uri else config.get('db', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)

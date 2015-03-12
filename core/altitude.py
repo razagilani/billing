@@ -15,6 +15,7 @@ name).
 '''
 from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import Base, Session, Utility, UtilityAccount, Supplier, UtilBill
 
@@ -122,10 +123,27 @@ def _billing_to_altitude(billing_class, altitude_class):
         return Session().query(altitude_class).join(billing_class).filter(
             getattr(altitude_class, attr_name) == billing_obj.id).first()
     return query_func
-get_guid_for_utility = _billing_to_altitude(Utility, AltitudeUtility)
-get_guid_for_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)
-get_guid_for_utilbill = _billing_to_altitude(UtilBill, AltitudeBill)
 
+# TODO try to avoid writing a lot of repeated code like this
+def get_guid_for_utility(x):
+    result = _billing_to_altitude(Utility, AltitudeUtility)(x)
+    return None if result is None else result.guid
+def get_guid_for_supplier(x):
+    result = _billing_to_altitude(Supplier, AltitudeSupplier)(x)
+    return None if result is None else result.guid
+def get_guid_for_utilbill(x):
+    result = _billing_to_altitude(UtilBill, AltitudeBill)(x)
+    return None if result is None else result.guid
+
+def get_one_altitude_account_guid_for_utility_account(utility_account):
+    """Return one AltitudeAccount for the given UtilityAccount if there is
+    exactly one, or None otherwise.
+    """
+    s = Session()
+    q = s.query(AltitudeAccount).filter_by(utility_account=utility_account)
+    if q.count() == 1:
+        return q.one().guid
+    return None
 
 def update_altitude_account_guids(utility_account, guids):
     '''For each GUID (string) in 'guids', either associate the AltitudeAccount
@@ -148,13 +166,14 @@ def update_altitude_account_guids(utility_account, guids):
                for guid in set(guids) - existing_account_guids])
     s.flush()
 
-def get_or_create_guid_for_utilbill(utilbill, guid_func):
+def get_or_create_guid_for_utilbill(utilbill, guid_func, session):
     """Find and return a GUID string for the given UtilBill, or if one does
     not exist, generate one using 'guid_func', store a new AltitudeBill with
     the GUID string, and return it.
     """
-    altitude_bill = get_guid_for_utilbill(utilbill)
+    altitude_bill = _billing_to_altitude(UtilBill, AltitudeBill)(utilbill)
     if altitude_bill is None:
         altitude_bill =  AltitudeBill(utilbill, guid_func())
-        Session().add(altitude_bill)
+        session.add(altitude_bill)
+
     return altitude_bill.guid
