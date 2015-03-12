@@ -1172,9 +1172,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         one = self.reebill_processor.roll_reebill(acc,
                                                   start_date=date(2000, 1, 1))
-        one.processed = 1
+        one.processed = True
         two = self.reebill_processor.roll_reebill(acc)
-        two.processed = 1
+        two.processed = True
 
         # neither reebill should be issued yet
         self.assertEquals(False, self.state_db.is_issued(acc, 1))
