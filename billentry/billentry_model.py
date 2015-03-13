@@ -118,7 +118,6 @@ class BEUtilBill(UtilBill):
         """Return a new BEUtilBill, identical to 'utilbill' except for its
         class.
         """
-        print type(UtilBill)
         assert type(utilbill) is UtilBill
         assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
         new_beutilbill = BEUtilBill(utilbill.utility_account, utilbill.utility,
