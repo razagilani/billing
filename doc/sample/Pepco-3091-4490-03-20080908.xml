@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
+<ub:utilitybill id="112937812397813" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+	<ub:car>
+		<ub:accountnumber>3091 4490 03</ub:accountnumber>
+		<ub:serviceaddress>
+			<ub:addressee>College Park Carwash Inc.</ub:addressee>
+			<ub:street>8616 Baltimore Ave</ub:street>
+			<ub:city/>
+			<ub:state/>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee>College Park Carwash</ub:addressee>
+			<ub:street>7106 Ridgewood Ave</ub:street>
+			<ub:city>Chevy Chase</ub:city>
+			<ub:state>MD</ub:state>
+			<ub:country/>
+			<ub:postalcode>20815-5148</ub:postalcode>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
+	<ub:uar>
+		<ub:tin>53-0127880</ub:tin>
+		<ub:suppliercontact>
+			<ub:addressee>Washington Gas Energy Services, Inc.</ub:addressee>
+			<ub:street>13865 Sunrise Valley Dr.  Suite 200</ub:street>
+			<ub:city>Herndon</ub:city>
+			<ub:state>VA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>20171</ub:postalcode>
+			<ub:telephonenumber>888-236-9437</ub:telephonenumber>
+			<ub:hours/>
+		</ub:suppliercontact>
+	</ub:uar>
+	<ub:summary>
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:previouspayment>
+			<ub:payee/>
+			<ub:amount>0.0</ub:amount>
+		</ub:previouspayment>
+		<ub:adjustment>
+			<ub:payee/>
+			<ub:amount>0.0</ub:amount>
+		</ub:adjustment>
+		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:billperiodbegin>2008-02-08</ub:billperiodbegin>
+		<ub:billperiodend>2008-09-03</ub:billperiodend>
+		<ub:issuedate>2008-09-09</ub:issuedate>
+		<ub:currentcharges service="electric">547.67</ub:currentcharges>
+		<ub:currentcharges service="gas">2691.75</ub:currentcharges>
+		<ub:totaldue>2691.75</ub:totaldue>
+		<ub:duedate>2008-09-30</ub:duedate>
+		<ub:latepayment>
+			<ub:penalty/>
+			<ub:amount>6.14</ub:amount>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:details service="electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+			<ub:rateineffect>Summer</ub:rateineffect>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>36.26</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On-Peak Energy</ub:description>
+					<ub:quantity units="kWh">3520</ub:quantity>
+					<ub:rate units="dollars">0.0102812</ub:rate>
+					<ub:total>36.19</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Int-Peak Energy</ub:description>
+					<ub:quantity units="kWh">3680</ub:quantity>
+					<ub:rate units="dollars">0.0102798</ub:rate>
+					<ub:total>37.83</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">8480</ub:quantity>
+					<ub:rate units="dollars">0.0102806</ub:rate>
+					<ub:total>87.18</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On peak demand</ub:description>
+					<ub:quantity units="kWD">54.4</ub:quantity>
+					<ub:total>135.83</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Maximum demand</ub:description>
+					<ub:quantity units="kWD">54.4</ub:quantity>
+					<ub:total>52.13</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Franchise tax (delivery) (make tax element)</ub:description>
+					<ub:quantity units="kWh">this is derived from all kWh</ub:quantity>
+					<ub:rate units="dollar">0.0006200</ub:rate>
+					<ub:total>9.72</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Universal service charge (make tax element)</ub:description>
+					<ub:total>20.59</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Environmental surcharge (make tax element)</ub:description>
+					<ub:quantity units="kWh">this is derived from all kWh</ub:quantity>
+					<ub:rate units="dollar">0.0001500</ub:rate>
+					<ub:total>2.35</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Gross receipts tax (make tax element)</ub:description>
+					<ub:quantity units="">this is derived from all charges above</ub:quantity>
+					<ub:rate units="percentage">2.040800</ub:rate>
+					<ub:total>8.54</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy (make tax element)</ub:description>
+					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:rate units="dollars">0.0072860</ub:rate>
+					<ub:total>114.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Administrative credit</ub:description>
+					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:rate units="dollars">0.0013080</ub:rate>
+					<ub:total>-20.50</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Generation procurement credit/charge</ub:description>
+					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:rate units="dollars">0.0001843</ub:rate>
+					<ub:total>2.89</ub:total>
+				</ub:charge>
+			</ub:charges>
+			<ub:subtotal>523.26</ub:subtotal>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Total Use</ub:description>
+					<ub:quantity units="kWh">15680</ub:quantity>
+					<ub:rate units="dollars">0.129</ub:rate>
+					<ub:total>2022.72</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:total>121.36</ub:total>
+				</ub:charge>
+			</ub:charges>
+			<ub:subtotal>2144.08</ub:subtotal>
+		</ub:chargegroup>
+		<ub:chargegroup type="Tax">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity/>
+					<ub:total>24.41</ub:total>
+				</ub:charge>
+			</ub:charges>
+			<ub:subtotal>24.41</ub:subtotal>
+		</ub:chargegroup>
+		<ub:total>2691.75</ub:total>
+	</ub:details>
+	<ub:billableusage service="electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+		</ub:rateschedule>
+		<ub:total>15680</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="electric">
+		<ub:meter>
+			<ub:estimated>true</ub:estimated>
+			<ub:nextreaddate>2008-10-03</ub:nextreaddate>
+			<ub:identifier/>
+			<ub:register shadow="false">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>17049</ub:priorreading>
+				<ub:presentreading>17247</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>15840</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Off Peak</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>9276</ub:priorreading>
+				<ub:presentreading>9382</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>8480</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Interm Peak</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>3627</ub:priorreading>
+				<ub:presentreading>3673</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>3680</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>On Peak</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>4145</ub:priorreading>
+				<ub:presentreading>4189</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>3520</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+</ub:utilitybill>
