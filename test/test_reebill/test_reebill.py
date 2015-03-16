@@ -31,7 +31,7 @@ class ReebillTest(unittest.TestCase):
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
         self.register = Register(self.utilbill, '', '', 'therms', False,
-                                 'total', [], '', quantity=100,
+                                 'total', None, '', quantity=100,
                                 register_binding='REG_TOTAL')
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
