@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # the alembic_version table exists
     # because it requires the alembic_version table
     # to already exist in the database
-    uri = 'postgresql://dev@localhost/test'
+    uri = config.get('db', 'uri')
     engine = create_engine(uri, echo=args.echo)
     Base.metadata.bind = engine
 
