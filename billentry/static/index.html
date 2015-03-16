@@ -39,8 +39,7 @@
         var xmlHttp = new XMLHttpRequest();
         var v = Math.random() * 100000000000000000;
         var url = window.location.origin +
-                '/utilitybills/revision.txt?_dc='
-                + v;
+                '/revision.txt?_dc=' + v;
         xmlHttp.open("GET", url, true);
         xmlHttp.onreadystatechange = function () {
             if (xmlHttp.readyState == 4) {

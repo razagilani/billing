@@ -733,7 +733,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '1',
                                        'rate': 11.2,
                                        'shared': True,
-                                       'group': 'A',
                                        }, utilbill_id=id_a, rsi_binding='New Charge 1')
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'NOT_SHARED',
@@ -741,7 +740,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '1',
                                        'rate': 3,
                                        'shared': False,
-                                       'group': 'B',
                                        }, utilbill_id=id_a, rsi_binding='New Charge 2')
         for i in (id_b, id_c):
             self.utilbill_processor.add_charge(i)
@@ -752,7 +750,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'quantity_formula': '750.10197727',
                                            'rate': 220.16,
                                            'shared': True,
-                                           'group': 'C',
                                            }, utilbill_id=i, rsi_binding='New Charge 1')
             self.utilbill_processor.update_charge({
                                            'rsi_binding': 'PGC',
@@ -760,7 +757,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'quantity_formula': '750.10197727',
                                            'rate': 0.7563,
                                            'shared': True,
-                                           'group': 'D',
                                            }, utilbill_id=i, rsi_binding='New Charge 2')
 
         # create utility bill and reebill #2 for A
@@ -902,7 +898,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'description':'UPRS only',
                                        'quantity_formula': '2',
                                        'rate': 3,
-                                       'group': 'All Charges',
                                        'unit':'kWh'
                                    },
                                    utilbill_id=utilbill_data['id'],
@@ -915,7 +910,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'group': 'All Charges',
                                        'shared': False
                                    }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
@@ -934,7 +928,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 'rate': 3,
                                 'total': 6,
                                 'description': 'UPRS only',
-                                'group': 'All Charges',
                                 'error': None,
                                 }, {
                                 'rsi_binding': 'B',
@@ -943,7 +936,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 'rate': 7,
                                 'total': 42,
                                 'description': 'not shared',
-                                'group': 'All Charges',
                                 'error': None,
                                 },
                             ], charges):
@@ -960,7 +952,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'group': 'All Charges',
                                        'shared': False
                                    }, utilbill_id=utilbill_data['id'], rsi_binding='B')
 

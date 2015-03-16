@@ -1,30 +1,53 @@
+"""All tests for the Bill Entry application.
+"""
 from datetime import datetime, date
 import unittest
 from json import loads
-
+from flask import url_for
+from flask.ext.login import current_user
 from mock import Mock
+
+# if init_test_config() is not called before "billentry" is imported,
+# "billentry" will call init_config to initialize the config object with the
+# non-test config file. so init_test_config must be called before
+# "billentry" is imported.
+from test import init_test_config
+init_test_config()
+
+import billentry
+from billentry.billentry_model import BillEntryUser, BEUtilBill
+from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
-from brokerage import billentry
-from brokerage.brokerage_model import BrokerageAccount, BEUtilBill, \
-    BillEntryUser
+from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup
-from test import init_test_config
 
 
 class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
     """
     def setUp(self):
-        utility = Mock(autospec=Utility)
+        self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
-        ua = UtilityAccount('Account 1', '11111', utility, None, None,
+        self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
-        self.ub = BEUtilBill(ua, UtilBill.Complete, utility, None,
+        self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
+
+    def test_create_from_utilbill(self):
+        utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
+                             self.rate_class, Address(), Address())
+        beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+        self.assertIs(BEUtilBill, type(beutilbill))
+        for attr_name in UtilBill.column_names():
+            if attr_name in ('discriminator'):
+                continue
+            utilbill_value = getattr(utilbill, attr_name)
+            beutilbill_value = getattr(beutilbill, attr_name)
+            self.assertEqual(utilbill_value, beutilbill_value)
 
     def test_entry(self):
         self.assertFalse(self.ub.is_entered())
@@ -72,9 +95,14 @@ class BillEntryIntegrationTest(object):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-
-        # self.db_fd, wsgi.app.config['DATABASE'] = tempfile.mkstemp()
+        init_model()
         billentry.app.config['TESTING'] = True
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # are using the before_request callback instead
+        billentry.app.config['LOGIN_DISABLED'] = True
+        # TODO: this should prevent the method decorated with
+        # "app.errorhandler" from running, but doesn't
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -178,6 +206,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
              'rows': [
                  {'account': None,
                   'computed_total': 0.0,
+                  'due_date': None,
                   'id': 3,
                   'next_meter_read_date': None,
                   'pdf_url': '',
@@ -193,7 +222,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 0.0,
                   'utility': 'Empty Utility',
                   'utility_account_number': '3',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Empty Utility'
                  },
              ], }, rv.data)
 
@@ -244,6 +274,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
+              'due_date': None,
               'id': 1,
               'next_meter_read_date': None,
               'pdf_url': '',
@@ -254,13 +285,14 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
-              'supply_choice_id': None
-             },
+              'wiki_url': 'http://example.com/utility:Example Utility'
+              },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
@@ -274,42 +306,46 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = '2000-02-05'
+        expected['rows']['next_meter_read_date'] = None
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
 
-    def test_rate_class(self):
+    def test_update_utilbill_rate_class(self):
+        expected = {'results': 1,
+         'rows': [
+             {'account': None,
+              'computed_total': 0.0,
+              'due_date': None,
+              'id': 3,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Unknown',
+              'service': 'Unknown',
+              'service_address': '2 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 0.0,
+              'target_total': 0.0,
+              'total_energy': 0.0,
+              'utility': 'Empty Utility',
+              'utility_account_number': '3',
+              'supply_choice_id': None,
+              'wiki_url': 'http://example.com/utility:Empty Utility'
+             }
+         ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
-        self.assertJson(
-            {'results': 1,
-             'rows': [
-                 {'account': None,
-                  'computed_total': 0.0,
-                  'id': 3,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Unknown',
-                  'service': 'Unknown',
-                  'service_address': '2 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 0.0,
-                  'target_total': 0.0,
-                  'total_energy': 0.0,
-                  'utility': 'Empty Utility',
-                  'utility_account_number': '3',
-                  'supply_choice_id': None
-                 }
-             ], }, rv.data)
+        self.assertJson(expected, rv.data)
+
+        # TODO reuse 'expected' in later assertions instead of repeating the
+        # giant dictionary over and over
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
                 utility = "Empty Utility"
         ))
-
         self.assertJson(
             {
             "results": 1,
@@ -317,6 +353,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': None,
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -331,7 +368,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 150.0,
                   'utility': 'Empty Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Empty Utility'
             },
             }, rv.data
         )
@@ -348,6 +386,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'account': None,
                   'computed_total': 85.0,
                   'id': 1,
+                  'due_date': None,
                   'next_meter_read_date': None,
                   'pdf_url': '',
                   'period_end': None,
@@ -362,7 +401,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 150.0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Some Other Utility'
             },
             }, rv.data
         )
@@ -375,8 +415,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryReport, self).setUp()
 
         s = Session()
-        self.user1 = BillEntryUser()
-        self.user2 = BillEntryUser()
+        self.user1 = BillEntryUser(email='user1@example.com', )
+        self.user2 = BillEntryUser(email='user2@example2.com')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         s.commit()
 
@@ -426,6 +466,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
              'rows':
                  [{'account': None,
                   'computed_total': 0,
+                  'due_date': None,
                   'id': 1,
                   'next_meter_read_date': None,
                   'pdf_url': '',
@@ -441,10 +482,146 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 0,
                   'utility': 'Example Utility',
                   'utility_account_number': '1',
-                  'supply_choice_id': None
+                  'supply_choice_id': None,
+                  'wiki_url': 'http://example.com/utility:Example Utility'
                  }],
              }, rv.data)
 
         # still none for user2
         rv = self.app.get(url_format % self.user2.id)
         self.assertJson({"results": 0, "rows": []}, rv.data)
+
+
+class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
+                                        unittest.TestCase):
+
+    def test_replace_utilbill_with_beutilbill(self):
+        s = Session()
+        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        s.add(u)
+        s.flush() # set u.id
+
+        self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0,
+                         s.query(BEUtilBill).filter_by(id=u.id).count())
+
+        the_id = u.id
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
+
+        # note that new_beutilbill has the same id
+        query_result = s.query(UtilBill).filter_by(id=the_id).one()
+        self.assertIsNone(u.id)
+        self.assertIs(new_beutilbill, query_result)
+        self.assertIsInstance(new_beutilbill, BEUtilBill)
+        self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
+                         new_beutilbill.discriminator)
+
+class TestBillEnrtyAuthentication(unittest.TestCase):
+    URL_PREFIX = 'http://localhost'
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
+
+    def setUp(self):
+        TestCaseWithSetup.truncate_tables()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
+        s.commit()
+
+    def tearDown(self):
+        TestCaseWithSetup.truncate_tables()
+
+    def test_oauth_login(self):
+        # just an example of a URL the user was trying to go to
+        original_url = '/admin'
+
+        # first the user tries to go to 'original_url', and gets redirected to
+        # /login-page
+        rv = self.app.get(original_url)
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # then the user clicks on the "Log in with Google" link, whose URL is
+        #  /login, and gets redirected to Google's OAuth URL
+        rv = self.app.get('/login')
+        self.assertEqual(302, rv.status_code)
+        # not checking arguments in the URL
+        self.assertTrue(rv.location.startswith(self.authorize_url))
+
+        # /oauth2callback is the URL that Google redirects to after the user
+        # authenticates. we aren't simulating the valid OAuth data that
+        # Google would provide, so the response is invalid
+        rv = self.app.get('/oauth2callback')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+        # after unsuccessful login, the user still can't get to a normal page
+        rv = self.app.get('/')
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+
+    def test_local_login(self):
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual('http://localhost/', response.location)
+
+        # user successfully gets index.html
+        response = self.app.get(self.URL_PREFIX + '/')
+        self.assertEqual(200, response.status_code)
+
+        # logout user
+        self.app.get('/logout')
+
+        # TODO: when a user gets redirected to the login page,
+        # test redirection to the page the user originally wanted to go to.
+
+        response = self.app.get('/')
+        # because user is not logged in so a redirect to login-page should
+        # happen
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid email for user login
+        data = {'email':'user2@test.com', 'password': 'password'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+        # invalid password for user login
+        data = {'email':'user1@test.com', 'password': 'password1'}
+
+        # post request for user login with invalid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # the login should fail and user should be redirected to login-page
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual('http://localhost/login-page', response.location)
+
+
+
