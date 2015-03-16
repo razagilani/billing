@@ -11,9 +11,6 @@ Ext.define('ReeBill.controller.Viewer', {
     refs: [{
         ref: 'utilityBillViewer',
         selector: 'pdfpanel[name=utilityBillViewer]'
-    //},{
-    //    ref: 'reebillViewer',
-    //    selector: 'pdfpanel[name=reebillViewer]'
     }],    
     
     init: function() {

@@ -1,24 +1,36 @@
+"""Code to set up the "Admin" UI for the billing database, using Flask-Admin.
+This lets people view or edit anythihg in the database and has nothing to do
+with Bill Entry, but it's part of Bill Entry because that is currently the
+only application that uses Flask.
+"""
 from flask import session, url_for, redirect, request
 from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
-from brokerage.brokerage_model import BillEntryUser, Role, RoleBEUser
+from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.state import ReeBillCustomer, ReeBill
+from billentry.common import get_bcrypt_object
+
 
 
 # Create a permission with a single Need, in this case a RoleNeed.
 admin_permission = Permission(RoleNeed('admin'))
+bcrypt = get_bcrypt_object()
 
 class MyAdminIndexView(AdminIndexView):
 
-    @admin_permission.require()
     @expose('/')
     def index(self):
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+                return super(MyAdminIndexView, self).index()
         if login.current_user.is_authenticated():
-            return super(MyAdminIndexView, self).index()
+            with admin_permission.require():
+                return super(MyAdminIndexView, self).index()
         return redirect(url_for('login', next=request.url))
+
 
 class CustomModelView(ModelView):
     # Disable create, update and delete on model
@@ -27,6 +39,9 @@ class CustomModelView(ModelView):
     can_edit = False
 
     def is_accessible(self):
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+            return True
         return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
@@ -36,8 +51,12 @@ class CustomModelView(ModelView):
     def __init__(self, model, session, **kwargs):
         super(CustomModelView, self).__init__(model, session, **kwargs)
 
+
 class LoginModelView(ModelView):
     def is_accessible(self):
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+            return True
         return login.current_user.is_authenticated()
 
     def _handle_view(self, name, **kwargs):
@@ -47,11 +66,13 @@ class LoginModelView(ModelView):
     def __init__(self, model, session, **kwargs):
         super(LoginModelView, self).__init__(model, session, **kwargs)
 
+
 class SupplierModelView(LoginModelView):
     form_columns = ('name',)
 
     def __init__(self, session, **kwargs):
         super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
+
 
 class UtilityModelView(LoginModelView):
     form_columns = ('name',)
@@ -59,16 +80,15 @@ class UtilityModelView(LoginModelView):
     def __init__(self, session, **kwargs):
         super(UtilityModelView, self).__init__(Utility, session, **kwargs)
 
+
 class ReeBillCustomerModelView(LoginModelView):
-    form_columns = ('name', 'discountrate', 'latechargerate', 'bill_email_recipient', 'service', )
+    form_columns = (
+        'name', 'discountrate', 'latechargerate', 'bill_email_recipient',
+        'service', )
 
     def __init__(self, session, **kwargs):
-        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session, **kwargs)
-
-class RateClassModelView(LoginModelView):
-
-    def __init__(self, session, **kwargs):
-        super(RateClassModelView, self).__init__(RateClass, session, **kwargs)
+        super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session,
+                                                       **kwargs)
 
 class UserModelView(LoginModelView):
     form_columns = ('email', 'password', )
@@ -76,14 +96,13 @@ class UserModelView(LoginModelView):
     def __init__(self, session, **kwargs):
         super(UserModelView, self).__init__(BillEntryUser, session, **kwargs)
 
-class RolesModelView(LoginModelView):
-    def __init__(self, session, **kwargs):
-        super(RolesModelView, self).__init__(Role, session, **kwargs)
+    def on_model_change(self, form, model, is_created):
+        model.password = self.get_hashed_password(model.password)
 
-class UserRolesModelView(LoginModelView):
-
-    def __init__(self, session, **kwargs):
-        super(UserRolesModelView, self).__init__(RoleBEUser, session, **kwargs)
+    def get_hashed_password(self, plain_text_password):
+        # Hash a password for the first time
+        #   (Using bcrypt, the salt is saved into the hash itself)
+        return bcrypt.generate_password_hash(plain_text_password)
 
 
 def make_admin(app):
@@ -95,10 +114,10 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Session))
     admin.add_view(SupplierModelView(Session))
-    admin.add_view(RateClassModelView(Session))
+    admin.add_view(LoginModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
-    admin.add_view(RolesModelView(Session))
-    admin.add_view(UserRolesModelView(Session))
+    admin.add_view(LoginModelView(Role, Session, name= 'BillEntry Role'))
+    admin.add_view(LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
     admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
     admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     return admin

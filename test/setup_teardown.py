@@ -18,9 +18,6 @@ from util.file_utils import make_directories_if_necessary
 
 
 from core import init_model
-init_test_config()
-init_model()
-
 
 from test import testing_utils as test_utils
 from core import pricing
