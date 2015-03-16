@@ -20,6 +20,7 @@ from core.model import Session, Base
 log = logging.getLogger(__name__)
 
 REVISION = '58383ed620d3'
+
 def migrate_to_postgres(old_db_config, old_uri, new_uri):
     """Create all tables in the Postgres database defined by "uri" in the
     config file and copy data from MySQL (the database defined by "old_uri").
@@ -83,6 +84,11 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
 def upgrade():
     log.info('Beginning upgrade to version 26')
 
+    # the OLD database URL must be used in order to upgrade the old  database
+    # before copying to the new database. but the URL for general use (and for
+    # "stamping" the alembic revision on the new database) be the new one, so
+    # it is necessary to overwrite the "sqlalchmy.url" key in the config object
+    # after moving the file.
     from core import config
     old_uri = config.get('db', 'old_uri')
     new_uri = config.get('db', 'uri')
@@ -96,7 +102,7 @@ def upgrade():
 
     init_model(uri=old_uri, schema_revision=REVISION)
 
-    log.info('Migrating to Postgres')
+    log.info('Migrating to PostgreSQL')
     migrate_to_postgres(old_db_config, old_uri, new_uri)
 
     # init model with Postgres just to check that it worked correctly
