@@ -538,8 +538,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             #update the just-created charge
             self.utilbill_processor.update_charge({'rsi_binding': 'THE_CHARGE',
                              'quantity_formula': 'REG_TOTAL.quantity',
-                             'rate': 1,
-                             'group': 'All Charges'}, utilbill_id=ub.id,
+                             'rate': 1}, utilbill_id=ub.id,
                             rsi_binding='New Charge 1')
 
             self.utilbill_processor.update_register(ub.registers[0].id,
@@ -824,7 +823,6 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                 'quantity_formula': 'REG_TOTAL.quantity',
                 'unit': 'therms',
                 'rate': 1,
-                'group': 'All Charges',
             }, utilbill_id=self.utilbill.id, rsi_binding='New Charge 1')
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
                                                          processed=True)
@@ -1330,8 +1328,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_charge(
             dict(rsi_binding='THE_CHARGE',
                  quantity_formula="REG_TOTAL.quantity",
-                 unit='therms', rate=1, group='All Charges'),
-            charge_id=charge.id)
+                 unit='therms', rate=1), charge_id=charge.id)
 
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
                                                          processed=True)

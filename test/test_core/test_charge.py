@@ -32,13 +32,12 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   rsi_binding='SOME_RSI',
                                   rate=6,
                                   description='SOME_DESCRIPTION',
-                                  group='SOME_GROUP',
                                   unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding",
-                                  type='supply')
+                                  type='distribution')
         self.charge = Charge(**self.charge_params)
         self.context = {'SOME_VAR': ChargeEvaluation(quantity=2, rate=3),
                         'OTHER_VAR': ChargeEvaluation(quantity=4, rate=5),
@@ -58,9 +57,9 @@ class ChargeUnitTests(testing_utils.TestCase):
 
     def test_formulas_from_other(self):
         charge_2 = Charge.formulas_from_other(self.charge)
-        for key, val in self.charge_params.iteritems():
-            self.assertEqual(getattr(charge_2, key),
-                             None if key == 'utilbill' else val)
+        for key in Charge.column_names():
+            self.assertEqual(getattr(charge_2, key), None if key == 'utilbill'
+                             else getattr(self.charge, key))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),

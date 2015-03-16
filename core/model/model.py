@@ -4,16 +4,18 @@ Also contains some related classes that do not correspond to database tables.
 '''
 import ast
 from datetime import date, datetime, timedelta
+from itertools import chain
 import json
 from math import floor
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
@@ -66,16 +68,59 @@ class Base(object):
         return all([getattr(self, x) == getattr(other, x) for x in
                     self.column_names()])
 
+    def __hash__(self):
+        """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
+        """
+        # NOTE: do not assign non-hashable objects (such as lists) as
+        # attributes!
+        return hash((self.__class__.__name__,) + tuple(
+            getattr(self, x) for x in self.column_names()))
+
     # TODO: move UI-related code to views.py
     def column_dict(self):
         '''Return dictionary of names and values for all attributes
         corresponding to database columns.
         '''
         return {c: getattr(self, c) for c in self.column_names()}
+
+    def clone(self):
+        """Return an object identical to this one except for primary keys and
+        foreign keys.
+        """
+        # recommended way to clone a SQLAlchemy mapped object according to
+        # Michael Bayer, the author:
+        # https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg10895.html
+        # (this code does not completely follow those instructions)
+        cls = self.__class__
+        pk_keys = set(c.key for c in class_mapper(cls).primary_key)
+        foreign_key_columns = chain.from_iterable(
+            c.columns for c in self.__table__.constraints if
+            isinstance(c, ForeignKeyConstraint))
+        foreign_keys = set(col.key for col in foreign_key_columns)
+
+        relevant_attr_names = [x for x in self.column_names() if
+                               x not in pk_keys and x not in foreign_keys]
+
+        # NOTE it is necessary to use __new__ to avoid calling the
+        # constructor here (because the constructor arguments are not known,
+        # and are different for different classes).
+        # MB says to create the object with __new__, but when i do that, i get
+        # a "no attribute '_sa_instance_state'" AttributeError when assigning
+        # the regular attributes below. creating an InstanceState like this
+        # seems to fix the problem, but might not be right way.
+        new_obj = cls.__new__(cls)
+        class_manager = cls._sa_class_manager
+        new_obj._sa_instance_state = InstanceState(new_obj, class_manager)
+
+        # copy regular attributes from self to the new object
+        for attr_name in relevant_attr_names:
+            setattr(new_obj, attr_name, getattr(self, attr_name))
+        return new_obj
+
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '150d8bb1183c'
+_schema_revision = '52a7069819cb'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -358,13 +403,15 @@ class UtilityAccount(Base):
 
 
 class UtilBill(Base):
+    POLYMORPHIC_IDENTITY = 'utilbill'
+
     __tablename__ = 'utilbill'
 
     __mapper_args__ = {
         'extension': UtilbillCallback(),
 
         # single-table inheritance
-        'polymorphic_identity': 'utilbill',
+        'polymorphic_identity': POLYMORPHIC_IDENTITY,
         'polymorphic_on': 'discriminator',
     }
 
@@ -585,7 +632,6 @@ class UtilBill(Base):
             quantity_formula=charge_kwargs.get('quantity_formula', ''),
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
-            group=charge_kwargs.get("group", ''),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', "supply"))
         session.add(charge)
@@ -865,13 +911,13 @@ class Charge(Base):
     CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     # allowed values for "type" field of charges
-    CHARGE_TYPES = ['supply', 'distribution']
+    SUPPLY, DISTRIBUTION = 'supply', 'distribution'
+    CHARGE_TYPES = [SUPPLY, DISTRIBUTION]
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
-    group = Column(String(255), nullable=False)
     quantity = Column(Float)
     unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rsi_binding = Column(String(255), nullable=False)
@@ -922,13 +968,12 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
-                 target_total=None, description='', group='', unit='',
+                 target_total=None, description='', unit='',
                  has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
-        :param group: The charge group
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
         :param quantity_formula: The RSI quantity formula
@@ -939,7 +984,6 @@ class Charge(Base):
         assert unit is not None
         self.utilbill = utilbill
         self.description = description
-        self.group = group
         self.unit = unit
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
@@ -952,20 +996,12 @@ class Charge(Base):
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
 
+    # TODO rename this
     @classmethod
     def formulas_from_other(cls, other):
         """Constructs a charge copying the formulas and data
         from the other charge, but does not set the utilbill"""
-        return cls(None,
-                   other.rsi_binding,
-                   other.rate,
-                   other.quantity_formula,
-                   description=other.description,
-                   group=other.group,
-                   unit=other.unit,
-                   has_charge=other.has_charge,
-                   shared=other.shared,
-                   roundrule=other.roundrule)
+        return other.clone()
 
     @staticmethod
     def _evaluate_formula(formula, context):
