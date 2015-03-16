@@ -21,7 +21,7 @@ from core import init_model
 
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount
+from core.model import Supplier, RateClass, UtilityAccount, Base
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.state import Session, UtilBill, \
@@ -147,32 +147,9 @@ class TestCaseWithSetup(test_utils.TestCase):
     def truncate_tables():
         session = Session()
         Session.rollback()
-        for t in [
-            "altitude_utility",
-            "altitude_supplier",
-            "altitude_account",
-            "altitude_bill",
-            "billentry_user",
-            "billentry_role_user",
-            "billentry_role",
-            "utilbill_reebill",
-            "register",
-            "payment",
-            "reading",
-            "reebill",
-            "charge",
-            "utilbill",
-            "reebill_charge",
-            "reebill_customer",
-            "brokerage_account",
-            "utility_account",
-            "rate_class",
-            "supplier",
-            "utility",
-            "address",
-            "billentry_user",
-        ]:
-            session.execute("delete from %s" % t)
+        for table in reversed(Base.metadata.sorted_tables):
+            session.execute(table.delete())
+            assert session.execute(table.count()).scalar() == 0
         session.commit()
 
     @staticmethod
