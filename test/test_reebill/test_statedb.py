@@ -24,6 +24,19 @@ billdb_config = {
     'port': '27017'
 }
 
+class ReeBillCustomerTest(unittest.TestCase):
+    """Unit test for ReeBillCustomer.
+    """
+    def setUp(self):
+        self.reebill_customer = ReeBillCustomer()
+
+    def test_tag(self):
+        self.assertEqual('', self.reebill_customer.tag)
+        self.reebill_customer.set_tag('a')
+        self.assertEqual('a', self.reebill_customer.get_tag())
+        self.reebill_customer.set_tag('b')
+        self.assertEqual('b', self.reebill_customer.get_tag())
+
 class StateDBTest(TestCaseWithSetup):
 
     def setUp(self):

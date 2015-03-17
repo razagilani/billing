@@ -409,13 +409,13 @@ class ReeBillCustomer(Base):
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
 
-
     id = Column(Integer, primary_key=True)
     name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
+    tag = Column(String(1000), nullable=False, default='')
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship(
@@ -446,6 +446,7 @@ class ReeBillCustomer(Base):
         self.bill_email_recipient = bill_email_recipient
         self.service = service
         self.utility_account = utility_account
+        self.tag = ''
 
     def get_discount_rate(self):
         return self.discountrate
@@ -461,6 +462,12 @@ class ReeBillCustomer(Base):
 
     def set_late_charge_rate(self, value):
         self.latechargerate = value
+
+    def get_tag(self):
+        return self.tag
+
+    def set_tag(self, tag):
+        self.tag = tag
 
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
