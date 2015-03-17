@@ -422,21 +422,6 @@ class ReeBillCustomer(Base):
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
 
-    def get_discount_rate(self):
-        return self.discountrate
-
-    def get_account(self):
-        return self.utility_account.account
-
-    def set_discountrate(self, value):
-        self.discountrate = value
-
-    def get_late_charge_rate(self):
-        return self.latechargerate
-
-    def set_late_charge_rate(self, value):
-        self.latechargerate = value
-
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
                 utility_account=None):
@@ -461,6 +446,21 @@ class ReeBillCustomer(Base):
         self.bill_email_recipient = bill_email_recipient
         self.service = service
         self.utility_account = utility_account
+
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
 
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
