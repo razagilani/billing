@@ -5,16 +5,15 @@ from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 from test.setup_teardown import init_logging, TestCaseWithSetup
 from core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBillCustomer
+from reebill.reebill_model import ReeBillCustomer
 
 init_logging()
 import unittest
 from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
 from core import init_config, init_model
-from reebill import state
 from core.model import UtilBill, Session, Address
-from reebill.state import ReeBill
+from reebill.reebill_model import ReeBill
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
