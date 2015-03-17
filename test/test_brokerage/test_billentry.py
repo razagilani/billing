@@ -14,7 +14,7 @@ from mock import Mock
 # "billentry" is imported.
 from sqlalchemy.orm.exc import NoResultFound
 from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
-from core.altitude import AltitudeBill, AltitudeGUID
+from core.altitude import AltitudeBill, AltitudeGUID, get_utilbill_from_guid
 from mq import IncomingMessage
 from test import init_test_config
 init_test_config()
@@ -556,21 +556,17 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         s= Session()
 
 
-        utilbill = UtilBill(utility_account, utility,
+        self.utilbill = UtilBill(utility_account, utility,
                             rate_class,
                             supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
 
-        self.beutilbill = BEUtilBill.create_from_utilbill(utilbill)
 
         self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
-        self.altitude_bill = AltitudeBill(self.beutilbill, self.guid)
+        self.altitude_bill = AltitudeBill(self.utilbill, self.guid)
         s.add(self.altitude_bill)
 
-        altitude_converter = Mock()
-        altitude_converter.get_utilbill_for_guid\
-            .return_value = self.guid
 
     def test_process_utilbill_guid_with_no_matching_guid(self):
         message = create_channel_message_body(dict(
@@ -588,11 +584,13 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
             guid=self.guid))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        self.assertIsInstance(self.beutilbill, BEUtilBill)
+        beutilbill = get_utilbill_from_guid(self.guid)
+        self.assertIsInstance(beutilbill, UtilBill)
         # Process the message
         message_obj = self.handler.validate(message_obj)
         self.handler.handle(message_obj)
-        self.assertIsInstance(self.beutilbill, UtilBill)
+        beutilbill = get_utilbill_from_guid(self.guid)
+        self.assertIsInstance(beutilbill, BEUtilBill)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
