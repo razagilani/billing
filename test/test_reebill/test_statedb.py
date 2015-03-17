@@ -1,29 +1,15 @@
-'''Tests for ReeBill-specific data-access objects, including the database.
-Currently the only one is StateDB.
-'''
+from datetime import date, datetime
+
+from sqlalchemy.orm.exc import NoResultFound
+
+from test.setup_teardown import TestCaseWithSetup
+from core import init_config, init_model
+from core.model import Session, Address, Utility, Supplier, RateClass, \
+    UtilityAccount
+from reebill.state import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test.setup_teardown import init_logging, TestCaseWithSetup
-from core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBillCustomer
 
-init_logging()
-import unittest
-from datetime import date, datetime
-from sqlalchemy.orm.exc import NoResultFound
-from core import init_config, init_model
-from reebill import state
-from core.model import UtilBill, Session, Address
-from reebill.state import ReeBill
-
-billdb_config = {
-    'billpath': '/db-dev/skyline/bills/',
-    'database': 'skyline',
-    'utilitybillpath': '/db-dev/skyline/utilitybills/',
-    'collection': 'reebills',
-    'host': 'localhost',
-    'port': '27017'
-}
 
 class StateDBTest(TestCaseWithSetup):
 
@@ -282,5 +268,3 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
-if __name__ == '__main__':
-    unittest.main()
