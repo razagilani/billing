@@ -6,7 +6,7 @@ Ext.Ajax.on('requestexception', function (conn, response, options) {
 });
 
 Ext.application({
-    name: 'ReeBill', // TODO change
+    name: 'ReeBill',
     autoCreateViewport: true,
 
     paths: {'ReeBill': 'app'},
