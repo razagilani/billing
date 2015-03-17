@@ -24,7 +24,7 @@ from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
-from reebill.state import Session, UtilBill, \
+from reebill.reebill_model import Session, UtilBill, \
     Register, Address, ReeBillCustomer
 from core.model import Utility
 from core.bill_file_handler import BillFileHandler

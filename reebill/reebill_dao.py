@@ -12,8 +12,8 @@ from sqlalchemy.sql.expression import desc
 from exc import IssuedBillError, RegisterError, ProcessedBillError
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
-from reebill.state import ReeBill
-from reebill.state import ReeBillCustomer
+from reebill.reebill_model import ReeBill
+from reebill.reebill_model import ReeBillCustomer
 from util.units import ureg, convert_to_therms
 
 

@@ -12,7 +12,7 @@ from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
 from reebill.excel_export import Exporter
-from reebill.state import ReeBill, Payment
+from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 
