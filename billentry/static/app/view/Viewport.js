@@ -1,13 +1,13 @@
-Ext.define('ReeBill.view.Viewport', {
+Ext.define('BillEntry.view.Viewport', {
     extend: 'Ext.container.Viewport',
     layout: 'fit',
     componentCls: 'panel-noborder',
 
     requires: [
         'Ext.panel.PDF',
-        'ReeBill.view.accounts.Accounts',
-        'ReeBill.view.utilitybills.UtilityBills',
-        'ReeBill.view.charges.Charges'
+        'BillEntry.view.accounts.Accounts',
+        'BillEntry.view.utilitybills.UtilityBills',
+        'BillEntry.view.charges.Charges'
     ],
 
     initComponent: function() {

@@ -1,4 +1,4 @@
-Ext.define('ReeBill.controller.Viewer', {
+Ext.define('BillEntry.controller.Viewer', {
     extend: 'Ext.app.Controller',
 
     require: ['Ext.panel.PDF'],

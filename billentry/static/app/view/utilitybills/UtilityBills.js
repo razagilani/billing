@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.utilitybills.UtilityBills', {
+Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.utilityBills',
     store: 'UtilityBills',

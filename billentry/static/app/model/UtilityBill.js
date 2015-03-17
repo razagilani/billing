@@ -1,4 +1,4 @@
-Ext.define('ReeBill.model.UtilityBill', {
+Ext.define('BillEntry.model.UtilityBill', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'action', type: 'string'}, // Allows for other actions besides CRUD (e.g. 'render')
