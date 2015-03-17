@@ -3,6 +3,7 @@
 from datetime import datetime, date
 import unittest
 from json import loads
+from uuid import uuid5, NAMESPACE_DNS
 from flask import url_for
 from flask.ext.login import current_user
 from mock import Mock
@@ -11,6 +12,10 @@ from mock import Mock
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
+from sqlalchemy.orm.exc import NoResultFound
+from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
+from core.altitude import AltitudeBill, AltitudeGUID
+from mq import IncomingMessage
 from test import init_test_config
 init_test_config()
 
@@ -20,8 +25,10 @@ from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
-    Charge, Register, RateClass
+    Charge, Register, RateClass, Supplier
 from brokerage.brokerage_model import BrokerageAccount
+from mq.tests import create_mock_channel_method_props, \
+    create_channel_message_body
 from test.setup_teardown import TestCaseWithSetup
 
 
@@ -515,6 +522,77 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
+
+class TestUtilBillGUIDAMQP(TestCaseWithSetup):
+    def setUp(self):
+        super(TestUtilBillGUIDAMQP, self).setUp()
+
+        # parameters for real RabbitMQ connection are stored but never used so
+        # there is no actual connection
+        exchange_name, routing_key, amqp_connection_parameters, \
+                = create_amqp_conn_params()
+        self.handler = ConsumeUtilbillGuidsHandler(
+            exchange_name, routing_key, amqp_connection_parameters)
+
+        # We don't have to wait for the rabbitmq connection to close,
+        # since we're never instatiating a connection
+        self.handler._wait_on_close = 0
+
+        # these are for creating IncomingMessage objects for 'handler' to
+        # handle
+        _, method, props = create_mock_channel_method_props()
+        self.mock_method = method
+        self.mock_props = props
+
+        utility = Utility(name='utility', address=Address())
+        supplier = Supplier(name='supplier', address=Address())
+        utility_account = UtilityAccount(
+            'someone', '98989', utility, supplier,
+            RateClass(name='FB Test Rate Class', utility=utility,
+                      service='gas'), Address(), Address())
+        rate_class = RateClass(name='rate class', utility=utility,
+                                    service='gas')
+
+        s= Session()
+
+
+        utilbill = UtilBill(utility_account, utility,
+                            rate_class,
+                            supplier=supplier,
+                            period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
+
+        self.beutilbill = BEUtilBill.create_from_utilbill(utilbill)
+
+        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
+        self.altitude_bill = AltitudeBill(self.beutilbill, self.guid)
+        s.add(self.altitude_bill)
+
+        altitude_converter = Mock()
+        altitude_converter.get_utilbill_for_guid\
+            .return_value = self.guid
+
+    def test_process_utilbill_guid_with_no_matching_guid(self):
+        message = create_channel_message_body(dict(
+            message_version=[1, 0],
+            guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
+        # Process the message
+        message_obj = self.handler.validate(message_obj)
+        self.assertRaises(NoResultFound, self.handler.handle, message_obj)
+
+    def test_process_utilbill_guid_with_matching_guid(self):
+        message = create_channel_message_body(dict(
+            message_version=[1, 0],
+            guid=self.guid))
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
+        self.assertIsInstance(self.beutilbill, BEUtilBill)
+        # Process the message
+        message_obj = self.handler.validate(message_obj)
+        self.handler.handle(message_obj)
+        self.assertIsInstance(self.beutilbill, UtilBill)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
