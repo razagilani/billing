@@ -1,9 +1,8 @@
 from datetime import date, datetime
-import unittest
 
 from sqlalchemy.orm.exc import NoResultFound
-from reebill.reebill_model import ReeBillCustomer
 
+from reebill.reebill_model import ReeBillCustomer
 from test.setup_teardown import TestCaseWithSetup
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
@@ -11,19 +10,6 @@ from core.model import Session, Address, Utility, Supplier, RateClass, \
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 
-
-class ReeBillCustomerTest(unittest.TestCase):
-    """Unit test for ReeBillCustomer.
-    """
-    def setUp(self):
-        self.reebill_customer = ReeBillCustomer()
-
-    def test_tag(self):
-        self.assertEqual('', self.reebill_customer.tag)
-        self.reebill_customer.set_tag('a')
-        self.assertEqual('a', self.reebill_customer.get_tag())
-        self.reebill_customer.set_tag('b')
-        self.assertEqual('b', self.reebill_customer.get_tag())
 
 class StateDBTest(TestCaseWithSetup):
 
