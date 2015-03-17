@@ -1,14 +1,13 @@
 import logging
 from core.altitude import AltitudeGUID
-from mq import MessageHandler
-from mq import MessageHandlerManager
-from mq import REJECT_MESSAGE
+from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from pika import URLParameters
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match
 from billentry.common import replace_utilbill_with_beutilbill
 from core.model import Session, UtilBill
 from mq.schemas.validators import MessageVersion
+from core.altitude import AltitudeBill, get_utilbill_from_guid
 
 __all__ = [
     'consume_utilbill_guids_mq',
@@ -62,17 +61,13 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
         logger.debug("Got message: can't print it because datetime.date is not "
                      "JSON-serializable")
         guid = message['guid']
-        s = Session()
-        result = s.execute("select utilbill_id from altitude_bill where guid='%s'" % guid)
-        data = result.fetchone()
-        if data:
-            utilbill_id = data['utilbill_id']
-            utilbill = s.query(UtilBill).filter_by(id=utilbill_id).one()
-            if isinstance(s, UtilBill):
-                beutilbill= replace_utilbill_with_beutilbill(utilbill)
-                logger.info('Created %s' % beutilbill)
-        else:
+        try:
+            utilbill = get_utilbill_from_guid(guid)
+            if type(utilbill) is UtilBill:
+                replace_utilbill_with_beutilbill(utilbill)
+        except NoResultFound, e:
             logger.error('Utility Bill for guid %s not found' % guid)
+            raise e
 
 def consume_utilbill_guids_mq(
         exchange_name, routing_key, amqp_connection_parameters):
