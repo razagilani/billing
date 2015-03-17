@@ -1,7 +1,6 @@
-Ext.define('ReeBill.store.Accounts', {
+Ext.define('BillEntry.store.Accounts', {
     extend: 'Ext.data.Store',
-    requires: ['ReeBill.model.Account'],
-    model: 'ReeBill.model.Account',
+    model: 'BillEntry.model.Account',
 
     autoLoad: true,
     autoSync: true,

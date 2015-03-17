@@ -1,6 +1,5 @@
-Ext.define('ReeBill.view.accounts.Accounts', {
+Ext.define('BillEntry.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-    requires: [],
     title: 'Accounts',
     alias: 'widget.accounts',   
     store: 'Accounts',
