@@ -1,8 +1,8 @@
-Ext.define('BillEntry.store.Accounts', {
+Ext.define('BillEntry.store.Users', {
     extend: 'Ext.data.Store',
-    model: 'BillEntry.model.Account',
+    model: 'BillEntry.model.User',
 
-    autoLoad: true,
+    autoLoad: false,
     autoSync: true,
 
 	proxy: {
@@ -14,7 +14,7 @@ Ext.define('BillEntry.store.Accounts', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/utilitybills/accounts',
+        url: 'http://' + window.location.host + '/utilitybills/users_counts',
 
         reader: {
             type: 'json',
@@ -23,13 +23,13 @@ Ext.define('BillEntry.store.Accounts', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('Accounts'),
+            exception: utils.makeProxyExceptionHandler('Users'),
             scope: this
         }
 	},
 
     sorters: [{
-        property: 'account',
+        property: 'email',
         direction: 'DESC'
     }]
 

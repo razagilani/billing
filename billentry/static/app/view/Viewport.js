@@ -8,7 +8,8 @@ Ext.define('BillEntry.view.Viewport', {
         'BillEntry.view.accounts.Accounts',
         'BillEntry.view.utilitybills.UtilityBills',
         'BillEntry.view.charges.Charges',
-        'BillEntry.view.reports.Reports'
+        'BillEntry.view.reports.UserStatistic',
+        'BillEntry.view.reports.BillDetails'
     ],
 
     items: {
@@ -71,6 +72,26 @@ Ext.define('BillEntry.view.Viewport', {
                     id: 'chargesGrid',
                     region: 'south',
                     height: 150
+                }]
+            },{
+                xtype: 'panel',
+                name: 'reportsTab',
+                title: 'Reports',
+                layout: {
+                    type: 'vbox',
+                    align : 'stretch',
+                    pack  : 'start'
+                },
+                items: [{
+                    xtype: 'form',
+                    title: 'Select a Date/Time Range',
+                    height: 60
+                },{
+                    xtype: 'userStatistic',
+                    flex: 1
+                },{
+                    xtype: 'billDetails',
+                    flex: 1
                 }]
             }],
 

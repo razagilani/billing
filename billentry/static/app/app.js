@@ -24,7 +24,8 @@ Ext.application({
         'RateClasses',
         'Charges',
         'Units',
-        'UtilityBills'
+        'UtilityBills',
+        'Users'
     ],
 
     refs: [{
