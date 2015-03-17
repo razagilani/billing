@@ -92,7 +92,7 @@ def init_model(uri=None, schema_revision=None):
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
     Session.rollback()
     Session.remove()
-    engine = create_engine(uri)
+    engine = create_engine(uri, echo=config.get('db', 'echo'))
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
