@@ -537,29 +537,7 @@ class ReebillProcessor(object):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
         reebill = self.state_db.get_reebill(account, sequence)
-
-        # compute the bill to make sure it's up to date before issuing
-        if not reebill.processed:
-            self.compute_reebill(reebill.get_account(), reebill.sequence,
-                                 version=reebill.version)
-
-        reebill.issue_date = issue_date
-        reebill.due_date = (issue_date + timedelta(days=30)).date()
-
-        # set late charge to its final value (payments after this have no
-        # effect on late fee)
-        # TODO: should this be replaced with a call to compute_reebill to
-        # just make sure everything is up-to-date before issuing?
-        # https://www.pivotaltracker.com/story/show/36197985
-        reebill.late_charge = self.get_late_charge(reebill)
-
-        assert len(reebill._utilbill_reebills) == 1
-
-        # mark as issued in mysql
-        self.state_db.issue(account, sequence, issue_date=issue_date)
-
-        # store email recipient in the bill
-        reebill.email_recipient = reebill.reebill_customer.bill_email_recipient
+        reebill.issue(issue_date, self)
 
     def update_reebill_readings(self, account, sequence):
         '''Replace the readings of the reebill given by account, sequence
@@ -640,36 +618,20 @@ class ReebillProcessor(object):
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
             # The user has confirmed to issue unissued corrections.
-            sequences = [sequence for sequence, _, _
-                        in unissued_corrections]
+            sequences = [sequence for sequence, _, _ in unissued_corrections]
             total_adjustment = sum(adjustment
                         for _, _, adjustment in unissued_corrections)
             raise ConfirmAdjustment(sequences, total_adjustment)
         # Let's issue
-        if len(unissued_corrections) > 0:
-            assert apply_corrections is True
-            try:
-                self.issue_corrections(account, sequence)
-            except Exception as e:
-                self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                    account, sequence,
-                    e.__class__.__name__),) + e.args)
-                raise
         try:
-            session = Session()
-            reebill_object = (session.query(ReeBill)
-                    .join(ReeBillCustomer)
-                    .join(UtilityAccount)
-                    .filter(UtilityAccount.account==account)
-                    .filter(ReeBill.sequence==sequence)
-                    .order_by(desc(ReeBill.version)).first())
-            if not reebill_object.processed:
-                self.compute_reebill(account, sequence)
-            self.issue(account, sequence)
-        except Exception, e:
+            if len(unissued_corrections) > 0:
+                assert apply_corrections is True
+                self.issue_corrections(account, sequence)
+            else:
+                self.issue(account, sequence)
+        except Exception as e:
             self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                    account, sequence,
-                    e.__class__.__name__),) + e.args)
+                    account, sequence, e.__class__.__name__),) + e.args)
             raise
         # Let's mail!
         # Recepients can be a comma seperated list of email addresses
@@ -678,11 +640,8 @@ class ReebillProcessor(object):
             # in a test
             recipient_list = ['']
         else:
-            recipient_list = [rec.strip() for rec in
-                              recipients.split(',')]
-        self.mail_reebills(account, [sequence],
-                           recipient_list)
-        return reebill_object
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+        self.mail_reebills(account, [sequence], recipient_list)
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''

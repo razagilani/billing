@@ -179,37 +179,6 @@ class StateDBTest(TestCaseWithSetup):
         self.state_db.issue(acc, seq)
         self.assertEqual(2, self.state_db.max_issued_version(acc, seq))
 
-
-    def test_get_unissued_corrections(self):
-        session = Session()
-        # reebills 1-4, 1-3 issued
-        session.add(ReeBill(self.reebill_customer, 1))
-        session.add(ReeBill(self.reebill_customer, 2))
-        session.add(ReeBill(self.reebill_customer, 3))
-        self.state_db.issue('99999', 1)
-        self.state_db.issue('99999', 2)
-        self.state_db.issue('99999', 3)
-
-        # no unissued corrections yet
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # make corrections on 1 and 3
-        self.state_db.increment_version('99999', 1)
-        self.state_db.increment_version('99999', 3)
-        self.assertEquals([(1, 1), (3, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 3
-        self.state_db.issue('99999', 3)
-        self.assertEquals([(1, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 1
-        self.state_db.issue('99999', 1)
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
-
     def test_get_all_reebills_for_account(self):
         session = Session()
 

@@ -167,6 +167,7 @@ class ReeBillDAO(object):
             max_sequence = 0
         return max_sequence
 
+    # deprecated: do not use!
     def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.

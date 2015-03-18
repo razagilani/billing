@@ -1,6 +1,6 @@
 '''SQLAlchemy model classes for ReeBill-related database tables.
 '''
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from itertools import chain
 import traceback
 
@@ -371,6 +371,36 @@ class ReeBill(Base):
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
         return the_dict
+
+    def issue(self, issue_date, reebill_processor):
+        """Set the values of all fields for an issued bill. Does not actually
+        generate a file or send an email.
+
+        :param issue_date: datetime when this bill was issued (customer
+        should receive the email near this time because it is used to
+        determine the due date).
+        :param reebill_processor: ReeBillProcessor object, needed because
+        some of these values depend on other bills, and it does the queries
+        to get those values. However, because of old code that had no
+        encapsulation, 'reebill_processor' also does a lot of other things,
+        many of which should be moved into this method.
+        """
+        assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
+        assert self.issue_date is None
+        assert self.due_date is None
+
+        if not self.processed:
+            # a ton of attributes of this object get set in this method
+            reebill_processor.compute_reebill(
+                self.reebill_customer.get_account(), self.sequence)
+            self.compute_charges()
+            self.processed = True
+
+        self.late_charge = reebill_processor.get_late_charge(self)
+        self.email_recipient = self.reebill_customer.bill_email_recipient
+        self.issue_date = issue_date
+        self.due_date = (issue_date + timedelta(days=30)).date()
+        self.issued = True
 
 
 class UtilbillReebill(Base):
