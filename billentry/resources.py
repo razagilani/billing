@@ -296,6 +296,7 @@ class UtilBillCountForUserResource(BaseResource):
             utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
         rows = [{
                     'user_id': user.id,
+                    'email': user.email,
                     'count': count,
                     } for (user, count) in q.all()]
         return {'rows': rows, 'results': len(rows)}
