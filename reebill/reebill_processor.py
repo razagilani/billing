@@ -2,14 +2,16 @@ import os
 import traceback
 import re
 from datetime import datetime, timedelta
+from StringIO import StringIO
 
-from sqlalchemy.sql import desc, functions
-from sqlalchemy import not_, and_
+from sqlalchemy.sql import desc
+from sqlalchemy import not_
 from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
+from reebill.reebill_file_handler import SummaryFileGenerator
+from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
@@ -745,7 +747,27 @@ class ReebillProcessor(object):
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
-        
+
+    def issue_summary(self, customer_id):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(id=customer_id).one()
+        bills = s.query(ReeBill).filter(ReeBillCustomer.id == customer_id,
+                                    ReeBill.issued == False,
+                                    ReeBill.processed == True,
+                                    ReeBill.version == 0)
+        assert bills.count > 0
+        summary_file = StringIO()
+        SummaryFileGenerator.generate_summary_file(
+            bills.order_by(ReeBill.sequence).all(), summary_file)
+        merge_fields = {
+            'street': '',
+            'balance_due': sum(b.balance_due for b in bills.all()),
+            'bill_dates': '',
+            'last_bill': '',
+        }
+        self.mailer.mail(self, customer.bill_email_recipient, merge_fields,
+                         summary_file, 'summary.pdf', boundary=None)
+
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
