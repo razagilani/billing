@@ -1,9 +1,9 @@
-Ext.define('BillEntry.view.reports.UserStatistic', {
+Ext.define('BillEntry.view.reports.UserStatistics', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.userStatistic',
     title: 'User Statistics',
     store: 'Users',
-    
+
     //plugins: [
     //    Ext.create('Ext.grid.plugin.CellEditing', {
     //        clicksToEdit: 2,
@@ -24,7 +24,7 @@ Ext.define('BillEntry.view.reports.UserStatistic', {
     //            return 'utilbill-grid-unprocessed';
     //    }
     //},
-    
+
     columns: [{
         header: 'User',
         dataIndex: 'email',

@@ -14,7 +14,8 @@ Ext.application({
     controllers: [
         'UtilityBills',
         'Charges',
-        'Viewer'
+        'Viewer',
+        'Reports'
     ],
 
     stores: [
