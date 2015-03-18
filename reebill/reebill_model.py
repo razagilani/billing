@@ -415,7 +415,11 @@ class ReeBillCustomer(Base):
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
+
+    # identifies a group of accounts that belong to a particular owner,
+    # for the purpose of producing "bill summaries"
     tag = Column(String(1000), nullable=False, default='')
+
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship(
