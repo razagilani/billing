@@ -137,10 +137,8 @@ class ReebillProcessor(object):
                 payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN,
                         end=original_version.issue_date)
-            reebill.set_payments(payments)
+            reebill.set_payments(payments, 0)
             # obviously balances are 0
-            reebill.prior_balance = 0
-            reebill.balance_forward = 0
 
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
@@ -159,29 +157,20 @@ class ReebillProcessor(object):
                 # if predecessor's version 0 is issued, gather all payments from
                 # its issue date until version 0 issue date of current bill, or
                 # today if this bill has never been issued
-                if self.state_db.is_issued(account, reebill.sequence,
-                        version=0):
+                if original_version.issued:
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
                         end=original_version.issue_date)
                 else:
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date)
-                reebill.set_payments(payments)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
                 # assume there are none (all payments since last issue date
                 # go in the account's first unissued bill)
-                reebill.set_payments([])
-                assert reebill.payment_received == 0
-
-            reebill.prior_balance = predecessor.balance_due
-            reebill.balance_forward = predecessor.balance_due - \
-                  reebill.payment_received + reebill.total_adjustment
-
-        # include manually applied adjustment
-        reebill.balance_forward += reebill.manual_adjustment
+                payments = []
+            reebill.set_payments(payments, predecessor.balance_due)
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
