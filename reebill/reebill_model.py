@@ -336,7 +336,8 @@ class ReeBill(Base):
                                    self.payment_received +
                                    self.total_adjustment +
                                    self.manual_adjustment)
-
+        self.balance_due = self.balance_forward + self.ree_charge + \
+                           self.late_charge
 
     @property
     def total(self):
