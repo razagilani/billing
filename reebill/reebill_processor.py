@@ -114,6 +114,8 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence, version)
         reebill.compute_charges()
 
+        reebill.late_charge = self.get_late_charge(reebill) or 0
+
         original_version = self.state_db.get_original_version(reebill)
 
         # compute adjustment: this bill only gets an adjustment if it's the
@@ -172,13 +174,6 @@ class ReebillProcessor(object):
                 payments = []
             reebill.set_payments(payments, predecessor.balance_due)
 
-        # set late charge, if any (this will be None if the previous bill has
-        # not been issued, 0 before the previous bill's due date, and non-0
-        # after that)describe
-        lc = self.get_late_charge(reebill)
-        reebill.late_charge = lc or 0
-        reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
-                reebill.late_charge
         return reebill
 
     def roll_reebill(self, account, start_date=None):
