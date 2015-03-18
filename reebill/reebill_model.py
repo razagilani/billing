@@ -317,15 +317,26 @@ class ReeBill(Base):
         self.ree_savings = round(self.ree_value * self.discount_rate, 2)
 
 
-    def set_payments(self, payments):
+    def set_payments(self, payments, predecessor_balance_due):
         """Associate the given Payment objects with this bill and update the
-        value of "payment_received".
+        value of "payment_received" and payment-related derived values.
         """
         self.payments = []
         for payment in payments:
             payment.reebill_id = self.id
         self.payment_received = float(
             sum(payment.credit for payment in payments))
+
+        if self.sequence == 1:
+            self.prior_balance = 0
+            self.balance_forward = 0
+        else:
+            self.prior_balance = predecessor_balance_due
+            self.balance_forward = (predecessor_balance_due -
+                                   self.payment_received +
+                                   self.total_adjustment +
+                                   self.manual_adjustment)
+
 
     @property
     def total(self):
