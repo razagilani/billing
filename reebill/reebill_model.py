@@ -306,6 +306,16 @@ class ReeBill(Base):
             evaluated_charges[charge.rsi_binding] = evaluation
         self._replace_charges_with_evaluations(evaluated_charges)
 
+    def set_payments(self, payments):
+        """Associate the given Payment objects with this bill and update the
+        value of "payment_received".
+        """
+        self.payments = []
+        for payment in payments:
+            payment.reebill_id = self.id
+        self.payment_received = float(
+            sum(payment.credit for payment in payments))
+
     @property
     def total(self):
         '''The sum of all charges on this bill that do not come from other

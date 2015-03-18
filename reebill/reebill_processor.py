@@ -143,12 +143,11 @@ class ReebillProcessor(object):
             if present_v0_issue_date is None:
                 payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, payment_objects=True)
-                self.compute_reebill_payments(payments, reebill)
             else:
                 payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN, end=present_v0_issue_date,
                         payment_objects=True)
-                self.compute_reebill_payments(payments, reebill)
+            reebill.set_payments(payments)
             # obviously balances are 0
             reebill.prior_balance = 0
             reebill.balance_forward = 0
@@ -177,12 +176,10 @@ class ReebillProcessor(object):
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
                         end=present_v0_issue_date, payment_objects=True)
-                    self.compute_reebill_payments(payments, reebill)
                 else:
-                    payments = self.payment_dao. \
-                            get_total_payment_since(account,
-                            predecessor.issue_date, payment_objects=True)
-                    self.compute_reebill_payments(payments, reebill)
+                    payments = self.payment_dao.get_total_payment_since(
+                        account, predecessor.issue_date, payment_objects=True)
+                reebill.set_payments(payments)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
@@ -205,12 +202,6 @@ class ReebillProcessor(object):
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
         return reebill
-
-    def compute_reebill_payments(self, payments, reebill):
-        for payment in payments:
-            payment.reebill_id = reebill.id
-        reebill.payment_received = float(
-                sum(payment.credit for payment in payments))
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
