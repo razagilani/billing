@@ -114,6 +114,8 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence, version)
         reebill.compute_charges()
 
+        original_version = self.state_db.get_original_version(reebill)
+
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
         # (1) it's a version-0 bill, not a correction
@@ -128,15 +130,13 @@ class ReebillProcessor(object):
             # if any version of this bill has been issued, get payments up
             # until the issue date; otherwise get payments up until the
             # present.
-            present_v0_issue_date = self.state_db.get_reebill(
-                  account, sequence, version=0).issue_date
-            if present_v0_issue_date is None:
+            if original_version.issue_date is None:
                 payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN)
             else:
                 payments = self.payment_dao.get_total_payment_since(
                         account, MYSQLDB_DATETIME_MIN,
-                        end=present_v0_issue_date)
+                        end=original_version.issue_date)
             reebill.set_payments(payments)
             # obviously balances are 0
             reebill.prior_balance = 0
@@ -161,11 +161,9 @@ class ReebillProcessor(object):
                 # today if this bill has never been issued
                 if self.state_db.is_issued(account, reebill.sequence,
                         version=0):
-                    present_v0_issue_date = self.state_db.get_reebill(account,
-                            reebill.sequence, version=0).issue_date
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
-                        end=present_v0_issue_date)
+                        end=original_version.issue_date)
                 else:
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date)

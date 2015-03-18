@@ -115,6 +115,17 @@ class ReeBillDAO(object):
         session.add(new_reebill)
         return new_reebill
 
+    def get_original_version(self, reebill):
+        """Return a ReeBill object that is "the same bill" as the given one,
+        but has version 0, meaning it is not a corrected version.
+        """
+        result = Session().query(ReeBill).filter_by(
+            reebill_customer_id=reebill.reebill_customer_id,
+            sequence=reebill.sequence, version=0).one()
+        if reebill.version == 0:
+            assert result is reebill
+        return result
+
     def get_unissued_corrections(self, account):
         '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''
