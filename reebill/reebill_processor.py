@@ -140,10 +140,6 @@ class ReebillProcessor(object):
                         account, MYSQLDB_DATETIME_MIN,
                         end=original_version.issue_date)
             reebill.set_payments(payments, 0)
-            # obviously balances are 0
-
-            # NOTE 'calculate_statistics' is not called because statistics
-            # section should already be zeroed out
         else:
             predecessor = self.state_db.get_reebill(account,
                     reebill.sequence - 1, version=0)
