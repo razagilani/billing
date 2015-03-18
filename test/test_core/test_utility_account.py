@@ -12,7 +12,7 @@ from test.setup_teardown import TestCaseWithSetup
 from exc import RSIError, ProcessedBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import Payment, ReeBillCustomer
+from reebill.reebill_model import Payment, ReeBillCustomer
 
 class UtilityAccountTest(TestCase):
 

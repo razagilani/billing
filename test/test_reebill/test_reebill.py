@@ -3,7 +3,7 @@ from datetime import date
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBill, ReeBillCustomer
+from reebill.reebill_model import ReeBill, ReeBillCustomer
 from test.setup_teardown import TestCaseWithSetup
 
 

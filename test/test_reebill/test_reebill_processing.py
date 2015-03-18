@@ -21,7 +21,7 @@ from reebill.views import Views
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.state import ReeBill, UtilBill
+from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \

@@ -4,7 +4,7 @@ from sqlalchemy import and_
 
 from core.model import Session, UtilityAccount
 from exc import IssuedBillError
-from reebill.state import ReeBillCustomer, Payment
+from reebill.reebill_model import ReeBillCustomer, Payment
 
 
 class PaymentDAO(object):

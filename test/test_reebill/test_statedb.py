@@ -6,7 +6,7 @@ from test.setup_teardown import TestCaseWithSetup
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
-from reebill.state import ReeBill, ReeBillCustomer
+from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 
