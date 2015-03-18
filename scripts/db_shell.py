@@ -10,7 +10,8 @@ import IPython
 from core import init_config, init_model
 from core.model import *
 from core.altitude import *
-from reebill.state import *
+from reebill.reebill_model import *
+from billentry.billentry_model import *
 from brokerage.brokerage_model import *
 
 if __name__ == '__main__':

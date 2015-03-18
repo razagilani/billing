@@ -3,6 +3,8 @@
 This module's name comes from the recommended project structure at
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 If it gets big, it should become a multi-file module as shown there.
+            'due_date': IsoDatetime,
+            'email': user.email,
 """
 from flask.ext.bcrypt import Bcrypt
 from billentry.billentry_model import BEUtilBill
