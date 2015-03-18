@@ -124,9 +124,10 @@ class ReebillProcessor(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-        if reebill.sequence == 1:
-            reebill.total_adjustment = 0
+        predecessor = self.state_db.get_predecessor(reebill)
+        reebill.set_adjustment(predecessor, self)
 
+        if reebill.sequence == 1:
             # include all payments since the beginning of time, in case there
             # happen to be any.
             # if any version of this bill has been issued, get payments up
@@ -141,11 +142,6 @@ class ReebillProcessor(object):
                         end=original_version.issue_date)
             reebill.set_payments(payments, 0)
         else:
-            predecessor = self.state_db.get_reebill(account,
-                    reebill.sequence - 1, version=0)
-            if reebill.version == 0 and predecessor.issued:
-                reebill.total_adjustment = self.get_total_adjustment(account)
-
             # get payment_received: all payments between issue date of
             # predecessor's version 0 and issue date of current reebill's
             # version 0 (if current reebill is unissued, its version 0 has

@@ -126,6 +126,13 @@ class ReeBillDAO(object):
             assert result is reebill
         return result
 
+    def get_predecessor(self, reebill):
+        result = Session().query(ReeBill).filter_by(
+            reebill_customer_id=reebill.reebill_customer_id,
+            sequence=reebill.sequence - 1, version=0).first()
+        assert (result is None) == (reebill.sequence == 1)
+        return result
+
     def get_unissued_corrections(self, account):
         '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''
