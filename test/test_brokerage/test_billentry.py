@@ -585,12 +585,12 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
         beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, UtilBill)
+        assert type(beutilbill) is UtilBill
         # Process the message
         message_obj = self.handler.validate(message_obj)
         self.handler.handle(message_obj)
         beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, BEUtilBill)
+        assert type(beutilbill) is BEUtilBill
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
