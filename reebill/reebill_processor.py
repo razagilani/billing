@@ -111,18 +111,8 @@ class ReebillProcessor(object):
     def compute_reebill(self, account, sequence, version='max'):
         '''Loads, computes, and saves the reebill
         '''
-        reebill = self.state_db.get_reebill(account, sequence,
-                version)
-        reebill.check_editable()
+        reebill = self.state_db.get_reebill(account, sequence, version)
         reebill.compute_charges()
-        actual_total = reebill.get_total_actual_charges()
-
-        hypothetical_total = reebill.get_total_hypothetical_charges()
-        reebill.ree_value = hypothetical_total - actual_total
-        reebill.ree_charge = round(
-            reebill.ree_value * (1 - reebill.discount_rate), 2)
-        reebill.ree_savings = round(reebill.ree_value * reebill.discount_rate,
-                                    2)
 
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
@@ -142,11 +132,11 @@ class ReebillProcessor(object):
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
                 payments = self.payment_dao.get_total_payment_since(
-                        account, MYSQLDB_DATETIME_MIN, payment_objects=True)
+                        account, MYSQLDB_DATETIME_MIN)
             else:
                 payments = self.payment_dao.get_total_payment_since(
-                        account, MYSQLDB_DATETIME_MIN, end=present_v0_issue_date,
-                        payment_objects=True)
+                        account, MYSQLDB_DATETIME_MIN,
+                        end=present_v0_issue_date)
             reebill.set_payments(payments)
             # obviously balances are 0
             reebill.prior_balance = 0
@@ -175,17 +165,18 @@ class ReebillProcessor(object):
                             reebill.sequence, version=0).issue_date
                     payments = self.payment_dao.get_total_payment_since(
                         account, predecessor.issue_date,
-                        end=present_v0_issue_date, payment_objects=True)
+                        end=present_v0_issue_date)
                 else:
                     payments = self.payment_dao.get_total_payment_since(
-                        account, predecessor.issue_date, payment_objects=True)
+                        account, predecessor.issue_date)
                 reebill.set_payments(payments)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
                 # assume there are none (all payments since last issue date
                 # go in the account's first unissued bill)
-                reebill.payment_received = 0
+                reebill.set_payments([])
+                assert reebill.payment_received == 0
 
             reebill.prior_balance = predecessor.balance_due
             reebill.balance_forward = predecessor.balance_due - \
@@ -414,9 +405,10 @@ class ReebillProcessor(object):
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.reebill_customer == reebill_customer)\
                 .filter(ReeBill.sequence == seq - 1).one()[0]
-        source_balance = min_balance_due - \
-                self.payment_dao.get_total_payment_since(acc,
-                predecessor0.issue_date)
+        total_payment = sum(p.credit for p in
+                            self.payment_dao.get_total_payment_since(
+                                acc, predecessor0.issue_date))
+        source_balance = min_balance_due - total_payment
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
 

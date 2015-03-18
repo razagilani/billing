@@ -278,6 +278,8 @@ class ReeBill(Base):
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
         updates reebill charges."""
+        self.check_editable()
+
         # make sure the utility bill charges are up to date by recomputing them
         # (if the bill is already processed, you can't recompute the charges but
         # it should not be necessary to recompute the charges anyway.)
@@ -305,6 +307,15 @@ class ReeBill(Base):
             context[charge.rsi_binding] = evaluation
             evaluated_charges[charge.rsi_binding] = evaluation
         self._replace_charges_with_evaluations(evaluated_charges)
+
+        # update the various derived values that are based on charges
+        actual_total = self.get_total_actual_charges()
+        hypothetical_total = self.get_total_hypothetical_charges()
+        self.ree_value = hypothetical_total - actual_total
+        self.ree_charge = round(
+            self.ree_value * (1 - self.discount_rate), 2)
+        self.ree_savings = round(self.ree_value * self.discount_rate, 2)
+
 
     def set_payments(self, payments):
         """Associate the given Payment objects with this bill and update the
