@@ -122,6 +122,7 @@ class BaseResource(Resource):
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
             'supply_choice_id': String,
+            'discriminator': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField
@@ -151,7 +152,9 @@ class AccountResource(BaseResource):
             'utility_account_number': String(attribute='account_number'),
             'utility': String(attribute='fb_utility'),
             'service_address': CallableField(String(),
-                                             attribute='get_service_address')
+                                             attribute='get_service_address'),
+            'bills_to_be_entered': CallableField(Boolean(),
+                                                 attribute='account_has_bills_for_data_entry')
         })
 
 class UtilBillListResource(BaseResource):

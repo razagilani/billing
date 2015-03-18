@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
+
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     ProcessedBillError, NotProcessable
 
@@ -400,6 +401,17 @@ class UtilityAccount(Base):
         ub = session.query(UtilBill)\
             .filter(UtilBill.utility_account_id == self.id).first()
         return self.fb_service_address if ub is None else ub.service_address
+
+    def account_has_bills_for_data_entry(self):
+        from billentry.billentry_model import BEUtilBill
+        session = Session.object_session(self)
+        all_bills = session.query(UtilBill).\
+            filter(UtilBill.utility_account_id == self.id).all()
+        for bill in all_bills:
+            if type(bill) is BEUtilBill:
+                return True
+        return False
+
 
 
 class UtilBill(Base):
