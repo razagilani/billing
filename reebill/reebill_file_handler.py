@@ -1344,4 +1344,6 @@ class SummaryFileGenerator(object):
             input_file = self._reebill_file_handler.get_file(reebill)
             self._pdf_concatenator.append(input_file)
             input_file.close()
+        # TODO: eventually there may be extra pages not taken from the bill
+        # PDFs
         self._pdf_concatenator.write_result(output_file)
