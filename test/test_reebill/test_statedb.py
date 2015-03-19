@@ -2,11 +2,11 @@ from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
 
+from reebill.reebill_model import ReeBillCustomer, ReeBill
 from test.setup_teardown import TestCaseWithSetup
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
-from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 

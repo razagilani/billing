@@ -18,4 +18,5 @@ log = logging.getLogger(__name__)
 def upgrade():
     log.info('Beginning upgrade to version 26')
 
-    init_model(schema_revision='52a7069819cb')
+    alembic_upgrade('23a21392b372')
+    init_model(schema_revision='23a21392b372')
