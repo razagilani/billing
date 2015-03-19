@@ -12,20 +12,21 @@ from mock import Mock
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from sqlalchemy.orm.exc import NoResultFound
-from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
-from core.altitude import AltitudeBill, AltitudeGUID, get_utilbill_from_guid
-from mq import IncomingMessage
 from test import init_test_config
 init_test_config()
 
+from sqlalchemy.orm.exc import NoResultFound
+from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
+from mq import IncomingMessage
+
 import billentry
+from billentry import common
 from billentry.billentry_model import BillEntryUser, BEUtilBill
 from billentry.common import replace_utilbill_with_beutilbill
 
-from core import init_model
+from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
-    Charge, Register, RateClass, Supplier
+    Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
@@ -523,7 +524,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
-class TestUtilBillGUIDAMQP(TestCaseWithSetup):
+class TestUtilBillGUIDAMQP(unittest.TestCase):
     def setUp(self):
         super(TestUtilBillGUIDAMQP, self).setUp()
 
@@ -531,9 +532,16 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         # there is no actual connection
         exchange_name, routing_key, amqp_connection_parameters, \
                 = create_amqp_conn_params()
+
+        self.utilbill = Mock(autospec=UtilBill)
+        self.utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        self.core_altitude_module = Mock(autospec=altitude)
+        self.billentry_common_module = Mock(autospec=common)
+        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
+
         self.handler = ConsumeUtilbillGuidsHandler(
             exchange_name, routing_key, amqp_connection_parameters,
-            core_altitude_module=Mock(), billentry_common_module=Mock())
+            self.core_altitude_module, self.billentry_common_module)
 
         # We don't have to wait for the rabbitmq connection to close,
         # since we're never instatiating a connection
@@ -545,39 +553,15 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         self.mock_method = method
         self.mock_props = props
 
-        utility = Utility(name='utility', address=Address())
-        supplier = Supplier(name='supplier', address=Address())
-        utility_account = UtilityAccount(
-            'someone', '98989', utility, supplier,
-            RateClass(name='FB Test Rate Class', utility=utility,
-                      service='gas'), Address(), Address())
-        rate_class = RateClass(name='rate class', utility=utility,
-                                    service='gas')
-
-        s= Session()
-
-
-        self.utilbill = UtilBill(utility_account, utility,
-                            rate_class,
-                            supplier=supplier,
-                            period_start=date(2000, 1, 1),
-                            period_end=date(2000, 2, 1))
-
-
-        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
-        self.altitude_bill = AltitudeBill(self.utilbill, self.guid)
-        s.add(self.altitude_bill)
-
-
     def test_process_utilbill_guid_with_no_matching_guid(self):
         message = create_channel_message_body(dict(
             message_version=[1, 0],
             guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        # Process the message
-        message_obj = self.handler.validate(message_obj)
+        self.core_altitude_module.get_utilbill_from_guid.side_effect = NoResultFound
         self.assertRaises(NoResultFound, self.handler.handle, message_obj)
+        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls([])
 
     def test_process_utilbill_guid_with_matching_guid(self):
         message = create_channel_message_body(dict(
@@ -585,14 +569,10 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
             guid=self.guid))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, UtilBill)
-        # Process the message
-        message_obj = self.handler.validate(message_obj)
+        self.core_altitude_module.get_utilbill_from_guid.return_value = self.utilbill
         self.handler.handle(message_obj)
-        beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, BEUtilBill)
-
+        self.billentry_common_module.replace_utilbill_with_beutilbill\
+                .assert_called_once_with(self.utilbill)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
