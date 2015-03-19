@@ -761,6 +761,7 @@ class ReebillProcessor(object):
         sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
         sfg.generate_summary_file(bills.order_by(ReeBill.sequence).all(),
                                   summary_file)
+        summary_file.seek(0)
         merge_fields = {
             'street': '',
             'balance_due': sum(b.balance_due for b in bills.all()),
