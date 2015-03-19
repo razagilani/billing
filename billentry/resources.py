@@ -1,14 +1,18 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
+from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
+from flask.ext.login import current_user
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
+from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
+from billentry.common import replace_utilbill_with_beutilbill
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
@@ -273,6 +277,25 @@ class RateClassesResource(BaseResource):
             'name': String,
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
+
+class UtilBillToggleEnteredState(BaseResource):
+
+    def put(self, id):
+        parser = id_parser.copy()
+        parser.add_argument('entered', type=boolean, required=True)
+        args = parser.parse_args()
+        s = Session()
+        utilbill = s.query(UtilBill).filter_by(id=id).first()
+        if args['entered']:
+            if type(utilbill) is UtilBill:
+                utilbill= replace_utilbill_with_beutilbill(utilbill)
+            utilbill.enter(current_user, datetime.now.utc)
+        else:
+            assert type(utilbill) is BEUtilBill
+            utilbill.un_enter()
+        s.commit()
+        return {'rows': marshal(utilbill, self.utilbill_fields), 'results': 1}
+
 
 class UtilBillCountForUserResource(BaseResource):
 

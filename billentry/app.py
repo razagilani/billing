@@ -326,6 +326,8 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
+api.add_resource(resources.UtilBillToggleEnteredState,
+                 '/utilitybills/toggelestate/<int:id>')
 api.add_resource(resources.UtilBillListForUserResourece,
                  '/utilitybills/user_utilitybills/<int:id>')
 
