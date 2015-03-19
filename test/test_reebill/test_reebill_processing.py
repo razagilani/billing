@@ -21,8 +21,8 @@ from reebill.views import Views
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill
-from core.model import UtilityAccount, Session
+from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer
+from core.model import UtilityAccount, Session, Address
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
@@ -165,7 +165,7 @@ def do_setup(self):
             'primus': '1788 Massachusetts Ave.',
         },
     ])
-    bill_mailer = Mock()
+    self.mailer = Mock()
 
     self.temp_dir = TempDirectory()
     reebill_file_handler = ReebillFileHandler(
@@ -181,7 +181,7 @@ def do_setup(self):
     self.views = Views(self.state_db, self.billupload, self.nexus_util,
                        journal_dao)
     self.reebill_processor = ReebillProcessor(
-        self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+        self.state_db, self.payment_dao, self.nexus_util, self.mailer,
         reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
     # example data to be used in most tests below
@@ -807,6 +807,12 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
         #self.utilbill.processed = True
+        self.utility = self.utilbill.utility
+        s = Session()
+        self.utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=self.utility_account.id).one()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -1155,7 +1161,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         '''Tests issuing and mailing of processed reebills.'''
         acc = self.account
         # two utilbills, with reebills
-        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.bill_mailer = self.mailer
         self.reebill_processor.reebill_file_handler = Mock()
         self.reebill_processor.reebill_file_handler.render_max_version \
             .return_value = 1
@@ -2076,5 +2082,33 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_summary(self):
+        # setup: 2 different customers are needed so another one must be created
+        self.utilbill.processed = True
+        ua2 = UtilityAccount('', '88888', self.utility, None, None, Address(),
+                             Address())
+        customer2 = ReeBillCustomer(utility_account=ua2, name='')
+        utilbill2 = self.utilbill.clone()
+        utilbill2.utility = self.utility
+        utilbill2.registers = [self.utilbill.registers[0].clone()]
+        utilbill2.billing_address = utilbill2.service_address = Address()
+        utilbill2.utility_account = ua2
+        Session().add_all([ua2, customer2, utilbill2])
+
+        # set "tag" for the two customers
+        tag = 'tag'
+        self.customer.set_tag(tag)
+        customer2.set_tag(tag)
+
+        # create two reebills for two different customers
+        self.reebill_processor.roll_reebill(
+            self.account, start_date=self.utilbill.period_start)
+        self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
+                                            start_date=utilbill2.period_start)
+
+        # issue summary
+        email_addr = 'example@example.com'
+        self.reebill_processor.issue_summary(tag, email_addr)
+
+        # don't care about email details
+        self.mailer.mail.assert_called()

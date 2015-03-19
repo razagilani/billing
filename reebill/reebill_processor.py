@@ -16,6 +16,7 @@ from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from util.pdf import PDFConcatenator
 
 
 class ReebillProcessor(object):
@@ -748,24 +749,25 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
-    def issue_summary(self, customer_id):
+    def issue_summary(self, customer_tag, recipient):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(id=customer_id).one()
-        bills = s.query(ReeBill).filter(ReeBillCustomer.id == customer_id,
-                                    ReeBill.issued == False,
-                                    ReeBill.processed == True,
-                                    ReeBill.version == 0)
+        bills = s.query(ReeBill).join(ReeBillCustomer).filter(
+            ReeBillCustomer.tag == customer_tag,
+            ReeBill.issued == False,
+            ReeBill.processed == True,
+            ReeBill.version == 0)
         assert bills.count > 0
         summary_file = StringIO()
-        SummaryFileGenerator.generate_summary_file(
-            bills.order_by(ReeBill.sequence).all(), summary_file)
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(bills.order_by(ReeBill.sequence).all(),
+                                  summary_file)
         merge_fields = {
             'street': '',
             'balance_due': sum(b.balance_due for b in bills.all()),
             'bill_dates': '',
             'last_bill': '',
         }
-        self.mailer.mail(self, customer.bill_email_recipient, merge_fields,
+        self.bill_mailer.mail(self, recipient, merge_fields,
                          summary_file, 'summary.pdf', boundary=None)
 
     def toggle_reebill_processed(self, account, sequence,
