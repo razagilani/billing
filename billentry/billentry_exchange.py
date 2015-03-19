@@ -36,7 +36,6 @@ def create_amqp_conn_params():
     return (exchange_name, routing_key, amqp_connection_parameters)
 
 
-
 class ConsumeUtilbillGuidsHandler(MessageHandler):
     on_error = REJECT_MESSAGE
 
@@ -66,7 +65,7 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
         guid = message['guid']
         try:
             utilbill = self.core_altitude_module.get_utilbill_from_guid(guid)
-            if type(utilbill) is UtilBill:
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
                 self.billentry_common_module.\
                     replace_utilbill_with_beutilbill(utilbill)
         except NoResultFound:
