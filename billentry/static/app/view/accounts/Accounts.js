@@ -51,34 +51,34 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         items: utils.makeGridFilterTextField('service_address')
     }],
     dockedItems: [
-			{
-				xtype: 'toolbar',
-				dock: 'bottom',
-				items: [
-				{
-					xtype: 'combo',
-                    name: 'accountsFilter',
-                    fieldLabel: 'Filter',
-                    labelWidth: 50,
-                    width: 400,
-                    value: '',
-                    editable: false,
-                    store: 'AccountsFilter',
-                    triggerAction: 'all',
-                    valueField: 'value',
-                    displayField: 'label',
-                    forceSelection: true,
-                    listeners:{
-						scope: this,
-						'select': function(combo, record, index) {
-							var g = combo.findParentByType('grid');
-                            g.getStore().clearFilter();
-                            if (combo.getValue() == 'enter_bills')
-							    g.getStore().filter('bills_to_be_entered', true);
-                            else if(combo.getValue() == 'entered_bills')
-                                g.getStore().filter('bills_to_be_entered', false);
-	                    }
-					}
-			   }]
-			}]
+    {
+        xtype: 'toolbar',
+        dock: 'bottom',
+        items: [
+        {
+            xtype: 'combo',
+            name: 'accountsFilter',
+            fieldLabel: 'Filter',
+            labelWidth: 50,
+            width: 400,
+            value: '',
+            editable: false,
+            store: 'AccountsFilter',
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'label',
+            forceSelection: true,
+            listeners:{
+                scope: this,
+                'select': function(combo, record, index) {
+                    var g = combo.findParentByType('grid');
+                    g.getStore().clearFilter();
+                    if (combo.getValue() == 'enter_bills')
+                        g.getStore().filter('bills_to_be_entered', true);
+                    else if(combo.getValue() == 'entered_bills')
+                        g.getStore().filter('bills_to_be_entered', false);
+                }
+            }
+       }]
+    }]
 });
