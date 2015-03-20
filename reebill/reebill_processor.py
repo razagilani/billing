@@ -676,7 +676,7 @@ class ReebillProcessor(object):
             ReeBill.issued == False,
             ReeBill.processed == True,
             ReeBill.version == 0)
-        assert bills.count > 0
+        assert bills.count() > 0
         summary_file = StringIO()
         sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
         sfg.generate_summary_file(bills.order_by(ReeBill.sequence).all(),
