@@ -162,9 +162,7 @@ class ReebillFileHandlerTest(TestCase):
 
 
 class SummaryFileGeneratorTest(TestCase):
-    """Test for SummaryFileGenerator. There is no effective way to decouple
-    SummaryFileGenerator from the filesystem, so this actually writes files.
-    However, it does not need to access the database.
+    """Unit test for SummaryFileGenerator.
     """
     def setUp(self):
         self.reebill_1 =Mock(autospec=ReeBill)
