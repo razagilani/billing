@@ -29,7 +29,8 @@ class TestPDFConcatenator(TestCase):
         hash = sha1(out.read()).hexdigest()
         self.assertEqual('dd57b30d125497feb4db1595ea644248f4986911', hash)
 
+        # files get closed when PDFConcatenator is deleted
         self.assertFalse(any(f.closed for f in in_files))
-        self.pdf_concatenator.close_input_files()
+        del self.pdf_concatenator
         self.assertTrue(all(f.closed for f in in_files))
 
