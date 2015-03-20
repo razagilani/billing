@@ -12,8 +12,6 @@ from mock import Mock
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from core.utilbill_loader import UtilBillLoader
-from exc import ProcessedBillError
 from test import init_test_config
 init_test_config()
 
