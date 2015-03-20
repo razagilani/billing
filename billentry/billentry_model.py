@@ -187,7 +187,7 @@ class BEUtilBill(UtilBill):
         return self.processed or (self.billentry_date is not None)
 
     def editable(self):
-        if self.processed or self.is_entered():
+        if self.is_entered():
             return False
         return True
 
