@@ -1338,12 +1338,16 @@ class SummaryFileGenerator(object):
         :param output_path: location of the summary file. (Unfortunately,
         a file object can't be used because of ReportLab.)
         """
+        # must have at least 1 element (it seems that boolean-izing is the
+        # only way to check if an iterator is empty)
+        assert reebills
+
         for reebill in reebills:
             # write every bill to a file, read it back again, and append it
             self._reebill_file_handler.render(reebill)
             input_file = self._reebill_file_handler.get_file(reebill)
-
             self._pdf_concatenator.append(input_file)
+
         # TODO: eventually there may be extra pages not taken from the bill
         # PDFs
         self._pdf_concatenator.write_result(output_file)
