@@ -2,19 +2,36 @@
 """
 import datetime
 import bcrypt
+from flask.ext.login import UserMixin
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     inspect
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, backref
 
-from core.model import Base, UtilBill
+from core.model import Base, UtilBill, Session
 
 
-
-class BillEntryUser(Base):
+class BillEntryUser(Base, UserMixin):
     """Placeholder for table for users of the BillEntry application.
     """
     __tablename__ = 'billentry_user'
+
+    _anonymous_user = None
+
+    @classmethod
+    def get_anonymous_user(cls):
+        """Return the anonymous user, which should only be used when
+        authentication is disabled.
+        """
+        from core import config
+        # the anonymous user should never be created when authentication is
+        # turned on
+        assert config.get('billentry', 'disable_authentication') == True
+        if cls._anonymous_user is None:
+            cls._anonymous_user = BillEntryUser(email='anonymous@example.com')
+            cls._anonymous_user.is_anonymous = lambda self: True
+        return cls._anonymous_user
+
     id = Column(Integer, primary_key=True)
     password = Column(String(60), nullable=False)
     email = Column(String(50),unique=True, index=True, nullable=False)
@@ -25,7 +42,6 @@ class BillEntryUser(Base):
     # to "role" attribute
     roles = association_proxy('billentry_role_user', 'billentry_role')
 
-
     def __init__(self, email='', password=''):
         self.email = email
         self.password = self.get_hashed_password(password)
@@ -35,7 +51,6 @@ class BillEntryUser(Base):
         # Hash a password for the first time
         #   (Using bcrypt, the salt is saved into the hash itself)
         return bcrypt.hashpw(plain_text_password, bcrypt.gensalt(10))
-
 
     def is_authenticated(self):
         """Return True if the user is authenticated."""
@@ -54,7 +69,6 @@ class BillEntryUser(Base):
 
     def __repr__(self):
         return '<User %s>' % self.email
-
 
 class RoleBEUser(Base):
     '''Class corresponding to the "roles_user" table which represents the
@@ -147,7 +161,7 @@ class BEUtilBill(UtilBill):
         """
         assert not self.is_entered()
         self.billentry_date = date
-        self.billentry_user = user
+        self.billentry_user = None if user.is_anonymous() else user
 
     def un_enter(self):
         """Mark an "entered" bill as an "un-entered" by clearing data about
@@ -179,10 +193,10 @@ class BEUtilBill(UtilBill):
         - existence and 'rsi_binding' of supply charges
         - 'target_total' of supply charges
         """
-        # consistency check: all values must be either None or filled in
-        entry_values = (self.billentry_date, self.billentry_user)
-        assert all(x is None for x in entry_values) or all(
-            x is not None for x in entry_values)
+        # consistency check: normally all values must be either None or
+        # filled in, but 'billentry_user' will be None when the user is
+        # anonymous.
+        assert self.billentry_user is None or self.billentry_date is not None
 
         return self.processed or (self.billentry_date is not None)
 
