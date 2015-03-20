@@ -110,11 +110,8 @@ class AltitudeBill(Base):
 
 # conversion functions: look up billing entities via Altitude GUIDs
 def _altitude_to_billing(altitude_class, billing_class):
-    try:
-        return lambda guid: Session().query(billing_class).join(
-            altitude_class).filter(altitude_class.guid==guid).one()
-    except NoResultFound, e:
-        raise e
+    return lambda guid: Session().query(billing_class).join(
+        altitude_class).filter(altitude_class.guid==guid).one()
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
 get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
 get_utilbill_from_guid = _altitude_to_billing(AltitudeBill, UtilBill)

@@ -11,7 +11,7 @@ from testfixtures import TempDirectory
 
 from core.model import Address, UtilBill, \
     Register, UtilityAccount
-from reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
+from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
 from reebill.reebill_file_handler import ReebillFileHandler
 
 class ReebillFileHandlerTest(TestCase):

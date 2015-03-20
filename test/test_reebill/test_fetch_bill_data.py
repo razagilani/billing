@@ -8,7 +8,7 @@ from core.model import Utility
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from reebill.state import ReeBill, UtilBill, Address, \
+from reebill.reebill_model import ReeBill, UtilBill, Address, \
     Register, Reading, ReeBillCustomer
 from core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
