@@ -1,6 +1,6 @@
 '''SQLAlchemy model classes for ReeBill-related database tables.
 '''
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from itertools import chain
 import traceback
 
@@ -278,6 +278,8 @@ class ReeBill(Base):
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
         updates reebill charges."""
+        self.check_editable()
+
         # make sure the utility bill charges are up to date by recomputing them
         # (if the bill is already processed, you can't recompute the charges but
         # it should not be necessary to recompute the charges anyway.)
@@ -305,6 +307,37 @@ class ReeBill(Base):
             context[charge.rsi_binding] = evaluation
             evaluated_charges[charge.rsi_binding] = evaluation
         self._replace_charges_with_evaluations(evaluated_charges)
+
+        # update the various derived values that are based on charges
+        actual_total = self.get_total_actual_charges()
+        hypothetical_total = self.get_total_hypothetical_charges()
+        self.ree_value = hypothetical_total - actual_total
+        self.ree_charge = round(
+            self.ree_value * (1 - self.discount_rate), 2)
+        self.ree_savings = round(self.ree_value * self.discount_rate, 2)
+
+
+    def set_payments(self, payments, predecessor_balance_due):
+        """Associate the given Payment objects with this bill and update the
+        value of "payment_received" and payment-related derived values.
+        """
+        self.payments = []
+        for payment in payments:
+            payment.reebill_id = self.id
+        self.payment_received = float(
+            sum(payment.credit for payment in payments))
+
+        if self.sequence == 1:
+            self.prior_balance = 0
+            self.balance_forward = 0
+        else:
+            self.prior_balance = predecessor_balance_due
+            self.balance_forward = (predecessor_balance_due -
+                                   self.payment_received +
+                                   self.total_adjustment +
+                                   self.manual_adjustment)
+        self.balance_due = self.balance_forward + self.ree_charge + \
+                           self.late_charge
 
     @property
     def total(self):
@@ -371,6 +404,36 @@ class ReeBill(Base):
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
         return the_dict
+
+    def issue(self, issue_date, reebill_processor):
+        """Set the values of all fields for an issued bill. Does not actually
+        generate a file or send an email.
+
+        :param issue_date: datetime when this bill was issued (customer
+        should receive the email near this time because it is used to
+        determine the due date).
+        :param reebill_processor: ReeBillProcessor object, needed because
+        some of these values depend on other bills, and it does the queries
+        to get those values. However, because of old code that had no
+        encapsulation, 'reebill_processor' also does a lot of other things,
+        many of which should be moved into this method.
+        """
+        assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
+        assert self.issue_date is None
+        assert self.due_date is None
+
+        if not self.processed:
+            # a ton of attributes of this object get set in this method
+            reebill_processor.compute_reebill(
+                self.reebill_customer.get_account(), self.sequence)
+            self.compute_charges()
+            self.processed = True
+
+        self.late_charge = reebill_processor.get_late_charge(self)
+        self.email_recipient = self.reebill_customer.bill_email_recipient
+        self.issue_date = issue_date
+        self.due_date = (issue_date + timedelta(days=30)).date()
+        self.issued = True
 
 
 class UtilbillReebill(Base):
