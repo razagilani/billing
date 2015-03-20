@@ -21,10 +21,15 @@ class TestPDFConcatenator(TestCase):
         """Concatenate the example file with itself.
         """
         out = StringIO()
-        self.pdf_concatenator.append(StringIO(self.input_pdf))
-        self.pdf_concatenator.append(StringIO(self.input_pdf))
+        in_files = [StringIO(self.input_pdf), StringIO(self.input_pdf)]
+        self.pdf_concatenator.append(in_files[0])
+        self.pdf_concatenator.append(in_files[1])
         self.pdf_concatenator.write_result(out)
         out.seek(0)
         hash = sha1(out.read()).hexdigest()
         self.assertEqual('dd57b30d125497feb4db1595ea644248f4986911', hash)
+
+        self.assertFalse(any(f.closed for f in in_files))
+        self.pdf_concatenator.close_input_files()
+        self.assertTrue(all(f.closed for f in in_files))
 
