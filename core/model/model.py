@@ -402,17 +402,6 @@ class UtilityAccount(Base):
             .filter(UtilBill.utility_account_id == self.id).first()
         return self.fb_service_address if ub is None else ub.service_address
 
-    def account_has_bills_for_data_entry(self):
-        from billentry.billentry_model import BEUtilBill
-        session = Session.object_session(self)
-        all_bills = session.query(UtilBill).\
-            filter(UtilBill.utility_account_id == self.id).all()
-        for bill in all_bills:
-            if type(bill) is BEUtilBill:
-                return True
-        return False
-
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -486,8 +475,8 @@ class UtilBill(Base):
     # be added to the session after the file upload succeeded (because in a
     # test, there is no way to check that the UtilBill was not inserted into
     # the database because the transaction was rolled back).
-    utility_account = relationship("UtilityAccount", backref=backref('utilbill',
-            order_by=id, cascade='delete'))
+    utility_account = relationship("UtilityAccount", backref=backref(
+        'utilbills', order_by=id, cascade='delete'))
 
     # the 'supplier' attribute should not move to UtilityAccount because
     # it can change from one bill to the next.
