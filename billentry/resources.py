@@ -122,7 +122,6 @@ class BaseResource(Resource):
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
             'supply_choice_id': String,
-            'discriminator': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField
