@@ -325,7 +325,11 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
             ))
-
+        # this request is being made using a different content-type because
+        # with the default content-type of form-urlencoded bool False
+        # was interpreted as a string and it was evaluating to True on the
+        # server. Also in out app, the content-type is application/json so
+        # we should probably update all our test code to use application/json
         self.assertEqual(500, rv.status_code)
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
             data=json.dumps(dict(
