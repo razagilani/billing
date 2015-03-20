@@ -21,7 +21,8 @@ init_test_config()
 
 import billentry
 from billentry.billentry_model import BillEntryUser, BEUtilBill
-from billentry.common import replace_utilbill_with_beutilbill
+from billentry.common import replace_utilbill_with_beutilbill, \
+    account_has_bills_for_data_entry
 
 from core import init_model
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
@@ -522,6 +523,24 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
+
+class TestAccountHasBillsForDataEntry(unittest.TestCase):
+
+    def test_account_has_bills_for_data_entry(self):
+        utility_account = Mock(autospec=UtilityAccount)
+        regular_utilbill = Mock(autospec=UtilBill)
+        regular_utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        beutilbill = Mock(autospec=BEUtilBill)
+        beutilbill.discriminator = BEUtilBill.POLYMORPHIC_IDENTITY
+
+        utility_account.utilbills = []
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill]
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill, beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
 class TestUtilBillGUIDAMQP(TestCaseWithSetup):
     def setUp(self):

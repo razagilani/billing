@@ -413,7 +413,6 @@ class UtilityAccount(Base):
         return False
 
 
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 

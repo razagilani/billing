@@ -9,6 +9,7 @@ from sqlalchemy import desc, and_, func
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
+from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
@@ -146,16 +147,15 @@ class AccountResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
             UtilityAccount.account).all()
-        return marshal(accounts, {
+        return [marshal(account, {
             'id': Integer,
             'account': String,
             'utility_account_number': String(attribute='account_number'),
             'utility': String(attribute='fb_utility'),
             'service_address': CallableField(String(),
                                              attribute='get_service_address'),
-            'bills_to_be_entered': CallableField(Boolean(),
-                                                 attribute='account_has_bills_for_data_entry')
-        })
+            'bills_to_be_entered': account_has_bills_for_data_entry(account),
+        }) for account in accounts]
 
 class UtilBillListResource(BaseResource):
     def get(self):
