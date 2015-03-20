@@ -46,6 +46,7 @@ class TestBEUtilBill(unittest.TestCase):
                              self.rate_class, Address(), Address())
 
     def test_create_from_utilbill(self):
+
         utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
@@ -65,11 +66,13 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(the_date, self.ub.get_date())
         self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), False)
 
         self.ub.un_enter()
         self.assertEqual(None, self.ub.get_date())
         self.assertEqual(None, self.ub.get_user())
         self.assertFalse(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), True)
 
         self.ub.processed = True
         self.assertEqual(None, self.ub.get_date())
@@ -191,6 +194,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5, ub3])
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
         s.commit()
 
     def test_accounts(self):
@@ -233,7 +238,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Empty Utility',
                   'utility_account_number': '3',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
+                  'wiki_url': 'http://example.com/utility:Empty Utility',
+                  'entered': None
                  },
              ], }, rv.data)
 
@@ -281,6 +287,11 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
+         # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
@@ -301,13 +312,15 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
-              'wiki_url': 'http://example.com/utility:Example Utility'
+              'wiki_url': 'http://example.com/utility:Example Utility',
+              'entered': True
               },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
-            period_start=datetime(2000, 1, 1).isoformat()
+            period_start=datetime(2000, 1, 1).isoformat(),
+            entered=True
         ))
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
@@ -315,8 +328,24 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
+            ))
+
+        self.assertEqual(500, rv.status_code)
+        import json
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
+            data=json.dumps(dict(
+                id=2,
+                entered=False
+        )))
+        self.assertEqual(rv.status_code, 200)
+
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id=2,
+            next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = None
+
+        expected['rows']['next_meter_read_date'] = date(2000, 2, 5).isoformat()
+        expected['rows']['entered'] = False
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
@@ -343,7 +372,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Empty Utility',
               'utility_account_number': '3',
               'supply_choice_id': None,
-              'wiki_url': 'http://example.com/utility:Empty Utility'
+              'wiki_url': 'http://example.com/utility:Empty Utility',
+              'entered': None
              }
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
@@ -379,7 +409,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Empty Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
+                  'wiki_url': 'http://example.com/utility:Empty Utility',
+                  'entered': False
             },
             }, rv.data
         )
@@ -412,7 +443,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility'
+                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'entered': False
             },
             }, rv.data
         )
@@ -491,7 +523,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Example Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Example Utility'
+                  'wiki_url': 'http://example.com/utility:Example Utility',
+                  'entered': True
                  }],
              }, rv.data)
 

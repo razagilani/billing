@@ -1,14 +1,18 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
+from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
+from flask.ext.login import current_user
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
+from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
+from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
@@ -116,12 +120,13 @@ class BaseResource(Resource):
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
+            'entered': CallableField(Boolean(),attribute='is_entered'),
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
@@ -167,11 +172,13 @@ class UtilBillListResource(BaseResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
+
 class UtilBillResource(BaseResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
 
     def put(self, id):
+        s = Session()
         parser = id_parser.copy()
         parse_date = lambda s: dateutil_parser.parse(s).date()
         parser.add_argument('period_start', type=parse_date)
@@ -182,10 +189,16 @@ class UtilBillResource(BaseResource):
         parser.add_argument('utility', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
+        parser.add_argument('entered', type=bool)
+        parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
 
         row = parser.parse_args()
+
+        utilbill = s.query(UtilBill).filter_by(id=id).first()
+        if row.get('entered')is not None and not row.get('entered'):
+            utilbill.un_enter()
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
             period_start=row['period_start'],
@@ -199,9 +212,18 @@ class UtilBillResource(BaseResource):
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
-        self.utilbill_processor.compute_utility_bill(id)
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
 
-        Session().commit()
+        self.utilbill_processor.compute_utility_bill(id)
+        if row.get('entered') is not None:
+            if row.get('entered'):
+                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                    beutilbill = replace_utilbill_with_beutilbill(utilbill)
+                    beutilbill.enter(current_user, datetime.utcnow())
+                else:
+                    utilbill.enter(current_user, datetime.utcnow())
+        s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
@@ -275,6 +297,7 @@ class RateClassesResource(BaseResource):
             'name': String,
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
+
 
 class UtilBillCountForUserResource(BaseResource):
 
