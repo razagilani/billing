@@ -3,9 +3,7 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-from uuid import uuid5, NAMESPACE_DNS
-from flask import url_for
-from flask.ext.login import current_user
+import json
 from mock import Mock
 
 # if init_test_config() is not called before "billentry" is imported,
@@ -329,7 +327,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             ))
 
         self.assertEqual(500, rv.status_code)
-        import json
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
             data=json.dumps(dict(
                 id=2,
