@@ -114,6 +114,8 @@ def _altitude_to_billing(altitude_class, billing_class):
         altitude_class).filter(altitude_class.guid==guid).one()
 get_utility_from_guid = _altitude_to_billing(AltitudeUtility, Utility)
 get_account_from_guid = _altitude_to_billing(AltitudeAccount, UtilityAccount)
+get_utilbill_from_guid = _altitude_to_billing(AltitudeBill, UtilBill)
+
 
 def _billing_to_altitude(billing_class, altitude_class):
     def query_func(billing_obj):
