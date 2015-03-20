@@ -3,10 +3,8 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-from uuid import uuid5, NAMESPACE_DNS
-from flask import url_for
-from flask.ext.login import current_user
 from mock import Mock
+from sqlalchemy.orm.exc import NoResultFound
 
 # if init_test_config() is not called before "billentry" is imported,
 # "billentry" will call init_config to initialize the config object with the
@@ -15,14 +13,16 @@ from mock import Mock
 from test import init_test_config
 init_test_config()
 
-from sqlalchemy.orm.exc import NoResultFound
-from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
+from core.altitude import AltitudeBill, get_utilbill_from_guid
 from mq import IncomingMessage
 
 import billentry
 from billentry import common
+from billentry.billentry_exchange import create_amqp_conn_params, \
+    ConsumeUtilbillGuidsHandler
 from billentry.billentry_model import BillEntryUser, BEUtilBill
-from billentry.common import replace_utilbill_with_beutilbill
+from billentry.common import replace_utilbill_with_beutilbill, \
+    account_has_bills_for_data_entry
 
 from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
@@ -202,11 +202,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
+              'bills_to_be_entered': True,
               'id': 1,
               'service_address': '1 Example St., ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '1'},
              {'account': '22222',
+              'bills_to_be_entered': False,
               'id': 2,
               'service_address': ', ,  ',
               'utility': 'Example Utility',
@@ -555,7 +557,26 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
+class TestAccountHasBillsForDataEntry(unittest.TestCase):
+
+    def test_account_has_bills_for_data_entry(self):
+        utility_account = Mock(autospec=UtilityAccount)
+        regular_utilbill = Mock(autospec=UtilBill)
+        regular_utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        beutilbill = Mock(autospec=BEUtilBill)
+        beutilbill.discriminator = BEUtilBill.POLYMORPHIC_IDENTITY
+
+        utility_account.utilbills = []
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill]
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill, beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
 class TestUtilBillGUIDAMQP(unittest.TestCase):
+
     def setUp(self):
         super(TestUtilBillGUIDAMQP, self).setUp()
 
@@ -621,6 +642,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         cls.authorize_url = config.get('billentry', 'authorize_url')
 
     def setUp(self):
+        init_test_config()
         TestCaseWithSetup.truncate_tables()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
