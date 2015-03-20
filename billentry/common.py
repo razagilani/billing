@@ -3,6 +3,8 @@
 This module's name comes from the recommended project structure at
 http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
 If it gets big, it should become a multi-file module as shown there.
+            'due_date': IsoDatetime,
+            'email': user.email,
 """
 from flask.ext.bcrypt import Bcrypt
 from billentry.billentry_model import BEUtilBill
@@ -30,3 +32,8 @@ def get_bcrypt_object():
     if _bcrypt is None:
         _bcrypt = Bcrypt()
     return _bcrypt
+
+def account_has_bills_for_data_entry(utility_account):
+    return any(u.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY for u in
+               utility_account.utilbills)
+

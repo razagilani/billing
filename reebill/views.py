@@ -7,7 +7,7 @@ from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
-from reebill.state import ReeBill, ReeBillCustomer, ReeBillCharge
+from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
