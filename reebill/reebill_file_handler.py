@@ -1342,8 +1342,13 @@ class SummaryFileGenerator(object):
             # write every bill to a file, read it back again, and append it
             self._reebill_file_handler.render(reebill)
             input_file = self._reebill_file_handler.get_file(reebill)
+
             self._pdf_concatenator.append(input_file)
-            input_file.close()
         # TODO: eventually there may be extra pages not taken from the bill
         # PDFs
         self._pdf_concatenator.write_result(output_file)
+
+        # input files can't be closed until after the result is written
+        # because PDFConcatenator uses PyPdf, which reads from the input
+        # files while writing the output
+        self._pdf_concatenator.close_input_files()
