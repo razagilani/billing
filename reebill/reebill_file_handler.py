@@ -1351,8 +1351,3 @@ class SummaryFileGenerator(object):
         # TODO: eventually there may be extra pages not taken from the bill
         # PDFs
         self._pdf_concatenator.write_result(output_file)
-
-        # input files can't be closed until after the result is written
-        # because PDFConcatenator uses PyPdf, which reads from the input
-        # files while writing the output
-        self._pdf_concatenator.close_input_files()
