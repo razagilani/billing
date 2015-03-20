@@ -12,19 +12,21 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" is imported.
 from test import init_test_config
 init_test_config()
+
 from core.altitude import AltitudeBill, get_utilbill_from_guid
 from mq import IncomingMessage
 
 import billentry
+from billentry import common
 from billentry.billentry_exchange import create_amqp_conn_params, \
     ConsumeUtilbillGuidsHandler
 from billentry.billentry_model import BillEntryUser, BEUtilBill
 from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
-from core import init_model
+from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
-    Charge, Register, RateClass, Supplier
+    Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
@@ -421,10 +423,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
     """
     def setUp(self):
         super(TestBillEntryReport, self).setUp()
-
         s = Session()
-        self.user1 = BillEntryUser(email='user1@example.com', )
-        self.user2 = BillEntryUser(email='user2@example2.com')
+        self.user1 = BillEntryUser(email='1@example.com')
+        self.user2 = BillEntryUser(email='2@example.com')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         s.commit()
 
@@ -434,9 +435,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
-        self.assertJson({"results": 2,
-                         "rows": [{"user_id": self.user1.id, "count": 0},
-                                  {"user_id": self.user2.id, "count": 0}]},
+        self.assertJson({"results": 2, "rows": [
+            {"user_id": self.user1.id, "email": '1@example.com', "count": 0},
+            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
 
         self.ub1.enter(self.user1, datetime(2000,1,10))
@@ -445,19 +446,18 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # no bills in range
         rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
                                         datetime(2000,1,20).isoformat()))
-        self.assertJson({"results": 2,
-                         "rows": [{"user_id": self.user1.id, "count": 0},
-                                  {"user_id": self.user2.id, "count": 0}]},
+        self.assertJson({"results": 2, "rows": [
+            {"user_id": self.user1.id, "email": '1@example.com', "count": 0},
+            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
 
         # user1 has 2 bills in range, user2 has none
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
-        self.assertJson({"results": 2,
-                         "rows": [{"user_id": self.user1.id, "count": 2},
-                                  {"user_id": self.user2.id, "count": 0}]
-
-                        }, rv.data)
+        self.assertJson({"results": 2, "rows": [
+            {"user_id": self.user1.id, "email": '1@example.com', "count": 2},
+            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+                        rv.data)
 
     def test_report_utilbills_for_user(self):
         url_format = self.URL_PREFIX + 'user_utilitybills/%s'
@@ -542,7 +542,8 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-class TestUtilBillGUIDAMQP(TestCaseWithSetup):
+class TestUtilBillGUIDAMQP(unittest.TestCase):
+
     def setUp(self):
         super(TestUtilBillGUIDAMQP, self).setUp()
 
@@ -550,8 +551,16 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         # there is no actual connection
         exchange_name, routing_key, amqp_connection_parameters, \
                 = create_amqp_conn_params()
+
+        self.utilbill = Mock(autospec=UtilBill)
+        self.utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        self.core_altitude_module = Mock(autospec=altitude)
+        self.billentry_common_module = Mock(autospec=common)
+        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
+
         self.handler = ConsumeUtilbillGuidsHandler(
-            exchange_name, routing_key, amqp_connection_parameters)
+            exchange_name, routing_key, amqp_connection_parameters,
+            self.core_altitude_module, self.billentry_common_module)
 
         # We don't have to wait for the rabbitmq connection to close,
         # since we're never instatiating a connection
@@ -563,39 +572,15 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
         self.mock_method = method
         self.mock_props = props
 
-        utility = Utility(name='utility', address=Address())
-        supplier = Supplier(name='supplier', address=Address())
-        utility_account = UtilityAccount(
-            'someone', '98989', utility, supplier,
-            RateClass(name='FB Test Rate Class', utility=utility,
-                      service='gas'), Address(), Address())
-        rate_class = RateClass(name='rate class', utility=utility,
-                                    service='gas')
-
-        s= Session()
-
-
-        self.utilbill = UtilBill(utility_account, utility,
-                            rate_class,
-                            supplier=supplier,
-                            period_start=date(2000, 1, 1),
-                            period_end=date(2000, 2, 1))
-
-
-        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
-        self.altitude_bill = AltitudeBill(self.utilbill, self.guid)
-        s.add(self.altitude_bill)
-
-
     def test_process_utilbill_guid_with_no_matching_guid(self):
         message = create_channel_message_body(dict(
             message_version=[1, 0],
             guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        # Process the message
-        message_obj = self.handler.validate(message_obj)
+        self.core_altitude_module.get_utilbill_from_guid.side_effect = NoResultFound
         self.assertRaises(NoResultFound, self.handler.handle, message_obj)
+        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls([])
 
     def test_process_utilbill_guid_with_matching_guid(self):
         message = create_channel_message_body(dict(
@@ -603,13 +588,10 @@ class TestUtilBillGUIDAMQP(TestCaseWithSetup):
             guid=self.guid))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, UtilBill)
-        # Process the message
-        message_obj = self.handler.validate(message_obj)
+        self.core_altitude_module.get_utilbill_from_guid.return_value = self.utilbill
         self.handler.handle(message_obj)
-        beutilbill = get_utilbill_from_guid(self.guid)
-        self.assertIsInstance(beutilbill, BEUtilBill)
+        self.billentry_common_module.replace_utilbill_with_beutilbill\
+                .assert_called_once_with(self.utilbill)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'

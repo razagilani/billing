@@ -4,10 +4,10 @@ from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from pika import URLParameters
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match
-from billentry.common import replace_utilbill_with_beutilbill
+from billentry import common
 from core.model import Session, UtilBill
 from mq.schemas.validators import MessageVersion
-from core.altitude import AltitudeBill, get_utilbill_from_guid
+from core import altitude
 
 __all__ = [
     'consume_utilbill_guids_mq',
@@ -36,7 +36,6 @@ def create_amqp_conn_params():
     return (exchange_name, routing_key, amqp_connection_parameters)
 
 
-
 class ConsumeUtilbillGuidsHandler(MessageHandler):
     on_error = REJECT_MESSAGE
 
@@ -45,7 +44,8 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
     # conform to the schema.
     message_schema = UtilbillMessageSchema
 
-    def __init__(self, exchange_name, routing_key, connection_parameters):
+    def __init__(self, exchange_name, routing_key, connection_parameters,
+            core_altitude_module=None, billentry_common_module=None):
         '''Note: AMQP connection parameters are stored inside the superclass'
         __init__, but a connection is not actually created until you call
         connect(), not in __init__. So it is not possible to fully unit test
@@ -55,6 +55,8 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
         '''
         super(ConsumeUtilbillGuidsHandler, self).__init__(
             exchange_name, routing_key, connection_parameters)
+        self.core_altitude_module = core_altitude_module
+        self.billentry_common_module = billentry_common_module
 
     def handle(self, message):
         logger = logging.getLogger(LOG_NAME)
@@ -62,12 +64,13 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
                      "JSON-serializable")
         guid = message['guid']
         try:
-            utilbill = get_utilbill_from_guid(guid)
-            if type(utilbill) is UtilBill:
-                replace_utilbill_with_beutilbill(utilbill)
-        except NoResultFound, e:
+            utilbill = self.core_altitude_module.get_utilbill_from_guid(guid)
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                self.billentry_common_module.\
+                    replace_utilbill_with_beutilbill(utilbill)
+        except NoResultFound:
             logger.error('Utility Bill for guid %s not found' % guid)
-            raise e
+            raise
 
 def consume_utilbill_guids_mq(
         exchange_name, routing_key, amqp_connection_parameters):
@@ -76,7 +79,8 @@ def consume_utilbill_guids_mq(
     '''
     def consume_utilbill_guids_handler_factory():
         return ConsumeUtilbillGuidsHandler(
-            exchange_name, routing_key, amqp_connection_parameters)
+            exchange_name, routing_key, amqp_connection_parameters,
+            core_altitude_module=altitude, billentry_common_module=common)
     mgr = MessageHandlerManager(amqp_connection_parameters)
     mgr.attach_message_handler(exchange_name, routing_key,
                                consume_utilbill_guids_handler_factory)
