@@ -342,7 +342,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
 
-        expected['rows']['next_meter_read_date'] = None
+        expected['rows']['next_meter_read_date'] = date(2000, 2, 5).isoformat()
         expected['rows']['entered'] = False
         self.assertJson(expected, rv.data)
 

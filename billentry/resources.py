@@ -119,7 +119,7 @@ class BaseResource(Resource):
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
@@ -188,6 +188,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
+        parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
 
@@ -209,6 +210,8 @@ class UtilBillResource(BaseResource):
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
 
         self.utilbill_processor.compute_utility_bill(id)
         if row.get('entered') is not None:
