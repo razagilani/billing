@@ -27,31 +27,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     columns: [{
         xtype: 'checkcolumn',
         text: 'Bill Entered',
-        listeners: {
-            checkchange: function (checkbox, rowIndex, checked, eOpts) {
-                var grid = checkbox.findParentByType('grid');
-                var store = grid.getStore();
-                var selected = grid.getSelectionModel().getSelection()[0];
-                var url = 'http://' + window.location.host + '/utilitybills/togglestate/'+selected.get('id');
-                var params = {
-                    id: selected.get('id'),
-                    entered: checked
-                };
-                var failureFunc = function (response) {
-                    utils.makeServerExceptionWindow(response.status, response.statusText, response.responseText);
-                };
-                Ext.Ajax.request({
-                                     url: url,
-                                     params: params,
-                                     method: 'PUT',
-                                     failure: failureFunc,
-                                     success: function(){
-                                         store.reload();
-                                     }
-                                 });
-            }
-        }
-    }, {
+        dataIndex: 'entered'
+    },{
         header: 'Total',
         dataIndex: 'target_total',
         editor: {
