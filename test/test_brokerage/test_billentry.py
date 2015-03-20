@@ -197,11 +197,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
+              'bills_to_be_entered': True,
               'id': 1,
               'service_address': '1 Example St., ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '1'},
              {'account': '22222',
+              'bills_to_be_entered': False,
               'id': 2,
               'service_address': ', ,  ',
               'utility': 'Example Utility',
