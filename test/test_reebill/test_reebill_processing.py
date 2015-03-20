@@ -2103,8 +2103,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # create two reebills for two different customers
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
+        self.reebill_processor.toggle_reebill_processed(self.account, 1, False)
         self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
                                             start_date=utilbill2.period_start)
+        self.reebill_processor.toggle_reebill_processed(
+            utilbill2.utility_account.account, 1, False)
 
         # issue summary
         email_addr = 'example@example.com'
