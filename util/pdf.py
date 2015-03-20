@@ -7,6 +7,9 @@ class PDFConcatenator(object):
         self._writer = PdfFileWriter()
         self._input_files = []
 
+    def __del__(self):
+        self.close_input_files()
+
     def append(self, pdf_file):
         reader = PdfFileReader(pdf_file)
         for page_num in xrange(reader.numPages):
