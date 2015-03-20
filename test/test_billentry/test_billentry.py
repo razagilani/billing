@@ -27,7 +27,6 @@ from billentry.billentry_model import BillEntryUser, BEUtilBill
 from billentry.common import replace_utilbill_with_beutilbill
 
 from core import init_model, altitude
-from core.utilbill_processor import UtilbillProcessor
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
@@ -48,7 +47,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.user = Mock(autospec=BillEntryUser)
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
-    
+
     def test_create_from_utilbill(self):
 
         utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
