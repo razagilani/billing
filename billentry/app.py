@@ -76,6 +76,9 @@ app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
 login_manager = LoginManager()
 login_manager.init_app(app)
+if app.config['LOGIN_DISABLED']:
+    login_manager.anonymous_user = BillEntryUser.get_anonymous_user
+
 # load the extension
 principals = Principal(app)
 
