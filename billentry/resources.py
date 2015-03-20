@@ -190,9 +190,8 @@ class UtilBillResource(BaseResource):
         parser.add_argument('entered', type=bool)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
-        from flask import request
-        row = parser.parse_args()
 
+        row = parser.parse_args()
 
         utilbill = s.query(UtilBill).filter_by(id=id).first()
         if row.get('entered')is not None and not row.get('entered'):
