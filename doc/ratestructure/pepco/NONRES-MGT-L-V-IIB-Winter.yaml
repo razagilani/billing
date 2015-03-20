@@ -1,0 +1,108 @@
+!rate_structure
+name: NONRES-MGT-L-V-IIB-Winter
+service: Electric
+effective: 2010-09-01
+expires: 2010-10-15
+registers: 
+    - !register
+      descriptor: REG_TOTAL
+      description: Total kWh register
+      quantity: 0
+      quantityunits: kWh
+    - !register
+      descriptor: REG_PEAK
+      description: Peak kWh register
+      quantity: 0
+      quantityunits: kWh
+    - !register
+      descriptor: REG_INT
+      description: Shoulder kWh register
+      quantity: 0 
+      quantityunits: kWh
+    - !register
+      descriptor: REG_OFFPEAK
+      description: Off-Peak kWh register
+      quantity: 0
+      quantityunits: kWh
+rates:
+    - !rate_structure_item
+      descriptor: CUSTOMER_CHARGE
+      description: Monthly flat charge
+      quantity: 1
+      rate: 16.26
+      total:
+    - !rate_structure_item
+      descriptor: ON_PEAK_ENERGY
+      description: On peak energy usage
+      quantity: REG_PEAK.quantity
+      rate: 0.0111585
+      total:
+    - !rate_structure_item
+      descriptor: INT_ENERGY
+      description: Shoulder energy usage
+      quantity: REG_INT.quantity
+      rate: 0.0111597
+      total:
+    - !rate_structure_item
+      descriptor: OFF_PEAK_ENERGY
+      description: Off peak energy usage
+      quantity: REG_OFFPEAK.quantity
+      rate: 0.0111594
+      total:
+    - !rate_structure_item
+      descriptor: ENERGY_FIRST_BLOCK
+      description: The first 400kWh
+      quantity: 400 if (400 <= REG_TOTAL.quantity) else REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.005125
+      total: 
+    - !rate_structure_item
+      descriptor: ENERGY_REMAINDER_BLOCK
+      description: All kWh after 400
+      quantity: REG_TOTAL.quantity - 400 if (REG_TOTAL.quantity > 400) else 0
+      quantityunits: kWh
+      rate: 0.06421
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: DELIVERY_TAX
+      description: Per kWh tax
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.007
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: ADMIN_CREDIT
+      description: Administrative credit, periodically applied.  But how?
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      # example way to us a Decimal
+      #rate: !!python/object/new:decimal.Decimal ["-0.0004"]
+      rate: -0.0004
+      rateunits: dollars
+      total: ADMIN_CREDIT.quantity * ADMIN_CREDIT.rate
+    - !rate_structure_item
+      descriptor: SALES_TAX_DISTRIBUTION
+      description: Sales tax for all charges
+      quantity: CUSTOMER_CHARGE.total + ON_PEAK_ENERGY.total + INT_ENERGY.total + OFF_PEAK_ENERGY.total + ENERGY_FIRST_BLOCK.total + ENERGY_REMAINDER_BLOCK.total 
+      quantityunits: dollars
+      rate: 0.06
+      rateunits: percent
+      total: SALES_TAX_DISTRIBUTION.quantity * SALES_TAX_DISTRIBUTION.rate
+    - !rate_structure_item
+      descriptor: TOTAL_USE
+      description: Total use supply charge
+      quantity: REG_TOTAL.quantity
+      quantityunits: dollars
+      rate: 0.103
+      rateunits: percent
+      total: TOTAL_USE.quantity * TOTAL_USE.rate
+    - !rate_structure_item
+      descriptor: SALES_TAX_SUPPLY
+      description: Sales tax for supply charges
+      quantity: TOTAL_USE.total
+      quantityunits: dollars
+      rate: 0.06
+      rateunits: percent
+      total: SALES_TAX_SUPPLY.quantity * SALES_TAX_SUPPLY.rate
