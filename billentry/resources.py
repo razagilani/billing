@@ -211,13 +211,12 @@ class UtilBillResource(BaseResource):
             ub.set_total_energy(row['total_energy'])
 
         self.utilbill_processor.compute_utility_bill(id)
-        if row.get('entered') is not None:
-            if row.get('entered'):
-                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                    beutilbill = replace_utilbill_with_beutilbill(utilbill)
-                    beutilbill.enter(current_user, datetime.utcnow())
-                else:
-                    utilbill.enter(current_user, datetime.utcnow())
+        if row.get('entered') is not None and row.get('entered'):
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                beutilbill = replace_utilbill_with_beutilbill(utilbill)
+                beutilbill.enter(current_user, datetime.utcnow())
+            else:
+                utilbill.enter(current_user, datetime.utcnow())
 
 
 
