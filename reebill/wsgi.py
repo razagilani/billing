@@ -403,9 +403,10 @@ class IssuableReebills(RESTResource):
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             try:
-                result = self.reebill_processor.issue_and_mail(
-                    bill['apply_corrections'],
-                    account=account, sequence=sequence, recipients=recipient_list)
+                # result = self.reebill_processor.issue_and_mail(
+                #     bill['apply_corrections'],
+                #     account=account, sequence=sequence, recipients=recipient_list)
+                self.reebill_processor.issue_summary('a', 'dklothe@nextility.com')
             except ConfirmAdjustment as e:
                 reebills_with_corrections.append({'account': bill['account'],
                         'sequence': bill['sequence'],
