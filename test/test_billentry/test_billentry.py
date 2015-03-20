@@ -48,9 +48,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.user = Mock(autospec=BillEntryUser)
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
-        utilbill_loader = UtilBillLoader()
-        self.ub_processor = UtilbillProcessor(None, utilbill_loader, logger=None)
-
+    
     def test_create_from_utilbill(self):
 
         utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
