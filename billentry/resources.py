@@ -221,9 +221,6 @@ class UtilBillResource(BaseResource):
                     beutilbill.enter(current_user, datetime.utcnow())
                 else:
                     utilbill.enter(current_user, datetime.utcnow())
-
-
-
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
