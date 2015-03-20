@@ -37,7 +37,6 @@ class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
     """
     def setUp(self):
-        from core import config
         self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
