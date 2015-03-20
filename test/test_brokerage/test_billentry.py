@@ -3,23 +3,21 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-from uuid import uuid5, NAMESPACE_DNS
-from flask import url_for
-from flask.ext.login import current_user
 from mock import Mock
+from sqlalchemy.orm.exc import NoResultFound
 
 # if init_test_config() is not called before "billentry" is imported,
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from sqlalchemy.orm.exc import NoResultFound
-from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
-from core.altitude import AltitudeBill, AltitudeGUID, get_utilbill_from_guid
-from mq import IncomingMessage
 from test import init_test_config
 init_test_config()
+from core.altitude import AltitudeBill, get_utilbill_from_guid
+from mq import IncomingMessage
 
 import billentry
+from billentry.billentry_exchange import create_amqp_conn_params, \
+    ConsumeUtilbillGuidsHandler
 from billentry.billentry_model import BillEntryUser, BEUtilBill
 from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
@@ -629,6 +627,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         cls.authorize_url = config.get('billentry', 'authorize_url')
 
     def setUp(self):
+        init_test_config()
         TestCaseWithSetup.truncate_tables()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
