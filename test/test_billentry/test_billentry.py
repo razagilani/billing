@@ -40,11 +40,11 @@ class TestBEUtilBill(unittest.TestCase):
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
+        self.user.is_anonymous.return_value = False
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
 
     def test_create_from_utilbill(self):
-
         utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
@@ -283,11 +283,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
-         # valid data for user login
-        data = {'email':'user1@test.com', 'password': 'password'}\
-        # post request for user login with valid credentials
-        response = self.app.post('/userlogin',
-                                 content_type='multipart/form-data', data=data)
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
