@@ -125,6 +125,7 @@ class BaseResource(Resource):
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
+            'entered': CallableField(Boolean(),attribute='is_entered'),
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
@@ -169,11 +170,13 @@ class UtilBillListResource(BaseResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
+
 class UtilBillResource(BaseResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
 
     def put(self, id):
+        s = Session()
         parser = id_parser.copy()
         parse_date = lambda s: dateutil_parser.parse(s).date()
         parser.add_argument('period_start', type=parse_date)
@@ -184,10 +187,16 @@ class UtilBillResource(BaseResource):
         parser.add_argument('utility', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
+        parser.add_argument('entered', type=bool)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
-
+        from flask import request
         row = parser.parse_args()
+
+
+        utilbill = s.query(UtilBill).filter_by(id=id).first()
+        if row.get('entered')is not None and not row.get('entered'):
+            utilbill.un_enter()
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
             period_start=row['period_start'],
@@ -201,9 +210,19 @@ class UtilBillResource(BaseResource):
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
-        self.utilbill_processor.compute_utility_bill(id)
 
-        Session().commit()
+        self.utilbill_processor.compute_utility_bill(id)
+        if row.get('entered') is not None:
+            if row.get('entered'):
+                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                    beutilbill = replace_utilbill_with_beutilbill(utilbill)
+                    beutilbill.enter(current_user, datetime.utcnow())
+                else:
+                    utilbill.enter(current_user, datetime.utcnow())
+
+
+
+        s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
@@ -277,24 +296,6 @@ class RateClassesResource(BaseResource):
             'name': String,
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
-
-class UtilBillToggleEnteredState(BaseResource):
-
-    def put(self, id):
-        parser = id_parser.copy()
-        parser.add_argument('entered', type=boolean, required=True)
-        args = parser.parse_args()
-        s = Session()
-        utilbill = s.query(UtilBill).filter_by(id=id).first()
-        if args['entered']:
-            if type(utilbill) is UtilBill:
-                utilbill= replace_utilbill_with_beutilbill(utilbill)
-            utilbill.enter(current_user, datetime.now.utc)
-        else:
-            assert type(utilbill) is BEUtilBill
-            utilbill.un_enter()
-        s.commit()
-        return {'rows': marshal(utilbill, self.utilbill_fields), 'results': 1}
 
 
 class UtilBillCountForUserResource(BaseResource):
