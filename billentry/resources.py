@@ -193,12 +193,16 @@ class UtilBillResource(BaseResource):
         parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
-
         row = parser.parse_args()
 
         utilbill = s.query(UtilBill).filter_by(id=id).first()
-        if row.get('entered')is not None and not row.get('entered'):
+
+        # since 'update_utilbill_metadata' modifies the bill even when all
+        # the keys are None, 'un_enter' has to come before it and 'enter' has
+        #  to come after it.
+        if row['entered'] is False:
             utilbill.un_enter()
+
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
             period_start=row['period_start'],
@@ -214,15 +218,12 @@ class UtilBillResource(BaseResource):
             ub.set_total_energy(row['total_energy'])
         if row.get('next_meter_read_date') is not None:
             ub.set_next_meter_read_date(row['next_meter_read_date'])
-
         self.utilbill_processor.compute_utility_bill(id)
-        if row.get('entered') is not None:
-            if row.get('entered'):
-                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                    beutilbill = replace_utilbill_with_beutilbill(utilbill)
-                    beutilbill.enter(current_user, datetime.utcnow())
-                else:
-                    utilbill.enter(current_user, datetime.utcnow())
+
+        if row.get('entered') is True:
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                utilbill = replace_utilbill_with_beutilbill(utilbill)
+            utilbill.enter(current_user, datetime.utcnow())
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 

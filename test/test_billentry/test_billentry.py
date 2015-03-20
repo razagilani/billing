@@ -3,6 +3,7 @@
 from datetime import datetime, date
 import unittest
 from json import loads
+import json
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -42,11 +43,11 @@ class TestBEUtilBill(unittest.TestCase):
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
+        self.user.is_anonymous.return_value = False
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
 
     def test_create_from_utilbill(self):
-
         utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
@@ -287,11 +288,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
-         # valid data for user login
-        data = {'email':'user1@test.com', 'password': 'password'}\
-        # post request for user login with valid credentials
-        response = self.app.post('/userlogin',
-                                 content_type='multipart/form-data', data=data)
         expected = {'rows':
              {'account': None,
               'computed_total': 85.0,
@@ -329,9 +325,12 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
             ))
-
+        # this request is being made using a different content-type because
+        # with the default content-type of form-urlencoded bool False
+        # was interpreted as a string and it was evaluating to True on the
+        # server. Also in out app, the content-type is application/json so
+        # we should probably update all our test code to use application/json
         self.assertEqual(500, rv.status_code)
-        import json
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
             data=json.dumps(dict(
                 id=2,
