@@ -333,7 +333,9 @@ class ReebillProcessor(object):
         # issue each correction
         for correction in all_unissued_corrections:
             correction_sequence, _, _ = correction
-            self.issue(account, correction_sequence)
+            correction_reebill = self.state_db.get_reebill(account,
+                                                           correction_sequence)
+            correction_reebill.issue(datetime.utcnow(), self)
 
     def get_total_adjustment(self, account):
         '''Returns total adjustment that should be applied to the next issued
@@ -481,12 +483,8 @@ class ReebillProcessor(object):
             session.flush()
             return new_reebill_customer
 
+    # deprecated--do not use!
     def issue(self, account, sequence, issue_date=None):
-        '''Sets the issue date of the reebill given by account, sequence to
-        'issue_date' (or today by default), and the due date to 30 days from
-        the issue date. The reebill is marked as issued.'''
-        # version 0 of predecessor must be issued before this bill can be
-        # issued:
         if issue_date is None:
             issue_date = datetime.utcnow()
         reebill = self.state_db.get_reebill(account, sequence)
@@ -581,7 +579,8 @@ class ReebillProcessor(object):
                 assert apply_corrections is True
                 self.issue_corrections(account, sequence)
             else:
-                self.issue(account, sequence)
+                reebill = self.state_db.get_reebill(account, sequence)
+                reebill.issue(datetime.utcnow(), self)
         except Exception as e:
             self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                     account, sequence, e.__class__.__name__),) + e.args)
@@ -624,7 +623,7 @@ class ReebillProcessor(object):
                         e.__class__.__name__),) + e.args)
                     raise
             try:
-                self.issue(bill.get_account(), bill.sequence)
+                bill.issue(datetime.utcnow(), self)
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill.get_accont(), bill.sequence,
