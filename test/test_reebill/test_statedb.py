@@ -1,29 +1,15 @@
-'''Tests for ReeBill-specific data-access objects, including the database.
-Currently the only one is StateDB.
-'''
+from datetime import date, datetime
+
+from sqlalchemy.orm.exc import NoResultFound
+
+from test.setup_teardown import TestCaseWithSetup
+from core import init_config, init_model
+from core.model import Session, Address, Utility, Supplier, RateClass, \
+    UtilityAccount
+from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test.setup_teardown import init_logging, TestCaseWithSetup
-from core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBillCustomer
 
-init_logging()
-import unittest
-from datetime import date, datetime
-from sqlalchemy.orm.exc import NoResultFound
-from core import init_config, init_model
-from reebill import state
-from core.model import UtilBill, Session, Address
-from reebill.state import ReeBill
-
-billdb_config = {
-    'billpath': '/db-dev/skyline/bills/',
-    'database': 'skyline',
-    'utilitybillpath': '/db-dev/skyline/utilitybills/',
-    'collection': 'reebills',
-    'host': 'localhost',
-    'port': '27017'
-}
 
 class StateDBTest(TestCaseWithSetup):
 
@@ -180,37 +166,6 @@ class StateDBTest(TestCaseWithSetup):
         self.state_db.issue(acc, seq)
         self.assertEqual(2, self.state_db.max_issued_version(acc, seq))
 
-
-    def test_get_unissued_corrections(self):
-        session = Session()
-        # reebills 1-4, 1-3 issued
-        session.add(ReeBill(self.reebill_customer, 1))
-        session.add(ReeBill(self.reebill_customer, 2))
-        session.add(ReeBill(self.reebill_customer, 3))
-        self.state_db.issue('99999', 1)
-        self.state_db.issue('99999', 2)
-        self.state_db.issue('99999', 3)
-
-        # no unissued corrections yet
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # make corrections on 1 and 3
-        self.state_db.increment_version('99999', 1)
-        self.state_db.increment_version('99999', 3)
-        self.assertEquals([(1, 1), (3, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 3
-        self.state_db.issue('99999', 3)
-        self.assertEquals([(1, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 1
-        self.state_db.issue('99999', 1)
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
-
     def test_get_all_reebills_for_account(self):
         session = Session()
 
@@ -282,5 +237,3 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
-if __name__ == '__main__':
-    unittest.main()

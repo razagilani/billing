@@ -119,6 +119,7 @@ class amqp(Schema):
     url = String()
     exchange = String()
     utilbill_routing_key = String()
+    utilbill_guids_routing_key = String()
 
 class aws_s3(Schema):
     # utility bill file storage in Amazon S3

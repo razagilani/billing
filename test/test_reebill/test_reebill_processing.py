@@ -21,7 +21,7 @@ from reebill.views import Views
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.state import ReeBill, UtilBill
+from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
@@ -1108,7 +1108,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEquals(None, two.due_date)
         self.assertEqual(None, two.email_recipient)
 
-        # two should not be issuable until one_doc is issued
+        # two should not be issuable until one is issued
         self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
         self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
                           False, acc, 2)
