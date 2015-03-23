@@ -113,7 +113,8 @@ class ReebillProcessor(object):
         """
         reebill = self.state_db.get_reebill(account, sequence, version)
         reebill.compute_charges()
-        reebill.late_charge = self.get_late_charge(reebill) or 0
+        reebill.late_charge = self.get_late_charge(
+            reebill, datetime.utcnow().date()) or 0
 
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
@@ -335,7 +336,7 @@ class ReebillProcessor(object):
         return sum(adjustment for (sequence, version, adjustment) in
                 self.get_unissued_corrections(account))
 
-    def get_late_charge(self, reebill, day=None):
+    def get_late_charge(self, reebill, day):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
         hasn't been issued yet: there is a late fee applied to the balance of
@@ -344,22 +345,14 @@ class ReebillProcessor(object):
         issued; 0 is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
-        session = Session()
-        if day is None:
-            day = datetime.utcnow().date()
-
-        if reebill.sequence <= 1:
-            return 0
-
-        # unissued bill has no late charge
         predecessor = self.state_db.get_predecessor(reebill)
-        if not predecessor.issued:
-            return 0
-
-        # late charge is 0 if version 0 of the previous bill is not overdue
         predecessor0 = self.state_db.get_predecessor(
             self.state_db.get_original_version(reebill), version=0)
-        if day <= predecessor0.due_date:
+
+        # the first bill, an unissued bill, or any bill before the due date
+        # of its predecessor has no late charge
+        if (reebill.sequence <= 1 or not predecessor.issued or
+            day <= predecessor0.due_date):
             return 0
 
         # the balance on which a late charge is based is not necessarily the
@@ -367,7 +360,7 @@ class ReebillProcessor(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        min_balance_due = session.query(func.min(ReeBill.balance_due))\
+        min_balance_due = Session().query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.reebill_customer == reebill.reebill_customer)\
                 .filter(ReeBill.sequence == reebill.sequence - 1).scalar()
         total_payment = sum(p.credit for p in
@@ -615,7 +608,7 @@ class ReebillProcessor(object):
                 bill.issue(datetime.utcnow(), self)
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.get_accont(), bill.sequence,
+                        bill.get_account(), bill.sequence,
                         e.__class__.__name__),) + e.args)
                 raise
             # Let's mail!
