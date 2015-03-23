@@ -8,10 +8,11 @@ import configuration as config_file_schema
 __version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config', 'ureg']
+           'initialize', 'config', 'import_all_model_modules', 'ROOT_PATH']
+
+ROOT_PATH = dirname(dirname(realpath(__file__)))
 
 config = None
-
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -31,8 +32,7 @@ def init_config(filepath='settings.cfg', fp=None):
         log.debug('Reading configuration fp')
         config.readfp(fp)
     else:
-        absolute_path = path.join(dirname(dirname(realpath(__file__))),
-                                  filepath)
+        absolute_path = path.join(ROOT_PATH, filepath)
         log.debug('Reading configuration file %s' % absolute_path)
         config.read(absolute_path)
     

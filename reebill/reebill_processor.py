@@ -2,18 +2,21 @@ import os
 import traceback
 import re
 from datetime import datetime, timedelta
+from StringIO import StringIO
 
-from sqlalchemy.sql import desc, functions
-from sqlalchemy import not_, and_
+from sqlalchemy.sql import desc
+from sqlalchemy import not_
 from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
+from reebill.reebill_file_handler import SummaryFileGenerator
+from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from util.pdf import PDFConcatenator
 
 
 class ReebillProcessor(object):
@@ -665,7 +668,35 @@ class ReebillProcessor(object):
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
-        
+
+    def issue_summary(self, customer_tag, recipient):
+        s = Session()
+        bills = s.query(ReeBill).join(ReeBillCustomer).filter(
+            ReeBillCustomer.tag == customer_tag,
+            ReeBill.issued == False,
+            ReeBill.processed == True,
+            ReeBill.version == 0).order_by(ReeBill.sequence)
+        assert bills.count() > 0
+
+        for b in bills.all():
+            self.issue_corrections(b.get_account(), b.sequence)
+            b.issue(datetime.utcnow(), self)
+
+        # create and email combined PDF file
+        summary_file = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(bills.all(), summary_file)
+        summary_file.seek(0)
+        merge_fields = {
+            'street': customer_tag,
+            'balance_due': sum(b.balance_due for b in bills.all()),
+            'bill_dates': max(b.get_period_end() for b in bills.all()),
+            'last_bill': '',
+        }
+        self.bill_mailer.mail([recipient], merge_fields, summary_file,
+                              'summary.pdf')
+        return bills.all()
+
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
