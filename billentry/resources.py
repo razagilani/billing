@@ -1,14 +1,19 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
+from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
+from flask.ext.login import current_user
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
+from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
+from billentry.common import replace_utilbill_with_beutilbill
+from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
@@ -115,12 +120,13 @@ class BaseResource(Resource):
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
-                IsoDatetime(), attribute='get_estimated_next_meter_read_date',
+                IsoDatetime(), attribute='get_next_meter_read_date',
                 default=None),
             'supply_total': CallableField(Float(),
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
+            'entered': CallableField(Boolean(),attribute='is_entered'),
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
@@ -143,16 +149,17 @@ id_parser.add_argument('id', type=int, required=True)
 
 class AccountResource(BaseResource):
     def get(self):
-        accounts = Session().query(UtilityAccount).join(BrokerageAccount).order_by(
-            UtilityAccount.account).all()
-        return marshal(accounts, {
+        accounts = Session().query(UtilityAccount).join(
+            BrokerageAccount).order_by(UtilityAccount.account).all()
+        return [dict(marshal(account, {
             'id': Integer,
             'account': String,
             'utility_account_number': String(attribute='account_number'),
             'utility': String(attribute='fb_utility'),
             'service_address': CallableField(String(),
-                                             attribute='get_service_address')
-        })
+                                             attribute='get_service_address'),
+        }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+                for account in accounts]
 
 class UtilBillListResource(BaseResource):
     def get(self):
@@ -165,11 +172,13 @@ class UtilBillListResource(BaseResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
+
 class UtilBillResource(BaseResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
 
     def put(self, id):
+        s = Session()
         parser = id_parser.copy()
         parse_date = lambda s: dateutil_parser.parse(s).date()
         parser.add_argument('period_start', type=parse_date)
@@ -180,10 +189,20 @@ class UtilBillResource(BaseResource):
         parser.add_argument('utility', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
+        parser.add_argument('entered', type=bool)
+        parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
-
         row = parser.parse_args()
+
+        utilbill = s.query(UtilBill).filter_by(id=id).first()
+
+        # since 'update_utilbill_metadata' modifies the bill even when all
+        # the keys are None, 'un_enter' has to come before it and 'enter' has
+        #  to come after it.
+        if row['entered'] is False:
+            utilbill.un_enter()
+
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
             period_start=row['period_start'],
@@ -197,9 +216,15 @@ class UtilBillResource(BaseResource):
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
+        if row.get('next_meter_read_date') is not None:
+            ub.set_next_meter_read_date(row['next_meter_read_date'])
         self.utilbill_processor.compute_utility_bill(id)
 
-        Session().commit()
+        if row.get('entered') is True:
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                utilbill = replace_utilbill_with_beutilbill(utilbill)
+            utilbill.enter(current_user, datetime.utcnow())
+        s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
     def delete(self, id):
@@ -274,6 +299,7 @@ class RateClassesResource(BaseResource):
             'utility_id': Integer})
         return {'rows': rows, 'results': len(rows)}
 
+
 class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
@@ -296,6 +322,7 @@ class UtilBillCountForUserResource(BaseResource):
             utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
         rows = [{
                     'user_id': user.id,
+                    'email': user.email,
                     'count': count,
                     } for (user, count) in q.all()]
         return {'rows': rows, 'results': len(rows)}
