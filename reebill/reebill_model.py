@@ -2,6 +2,7 @@
 '''
 from datetime import datetime, date, timedelta
 from itertools import chain
+from operator import attrgetter
 import traceback
 
 from sqlalchemy import Column, ForeignKey
@@ -10,7 +11,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError
+from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
 from util.units import ureg, convert_to_therms
@@ -440,6 +441,9 @@ class ReeBill(Base):
         assert self.issue_date is None
         assert self.due_date is None
 
+        if self is not self.reebill_customer.get_first_unissued_bill():
+             raise NotIssuable("Predecessor must be issued before this one")
+
         if not self.processed:
             # a ton of attributes of this object get set in this method
             reebill_processor.compute_reebill(
@@ -546,6 +550,17 @@ class ReeBillCustomer(Base):
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
                % (self.name, self.discountrate)
+
+    def get_first_unissued_bill(self):
+        """Return the reebill with lowest sequence for this customer whose
+        version is 0 (i.e. is not a correction).
+        """
+        # querying for all bills ("lazy loading"), then filtering them in
+        # application code--not efficient
+        return min(
+            (r for r in self.reebills if not r.issued and r.version == 0),
+            key=attrgetter('sequence'))
+
 
 class ReeBillCharge(Base):
     '''Table representing "hypothetical" versions of charges in reebills (so
