@@ -489,10 +489,6 @@ class ReebillProcessor(object):
         # issued:
         if issue_date is None:
             issue_date = datetime.utcnow()
-        if sequence > 1 and not self.state_db.is_issued(account,
-                sequence - 1, version=0):
-            raise NotIssuable(("Can't issue reebill %s-%s because its "
-                    "predecessor has not been issued.") % (account, sequence))
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.issue(issue_date, self)
 
