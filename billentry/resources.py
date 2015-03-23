@@ -351,7 +351,7 @@ class UtilBillListForUserResourece(BaseResource):
             .order_by(
                 desc(UtilBill.period_start),
                 desc(UtilBill.id)
-        ).all()
+            ).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
