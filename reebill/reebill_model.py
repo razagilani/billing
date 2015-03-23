@@ -325,6 +325,15 @@ class ReeBill(Base):
             self.ree_value * (1 - self.discount_rate), 2)
         self.ree_savings = round(self.ree_value * self.discount_rate, 2)
 
+    def set_adjustment(self, predecessor, reebill_processor):
+        if self.sequence == 1:
+            assert predecessor is None
+            self.total_adjustment = 0
+        elif self.version == 0 and predecessor.issued:
+            self.total_adjustment = reebill_processor.get_total_adjustment(
+                self.get_account())
+        else:
+            self.total_adjustment = 0
 
     def set_payments(self, payments, predecessor_balance_due):
         """Associate the given Payment objects with this bill and update the
