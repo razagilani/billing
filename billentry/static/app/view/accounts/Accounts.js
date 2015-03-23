@@ -1,6 +1,6 @@
 Ext.define('BillEntry.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-    requires: ['ReeBill.store.AccountsFilter'],
+    requires: ['BillEntry.store.AccountsFilter'],
     title: 'Accounts',
     id: 'AccountsGrid',
     alias: 'widget.accounts',   
@@ -54,14 +54,13 @@ Ext.define('BillEntry.view.accounts.Accounts', {
     {
         xtype: 'toolbar',
         dock: 'bottom',
-        items: [
-        {
+        items: ['->', {
             xtype: 'combo',
             name: 'accountsFilter',
             fieldLabel: 'Filter',
             labelWidth: 50,
             width: 400,
-            value: '',
+            value: 'none',
             editable: false,
             store: 'AccountsFilter',
             triggerAction: 'all',
@@ -79,6 +78,6 @@ Ext.define('BillEntry.view.accounts.Accounts', {
                         g.getStore().filter('bills_to_be_entered', false);
                 }
             }
-       }]
+       }, '->']
     }]
 });

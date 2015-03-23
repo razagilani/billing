@@ -114,6 +114,7 @@ Ext.define('BillEntry.view.Viewport', {
                     flex: 1
                 },{
                     xtype: 'billDetails',
+                    id: 'reportUtilityBillsGrid',
                     flex: 1
                 }]
             }],
