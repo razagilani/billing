@@ -4,6 +4,11 @@ Ext.define('BillEntry.view.reports.UserStatistics', {
     title: 'User Statistics',
     store: 'Users',
 
+    features: [{
+        ftype: 'summary'
+    }],
+
+
     columns: [{
         header: 'User',
         dataIndex: 'email',
@@ -14,7 +19,8 @@ Ext.define('BillEntry.view.reports.UserStatistics', {
         header: '# of Bills Entered',
         dataIndex: 'count',
         width: 120,
-        items: utils.makeGridFilterTextField('count')
+        items: utils.makeGridFilterTextField('count'),
+        summaryType: 'sum'
     }]
 
 });
