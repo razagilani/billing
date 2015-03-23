@@ -90,7 +90,7 @@ Ext.define('BillEntry.view.Viewport', {
                         xtype: 'fieldcontainer',
                         layout: 'hbox',
                         fieldDefaults: {
-                            labelWidth: 75,
+                            labelWidth: 30,
                             allowBlank: false,
                             flex: 1,
                             margin: '2 5 5 5'
@@ -103,10 +103,6 @@ Ext.define('BillEntry.view.Viewport', {
                             xtype: 'datefield',
                             fieldLabel: 'To:',
                             name: 'end'
-                            //},{
-                            //    xtype: 'button',
-                            //    formBind: true,
-                            //    disabled: true
                         }]
                     }
                 },{
