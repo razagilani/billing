@@ -109,14 +109,11 @@ class ReebillProcessor(object):
         return reebill
 
     def compute_reebill(self, account, sequence, version='max'):
-        '''Loads, computes, and saves the reebill
-        '''
+        """Most of this code, if not all, should be in ReeBill itself.
+        """
         reebill = self.state_db.get_reebill(account, sequence, version)
         reebill.compute_charges()
-
         reebill.late_charge = self.get_late_charge(reebill) or 0
-
-        original_version = self.state_db.get_original_version(reebill)
 
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
@@ -127,45 +124,38 @@ class ReebillProcessor(object):
         predecessor = self.state_db.get_predecessor(reebill)
         reebill.set_adjustment(predecessor, self)
 
+        # calculate payments:
+
+        original_version = self.state_db.get_original_version(reebill)
         if reebill.sequence == 1:
             # include all payments since the beginning of time, in case there
-            # happen to be any.
+            # happen to be any (which there shouldn't be--no one would pay
+            # before receiving their first bill).
             # if any version of this bill has been issued, get payments up
             # until the issue date; otherwise get payments up until the
             # present.
-            if original_version.issue_date is None:
-                payments = self.payment_dao.get_total_payment_since(
-                        account, MYSQLDB_DATETIME_MIN)
-            else:
-                payments = self.payment_dao.get_total_payment_since(
-                        account, MYSQLDB_DATETIME_MIN,
-                        end=original_version.issue_date)
+            payments = self.payment_dao.get_total_payment_since(
+                    account, MYSQLDB_DATETIME_MIN,
+                    # will be None if original_version is not issued
+                    end=original_version.issue_date)
             reebill.set_payments(payments, 0)
-        else:
-            # get payment_received: all payments between issue date of
-            # predecessor's version 0 and issue date of current reebill's
-            # version 0 (if current reebill is unissued, its version 0 has
-            # None as its issue_date, meaning the payment period lasts up
-            # until the present)
-            if predecessor.issued:
-                # if predecessor's version 0 is issued, gather all payments from
-                # its issue date until version 0 issue date of current bill, or
-                # today if this bill has never been issued
-                if original_version.issued:
-                    payments = self.payment_dao.get_total_payment_since(
-                        account, predecessor.issue_date,
-                        end=original_version.issue_date)
-                else:
-                    payments = self.payment_dao.get_total_payment_since(
-                        account, predecessor.issue_date)
-            else:
-                # if predecessor is not issued, there's no way to tell what
-                # payments will go in this bill instead of a previous bill, so
-                # assume there are none (all payments since last issue date
-                # go in the account's first unissued bill)
-                payments = []
-            reebill.set_payments(payments, predecessor.balance_due)
+            return reebill
 
+        assert reebill.sequence > 1
+        if not predecessor.issued:
+            # if predecessor is not issued, there's no way to tell what
+            # payments will go in this bill instead of a previous bill, so
+            # assume there are none (all payments since last issue date
+            # go in the account's first unissued bill)
+            reebill.set_payments([], predecessor.balance_due)
+            return reebill
+
+        assert reebill.sequence > 1 and predecessor.issued
+        # all payments between issue date of predecessor and issue date of
+        # the current bill (or today if not issued) apply to this bill
+        payments = self.payment_dao.get_total_payment_since(account,
+            predecessor.issue_date, end=original_version.issue_date)
+        reebill.set_payments(payments, predecessor.balance_due)
         return reebill
 
     def roll_reebill(self, account, start_date=None):
