@@ -455,7 +455,15 @@ class ReeBill(Base):
             self.compute_charges()
             self.processed = True
 
+        # late_charge was already calculated in compute_reebill above if this
+        # bill was not processed, but needs to be continually updated even for
+        # a processed, because it changes over time.
+        # TODO: find a better way to do this, such as a compute() method that
+        # calls compute_charges() only if the bill is not processed
         self.late_charge = reebill_processor.get_late_charge(self)
+
+        # these fields only get set for an issued bill (and never change
+        # after that)
         self.email_recipient = self.reebill_customer.bill_email_recipient
         self.issue_date = issue_date
         self.due_date = (issue_date + timedelta(days=30)).date()
