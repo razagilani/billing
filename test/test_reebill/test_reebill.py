@@ -1,10 +1,40 @@
+"""Unit tests (or what should be unit tests) for SQLAlchemy classes in
+reebill.reebill_model.
+"""
 import unittest
 from datetime import date
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
+from exc import NoSuchBillException
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from test.setup_teardown import TestCaseWithSetup
+
+
+class ReeBillCustomerTest(unittest.TestCase):
+    """Unit tests for the ReeBillCustomer class.
+    """
+    def setUp(self):
+        self.customer = ReeBillCustomer()
+
+    def test_get_first_unissued_bill(self):
+        with self.assertRaises(NoSuchBillException):
+            self.customer.get_first_unissued_bill()
+
+        # unfortunately it is necessary to use real ReeBill objects here
+        # because mocks won't work with SQLAlchemy
+        one = ReeBill(self.customer, 1)
+        correction = ReeBill(self.customer, 1, version=1)
+        two = ReeBill(self.customer, 2)
+
+        for bill_set in [
+            [one],
+            [correction, one],
+            [two, one],
+            [one, two, correction],
+        ]:
+            self.customer.reebills = bill_set
+            self.assertIs(one, self.customer.get_first_unissued_bill())
 
 
 class ReebillTest(unittest.TestCase):

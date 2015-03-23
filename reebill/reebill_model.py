@@ -11,7 +11,8 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable
+from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+    NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
 from util.units import ureg, convert_to_therms
@@ -441,8 +442,11 @@ class ReeBill(Base):
         assert self.issue_date is None
         assert self.due_date is None
 
-        if self is not self.reebill_customer.get_first_unissued_bill():
-             raise NotIssuable("Predecessor must be issued before this one")
+        # for a non-correction, all earlier bills must be issued first.
+        # (ReeBillCustomer is used to avoid doing a direct database query here)
+        if self.version == 0 and self is not \
+                    self.reebill_customer.get_first_unissued_bill():
+            raise NotIssuable("Predecessor must be issued before this one")
 
         if not self.processed:
             # a ton of attributes of this object get set in this method
@@ -553,13 +557,17 @@ class ReeBillCustomer(Base):
 
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
-        version is 0 (i.e. is not a correction).
+        version is 0 (i.e. is not a correction), or None if there are no bills.
         """
         # querying for all bills ("lazy loading"), then filtering them in
         # application code--not efficient
-        return min(
-            (r for r in self.reebills if not r.issued and r.version == 0),
-            key=attrgetter('sequence'))
+        try:
+            result = min(
+                (r for r in self.reebills if not r.issued and r.version == 0),
+                key=attrgetter('sequence'))
+        except ValueError:
+            raise NoSuchBillException('Customer has no unissued reebills')
+        return result
 
 
 class ReeBillCharge(Base):
