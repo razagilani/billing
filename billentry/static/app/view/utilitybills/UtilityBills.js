@@ -25,10 +25,6 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        xtype: 'checkcolumn',
-        text: 'Bill Entered',
-        dataIndex: 'entered'
-    },{
         header: 'Total',
         dataIndex: 'target_total',
         editor: {
@@ -157,6 +153,10 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         },
         hidden:true
+    },{
+        xtype: 'checkcolumn',
+        text: 'Bill Entered',
+        dataIndex: 'entered'
     }],
 
     dockedItems: [{
