@@ -573,7 +573,7 @@ class ReeBillCustomer(Base):
         try:
             result = min(g, key=attrgetter('sequence'))
         except ValueError:
-            raise NoSuchBillException('Customer has no unissued reebills')
+            return None
         return result
 
 
