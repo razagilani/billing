@@ -27,7 +27,8 @@ Ext.application({
         'Charges',
         'Units',
         'UtilityBills',
-        'Users'
+        'Users',
+        'UserUtilityBills'
     ],
 
     refs: [{

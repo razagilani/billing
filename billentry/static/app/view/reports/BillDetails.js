@@ -1,22 +1,27 @@
 Ext.define('BillEntry.view.reports.BillDetails', {
     extend: 'BillEntry.view.utilitybills.UtilityBills',
     alias: 'widget.billDetails',
-    store: 'UtilityBills',
+    store: 'UserUtilityBills',
     title: 'Utility Bills',
 
     plugins: [],
-    dockedItems: []
 
-    //plugins: [
-    //    Ext.create('Ext.grid.plugin.CellEditing', {
-    //        clicksToEdit: 2,
-    //        listeners: {
-    //            beforeedit: function (e, editor) {
-    //                if (editor.record.get('processed'))
-    //                    return false;
-    //            }
-    //        }
-    //    })
-    //],
+    initComponent: function() {
+        var additionalColumns =[{
+            header: 'Account ID',
+            dataIndex: 'utility_account_id'
+        }];
+
+        console.log(this.columns);
+        // Prepend the additional columns
+        additionalColumns.push.apply(
+            additionalColumns, this.columns
+        );
+        this.columns = additionalColumns;
+        console.log(this.columns);
+        this.callParent(arguments);
+    },
+
+    dockedItems: []
 
 });

@@ -110,11 +110,13 @@ Ext.define('BillEntry.view.Viewport', {
                         }]
                     }
                 },{
-                    xtype: 'userStatistic',
+                    xtype: 'userStatistics',
+                    id: 'userStatisticsGrid',
                     flex: 1
                 },{
                     xtype: 'billDetails',
                     id: 'reportUtilityBillsGrid',
+                    disabled: true,
                     flex: 1
                 }]
             }],

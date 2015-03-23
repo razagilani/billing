@@ -2,7 +2,7 @@ Ext.define('BillEntry.controller.Reports', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Users', 'UtilityBills'
+        'Users', 'UserUtilityBills'
     ],
 
     views:[
@@ -16,6 +16,12 @@ Ext.define('BillEntry.controller.Reports', {
     },{
         ref: 'endDateField',
         selector: 'datefield[name=end]'
+    },{
+        ref: 'reportUtilityBillsGrid',
+        selector: 'grid[id=reportUtilityBillsGrid]'
+    },{
+        ref: 'userStatisticsGrid',
+        selector: 'grid[id=userStatisticsGrid]'
     }],
 
     init: function() {
@@ -32,6 +38,9 @@ Ext.define('BillEntry.controller.Reports', {
             },
             'panel[name=reportsTab]': {
                 activate: this.handleActivate
+            },
+            'grid[id=userStatisticsGrid]': {
+                selectionchange: this.handleUserStatisticsRowSelect
             }
         });
 
@@ -45,8 +54,16 @@ Ext.define('BillEntry.controller.Reports', {
         var endField = this.getEndDateField();
         if(!startField.getValue() && !endField.getValue()) {
             var today = new Date();
-            endField.setValue(today);
             startField.setValue(Ext.Date.add(today, Ext.Date.DAY, -7))
+            // The end is exclusive, so add a day
+            endField.setValue(Ext.Date.add(today, Ext.Date.DAY, 1));
+        }else{
+            // Reload both stores, if the User has visited the reports tab
+            // before and a date change event was not fired.
+            this.getUsersStore().reload();
+            if(!this.getReportUtilityBillsGrid().isDisabled()){
+                this.getUserUtilityBillsStore().reload();
+            }
         }
     },
 
@@ -56,14 +73,49 @@ Ext.define('BillEntry.controller.Reports', {
     handleDateRangeChange: function() {
         var start = this.getStartDateField().getValue();
         var end = this.getEndDateField().getValue();
-        console.log('daterange change');
+        var grid = this.getUserStatisticsGrid();
         if (start && end){
+            var selections = grid.getSelectionModel().getSelection();
+            if (selections.length){
+                var userid = selections[0].get('id');
+                this.updateUtilityBillsGrid(start, end, userid)
+            }
+
             var store = this.getUsersStore();
-            console.log(store, start, end, typeof start, typeof end);
             store.getProxy().setExtraParam('start', start.toISOString());
             store.getProxy().setExtraParam('end', end.toISOString());
             store.reload()
         }
     },
+
+    /**
+     * Handle a user row becoming selected
+     */
+    handleUserStatisticsRowSelect: function(store, records ){
+        var start = this.getStartDateField().getValue();
+        var end = this.getEndDateField().getValue();
+        if (records.length){
+            var userid = records[0].get('id');
+            this.updateUtilityBillsGrid(start, end, userid)
+        }
+    },
+
+    /**
+     *  Update the UtilityBills Grid
+     */
+    updateUtilityBillsGrid: function(start, end, userid){
+        var grid = this.getReportUtilityBillsGrid();
+        var store = this.getUserUtilityBillsStore();
+        if(start && end && userid){
+            store.getProxy().setExtraParam('start', start.toISOString());
+            store.getProxy().setExtraParam('end', end.toISOString());
+            store.getProxy().setExtraParam('id', userid);
+            store.reload();
+            grid.setDisabled(false);
+        }else{
+            grid.setDisabled(true);
+        }
+    }
+
 
 });

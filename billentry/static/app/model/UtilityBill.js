@@ -6,7 +6,7 @@ Ext.define('BillEntry.model.UtilityBill', {
         // Model data
         {name: 'id'},
         {name: 'name'},
-        {name: 'account'},
+        {name: 'utility_account_id', type: 'int'},
         {name: 'rate_class', type:'string', mapping: function( data )
             { if (data.rate_class==null)
                     return 'Unknown Rate Class';
