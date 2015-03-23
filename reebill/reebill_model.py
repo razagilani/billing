@@ -168,11 +168,20 @@ class ReeBill(Base):
         if self.processed:
             raise ProcessedBillError("Can't modify a processed reebill")
 
+    def get_period_start(self):
+        """Return start of the utility bill's period (date).
+        """
+        return self.utilbill.period_start
+
+    def get_period_end(self):
+        """Return end of the utility bill's period (date).
+        """
+        return self.utilbill.period_end
+
     def get_period(self):
-        '''Returns period of the first (only) utility bill for this reebill
-        as tuple of dates.
-        '''
-        return self.utilbills[0].period_start, self.utilbills[0].period_end
+        """Return period of the utility bill as a tuple of dates (start, end).
+        """
+        return self.utilbill.period_start, self.utilbill.period_end
 
     def copy_reading_conventional_quantities_from_utility_bill(self):
         """Sets the conventional_quantity of each reading to match the
