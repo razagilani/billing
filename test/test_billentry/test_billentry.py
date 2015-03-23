@@ -3,9 +3,9 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-from flask import url_for
-from flask.ext.login import current_user
+import json
 from mock import Mock
+from sqlalchemy.orm.exc import NoResultFound
 
 # if init_test_config() is not called before "billentry" is imported,
 # "billentry" will call init_config to initialize the config object with the
@@ -14,14 +14,23 @@ from mock import Mock
 from test import init_test_config
 init_test_config()
 
-import billentry
-from billentry.billentry_model import BillEntryUser, BEUtilBill
-from billentry.common import replace_utilbill_with_beutilbill
+from core.altitude import AltitudeBill, get_utilbill_from_guid
+from mq import IncomingMessage
 
-from core import init_model
+import billentry
+from billentry import common
+from billentry.billentry_exchange import create_amqp_conn_params, \
+    ConsumeUtilbillGuidsHandler
+from billentry.billentry_model import BillEntryUser, BEUtilBill
+from billentry.common import replace_utilbill_with_beutilbill, \
+    account_has_bills_for_data_entry
+
+from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
+from mq.tests import create_mock_channel_method_props, \
+    create_channel_message_body
 from test.setup_teardown import TestCaseWithSetup
 
 
@@ -34,6 +43,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
+        self.user.is_anonymous.return_value = False
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
 
@@ -57,11 +67,13 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(the_date, self.ub.get_date())
         self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), False)
 
         self.ub.un_enter()
         self.assertEqual(None, self.ub.get_date())
         self.assertEqual(None, self.ub.get_user())
         self.assertFalse(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), True)
 
         self.ub.processed = True
         self.assertEqual(None, self.ub.get_date())
@@ -183,17 +195,21 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5, ub3])
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
         s.commit()
 
     def test_accounts(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
+              'bills_to_be_entered': True,
               'id': 1,
               'service_address': '1 Example St., ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '1'},
              {'account': '22222',
+              'bills_to_be_entered': False,
               'id': 2,
               'service_address': ', ,  ',
               'utility': 'Example Utility',
@@ -223,7 +239,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Empty Utility',
                   'utility_account_number': '3',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
+                  'wiki_url': 'http://example.com/utility:Empty Utility',
+                  'entered': None
                  },
              ], }, rv.data)
 
@@ -291,13 +308,15 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_number': '1',
-              'wiki_url': 'http://example.com/utility:Example Utility'
+              'wiki_url': 'http://example.com/utility:Example Utility',
+              'entered': True
               },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
-            period_start=datetime(2000, 1, 1).isoformat()
+            period_start=datetime(2000, 1, 1).isoformat(),
+            entered=True
         ))
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
@@ -305,8 +324,27 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
+            ))
+        # this request is being made using a different content-type because
+        # with the default content-type of form-urlencoded bool False
+        # was interpreted as a string and it was evaluating to True on the
+        # server. Also in out app, the content-type is application/json so
+        # we should probably update all our test code to use application/json
+        self.assertEqual(500, rv.status_code)
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
+            data=json.dumps(dict(
+                id=2,
+                entered=False
+        )))
+        self.assertEqual(rv.status_code, 200)
+
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id=2,
+            next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = None
+
+        expected['rows']['next_meter_read_date'] = date(2000, 2, 5).isoformat()
+        expected['rows']['entered'] = False
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
@@ -333,7 +371,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Empty Utility',
               'utility_account_number': '3',
               'supply_choice_id': None,
-              'wiki_url': 'http://example.com/utility:Empty Utility'
+              'wiki_url': 'http://example.com/utility:Empty Utility',
+              'entered': None
              }
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
@@ -369,7 +408,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Empty Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
+                  'wiki_url': 'http://example.com/utility:Empty Utility',
+                  'entered': False
             },
             }, rv.data
         )
@@ -402,7 +442,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility'
+                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'entered': False
             },
             }, rv.data
         )
@@ -481,7 +522,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'utility': 'Example Utility',
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Example Utility'
+                  'wiki_url': 'http://example.com/utility:Example Utility',
+                  'entered': True
                  }],
              }, rv.data)
 
@@ -514,6 +556,75 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
+class TestAccountHasBillsForDataEntry(unittest.TestCase):
+
+    def test_account_has_bills_for_data_entry(self):
+        utility_account = Mock(autospec=UtilityAccount)
+        regular_utilbill = Mock(autospec=UtilBill)
+        regular_utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        beutilbill = Mock(autospec=BEUtilBill)
+        beutilbill.discriminator = BEUtilBill.POLYMORPHIC_IDENTITY
+
+        utility_account.utilbills = []
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill]
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill, beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
+class TestUtilBillGUIDAMQP(unittest.TestCase):
+
+    def setUp(self):
+        super(TestUtilBillGUIDAMQP, self).setUp()
+
+        # parameters for real RabbitMQ connection are stored but never used so
+        # there is no actual connection
+        exchange_name, routing_key, amqp_connection_parameters, \
+                = create_amqp_conn_params()
+
+        self.utilbill = Mock(autospec=UtilBill)
+        self.utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
+        self.core_altitude_module = Mock(autospec=altitude)
+        self.billentry_common_module = Mock(autospec=common)
+        self.guid = '5efc8f5a-7cca-48eb-af58-7787348388c5'
+
+        self.handler = ConsumeUtilbillGuidsHandler(
+            exchange_name, routing_key, amqp_connection_parameters,
+            self.core_altitude_module, self.billentry_common_module)
+
+        # We don't have to wait for the rabbitmq connection to close,
+        # since we're never instatiating a connection
+        self.handler._wait_on_close = 0
+
+        # these are for creating IncomingMessage objects for 'handler' to
+        # handle
+        _, method, props = create_mock_channel_method_props()
+        self.mock_method = method
+        self.mock_props = props
+
+    def test_process_utilbill_guid_with_no_matching_guid(self):
+        message = create_channel_message_body(dict(
+            message_version=[1, 0],
+            guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
+        self.core_altitude_module.get_utilbill_from_guid.side_effect = NoResultFound
+        self.assertRaises(NoResultFound, self.handler.handle, message_obj)
+        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls([])
+
+    def test_process_utilbill_guid_with_matching_guid(self):
+        message = create_channel_message_body(dict(
+            message_version=[1, 0],
+            guid=self.guid))
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
+        self.core_altitude_module.get_utilbill_from_guid.return_value = self.utilbill
+        self.handler.handle(message_obj)
+        self.billentry_common_module.replace_utilbill_with_beutilbill\
+                .assert_called_once_with(self.utilbill)
+
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
 
@@ -530,6 +641,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         cls.authorize_url = config.get('billentry', 'authorize_url')
 
     def setUp(self):
+        init_test_config()
         TestCaseWithSetup.truncate_tables()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')

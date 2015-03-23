@@ -20,6 +20,7 @@ Ext.application({
 
     stores: [
         'Accounts',
+        'AccountsFilter',
         'Services',
         'Utilities',
         'RateClasses',

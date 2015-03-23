@@ -25,6 +25,10 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
+        xtype: 'checkcolumn',
+        text: 'Bill Entered',
+        dataIndex: 'entered'
+    },{
         header: 'Total',
         dataIndex: 'target_total',
         editor: {
