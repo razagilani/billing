@@ -121,7 +121,7 @@ class ReebillProcessor(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-        predecessor = self.state_db.get_predecessor(reebill)
+        predecessor = self.state_db.get_predecessor(reebill, version=0)
         reebill.set_adjustment(predecessor, self)
 
         # calculate payments:
@@ -347,18 +347,18 @@ class ReebillProcessor(object):
         session = Session()
         if day is None:
             day = datetime.utcnow().date()
-        acc, seq = reebill.get_account(), reebill.sequence
 
         if reebill.sequence <= 1:
             return 0
 
         # unissued bill has no late charge
-        if not self.state_db.is_issued(acc, seq - 1):
+        predecessor = self.state_db.get_predecessor(reebill)
+        if not predecessor.issued:
             return 0
 
         # late charge is 0 if version 0 of the previous bill is not overdue
-        predecessor0 = self.state_db.get_reebill(acc, seq - 1,
-                version=0)
+        predecessor0 = self.state_db.get_predecessor(
+            self.state_db.get_original_version(reebill), version=0)
         if day <= predecessor0.due_date:
             return 0
 
@@ -367,13 +367,12 @@ class ReebillProcessor(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        reebill_customer = self.state_db.get_reebill_customer(acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
-                .filter(ReeBill.reebill_customer == reebill_customer)\
-                .filter(ReeBill.sequence == seq - 1).one()[0]
+                .filter(ReeBill.reebill_customer == reebill.reebill_customer)\
+                .filter(ReeBill.sequence == reebill.sequence - 1).scalar()
         total_payment = sum(p.credit for p in
                             self.payment_dao.get_total_payment_since(
-                                acc, predecessor0.issue_date))
+                                reebill.get_account(), predecessor0.issue_date))
         source_balance = min_balance_due - total_payment
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
