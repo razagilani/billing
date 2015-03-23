@@ -1,4 +1,4 @@
-Ext.define('BillEntry.store.UtilityBills', {
+Ext.define('BillEntry.store.UserUtilityBills', {
     extend: 'Ext.data.Store',
     model: 'BillEntry.model.UtilityBill',
 
@@ -14,7 +14,7 @@ Ext.define('BillEntry.store.UtilityBills', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://'+window.location.host+'/utilitybills/utilitybills',
+        url: 'http://'+window.location.host+'/utilitybills/user_utilitybills',
 		reader: {
 			type: 'json',
 			root: 'rows',
@@ -35,4 +35,5 @@ Ext.define('BillEntry.store.UtilityBills', {
         property: 'due_date',
         direction: 'DESC'
     }]
+
 });

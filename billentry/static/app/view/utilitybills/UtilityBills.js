@@ -67,7 +67,8 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 125
+        minWidth: 125,
+        flex: 1
     },{
         header: 'Energy',
         dataIndex: 'total_energy',
