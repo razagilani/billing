@@ -329,7 +329,7 @@ class UtilBillCountForUserResource(BaseResource):
         return {'rows': rows, 'results': len(rows)}
 
 
-class UtilBillListForUserResourece(BaseResource):
+class UtilBillListForUserResource(BaseResource):
     """List of bills queried by id of BillEntryUser who "entered" them.
     """
     def get(self, *args):

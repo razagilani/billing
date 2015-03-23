@@ -329,7 +329,7 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
-api.add_resource(resources.UtilBillListForUserResourece,
+api.add_resource(resources.UtilBillListForUserResource,
                  '/utilitybills/user_utilitybills')
 
 # apparently needed for Apache
