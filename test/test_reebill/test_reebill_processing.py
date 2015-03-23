@@ -568,9 +568,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         rp.roll_reebill(acc)  # Fourth Reebill
 
-        # try to issue nonexistent corrections
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 4)
-
         reebill_data = lambda seq: next(
             d for d in self.views.get_reebill_metadata_json(acc)
             if d['sequence'] == seq)
@@ -2101,6 +2098,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         customer2.set_tag(tag)
 
         # create two reebills for two different customers
+        # TODO: test issuing corrections
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
         self.reebill_processor.toggle_reebill_processed(self.account, 1, False)
