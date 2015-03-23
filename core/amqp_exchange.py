@@ -13,7 +13,6 @@ from core.bill_file_handler import BillFileHandler
 from core.model import Session, Address, UtilityAccount
 from core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
-from exc import AltitudeDuplicateError
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from mq.schemas.validators import MessageVersion, EmptyString, Date
 from core.pricing import FuzzyPricingModel
