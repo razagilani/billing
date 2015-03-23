@@ -20,8 +20,7 @@ class ReeBillCustomerTest(unittest.TestCase):
         self.customer = ReeBillCustomer()
 
     def test_get_first_unissued_bill(self):
-        with self.assertRaises(NoSuchBillException):
-            self.customer.get_first_unissued_bill()
+        self.assertIsNone(self.customer.get_first_unissued_bill())
 
         # unfortunately it is necessary to use real ReeBill objects here
         # because mocks won't work with SQLAlchemy
