@@ -567,12 +567,11 @@ class ReeBillCustomer(Base):
         """Return the reebill with lowest sequence for this customer whose
         version is 0 (i.e. is not a correction), or None if there are no bills.
         """
-        # querying for all bills ("lazy loading"), then filtering them in
-        # application code--not efficient
+        # querying for all bills (SQLAlchemy default behavior is "lazy
+        # loading"), then filtering them in application code--not efficient
+        g = (r for r in self.reebills if not r.issued and r.version == 0)
         try:
-            result = min(
-                (r for r in self.reebills if not r.issued and r.version == 0),
-                key=attrgetter('sequence'))
+            result = min(g, key=attrgetter('sequence'))
         except ValueError:
             raise NoSuchBillException('Customer has no unissued reebills')
         return result
