@@ -675,21 +675,27 @@ class ReebillProcessor(object):
             ReeBillCustomer.tag == customer_tag,
             ReeBill.issued == False,
             ReeBill.processed == True,
-            ReeBill.version == 0)
+            ReeBill.version == 0).order_by(ReeBill.sequence)
         assert bills.count() > 0
+
+        for b in bills.all():
+            self.issue_corrections(b.get_account(), b.sequence)
+            b.issue(datetime.utcnow(), self)
+
+        # create and email combined PDF file
         summary_file = StringIO()
         sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
-        sfg.generate_summary_file(bills.order_by(ReeBill.sequence).all(),
-                                  summary_file)
+        sfg.generate_summary_file(bills.all(), summary_file)
         summary_file.seek(0)
         merge_fields = {
             'street': customer_tag,
             'balance_due': sum(b.balance_due for b in bills.all()),
-            'bill_dates': max(b.get_period()[1] for b in bills.all()),
+            'bill_dates': max(b.get_period_end() for b in bills.all()),
             'last_bill': '',
         }
         self.bill_mailer.mail([recipient], merge_fields, summary_file,
                               'summary.pdf')
+        return bills.all()
 
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
