@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
+
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     ProcessedBillError, NotProcessable
 
@@ -401,7 +402,6 @@ class UtilityAccount(Base):
             .filter(UtilBill.utility_account_id == self.id).first()
         return self.fb_service_address if ub is None else ub.service_address
 
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -475,8 +475,8 @@ class UtilBill(Base):
     # be added to the session after the file upload succeeded (because in a
     # test, there is no way to check that the UtilBill was not inserted into
     # the database because the transaction was rolled back).
-    utility_account = relationship("UtilityAccount", backref=backref('utilbill',
-            order_by=id, cascade='delete'))
+    utility_account = relationship("UtilityAccount", backref=backref(
+        'utilbills', order_by=id, cascade='delete'))
 
     # the 'supplier' attribute should not move to UtilityAccount because
     # it can change from one bill to the next.
