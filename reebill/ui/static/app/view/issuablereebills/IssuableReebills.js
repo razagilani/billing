@@ -103,13 +103,4 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
         }]
     }]
 
-    /*bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'IssuableReebillsMemory',
-        refreshStore: 'IssuableReebills',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}'
-    }*/
-
 });
