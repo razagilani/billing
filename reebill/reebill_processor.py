@@ -282,20 +282,19 @@ class ReebillProcessor(object):
 
         return reebill
 
-    def get_unissued_corrections(self, account):
+    # deprecated--do not use!
+    def _get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
         un-issued versions of reebills > 0 for the given account."""
         result = []
-        for seq, max_version in self.state_db.get_unissued_corrections(account):
+        customer = self.state_db.get_reebill_customer(account)
+        for reebill in customer.get_unissued_corrections():
             # adjustment is difference between latest version's
             # charges and the previous version's
-            assert max_version > 0
-            latest_version = self.state_db.get_reebill(account, seq,
-                    version=max_version)
-            prev_version = self.state_db.get_reebill(account, seq,
-                    version=max_version - 1)
-            adjustment = latest_version.total - prev_version.total
-            result.append((seq, max_version, adjustment))
+            assert reebill.version > 0
+            original = self.state_db.get_original_version(reebill)
+            adjustment = reebill.total - original.total
+            result.append((reebill.sequence, reebill.version, adjustment))
         return result
 
     def issue_corrections(self, account, target_sequence):
@@ -310,7 +309,8 @@ class ReebillProcessor(object):
             raise ValueError(("Can't apply corrections to %s-%s, "
                     "because the latter is an issued reebill or another "
                     "correction.") % (account, target_sequence))
-        all_unissued_corrections = self.get_unissued_corrections(account)
+        customer = self.state_db.get_reebill_customer(account)
+        all_unissued_corrections = customer.get_unissued_corrections()
         if len(all_unissued_corrections) == 0:
             raise ValueError('%s has no corrections to apply' % account)
 
@@ -322,10 +322,7 @@ class ReebillProcessor(object):
                 version=target_max_version)
 
         # issue each correction
-        for correction in all_unissued_corrections:
-            correction_sequence, _, _ = correction
-            correction_reebill = self.state_db.get_reebill(account,
-                                                           correction_sequence)
+        for correction_reebill in all_unissued_corrections:
             correction_reebill.issue(datetime.utcnow(), self)
 
     def get_total_adjustment(self, account):
@@ -334,7 +331,7 @@ class ReebillProcessor(object):
         This adjustment is the sum of differences in totals between each
         unissued correction and the previous version it corrects.'''
         return sum(adjustment for (sequence, version, adjustment) in
-                self.get_unissued_corrections(account))
+                self._get_unissued_corrections(account))
 
     def get_late_charge(self, reebill, day):
         '''Returns the late charge for the given reebill on 'day', which is the
@@ -548,7 +545,7 @@ class ReebillProcessor(object):
         # to issue them, we will return a list of those corrections and the
         # sum of adjustments that have to be made so the client can create
         # a confirmation message
-        unissued_corrections = self.get_unissued_corrections(account)
+        unissued_corrections = self._get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
             # The user has confirmed to issue unissued corrections.
             sequences = [sequence for sequence, _, _ in unissued_corrections]
@@ -585,7 +582,7 @@ class ReebillProcessor(object):
             # to issue them, we will return a list of those corrections and the
             # sum of adjustments that have to be made so the client can create
             # a confirmation message
-            unissued_corrections = self.get_unissued_corrections(
+            unissued_corrections = self._get_unissued_corrections(
                 bill.reebill_customer.utility_account.account)
             if len(unissued_corrections) > 0 and not apply_corrections:
                 # The user has confirmed to issue unissued corrections.
@@ -662,7 +659,7 @@ class ReebillProcessor(object):
             reebill.processed = False
         else:
             if reebill == issuable_reebill:
-                unissued_corrections = self.get_unissued_corrections(account)
+                unissued_corrections = self._get_unissued_corrections(account)
 
                 # if there are corrections that are not already processed and
                 # user has not confirmed applying

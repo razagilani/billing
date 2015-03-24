@@ -138,6 +138,7 @@ class ReeBillDAO(object):
         assert (result is None) == (reebill.sequence == 1)
         return result
 
+    # deprecated--do not use!
     def get_unissued_corrections(self, account):
         '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''

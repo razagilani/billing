@@ -57,8 +57,8 @@ class ReeBill(Base):
     service_address_id = Column(Integer, ForeignKey('address.id'),
                                 nullable=False)
 
-    reebill_customer = relationship(
-        "ReeBillCustomer", backref=backref('reebills', order_by=id))
+    reebill_customer = relationship("ReeBillCustomer",
+        backref=backref('reebills', order_by=(sequence, version)))
     billing_address = relationship('Address', uselist=False,
         cascade='all',
         primaryjoin='ReeBill.billing_address_id==Address.id')
@@ -579,6 +579,11 @@ class ReeBillCustomer(Base):
             return None
         return result
 
+    def get_unissued_corrections(self):
+        """Return all reebills for this account whose version > 0 and are not
+        issued.
+        """
+        return [r for r in self.reebills if r.version > 0 and not r.issued]
 
 class ReeBillCharge(Base):
     '''Table representing "hypothetical" versions of charges in reebills (so
