@@ -2,7 +2,6 @@
 .directory
 .idea
 alembic.ini
-atlassian-ide-plugin.xml
 glob:*.log
 glob:*.pyc
 glob:*.swp
