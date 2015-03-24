@@ -100,6 +100,11 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
             text: 'Issue All Processed ReeBills',
             action: 'issueprocessed',
             iconCls: 'silk-email-go'
+        },{
+            xtype: 'combo',
+            fieldLabel: 'Display bills with tags',
+            displayField: 'tags',
+            valueField: 'tags'
         }]
     }]
 
