@@ -561,7 +561,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                              "Reebill %s recharge should equal %s; not %s" \
                              % (seq, reg_tot / 2.0, rb.ree_charge))
 
-        self.assertEquals([], rp.get_unissued_corrections(acc),
+        self.assertEquals([], rp._get_unissued_corrections(acc),
                             "There should be no unissued corrections.")
         self.assertEquals(0, rp.get_total_adjustment(acc),
                           "There should be no total adjustments.")
@@ -600,7 +600,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
         # there should be 2 adjustments: -25 for the first bill, and +75
         # for the 3rd
         self.assertEqual([(1, 1, -25), (3, 1, 75)],
-                         rp.get_unissued_corrections(acc))
+                         rp._get_unissued_corrections(acc))
         self.assertEqual(50, rp.get_total_adjustment(acc))
 
         # try to apply corrections to an issued bill
@@ -635,7 +635,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertTrue(reebill_data(1)['issued'])
         self.assertTrue(reebill_data(3)['issued'])
 
-        self.assertEqual([], rp.get_unissued_corrections(acc))
+        self.assertEqual([], rp._get_unissued_corrections(acc))
 
     # TODO rename
     def test_roll(self):
@@ -1386,7 +1386,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEqual(10, two_1.late_charge)
 
         # that difference should show up as an error
-        corrections = self.reebill_processor.get_unissued_corrections(acc)
+        corrections = self.reebill_processor._get_unissued_corrections(acc)
         assert len(corrections) == 1
         # self.assertEquals((2, 1, 25 - 15), corrections[0])
         # for some reason there's a tiny floating-point error in the
