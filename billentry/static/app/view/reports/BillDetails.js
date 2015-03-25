@@ -6,18 +6,21 @@ Ext.define('BillEntry.view.reports.BillDetails', {
     plugins: [],
 
     initComponent: function() {
-        var additionalColumns =[{
+        var prependColumns = [{
             header: 'Account ID',
             dataIndex: 'utility_account_id'
         }];
 
-        console.log(this.columns);
-        // Prepend the additional columns
-        additionalColumns.push.apply(
-            additionalColumns, this.columns
-        );
-        this.columns = additionalColumns;
-        console.log(this.columns);
+        // Omit columns by data_index
+        var omitColumns = ['entered'];
+
+        for(var i=0; i < this.columns.length; i++){
+            if(omitColumns.indexOf(this.columns[i].dataIndex) === -1){
+                prependColumns.push(this.columns[i])
+            }
+        }
+
+        this.columns = prependColumns;
         this.callParent(arguments);
     },
 
