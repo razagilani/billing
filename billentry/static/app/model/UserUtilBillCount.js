@@ -1,4 +1,4 @@
-Ext.define('BillEntry.model.User', {
+Ext.define('BillEntry.model.UserUtilBillCount', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'id', type: 'int'},

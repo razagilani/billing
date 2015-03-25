@@ -27,7 +27,7 @@ Ext.application({
         'Charges',
         'Units',
         'UtilityBills',
-        'Users',
+        'UserUtilBillCounts',
         'UserUtilityBills'
     ],
 

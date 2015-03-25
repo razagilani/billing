@@ -2,7 +2,7 @@ Ext.define('BillEntry.controller.Reports', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Users', 'UserUtilityBills'
+        'UserUtilBillCounts', 'UserUtilityBills'
     ],
 
     views:[
@@ -60,7 +60,7 @@ Ext.define('BillEntry.controller.Reports', {
         }else{
             // Reload both stores, if the User has visited the reports tab
             // before and a date change event was not fired.
-            this.getUsersStore().reload();
+            this.getUserUtilBillCountsStore().reload();
             if(!this.getReportUtilityBillsGrid().isDisabled()){
                 this.getUserUtilityBillsStore().reload();
             }
@@ -81,7 +81,7 @@ Ext.define('BillEntry.controller.Reports', {
                 this.updateUtilityBillsGrid(start, end, userid)
             }
 
-            var store = this.getUsersStore();
+            var store = this.getUserUtilBillCountsStore();
             store.getProxy().setExtraParam('start', start.toISOString());
             store.getProxy().setExtraParam('end', end.toISOString());
             store.reload()

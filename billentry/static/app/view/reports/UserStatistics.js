@@ -1,7 +1,7 @@
 Ext.define('BillEntry.view.reports.UserStatistics', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.userStatistics',
-    store: 'Users',
+    store: 'UserUtilBillCounts',
 
     features: [{
         ftype: 'summary'
