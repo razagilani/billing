@@ -2,7 +2,6 @@ Ext.define('BillEntry.view.reports.BillDetails', {
     extend: 'BillEntry.view.utilitybills.UtilityBills',
     alias: 'widget.billDetails',
     store: 'UserUtilityBills',
-    title: 'Utility Bills',
 
     plugins: [],
 
