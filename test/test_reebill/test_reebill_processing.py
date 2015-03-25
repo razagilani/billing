@@ -21,8 +21,9 @@ from reebill.views import Views
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill
-from core.model import UtilityAccount, Session
+from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+    CustomerGroup
+from core.model import UtilityAccount, Session, Address
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
@@ -806,7 +807,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
-        #self.utilbill.processed = True
+        self.utility = self.utilbill.get_utility()
+        self.customer = ReeBillCustomer(
+            utility_account=self.utilbill.utility_account, name='')
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -2076,5 +2079,45 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_summary(self):
+        # setup: 2 different customers are needed so another one must be created
+        self.utilbill.processed = True
+        ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
+                             Address(), Address())
+        customer2 = ReeBillCustomer(utility_account=ua2, name='')
+        utilbill2 = self.utilbill.clone()
+        utilbill2.utility = self.utilbill.utility
+        utilbill2.registers = [self.utilbill.registers[0].clone()]
+        utilbill2.billing_address = utilbill2.service_address = Address()
+        utilbill2.utility_account = ua2
+        s = Session()
+        s.add_all([ua2, customer2, utilbill2])
+        s.flush()
+
+        from reebill.reebill_model import CustomerCustomerGroup
+        group = CustomerGroup(name='My Property Management Co.', bill_email_recipient='example@example.com')
+        # TODO: this is causing it to create new ReeBillCustomer objects
+        group.add(self.customer)
+        s.flush()
+        group.add(customer2)
+        s.add(group)
+        s.flush()
+        print [c.get_account() for c in s.query(ReeBillCustomer).all()]
+
+        # create two reebills for two different customers
+        # TODO: test issuing corrections
+        self.reebill_processor.roll_reebill(
+            self.account, start_date=self.utilbill.period_start)
+        self.reebill_processor.toggle_reebill_processed(
+            self.customer.get_account(), 1, False)
+        self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
+                                            start_date=utilbill2.period_start)
+        self.reebill_processor.toggle_reebill_processed(
+            utilbill2.utility_account.account, 1, False)
+
+        # issue summary
+        email_addr = 'example@example.com'
+        self.reebill_processor.issue_summary(group, email_addr)
+
+        # don't care about email details
+        self.mailer.mail.assert_called()
