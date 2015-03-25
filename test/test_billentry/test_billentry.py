@@ -491,7 +491,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                         rv.data)
 
     def test_report_utilbills_for_user(self):
-        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s&id=%s'
+        url_format = self.URL_PREFIX + 'user_utilitybills?start=%s&end=%s&id=%s'
 
         # no "entered" bills yet
         start = datetime(2000, 1, 5)
@@ -509,8 +509,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson(
             {"results": 1,
              'rows':
-                 [{'account': None,
-                  'computed_total': 0,
+                 [{'computed_total': 0,
                   'due_date': None,
                   'id': 1,
                   'next_meter_read_date': None,
@@ -526,6 +525,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'target_total': 0,
                   'total_energy': 0,
                   'utility': 'Example Utility',
+                  'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
