@@ -147,6 +147,13 @@ id_parser.add_argument('id', type=int, required=True)
 # TODO: determine when argument to put/post/delete methods are created
 # instead of RequestParser arguments
 
+
+# A callable to parse a string into a Date() object via dateutil.
+# This is declared globally for reuse as a type keyword in calls to
+# RequestParser.add_argument() in many of the Resources below
+parse_date = lambda _s: dateutil_parser.parse(_s).date()
+
+
 class AccountResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
@@ -181,7 +188,6 @@ class UtilBillResource(BaseResource):
     def put(self, id):
         s = Session()
         parser = id_parser.copy()
-        parse_date = lambda s: dateutil_parser.parse(s).date()
         parser.add_argument('period_start', type=parse_date)
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
@@ -308,7 +314,6 @@ class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
         parser = RequestParser()
-        parse_date = lambda _s: dateutil_parser.parse(_s)
         parser.add_argument('start', type=parse_date, required=True)
         parser.add_argument('end', type=parse_date, required=True)
         args = parser.parse_args()
@@ -334,7 +339,6 @@ class UtilBillListForUserResource(BaseResource):
     """
     def get(self, *args):
         parser = RequestParser()
-        parse_date = lambda _s: dateutil_parser.parse(_s)
         parser.add_argument('id', type=int, required=True)
         parser.add_argument('start', type=parse_date, required=True)
         parser.add_argument('end', type=parse_date, required=True)
