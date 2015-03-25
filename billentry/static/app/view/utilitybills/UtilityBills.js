@@ -29,7 +29,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         text: 'Bill Entered',
         dataIndex: 'entered'
     },{
-        header: 'Total',
+        header: 'Total Due',
         dataIndex: 'target_total',
         editor: {
             xtype: 'numberfield',
@@ -73,8 +73,17 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },
         width: 125
     },{
-        header: 'Energy',
+        header: 'Usage',
         dataIndex: 'total_energy',
+        editor: {
+            xtype: 'numberfield',
+            allowBlank: false,
+            selectOnFocus: true
+        },
+        width: 100
+    },{
+        header: 'Total Charges',
+        dataIndex: 'computed_total',
         editor: {
             xtype: 'numberfield',
             allowBlank: false,
