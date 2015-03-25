@@ -71,21 +71,14 @@ google = oauth.remote_app(
     consumer_key=config.get('billentry', 'google_client_id'),
     consumer_secret=config.get('billentry', 'google_client_secret'))
 
-
-        # TODO: there's supposed to be an option to show only bills that
-        # "should be entered", i.e. BEUtilBills
-        # only BEUtilBills are counted here because only they have data about
-        #  when they were "entered" and who entered them.
-        # TODO: there's supposed to be an option to show only bills that
-        # "should be entered", i.e. BEUtilBills
-        # only BEUtilBills are counted here because only they have data about
-        #  when they were "entered" and who entered them.
-
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
 login_manager = LoginManager()
 login_manager.init_app(app)
+if app.config['LOGIN_DISABLED']:
+    login_manager.anonymous_user = BillEntryUser.get_anonymous_user
+
 # load the extension
 principals = Principal(app)
 

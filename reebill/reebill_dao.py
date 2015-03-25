@@ -12,8 +12,8 @@ from sqlalchemy.sql.expression import desc
 from exc import IssuedBillError, RegisterError, ProcessedBillError
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Utility, RateClass, Charge, UtilityAccount
-from reebill.state import ReeBill
-from reebill.state import ReeBillCustomer
+from reebill.reebill_model import ReeBill
+from reebill.reebill_model import ReeBillCustomer
 from util.units import ureg, convert_to_therms
 
 
@@ -115,6 +115,17 @@ class ReeBillDAO(object):
         session.add(new_reebill)
         return new_reebill
 
+    def get_original_version(self, reebill):
+        """Return a ReeBill object that is "the same bill" as the given one,
+        but has version 0, meaning it is not a corrected version.
+        """
+        result = Session().query(ReeBill).filter_by(
+            reebill_customer_id=reebill.reebill_customer_id,
+            sequence=reebill.sequence, version=0).one()
+        if reebill.version == 0:
+            assert result is reebill
+        return result
+
     def get_unissued_corrections(self, account):
         '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''
@@ -167,6 +178,7 @@ class ReeBillDAO(object):
             max_sequence = 0
         return max_sequence
 
+    # deprecated: do not use!
     def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
