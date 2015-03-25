@@ -1,6 +1,6 @@
-Ext.define('BillEntry.store.Users', {
+Ext.define('BillEntry.store.UserUtilBillCounts', {
     extend: 'Ext.data.Store',
-    model: 'BillEntry.model.User',
+    model: 'BillEntry.model.UserUtilBillCount',
 
     autoLoad: false,
     autoSync: true,
