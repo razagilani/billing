@@ -101,7 +101,7 @@ class BaseResource(Resource):
         # one (representing individual UtilBills/Charges and lists of them).
         self.utilbill_fields = {
             'id': Integer,
-            'account': String,
+            'utility_account_id': Integer,
             'period_start': IsoDatetime,
             'period_end': IsoDatetime,
             'service': CallableField(
@@ -147,6 +147,13 @@ id_parser.add_argument('id', type=int, required=True)
 # TODO: determine when argument to put/post/delete methods are created
 # instead of RequestParser arguments
 
+
+# A callable to parse a string into a Date() object via dateutil.
+# This is declared globally for reuse as a type keyword in calls to
+# RequestParser.add_argument() in many of the Resources below
+parse_date = lambda _s: dateutil_parser.parse(_s).date()
+
+
 class AccountResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
@@ -160,6 +167,7 @@ class AccountResource(BaseResource):
                                              attribute='get_service_address'),
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
                 for account in accounts]
+
 
 class UtilBillListResource(BaseResource):
     def get(self):
@@ -180,7 +188,6 @@ class UtilBillResource(BaseResource):
     def put(self, id):
         s = Session()
         parser = id_parser.copy()
-        parse_date = lambda s: dateutil_parser.parse(s).date()
         parser.add_argument('period_start', type=parse_date)
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
@@ -278,17 +285,20 @@ class ChargeResource(BaseResource):
         Session().commit()
         return {}
 
+
 class SuppliersResource(BaseResource):
     def get(self):
         suppliers = Session().query(Supplier).all()
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
+
 class UtilitiesResource(BaseResource):
     def get(self):
         utilities = Session().query(Utility).all()
         rows = marshal(utilities, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
+
 
 class RateClassesResource(BaseResource):
     def get(self):
@@ -304,38 +314,48 @@ class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
         parser = RequestParser()
-        # parser.add_argument('start', type=dateutil_parser.parse, required=True)
-        # parser.add_argument('end', type=dateutil_parser.parse, required=True)
-        parser.add_argument('start', type=str, required=True)
-        parser.add_argument('end', type=str, required=True)
+        parser.add_argument('start', type=parse_date, required=True)
+        parser.add_argument('end', type=parse_date, required=True)
         args = parser.parse_args()
-        # TODO: for some reason, it does not work to use type=dateutil_parser.parse here, even though that does work above in a PUT request.
-        start = dateutil_parser.parse(args['start'])
-        end = dateutil_parser.parse(args['end'])
 
         s = Session()
-        utilbill_sq = s.query(BEUtilBill.id,
-                              BEUtilBill.billentry_user_id).filter(
-            and_(BEUtilBill.billentry_date >= start,
-                 BEUtilBill.billentry_date < end)).subquery()
+        utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
+            .filter(and_(
+                BEUtilBill.billentry_date >= args['start'],
+                BEUtilBill.billentry_date < args['end']
+            )).subquery()
         q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
             utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
         rows = [{
-                    'user_id': user.id,
-                    'email': user.email,
-                    'count': count,
-                    } for (user, count) in q.all()]
+            'id': user.id,
+            'email': user.email,
+            'count': count,
+        } for (user, count) in q.all()]
         return {'rows': rows, 'results': len(rows)}
 
-class UtilBillListForUserResourece(BaseResource):
+
+class UtilBillListForUserResource(BaseResource):
     """List of bills queried by id of BillEntryUser who "entered" them.
     """
-    def get(self, id=None):
-        assert isinstance(id, int)
+    def get(self, *args):
+        parser = RequestParser()
+        parser.add_argument('id', type=int, required=True)
+        parser.add_argument('start', type=parse_date, required=True)
+        parser.add_argument('end', type=parse_date, required=True)
+        args = parser.parse_args()
+
         s = Session()
-        utilbills = s.query(BEUtilBill).join(BillEntryUser).filter(
-            BillEntryUser.id == id).order_by(desc(UtilBill.period_start),
-                                             desc(UtilBill.id)).all()
+        utilbills = s.query(BEUtilBill)\
+            .join(BillEntryUser)\
+            .filter(and_(
+                BEUtilBill.billentry_date >= args['start'],
+                BEUtilBill.billentry_date < args['end'],
+                BillEntryUser.id == args['id']
+            ))\
+            .order_by(
+                desc(UtilBill.period_start),
+                desc(UtilBill.id)
+            ).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
