@@ -1,4 +1,3 @@
-import sys
 import unittest
 from datetime import date
 import logging
@@ -10,18 +9,16 @@ import subprocess
 from mock import Mock
 import mongoengine
 from boto.s3.connection import S3Connection
+from testfixtures import TempDirectory
+
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-
 from test import init_test_config
 from util.file_utils import make_directories_if_necessary
-
-
 from core import init_model
-
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount
+from core.model import Supplier, RateClass, UtilityAccount, Base
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.reebill_model import Session, UtilBill, \
@@ -34,29 +31,18 @@ from core.utilbill_processor import UtilbillProcessor
 from reebill.views import Views
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-
-
-def init_logging():
-    """Initialize logging to debug before we import anything else"""
-
-    ch = logging.StreamHandler(sys.stderr)  #Log to stdout
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-
-    rootlogger = logging.getLogger('root')
-    rootlogger.setLevel(logging.DEBUG)
-    rootlogger.addHandler(ch)
-
-    for logger_name in ['test', 'reebill']:
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = True
-
-init_logging()
-
 from reebill.reebill_file_handler import ReebillFileHandler
-from testfixtures import TempDirectory
+
+
+def clear_db():
+    """Remove all data from the test database. This should be called before and
+    after running any test that inserts data.
+    """
+    session = Session()
+    Session.rollback()
+    for t in reversed(Base.metadata.sorted_tables):
+        session.execute(t.delete())
+    session.commit()
 
 
 class FakeS3Manager(object):
@@ -144,35 +130,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         cls.fakes3_root_dir.cleanup()
 
     @staticmethod
-    def truncate_tables():
-        session = Session()
-        Session.rollback()
-        for t in [
-            "altitude_utility",
-            "altitude_supplier",
-            "altitude_account",
-            "altitude_bill",
-            "utilbill_reebill",
-            "register",
-            "payment",
-            "reebill",
-            "charge",
-            "utilbill",
-            "reading",
-            "reebill_charge",
-            "reebill_customer",
-            "brokerage_account",
-            "utility_account",
-            "rate_class",
-            "supplier",
-            "utility",
-            "address",
-            "billentry_user",
-        ]:
-            session.execute("delete from %s" % t)
-        session.commit()
-
-    @staticmethod
     def init_logging():
         """Setup NullHandlers for test and root loggers.
         """
@@ -183,7 +140,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def insert_data():
         session = Session()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
                      '123 Test Street',
@@ -440,20 +397,10 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         self.session = Session()
-        self.truncate_tables()
+        clear_db()
         TestCaseWithSetup.insert_data()
         self.session.flush()
 
     def tearDown(self):
-        '''Clears out databases.'''
-        # this helps avoid a "lock wait timeout exceeded" error when a test
-        # fails to commit the SQLAlchemy session
-        Session.remove()
-        self.session.rollback()
-        self.truncate_tables()
+        clear_db()
         self.temp_dir.cleanup()
-
-
-
-if __name__ == '__main__':
-    unittest.main()

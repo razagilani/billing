@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import TestCaseWithSetup, clear_db
 from core import init_config, init_model
 from core.model import UtilBill, Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount
@@ -16,7 +16,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         blank_address = Address()
         utility =  Utility(name='Test Utility', address=Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,

@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import TestCaseWithSetup, clear_db
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
@@ -18,7 +18,7 @@ class StateDBTest(TestCaseWithSetup):
         init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         blank_address = Address()
         test_utility = Utility(name='FB Test Utility Name',
                                address=blank_address)
@@ -41,7 +41,7 @@ class StateDBTest(TestCaseWithSetup):
 
     def tearDown(self):
         self.session.rollback()
-        self.truncate_tables()
+        clear_db()
 
     def test_versions(self):
         '''Tests max_version(), max_issued_version(), increment_version(), and

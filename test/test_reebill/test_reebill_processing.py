@@ -24,7 +24,8 @@ from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
-from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
+from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
+    clear_db
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
     BillingError
@@ -112,7 +113,7 @@ def do_setup(self):
     '''
     from core import config
 
-    TestCaseWithSetup.truncate_tables()
+    clear_db()
     TestCaseWithSetup.insert_data()
 
     logger = logging.getLogger('test')
