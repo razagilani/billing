@@ -14,6 +14,7 @@ from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from reebill.views import column_dict
 
 
 class ReebillProcessor(object):
@@ -59,9 +60,19 @@ class ReebillProcessor(object):
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
+        def address_to_dict(self):
+            return {
+                'addressee': self.addressee,
+                'street': self.street,
+                'city': self.city,
+                'state': self.state,
+                'postal_code': self.postal_code,
+                }
+        b_addr_dict = address_to_dict(reebill.billing_address)
+        s_addr_dict = address_to_dict(reebill.service_address)
         return {
-            'billing_address': reebill.billing_address.to_dict(),
-            'service_address': reebill.service_address.to_dict(),
+            'billing_address': b_addr_dict,
+            'service_address': s_addr_dict,
             'discount_rate': reebill.discount_rate,
             'late_charge_rate': reebill.late_charge_rate,
         }

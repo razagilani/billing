@@ -386,21 +386,30 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def column_dict(self):
+        def address_to_dict(self):
+            return {
+                'addressee': self.addressee,
+                'street': self.street,
+                'city': self.city,
+                'state': self.state,
+                'postal_code': self.postal_code,
+            }
         period_start , period_end = self.get_period()
-        the_dict = super(ReeBill, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update({
             'account': self.get_account(),
             'mailto': self.reebill_customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
-            'billing_address': self.billing_address.to_dict(),
-            'service_address': self.service_address.to_dict(),
+            'billing_address': address_to_dict(self.billing_address),
+            'service_address': address_to_dict(self.service_address),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
-            'readings': [r.column_dict() for r in self.readings]
+            'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.readings]
         })
 
         if self.version > 0:
@@ -753,7 +762,7 @@ class Payment(Base):
             self.date_applied, self.description, self.credit)
 
     def column_dict(self):
-        the_dict = super(Payment, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update(editable=self.is_editable())
         return the_dict
 
