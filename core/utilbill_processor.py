@@ -317,7 +317,7 @@ class UtilbillProcessor(object):
 
     def get_service_address(self, account):
         return UtilBillLoader().get_last_real_utilbill(
-            account, end=datetime.utcnow()).service_address.to_dict()
+            account, end=datetime.utcnow()).service_address
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
