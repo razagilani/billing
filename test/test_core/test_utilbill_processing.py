@@ -865,9 +865,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                          processed=True)
         # no other attributes of a utilbill can be changed if
         # update_utilbill_metadata is called with processed = True
-        self.assertEqual('Some Supplier', self.utilbill_processor.
-                         _get_utilbill(utilbill_data['id']).
-                         supplier.name)
+        s = Session()
+        utilbill = s.query(UtilBill).filter_by(id=utilbill_data['id']).one()
+        self.assertEqual('Some Supplier', utilbill.supplier.name)
         self.assertRaises(ProcessedBillError,
                           self.utilbill_processor.add_charge,
                           utilbill_data['id'])
@@ -875,9 +875,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                          supplier='Other Supplier',
                                                          processed=False)
 
-        self.assertEqual('Other Supplier',
-                         self.utilbill_processor.
-                         _get_utilbill(utilbill_data['id']).supplier.name)
+        self.assertEqual('Other Supplier', utilbill.supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
