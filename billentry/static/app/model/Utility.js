@@ -1,4 +1,4 @@
-Ext.define('ReeBill.model.Utility', {
+Ext.define('BillEntry.model.Utility', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'name', type: 'string'},

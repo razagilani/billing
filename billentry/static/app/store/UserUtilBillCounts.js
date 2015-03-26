@@ -1,8 +1,8 @@
-Ext.define('BillEntry.store.Utilities', {
+Ext.define('BillEntry.store.UserUtilBillCounts', {
     extend: 'Ext.data.Store',
-    model: 'BillEntry.model.Utility',
+    model: 'BillEntry.model.UserUtilBillCount',
 
-    autoLoad: true,
+    autoLoad: false,
     autoSync: true,
 
 	proxy: {
@@ -14,7 +14,7 @@ Ext.define('BillEntry.store.Utilities', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/utilitybills/utilities',
+        url: 'http://' + window.location.host + '/utilitybills/users_counts',
 
         reader: {
             type: 'json',
@@ -23,14 +23,14 @@ Ext.define('BillEntry.store.Utilities', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('Utilities'),
+            exception: utils.makeProxyExceptionHandler('Users'),
             scope: this
         }
 	},
 
     sorters: [{
-        property: 'name',
-        direction: 'ASC'
+        property: 'email',
+        direction: 'DESC'
     }]
 
 });

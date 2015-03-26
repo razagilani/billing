@@ -1,4 +1,4 @@
-Ext.define('ReeBill.store.AccountsFilter', {
+Ext.define('BillEntry.store.AccountsFilter', {
     extend: 'Ext.data.Store',
     fields: ['label', 'filter', 'value'],
     data: [{
