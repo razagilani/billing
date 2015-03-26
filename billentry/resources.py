@@ -176,8 +176,10 @@ class UtilBillListResource(BaseResource):
         s = Session()
         # TODO: pre-join with Charge to make this faster
         utilbills = s.query(UtilBill).join(UtilityAccount).filter \
-            (UtilityAccount.id == args['id']).order_by(
-            desc(UtilBill.period_start), desc(UtilBill.id)).all()
+            (UtilityAccount.id == args['id']).filter \
+            (UtilBill.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY). \
+                order_by(desc(UtilBill.period_start), desc(UtilBill.id))\
+            .all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
