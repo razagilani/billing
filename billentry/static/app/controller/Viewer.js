@@ -1,11 +1,11 @@
-Ext.define('ReeBill.controller.Viewer', {
+Ext.define('BillEntry.controller.Viewer', {
     extend: 'Ext.app.Controller',
 
     require: ['Ext.panel.PDF'],
 
     views: [
-        'utilitybills.UtilityBills',
-        //'reebills.Reebills'
+        'BillEntry.view.utilitybills.UtilityBills',
+        'BillEntry.view.reports.BillDetails'
     ],
 
     refs: [{
@@ -20,6 +20,10 @@ Ext.define('ReeBill.controller.Viewer', {
         
         this.control({
             'grid[id=utilityBillsGrid]': {
+                selectionchange: this.handleUtilityBillSelect,
+                deselect: this.handleUtilityBillDeselect,
+            },
+            'grid[id=reportUtilityBillsGrid]': {
                 selectionchange: this.handleUtilityBillSelect,
                 deselect: this.handleUtilityBillDeselect,
             },
