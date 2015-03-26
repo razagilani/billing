@@ -55,12 +55,6 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   ('range(20) + somevar', ['somevar'])]:
             self.assertEqual(expected, Charge.get_variable_names(formula))
 
-    def test_formulas_from_other(self):
-        charge_2 = Charge.formulas_from_other(self.charge)
-        for key in Charge.column_names():
-            self.assertEqual(getattr(charge_2, key), None if key == 'utilbill'
-                             else getattr(self.charge, key))
-
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
                       ('OTHER_VAR.quantity', 4, None),
