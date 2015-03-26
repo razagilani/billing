@@ -1,4 +1,4 @@
-Ext.define('ReeBill.store.AccountsFilter', {
+Ext.define('BillEntry.store.AccountsFilter', {
     extend: 'Ext.data.Store',
     fields: ['label', 'filter', 'value'],
     data: [{
@@ -8,14 +8,14 @@ Ext.define('ReeBill.store.AccountsFilter', {
             root: 'data'}),
         value: 'none'
     },{
-        label: 'Bills To Be Entered',
+        label: 'Accounts with Bills To Be Entered',
         filter: Ext.create('Ext.util.Filter', {
             filterFn: function (item) {
                 return item.get('bills_to_be_entered') == true ;},
             root: 'data'}),
         value: 'enter_bills'
     },{
-        label: 'Bills Previously Entered',
+        label: 'Accounts with Bills Previously Entered',
         filter: Ext.create('Ext.util.Filter', {
             filterFn: function(item){
                 return item.get('bills_to_be_entered') == false;},

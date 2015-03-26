@@ -1,4 +1,4 @@
-Ext.define('ReeBill.store.Timestamps', {
+Ext.define('BillEntry.store.Timestamps', {
     extend: 'Ext.data.Store',
 
     fields: ['name', 'value'],
