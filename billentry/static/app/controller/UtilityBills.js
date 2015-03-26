@@ -79,6 +79,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.getAccountsStore().on('load', function() {
             this.getAccountsGrid().getSelectionModel().select(0);
         }, this, {single: true});
+
+        this.getUtilityBillsStore().on('write', function(store, operation, eOpts){
+           console.log(store, operation, eOpts);
+        });
     },
 
     /**
