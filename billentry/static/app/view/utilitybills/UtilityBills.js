@@ -84,12 +84,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Total Charges',
         dataIndex: 'computed_total',
-        editor: {
-            xtype: 'numberfield',
-            allowBlank: false,
-            selectOnFocus: true
-        },
-        width: 100
+        width: 100,
+        renderer: Ext.util.Format.usMoney
     },{
         header: 'Utility',
         dataIndex: 'utility',
