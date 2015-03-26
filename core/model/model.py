@@ -186,20 +186,6 @@ class Address(Base):
         self.state = state
         self.postal_code = postal_code
 
-    @classmethod
-    def from_other(cls, other_address):
-        """Constructs a new :class:`.Address` instance whose attributes are
-        copied from the given `other_address`.
-        :param other_address: An :class:`.Address` instance from which to
-         copy attributes.
-        """
-        assert isinstance(other_address, cls)
-        return cls(other_address.addressee,
-            other_address.street,
-            other_address.city,
-            other_address.state,
-            other_address.postal_code)
-
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
                     self.postal_code)
@@ -566,9 +552,6 @@ class UtilBill(Base):
         if self.supplier is None:
             return None
         return self.supplier.name
-
-    def get_utility_account_number(self):
-        return self.utility_account.account_number
 
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
@@ -938,9 +921,9 @@ class Charge(Base):
         self.target_total = target_total
         self.has_charge = has_charge
         self.shared = shared
-        self.rate=rate
+        self.rate = rate
         self.roundrule = roundrule
-        if not type in self.CHARGE_TYPES:
+        if type not in self.CHARGE_TYPES:
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
 
