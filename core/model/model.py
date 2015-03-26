@@ -77,13 +77,6 @@ class Base(object):
         return hash((self.__class__.__name__,) + tuple(
             getattr(self, x) for x in self.column_names()))
 
-    # TODO: move UI-related code to views.py
-    def column_dict(self):
-        '''Return dictionary of names and values for all attributes
-        corresponding to database columns.
-        '''
-        return {c: getattr(self, c) for c in self.column_names()}
-
     def clone(self):
         """Return an object identical to this one except for primary keys and
         foreign keys.
@@ -218,21 +211,6 @@ class Address(Base):
     def __str__(self):
         return '%s, %s, %s %s' % (self.street, self.city, self.state,
                                self.postal_code)
-
-    def column_dict(self):
-        raise NotImplementedError
-
-    # TODO: move UI-related code to views.py
-    # TODO rename to column_dict
-    def to_dict(self):
-        return {
-            #'id': self.id,
-            'addressee': self.addressee,
-            'street': self.street,
-            'city': self.city,
-            'state': self.state,
-            'postal_code': self.postal_code,
-        }
 
     @classmethod
     def from_other(cls, other_address):
@@ -800,30 +778,6 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
-
-    # TODO: move UI-related code to views.py
-    def column_dict(self):
-        # human-readable names for utilbill states (used in UI)
-        state_name = {
-            UtilBill.Complete: 'Final',
-            UtilBill.UtilityEstimated: 'Utility Estimated',
-            UtilBill.Estimated: 'Estimated',
-        }[self.state]
-        result = dict(super(UtilBill, self).column_dict().items() +
-                    [('account', self.utility_account.account),
-                     ('service', 'Unknown' if self.get_service() is None
-                                           else self.get_service().capitalize()),
-                     ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges()),
-                     ('reebills', [ur.reebill.column_dict() for ur
-                                   in self._utilbill_reebills]),
-                     ('utility', (self.utility.column_dict() if self.utility
-                                  else None)),
-                     ('supplier', (self.supplier.name if
-                                   self.supplier else None)),
-                     ('rate_class', self.get_rate_class_name()),
-                     ('state', state_name)])
-        return result
 
 class Register(Base):
     """A register reading on a utility bill"""
