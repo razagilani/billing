@@ -154,7 +154,7 @@ id_parser.add_argument('id', type=int, required=True)
 parse_date = lambda _s: dateutil_parser.parse(_s).date()
 
 
-class AccountResource(BaseResource):
+class AccountListResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
             BrokerageAccount).order_by(UtilityAccount.account).all()
@@ -167,6 +167,21 @@ class AccountResource(BaseResource):
                                              attribute='get_service_address'),
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
                 for account in accounts]
+
+
+class AccountResource(BaseResource):
+
+    def put(self, id):
+        account = Session().query(UtilityAccount).filter_by(id=id).one()
+        return dict(marshal(account, {
+            'id': Integer,
+            'account': String,
+            'utility_account_number': String(attribute='account_number'),
+            'utility': String(attribute='fb_utility'),
+            'service_address': CallableField(String(),
+                                             attribute='get_service_address'),
+        }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+
 
 
 class UtilBillListResource(BaseResource):
