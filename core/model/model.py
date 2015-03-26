@@ -570,9 +570,6 @@ class UtilBill(Base):
             self.utility_account.account, self.get_service(), self.period_start,
             self.period_end, self.state)
 
-    def is_attached(self):
-        return len(self._utilbill_reebills) > 0
-
     def add_charge(self, **charge_kwargs):
         self.check_editable()
         session = Session.object_session(self)
