@@ -199,7 +199,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         s.add(user)
         s.commit()
 
-    def test_accounts(self):
+    def test_accounts_get(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
@@ -214,6 +214,16 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'service_address': ', ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '2'}], rv.data)
+
+    def test_account_put(self):
+        rv = self.app.put(self.URL_PREFIX + 'accounts/1')
+        self.assertJson(
+            {'account': '11111',
+              'bills_to_be_entered': True,
+              'id': 1,
+              'service_address': '1 Example St., ,  ',
+              'utility': 'Example Utility',
+              'utility_account_number': '1'}, rv.data)
 
     def test_utilbills_list(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
