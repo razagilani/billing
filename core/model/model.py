@@ -950,13 +950,6 @@ class Charge(Base):
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
 
-    # TODO rename this
-    @classmethod
-    def formulas_from_other(cls, other):
-        """Constructs a charge copying the formulas and data
-        from the other charge, but does not set the utilbill"""
-        return other.clone()
-
     @staticmethod
     def _evaluate_formula(formula, context):
         """Evaluates the formula in the specified context
