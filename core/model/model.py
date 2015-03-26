@@ -362,23 +362,17 @@ class UtilityAccount(Base):
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
 
-
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
                % (self.name, self.account)
 
     def get_service_address(self):
-        '''
-        Gets the service address of the first bill that was added to
-        the account. If the account doesn't have any bills it return
-        self.fb_service_address. A better way might be to pick the most
-        recently modified bill since service addresses don't change, however we
-        decided agaist it for the sake of simplicity and speed.
-        '''
-        session = Session.object_session(self)
-        ub = session.query(UtilBill)\
-            .filter(UtilBill.utility_account_id == self.id).first()
-        return self.fb_service_address if ub is None else ub.service_address
+        """Return the service address (Address object) of any bill for this
+        account, or the value of 'fb_service_address' if there are no bills.
+        """
+        if len(self.utilbills) > 0:
+            return self.utilbills[0].service_address
+        return self.fb_service_address
 
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
