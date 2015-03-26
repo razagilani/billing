@@ -1,4 +1,4 @@
-Ext.define('ReeBill.controller.UtilityBills', {
+Ext.define('BillEntry.controller.UtilityBills', {
     extend: 'Ext.app.Controller',
 
     stores: [
