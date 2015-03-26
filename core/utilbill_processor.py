@@ -155,8 +155,6 @@ class UtilbillProcessor(object):
 
         # order of preference for picking value of "service" field: value
         # passed as an argument, or 'electric' by default
-        # TODO: this doesn't really make sense; probably the "service" field
-        # should belong to the rate class.
         if service is None and predecessor is not None:
             service = predecessor.get_service()
         if service is None:
@@ -312,12 +310,7 @@ class UtilbillProcessor(object):
             new_utilbill.due_date = due_date
 
         self.bill_file_handler.check_file_exists(new_utilbill)
-
         return new_utilbill
-
-    def get_service_address(self, account):
-        return UtilBillLoader().get_last_real_utilbill(
-            account, end=datetime.utcnow()).service_address
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
