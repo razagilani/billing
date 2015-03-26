@@ -1,5 +1,6 @@
 import requests
 from sqlalchemy import desc
+from reebill.views import column_dict
 
 from test import init_test_config
 from exc import DuplicateFileError, ProcessedBillError, BillingError
@@ -69,9 +70,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill_data = utilbills_data[0]
         self.assertDictContainsSubset({'state': 'Final',
                                        'service': 'Gas',
-                                       'utility': self.views.
-                                            get_utility('Test Utility Company Template').
-                                            column_dict(),
+                                       'utility':
+                                            column_dict(self.views.get_utility('Test Utility Company Template')),
                                        'rate_class': self.views.
                                             get_rate_class('Test Rate Class Template').
                                             name,
@@ -104,9 +104,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.views.
-                                            get_utility('Test Utility Company Template').
-                                            column_dict(),
+                                          'utility':
+                                            column_dict(self.views.get_utility('Test Utility Company Template')),
                                           }, ubdata)
 
         # nothing should exist for account 99999
@@ -310,9 +309,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({
                                           'state': 'Final',
                                           'service': 'Gas',
-                                          'utility': self.views.
-                                            get_utility('pepco').
-                                            column_dict(),
+                                          'utility':
+                                            column_dict(self.views.get_utility('pepco')),
                                           'supplier': self.views.
                                             get_supplier('supplier').name,
                                           'rate_class': self.views.
@@ -353,8 +351,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         dictionaries = [{
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': self.views.
-                                get_utility('pepco').column_dict(),
+                            'utility':
+                                column_dict(self.views.get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
@@ -369,8 +367,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': self.views.
-                                get_utility('pepco').column_dict(),
+                            'utility': column_dict(self.views.
+                                get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
@@ -399,8 +397,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         dictionaries = [{
                             'state': 'Estimated',
                             'service': 'Gas',
-                            'utility': self.views.
-                                get_utility('washgas').column_dict(),
+                            'utility': column_dict(self.views.
+                                get_utility('washgas')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
@@ -417,8 +415,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': self.views.
-                                get_utility('pepco').column_dict(),
+                            'utility': column_dict(self.views.
+                                get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
@@ -434,8 +432,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': self.views.
-                                get_utility('pepco').column_dict(),
+                            'utility': column_dict(self.views.
+                                get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
                             'rate_class': self.views.
@@ -467,7 +465,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             {
                 'state': 'Final',
                 'service': 'Gas',
-                'utility': self.views.get_utility('washgas').column_dict(),
+                'utility': column_dict(self.views.get_utility('washgas')),
                 'supplier': self.views.get_supplier('supplier').name,
                 'rate_class': self.views.get_rate_class(
                     'DC Non Residential Non Heat').name,
@@ -569,7 +567,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({
             'state': 'Final',
             'service': 'Gas',
-            'utility': customer.fb_utility.column_dict(),
+            'utility': column_dict(customer.fb_utility),
             'supplier': customer.fb_supplier.name,
             'rate_class': customer.fb_rate_class.name,
             'period_start': None,
@@ -615,7 +613,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({
                                           'state': 'Final',
                                           'service': 'Gas',
-                                          'utility': customer.fb_utility.column_dict(),
+                                          'utility': column_dict(customer.fb_utility),
                                           'supplier': customer.fb_supplier.name,
                                           'rate_class': customer.fb_rate_class.name,
                                           'period_start': None,
@@ -628,18 +626,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                       }, data[1])
         self.assertEqual(100, utilbill.target_total)
         self.assertEqual(the_address, utilbill.service_address)
-
-    def test_get_service_address(self):
-        account = '99999'
-        self.utilbill_processor.upload_utility_bill(account, StringIO("A PDF"),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
-        address = self.utilbill_processor.get_service_address(account)
-        self.assertEqual('12345', address['postal_code'])
-        self.assertEqual('Test City', address['city'])
-        self.assertEqual('XX', address['state'])
-        self.assertEqual('Test Customer 1 Service', address['addressee'])
-        self.assertEqual('123 Test Street', address['street'])
 
     def test_rs_prediction(self):
         '''Basic test of rate structure prediction when uploading utility
@@ -847,8 +833,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': self.views.
-                                      get_utility('washgas').column_dict(),
+                                          'utility': column_dict(
+                                          self.views.get_utility('washgas')),
                                           }, utilbill_data)
 
         # doc = self.utilbill_processor.get_utilbill_doc(session, utilbill_data['id'])
@@ -879,9 +865,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                          processed=True)
         # no other attributes of a utilbill can be changed if
         # update_utilbill_metadata is called with processed = True
-        self.assertEqual('Some Supplier', self.utilbill_processor.
-                         _get_utilbill(utilbill_data['id']).
-                         supplier.name)
+        s = Session()
+        utilbill = s.query(UtilBill).filter_by(id=utilbill_data['id']).one()
+        self.assertEqual('Some Supplier', utilbill.supplier.name)
         self.assertRaises(ProcessedBillError,
                           self.utilbill_processor.add_charge,
                           utilbill_data['id'])
@@ -889,9 +875,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                          supplier='Other Supplier',
                                                          processed=False)
 
-        self.assertEqual('Other Supplier',
-                         self.utilbill_processor.
-                         _get_utilbill(utilbill_data['id']).supplier.name)
+        self.assertEqual('Other Supplier', utilbill.supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
