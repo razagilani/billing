@@ -203,15 +203,14 @@ class ReebillProcessingTest(testing_utils.TestCase):
         from core import init_model
         init_test_config()
         init_model()
-        cls.fakes3_manager = FakeS3Manager()
-        cls.fakes3_manager.start()
+        FakeS3Manager.start()
 
     def setUp(self):
         do_setup(self)
 
     @classmethod
     def tearDownClass(cls):
-        cls.fakes3_manager.stop()
+        FakeS3Manager.stop()
 
     def test_list_account_status(self):
         # NOTE this test does not add any data to the database beyond what is
@@ -798,12 +797,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         from core import init_model
         init_test_config()
         init_model()
-        cls.fakes3_manager = FakeS3Manager()
-        cls.fakes3_manager.start()
+        FakeS3Manager.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.fakes3_manager.stop()
+        FakeS3Manager.stop()
 
     def setUp(self):
         do_setup(self)
