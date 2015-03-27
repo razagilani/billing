@@ -7,7 +7,7 @@ from boto.s3.connection import S3Connection
 from mock import Mock
 import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
-from core import pricing
+from core import pricing, init_model
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
@@ -25,12 +25,23 @@ from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    clear_db
+    clear_db, create_utilbill_processor, create_reebill_objects, \
+    create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
     BillingError
-from test import testing_utils
+from test import testing_utils, init_test_config
 from testfixtures.tempdirectory import TempDirectory
+
+def setUpModule():
+    init_test_config()
+    init_model()
+    mongoengine.connect('test', host='localhost', port=27017,
+                        alias='journal')
+    FakeS3Manager.start()
+
+def tearDownModule():
+    FakeS3Manager.stop()
 
 class MockReeGetter(object):
     def __init__(self, quantity):
@@ -41,11 +52,30 @@ class MockReeGetter(object):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
 
-class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
+class ProcessTest(testing_utils.TestCase):
     '''Tests that involve both utility bills and reebills. TODO: each of
     these should be separated apart and put in one of the other classes
     below, or made into some kind of multi-application integrationt test.
     '''
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeS3Manager.stop()
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+    def tearDown(self):
+        clear_db()
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'
