@@ -1,26 +1,14 @@
 import unittest
-import logging
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
-from boto.s3.connection import S3Connection
 
 from mock import Mock
 import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
-from core import pricing, init_model
-from core.bill_file_handler import BillFileHandler
-from core.utilbill_loader import UtilBillLoader
-from core.utilbill_processor import UtilbillProcessor
-from nexusapi.nexus_util import MockNexusUtil
-from reebill import journal
-from reebill.fetch_bill_data import RenewableEnergyGetter
-from reebill.payment_dao import PaymentDAO
-from reebill.reebill_dao import ReeBillDAO
-from reebill.reebill_file_handler import ReebillFileHandler
-from reebill.reebill_processor import ReebillProcessor
-from reebill.views import Views, column_dict
-from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
+from testfixtures.tempdirectory import TempDirectory
 
+from core import init_model
+from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
@@ -31,13 +19,12 @@ from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
     BillingError
 from test import testing_utils, init_test_config
-from testfixtures.tempdirectory import TempDirectory
+
 
 def setUpModule():
     init_test_config()
     init_model()
-    mongoengine.connect('test', host='localhost', port=27017,
-                        alias='journal')
+    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
     FakeS3Manager.start()
 
 def tearDownModule():
@@ -65,10 +52,6 @@ class ProcessTest(testing_utils.TestCase):
         cls.billupload = cls.utilbill_processor.bill_file_handler
         cls.reebill_processor, cls.views = create_reebill_objects()
         cls.nexus_util = create_nexus_util()
-
-    @classmethod
-    def tearDownClass(cls):
-        FakeS3Manager.stop()
 
     def setUp(self):
         clear_db()
@@ -135,90 +118,6 @@ class ProcessTest(testing_utils.TestCase):
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
-def do_setup(self):
-    '''It is not possible to inherit the setUp method from a TestCase
-    subclass. Instead, test classes that need to share setup code can call this.
-    When ReebillProcessingTest is only one class, this can go back into that
-    class' setUp.
-    '''
-    from core import config
-
-    clear_db()
-    TestCaseWithSetup.insert_data()
-
-    logger = logging.getLogger('test')
-    logger.addHandler(logging.NullHandler())
-    logger.propagate = False
-
-    # TODO most or all of these dependencies do not need to be instance
-    # variables because they're not accessed outside __init__
-    self.state_db = ReeBillDAO(logger)
-    s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
-                                 config.get('aws_s3', 'aws_secret_access_key'),
-                                 is_secure=config.get('aws_s3', 'is_secure'),
-                                 port=config.get('aws_s3', 'port'),
-                                 host=config.get('aws_s3', 'host'),
-                                 calling_format=config.get('aws_s3',
-                                                           'calling_format'))
-    utilbill_loader = UtilBillLoader()
-    url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
-        config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
-    self.billupload = BillFileHandler(s3_connection,
-                                      config.get('aws_s3', 'bucket'),
-                                      utilbill_loader, url_format)
-
-    mock_install_1 = MockSkyInstall(name='example-1')
-    mock_install_2 = MockSkyInstall(name='example-2')
-    self.splinter = MockSplinter(deterministic=True,
-                                 installs=[mock_install_1, mock_install_2])
-
-    self.pricing_model = pricing.FuzzyPricingModel(utilbill_loader)
-
-    # TODO: 64956642 do not hard code nexus names
-    self.nexus_util = MockNexusUtil([
-        {
-            'billing': '99999',
-            'olap': 'example-1',
-            'casualname': 'Example 1',
-            'primus': '1785 Massachusetts Ave.',
-        }, {
-            'billing': '88888',
-            'olap': 'example-2',
-            'casualname': 'Example 2',
-            'primus': '1786 Massachusetts Ave.',
-        }, {
-            'billing': '100000',
-            'olap': 'example-3',
-            'casualname': 'Example 3',
-            'primus': '1787 Massachusetts Ave.',
-        }, {'billing': '100001',
-            'olap': 'example-4',
-            'casualname': 'Example 4',
-            'primus': '1788 Massachusetts Ave.',
-        },
-    ])
-    bill_mailer = Mock()
-
-    self.temp_dir = TempDirectory()
-    reebill_file_handler = ReebillFileHandler(
-        config.get('reebill', 'reebill_file_path'),
-        config.get('reebill', 'teva_accounts'))
-
-    ree_getter = RenewableEnergyGetter(self.splinter, logger)
-    journal_dao = journal.JournalDAO()
-    self.payment_dao = PaymentDAO()
-
-    self.utilbill_processor = UtilbillProcessor(
-        self.pricing_model, self.billupload, self.nexus_util)
-    self.views = Views(self.state_db, self.billupload, self.nexus_util,
-                       journal_dao)
-    self.reebill_processor = ReebillProcessor(
-        self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
-        reebill_file_handler, ree_getter, journal_dao, logger=logger)
-
-    # example data to be used in most tests below
-    self.account = '99999'
-
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
@@ -229,18 +128,21 @@ class ReebillProcessingTest(testing_utils.TestCase):
     '''
     @classmethod
     def setUpClass(cls):
-        from test import init_test_config
-        from core import init_model
-        init_test_config()
-        init_model()
-        FakeS3Manager.start()
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.state_db = cls.reebill_processor.state_db
+        cls.nexus_util = cls.reebill_processor.nexus_util
+        cls.payment_dao = cls.reebill_processor.payment_dao
+        cls.utilbill_processor = create_utilbill_processor()
+
+        # example data to be used in most tests below
+        cls.account = '99999'
 
     def setUp(self):
-        do_setup(self)
+        clear_db()
+        TestCaseWithSetup.insert_data()
 
-    @classmethod
-    def tearDownClass(cls):
-        FakeS3Manager.stop()
+    def tearDown(self):
+        clear_db()
 
     def test_list_account_status(self):
         # NOTE this test does not add any data to the database beyond what is
@@ -823,22 +725,25 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
     '''
     @classmethod
     def setUpClass(cls):
-        from test import init_test_config
-        from core import init_model
-        init_test_config()
-        init_model()
-        FakeS3Manager.start()
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.state_db = cls.reebill_processor.state_db
+        cls.nexus_util = cls.reebill_processor.nexus_util
+        cls.payment_dao = cls.reebill_processor.payment_dao
+        cls.utilbill_processor = create_utilbill_processor()
 
-    @classmethod
-    def tearDownClass(cls):
-        FakeS3Manager.stop()
+        # example data to be used in most tests below
+        cls.account = '99999'
 
     def setUp(self):
-        do_setup(self)
+        clear_db()
+        TestCaseWithSetup.insert_data()
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
         #self.utilbill.processed = True
+
+    def tearDown(self):
+        clear_db()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
