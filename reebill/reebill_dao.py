@@ -1,37 +1,23 @@
-"""
-Utility functions to interact with state database
-"""
 from datetime import datetime
 
-from sqlalchemy.orm import aliased
-from pint import UnitRegistry, UndefinedUnitError
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from sqlalchemy.sql.expression import desc
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError
-from core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Utility, RateClass, Charge, UtilityAccount
+from exc import IssuedBillError
+from core.model import Address, Session, UtilBill, UtilityAccount
 from reebill.reebill_model import ReeBill
 from reebill.reebill_model import ReeBillCustomer
-from util.units import ureg, convert_to_therms
-
 
 
 class ReeBillDAO(object):
 
-    def __init__(self, logger=None):
-        """Construct a new :class:`.ReeBillDAO`.
-
-        :param session: a ``scoped_session`` instance
-        :param logger: a logger object
-        """
-        self.logger = logger
-
     def get_reebill_customer(self, account):
         session = Session()
-        utility_account = session.query(UtilityAccount).filter(UtilityAccount.account == account).one()
-        return session.query(ReeBillCustomer).filter(ReeBillCustomer.utility_account == utility_account).one()
+        utility_account = session.query(UtilityAccount).filter(
+            UtilityAccount.account == account).one()
+        return session.query(ReeBillCustomer).filter(
+            ReeBillCustomer.utility_account == utility_account).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -53,24 +39,6 @@ class ReeBillDAO(object):
         # SQLAlchemy returns a "long" here for some reason, so convert to int
         return int(max_version)
 
-    def max_issued_version(self, account, sequence):
-        '''Returns the greatest version of the given reebill that has been
-        issued. (This should differ by at most 1 from the maximum version
-        overall, since a new version can't be created if the last one hasn't
-        been issued.) If no version has ever been issued, returns None.'''
-        # weird filtering on other table without a join
-        session = Session()
-        reebill_customer = self.get_reebill_customer(account)
-        result = session.query(func.max(ReeBill.version)) \
-            .filter(ReeBill.reebill_customer == reebill_customer) \
-            .filter(ReeBill.issued == 1).one()[0]
-        # SQLAlchemy returns None if no reebills with that customer are issued
-        if result is None:
-            return None
-        # version number is a long, so convert to int
-        return int(result)
-
-    # TODO rename to something like "create_next_version"
     def increment_version(self, account, sequence):
         '''Creates a new reebill with version number 1 greater than the highest
         existing version for the given account and sequence.
@@ -151,13 +119,6 @@ class ReeBillDAO(object):
                 in reebills]
 
     def last_sequence(self, account):
-        '''Returns the discount rate for the customer given by account.'''
-        session = Session()
-        result = session.query(UtilityAccount).filter_by(account=account).one(). \
-            get_discount_rate()
-        return result
-
-    def last_sequence(self, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
         there are no reebills.'''
         session = Session()
@@ -167,25 +128,6 @@ class ReeBillDAO(object):
         # TODO: because of the way 0.xml templates are made (they are not in
         # the database) reebill needs to be primed otherwise the last sequence
         # for a new bill is None. Design a solution to this issue.
-        if max_sequence is None:
-            max_sequence = 0
-        return max_sequence
-
-    def last_issued_sequence(self, account,
-                             include_corrections=False):
-        '''Returns the sequence of the last issued reebill for 'account', or 0
-        if there are no issued reebills.'''
-        session = Session()
-        customer = self.get_customer(account)
-        if include_corrections:
-            filter_logic = sqlalchemy.or_(ReeBill.issued == 1,
-                sqlalchemy.and_(ReeBill.issued == 0, ReeBill.version > 0))
-        else:
-            filter_logic = ReeBill.issued == 1
-
-        max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
-            .filter(ReeBill.customer_id == customer.id) \
-            .filter(filter_logic).one()[0]
         if max_sequence is None:
             max_sequence = 0
         return max_sequence
@@ -216,7 +158,6 @@ class ReeBillDAO(object):
         # this method returned False when the 'version' argument was higher
         # than max_version. that was probably the wrong behavior, even though
         # test_state:StateDBTest.test_versions tested for it.
-        session = Session()
         try:
             if version == 'max':
                 reebill = self.get_reebill(account, sequence)
@@ -323,23 +264,3 @@ class ReeBillDAO(object):
                                                      last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
-    def get_outstanding_balance(self, account, sequence=None):
-        '''Returns the balance due of the reebill given by account and sequence
-        (or the account's last issued reebill when 'sequence' is not given)
-        minus the sum of all payments that have been made since that bill was
-        issued. Returns 0 if total payments since the issue date exceed the
-        balance due, or if no reebill has ever been issued for the customer.'''
-        # get balance due of last reebill
-        if sequence == None:
-            sequence = self.last_issued_sequence(account)
-        if sequence == 0:
-            return 0
-        reebill = self.get_reebill(sequence)
-
-        if reebill.issue_date == None:
-            return 0
-
-        # result cannot be negative
-        return max(0, reebill.balance_due -
-                   self.payment_dao.get_total_payment_since(account,
-                                                            reebill.issue_date))
