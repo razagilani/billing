@@ -205,8 +205,7 @@ class ReeBillDAO(object):
         reebill.processed = 1
         reebill.issue_date = issue_date
 
-    def is_issued(self, account, sequence, version='max',
-                  nonexistent=None):
+    def is_issued(self, account, sequence, version='max'):
         '''Returns true if the reebill given by account, sequence, and version
         (latest version by default) has been issued, false otherwise. If
         'nonexistent' is given, that value will be returned if the reebill is
@@ -216,22 +215,16 @@ class ReeBillDAO(object):
         # this method returned False when the 'version' argument was higher
         # than max_version. that was probably the wrong behavior, even though
         # test_state:StateDBTest.test_versions tested for it.
-        session = Session()
-        try:
-            if version == 'max':
-                reebill = self.get_reebill(account, sequence)
-            elif isinstance(version, int):
-                reebill = self.get_reebill(account, sequence, version)
-            else:
-                raise ValueError('Unknown version specifier "%s"' % version)
-            # NOTE: reebill.issued is an int, and it converts the entire
-            # expression to an int unless explicitly cast! see
-            # https://www.pivotaltracker.com/story/show/35965271
-            return bool(reebill.issued == 1)
-        except NoResultFound:
-            if nonexistent is not None:
-                return nonexistent
-            raise
+        if version == 'max':
+            reebill = self.get_reebill(account, sequence)
+        elif isinstance(version, int):
+            reebill = self.get_reebill(account, sequence, version)
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
+        # NOTE: reebill.issued is an int, and it converts the entire
+        # expression to an int unless explicitly cast! see
+        # https://www.pivotaltracker.com/story/show/35965271
+        return bool(reebill.issued == 1)
 
     def account_exists(self, account):
         session = Session()
