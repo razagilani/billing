@@ -1,4 +1,4 @@
-Ext.define('BillEntry.view.reports.UserStatistics', {
+Ext.define('BillEntry.view.reports.UserUtilBillCount', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.userStatistics',
     store: 'UserUtilBillCounts',
