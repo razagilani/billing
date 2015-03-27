@@ -1,11 +1,90 @@
+"""Unit tests (or what should be unit tests) for SQLAlchemy classes in
+reebill.reebill_model.
+"""
 import unittest
-from datetime import date
+from datetime import date, datetime, timedelta
+from mock import Mock
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBill, ReeBillCustomer
+from exc import NoSuchBillException, NotIssuable
+from reebill.reebill_model import ReeBill, ReeBillCustomer
+from reebill.reebill_processor import ReebillProcessor
 from test.setup_teardown import TestCaseWithSetup
 
+
+class ReeBillCustomerTest(unittest.TestCase):
+    """Unit tests for the ReeBillCustomer class.
+    """
+    def setUp(self):
+        self.customer = ReeBillCustomer()
+
+    def test_get_first_unissued_bill(self):
+        self.assertIsNone(self.customer.get_first_unissued_bill())
+
+        # unfortunately it is necessary to use real ReeBill objects here
+        # because mocks won't work with SQLAlchemy
+        one = ReeBill(self.customer, 1)
+        correction = ReeBill(self.customer, 1, version=1)
+        two = ReeBill(self.customer, 2)
+
+        for bill_set in [
+            [one],
+            [correction, one],
+            [two, one],
+            [one, two, correction],
+        ]:
+            self.customer.reebills = bill_set
+            self.assertIs(one, self.customer.get_first_unissued_bill())
+
+
+class ReeBillUnitTest(unittest.TestCase):
+    def setUp(self):
+        # unfortunately mocks will not work for any of the SQLAlchemy objects
+        # because of relationships. replace with mocks if/when possible.
+        utility_account = UtilityAccount('', '', None, None, None, Address(),
+                                         Address())
+        self.customer = ReeBillCustomer(
+            utility_account=utility_account,
+            bill_email_recipient='test@example.com')
+
+        utilbill = UtilBill(utility_account, None, None,
+                            period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
+        self.reebill = ReeBill(self.customer, 1, utilbills=[utilbill])
+
+        # currently it doesn't matter if the 2nd bill has the same utilbill
+        # as the first, but might need to change
+        self.reebill_2 = ReeBill(self.customer, 2, utilbills=[utilbill])
+
+    def test_issue(self):
+        self.assertEqual(None, self.reebill.email_recipient)
+        self.assertEqual(None, self.reebill.issue_date)
+        self.assertEqual(None, self.reebill.due_date)
+        self.assertEqual(False, self.reebill.issued)
+
+        reebill_processor = Mock(autospec=ReebillProcessor)
+        now = datetime(2000,2,15)
+
+        # can't issue this one yet
+        with self.assertRaises(NotIssuable):
+            self.reebill_2.issue(now, reebill_processor)
+
+        self.reebill.issue(now, reebill_processor)
+
+        # these calls may change or go away when more code is moved out of
+        # ReebillProcessor
+        self.assertEqual(1, reebill_processor.compute_reebill.call_count)
+        self.assertEqual(1, reebill_processor.get_late_charge.call_count)
+
+        self.assertEqual(self.customer.bill_email_recipient,
+                         self.reebill.email_recipient)
+        self.assertEqual(now, self.reebill.issue_date)
+        self.assertEqual(now.date() + timedelta(30), self.reebill.due_date)
+        self.assertEqual(True, self.reebill.issued)
+
+        # after the first bill is issued, the 2nd one can be issued
+        self.reebill_2.issue(now, reebill_processor)
 
 class ReebillTest(unittest.TestCase):
 

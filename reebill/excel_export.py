@@ -5,8 +5,8 @@ import pymongo
 from sqlalchemy import desc
 import tablib
 import traceback
-from reebill import state
-from reebill.state import UtilBill
+from reebill import reebill_model
+from reebill.reebill_model import UtilBill
 from util import dateutils
 from util.monthmath import approximate_month
 from exc import *
@@ -440,7 +440,7 @@ def main(export_func, filename, account=None):
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.ReeBillDAO(logger=logger)
+    state_db = reebill_model.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:

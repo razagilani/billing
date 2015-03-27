@@ -877,7 +877,7 @@ class ReportsResource(WebResource):
             energy and rate structure for all utility bills for the given account,
             or every account (1 per sheet) if 'account' is not given,
             """
-            exporter = Exporter(self.state_db)
+            exporter = Exporter(self.state_db, self.payment_dao)
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()

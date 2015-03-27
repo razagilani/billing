@@ -19,6 +19,7 @@ Ext.application({
 
     stores: [
         'Accounts',
+        'AccountsFilter',
         'Services',
         'Utilities',
         'RateClasses',
@@ -62,13 +63,22 @@ Ext.application({
                 scope: this
             },{
                 key: "c",
-                fn: function(){
+                fn: function(key, eventObj){
+                    // Don't do anything if the event was received in a input
+                    // field or a textarea
+                    var targetTagName = eventObj.target.tagName.toLowerCase();
+                    if (targetTagName == 'input' || targetTagName == 'textarea'){
+                        return;
+                    }
+
+                    // Make sure the user is looking at the Utilbills tab and
+                    // has a bill selected
                     var activeTab = this.getApplicationTabPanel().getActiveTab();
                     var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-
                     if (activeTab.name !== 'utilityBillsTab' || !selectedBill || !selectedBill.length)
                         return;
 
+                    // Create a new charge
                     this.getController('Charges').handleNew();
                 },
                 scope: this
