@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.utilitybills.UtilityBills', {
+Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.utilityBills',
     store: 'UtilityBills',
@@ -25,10 +25,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        xtype: 'checkcolumn',
-        text: 'Bill Entered',
-        dataIndex: 'entered'
-    },{
         header: 'Total',
         dataIndex: 'target_total',
         editor: {
@@ -71,7 +67,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 125
+        minWidth: 125,
+        flex: 1
     },{
         header: 'Energy',
         dataIndex: 'total_energy',
@@ -157,6 +154,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         },
         hidden:true
+    },{
+        xtype: 'checkcolumn',
+        text: 'Bill Entered',
+        dataIndex: 'entered'
     }],
 
     dockedItems: [{
