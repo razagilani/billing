@@ -1,7 +1,6 @@
-Ext.define('ReeBill.store.UtilityBills', {
+Ext.define('BillEntry.store.UtilityBills', {
     extend: 'Ext.data.Store',
-    requires: ['ReeBill.model.UtilityBill'],
-    model: 'ReeBill.model.UtilityBill',
+    model: 'BillEntry.model.UtilityBill',
 
     autoLoad: false,
     autoSync: true,
@@ -31,22 +30,6 @@ Ext.define('ReeBill.store.UtilityBills', {
             scope: this
         }
 	},
-
-    getLastEndDate: function(){
-        if(this.count() === 0){
-            return false;
-        }
-
-        var lastDate = new Date(0);
-        this.each(function(record){
-            var pEnd = record.get('period_end');
-            if(pEnd > lastDate){
-                lastDate = pEnd;
-            }
-        }, this);
-        return lastDate;
-    },
-
 
     sorters: [{
         property: 'due_date',
