@@ -27,6 +27,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
     """
     @classmethod
     def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
         FakeS3Manager.start()
         cls.utilbill_processor = create_utilbill_processor()
         cls.billupload = cls.utilbill_processor.bill_file_handler
