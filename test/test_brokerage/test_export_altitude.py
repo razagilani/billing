@@ -26,6 +26,7 @@ class TestExportAltitude(TestCase):
         u1.get_utility_account_number.return_value = '1'
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
+        u1.due_date = datetime(2000,3,1)
         u1.get_next_meter_read_date.return_value = datetime(2000,3,1)
         u1.get_total_energy_consumption.return_value = 10
         u1.get_supply_target_total.return_value = 100
@@ -45,6 +46,7 @@ class TestExportAltitude(TestCase):
         u2.get_utility_account_number.return_value = '2'
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
+        u2.due_date = datetime(2000,3,15)
         u2.get_next_meter_read_date.return_value = datetime(2000,3,15)
         u2.get_total_energy_consumption.return_value = 20
         u2.get_supply_target_total.return_value = 200
@@ -100,6 +102,7 @@ class TestExportAltitude(TestCase):
                              '10000',
                              '2001-01-01T00:00:00Z',
                              '2001-01-02T00:00:00Z',
+                             '2000-03-01T00:00:00Z',
                          ), dataset[0])
         self.assertEqual((
                              '',
@@ -122,6 +125,7 @@ class TestExportAltitude(TestCase):
                              '20000',
                              '',
                              '',
+                             '2000-03-15T00:00:00Z',
                          ), dataset[1])
 
     def test_export_csv(self):
@@ -177,9 +181,9 @@ class TestAltitudeBillStorage(TestCase):
             'next_estimated_meter_read_date,total_usage,total_supply_charge,'
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
-            'service_address_postal_code,create_date,modified_date\r\n'
+            'service_address_postal_code,create_date,modified_date,ordering_date\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s\r\n' %
+            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,,%s\r\n' %
             self.utilbill.date_modified.strftime(ISO_8601_DATETIME))
         csv_file.seek(0)
         actual_csv = csv_file.read()
