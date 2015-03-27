@@ -31,6 +31,7 @@ Ext.define('BillEntry.model.UtilityBill', {
 
         // new
         {name: 'service_address'},
+        {name: 'computed_total', type: 'float'},
         {name: 'next_meter_read_date', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'supply_total'},
         {name: 'utility_account_number'},
