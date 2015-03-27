@@ -20,6 +20,13 @@ from test import testing_utils
 from test.setup_teardown import create_utilbill_processor, clear_db, \
     TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
 
+def setUpModule():
+    init_test_config()
+    init_model()
+    FakeS3Manager.start()
+
+def tearDownModule():
+    FakeS3Manager.stop()
 
 class UtilbillProcessingTest(testing_utils.TestCase):
     """Integration tests for features of the ReeBill application that deal
@@ -29,15 +36,10 @@ class UtilbillProcessingTest(testing_utils.TestCase):
     def setUpClass(cls):
         # these objects don't change during the tests, so they should be
         # created only once.
-        FakeS3Manager.start()
         cls.utilbill_processor = create_utilbill_processor()
         cls.billupload = cls.utilbill_processor.bill_file_handler
         cls.reebill_processor, cls.views = create_reebill_objects()
         cls.nexus_util = create_nexus_util()
-
-    @classmethod
-    def tearDownClass(cls):
-        FakeS3Manager.stop()
 
     def setUp(self):
         clear_db()
