@@ -8,7 +8,7 @@ Ext.define('BillEntry.view.Viewport', {
         'BillEntry.view.accounts.Accounts',
         'BillEntry.view.utilitybills.UtilityBills',
         'BillEntry.view.charges.Charges',
-        'BillEntry.view.reports.UserStatistics',
+        'BillEntry.view.reports.UserUtilBillCount',
         'BillEntry.view.reports.BillDetails'
     ],
 
