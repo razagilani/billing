@@ -2,16 +2,17 @@ from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from test.setup_teardown import TestCaseWithSetup, clear_db
+from test.setup_teardown import clear_db
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
+from test.testing_utils import TestCase
 
 
-class StateDBTest(TestCaseWithSetup):
+class StateDBTest(TestCase):
 
     def setUp(self):
         # clear out database
@@ -40,7 +41,6 @@ class StateDBTest(TestCaseWithSetup):
         self.payment_dao = PaymentDAO()
 
     def tearDown(self):
-        self.session.rollback()
         clear_db()
 
     def test_versions(self):

@@ -44,43 +44,134 @@ def clear_db():
         session.execute(t.delete())
     session.commit()
 
+def create_nexus_util():
+    return MockNexusUtil([
+        {
+            'billing': '99999',
+            'olap': 'example-1',
+            'casualname': 'Example 1',
+            'primus': '1785 Massachusetts Ave.',
+            },
+        {
+            'billing': '88888',
+            'olap': 'example-2',
+            'casualname': 'Example 2',
+            'primus': '1786 Massachusetts Ave.',
+            },
+        {
+            'billing': '100000',
+            'olap': 'example-3',
+            'casualname': 'Example 3',
+            'primus': '1787 Massachusetts Ave.',
+            },
+        {
+            'billing': '100001',
+            'olap': 'example-4',
+            'casualname': 'Example 4',
+            'primus': '1788 Massachusetts Ave.',
+            },
+        ])
+
+def create_bill_file_handler():
+    """Return a BillFileHandler instance.
+
+    Note: a BillFileHandler should only be used with a single FakesS3 server
+    process. If FakeS3 is stopped and started again the connection will be
+    invalid.
+    """
+    from core import config
+    s3_connection = S3Connection(
+        config.get('aws_s3', 'aws_access_key_id'),
+        config.get('aws_s3', 'aws_secret_access_key'),
+        is_secure=config.get('aws_s3', 'is_secure'),
+        port=config.get('aws_s3', 'port'),
+        host=config.get('aws_s3', 'host'),
+        calling_format=config.get('aws_s3', 'calling_format'))
+    url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+        config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
+    return BillFileHandler(s3_connection,
+                                   config.get('aws_s3', 'bucket'),
+                                   UtilBillLoader(), url_format)
+
+def create_utilbill_processor():
+        file_handler = create_bill_file_handler()
+        pricing_model = pricing.FuzzyPricingModel(UtilBillLoader())
+        return UtilbillProcessor(pricing_model, file_handler)
+
+def create_reebill_objects():
+    from core import config
+
+    logger = logging.getLogger('test')
+
+    # TODO most or all of these dependencies do not need to be instance
+    # variables because they're not accessed outside __init__
+    state_db = ReeBillDAO(logger)
+    mock_install_1 = MockSkyInstall(name='example-1')
+    mock_install_2 = MockSkyInstall(name='example-2')
+    splinter = MockSplinter(deterministic=True,
+                                 installs=[mock_install_1, mock_install_2])
+
+    # TODO: 64956642 do not hard code nexus names
+    nexus_util = create_nexus_util()
+    bill_mailer = Mock()
+
+    reebill_file_handler = ReebillFileHandler(
+        config.get('reebill', 'reebill_file_path'),
+        config.get('reebill', 'teva_accounts'))
+
+    ree_getter = RenewableEnergyGetter(splinter, logger)
+    journal_dao = journal.JournalDAO()
+    payment_dao = PaymentDAO()
+
+    reebill_processor = ReebillProcessor(
+        state_db, payment_dao, nexus_util, bill_mailer,
+        reebill_file_handler, ree_getter, journal_dao, logger=logger)
+    reebill_views = Views(state_db, create_bill_file_handler(), nexus_util,
+                          journal_dao)
+    return reebill_processor, reebill_views
 
 class FakeS3Manager(object):
     '''Encapsulates starting and stopping the FakeS3 server process for tests
     that use it.
     This replaces the code related to TestCaseWithSetup.
     '''
-    def start(self):
+    @classmethod
+    def start(cls):
         from core import config
-        self.fakes3_root_dir = TempDirectory()
+        cls.fakes3_root_dir = TempDirectory()
         bucket_name = config.get('aws_s3', 'bucket')
-        make_directories_if_necessary(join(self.fakes3_root_dir.path,
+        make_directories_if_necessary(join(cls.fakes3_root_dir.path,
                                            bucket_name))
 
         # start FakeS3 as a subprocess
         # redirect both stdout and stderr because it prints all its log
         # messages to both
-        self.fakes3_command = 'fakes3 --port %s --root %s' % (
-            config.get('aws_s3', 'port'), self.fakes3_root_dir.path)
-        self.fakes3_process = Popen(self.fakes3_command.split(),
+        cls.fakes3_command = 'fakes3 --port %s --root %s' % (
+            config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
+        cls.fakes3_process = Popen(cls.fakes3_command.split(),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
         # running and occupying the same port)
-        sleep(0.5)
-        self.check()
+        sleep(0.1)
+        cls.check()
 
-    def check(self):
-        exit_status = self.fakes3_process.poll()
+    @classmethod
+    def check(cls):
+        exit_status = cls.fakes3_process.poll()
         if exit_status is not None:
-            raise CalledProcessError(exit_status, self.fakes3_command)
+            raise CalledProcessError(exit_status, cls.fakes3_command)
 
-    def stop(self):
-        self.fakes3_process.kill()
-        self.fakes3_process.wait()
-        self.fakes3_root_dir.cleanup()
+    @classmethod
+    def stop(cls):
+        cls.fakes3_process.kill()
+        cls.fakes3_process.wait()
+        cls.fakes3_root_dir.cleanup()
+        exit_status = cls.fakes3_process.poll()
+        # don't care if it exited with 0 or not
+        assert exit_status is not None
 
 class TestCaseWithSetup(test_utils.TestCase):
     '''Shared setup and teardown code for various tests. This class should go
@@ -337,33 +428,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                                             logger=logger)
 
         # TODO: 64956642 do not hard code nexus names
-        self.nexus_util = MockNexusUtil([
-            {
-                'billing': '99999',
-                'olap': 'example-1',
-                'casualname': 'Example 1',
-                'primus': '1785 Massachusetts Ave.',
-            },
-            {
-                'billing': '88888',
-                'olap': 'example-2',
-                'casualname': 'Example 2',
-                'primus': '1786 Massachusetts Ave.',
-            },
-            {
-                'billing': '100000',
-                'olap': 'example-3',
-                'casualname': 'Example 3',
-                'primus': '1787 Massachusetts Ave.',
-            },
-            {
-                'billing': '100001',
-                'olap': 'example-4',
-                'casualname': 'Example 4',
-                'primus': '1788 Massachusetts Ave.',
-                },
-        ])
-        mailer_opts = dict(config.items("mailer"))
+        self.nexus_util = create_nexus_util()
         bill_mailer = Mock()
 
         self.temp_dir = TempDirectory()
@@ -375,8 +440,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         journal_dao = journal.JournalDAO()
         self.payment_dao = PaymentDAO()
 
-        self.utilbill_processor = UtilbillProcessor(
-            self.pricing_model, self.billupload, logger=logger)
+        self.utilbill_processor = create_utilbill_processor()
         self.views = Views(self.state_db, self.billupload, self.nexus_util,
                            journal_dao)
         self.reebill_processor = ReebillProcessor(
