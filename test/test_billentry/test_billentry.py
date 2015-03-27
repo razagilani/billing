@@ -134,8 +134,16 @@ class BillEntryIntegrationTest(object):
                               service_address=Address(street='1 Example St.'))
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                             service_address=Address(street='2 Example St.'))
+
+        self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
+                                  None, Address(), Address(), '2')
+        self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
+                                     'electric')
+        self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
+                              service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
         self.ub2.id = 2
+        self.ub3.id = 3
         s = Session()
         s.add_all([self.utility, self.ua1, self.rate_class, self.ub1, self.ub2])
         s.commit()
@@ -457,37 +465,55 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s = Session()
         self.user1 = BillEntryUser(email='1@example.com')
         self.user2 = BillEntryUser(email='2@example.com')
-        s.add_all([self.ub1, self.ub2, self.user1, self.user2])
+        s.add_all([self.ub1, self.ub2, self.ub3, self.user1, self.user2])
         s.commit()
 
     def test_report_count_for_user(self):
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
-        # no "entered" bills yet
+        #no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
         self.ub1.enter(self.user1, datetime(2000,1,10))
         self.ub2.enter(self.user1, datetime(2000,1,20))
 
-        # no bills in range
+        # # no bills in range
         rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
                                         datetime(2000,1,20).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
-        # user1 has 2 bills in range, user2 has none
+        # user1 has 2 gas bills in range, user2 has none at all
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 2},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
+             "gas_count": 2, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]},
+                        rv.data)
+
+        self.ub3.enter(self.user2, datetime(2000,1,10))
+
+        # user1 has 2 gas bills in range, user2 has 1 electric bill
+        rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
+                                        datetime(2000,1,21).isoformat()))
+        self.assertJson({"results": 2, "rows": [
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
+             "gas_count": 2, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 1}]},
                         rv.data)
 
     def test_report_utilbills_for_user(self):

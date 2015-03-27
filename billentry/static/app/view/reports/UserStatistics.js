@@ -15,8 +15,20 @@ Ext.define('BillEntry.view.reports.UserStatistics', {
         flex: 1,
         items: utils.makeGridFilterTextField('email')
     }, {
-        header: '# of Bills Entered',
-        dataIndex: 'count',
+        header: '# of Gas Bills Entered',
+        dataIndex: 'gas_count',
+        width: 120,
+        items: utils.makeGridFilterTextField('count'),
+        summaryType: 'sum'
+    }, {
+        header: '# of Electric Bills Entered',
+        dataIndex: 'electric_count',
+        width: 120,
+        items: utils.makeGridFilterTextField('count'),
+        summaryType: 'sum'
+    }, {
+        header: 'Total # of Bills Entered',
+        dataIndex: 'total_count',
         width: 120,
         items: utils.makeGridFilterTextField('count'),
         summaryType: 'sum'

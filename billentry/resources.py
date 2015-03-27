@@ -8,7 +8,7 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func
+from sqlalchemy import desc, and_, func, case
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
@@ -323,14 +323,29 @@ class UtilBillCountForUserResource(BaseResource):
             .filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                 BEUtilBill.billentry_date < args['end']
-            )).subquery()
-        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
-            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+            ))
+        total_query = utilbill_sq.subquery()
+        gas_query = utilbill_sq.filter(RateClass.service == 'gas').subquery()
+        electric_query = utilbill_sq.filter(RateClass.service ==
+                                            'electric').subquery()
+        q = s.query(
+            BillEntryUser,
+            func.count(total_query.c.id),
+            func.count(gas_query.c.id),
+            func.count(electric_query.c.id)
+        ).outerjoin(total_query).outerjoin(
+            gas_query).outerjoin(
+            electric_query).group_by(
+            BillEntryUser.id).order_by(
+            BillEntryUser.id)
+
         rows = [{
             'id': user.id,
             'email': user.email,
-            'count': count,
-        } for (user, count) in q.all()]
+            'total_count': total_count,
+            'gas_count': gas_count,
+            'electric_count': electric_count,
+        } for (user, total_count, gas_count, electric_count) in q.all()]
         return {'rows': rows, 'results': len(rows)}
 
 
