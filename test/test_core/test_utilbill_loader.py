@@ -1,22 +1,26 @@
 import unittest
 from datetime import date
 
-from test.setup_teardown import TestCaseWithSetup, clear_db
-from core import init_config, init_model
+from test import init_test_config
+from test.setup_teardown import clear_db
+from core import init_model
 from core.model import UtilBill, Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from exc import NoSuchBillException
 
 
-class UtilbillLoaderTest(TestCaseWithSetup):
+def setUpModule():
+    init_test_config()
+    init_model()
+
+
+class UtilbillLoaderTest(unittest.TestCase):
 
     def setUp(self):
-        # clear out database
-        init_config('test/tstsettings.cfg')
-        init_model()
-        self.session = Session()
         clear_db()
+
+        self.session = Session()
         blank_address = Address()
         utility =  Utility(name='Test Utility', address=Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
@@ -32,10 +36,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.ubl = UtilBillLoader()
 
     def tearDown(self):
-        self.session.commit()
-        # clear out tables in mysql test database (not relying on ReeBillDAO)
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        #self._clear_tables(mysql_connection)
+        clear_db()
 
     def test_get_last_real_utilbill(self):
         utility_account = self.session.query(UtilityAccount).one()
@@ -53,7 +54,6 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2001,1,1))
 
         # one bill
-        empty_address = Address()
         gas_bill_1 = UtilBill(utility_account, washington_gas,
                               rateclass1, supplier=supplier,
                               period_start=date(2000,1,1),
@@ -178,6 +178,3 @@ class UtilbillLoaderTest(TestCaseWithSetup):
             self.utility_account.id).all())
         self.assertEqual([bills[1]], self.ubl.get_utilbills_for_account_id(
             other_account.id).all())
-
-if __name__ == '__main__':
-    unittest.main()
