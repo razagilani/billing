@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from boto.s3.connection import S3Connection
 
 from mock import Mock
+import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
 from core import pricing
 from core.bill_file_handler import BillFileHandler
@@ -17,11 +18,11 @@ from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 from reebill.reebill_file_handler import ReebillFileHandler
 from reebill.reebill_processor import ReebillProcessor
-from reebill.views import Views
+from reebill.views import Views, column_dict
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.state import ReeBill, UtilBill
+from reebill.reebill_model import ReeBill, UtilBill
 from core.model import UtilityAccount, Session
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
@@ -456,8 +457,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                           'state': 'Final',
                                           'total_charges': 0.0,
                                           'utility':
+                                          column_dict(
                                               self.views.get_utility(
-                                                  'Test Utility Company Template').column_dict(),
+                                                  'Test Utility Company Template')),
                                           }, utilbill_data)
 
         # create a reebill
@@ -479,8 +481,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
                     'Test Rate Class Template').name,
                 'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
-                'utility': self.views.get_utility(
-                    'Test Utility Company Template').column_dict(),
+                'utility': column_dict(
+                    self.views.get_utility(
+                    'Test Utility Company Template')),
             }, utilbill_data)
 
 
@@ -1108,7 +1111,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEquals(None, two.due_date)
         self.assertEqual(None, two.email_recipient)
 
-        # two should not be issuable until one_doc is issued
+        # two should not be issuable until one is issued
         self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
         self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
                           False, acc, 2)

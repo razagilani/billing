@@ -1,6 +1,7 @@
 from __future__ import division
 from collections import defaultdict
 from datetime import date, timedelta
+from itertools import chain
 from sys import maxint
 
 from exc import NoSuchBillException
@@ -29,7 +30,7 @@ class FuzzyPricingModel(PricingModel):
     '''
     # minimum normlized score for a charge to get included in a bill
     # (between 0 and 1)
-    RSI_PRESENCE_THRESHOLD = 0.5
+    THRESHOLD = 0.5
 
     @staticmethod
     def _manhattan_distance(p1, p2):
@@ -42,7 +43,8 @@ class FuzzyPricingModel(PricingModel):
     @staticmethod
     def _exp_weight_with_min(a, b, minimum):
         '''Exponentially-decreasing weight function with a minimum value so it's
-        always nonnegative.'''
+        always positive.
+        '''
         return lambda x: max(a**(x * b), minimum)
 
     def __init__(self, utilbill_loader, logger=None):
@@ -56,7 +58,7 @@ class FuzzyPricingModel(PricingModel):
         self._utilbill_loader = utilbill_loader
 
     def _get_probable_shared_charges(self, period, relevant_bills, charge_type,
-                                     threshold=RSI_PRESENCE_THRESHOLD,
+                                     threshold=THRESHOLD,
                                      ignore=lambda x: False, verbose=False):
         """Constructs and returns a list of :py:class:`Charge`
         instances, each of which is unattached to any :py:class:`UtilBill`.
@@ -85,11 +87,9 @@ class FuzzyPricingModel(PricingModel):
         # by a database constraint but it currently isn't.
         # only rsi_binding values are collected here because only charges
         # matching the 'charge_type' argument are relevant.
-        bindings = set()
-        for utilbill in relevant_bills:
-            for charge in utilbill.charges:
-                if charge.type == charge_type:
-                    bindings.add(charge.rsi_binding)
+        bindings = set(c.rsi_binding for c in chain.from_iterable(
+            utilbill.charges for utilbill in relevant_bills) if
+                       c.type == charge_type)
 
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
@@ -143,10 +143,16 @@ class FuzzyPricingModel(PricingModel):
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
                 charge = closest_occurrence[binding][1]
-                result.append(Charge.formulas_from_other(charge))
+                result.append(charge.clone())
         return result
 
     def _load_relevant_bills_distribution(self, utilbill, ignore_func):
+        """Return an iterable of UtilBills relevant for determining the
+        distribution charges of 'utilbill' (currently defined as having the
+        same rate class).
+        :param utilbill: UtilBill whose charges are being generated
+        :param ignore_func: exclude bills for which this returns true
+        """
         if None in (utilbill.utility, utilbill.rate_class):
             return []
         return [utilbill for utilbill in
@@ -157,6 +163,12 @@ class FuzzyPricingModel(PricingModel):
                          ) if not ignore_func(utilbill)]
 
     def _load_relevant_bills_supply(self, utilbill, ignore_func):
+        """Return an iterable of UtilBills relevant for determining the
+        supply charges of 'utilbill' (currently defined as having the
+        same supplier).
+        :param utilbill: UtilBill whose charges are being generated
+        :param ignore_func: exclude bills for which this returns true
+        """
         if utilbill.supplier is None:
             return []
         return [utilbill for utilbill in
@@ -205,8 +217,7 @@ class FuzzyPricingModel(PricingModel):
 
         # combine distribution and supply charges to get the full set of
         # shared charges. there shouldn't be any overlap between the two groups.
-        assert set(distribution_charges).intersection(
-            set(supply_charges)) == set()
+        assert set(distribution_charges).isdisjoint(set(supply_charges))
         result = distribution_charges + supply_charges
 
         # individual charges:
@@ -223,7 +234,7 @@ class FuzzyPricingModel(PricingModel):
             for charge in predecessor.charges:
                 if not (charge.shared or charge.rsi_binding in (
                         c.rsi_binding for c in result)):
-                    result.append(Charge.formulas_from_other(charge))
+                    result.append(charge.clone())
 
         return result
 

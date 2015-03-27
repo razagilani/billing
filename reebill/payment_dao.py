@@ -4,7 +4,7 @@ from sqlalchemy import and_
 
 from core.model import Session, UtilityAccount
 from exc import IssuedBillError
-from reebill.state import ReeBillCustomer, Payment
+from reebill.reebill_model import ReeBillCustomer, Payment
 
 
 class PaymentDAO(object):
@@ -64,8 +64,7 @@ class PaymentDAO(object):
                          Payment.date_applied < periodend)).all()
         return payments
 
-    def get_total_payment_since(self, account, start, end=None,
-                                payment_objects=False):
+    def get_total_payment_since(self, account, start, end=None):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
@@ -81,9 +80,7 @@ class PaymentDAO(object):
             .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
-        if payment_objects:
-            return payments.all()
-        return float(sum(payment.credit for payment in payments.all()))
+        return payments.all()
 
     def get_payments(self, account):
         '''Returns list of all payments for the given account ordered by
