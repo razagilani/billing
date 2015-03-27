@@ -359,11 +359,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # check that the file is accessible
         url = utilbills_data[0]['pdf_url']
-        try:
-            response = requests.get(url)
-        except:
-            pass
-            raise
+        response = requests.get(url)
         self.assertEqual(200, response.status_code)
         self.assertEqual(file_content, response.content)
 
