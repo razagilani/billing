@@ -803,13 +803,14 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         cls.fakes3_manager.stop()
 
     def setUp(self):
+        # TODO: do not rely on previously inserted data
         do_setup(self)
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
         self.utility = self.utilbill.get_utility()
-        self.customer = ReeBillCustomer(
-            utility_account=self.utilbill.utility_account, name='')
+        self.customer = Session().query(ReeBillCustomer).join(UtilityAccount).filter(
+            UtilityAccount.account == '99999').one()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
