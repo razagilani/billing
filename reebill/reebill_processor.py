@@ -10,8 +10,8 @@ from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer,
-                                   CustomerCustomerGroup, CustomerGroup)
+from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading,
+                                   ReeBillCustomer, CustomerGroup)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
