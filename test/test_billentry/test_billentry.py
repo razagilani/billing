@@ -512,7 +512,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.user2 = BillEntryUser(email='2@example.com', password='password')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
         self.user1.roles = [self.project_mgr_role]
-        self.user2.roles = [self.project_mgr_role]
         s.commit()
 
     def test_report_count_for_user(self):
@@ -526,22 +525,11 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.assertTrue(response.status_code == 302)
         self.assertEqual('http://localhost/', response.location)
 
-        data = {'email':'2@example.com', 'password': 'password'}\
-        # post request for user login with valid credentials
-        response = self.app.post('/userlogin',
-                                 content_type='multipart/form-data', data=data)
-
-        # on successful login user is routed to the next url
-        self.assertTrue(response.status_code == 302)
-        self.assertEqual('http://localhost/', response.location)
-
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
         # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
-
-
 
 
         self.assertJson({"results": 2, "rows": [
@@ -567,6 +555,26 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
             {"id": self.user1.id, "email": '1@example.com', "count": 2},
             {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
+
+    def test_user_permission_for_report(self):
+        data = {'email':'2@example.com', 'password': 'password'}
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual('http://localhost/', response.location)
+
+        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
+
+        # no "entered" bills yet
+        rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
+                                        datetime(2000,2,1).isoformat()))
+        # this should result in a status_code of '403 permission denied'
+        # as only members of 'Project Manager' role are allowed access to
+        # report page and user2 is not the member of 'Project Manager' role
+        self.assertEqual(403, rv.status_code)
 
     def test_report_utilbills_for_user(self):
         url_format = self.URL_PREFIX + 'user_utilitybills?start=%s&end=%s&id=%s'
