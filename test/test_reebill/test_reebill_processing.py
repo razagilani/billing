@@ -569,8 +569,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         rp.roll_reebill(acc)  # Fourth Reebill
 
-        # try to issue nonexistent corrections
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 4)
+        # it is OK to call issue_corrections() when on corrections don't
+        # exist: nothing should happen
+        rp.issue_corrections(acc, 4)
 
         reebill_data = lambda seq: next(
             d for d in self.views.get_reebill_metadata_json(acc)
@@ -2081,6 +2082,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.account, start_date=self.utilbill.period_start)
 
     def test_summary(self):
+        """Issuing a summary bill for a group of accounts.
+        """
         # setup: 2 different customers are needed so another one must be created
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
