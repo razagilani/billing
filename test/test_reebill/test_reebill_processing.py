@@ -166,7 +166,7 @@ def do_setup(self):
             'primus': '1788 Massachusetts Ave.',
         },
     ])
-    bill_mailer = Mock()
+    self.mailer = Mock()
 
     self.temp_dir = TempDirectory()
     reebill_file_handler = ReebillFileHandler(
@@ -182,7 +182,7 @@ def do_setup(self):
     self.views = Views(self.state_db, self.billupload, self.nexus_util,
                        journal_dao)
     self.reebill_processor = ReebillProcessor(
-        self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+        self.state_db, self.payment_dao, self.nexus_util, self.mailer,
         reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
     # example data to be used in most tests below

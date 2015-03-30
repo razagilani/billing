@@ -662,13 +662,16 @@ class ReebillProcessor(object):
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
 
+        from mock import Mock
+        SummaryFileGenerator, PDFConcatenator = Mock(), Mock()
+
         # create and email combined PDF file
         summary_file = StringIO()
         sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
         sfg.generate_summary_file(bills, summary_file)
         summary_file.seek(0)
         merge_fields = {
-            'street': customer_tag,
+            'street': group.name,
             'balance_due': sum(b.balance_due for b in bills),
             'bill_dates': max(b.get_period_end() for b in bills),
             'last_bill': '',
