@@ -1876,29 +1876,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
         reebills_data = self.views.get_reebill_metadata_json(account)
-        self.assertDictContainsSubset({
-                                          'actual_total': 0,
-                                          'balance_due': 0.0,
-                                          'balance_forward': 0,
-                                          'corrections': '(never issued)',
-                                          'hypothetical_total': 0,
-                                          'issue_date': None,
-                                          'issued': 0,
-                                          'version': 0,
-                                          'payment_received': 0.0,
-                                          'period_end': date(2000, 2, 1),
-                                          'period_start': date(2000, 1, 1),
-                                          'prior_balance': 0,
-                                          'processed': 0,
-                                          'ree_charge': 0.0,
-                                          'ree_value': 0,
-                                          'sequence': 1,
-                                          'services': [],
-                                          'total_adjustment': 0,
-                                          'total_error': 0.0
-                                      }, reebills_data[0])
-        self.assertAlmostEqual(21.63261765398553,
-                               reebills_data[0]['ree_quantity'])
+        self.assertEqual(1, len(reebills_data))
+        self.assertEqual(1, reebills_data['sequence'])
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
