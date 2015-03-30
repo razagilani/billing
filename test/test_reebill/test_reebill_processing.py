@@ -2094,7 +2094,6 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         s.add_all([ua2, customer2, utilbill2])
         s.flush()
 
-        from reebill.reebill_model import CustomerCustomerGroup
         group = CustomerGroup(name='My Property Management Co.', bill_email_recipient='example@example.com')
         # TODO: this is causing it to create new ReeBillCustomer objects
         group.add(self.customer)

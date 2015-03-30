@@ -5,7 +5,10 @@ from reebill.reebill_model import ReeBillCustomer, CustomerGroup
 class CustomerGroupTest(unittest.TestCase):
 
     def test_group_membership(self):
-        g = CustomerGroup(name='a')
+        """Adding/removing customers from groups, listing customers in a
+        group, listing groups that contain a customer.
+        """
+        g = CustomerGroup(name='g')
         a = ReeBillCustomer()
         b = ReeBillCustomer()
 
@@ -26,14 +29,7 @@ class CustomerGroupTest(unittest.TestCase):
         self.assertEqual([], a.get_groups())
         self.assertEqual([g], b.get_groups())
 
-        # note: 'b.groups' here appears to be [] because that attribute does
-        # not get updated along with g.customers
+        h = CustomerGroup(name='h')
+        h.add(b)
+        self.assertEqual({g, h}, set(b.get_groups()))
 
-    def test_2(self):
-        g = CustomerGroup(name='a')
-        a = ReeBillCustomer()
-        print g.customers, a.groups
-        g.add(a)
-        print g.customers, a.groups
-        print g.customers == [a]
-        print a.groups == [g]

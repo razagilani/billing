@@ -5,7 +5,7 @@ from itertools import chain
 from operator import attrgetter
 import traceback
 
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
@@ -502,44 +502,55 @@ class UtilbillReebill(Base):
                     self.utilbill_id, self.reebill_id, self.document_id[-4:],
                     self.uprs_document_id[-4:]))
 
-class CustomerCustomerGroup(Base):
-    """Intermediate table for many-many relationship.
-    """
-    __tablename__ = 'customer_customer_group'
+# intermediate table for many-many relationship.
+_customer_customer_group_table = Table(
+    'customer_customer_group', Base.metadata,
+    Column('reebill_customer_id', Integer,
+           ForeignKey('reebill_customer.id', ondelete='cascade'),
+           primary_key=True),
+    Column('customer_group_id', Integer,
+           ForeignKey('customer_group.id', ondelete='cascade'),
+           primary_key=True)
+)
 
-    reebill_customer_id = Column(
-        Integer, ForeignKey('reebill_customer.id', ondelete='cascade'),
-        primary_key=True)
-    customer_group_id = Column(
-        Integer, ForeignKey('customer_group.id', ondelete='cascade'),
-        primary_key=True)
-    customer = relationship('ReeBillCustomer')
-    group = relationship('CustomerGroup')
-
-    # the 'creator' of an association proxy, which is normally the
-    # constructor of the intermediate class,
-    # can take only one of the two associated objects as an argument,
-    # which doesn't work well for a two-way relationship.
-
-    @classmethod
-    def create_with_customer(cls, customer):
-        """Return a new CustomerCustomerGroup instance with the given customer (
-        SQLAlchemy assigns the group after creating it if it belongs to a
-        CustomerGroup).
-        """
-        result = cls()
-        result.customer = customer
-        return result
-
-    @classmethod
-    def create_with_group(cls, group):
-        """Return a new CustomerCustomerGroup instance with the given group (
-        SQLAlchemy assigns the customer after creating it if it belongs to a
-        ReeBillCustomer).
-        """
-        result = cls()
-        result.group = group
-        return result
+# class CustomerCustomerGroup(Base):
+#     """Intermediate table for many-many relationship.
+#     """
+#     __tablename__ = 'customer_customer_group'
+#
+#     reebill_customer_id = Column(
+#         Integer, ForeignKey('reebill_customer.id', ondelete='cascade'),
+#         primary_key=True)
+#     customer_group_id = Column(
+#         Integer, ForeignKey('customer_group.id', ondelete='cascade'),
+#         primary_key=True)
+#     customer = relationship('ReeBillCustomer')
+#     group = relationship('CustomerGroup')
+#
+#     # the 'creator' of an association proxy, which is normally the
+#     # constructor of the intermediate class,
+#     # can take only one of the two associated objects as an argument,
+#     # which doesn't work well for a two-way relationship.
+#
+#     @classmethod
+#     def create_with_customer(cls, customer):
+#         """Return a new CustomerCustomerGroup instance with the given customer (
+#         SQLAlchemy assigns the group after creating it if it belongs to a
+#         CustomerGroup).
+#         """
+#         result = cls()
+#         result.customer = customer
+#         return result
+#
+#     @classmethod
+#     def create_with_group(cls, group):
+#         """Return a new CustomerCustomerGroup instance with the given group (
+#         SQLAlchemy assigns the customer after creating it if it belongs to a
+#         ReeBillCustomer).
+#         """
+#         result = cls()
+#         result.group = group
+#         return result
 
 class CustomerGroup(Base):
     __tablename__ = 'customer_group'
@@ -547,28 +558,27 @@ class CustomerGroup(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
-    _customer_customer_groups = relationship('CustomerCustomerGroup')
-    customers = association_proxy(
-        '_customer_customer_groups', 'customer',
-        creator=CustomerCustomerGroup.create_with_customer)
+    customers = relationship(
+        'ReeBillCustomer',
+        secondary=lambda: _customer_customer_group_table, backref='groups')
 
     def add(self, customer):
         """Add the given customer to this group.
         """
         self.customers.append(customer)
-        # the customer.groups attribute does not get updated here and will be
-        # inconstent with self.customers unless explicitly set. i don't know
-        # why.
-        customer.groups.append(self)
+        # # the customer.groups attribute does not get updated here and will be
+        # # inconstent with self.customers unless explicitly set. i don't know
+        # # why.
+        # customer.groups.append(self)
 
     def remove(self, customer):
         """Remove the given customer from this group.
         """
         self.customers.remove(customer)
-        # the customer.groups attribute does not get updated here and will be
-        # inconstent with self.customers unless explicitly set. i don't know
-        # why.
-        customer.groups.remove(self)
+        # # the customer.groups attribute does not get updated here and will be
+        # # inconstent with self.customers unless explicitly set. i don't know
+        # # why.
+        # customer.groups.remove(self)
 
     def get_customers(self):
         """Return a list of customers in this group (in undefined order).
@@ -593,9 +603,9 @@ class ReeBillCustomer(Base):
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-    _customer_customer_groups = relationship('CustomerCustomerGroup')
-    groups = association_proxy('_customer_customer_groups', 'group',
-                               creator=CustomerCustomerGroup.create_with_group)
+    # _customer_customer_groups = relationship('CustomerCustomerGroup')
+    # groups = association_proxy('_customer_customer_groups', 'group',
+    #                            creator=CustomerCustomerGroup.create_with_group)
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
