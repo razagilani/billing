@@ -318,9 +318,8 @@ class ExporterDataBookTest(unittest.TestCase):
     def setUp(self):
         init_config('test/tstsettings.cfg')
         init_model()
-        logger = logging.getLogger('test')
 
-        self.exp = Exporter(ReeBillDAO(logger=logger), PaymentDAO())
+        self.exp = Exporter(ReeBillDAO(), PaymentDAO())
 
         s = Session()
         utility = Utility(name='New Utility', address=Address())
