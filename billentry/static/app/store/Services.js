@@ -1,4 +1,4 @@
-Ext.define('ReeBill.store.Services', {
+Ext.define('BillEntry.store.Services', {
     extend: 'Ext.data.Store',
 
     fields: ['name', 'value'],
