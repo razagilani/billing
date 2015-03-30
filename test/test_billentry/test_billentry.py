@@ -199,7 +199,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         s.add(user)
         s.commit()
 
-    def test_accounts(self):
+    def test_accounts_get(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
@@ -215,10 +215,16 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Example Utility',
               'utility_account_number': '2'}], rv.data)
 
-    def test_no_utilbills_list(self):
-        # only BEUtilBill objects are returned to bilentry app
-        # since id 3 contains UtilBill objects, an empty result
-        # set is returned
+    def test_account_put(self):
+        rv = self.app.put(self.URL_PREFIX + 'accounts/1')
+        self.assertJson(
+            {'account': '11111',
+              'bills_to_be_entered': True,
+              'id': 1,
+              'service_address': '1 Example St., ,  ',
+              'utility': 'Example Utility',
+              'utility_account_number': '1'}, rv.data)
+
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
         self.assertJson(
             {'results': 0,
@@ -268,6 +274,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_account_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility'}
@@ -398,6 +405,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_account_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'supply_choice_id': None,
@@ -616,11 +624,15 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
-        utility_account = Mock(autospec=UtilityAccount)
-        regular_utilbill = Mock(autospec=UtilBill)
-        regular_utilbill.discriminator = UtilBill.POLYMORPHIC_IDENTITY
-        beutilbill = Mock(autospec=BEUtilBill)
-        beutilbill.discriminator = BEUtilBill.POLYMORPHIC_IDENTITY
+        utility = Utility('Empty Utility', Address())
+
+        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
+                             Address(), Address(), '2')
+
+        regular_utilbill = UtilBill(utility_account, utility, None,
+                       service_address=Address(street='2 Example St.'))
+
+        beutilbill = BEUtilBill.create_from_utilbill(regular_utilbill)
 
         utility_account.utilbills = []
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
@@ -630,6 +642,14 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
+
+        utility_account.utilbills = [beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
 
 class TestUtilBillGUIDAMQP(unittest.TestCase):
 
