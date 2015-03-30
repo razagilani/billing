@@ -567,25 +567,27 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
              "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
-        # user1 has 2 gas bills in range, user2 has none at all
+        # 1 gas bill and 1 bill without rate class in range for user 1
+        # No bill in range for user 2
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 2, "electric_count": 0},
+             "gas_count": 1, "electric_count": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
         self.ub3.enter(self.user2, datetime(2000,1,10))
 
-        # user1 has 2 gas bills in range, user2 has 1 electric bill
+        # 1 gas bill and 1 bill without rate class in range for user 1
+        # 1 electrtic bill for user 1
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 2, "electric_count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 1, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
              "gas_count": 0, "electric_count": 1}]},
                         rv.data)
 
