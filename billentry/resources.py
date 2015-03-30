@@ -9,8 +9,7 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func, case, cast, Integer as sa_Integer
-from sqlalchemy.orm import aliased
+from sqlalchemy import desc, and_, func, case
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser

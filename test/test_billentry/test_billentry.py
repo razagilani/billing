@@ -542,7 +542,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
-        #no "entered" bills yet
+        # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
 
@@ -557,7 +557,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.ub1.enter(self.user1, datetime(2000,1,10))
         self.ub2.enter(self.user1, datetime(2000,1,20))
 
-        # # no bills in range
+        # no bills in range
         rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
                                         datetime(2000,1,20).isoformat()))
         self.assertJson({"results": 2, "rows": [
