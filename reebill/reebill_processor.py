@@ -17,6 +17,7 @@ from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from reebill.views import column_dict
 
 
 class ReebillProcessor(object):
@@ -62,9 +63,19 @@ class ReebillProcessor(object):
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
+        def address_to_dict(self):
+            return {
+                'addressee': self.addressee,
+                'street': self.street,
+                'city': self.city,
+                'state': self.state,
+                'postal_code': self.postal_code,
+                }
+        b_addr_dict = address_to_dict(reebill.billing_address)
+        s_addr_dict = address_to_dict(reebill.service_address)
         return {
-            'billing_address': reebill.billing_address.to_dict(),
-            'service_address': reebill.service_address.to_dict(),
+            'billing_address': b_addr_dict,
+            'service_address': s_addr_dict,
             'discount_rate': reebill.discount_rate,
             'late_charge_rate': reebill.late_charge_rate,
         }
@@ -308,19 +319,19 @@ class ReebillProcessor(object):
         # corrections can only be applied to an un-issued reebill whose version
         # is 0
         target_max_version = self.state_db.max_version(account, target_sequence)
-        if self.state_db.is_issued(account, target_sequence) \
-                or target_max_version > 0:
+
+        reebill = self.state_db.get_reebill(account, target_sequence,
+                                            target_max_version)
+        if reebill.issued or reebill.version > 0:
             raise ValueError(("Can't apply corrections to %s-%s, "
                     "because the latter is an issued reebill or another "
                     "correction.") % (account, target_sequence))
+
         all_unissued_corrections = self.get_unissued_corrections(account)
         if len(all_unissued_corrections) == 0:
             #raise ValueError('%s has no corrections to apply' % account)
             return
 
-        # recompute target reebill (this sets total adjustment) and save it
-        reebill = self.state_db.get_reebill(account, target_sequence,
-                                            target_max_version)
         if not reebill.processed:
             self.compute_reebill(account, target_sequence,
                 version=target_max_version)
