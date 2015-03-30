@@ -34,6 +34,5 @@ def get_bcrypt_object():
     return _bcrypt
 
 def account_has_bills_for_data_entry(utility_account):
-    return any(u.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY for u in
+    return any(u.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY and not u.is_entered() for u in
                utility_account.utilbills)
-
