@@ -86,12 +86,14 @@ class RoleBEUser(Base):
     billentry_role = relationship("Role")
 
     def __init__(self, billentry_role=None, beuser=None):
+
         # RoleBEUSer has only 'role' in its __init__ because the
         # relationship goes Role -> RoleBEUser -> BILLEntryUser. NOTE if the
         # 'role' argument is actually a BillEntryUser, Role's relationship to
         # RoleBEUser will cause a stack overflow in SQLAlchemy code
         # (without this check).
-        assert isinstance(billentry_role, Role)
+
+        assert isinstance(billentry_role, (Role, type(None)))
 
         self.billentry_role = billentry_role
         self.beuser = beuser
@@ -100,11 +102,11 @@ class RoleBEUser(Base):
 class Role(Base):
     __tablename__ = 'billentry_role'
     id = Column(Integer, primary_key=True)
-    name = Column(String(10), unique=True)
+    name = Column(String(20), unique=True)
     description = Column(String(100))
 
 
-    def __init__(self, name, description):
+    def __init__(self, name='', description=''):
         self.name = name
         self.description = description
 

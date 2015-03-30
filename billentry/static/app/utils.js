@@ -37,8 +37,9 @@ var utils = function() {
                 statusText = response.statusText;
                 responseText = response.responseText;
             }
-
-            Ext.getStore(storeName).rejectChanges();
+            store = Ext.getStore(storeName)
+            if (store !=null)
+                store.rejectChanges();
             makeServerExceptionWindow(response.status, statusText, responseText)
         }
     };
