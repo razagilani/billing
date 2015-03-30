@@ -2112,11 +2112,16 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                                             start_date=utilbill2.period_start)
         self.reebill_processor.toggle_reebill_processed(
             utilbill2.utility_account.account, 1, False)
-        # TODO: test issuing corrections
+        # TODO: it would be a good idea to test issuing corrections along
+        # with these
 
-        # issue summary
+        # create and send the summary bill
         email_addr = 'example@example.com'
         self.reebill_processor.issue_summary(group, email_addr)
 
         # don't care about email details
         self.mailer.mail.assert_called()
+
+        # both bills should now be issued
+        self.assertTrue(self.customer.reebills[0].issued)
+        self.assertTrue(customer2.reebills[0].issued)
