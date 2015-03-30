@@ -2,6 +2,7 @@ import os
 import traceback
 import re
 from datetime import datetime, timedelta
+from StringIO import StringIO
 
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
@@ -9,7 +10,9 @@ from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
+from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading,
+                                   ReeBillCustomer, CustomerGroup,
+                                   _customer_customer_group_table)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
@@ -326,7 +329,8 @@ class ReebillProcessor(object):
 
         all_unissued_corrections = self.get_unissued_corrections(account)
         if len(all_unissued_corrections) == 0:
-            raise ValueError('%s has no corrections to apply' % account)
+            #raise ValueError('%s has no corrections to apply' % account)
+            return
 
         if not reebill.processed:
             self.compute_reebill(account, target_sequence,
@@ -650,6 +654,38 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
         
+    def issue_summary(self, group, recipient):
+        s = Session()
+        # awful code: querying for all bills belonging to every account,
+        # filtering them in application code and then filtering them again in
+        #  another list.
+        # TODO: I don't know what.
+        bills = [c.get_first_unissued_bill() for c in group.get_customers()]
+        bills = [b for b in bills if b is not None and b.processed]
+
+        for b in bills:
+            self.issue_corrections(b.get_account(), b.sequence)
+            b.issue(datetime.utcnow(), self)
+
+        # TODO: substitute with correct imports
+        from mock import Mock
+        SummaryFileGenerator, PDFConcatenator = Mock(), Mock()
+
+        # create and email combined PDF file
+        summary_file = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(bills, summary_file)
+        summary_file.seek(0)
+        merge_fields = {
+            'street': group.name,
+            'balance_due': sum(b.balance_due for b in bills),
+            'bill_dates': max(b.get_period_end() for b in bills),
+            'last_bill': '',
+        }
+        self.bill_mailer.mail([recipient], merge_fields, summary_file,
+                              'summary.pdf')
+        return bills
+
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
