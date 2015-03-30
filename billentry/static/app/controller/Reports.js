@@ -7,7 +7,7 @@ Ext.define('BillEntry.controller.Reports', {
 
     views:[
         'reports.BillDetails',
-        'reports.UserStatistics'
+        'reports.UserUtilBillCount'
     ],
 
     refs: [{

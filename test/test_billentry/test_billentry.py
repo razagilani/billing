@@ -234,8 +234,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         expected = {'results': 2,
          'rows': [
-             {
-              'computed_total': 0.0,
+             {'computed_total': 0.0,
               'due_date': None,
               'id': 2,
               'next_meter_read_date': None,
@@ -257,8 +256,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False
              },
-             {
-         	  'computed_total': 0.0,
+             {'computed_total': 0.0,
               'due_date': None,
               'entered': False,
               'id': 1,
@@ -278,6 +276,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Example Utility',
               'utility_account_id': 1,
               'utility_account_number': '1',
+              'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility'}
          ], }
         self.assertJson(expected, rv.data)
@@ -408,6 +407,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Example Utility',
               'utility_account_id': 1,
               'utility_account_number': '1',
+              'utility_account_id': 1,
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False
@@ -444,32 +444,31 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 id = 2,
                 utility = "Empty Utility"
         ))
-        self.assertJson(
-            {
+        self.assertJson({
             "results": 1,
             "rows": {
-         	  'computed_total': 85.0,
-              'due_date': None,
-              'entered': False,
-              'id': 1,
-              'next_meter_read_date': None,
-              'pdf_url': '',
-              'period_end': None,
-              'period_start': None,
-              'processed': False,
-              'rate_class': 'Some Rate Class',
-              'service': 'Gas',
-              'service_address': '1 Example St., ,  ',
-              'supplier': 'Unknown',
-              'supply_choice_id': None,
-              'supply_total': 2.0,
-              'target_total': 0.0,
-              'total_energy': 150.0,
-              'utility': 'Empty Utility',
-              'utility_account_number': '1',
-              'utility_account_id': 1,
-              'wiki_url': 'http://example.com/utility:Empty Utility'}
-            }, rv.data
+         	    'computed_total': 85.0,
+                'due_date': None,
+                'entered': False,
+                'id': 1,
+                'next_meter_read_date': None,
+                'pdf_url': '',
+                'period_end': None,
+                'period_start': None,
+                'processed': False,
+                'rate_class': 'Some Rate Class',
+                'service': 'Gas',
+                'service_address': '1 Example St., ,  ',
+                'supplier': 'Unknown',
+                'supply_choice_id': None,
+                'supply_total': 2.0,
+                'target_total': 0.0,
+                'total_energy': 150.0,
+                'utility': 'Empty Utility',
+                'utility_account_number': '1',
+                'utility_account_id': 1,
+                'wiki_url': 'http://example.com/utility:Empty Utility'
+            }}, rv.data
         )
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(

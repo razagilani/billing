@@ -25,7 +25,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'Total',
+        header: 'Total Due',
         dataIndex: 'target_total',
         editor: {
             xtype: 'numberfield',
@@ -70,7 +70,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         minWidth: 125,
         flex: 1
     },{
-        header: 'Energy',
+        header: 'Usage',
         dataIndex: 'total_energy',
         editor: {
             xtype: 'numberfield',
@@ -78,6 +78,11 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 100
+    },{
+        header: 'Total Charges',
+        dataIndex: 'computed_total',
+        width: 100,
+        renderer: Ext.util.Format.usMoney
     },{
         header: 'Utility',
         dataIndex: 'utility',
