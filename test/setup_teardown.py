@@ -167,7 +167,9 @@ class TestCaseWithSetup(test_utils.TestCase):
             "supplier",
             "utility",
             "address",
+            "billentry_role_user",
             "billentry_user",
+            "billentry_role"
         ]:
             session.execute("delete from %s" % t)
         session.commit()

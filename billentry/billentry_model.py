@@ -100,11 +100,11 @@ class RoleBEUser(Base):
 class Role(Base):
     __tablename__ = 'billentry_role'
     id = Column(Integer, primary_key=True)
-    name = Column(String(10), unique=True)
+    name = Column(String(20), unique=True)
     description = Column(String(100))
 
 
-    def __init__(self, name, description):
+    def __init__(self, name='', description=''):
         self.name = name
         self.description = description
 
