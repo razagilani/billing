@@ -1877,7 +1877,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(account, start_date=start)
         reebills_data = self.views.get_reebill_metadata_json(account)
         self.assertEqual(1, len(reebills_data))
-        self.assertEqual(1, reebills_data['sequence'])
+        self.assertEqual(1, reebills_data[0]['sequence'])
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
