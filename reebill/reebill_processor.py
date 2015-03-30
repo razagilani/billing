@@ -11,7 +11,8 @@ from sqlalchemy import func
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
 from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading,
-                                   ReeBillCustomer, CustomerGroup)
+                                   ReeBillCustomer, CustomerGroup,
+                                   _customer_customer_group_table)
 from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
@@ -314,7 +315,8 @@ class ReebillProcessor(object):
                     "correction.") % (account, target_sequence))
         all_unissued_corrections = self.get_unissued_corrections(account)
         if len(all_unissued_corrections) == 0:
-            raise ValueError('%s has no corrections to apply' % account)
+            #raise ValueError('%s has no corrections to apply' % account)
+            return
 
         # recompute target reebill (this sets total adjustment) and save it
         reebill = self.state_db.get_reebill(account, target_sequence,
@@ -643,14 +645,17 @@ class ReebillProcessor(object):
         
     def issue_summary(self, group, recipient):
         s = Session()
-        bills = s.query(ReeBill).join(ReeBillCustomer).join(
-            CustomerCustomerGroup).join(CustomerGroup).filter(
-            # CustomerCustomerGroup.group == group,
-            # ReeBill.issued == False,
-            # ReeBill.processed == True,
-            #ReeBill.version == 0).order_by(ReeBill.sequence).all()
-        ).all()
-        print bills
+        customers = group.get_customers()
+        # # TODO: avoid using private member of reebill.reebill_model in this
+        # # query.
+        # bills = s.query(ReeBill).join(ReeBillCustomer).join(
+        #     _customer_customer_group_table).join(CustomerGroup).filter(
+        #     ReeBill.issued == False,
+        #     ReeBill.processed == True,
+        #     ReeBill.version == 0).order_by(ReeBill.sequence).all()
+        bills = [c.get_first_unissued_bill() for c in group.get_customers()]
+        bills = [b for b in bills if b is not None and b.processed]
+        print list(bills)
         assert len(bills) > 0
 
         for b in bills:

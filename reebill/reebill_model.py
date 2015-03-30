@@ -585,6 +585,15 @@ class CustomerGroup(Base):
         """
         return self.customers
 
+    def get_bills_to_issue(self):
+        """Return a list of ReeBills that are processed, not issued,
+        are not corrections (i.e. have version == 0) belonging to
+        accounts in this group.
+        """
+        criteria = lambda b: b.processed and not b.issued and b.version == 0
+        return list(chain.from_iterable(
+            (b for b in c.reebills if criteria(b)) for c in self.customers))
+
 class ReeBillCustomer(Base):
     __tablename__ = 'reebill_customer'
 
