@@ -645,23 +645,18 @@ class ReebillProcessor(object):
         
     def issue_summary(self, group, recipient):
         s = Session()
-        customers = group.get_customers()
-        # # TODO: avoid using private member of reebill.reebill_model in this
-        # # query.
-        # bills = s.query(ReeBill).join(ReeBillCustomer).join(
-        #     _customer_customer_group_table).join(CustomerGroup).filter(
-        #     ReeBill.issued == False,
-        #     ReeBill.processed == True,
-        #     ReeBill.version == 0).order_by(ReeBill.sequence).all()
+        # awful code: querying for all bills belonging to every account,
+        # filtering them in application code and then filtering them again in
+        #  another list.
+        # TODO: I don't know what.
         bills = [c.get_first_unissued_bill() for c in group.get_customers()]
         bills = [b for b in bills if b is not None and b.processed]
-        print list(bills)
-        assert len(bills) > 0
 
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
 
+        # TODO: substitute with correct imports
         from mock import Mock
         SummaryFileGenerator, PDFConcatenator = Mock(), Mock()
 
