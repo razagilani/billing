@@ -2084,7 +2084,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
     def test_summary(self):
         """Issuing a summary bill for a group of accounts.
         """
-        # setup: 2 different customers are needed so another one must be created
+        # setup: 2 different customers are needed, so another one must be
+        # created
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
                              Address(), Address())
@@ -2096,19 +2097,13 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         utilbill2.utility_account = ua2
         s = Session()
         s.add_all([ua2, customer2, utilbill2])
-        s.flush()
 
-        group = CustomerGroup(name='My Property Management Co.', bill_email_recipient='example@example.com')
-        # TODO: this is causing it to create new ReeBillCustomer objects
+        group = CustomerGroup(name='Example Property Management Co.',
+                              bill_email_recipient='example@example.com')
         group.add(self.customer)
-        s.flush()
         group.add(customer2)
-        s.add(group)
-        s.flush()
-        print [c.get_account() for c in s.query(ReeBillCustomer).all()]
 
-        # create two reebills for two different customers
-        # TODO: test issuing corrections
+        # create two reebills for two different customers in the group
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
         self.reebill_processor.toggle_reebill_processed(
@@ -2117,6 +2112,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                                             start_date=utilbill2.period_start)
         self.reebill_processor.toggle_reebill_processed(
             utilbill2.utility_account.account, 1, False)
+        # TODO: test issuing corrections
 
         # issue summary
         email_addr = 'example@example.com'
