@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
 from flask.ext.login import current_user
+from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
@@ -23,7 +24,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-
+project_mgr_permission = Permission(RoleNeed('Project Manager'))
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
@@ -330,25 +331,26 @@ class RateClassesResource(BaseResource):
 class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
-        parser = RequestParser()
-        parser.add_argument('start', type=parse_date, required=True)
-        parser.add_argument('end', type=parse_date, required=True)
-        args = parser.parse_args()
+        with project_mgr_permission.require():
+            parser = RequestParser()
+            parser.add_argument('start', type=parse_date, required=True)
+            parser.add_argument('end', type=parse_date, required=True)
+            args = parser.parse_args()
 
-        s = Session()
-        utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
-            .filter(and_(
-                BEUtilBill.billentry_date >= args['start'],
-                BEUtilBill.billentry_date < args['end']
-            )).subquery()
-        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
-            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
-        rows = [{
-            'id': user.id,
-            'email': user.email,
-            'count': count,
-        } for (user, count) in q.all()]
-        return {'rows': rows, 'results': len(rows)}
+            s = Session()
+            utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
+                .filter(and_(
+                    BEUtilBill.billentry_date >= args['start'],
+                    BEUtilBill.billentry_date < args['end']
+                )).subquery()
+            q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+                utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+            rows = [{
+                'id': user.id,
+                'email': user.email,
+                'count': count,
+            } for (user, count) in q.all()]
+            return {'rows': rows, 'results': len(rows)}
 
 
 class UtilBillListForUserResource(BaseResource):
