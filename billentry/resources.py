@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
 from flask.ext.login import current_user
+from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
@@ -23,7 +24,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-
+project_mgr_permission = Permission(RoleNeed('Project Manager'))
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
@@ -154,7 +155,7 @@ id_parser.add_argument('id', type=int, required=True)
 parse_date = lambda _s: dateutil_parser.parse(_s).date()
 
 
-class AccountResource(BaseResource):
+class AccountListResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
             BrokerageAccount).order_by(UtilityAccount.account).all()
@@ -169,14 +170,31 @@ class AccountResource(BaseResource):
                 for account in accounts]
 
 
+class AccountResource(BaseResource):
+
+    def put(self, id):
+        account = Session().query(UtilityAccount).filter_by(id=id).one()
+        return dict(marshal(account, {
+            'id': Integer,
+            'account': String,
+            'utility_account_number': String(attribute='account_number'),
+            'utility': String(attribute='fb_utility'),
+            'service_address': CallableField(String(),
+                                             attribute='get_service_address'),
+        }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+
+
+
 class UtilBillListResource(BaseResource):
     def get(self):
         args = id_parser.parse_args()
         s = Session()
         # TODO: pre-join with Charge to make this faster
         utilbills = s.query(UtilBill).join(UtilityAccount).filter \
-            (UtilityAccount.id == args['id']).order_by(
-            desc(UtilBill.period_start), desc(UtilBill.id)).all()
+            (UtilityAccount.id == args['id']).filter \
+            (UtilBill.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY). \
+                order_by(desc(UtilBill.period_start), desc(UtilBill.id))\
+            .all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
@@ -313,16 +331,17 @@ class RateClassesResource(BaseResource):
 class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
-        parser = RequestParser()
-        parser.add_argument('start', type=parse_date, required=True)
-        parser.add_argument('end', type=parse_date, required=True)
-        args = parser.parse_args()
+        with project_mgr_permission.require():
+            parser = RequestParser()
+            parser.add_argument('start', type=parse_date, required=True)
+            parser.add_argument('end', type=parse_date, required=True)
+            args = parser.parse_args()
 
-        s = Session()
-        utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
-            .filter(and_(
-                BEUtilBill.billentry_date >= args['start'],
-                BEUtilBill.billentry_date < args['end']
+            s = Session()
+            utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
+                .filter(and_(
+                    BEUtilBill.billentry_date >= args['start'],
+                    BEUtilBill.billentry_date < args['end']
             ))
         total_query = utilbill_sq.subquery()
         gas_query = utilbill_sq.filter(RateClass.service == 'gas').subquery()
@@ -339,14 +358,14 @@ class UtilBillCountForUserResource(BaseResource):
             BillEntryUser.id).order_by(
             BillEntryUser.id)
 
-        rows = [{
-            'id': user.id,
-            'email': user.email,
+            rows = [{
+                'id': user.id,
+                'email': user.email,
             'total_count': total_count,
             'gas_count': gas_count,
             'electric_count': electric_count,
         } for (user, total_count, gas_count, electric_count) in q.all()]
-        return {'rows': rows, 'results': len(rows)}
+            return {'rows': rows, 'results': len(rows)}
 
 
 class UtilBillListForUserResource(BaseResource):
