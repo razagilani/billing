@@ -105,7 +105,7 @@ def create_reebill_objects():
 
     # TODO most or all of these dependencies do not need to be instance
     # variables because they're not accessed outside __init__
-    state_db = ReeBillDAO(logger)
+    state_db = ReeBillDAO()
     mock_install_1 = MockSkyInstall(name='example-1')
     mock_install_2 = MockSkyInstall(name='example-2')
     splinter = MockSplinter(deterministic=True,
