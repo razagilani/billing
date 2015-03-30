@@ -97,7 +97,7 @@ var utils = function() {
          * Creates a Textbox for a GridColumn with proper keyup listener that
          * updates the filter of the Grid's store whenever the textfield changes.
          * field_name is the field name of the stre that should be filtered by
-         * comparator is the operator as a string that should be used to compare
+         * operator is the operator as a string that should be used to compare
          * numeric values
          */
         return {
