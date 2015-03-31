@@ -1,4 +1,3 @@
-import unittest
 from datetime import date
 import logging
 from os.path import join
@@ -7,15 +6,12 @@ from time import sleep
 import subprocess
 
 from mock import Mock
-import mongoengine
 from boto.s3.connection import S3Connection
 from testfixtures import TempDirectory
 
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test import init_test_config
 from util.file_utils import make_directories_if_necessary
-from core import init_model
 from test import testing_utils as test_utils
 from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount, Base
@@ -105,7 +101,7 @@ def create_reebill_objects():
 
     # TODO most or all of these dependencies do not need to be instance
     # variables because they're not accessed outside __init__
-    state_db = ReeBillDAO(logger)
+    state_db = ReeBillDAO()
     mock_install_1 = MockSkyInstall(name='example-1')
     mock_install_2 = MockSkyInstall(name='example-2')
     splinter = MockSplinter(deterministic=True,

@@ -1,8 +1,7 @@
-'''The goal of this file is to collect in one place all the code for to
+"""The goal of this file is to collect in one place all the code for to
 serializing data into JSON for the ReeBill UI. Some of that code is still in
 other files.
-            if None in (utilbill.rate_class, utilbill.supplier) and processed:
-'''
+"""
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
