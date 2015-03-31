@@ -94,8 +94,8 @@ def init_model(uri=None, schema_revision=None):
     Session.remove()
     engine = create_engine(uri, echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
-                           # "MySQL server has gone away" error they get closed
-                           # due to inactivity
+                           # "MySQL server has gone away" error when they get
+                           # closed due to inactivity
                            pool_recycle=3600)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
