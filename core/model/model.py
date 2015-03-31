@@ -396,7 +396,7 @@ class UtilBill(Base):
 
     # this is created for letting bill entry user's marking/un marking a
     # bill for Time Of Use.
-    tou = Column(Boolean)
+    tou = Column(Boolean, nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -420,7 +420,7 @@ class UtilBill(Base):
     # utility web site, because that can only be done while the bill is being
     # downloaded and can't take into account information from other sources.)
     # TODO: not being used at all
-    date_scraped = Column(DateTime, nullable=False)
+    date_scraped = Column(DateTime)
 
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
