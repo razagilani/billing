@@ -1,12 +1,10 @@
-#!/usr/bin/env python2
 from copy import deepcopy
 from datetime import date, datetime
 from itertools import cycle
 from StringIO import StringIO
-
 import unittest
+
 import mock
-import logging
 
 from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
@@ -15,7 +13,6 @@ from reebill.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
-
 
 
 class ExporterSheetTest(unittest.TestCase):
