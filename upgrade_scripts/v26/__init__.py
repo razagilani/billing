@@ -16,6 +16,11 @@ from core.model import Session
 
 log = logging.getLogger(__name__)
 
+def create_project_manager_role():
+    manager_role = Role('Project Manager',
+                        'Role for accessing reports view of billentry app')
+    return manager_role
+
 def upgrade():
     log.info('Beginning upgrade to version 26')
 
@@ -28,6 +33,3 @@ def upgrade():
     s.commit()
 
 
-def create_project_manager_role():
-    manager_role = Role('Project Manager', 'Role for accessing reports view of billentry app')
-    return manager_role
