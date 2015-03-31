@@ -654,13 +654,7 @@ class ReebillProcessor(object):
         self.reebill_file_handler.render(reebill)
 
     def issue_summary(self, group, recipient):
-        s = Session()
-        # awful code: querying for all bills belonging to every account,
-        # filtering them in application code and then filtering them again in
-        #  another list.
-        # TODO: I don't know what.
-        bills = [c.get_first_unissued_bill() for c in group.get_customers()]
-        bills = [b for b in bills if b is not None and b.processed]
+        bills = group.get_bills_to_issue()
 
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
