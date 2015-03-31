@@ -4,8 +4,8 @@ import re
 from datetime import datetime, timedelta
 from StringIO import StringIO
 
-from sqlalchemy.sql import desc, functions
-from sqlalchemy import not_, and_
+from sqlalchemy.sql import desc
+from sqlalchemy import not_
 from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
@@ -17,7 +17,7 @@ from exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
     BillingError
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
-from reebill.views import column_dict
+from util.pdf import PDFConcatenator
 
 
 class ReebillProcessor(object):
@@ -328,8 +328,9 @@ class ReebillProcessor(object):
                     "correction.") % (account, target_sequence))
 
         all_unissued_corrections = self.get_unissued_corrections(account)
+
         if len(all_unissued_corrections) == 0:
-            #raise ValueError('%s has no corrections to apply' % account)
+            # no corrections to apply
             return
 
         if not reebill.processed:
@@ -653,7 +654,7 @@ class ReebillProcessor(object):
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
-        
+
     def issue_summary(self, group, recipient):
         s = Session()
         # awful code: querying for all bills belonging to every account,
