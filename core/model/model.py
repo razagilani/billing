@@ -586,11 +586,17 @@ class UtilBill(Base):
             return None
         return self.rate_class.name
 
+    def get_rate_class(self):
+        self.rate_class
+
+    def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
         the new rate class.
         """
+        self.rate_class = rate_class
         if rate_class is not None:
             self.registers = rate_class.get_register_list()
+
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
         None (unknown).
