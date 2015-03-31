@@ -748,14 +748,19 @@ class UtilBill(Base):
 
     def set_meter_identifier(self, meter_identifier):
         self.check_editable()
-        register = next(r for r in self.registers if r.register_binding
+        try:
+            register = next(r for r in self.registers if r.register_binding
                                                      == 'REG_TOTAL')
+        except StopIteration:
+            return
         register.meter_identifier = meter_identifier
 
     def get_meter_identifier(self):
-
-        register = next(r for r in self.registers if r.register_binding
+        try:
+            register = next(r for r in self.registers if r.register_binding
                                                      == 'REG_TOTAL')
+        except StopIteration:
+            return ''
         return register.meter_identifier
 
     def get_total_energy_consumption(self):

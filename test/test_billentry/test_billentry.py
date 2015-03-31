@@ -629,7 +629,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
-                  'entered': True
+                  'entered': True,
+                  'meter_identifier': ''
                  }],
              }, rv.data)
 
