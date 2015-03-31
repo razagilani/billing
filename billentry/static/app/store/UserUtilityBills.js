@@ -1,23 +1,20 @@
-Ext.define('BillEntry.store.Charges', {
+Ext.define('BillEntry.store.UserUtilityBills', {
     extend: 'Ext.data.Store',
-    model: 'BillEntry.model.Charge',
+    model: 'BillEntry.model.UtilityBill',
 
     autoLoad: false,
     autoSync: true,
 
 	proxy: {
 		type: 'rest',
-        
+
         simpleSortMode: true,
         pageParam: false,
         startParam: false,
         sortParam: false,
         limitParam: false,
 
-        pageParam: false,
-
-        url: 'http://'+window.location.host+'/utilitybills/charges',
-
+        url: 'http://'+window.location.host+'/utilitybills/user_utilitybills',
 		reader: {
 			type: 'json',
 			root: 'rows',
@@ -29,13 +26,14 @@ Ext.define('BillEntry.store.Charges', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('Charges'),
+            exception: utils.makeProxyExceptionHandler('UtilityBills'),
             scope: this
         }
 	},
 
     sorters: [{
-        property: 'group',
-        direction: 'ASC'
+        property: 'due_date',
+        direction: 'DESC'
     }]
+
 });
