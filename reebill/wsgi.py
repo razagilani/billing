@@ -8,6 +8,7 @@ from core import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
+from reebill.reebill_model import CustomerGroup
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
@@ -433,13 +434,14 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_summary(self, customer_tag, recipient, **params):
-        """Generate a summary PDF for all bills with the specified "tag" and
+    def issue_summary(self, customer_group_id, **params):
+        """Generate a summary PDF for all bills in the specified group and
         mail them to the given recipient. All bills are marked as issued and
         corrections are applied.
         """
-        reebills, corrections = self.reebill_processor.issue_summary(
-            customer_tag, recipient)
+        s = Session()
+        group = s.query(CustomerGroup).filter_by(id=customer_group_id).one()
+        reebills, corrections = self.reebill_processor.issue_summary(group)
 
         # journal event for corrections is not logged
         user = cherrypy.session['user']
