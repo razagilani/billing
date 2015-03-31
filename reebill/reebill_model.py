@@ -553,6 +553,9 @@ class CustomerGroup(Base):
         are not corrections (i.e. have version == 0) belonging to
         accounts in this group.
         """
+        # loading all the bills and then filtering them is not efficient,
+        # but there is a maximum of about 120 bills per customer, and this
+        # doesn't need to run fast.
         criteria = lambda b: b.processed and not b.issued and b.version == 0
         return list(chain.from_iterable(
             (b for b in c.reebills if criteria(b)) for c in self.customers))
