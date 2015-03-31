@@ -433,6 +433,27 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
+    def issue_summary(self, customer_tag, recipient, **params):
+        """Generate a summary PDF for all bills with the specified "tag" and
+        mail them to the given recipient. All bills are marked as issued and
+        corrections are applied.
+        """
+        reebills, corrections = self.reebill_processor.issue_summary(
+            customer_tag, recipient)
+
+        # journal event for corrections is not logged
+        user = cherrypy.session['user']
+        for reebill in reebills:
+            journal.ReeBillIssuedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence, reebill.version)
+            journal.ReeBillMailedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence,
+                reebill.email_recipient)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
         bills = self.reebill_processor.issue_processed_and_mail(apply_corrections=True)
