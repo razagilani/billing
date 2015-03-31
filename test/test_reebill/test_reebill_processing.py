@@ -1649,76 +1649,6 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
 
-    def test_tou_metering(self):
-        # TODO: possibly move to test_fetch_bill_data
-        account = '99999'
-
-        def get_mock_energy_consumption(install, start, end, measure,
-                                        ignore_misisng=True, verbose=False):
-            assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
-            result = []
-            for hourly_period in cross_range(start, end):
-                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
-                # (Sat Jan 15), return number of BTU equal to the hour of
-                # the day. no energy is consumed on other days.
-                if hourly_period.day in (1, 14, 15):
-                    result.append(hourly_period.hour)
-                else:
-                    result.append(0)
-            assert len(result) == 31 * 24  # hours in January
-            return result
-
-        self.reebill_processor.ree_getter.get_billable_energy_timeseries = \
-            get_mock_energy_consumption
-
-        # modify registers of this utility bill so they are TOU
-        u = Session().query(UtilBill).join(UtilityAccount). \
-            filter_by(account=account).one()
-        active_periods = {
-            'active_periods_weekday': [[9, 9]],
-            'active_periods_weekend': [[11, 11]],
-            'active_periods_holiday': [],
-            }
-        r = self.utilbill_processor.new_register(u.id)
-        self.utilbill_processor.update_register(r.id, {
-            'description': 'time-of-use register',
-            'quantity': 0,
-            'unit': 'btu',
-            'identifier': 'test2',
-            'estimated': False,
-            'reg_type': 'tou',
-            'register_binding': 'TOU',
-            'meter_identifier': '',
-            'active_periods': active_periods
-        })
-        self.utilbill_processor.update_utilbill_metadata(u.id,
-                                                         processed=True)
-        self.reebill_processor.roll_reebill(account,
-                                            start_date=date(2000, 1, 1))
-
-        # the reebill starts with one reading corresponding to "reg_total"
-        # so the "update readings" feature must be used to get all 3
-        self.reebill_processor.update_reebill_readings(account, 1)
-        self.reebill_processor.bind_renewable_energy(account, 1)
-
-        # the total energy consumed over the 3 non-0 days is
-        # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-        # when only the hours 9 and 11 are included, the total is just
-        # 9 + 11 + 11 = 33.
-        total_renewable_btu = 23 * 24 / 2. * 3
-        total_renewable_therms = total_renewable_btu / 1e5
-        tou_renewable_btu = 9 + 11 + 11
-
-        # check reading of the reebill corresponding to the utility register
-        reebill = Session().query(ReeBill).one()
-        total_reading, tou_reading = reebill.readings
-        self.assertAlmostEqual('therms', total_reading.unit)
-        self.assertAlmostEqual(total_renewable_therms,
-                               total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
-        self.assertAlmostEqual(tou_renewable_btu,
-                               tou_reading.renewable_quantity)
-
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
         This can be expanded or merged into another test method later on.
@@ -1897,6 +1827,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
     def test_two_registers_one_reading(self):
         '''Test the situation where a utiltiy bill has 2 registers, but its
         reebill has only one reading corresponding to the first register,
@@ -1991,6 +1922,93 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill.processed = True
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
+
+def TestTouMetering(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+    def tearDown(self):
+        clear_db()
+
+    def test_tou_metering(self):
+        # TODO: possibly move to test_fetch_bill_data
+        account = '99999'
+
+        def get_mock_energy_consumption(install, start, end, measure,
+                                        ignore_misisng=True, verbose=False):
+            assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
+            result = []
+            for hourly_period in cross_range(start, end):
+                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
+                # (Sat Jan 15), return number of BTU equal to the hour of
+                # the day. no energy is consumed on other days.
+                if hourly_period.day in (1, 14, 15):
+                    result.append(hourly_period.hour)
+                else:
+                    result.append(0)
+            assert len(result) == 31 * 24  # hours in January
+            return result
+
+        self.reebill_processor.ree_getter.get_billable_energy_timeseries = \
+            get_mock_energy_consumption
+
+        # modify registers of this utility bill so they are TOU
+        u = Session().query(UtilBill).join(UtilityAccount). \
+            filter_by(account=account).one()
+        active_periods = {
+            'active_periods_weekday': [[9, 9]],
+            'active_periods_weekend': [[11, 11]],
+            'active_periods_holiday': [],
+            }
+        r = self.utilbill_processor.new_register(u.id)
+        self.utilbill_processor.update_register(r.id, {
+            'description': 'time-of-use register',
+            'quantity': 0,
+            'unit': 'btu',
+            'identifier': 'test2',
+            'estimated': False,
+            'reg_type': 'tou',
+            'register_binding': 'TOU',
+            'meter_identifier': '',
+            'active_periods': active_periods
+        })
+        self.utilbill_processor.update_utilbill_metadata(u.id,
+                                                         processed=True)
+        self.reebill_processor.roll_reebill(account,
+                                            start_date=date(2000, 1, 1))
+
+        # the reebill starts with one reading corresponding to "reg_total"
+        # so the "update readings" feature must be used to get all 3
+        self.reebill_processor.update_reebill_readings(account, 1)
+        self.reebill_processor.bind_renewable_energy(account, 1)
+
+        # the total energy consumed over the 3 non-0 days is
+        # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
+        # when only the hours 9 and 11 are included, the total is just
+        # 9 + 11 + 11 = 33.
+        total_renewable_btu = 23 * 24 / 2. * 3
+        total_renewable_therms = total_renewable_btu / 1e5
+        tou_renewable_btu = 9 + 11 + 11
+
+        # check reading of the reebill corresponding to the utility register
+        reebill = Session().query(ReeBill).one()
+        total_reading, tou_reading = reebill.readings
+        self.assertAlmostEqual('therms', total_reading.unit)
+        self.assertAlmostEqual(total_renewable_therms,
+                               total_reading.renewable_quantity)
+        self.assertEqual('btu', tou_reading.unit)
+        self.assertAlmostEqual(tou_renewable_btu,
+                               tou_reading.renewable_quantity)
 
 if __name__ == '__main__':
     unittest.main()
