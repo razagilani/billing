@@ -3,10 +3,9 @@
 from datetime import datetime, date
 import unittest
 from json import loads
-from uuid import uuid5, NAMESPACE_DNS
-from flask import url_for
-from flask.ext.login import current_user
+import json
 from mock import Mock
+from sqlalchemy.orm.exc import NoResultFound
 
 # if init_test_config() is not called before "billentry" is imported,
 # "billentry" will call init_config to initialize the config object with the
@@ -15,14 +14,16 @@ from mock import Mock
 from test import init_test_config
 init_test_config()
 
-from sqlalchemy.orm.exc import NoResultFound
-from billentry.billentry_exchange import create_amqp_conn_params, ConsumeUtilbillGuidsHandler
+from core.altitude import AltitudeBill, get_utilbill_from_guid
 from mq import IncomingMessage
 
 import billentry
 from billentry import common
-from billentry.billentry_model import BillEntryUser, BEUtilBill
-from billentry.common import replace_utilbill_with_beutilbill
+from billentry.billentry_exchange import create_amqp_conn_params, \
+    ConsumeUtilbillGuidsHandler
+from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
+from billentry.common import replace_utilbill_with_beutilbill, \
+    account_has_bills_for_data_entry
 
 from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
@@ -42,6 +43,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
+        self.user.is_anonymous.return_value = False
         self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
                              self.rate_class, Address(), Address())
 
@@ -65,11 +67,13 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(the_date, self.ub.get_date())
         self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), False)
 
         self.ub.un_enter()
         self.assertEqual(None, self.ub.get_date())
         self.assertEqual(None, self.ub.get_user())
         self.assertFalse(self.ub.is_entered())
+        self.assertEqual(self.ub.editable(), True)
 
         self.ub.processed = True
         self.assertEqual(None, self.ub.get_date())
@@ -120,6 +124,7 @@ class BillEntryIntegrationTest(object):
         # causes a failure when the session is committed below.
         init_model()
 
+        self.project_mgr_role = Role('Project Manager', 'Role for accessing reports view of billentry app' )
         self.utility = Utility('Example Utility', Address())
         self.utility.id = 1
         self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
@@ -133,7 +138,8 @@ class BillEntryIntegrationTest(object):
         self.ub1.id = 1
         self.ub2.id = 2
         s = Session()
-        s.add_all([self.utility, self.ua1, self.rate_class, self.ub1, self.ub2])
+        s.add_all([self.utility, self.ua1, self.rate_class, self.ub1,
+            self.ub2, self.project_mgr_role])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
@@ -191,49 +197,91 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5, ub3])
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
         s.commit()
 
-    def test_accounts(self):
+    def test_accounts_get(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
         self.assertJson(
             [{'account': '11111',
+              'bills_to_be_entered': True,
               'id': 1,
               'service_address': '1 Example St., ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '1'},
              {'account': '22222',
+              'bills_to_be_entered': False,
               'id': 2,
               'service_address': ', ,  ',
               'utility': 'Example Utility',
               'utility_account_number': '2'}], rv.data)
 
-    def test_utilbills_list(self):
+    def test_account_put(self):
+        rv = self.app.put(self.URL_PREFIX + 'accounts/1')
+        self.assertJson(
+            {'account': '11111',
+              'bills_to_be_entered': True,
+              'id': 1,
+              'service_address': '1 Example St., ,  ',
+              'utility': 'Example Utility',
+              'utility_account_number': '1'}, rv.data)
+
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
         self.assertJson(
-            {'results': 1,
-             'rows': [
-                 {'account': None,
-                  'computed_total': 0.0,
-                  'due_date': None,
-                  'id': 3,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Unknown',
-                  'service': 'Unknown',
-                  'service_address': '2 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 0.0,
-                  'target_total': 0.0,
-                  'total_energy': 0.0,
-                  'utility': 'Empty Utility',
-                  'utility_account_number': '3',
-                  'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
-                 },
-             ], }, rv.data)
+            {'results': 0,
+             'rows': [], }, rv.data)
+
+    def test_utilbills_list(self):
+        rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
+        expected = {'results': 2,
+         'rows': [
+             {'computed_total': 0.0,
+              'due_date': None,
+              'id': 2,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Unknown',
+              'service': 'Unknown',
+              'service_address': '2 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_total': 0.0,
+              'target_total': 0.0,
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_number': '1',
+              'utility_account_id': 1,
+              'supply_choice_id': None,
+              'wiki_url': 'http://example.com/utility:Example Utility',
+              'entered': False
+             },
+             {'computed_total': 0.0,
+              'due_date': None,
+              'entered': False,
+              'id': 1,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Some Rate Class',
+              'service': 'Gas',
+              'service_address': '1 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_choice_id': None,
+              'supply_total': 2.0,
+              'target_total': 0.0,
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_id': 1,
+              'utility_account_number': '1',
+              'utility_account_id': 1,
+              'wiki_url': 'http://example.com/utility:Example Utility'}
+         ], }
+        self.assertJson(expected, rv.data)
 
     def test_charges_list(self):
         rv = self.app.get(self.URL_PREFIX + 'charges?utilbill_id=1')
@@ -280,8 +328,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
 
     def test_utilbill(self):
         expected = {'rows':
-             {'account': None,
-              'computed_total': 85.0,
+             {'computed_total': 85.0,
               'due_date': None,
               'id': 1,
               'next_meter_read_date': None,
@@ -298,14 +345,17 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_account_id': 1,
               'utility_account_number': '1',
-              'wiki_url': 'http://example.com/utility:Example Utility'
+              'wiki_url': 'http://example.com/utility:Example Utility',
+              'entered': True
               },
          'results': 1}
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
-            period_start=datetime(2000, 1, 1).isoformat()
+            period_start=datetime(2000, 1, 1).isoformat(),
+            entered=True
         ))
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
@@ -313,19 +363,37 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
             id=2,
             next_meter_read_date=date(2000, 2, 5).isoformat()
+            ))
+        # this request is being made using a different content-type because
+        # with the default content-type of form-urlencoded bool False
+        # was interpreted as a string and it was evaluating to True on the
+        # server. Also in out app, the content-type is application/json so
+        # we should probably update all our test code to use application/json
+        self.assertEqual(500, rv.status_code)
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
+            data=json.dumps(dict(
+                id=2,
+                entered=False
+        )))
+        self.assertEqual(rv.status_code, 200)
+
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id=2,
+            next_meter_read_date=date(2000, 2, 5).isoformat()
         ))
-        expected['rows']['next_meter_read_date'] = None
+
+        expected['rows']['next_meter_read_date'] = date(2000, 2, 5).isoformat()
+        expected['rows']['entered'] = False
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
 
     def test_update_utilbill_rate_class(self):
-        expected = {'results': 1,
+        expected = {'results': 2,
          'rows': [
-             {'account': None,
-              'computed_total': 0.0,
+             {'computed_total': 0.0,
               'due_date': None,
-              'id': 3,
+              'id': 2,
               'next_meter_read_date': None,
               'pdf_url': '',
               'period_end': None,
@@ -337,14 +405,39 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'supplier': 'Unknown',
               'supply_total': 0.0,
               'target_total': 0.0,
-              'total_energy': 0.0,
-              'utility': 'Empty Utility',
-              'utility_account_number': '3',
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_id': 1,
+              'utility_account_number': '1',
+              'utility_account_id': 1,
               'supply_choice_id': None,
-              'wiki_url': 'http://example.com/utility:Empty Utility'
-             }
+              'wiki_url': 'http://example.com/utility:Example Utility',
+              'entered': False
+             },
+             {'computed_total': 0.0,
+              'due_date': None,
+              'entered': False,
+              'id': 1,
+              'next_meter_read_date': None,
+              'pdf_url': '',
+              'period_end': None,
+              'period_start': None,
+              'processed': False,
+              'rate_class': 'Some Rate Class',
+              'service': 'Gas',
+              'service_address': '1 Example St., ,  ',
+              'supplier': 'Unknown',
+              'supply_choice_id': None,
+              'supply_total': 2.0,
+              'target_total': 0.0,
+              'total_energy': 150.0,
+              'utility': 'Example Utility',
+              'utility_account_id': 1,
+              'utility_account_number': '1',
+              'utility_account_id': 1,
+              'wiki_url': 'http://example.com/utility:Example Utility'}
          ], }
-        rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=3')
+        rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
         # TODO reuse 'expected' in later assertions instead of repeating the
@@ -354,32 +447,31 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 id = 2,
                 utility = "Empty Utility"
         ))
-        self.assertJson(
-            {
+        self.assertJson({
             "results": 1,
             "rows": {
-                'account': None,
-                  'computed_total': 85.0,
-                  'id': 1,
-                  'due_date': None,
-                  'next_meter_read_date': None,
-                  'pdf_url': '',
-                  'period_end': None,
-                  'period_start': None,
-                  'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
-                  'service_address': '1 Example St., ,  ',
-                  'supplier': 'Unknown',
-                  'supply_total': 2.0,
-                  'target_total': 0.0,
-                  'total_energy': 150.0,
-                  'utility': 'Empty Utility',
-                  'utility_account_number': '1',
-                  'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Empty Utility'
-            },
-            }, rv.data
+         	    'computed_total': 85.0,
+                'due_date': None,
+                'entered': False,
+                'id': 1,
+                'next_meter_read_date': None,
+                'pdf_url': '',
+                'period_end': None,
+                'period_start': None,
+                'processed': False,
+                'rate_class': 'Some Rate Class',
+                'service': 'Gas',
+                'service_address': '1 Example St., ,  ',
+                'supplier': 'Unknown',
+                'supply_choice_id': None,
+                'supply_total': 2.0,
+                'target_total': 0.0,
+                'total_energy': 150.0,
+                'utility': 'Empty Utility',
+                'utility_account_number': '1',
+                'utility_account_id': 1,
+                'wiki_url': 'http://example.com/utility:Empty Utility'
+            }}, rv.data
         )
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
@@ -391,7 +483,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             {
             "results": 1,
             "rows": {
-                'account': None,
                   'computed_total': 85.0,
                   'id': 1,
                   'due_date': None,
@@ -409,8 +500,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'total_energy': 150.0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
+                  'utility_account_id': 1,
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility'
+                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'entered': False
             },
             }, rv.data
         )
@@ -422,20 +515,33 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
     def setUp(self):
         super(TestBillEntryReport, self).setUp()
         s = Session()
-        self.user1 = BillEntryUser(email='1@example.com')
-        self.user2 = BillEntryUser(email='2@example.com')
+        self.user1 = BillEntryUser(email='1@example.com', password='password')
+        self.user2 = BillEntryUser(email='2@example.com', password='password')
         s.add_all([self.ub1, self.ub2, self.user1, self.user2])
+        self.user1.roles = [self.project_mgr_role]
         s.commit()
 
     def test_report_count_for_user(self):
+
+        data = {'email':'1@example.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual('http://localhost/', response.location)
+
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
         # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
+
+
         self.assertJson({"results": 2, "rows": [
-            {"user_id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
 
         self.ub1.enter(self.user1, datetime(2000,1,10))
@@ -445,33 +551,58 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
                                         datetime(2000,1,20).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"user_id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
 
         # user1 has 2 bills in range, user2 has none
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"user_id": self.user1.id, "email": '1@example.com', "count": 2},
-            {"user_id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "count": 2},
+            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
                         rv.data)
 
-    def test_report_utilbills_for_user(self):
-        url_format = self.URL_PREFIX + 'user_utilitybills/%s'
+    def test_user_permission_for_report(self):
+        data = {'email':'2@example.com', 'password': 'password'}
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # on successful login user is routed to the next url
+        self.assertTrue(response.status_code == 302)
+        self.assertEqual('http://localhost/', response.location)
+
+        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
         # no "entered" bills yet
-        rv = self.app.get(url_format % self.user1.id)
+        rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
+                                        datetime(2000,2,1).isoformat()))
+        # this should result in a status_code of '403 permission denied'
+        # as only members of 'Project Manager' role are allowed access to
+        # report page and user2 is not the member of 'Project Manager' role
+        self.assertEqual(403, rv.status_code)
+
+    def test_report_utilbills_for_user(self):
+        url_format = self.URL_PREFIX + 'user_utilitybills?start=%s&end=%s&id=%s'
+
+        # no "entered" bills yet
+        start = datetime(2000, 1, 5)
+        end = datetime(2000, 1, 11)
+        rv = self.app.get(url_format % (start.isoformat(),
+                                        end.isoformat(),
+                                        self.user1.id))
         self.assertJson({"results": 0, "rows": []}, rv.data)
 
         # one "entered bill for user1
         self.ub1.enter(self.user1, datetime(2000,1,10))
-        rv = self.app.get(url_format % self.user1.id)
+        rv = self.app.get(url_format % (start.isoformat(),
+                                        end.isoformat(),
+                                        self.user1.id))
         self.assertJson(
             {"results": 1,
              'rows':
-                 [{'account': None,
-                  'computed_total': 0,
+                 [{'computed_total': 0,
                   'due_date': None,
                   'id': 1,
                   'next_meter_read_date': None,
@@ -487,14 +618,18 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'target_total': 0,
                   'total_energy': 0,
                   'utility': 'Example Utility',
+                  'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Example Utility'
+                  'wiki_url': 'http://example.com/utility:Example Utility',
+                  'entered': True
                  }],
              }, rv.data)
 
         # still none for user2
-        rv = self.app.get(url_format % self.user2.id)
+        rv = self.app.get(url_format % (start.isoformat(),
+                                        end.isoformat(),
+                                        self.user2.id))
         self.assertJson({"results": 0, "rows": []}, rv.data)
 
 
@@ -522,7 +657,38 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
+class TestAccountHasBillsForDataEntry(unittest.TestCase):
+
+    def test_account_has_bills_for_data_entry(self):
+        utility = Utility('Empty Utility', Address())
+
+        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
+                             Address(), Address(), '2')
+
+        regular_utilbill = UtilBill(utility_account, utility, None,
+                       service_address=Address(street='2 Example St.'))
+
+        beutilbill = BEUtilBill.create_from_utilbill(regular_utilbill)
+
+        utility_account.utilbills = []
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill]
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+        utility_account.utilbills = [regular_utilbill, beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
+
+        utility_account.utilbills = [beutilbill]
+        self.assertTrue(account_has_bills_for_data_entry(utility_account))
+
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        self.assertFalse(account_has_bills_for_data_entry(utility_account))
+
+
 class TestUtilBillGUIDAMQP(unittest.TestCase):
+
     def setUp(self):
         super(TestUtilBillGUIDAMQP, self).setUp()
 
@@ -588,6 +754,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         cls.authorize_url = config.get('billentry', 'authorize_url')
 
     def setUp(self):
+        init_test_config()
         TestCaseWithSetup.truncate_tables()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')

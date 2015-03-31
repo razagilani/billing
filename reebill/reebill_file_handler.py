@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 from operator import attrgetter
 import os
-from datetime import datetime
 from argparse import ArgumentParser
 from itertools import groupby
 from errno import EEXIST, ENOENT
 
-from pyPdf import PdfFileWriter, PdfFileReader
 import reportlab
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace

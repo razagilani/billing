@@ -6,25 +6,29 @@ Ext.Ajax.on('requestexception', function (conn, response, options) {
 });
 
 Ext.application({
-    name: 'ReeBill', // TODO change
+    name: 'BillEntry',
     autoCreateViewport: true,
 
-    paths: {'ReeBill': 'app'},
+    paths: {'BillEntry': 'app'},
 
     controllers: [
         'UtilityBills',
         'Charges',
-        'Viewer'
+        'Viewer',
+        'Reports'
     ],
 
     stores: [
         'Accounts',
+        'AccountsFilter',
         'Services',
         'Utilities',
         'RateClasses',
         'Charges',
         'Units',
-        'UtilityBills'
+        'UtilityBills',
+        'UserUtilBillCounts',
+        'UserUtilityBills'
     ],
 
     refs: [{

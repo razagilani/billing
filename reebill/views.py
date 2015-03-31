@@ -1,8 +1,7 @@
-'''The goal of this file is to collect in one place all the code for to
+"""The goal of this file is to collect in one place all the code for to
 serializing data into JSON for the ReeBill UI. Some of that code is still in
 other files.
-            if None in (utilbill.rate_class, utilbill.supplier) and processed:
-'''
+"""
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
@@ -11,6 +10,33 @@ from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
+
+def column_dict(self):
+    return {c: getattr(self, c) for c in self.column_names()}
+
+def column_dict_utilbill(self):
+    result = {c: getattr(self, c) for c in self.column_names()}
+    # human-readable names for utilbill states (used in UI)
+    state_name = {
+        UtilBill.Complete: 'Final',
+        UtilBill.UtilityEstimated: 'Utility Estimated',
+        UtilBill.Estimated: 'Estimated',
+        }[self.state]
+    result = dict(result.items() +
+                  [('account', self.utility_account.account),
+                   ('service', 'Unknown' if self.get_service() is None
+                   else self.get_service().capitalize()),
+                   ('total_charges', self.target_total),
+                   ('computed_total', self.get_total_charges()),
+                   ('reebills', [ur.reebill.column_dict() for ur
+                                 in self._utilbill_reebills]),
+                   ('utility', (column_dict(self.utility)
+                                if self.utility else None)),
+                   ('supplier', (self.supplier.name if
+                                 self.supplier else None)),
+                   ('rate_class', self.get_rate_class_name()),
+                   ('state', state_name)])
+    return result
 
 class Views(object):
     '''"View" methods: return JSON dictionaries of utility bill-related data
@@ -30,7 +56,7 @@ class Views(object):
         by  'utilbill_id' (MySQL id)."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        return [charge.column_dict() for charge in utilbill.charges]
+        return [column_dict(charge) for charge in utilbill.charges]
 
     def get_registers_json(self, utilbill_id):
         """Returns a dictionary of register information for the utility bill
@@ -39,7 +65,7 @@ class Views(object):
         session = Session()
         for r in session.query(Register).join(
                 UtilBill).filter(UtilBill.id == utilbill_id).all():
-            l.append(r.column_dict())
+            l.append(column_dict(r))
         return l
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
@@ -50,7 +76,7 @@ class Views(object):
         utilbills = s.query(UtilBill).join(UtilityAccount).filter_by(
             account=account).order_by(UtilityAccount.account,
                                       desc(UtilBill.period_start)).all()
-        data = [dict(ub.column_dict(),
+        data = [dict(column_dict_utilbill(ub),
                      pdf_url=self._bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
         return data, len(utilbills)

@@ -76,6 +76,9 @@ app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
 login_manager = LoginManager()
 login_manager.init_app(app)
+if app.config['LOGIN_DISABLED']:
+    login_manager.anonymous_user = BillEntryUser.get_anonymous_user
+
 # load the extension
 principals = Principal(app)
 
@@ -315,7 +318,8 @@ def check_password(plain_text_password, hashed_password):
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 api = Api(app)
-api.add_resource(resources.AccountResource, '/utilitybills/accounts')
+api.add_resource(resources.AccountListResource, '/utilitybills/accounts')
+api.add_resource(resources.AccountResource, '/utilitybills/accounts/<int:id>')
 api.add_resource(resources.UtilBillListResource, '/utilitybills/utilitybills')
 api.add_resource(resources.UtilBillResource,
                  '/utilitybills/utilitybills/<int:id>')
@@ -326,8 +330,8 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
-api.add_resource(resources.UtilBillListForUserResourece,
-                 '/utilitybills/user_utilitybills/<int:id>')
+api.add_resource(resources.UtilBillListForUserResource,
+                 '/utilitybills/user_utilitybills')
 
 # apparently needed for Apache
 application = app

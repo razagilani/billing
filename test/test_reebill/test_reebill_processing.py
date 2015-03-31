@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from boto.s3.connection import S3Connection
 
 from mock import Mock
+import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
 from core import pricing
 from core.bill_file_handler import BillFileHandler
@@ -17,11 +18,12 @@ from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 from reebill.reebill_file_handler import ReebillFileHandler
 from reebill.reebill_processor import ReebillProcessor
-from reebill.views import Views
+from reebill.views import Views, column_dict
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer
+from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+    CustomerGroup
 from core.model import UtilityAccount, Session, Address
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
@@ -120,7 +122,7 @@ def do_setup(self):
 
     # TODO most or all of these dependencies do not need to be instance
     # variables because they're not accessed outside __init__
-    self.state_db = ReeBillDAO(logger)
+    self.state_db = ReeBillDAO()
     s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                  config.get('aws_s3', 'aws_secret_access_key'),
                                  is_secure=config.get('aws_s3', 'is_secure'),
@@ -456,8 +458,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                           'state': 'Final',
                                           'total_charges': 0.0,
                                           'utility':
+                                          column_dict(
                                               self.views.get_utility(
-                                                  'Test Utility Company Template').column_dict(),
+                                                  'Test Utility Company Template')),
                                           }, utilbill_data)
 
         # create a reebill
@@ -479,8 +482,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
                     'Test Rate Class Template').name,
                 'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
-                'utility': self.views.get_utility(
-                    'Test Utility Company Template').column_dict(),
+                'utility': column_dict(
+                    self.views.get_utility(
+                    'Test Utility Company Template')),
             }, utilbill_data)
 
 
@@ -568,8 +572,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         rp.roll_reebill(acc)  # Fourth Reebill
 
-        # try to issue nonexistent corrections
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 4)
+        # it is OK to call issue_corrections() when no corrections
+        # exist: nothing should happen
+        rp.issue_corrections(acc, 4)
 
         reebill_data = lambda seq: next(
             d for d in self.views.get_reebill_metadata_json(acc)
@@ -802,12 +807,12 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         cls.fakes3_manager.stop()
 
     def setUp(self):
+        # TODO: do not rely on previously inserted data
         do_setup(self)
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
-        #self.utilbill.processed = True
-        self.utility = self.utilbill.utility
+        self.utility = self.utilbill.get_utility()
         s = Session()
         self.utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
@@ -2083,35 +2088,45 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.account, start_date=self.utilbill.period_start)
 
     def test_summary(self):
-        # setup: 2 different customers are needed so another one must be created
+        """Issuing a summary bill for a group of accounts.
+        """
+        # setup: 2 different customers are needed, so another one must be
+        # created
         self.utilbill.processed = True
-        ua2 = UtilityAccount('', '88888', self.utility, None, None, Address(),
-                             Address())
+        ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
+                             Address(), Address())
         customer2 = ReeBillCustomer(utility_account=ua2, name='')
         utilbill2 = self.utilbill.clone()
-        utilbill2.utility = self.utility
+        utilbill2.utility = self.utilbill.utility
         utilbill2.registers = [self.utilbill.registers[0].clone()]
         utilbill2.billing_address = utilbill2.service_address = Address()
         utilbill2.utility_account = ua2
-        Session().add_all([ua2, customer2, utilbill2])
+        s = Session()
+        s.add_all([ua2, customer2, utilbill2])
 
-        # set "tag" for the two customers
-        tag = 'tag'
-        self.customer.set_tag(tag)
-        customer2.set_tag(tag)
+        group = CustomerGroup(name='Example Property Management Co.',
+                              bill_email_recipient='example@example.com')
+        group.add(self.customer)
+        group.add(customer2)
 
-        # create two reebills for two different customers
+        # create two reebills for two different customers in the group
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
-        self.reebill_processor.toggle_reebill_processed(self.account, 1, False)
+        self.reebill_processor.toggle_reebill_processed(
+            self.customer.get_account(), 1, False)
         self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
                                             start_date=utilbill2.period_start)
         self.reebill_processor.toggle_reebill_processed(
             utilbill2.utility_account.account, 1, False)
+        # TODO: it would be a good idea to test issuing corrections along
+        # with these
 
-        # issue summary
-        email_addr = 'example@example.com'
-        self.reebill_processor.issue_summary(tag, email_addr)
+        # create and send the summary bill
+        self.reebill_processor.issue_summary(group)
 
         # don't care about email details
         self.mailer.mail.assert_called()
+
+        # both bills should now be issued
+        self.assertTrue(self.customer.reebills[0].issued)
+        self.assertTrue(customer2.reebills[0].issued)

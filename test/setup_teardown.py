@@ -167,7 +167,9 @@ class TestCaseWithSetup(test_utils.TestCase):
             "supplier",
             "utility",
             "address",
+            "billentry_role_user",
             "billentry_user",
+            "billentry_role"
         ]:
             session.execute("delete from %s" % t)
         session.commit()
@@ -356,7 +358,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
-        self.state_db = ReeBillDAO(logger)
+        self.state_db = ReeBillDAO()
         s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                   config.get('aws_s3', 'aws_secret_access_key'),
                                   is_secure=config.get('aws_s3', 'is_secure'),

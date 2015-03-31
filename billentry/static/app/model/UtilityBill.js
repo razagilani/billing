@@ -1,4 +1,4 @@
-Ext.define('ReeBill.model.UtilityBill', {
+Ext.define('BillEntry.model.UtilityBill', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'action', type: 'string'}, // Allows for other actions besides CRUD (e.g. 'render')
@@ -6,7 +6,7 @@ Ext.define('ReeBill.model.UtilityBill', {
         // Model data
         {name: 'id'},
         {name: 'name'},
-        {name: 'account'},
+        {name: 'utility_account_id', type: 'int'},
         {name: 'rate_class', type:'string', mapping: function( data )
             { if (data.rate_class==null)
                     return 'Unknown Rate Class';
@@ -31,11 +31,13 @@ Ext.define('ReeBill.model.UtilityBill', {
 
         // new
         {name: 'service_address'},
+        {name: 'computed_total', type: 'float'},
         {name: 'next_meter_read_date', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'supply_total'},
         {name: 'utility_account_number'},
         {name: 'supply_choice_id'},
         {name: 'due_date', type: 'date', dateFormat: 'Y-m-d'},
-        {name: 'wiki_url'}
+        {name: 'wiki_url'},
+        {name: 'entered'}
     ]
 });
