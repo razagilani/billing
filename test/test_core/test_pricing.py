@@ -32,8 +32,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       quantity_formula='',
                                       description="",
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True,)
         self.charge_b_unshared = Charge(utilbill=None,
                                         rsi_binding='B',
                                         type='distribution',
@@ -41,8 +40,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         quantity_formula='',
                                         description="",
                                         unit='therms',
-                                        shared=False,
-                                        has_charge=True)
+                                        shared=False)
         self.charge_b_shared = Charge(utilbill=None,
                                       rsi_binding='B',
                                       type='distribution',
@@ -50,8 +48,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                       quantity_formula='',
                                       description="",
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True)
         self.charge_c_unshared = Charge(utilbill=None,
                                         rsi_binding='C',
                                         type='distribution',
@@ -59,8 +56,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                         quantity_formula='',
                                         description="",
                                         unit='therms',
-                                        shared=False,
-                                        has_charge=False)
+                                        shared=False)
 
         self.utility = Utility(name='Utility')
         self.supplier = Supplier(name='Utility')

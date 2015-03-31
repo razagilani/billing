@@ -116,8 +116,7 @@ class ReebillTest(unittest.TestCase):
         self.utilbill.charges = [
             Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity',
                    description='a', unit='therms'),
-            Charge(self.utilbill, 'B', 1, '1', description='b',
-                   unit='therms', has_charge=False),
+            Charge(self.utilbill, 'B', 1, '1', 'b', 'All Charges','therms')
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,

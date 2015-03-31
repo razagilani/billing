@@ -914,7 +914,6 @@ class Charge(Base):
         :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
         :param quantity_formula: The RSI quantity formula
-        :param has_charge:
         :param shared:
         :param roundrule:
         """
@@ -925,7 +924,8 @@ class Charge(Base):
         self.rsi_binding = rsi_binding
         self.quantity_formula = quantity_formula
         self.target_total = target_total
-        self.has_charge = has_charge
+        # has_charge=False is not allowed anymore for new charges
+        self.has_charge = True
         self.shared = shared
         self.rate = rate
         self.roundrule = roundrule
