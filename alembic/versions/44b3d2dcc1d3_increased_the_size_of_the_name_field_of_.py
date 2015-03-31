@@ -19,6 +19,10 @@ def upgrade():
     op.alter_column('billentry_role', 'name',
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
+
+    op.add_column(u'utilbill', sa.Column('flag_date', sa.DateTime()))
+    op.add_column(u'utilbill', sa.Column('flag_user_id', sa.Integer(),
+                                         sa.ForeignKey('billentry_user.id')))
     ### end Alembic commands ###
 
 
@@ -27,4 +31,6 @@ def downgrade():
     op.alter_column('billentry_role', 'name',
                existing_type=mysql.VARCHAR(length=20),
                type_=mysql.VARCHAR(length=10))
+    op.drop_column(u'utilbill', 'flag_date')
+    op.drop_column(u'utilbill', 'flag_user_id')
     ### end Alembic commands ###
