@@ -10,12 +10,9 @@ from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading,
-                                   ReeBillCustomer, CustomerGroup,
-                                   _customer_customer_group_table)
-from exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
-    BillingError
+from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
+from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
+                 FormulaError, RegisterError, BillingError)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 from util.pdf import PDFConcatenator
 
