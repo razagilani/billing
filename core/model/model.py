@@ -282,13 +282,14 @@ class RegisterTemplate(Base):
 
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
-    and the same pricing for distribution and SOS supply. Every bill in a
-    rate class should get billed according to the same kinds of meter values
-    (like total energy, demand, etc.) so the rate class also determines which
-    registers exist in each bill.
+    and the same pricing for distribution.
+
+    Every bill in a rate class gets billed according to the same kinds of
+    meter values (like total energy, demand, etc.) so the rate class also
+    determines which registers exist in each bill.
 
     The rate class also determines what supply contracts may be available to
-    a customer for non-SOS supply.
+    a customer.
     """
     __tablename__ = 'rate_class'
 
@@ -307,12 +308,10 @@ class RateClass(Base):
         self.utility = utility
         self.service = service
 
-        # by default, bills in this rate class get one "REG_TOTAL" register
-        # to measure total energy. others can be added if there are other
-        # registers.
-        # self.register_templates = [
-        #     RegisterTemplate(register_binding='REG_TOTAL',
-        #                      unit=('therms' if service == 'gas' else 'kWh'))]
+        # TODO: a newly-created rate class should have one "REG_TOTAL"
+        # register by default (the unit can be picked according to
+        # "service"). but for now, all UtilBills initially have no registers
+        # when they are created.
         self.register_templates = []
 
     def __repr__(self):
