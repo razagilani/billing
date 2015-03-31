@@ -13,7 +13,7 @@ from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier
 from brokerage.export_altitude import PGAltitudeExporter
 from test import init_test_config
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 from util.dateutils import ISO_8601_DATETIME
 
 
@@ -140,7 +140,7 @@ class TestAltitudeBillStorage(TestCase):
     querying AltitudeBill objects.
     """
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         utility = Utility(name='example', address=None)
         rate_class = RateClass(name='Rate Class', utility=utility,
                                service='electric')
@@ -164,7 +164,7 @@ class TestAltitudeBillStorage(TestCase):
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_export_with_db(self):
         """Integration test with core.altitude module and database, making sure
