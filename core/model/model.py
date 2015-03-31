@@ -114,7 +114,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '44b3d2dcc1d3'
+_schema_revision = '100f25ab057f'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -359,7 +359,6 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -544,6 +543,12 @@ class UtilBill(Base):
         if self.rate_class is None:
             return None
         return self.rate_class.name
+
+    def get_rate_class(self):
+        self.rate_class
+
+    def set_rate_class(self, rate_class):
+        self.rate_class = rate_class
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
