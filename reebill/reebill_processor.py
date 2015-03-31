@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
+from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
 from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
                  FormulaError, RegisterError, BillingError)
@@ -664,10 +665,6 @@ class ReebillProcessor(object):
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
-
-        # TODO: substitute with correct imports
-        from mock import Mock
-        SummaryFileGenerator, PDFConcatenator = Mock(), Mock()
 
         # create and email combined PDF file
         summary_file = StringIO()
