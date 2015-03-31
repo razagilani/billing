@@ -34,7 +34,6 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   description='SOME_DESCRIPTION',
                                   unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
-                                  has_charge=True,
                                   shared=False,
                                   roundrule="rounding",
                                   type='distribution')
