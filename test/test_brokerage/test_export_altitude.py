@@ -38,6 +38,7 @@ class TestExportAltitude(TestCase):
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
         u1.supply_choice_id = None
+        u1.tou = False
 
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
@@ -58,6 +59,7 @@ class TestExportAltitude(TestCase):
         u2.date_received = None
         u2.date_modified = None
         u2.supply_choice_id = '123xyz'
+        u2.tou = False
 
         self.utilbills = [u1, u2]
 
@@ -103,6 +105,7 @@ class TestExportAltitude(TestCase):
                              '2001-01-01T00:00:00Z',
                              '2001-01-02T00:00:00Z',
                              '2000-03-01T00:00:00Z',
+                             False
                          ), dataset[0])
         self.assertEqual((
                              '',
@@ -126,6 +129,7 @@ class TestExportAltitude(TestCase):
                              '',
                              '',
                              '2000-03-15T00:00:00Z',
+                             False
                          ), dataset[1])
 
     def test_export_csv(self):
@@ -182,9 +186,11 @@ class TestAltitudeBillStorage(TestCase):
             'next_estimated_meter_read_date,total_usage,total_supply_charge,'
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
-            'service_address_postal_code,create_date,modified_date,ordering_date\r\n'
+            'service_address_postal_code,create_date,modified_date,'
+            'ordering_date,time_of_use\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s\r\n' %
+            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s,'
+            'False\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
             self.utilbill.due_date.strftime(ISO_8601_DATETIME)))
         csv_file.seek(0)
