@@ -653,7 +653,7 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
-    def issue_summary(self, group, recipient):
+    def issue_summary(self, group):
         bills = group.get_bills_to_issue()
 
         for b in bills:
@@ -671,8 +671,8 @@ class ReebillProcessor(object):
             'bill_dates': max(b.get_period_end() for b in bills),
             'last_bill': '',
         }
-        self.bill_mailer.mail([recipient], merge_fields, summary_file,
-                              'summary.pdf')
+        self.bill_mailer.mail(group.bill_email_recipient, merge_fields,
+                              summary_file, 'summary.pdf')
         return bills
 
     def toggle_reebill_processed(self, account, sequence,

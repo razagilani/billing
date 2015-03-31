@@ -2122,8 +2122,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # with these
 
         # create and send the summary bill
-        email_addr = 'example@example.com'
-        self.reebill_processor.issue_summary(group, email_addr)
+        self.reebill_processor.issue_summary(group)
 
         # don't care about email details
         self.mailer.mail.assert_called()
