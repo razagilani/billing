@@ -63,7 +63,8 @@ class PGAltitudeExporter(object):
             'service_address_postal_code',
             'create_date',
             'modified_date',
-            'ordering_date'
+            'ordering_date',
+            'meter_identifier'
         ])
         def format_date(d):
             if d is None:
@@ -107,7 +108,8 @@ class PGAltitudeExporter(object):
                 'service_address_postal_code': ub.service_address.postal_code,
                 'create_date': format_date(ub.date_received),
                 'modified_date': format_date(ub.date_modified),
-                'ordering_date': format_date(ub.due_date)
+                'ordering_date': format_date(ub.due_date),
+                'meter_number': ub.get_meter_identifier()
             })
         session.commit()
         return dataset
