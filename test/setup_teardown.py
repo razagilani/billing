@@ -155,7 +155,7 @@ class FakeS3Manager(object):
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
         # running and occupying the same port)
-        sleep(0.1)
+        sleep(0.5)
         cls.check()
 
     @classmethod
