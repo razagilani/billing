@@ -732,6 +732,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         cls.nexus_util = cls.reebill_processor.nexus_util
         cls.payment_dao = cls.reebill_processor.payment_dao
         cls.utilbill_processor = create_utilbill_processor()
+        cls.mailer = cls.reebill_processor.bill_mailer
 
         # example data to be used in most tests below
         cls.account = '99999'

@@ -2,13 +2,13 @@ from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from reebill.reebill_model import ReeBillCustomer, ReeBill
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
+from test.setup_teardown import clear_db
 from test.testing_utils import TestCase
 
 
@@ -18,7 +18,6 @@ class StateDBTest(TestCase):
         # clear out database
         init_config('test/tstsettings.cfg')
         init_model()
-        self.session = Session()
         clear_db()
         blank_address = Address()
         test_utility = Utility(name='FB Test Utility Name',
@@ -34,6 +33,7 @@ class StateDBTest(TestCase):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account)
+        self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
