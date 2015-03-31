@@ -1,4 +1,4 @@
-Ext.define('ReeBill.model.RateClass', {
+Ext.define('BillEntry.model.RateClass', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'name', type: 'string'},
