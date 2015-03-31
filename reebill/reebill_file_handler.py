@@ -23,6 +23,7 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 # Important for currency formatting
 import locale
 from exc import InvalidParameter
+from util.pdf import PDFConcatenator
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -89,6 +90,12 @@ class ReebillFileHandler(object):
         '''
         return os.path.join(self._pdf_dir_path, reebill.get_account(),
                 self.get_file_name(reebill))
+
+    def get_file(self, reebill):
+        """Return the file itself opened in "rb" mode. The consumer must
+        close it.
+        """
+        return open(self.get_file_path(reebill), 'rb')
 
     def delete_file(self, reebill, ignore_missing=False):
         '''Delete the file belonging to the given :class:`ReeBill`.
@@ -1317,3 +1324,30 @@ def build_parsers():
                         help="Specify input data file. Omit for one bill.  Default: %(default)r")
     return parser
 
+
+class SummaryFileGenerator(object):
+    """Generates a "summary" document from multiple ReeBills.
+    """
+    def __init__(self, reebill_file_handler, pdf_concatenator):
+        self._reebill_file_handler = reebill_file_handler
+        self._pdf_concatenator = pdf_concatenator
+
+    def generate_summary_file(self, reebills, output_file):
+        """
+        :param reebills: nonempty iterable of ReeBills that should be included.
+        :param output_path: location of the summary file. (Unfortunately,
+        a file object can't be used because of ReportLab.)
+        """
+        # must have at least 1 element (it seems that boolean-izing is the
+        # only way to check if an iterator is empty)
+        assert reebills
+
+        for reebill in reebills:
+            # write every bill to a file, read it back again, and append it
+            self._reebill_file_handler.render(reebill)
+            input_file = self._reebill_file_handler.get_file(reebill)
+            self._pdf_concatenator.append(input_file)
+
+        # TODO: eventually there may be extra pages not taken from the bill
+        # PDFs
+        self._pdf_concatenator.write_result(output_file)

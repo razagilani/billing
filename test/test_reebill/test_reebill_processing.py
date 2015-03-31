@@ -572,7 +572,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         rp.roll_reebill(acc)  # Fourth Reebill
 
-        # it is OK to call issue_corrections() when on corrections don't
+        # it is OK to call issue_corrections() when no corrections
         # exist: nothing should happen
         rp.issue_corrections(acc, 4)
 
@@ -813,8 +813,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
         self.utility = self.utilbill.get_utility()
-        self.customer = Session().query(ReeBillCustomer).join(UtilityAccount).filter(
-            UtilityAccount.account == '99999').one()
+        s = Session()
+        self.utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=self.utility_account.id).one()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -1163,7 +1166,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         '''Tests issuing and mailing of processed reebills.'''
         acc = self.account
         # two utilbills, with reebills
-        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.bill_mailer = self.mailer
         self.reebill_processor.reebill_file_handler = Mock()
         self.reebill_processor.reebill_file_handler.render_max_version \
             .return_value = 1

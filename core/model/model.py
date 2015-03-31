@@ -359,7 +359,6 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
