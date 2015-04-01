@@ -133,13 +133,16 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
+        register = Register(self.ub1, "ABCDEF description",
+            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+            quantity=150.0, register_binding='REG_TOTAL')
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                             service_address=Address(street='2 Example St.'))
         self.ub1.id = 1
         self.ub2.id = 2
         s = Session()
         s.add_all([self.utility, self.ua1, self.rate_class, self.ub1,
-            self.ub2, self.project_mgr_role])
+            self.ub2, self.project_mgr_role, register])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
@@ -623,14 +626,14 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'supplier': 'Unknown',
                   'supply_total': 0,
                   'target_total': 0,
-                  'total_energy': 0,
+                  'total_energy': 150.0,
                   'utility': 'Example Utility',
                   'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': True,
-                  'meter_identifier': ''
+                  'meter_identifier': 'GHIJKL'
                  }],
              }, rv.data)
 
