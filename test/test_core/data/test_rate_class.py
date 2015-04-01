@@ -20,4 +20,4 @@ class RateClassTest(TestCase):
         registers = self.rate_class.get_register_list()
         self.assertEqual(1, len(registers))
         register = registers[0]
-        self.assertEqual('REG_TOTAL', register[0].register_binding)
+        self.assertEqual('REG_TOTAL', register.register_binding)
