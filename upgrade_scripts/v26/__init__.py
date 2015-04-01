@@ -53,13 +53,16 @@ def clean_up_register_names(s):
 def upgrade():
     log.info('Beginning upgrade to version 26')
 
+    init_model(schema_revision='52a7069819cb')
+    s = Session()
+    import ipdb; ipdb.set_trace()
+    clean_up_register_names(s)
+
     log.info('upgrading to 100f25ab057f')
     alembic_upgrade('100f25ab057f')
 
     init_model(schema_revision='100f25ab057f')
-    s = Session()
     s.add(create_project_manager_role())
-    clean_up_register_names(s)
     s.commit()
 
 
