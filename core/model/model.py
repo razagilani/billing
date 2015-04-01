@@ -51,6 +51,16 @@ MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
 
+# allowed units for register quantities
+PHYSICAL_UNITS = [
+    'BTU',
+    'MMBTU',
+    'kWD',
+    'kWh',
+    'therms',
+]
+
+
 class Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
@@ -259,12 +269,32 @@ class Supplier(Base):
         return self.name
 
 
+class RegisterTemplate(Base):
+    __tablename__ = 'register_template'
+
+    register_template_id = Column(Integer, primary_key=True)
+    rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
+
+    register_binding = Column(String(255), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    active_periods = Column(String(2048))
+    description = Column(String(255), nullable=False, default='')
+
+    @classmethod
+    def get_total_register_template(cls, unit):
+        return cls(register_binding='REG_TOTAL', unit=unit)
+
 class RateClass(Base):
-    '''Represents a group of utility accounts that all have the same utility
-    and the same pricing for distribution and SOS supply. The rate class also
-    determines what supply contracts may be available to a customer for
-    non-SOS supply.
-    '''
+    """Represents a group of utility accounts that all have the same utility
+    and the same pricing for distribution.
+
+    Every bill in a rate class gets billed according to the same kinds of
+    meter values (like total energy, demand, etc.) so the rate class also
+    determines which registers exist in each bill.
+
+    The rate class also determines what supply contracts may be available to
+    a customer.
+    """
     __tablename__ = 'rate_class'
 
     SERVICES = ('gas', 'electric')
@@ -275,11 +305,20 @@ class RateClass(Base):
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
+    register_templates = relationship('RegisterTemplate')
 
     def __init__(self, name='', utility=None, service='gas'):
         self.name = name
         self.utility = utility
         self.service = service
+
+        # TODO: a newly-created rate class should have one "REG_TOTAL"
+        # register by default (the unit can be picked according to
+        # "service"). but for now, all UtilBills initially have no registers
+        # when they are created.
+        unit = 'therms' if service == 'gas' else 'electric'
+        self.register_templates = [
+            RegisterTemplate.get_total_register_template(unit)]
 
     def __repr__(self):
         return '<RateClass(%s)>' % self.name
@@ -287,6 +326,11 @@ class RateClass(Base):
     def __str__(self):
         return self.name
 
+    def get_register_list(self):
+        """Return a list of Registers for a bill belonging to this rate class.
+        """
+        return [Register.create_from_template(tr) for tr in
+                self.register_templates]
 
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
@@ -359,6 +403,8 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
+
+
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -519,6 +565,10 @@ class UtilBill(Base):
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
 
+        # set registers according to the rate class
+        if rate_class is not None:
+            self.registers = rate_class.get_register_list()
+
         self.date_modified = datetime.utcnow()
 
     def get_utility(self):
@@ -555,7 +605,12 @@ class UtilBill(Base):
         self.rate_class
 
     def set_rate_class(self, rate_class):
+        """Set the rate class and also update the set of registers to match
+        the new rate class.
+        """
         self.rate_class = rate_class
+        if rate_class is not None:
+            self.registers = rate_class.get_register_list()
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
@@ -779,19 +834,10 @@ class Register(Base):
 
     __tablename__ = 'register'
 
-    # allowed units for register quantities
-    PHYSICAL_UNITS = [
-        'BTU',
-        'MMBTU',
-        'kWD',
-        'kWh',
-        'therms',
-    ]
-
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
-    description = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=False, default='')
     quantity = Column(Float, nullable=False)
     unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
     identifier = Column(String(255), nullable=False)
@@ -805,6 +851,16 @@ class Register(Base):
 
     utilbill = relationship(
         "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
+
+    @classmethod
+    def create_from_template(cls, register_template):
+        """Return a new Register created based on the given RegisterTemplate.
+        :param register_template: RegisterTemplate instance.
+        """
+        return cls(None, register_template.description, '',
+                   register_template.unit, False, '',
+                   register_template.active_periods, '',
+                   register_binding=register_template.register_binding)
 
     def __init__(self, utilbill, description, identifier, unit,
                 estimated, reg_type, active_periods, meter_identifier,
@@ -857,7 +913,7 @@ class Charge(Base):
     __tablename__ = 'charge'
 
     # allowed units for "quantity" field of charges
-    CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
+    CHARGE_UNITS = PHYSICAL_UNITS + ['dollars']
 
     # allowed values for "type" field of charges
     SUPPLY, DISTRIBUTION = 'supply', 'distribution'
