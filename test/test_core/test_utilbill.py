@@ -376,9 +376,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount('someone', '99999',
                 'utility', 'supplier',
                 'rate class', Address(), Address())
-        utilbill = UtilBill(utility_account, UtilBill.Complete,
-                'gas', 'utility', 'supplier', 'rate class',
-                Address(), Address())
+        utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
         self.assertEqual(0, utilbill.get_total_charges())
