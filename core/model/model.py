@@ -395,7 +395,9 @@ class UtilBill(Base):
     due_date = Column(Date)
 
     # this is created for letting bill entry user's marking/un marking a
-    # bill for Time Of Use.
+    # bill for Time Of Use. The value of the column has nothing to do with
+    # whether there are time-of-use registers or whether the energy is
+    # actually priced according to time of use
     tou = Column(Boolean, nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
