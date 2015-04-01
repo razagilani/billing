@@ -541,8 +541,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 desc(UtilBill.period_start)).first()
             self.assertEqual(set(['REG_TOTAL', 'OTHER']),
                              set(r.register_binding for r in u.registers))
-            reg_total = next(r for r in u.registers if r.register_binding == 'REG_TOTAL')
-            self.assertEqual(energy_unit, reg_total.unit)
+            other = next(r for r in u.registers if r.register_binding == 'OTHER')
+            self.assertEqual('MMBTU', other.unit)
+            # NOTE: REG_TOTAL unit is determined by service, not unit in
+            # previous bill
             s.delete(u)
             s.flush()
 
