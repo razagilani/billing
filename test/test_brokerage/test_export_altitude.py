@@ -105,7 +105,7 @@ class TestExportAltitude(TestCase):
                              '2001-01-01T00:00:00Z',
                              '2001-01-02T00:00:00Z',
                              '2000-03-01T00:00:00Z',
-                             False
+                             'FALSE'
                          ), dataset[0])
         self.assertEqual((
                              '',
@@ -129,7 +129,7 @@ class TestExportAltitude(TestCase):
                              '',
                              '',
                              '2000-03-15T00:00:00Z',
-                             False
+                             'FALSE'
                          ), dataset[1])
 
     def test_export_csv(self):
@@ -190,7 +190,7 @@ class TestAltitudeBillStorage(TestCase):
             'ordering_date,time_of_use\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
             '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s,'
-            'False\r\n' %
+            'FALSE\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
             self.utilbill.due_date.strftime(ISO_8601_DATETIME)))
         csv_file.seek(0)
