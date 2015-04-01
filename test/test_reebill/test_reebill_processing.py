@@ -22,8 +22,9 @@ from reebill.views import Views, column_dict
 from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
 
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill
-from core.model import UtilityAccount, Session
+from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+    CustomerGroup
+from core.model import UtilityAccount, Session, Address
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
@@ -121,7 +122,7 @@ def do_setup(self):
 
     # TODO most or all of these dependencies do not need to be instance
     # variables because they're not accessed outside __init__
-    self.state_db = ReeBillDAO(logger)
+    self.state_db = ReeBillDAO()
     s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
                                  config.get('aws_s3', 'aws_secret_access_key'),
                                  is_secure=config.get('aws_s3', 'is_secure'),
@@ -166,7 +167,7 @@ def do_setup(self):
             'primus': '1788 Massachusetts Ave.',
         },
     ])
-    bill_mailer = Mock()
+    self.mailer = Mock()
 
     self.temp_dir = TempDirectory()
     reebill_file_handler = ReebillFileHandler(
@@ -182,7 +183,7 @@ def do_setup(self):
     self.views = Views(self.state_db, self.billupload, self.nexus_util,
                        journal_dao)
     self.reebill_processor = ReebillProcessor(
-        self.state_db, self.payment_dao, self.nexus_util, bill_mailer,
+        self.state_db, self.payment_dao, self.nexus_util, self.mailer,
         reebill_file_handler, ree_getter, journal_dao, logger=logger)
 
     # example data to be used in most tests below
@@ -571,8 +572,9 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         rp.roll_reebill(acc)  # Fourth Reebill
 
-        # try to issue nonexistent corrections
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 4)
+        # it is OK to call issue_corrections() when no corrections
+        # exist: nothing should happen
+        rp.issue_corrections(acc, 4)
 
         reebill_data = lambda seq: next(
             d for d in self.views.get_reebill_metadata_json(acc)
@@ -805,11 +807,17 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         cls.fakes3_manager.stop()
 
     def setUp(self):
+        # TODO: do not rely on previously inserted data
         do_setup(self)
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
-        #self.utilbill.processed = True
+        self.utility = self.utilbill.get_utility()
+        s = Session()
+        self.utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=self.utility_account.id).one()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -1158,7 +1166,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         '''Tests issuing and mailing of processed reebills.'''
         acc = self.account
         # two utilbills, with reebills
-        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.bill_mailer = self.mailer
         self.reebill_processor.reebill_file_handler = Mock()
         self.reebill_processor.reebill_file_handler.render_max_version \
             .return_value = 1
@@ -2079,5 +2087,46 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_summary(self):
+        """Issuing a summary bill for a group of accounts.
+        """
+        # setup: 2 different customers are needed, so another one must be
+        # created
+        self.utilbill.processed = True
+        ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
+                             Address(), Address())
+        customer2 = ReeBillCustomer(utility_account=ua2, name='')
+        utilbill2 = self.utilbill.clone()
+        utilbill2.utility = self.utilbill.utility
+        utilbill2.registers = [self.utilbill.registers[0].clone()]
+        utilbill2.billing_address = utilbill2.service_address = Address()
+        utilbill2.utility_account = ua2
+        s = Session()
+        s.add_all([ua2, customer2, utilbill2])
+
+        group = CustomerGroup(name='Example Property Management Co.',
+                              bill_email_recipient='example@example.com')
+        group.add(self.customer)
+        group.add(customer2)
+
+        # create two reebills for two different customers in the group
+        self.reebill_processor.roll_reebill(
+            self.account, start_date=self.utilbill.period_start)
+        self.reebill_processor.toggle_reebill_processed(
+            self.customer.get_account(), 1, False)
+        self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
+                                            start_date=utilbill2.period_start)
+        self.reebill_processor.toggle_reebill_processed(
+            utilbill2.utility_account.account, 1, False)
+        # TODO: it would be a good idea to test issuing corrections along
+        # with these
+
+        # create and send the summary bill
+        self.reebill_processor.issue_summary(group)
+
+        # don't care about email details
+        self.mailer.mail.assert_called()
+
+        # both bills should now be issued
+        self.assertTrue(self.customer.reebills[0].issued)
+        self.assertTrue(customer2.reebills[0].issued)
