@@ -49,6 +49,4 @@ def upgrade():
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
 
-    op.add_column(u'utilbill', sa.Column('flag_date', sa.DateTime()))
-    op.add_column(u'utilbill', sa.Column('flag_user_id', sa.Integer(),
-                                         sa.ForeignKey('billentry_user.id')))
+    op.add_column(u'utilbill', sa.Column('flag_date', sa.Boolean()))

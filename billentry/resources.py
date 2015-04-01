@@ -9,7 +9,7 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func, case
+from sqlalchemy import desc, and_, func, case, or_
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
@@ -248,7 +248,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.compute_utility_bill(id)
 
         if row['flagged'] is True:
-            utilbill.flag(current_user, datetime.utcnow())
+            utilbill.flag()
         elif row['flagged'] is False:
             utilbill.un_flag()
 
@@ -376,7 +376,7 @@ class UtilBillCountForUserResource(BaseResource):
                 'email': user.email,
                 'total_count': int(total_count or 0),
                 'gas_count': int(gas_count or 0),
-                'electric_count': int(electric_count or 0),
+                'electric_count': int(electric_count or 0)
             } for (user, total_count, electric_count, gas_count) in q.all()]
             return {'rows': rows, 'results': len(rows)}
 

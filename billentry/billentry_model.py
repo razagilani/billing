@@ -131,9 +131,6 @@ class BEUtilBill(UtilBill):
                                   foreign_keys=[billentry_user_id])
 
     flag_date = Column(DateTime)
-    flag_user_id = Column(Integer, ForeignKey('billentry_user.id'))
-    flag_user = relationship(BillEntryUser,
-                             foreign_keys=[flag_user_id])
 
     @classmethod
     def create_from_utilbill(cls, utilbill):
@@ -204,30 +201,26 @@ class BEUtilBill(UtilBill):
         # consistency check: normally all values must be either None or
         # filled in, but 'billentry_user' will be None when the user is
         # anonymous.
-        print self.billentry_user, self.billentry_date, self.flag_user, \
-            self.flag_date
         assert self.billentry_user is None or self.billentry_date is not None
 
         return self.processed or (self.billentry_date is not None)
 
-    def flag(self, user, date):
+    def flag(self):
         """ 'Flag' a utility bill, i.e. mark a bill as difficult to process
         """
         assert not self.is_flagged()
-        self.flag_date = date
-        self.flag_user = user
+        self.flag_date = True
 
     def un_flag(self):
         """ 'Unflag' a utility bill, i.e. mark the processing difficulty as
         resolved
         """
         assert self.is_flagged()
-        self.flag_date = None
-        self.flag_user = None
+        self.flag_date = False
 
     def is_flagged(self):
         """Return True if the bill has been flagged. False otherwise"""
-        return self.flag_date is not None
+        return self.flag_date is True
 
     def editable(self):
         if self.is_entered():
