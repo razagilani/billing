@@ -157,11 +157,8 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        self.assertEqual(utilbill.registers, [])
-
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, '', "The quantity formula"
-                " should be an empty string when no registers are present")
+        self.assertEqual('REG_TOTAL.quantity', charge.quantity_formula)
 
         session.delete(charge)
 
