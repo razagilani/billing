@@ -1,4 +1,3 @@
-import unittest
 from datetime import date
 import logging
 from os.path import join
@@ -7,15 +6,12 @@ from time import sleep
 import subprocess
 
 from mock import Mock
-import mongoengine
 from boto.s3.connection import S3Connection
 from testfixtures import TempDirectory
 
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test import init_test_config
 from util.file_utils import make_directories_if_necessary
-from core import init_model
 from test import testing_utils as test_utils
 from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount, Base
@@ -155,7 +151,7 @@ class FakeS3Manager(object):
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
         # running and occupying the same port)
-        sleep(0.5)
+        sleep(1)
         cls.check()
 
     @classmethod
