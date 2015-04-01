@@ -81,7 +81,12 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
         width: 175,
         sortable: true,
         renderer: Ext.util.Format.usMoney
-        }],
+        },{
+        xtype: 'checkcolumn',
+        text: 'Processed',
+        disabled: true,
+        dataIndex: 'processed'
+    }],
 
     dockedItems: [{
         dock: 'top',
