@@ -59,7 +59,7 @@ def upgrade():
     ]
 
     op.create_table('register_template',
-        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('register_template_id', sa.Integer, primary_key=True),
         sa.Column('rate_class_id', sa.Integer, sa.ForeignKey('rate_class.id'),
                   nullable=False),
         sa.Column('register_binding', sa.String(255), nullable=False),
