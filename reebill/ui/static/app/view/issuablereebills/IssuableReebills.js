@@ -106,8 +106,13 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
             action: 'issueprocessed',
             iconCls: 'silk-email-go'
         },{
+            xtype: 'button',
+            text: 'Create Summary',
+            action: 'createsumary',
+            iconCls: 'silk-application-go'
+        },'-',{
             xtype: 'combo',
-            fieldLabel: 'Display bills with tags',
+            fieldLabel: 'Filter Bills on Tags',
             displayField: 'tags',
             valueField: 'tags'
         }]
