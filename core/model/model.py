@@ -280,6 +280,10 @@ class RegisterTemplate(Base):
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
+    @classmethod
+    def get_total_register_template(cls, unit):
+        return cls(register_binding='REG_TOTAL', unit=unit)
+
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
     and the same pricing for distribution.
@@ -314,7 +318,7 @@ class RateClass(Base):
         # when they are created.
         unit = 'therms' if service == 'gas' else 'electric'
         self.register_templates = [
-            RegisterTemplate(register_binding='REG_TOTAL', unit=unit)]
+            RegisterTemplate.get_total_register_template(unit)]
 
     def __repr__(self):
         return '<RateClass(%s)>' % self.name
