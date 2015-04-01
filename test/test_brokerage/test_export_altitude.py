@@ -10,7 +10,7 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
     AltitudeAccount
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
-    RateClass, Supplier
+    RateClass, Supplier, Register
 from brokerage.export_altitude import PGAltitudeExporter
 from test import init_test_config
 from test.setup_teardown import TestCaseWithSetup
@@ -157,6 +157,9 @@ class TestAltitudeBillStorage(TestCase):
             service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1),
             due_date=date(2000,2,1))
+        register = Register(self.utilbill, "ABCDEF description",
+            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+            quantity=150.0, register_binding='REG_TOTAL')
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
@@ -164,7 +167,7 @@ class TestAltitudeBillStorage(TestCase):
         altitude_bill = AltitudeBill(self.utilbill, 'bbb')
         Session().add_all([utility, rate_class, supplier, self.utilbill,
                           altitude_account, altitude_utility, altitude_supplier,
-                          altitude_bill])
+                          altitude_bill, register])
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
@@ -189,9 +192,9 @@ class TestAltitudeBillStorage(TestCase):
             'service_address_postal_code,create_date,modified_date,'
             'ordering_date,meter_number' '\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s,\r\n' %
+            '2000-01-01T00:00:00Z,,150.0,0,Rate Class,,1 Service St.,,,,,%s,%s,%s\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
-            self.utilbill.due_date.strftime(ISO_8601_DATETIME)))
+            self.utilbill.due_date.strftime(ISO_8601_DATETIME),'GHIJKL'))
         csv_file.seek(0)
         actual_csv = csv_file.read()
         self.assertEqual(expected_csv, actual_csv)
