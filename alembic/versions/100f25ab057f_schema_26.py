@@ -49,3 +49,27 @@ def upgrade():
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
 
+    REGISTER_BINDINGS = [
+        'REG_TOTAL',
+        'REG_TOTAL_SECONDARY',
+        'REG_TOTAL_TERTIARY',
+        'REG_PEAK'
+        'REG_INTERMEDIATE',
+        'REG_OFFPEAK'
+        'REG_ONPEAK_DEMAND',
+        'REG_DEMAND'
+        'REG_POWERFACTOR',
+
+        'REG_PEAK_RATE_INCREASE',
+        'REG_INTERMEDIATE_RATE_INCREASE',
+        'REG_OFFPEAK_RATE_INCREASE',
+        'FIRST_MONTH_THERMS',
+        'SECOND_MONTH_THERMS',
+
+        'BEGIN_INVENTORY',
+        'END_INVENTORY',
+        'CONTRACT_VOLUME',
+    ]
+    op.alter_column('register', 'register_binding',
+                    existing_type=sa.String(length=1000),
+                    type_=sa.Enum(*REGISTER_BINDINGS))
