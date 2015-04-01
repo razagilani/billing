@@ -131,7 +131,8 @@ class BaseResource(Resource):
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
-            'wiki_url': WikiUrlField
+            'wiki_url': WikiUrlField,
+            'tou': Boolean
             }
 
         self.charge_fields = {
@@ -218,6 +219,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
+        parser.add_argument('tou', type=bool)
         row = parser.parse_args()
 
         utilbill = s.query(UtilBill).filter_by(id=id).first()
@@ -237,7 +239,8 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supply_choice_id=row['supply_choice_id']
+            supply_choice_id=row['supply_choice_id'],
+            tou=row['tou']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
