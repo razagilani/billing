@@ -74,7 +74,7 @@ class UtilbillProcessor(object):
                 utilbill.rate_class = None
 
         if meter_identifier is not None:
-            utilbill.set_meter_identifier(meter_identifier)
+            utilbill.set_total_meter_identifier(meter_identifier)
 
         period_start = period_start if period_start else \
             utilbill.period_start

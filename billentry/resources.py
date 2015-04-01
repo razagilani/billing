@@ -132,7 +132,7 @@ class BaseResource(Resource):
             'processed': Boolean,
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField,
-            'meter_identifier': CallableField(String(), attribute='get_meter_identifier')
+            'meter_identifier': CallableField(String(), attribute='get_total_meter_identifier')
             }
 
         self.charge_fields = {
