@@ -184,26 +184,27 @@ class UtilbillProcessor(object):
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
 
-        for register in predecessor.registers if predecessor else []:
-            # no need to append this Register to new_utilbill.Registers because
-            # SQLAlchemy does it automatically
-            Register(new_utilbill, register.description, register.identifier,
-                     register.unit, False, register.reg_type,
-                     register.active_periods, register.meter_identifier,
-                     quantity=0, register_binding=register.register_binding)
-        # a register called "REG_TOTAL" is always required to exist but may be
-        # missing from some existing bills. there is no way to tell what unit
-        # it is supposed to measure energy in because the rate class may not
-        # be known.
-        if predecessor is None or 'REG_TOTAL' not in (
-                r.register_binding for r in predecessor.registers):
-            if service == 'electric':
-                unit = 'kWh'
-            else:
-                assert service == 'gas'
-                unit = 'therms'
-            Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
-                     register_binding='REG_TOTAL')
+        # for register in predecessor.registers if predecessor else []:
+        #     # no need to append this Register to new_utilbill.Registers because
+        #     # SQLAlchemy does it automatically
+        #     Register(new_utilbill, register.description, register.identifier,
+        #              register.unit, False, register.reg_type,
+        #              register.active_periods, register.meter_identifier,
+        #              quantity=0, register_binding=register.register_binding)
+        # # a register called "REG_TOTAL" is always required to exist but may be
+        # # missing from some existing bills. there is no way to tell what unit
+        # # it is supposed to measure energy in because the rate class may not
+        # # be known.
+        # if predecessor is None or 'REG_TOTAL' not in (
+        #         r.register_binding for r in predecessor.registers):
+        #     if service == 'electric':
+        #         unit = 'kWh'
+        #     else:
+        #         assert service == 'gas'
+        #         unit = 'therms'
+        #     Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
+        #              register_binding='REG_TOTAL')
+        # registers now come from rate class, not predecessor
 
         return new_utilbill
 

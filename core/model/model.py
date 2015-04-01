@@ -312,7 +312,9 @@ class RateClass(Base):
         # register by default (the unit can be picked according to
         # "service"). but for now, all UtilBills initially have no registers
         # when they are created.
-        self.register_templates = []
+        unit = 'therms' if service == 'gas' else 'electric'
+        self.register_templates = [
+            RegisterTemplate(register_binding='REG_TOTAL', unit=unit)]
 
     def __repr__(self):
         return '<RateClass(%s)>' % self.name
@@ -397,6 +399,8 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
+
+
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
