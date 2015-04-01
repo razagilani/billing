@@ -272,7 +272,7 @@ class Supplier(Base):
 class RegisterTemplate(Base):
     __tablename__ = 'register_template'
 
-    id = Column(Integer, primary_key=True)
+    register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
     register_binding = Column(String(255), nullable=False)
