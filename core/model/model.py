@@ -781,6 +781,34 @@ class Register(Base):
         'therms',
     ]
 
+    REGISTER_BINDINGS = [
+        'REG_TOTAL',
+        'REG_TOTAL_SECONDARY',
+        'REG_TOTAL_TERTIARY',
+        'REG_PEAK'
+        'REG_INTERMEDIATE',
+        'REG_OFFPEAK'
+        'REG_ONPEAK_DEMAND',
+        'REG_DEMAND'
+        'REG_POWERFACTOR',
+
+        # related to "sub-bills": these are regular meter readings but belong
+        # to a sub-period so there is more than one per bill. using special
+        # register names is not a good way to implement this.
+        'REG_PEAK_RATE_INCREASE',
+        'REG_INTERMEDIATE_RATE_INCREASE',
+        'REG_OFFPEAK_RATE_INCREASE',
+        'FIRST_MONTH_THERMS',
+        'SECOND_MONTH_THERMS',
+
+        # related to gas supply contracts. BEGIN/END inventory might be
+        # considered real meter reads, but CONTRACT_VOLUME is a term of the
+        # supply contract and should not be a register.
+        'BEGIN_INVENTORY',
+        'END_INVENTORY',
+        'CONTRACT_VOLUME',
+    ]
+
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
@@ -792,7 +820,7 @@ class Register(Base):
     # "reg_type" field seems to be unused (though "type" values include
     # "total", "tou", "demand", and "")
     reg_type = Column(String(255), nullable=False)
-    register_binding = Column(String(255), nullable=False)
+    register_binding = Column(Enum(*REGISTER_BINDINGS), nullable=False)
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
