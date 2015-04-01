@@ -1,0 +1,85 @@
+<!DOCTYPE HTML><html><head profile="http://www.w3.org/2005/10/profile">
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=8" />
+
+<title>Bill Entry</title>
+
+<!-- PDF viewer -->
+<link rel="stylesheet" href="ext/lib/pdf.js/TextLayer.css">
+<script src="ext/lib/pdf.js/pdf.js"></script>
+<script src="ext/lib/pdf.js/TextLayerBuilder.js"></script>
+<script src="ext/lib/pdf.js/compatibility.js"></script>
+
+<!-- Ext JS Style -->
+<link rel="stylesheet" type="text/css" href="ext/resources/css/ext-all-classic.css">
+<script type="text/javascript" src="ext/ext-all-dev.js"></script>
+<script type="text/javascript" src="ext/src/grid/column/CheckColumn.js"></script>
+
+<!--Favicons-->
+<link rel="icon" type="image/x-icon" href="images/favicon.ico">
+
+<script type="text/javascript">
+    (function(){
+        var appendElementToHead = function (type, url, version) {
+            var el;
+            if (type === 'js') {
+                el = document.createElement('script');
+                el.type = 'text/javascript';
+                el.src = url + '?v=' + version;
+            } else if (type === 'css') {
+                el = document.createElement('link');
+                el.rel = 'stylesheet';
+                el.type = 'text/css';
+                el.href = url + '?v=' + version;
+            }
+            document.getElementsByTagName('head')[0].appendChild(el);
+        };
+
+        var xmlHttp = new XMLHttpRequest();
+        var v = Math.random() * 100000000000000000;
+        var url = window.location.origin +
+                '/revision.txt?_dc=' + v;
+        xmlHttp.open("GET", url, true);
+        xmlHttp.onreadystatechange = function () {
+            if (xmlHttp.readyState == 4) {
+                var css = [
+                    "style/style.css",
+                    "style/icons.css"
+                ];
+
+                var js = [
+                    "app/config.js",
+                    "app/utils.js",
+                    "app/app.js"
+                ];
+
+                var ver;
+                try {
+                    VERSION = JSON.parse(xmlHttp.responseText);
+                    VERSION.v = VERSION.version.substring(0, 12);
+                } catch (err) {
+                    VERSION = {
+                        'version': 'Version Information Not Found',
+                        'date': '',
+                        'user': '',
+                        'deploy_env': '',
+                        'v': v
+                    };
+                }
+                console.log(VERSION, VERSION.v);
+
+                for (var c = 0; c < css.length; c++) {
+                    appendElementToHead('css', css[c], VERSION.v);
+                }
+                for (c = 0; c < js.length; c++) {
+                    appendElementToHead('js', js[c], VERSION.v);
+                }
+            }
+        };
+        xmlHttp.send();
+    }());
+
+</script>
+
+</head><body></body></html>

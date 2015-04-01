@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sb:skylinebill xmlns:sb="SkylineBill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="SkylineBill ../SkylineBill.xsd">
+	<sb:test>asdasdasdas</sb:test>
+</sb:skylinebill>
