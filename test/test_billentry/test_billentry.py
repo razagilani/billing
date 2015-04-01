@@ -40,16 +40,16 @@ class TestBEUtilBill(unittest.TestCase):
     def setUp(self):
         self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
+        self.rate_class.get_register_list.return_value = []
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
         self.user.is_anonymous.return_value = False
-        self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
-                             self.rate_class, Address(), Address())
+        self.ub = BEUtilBill(self.ua, self.utility, self.rate_class, None)
 
     def test_create_from_utilbill(self):
-        utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
-                             self.rate_class, Address(), Address())
+        utilbill = UtilBill(self.ua, self.utility, self.rate_class, None,
+                            self.rate_class)
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
         self.assertIs(BEUtilBill, type(beutilbill))
         for attr_name in UtilBill.column_names():
