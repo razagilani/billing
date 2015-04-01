@@ -746,7 +746,9 @@ class UtilBill(Base):
         return sum(c.target_total for c in self.get_supply_charges()
                    if c.target_total is not None and c.has_charge)
 
-    def set_meter_identifier(self, meter_identifier):
+    def set_total_meter_identifier(self, meter_identifier):
+        # sets the value of meter_identifier field of the register with
+        # register_binding of REG_TOTAL if there is one for the utility bill
         self.check_editable()
         try:
             register = next(r for r in self.registers if r.register_binding
@@ -755,7 +757,10 @@ class UtilBill(Base):
             return
         register.meter_identifier = meter_identifier
 
-    def get_meter_identifier(self):
+    def get_total_meter_identifier(self):
+        # returns the value of meter_identifier field of the register with
+        # register_binding of REG_TOTAL. returns an empty string if there
+        # is no 'REG_TOTAL' register
         try:
             register = next(r for r in self.registers if r.register_binding
                                                      == 'REG_TOTAL')
