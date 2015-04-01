@@ -184,28 +184,23 @@ class UtilbillProcessor(object):
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
 
-        # for register in predecessor.registers if predecessor else []:
-        #     # no need to append this Register to new_utilbill.Registers because
-        #     # SQLAlchemy does it automatically
-        #     Register(new_utilbill, register.description, register.identifier,
-        #              register.unit, False, register.reg_type,
-        #              register.active_periods, register.meter_identifier,
-        #              quantity=0, register_binding=register.register_binding)
-        # # a register called "REG_TOTAL" is always required to exist but may be
-        # # missing from some existing bills. there is no way to tell what unit
-        # # it is supposed to measure energy in because the rate class may not
-        # # be known.
-        # if predecessor is None or 'REG_TOTAL' not in (
-        #         r.register_binding for r in predecessor.registers):
-        #     if service == 'electric':
-        #         unit = 'kWh'
-        #     else:
-        #         assert service == 'gas'
-        #         unit = 'therms'
-        #     Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
-        #              register_binding='REG_TOTAL')
-        # registers now come from rate class, not predecessor
-
+        # a register called "REG_TOTAL" should always exist because it's in
+        # the rate class' register list. however, since rate classes don't yet
+        # contain all the registers they should, copy any registers from the
+        # predecessor the current bill if the current bill does not already
+        # have have (as determined by "register_binding").
+        # TODO: in the future, registers should be determined entirely by the
+        # rate class, not by copying from other bills.
+        for register in predecessor.registers if predecessor else []:
+            if register.register_binding in (r.register_binding for r in
+                                             new_utilbill.registers):
+                continue
+            # no need to append this Register to new_utilbill.registers because
+            # SQLAlchemy does it automatically
+            Register(new_utilbill, register.description, register.identifier,
+                     register.unit, False, register.reg_type,
+                     register.active_periods, register.meter_identifier,
+                     quantity=0, register_binding=register.register_binding)
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
