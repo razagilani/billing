@@ -169,6 +169,10 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         hidden:true
     },{
         xtype: 'checkcolumn',
+        text: 'Time Of Use',
+        dataIndex: 'tou'
+    },{
+        xtype: 'checkcolumn',
         text: 'Bill Entered',
         dataIndex: 'entered'
     }],

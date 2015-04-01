@@ -64,7 +64,8 @@ class PGAltitudeExporter(object):
             'create_date',
             'modified_date',
             'ordering_date',
-            'meter_number'
+            'meter_number',
+            'time_of_use'
         ])
         def format_date(d):
             if d is None:
@@ -109,7 +110,8 @@ class PGAltitudeExporter(object):
                 'create_date': format_date(ub.date_received),
                 'modified_date': format_date(ub.date_modified),
                 'ordering_date': format_date(ub.due_date),
-                'meter_number': ub.get_total_meter_identifier()
+                'meter_number': ub.get_total_meter_identifier(),
+                'time_of_use': 'TRUE' if ub.tou else 'FALSE'
             })
         session.commit()
         return dataset

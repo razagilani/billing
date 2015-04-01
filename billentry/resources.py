@@ -24,7 +24,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-project_mgr_permission = Permission(RoleNeed('Project Manager'))
+project_mgr_permission = Permission(RoleNeed('Project Manager'), RoleNeed('admin'))
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
@@ -132,6 +132,7 @@ class BaseResource(Resource):
             'processed': Boolean,
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField,
+            'tou': Boolean,
             'meter_identifier': CallableField(String(), attribute='get_total_meter_identifier')
             }
 
@@ -220,6 +221,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
         parser.add_argument('meter_identifier', type=str)
+        parser.add_argument('tou', type=bool)
         row = parser.parse_args()
 
         utilbill = s.query(UtilBill).filter_by(id=id).first()
@@ -240,6 +242,7 @@ class UtilBillResource(BaseResource):
             rate_class=row['rate_class'],
             utility=row['utility'],
             supply_choice_id=row['supply_choice_id'],
+            tou=row['tou'],
             meter_identifier=row['meter_identifier']
         )
         if row.get('total_energy') is not None:
