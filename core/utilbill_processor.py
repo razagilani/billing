@@ -187,8 +187,8 @@ class UtilbillProcessor(object):
         # a register called "REG_TOTAL" should always exist because it's in
         # the rate class' register list. however, since rate classes don't yet
         # contain all the registers they should, copy any registers from the
-        # predecessor the current bill if the current bill does not already
-        # have have (as determined by "register_binding").
+        # predecessor to the current bill that the current bill does not already
+        # have (as determined by "register_binding").
         # TODO: in the future, registers should be determined entirely by the
         # rate class, not by copying from other bills.
         for register in predecessor.registers if predecessor else []:
@@ -276,7 +276,6 @@ class UtilbillProcessor(object):
         assert isinstance(target_total, (float, int, type(None)))
         assert isinstance(service_address, (Address, type(None)))
 
-        s = Session()
         if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
