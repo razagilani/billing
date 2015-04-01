@@ -38,7 +38,7 @@ class TestExportAltitude(TestCase):
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
         u1.supply_choice_id = None
-        u1.get_meter_identifier.return_value = ''
+        u1.get_total_meter_identifier.return_value = ''
 
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
@@ -59,7 +59,7 @@ class TestExportAltitude(TestCase):
         u2.date_received = None
         u2.date_modified = None
         u2.supply_choice_id = '123xyz'
-        u2.get_meter_identifier.return_value = ''
+        u2.get_total_meter_identifier.return_value = ''
 
         self.utilbills = [u1, u2]
 
@@ -187,7 +187,7 @@ class TestAltitudeBillStorage(TestCase):
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
             'service_address_postal_code,create_date,modified_date,'
-            'ordering_date,meter_identifier' '\r\n'
+            'ordering_date,meter_number' '\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
             '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s,\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
