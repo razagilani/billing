@@ -127,9 +127,13 @@ class BEUtilBill(UtilBill):
 
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
+    billentry_user = relationship(BillEntryUser,
+                                  foreign_keys=[billentry_user_id])
+
     flag_date = Column(DateTime)
-    flag_user = relationship(BillEntryUser)
-    billentry_user = relationship(BillEntryUser)
+    flag_user_id = Column(Integer, ForeignKey('billentry_user.id'))
+    flag_user = relationship(BillEntryUser,
+                             foreign_keys=[flag_user_id])
 
     @classmethod
     def create_from_utilbill(cls, utilbill):
@@ -200,6 +204,8 @@ class BEUtilBill(UtilBill):
         # consistency check: normally all values must be either None or
         # filled in, but 'billentry_user' will be None when the user is
         # anonymous.
+        print self.billentry_user, self.billentry_date, self.flag_user, \
+            self.flag_date
         assert self.billentry_user is None or self.billentry_date is not None
 
         return self.processed or (self.billentry_date is not None)
