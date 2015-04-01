@@ -24,7 +24,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-project_mgr_permission = Permission(RoleNeed('Project Manager'))
+project_mgr_permission = Permission(RoleNeed('Project Manager'), RoleNeed('admin'))
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
