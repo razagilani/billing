@@ -109,7 +109,7 @@ class PGAltitudeExporter(object):
                 'create_date': format_date(ub.date_received),
                 'modified_date': format_date(ub.date_modified),
                 'ordering_date': format_date(ub.due_date),
-                'time_of_use': ub.tou
+                'time_of_use': 'TRUE' if ub.tou else 'FALSE'
             })
         session.commit()
         return dataset
