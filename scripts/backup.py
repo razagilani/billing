@@ -17,7 +17,7 @@ import zlib
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from core import init_config, init_model
+from core import init_config, init_model, get_private_data_column_names
 
 from core.bill_file_handler import BillFileHandler
 from core.model import Session
@@ -309,8 +309,11 @@ def scrub_dev_data():
     '''
     command = MYSQL_COMMAND % db_params
     stdin, _, check_exit_status = run_command(command)
-    stdin.write("update customer set bill_email_recipient = 'example@example.com';")
-    stdin.write("update reebill set email_recipient = 'example@example.com';")
+    for table, col, sub_value in get_private_data_column_names():
+        sql = ("update %(table)s set %(col)s = %(sub_value)s "
+               "where %(col)s is not null;") % dict(table=table, col=col,
+            sub_value=sub_value)
+        stdin.write(sql)
     stdin.close()
     check_exit_status()
 
