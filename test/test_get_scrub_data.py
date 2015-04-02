@@ -1,5 +1,6 @@
 from unittest import TestCase
 from core import init_model, get_scrub_sql, get_scrub_columns
+from core.model import Session
 from reebill.reebill_model import ReeBillCustomer, ReeBill
 from test import init_test_config
 
@@ -34,5 +35,10 @@ class TestGetScrubData(TestCase):
             "'example@example.com' where bill_email_recipient is not null;"),
             ("update reebill set email_recipient = 'example@example.com' where "
             "email_recipient is not null;")}
-        actual_lines = set(get_scrub_sql().split('\n'))
+        sql = get_scrub_sql()
+        actual_lines = set(sql.split('\n'))
         self.assertEqual(expected_lines, actual_lines)
+
+        # validate by executing on an empty database.
+        # (it should not be necessary to clear the database before/after this)
+        Session().execute(get_scrub_sql())
