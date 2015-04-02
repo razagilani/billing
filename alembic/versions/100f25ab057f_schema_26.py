@@ -59,16 +59,6 @@ def upgrade():
         'kWh',
         'therms',
     ]
-
-    op.create_table('register_template',
-        sa.Column('register_template_id', sa.Integer, primary_key=True),
-        sa.Column('rate_class_id', sa.Integer, sa.ForeignKey('rate_class.id'),
-                  nullable=False),
-        sa.Column('register_binding', sa.String(255), nullable=False),
-        sa.Column('unit', sa.Enum(*PHYSICAL_UNITS), nullable=False),
-        sa.Column('active_periods', sa.String(2048)),
-        sa.Column('description', sa.String(255), nullable=False, default=''))
-        
     REGISTER_BINDINGS = [
         'REG_TOTAL',
         'REG_TOTAL_SECONDARY',
@@ -89,6 +79,17 @@ def upgrade():
         'END_INVENTORY',
         'CONTRACT_VOLUME',
     ]
+
+    op.create_table('register_template',
+        sa.Column('register_template_id', sa.Integer, primary_key=True),
+        sa.Column('rate_class_id', sa.Integer, sa.ForeignKey('rate_class.id'),
+                  nullable=False),
+        sa.Column('register_binding', sa.Enum(*REGISTER_BINDINGS),
+                  nullable=False),
+        sa.Column('unit', sa.Enum(*PHYSICAL_UNITS), nullable=False),
+        sa.Column('active_periods', sa.String(2048)),
+        sa.Column('description', sa.String(255), nullable=False, default=''))
+        
     op.alter_column('register', 'register_binding',
                     existing_type=sa.String(length=1000),
                     type_=sa.Enum(*REGISTER_BINDINGS))
