@@ -68,6 +68,16 @@ class Views(object):
             l.append(column_dict(r))
         return l
 
+    def get_utilbill_json(self, utilbill):
+        return column_dict_utilbill(utilbill)
+
+    def get_register_json(self, register):
+        return column_dict(register)
+
+    def get_charge_json(self, charge):
+        return column_dict(charge)
+
+
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
