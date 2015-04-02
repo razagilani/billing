@@ -656,7 +656,7 @@ class UtilBillResource(RESTResource):
                 utility=row.get('utility', None),
                 supplier=row.get('supplier', None))
 
-        result = ub.column_dict()
+        result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
         result['action'] = ''
@@ -690,7 +690,8 @@ class RegistersResource(RESTResource):
 
     def handle_post(self, *vpath, **params):
         r = self.utilbill_processor.new_register(**cherrypy.request.json)
-        return True, {"rows": r.column_dict(), 'results': 1}
+        return True, {"rows": self.utilbill_views.get_register_json(r),
+                      'results': 1}
 
     def handle_put(self, register_id, *vpath, **params):
         updated_reg = cherrypy.request.json
@@ -701,7 +702,8 @@ class RegistersResource(RESTResource):
             assert isinstance(updated_reg['quantity'], (float, int))
 
         register = self.utilbill_processor.update_register(register_id, updated_reg)
-        return True, {"rows": register.column_dict(), 'results': 1}
+        return True, {"rows": self.utilbill_views.get_register_json(register),
+                      'results': 1}
 
     def handle_delete(self, register_id, *vpath, **params):
         self.utilbill_processor.delete_register(register_id)
@@ -717,11 +719,13 @@ class ChargesResource(RESTResource):
     def handle_put(self, charge_id, *vpath, **params):
         c = self.utilbill_processor.update_charge(cherrypy.request.json,
                                        charge_id=charge_id)
-        return True, {'rows': c.column_dict(),  'results': 1}
+        return True, {'rows': self.utilbill_views.get_charge_json(c),
+                      'results': 1}
 
     def handle_post(self, *vpath, **params):
         c = self.utilbill_processor.add_charge(**cherrypy.request.json)
-        return True, {'rows': c.column_dict(),  'results': 1}
+        return True, {'rows': self.utilbill_views.get_charge_json(c),
+                      'results': 1}
 
     def handle_delete(self, charge_id, *vpath, **params):
         self.utilbill_processor.delete_charge(charge_id)
