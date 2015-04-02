@@ -32,4 +32,3 @@ def upgrade():
     s.add(create_project_manager_role())
     s.commit()
 
-
