@@ -50,3 +50,4 @@ def upgrade():
                type_=mysql.VARCHAR(length=20))
     op.add_column('utilbill', sa.Column('tou', sa.Boolean(), nullable=False))
 
+    op.add_column('utilbill', sa.Column('tou', sa.Boolean(), nullable=False))
