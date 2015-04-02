@@ -10,8 +10,9 @@ Ext.define('BillEntry.view.reports.BillDetails', {
 
     initComponent: function() {
         var prependColumns = [{
-            header: 'Account ID',
-            dataIndex: 'utility_account_id'
+            header: 'Acc ID',
+            dataIndex: 'utility_account_id',
+            width: 50
         }];
 
         // Ommiting columns in this.omitColumns
