@@ -309,11 +309,10 @@ def scrub_dev_data():
     '''
     command = MYSQL_COMMAND % db_params
     stdin, _, check_exit_status = run_command(command)
+    format = ("update %(table)s set %(col)s = %(sub_value)s "
+              "where %(col)s is not null;")
     for table, col, sub_value in get_private_data_column_names():
-        sql = ("update %(table)s set %(col)s = %(sub_value)s "
-               "where %(col)s is not null;") % dict(table=table, col=col,
-            sub_value=sub_value)
-        stdin.write(sql)
+        stdin.write(format % dict(table=table, col=col, sub_value=sub_value))
     stdin.close()
     check_exit_status()
 
