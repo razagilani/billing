@@ -28,6 +28,25 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         dataIndex: 'account',
         width: 100
     },{
+        header: 'Tags',
+        dataIndex: 'tags',
+        editor: {
+            xtype: 'textfield'
+        },
+        tdCls: 'grid-cell-wrap-text',
+        width: 150,
+        renderer: function(value){
+            var rtn = [];
+            Ext.Array.each(value.split(' '), function(tag){
+                if(tag){
+                    rtn.push('<span class="accounts-tag">');
+                    rtn.push(tag);
+                    rtn.push('</span>');
+                }
+            });
+            return rtn.join('')
+        }
+    },{
         header: 'Utility Account Number',
         dataIndex: 'utility_account_number',
         editor: {

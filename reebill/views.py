@@ -166,6 +166,7 @@ class Views(object):
                 'casualname': name_dicts[ua.account].get('casualname', ''),
                 'primusname': name_dicts[ua.account].get('primus', ''),
                 'utilityserviceaddress': str(ua.get_service_address()),
+                'tags': '',
                 'lastevent': '',
             }
 
