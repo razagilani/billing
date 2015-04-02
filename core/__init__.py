@@ -79,19 +79,20 @@ def import_all_model_modules():
     import billentry.billentry_model
 
 def get_private_data_column_names():
-    """Return a list of (table name, column name, substitute value) tuples of
-    columns whose data should not be copied outside the production environment.
-    When copying data for development, the values should be replaced with the
-    substitute (a string that can be inserted into SQL code--already quoted
-    if it is a string).
+    """Return a list of (table name, column name, substitute value) tuples
+    describing database columns whose data should not be copied outside the
+    production environment. When making a copy of production data for
+    development, all non-null values in the column should be be replaced with
+    the substitute value (a string that can be inserted directly into SQL code).
     """
     from reebill.reebill_model import ReeBillCustomer, ReeBill
     columns = {
         ReeBillCustomer.__table__.c.bill_email_recipient:
             "'example@example.com'",
         ReeBill.__table__.c.email_recipient: "'example@example.com'",
+        # TODO: billentry_user.email and password should probably be included
     }
-    return [(c.table.name, c.name, v) for c, v in columns.items()]
+    return [(c.table.name, c.name, v) for c, v in columns.iteritems()]
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
