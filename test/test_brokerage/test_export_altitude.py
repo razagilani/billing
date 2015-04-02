@@ -189,7 +189,7 @@ class TestAltitudeBillStorage(TestCase):
             'service_address_postal_code,create_date,modified_date,'
             'ordering_date,time_of_use\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s,%s,'
+            '2000-01-01T00:00:00Z,,0.0,0,Rate Class,,1 Service St.,,,,,%s,%s,'
             'FALSE\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
             self.utilbill.due_date.strftime(ISO_8601_DATETIME)))

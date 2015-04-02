@@ -154,6 +154,7 @@ class TestCaseWithSetup(test_utils.TestCase):
             "altitude_bill",
             "utilbill_reebill",
             "register",
+            "register_template",
             "payment",
             "reebill",
             "charge",

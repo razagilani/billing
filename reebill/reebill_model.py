@@ -10,6 +10,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
+from core.model.model import PHYSICAL_UNITS
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
     NoSuchBillException
@@ -712,7 +713,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
 
     @staticmethod
     def make_reading_from_register(register):
