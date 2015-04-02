@@ -91,17 +91,20 @@ class Views(object):
                 for ub in utilbills]
         return data, len(utilbills)
 
+    def _serialize_id_name(self, class_):
+        """JSON serialization for suppliers, utilities, rate classes, ...
+        """
+        return [dict(id=x.id, name=x.name) for x in
+                Session().query(class_).order_by(class_.name).all()]
+
     def get_all_suppliers_json(self):
-        session = Session()
-        return [column_dict(s) for s in session.query(Supplier).all()]
+        return self._serialize_id_name(Supplier)
 
     def get_all_utilities_json(self):
-        session = Session()
-        return [column_dict(u) for u in session.query(Utility).all()]
+        return self._serialize_id_name(Utility)
 
     def get_all_rate_classes_json(self):
-        session = Session()
-        return [column_dict(r) for r in session.query(RateClass).all()]
+        return self._serialize_id_name(RateClass)
 
     def get_utility(self, name):
         session = Session()
