@@ -17,7 +17,6 @@ from sqlalchemy.dialects import mysql
 def upgrade():
     # some differences that Alembic found between the class definitions and
     # the database
-    import ipdb; ipdb.set_trace()
     op.create_index(op.f('ix_billentry_user_email'), 'billentry_user',
                     ['email'], unique=True)
     op.alter_column(u'charge', 'type',
