@@ -566,7 +566,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
 
-
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0},
@@ -643,8 +642,10 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # Role
         self.assertEqual(200, rv.status_code)
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
         data = {'email':'3@example.com', 'password': 'password'}
@@ -661,8 +662,10 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # this should succeed with 200 as user3 is member of admin role
         self.assertEqual(200, rv.status_code)
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
+            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0},
+            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]},
                         rv.data)
 
     def test_report_utilbills_for_user(self):
