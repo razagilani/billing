@@ -375,7 +375,8 @@ class UtilBillCountForUserResource(BaseResource):
                 'gas_count': int(gas_count or 0),
                 'electric_count': int(electric_count or 0),
             } for (user, total_count, electric_count, gas_count) in q.all()]
-        
+
+        from core import config
         if config.get('billentry', 'disable_authentication'):
             assert current_user.is_anonymous()
             return {'rows': rows, 'results': len(rows)}
