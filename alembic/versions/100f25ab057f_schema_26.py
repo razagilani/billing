@@ -58,7 +58,6 @@ def upgrade():
         'REG_PEAK'
         'REG_INTERMEDIATE',
         'REG_OFFPEAK'
-        'REG_ONPEAK_DEMAND',
         'REG_DEMAND'
         'REG_POWERFACTOR',
 
