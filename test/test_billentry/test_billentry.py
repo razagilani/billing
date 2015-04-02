@@ -134,6 +134,9 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
+        register = Register(self.ub1, "ABCDEF description",
+            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+            quantity=150.0, register_binding='REG_TOTAL')
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                             service_address=Address(street='2 Example St.'))
         self.ub1.id = 1
@@ -258,6 +261,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
+              'meter_identifier': 'GHIJKL',
               'tou': False
              },
              {'computed_total': 0.0,
@@ -282,6 +286,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
         self.assertJson(expected, rv.data)
@@ -352,6 +357,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': True,
+              'meter_identifier': 'GHIJKL',
               'tou': False
               },
          'results': 1}
@@ -416,6 +422,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'entered': False,
               'tou': False
              },
@@ -441,6 +448,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
@@ -477,6 +485,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
+                'meter_identifier': 'GHIJKL',
                 'tou': False
             }}, rv.data
         )
@@ -511,6 +520,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
+                  'meter_identifier': 'GHIJKL',
                   'tou': False
             },
             }, rv.data
@@ -660,13 +670,14 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'supplier': 'Unknown',
                   'supply_total': 0,
                   'target_total': 0,
-                  'total_energy': 0,
+                  'total_energy': 150.0,
                   'utility': 'Example Utility',
                   'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': True,
+                  'meter_identifier': 'GHIJKL',
                   'tou': False
                  }],
              }, rv.data)
