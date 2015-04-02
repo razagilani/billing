@@ -9,6 +9,7 @@ import json
 from math import floor
 
 import sqlalchemy
+from sqlalchemy import desc
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
@@ -393,6 +394,12 @@ class UtilBill(Base):
     period_end = Column(Date)
     due_date = Column(Date)
 
+    # this is created for letting bill entry user's marking/un marking a
+    # bill for Time Of Use. The value of the column has nothing to do with
+    # whether there are time-of-use registers or whether the energy is
+    # actually priced according to time of use
+    tou = Column(Boolean, nullable=False)
+
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
     target_total = Column(Float)
@@ -481,7 +488,7 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete):
+                 next_meter_read_date=None, state=Complete, tou=False):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -505,6 +512,7 @@ class UtilBill(Base):
         self.due_date = due_date
         self.account_number = utility_account.account_number
         self.next_meter_read_date = next_meter_read_date
+        self.tou = tou
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -749,6 +757,23 @@ class UtilBill(Base):
         '''
         return sum(c.target_total for c in self.get_supply_charges()
                    if c.target_total is not None and c.has_charge)
+
+    def set_total_meter_identifier(self, meter_identifier):
+        '''sets the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        self.check_editable()
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        register.meter_identifier = meter_identifier
+
+    def get_total_meter_identifier(self):
+        '''returns the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL.'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        return register.meter_identifier
 
     def get_total_energy_consumption(self):
         '''Return total energy consumption, i.e. value of the "REG_TOTAL"
