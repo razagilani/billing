@@ -127,8 +127,7 @@ class BEUtilBill(UtilBill):
 
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
-    billentry_user = relationship(BillEntryUser,
-                                  foreign_keys=[billentry_user_id])
+    billentry_user = relationship(BillEntryUser)
     flagged = Column(Boolean)
 
     @classmethod

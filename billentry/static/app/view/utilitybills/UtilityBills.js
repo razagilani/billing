@@ -25,9 +25,15 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
+        header: 'ID',
+        dataIndex: 'id',
+        width: 50,
+        disabled: true
+    },{
         header: 'Flag',
         dataIndex: 'flagged',
-        xtype: 'checkcolumn'
+        xtype: 'checkcolumn',
+        width: 50
     },{
         header: 'Total Due',
         dataIndex: 'target_total',
