@@ -49,3 +49,4 @@ def upgrade():
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
 
+    op.add_column(u'utilbill', sa.Column('flagged', sa.Boolean()))
