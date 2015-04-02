@@ -400,6 +400,30 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected['rows']['entered'] = False
         self.assertJson(expected, rv.data)
 
+        rv = self.app.put(
+            self.URL_PREFIX + 'utilitybills/1',
+            content_type='application/json',
+            data=json.dumps(dict(
+                id=2,
+                flagged=True
+            ))
+        )
+        self.assertEqual(rv.status_code, 200)
+        expected['rows']['flagged'] = True
+        self.assertJson(expected, rv.data)
+
+        rv = self.app.put(
+            self.URL_PREFIX + 'utilitybills/1',
+            content_type='application/json',
+            data=json.dumps(dict(
+                id=2,
+                flagged=False
+            ))
+        )
+        self.assertEqual(rv.status_code, 200)
+        expected['rows']['flagged'] = False
+        self.assertJson(expected, rv.data)
+
         # TODO: why aren't there tests for editing all the other fields?
 
     def test_update_utilbill_rate_class(self):
@@ -551,6 +575,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
              "gas_count": 0, "electric_count": 0},
             {"id": 2, 'email': '2@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0}]}
+        self.response_no_flagged_bills = {"results": 0, "rows": []}
 
     def test_report_count_for_user(self):
 
@@ -602,7 +627,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
             {"id": 2, 'email': '2@example.com', "total_count": 1,
              "gas_count": 0, "electric_count": 1}]}, rv.data)
 
-    def test_user_permission_for_report(self):
+    def test_user_permission_for_utilbill_counts(self):
         data = {'email':'2@example.com', 'password': 'password'}
         # post request for user login with for user2, member of no role
         response = self.app.post('/userlogin',
@@ -610,7 +635,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
-        # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
         # this should result in a status_code of '403 permission denied'
@@ -624,9 +648,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # Project Manager role
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
-        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
-
-        # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
 
@@ -640,15 +661,146 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # admin role
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
-        url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
-
-        # no "entered" bills yet
         rv = self.app.get(url_format % (datetime(2000,1,1).isoformat(),
                                         datetime(2000,2,1).isoformat()))
 
         # this should succeed with 200 as user3 is member of admin role
         self.assertEqual(200, rv.status_code)
         self.assertJson(self.response_all_counts_0, rv.data)
+
+    def test_user_permissions_for_utilbill_flagging(self):
+        data = {'email':'2@example.com', 'password': 'password'}
+        # post request for user login with for user2, member of no role
+        self.app.post('/userlogin',
+                      content_type='multipart/form-data', data=data)
+
+        url_format = self.URL_PREFIX + 'flagged_utilitybills'
+        rv = self.app.get(url_format)
+        # this should result in a status_code of '403 permission denied'
+        # as only members of 'Project Manager' or 'admin' role are allowed
+        # access to report page and user2 is member of niether one
+        self.assertEqual(403, rv.status_code)
+
+        data = {'email':'1@example.com', 'password': 'password'}
+        # post request for user login with for user1, member of
+        # Project Manager role
+        self.app.post('/userlogin',
+                      content_type='multipart/form-data', data=data)
+
+        rv = self.app.get(url_format)
+        # this should succeed with 200 as user1 is member of Project Manager
+        # Role
+        self.assertEqual(200, rv.status_code)
+        self.assertJson(self.response_no_flagged_bills, rv.data)
+
+        data = {'email':'3@example.com', 'password': 'password'}
+        # post request for user login with for user3, member of
+        # admin role
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        rv = self.app.get(url_format)
+
+        # this should succeed with 200 as user3 is member of admin role
+        self.assertEqual(200, rv.status_code)
+        self.assertJson(self.response_no_flagged_bills, rv.data)
+
+    def test_report_flagged_utilbills(self):
+        # log in as project manager
+        data = {'email':'1@example.com', 'password': 'password'}
+        self.app.post('/userlogin',
+                      content_type='multipart/form-data', data=data)
+        url_format = self.URL_PREFIX + 'flagged_utilitybills'
+
+        # no bills flagged yet
+        rv = self.app.get(url_format)
+        self.assertJson(self.response_no_flagged_bills, rv.data)
+
+        # flag two bills
+        self.ub1.flag()
+        self.ub2.flag()
+        rv = self.app.get(url_format)
+        self.assertJson({
+            "results": 2,
+            'rows': [{
+                'computed_total': 0,
+                'due_date': None,
+                'id': 2,
+                'next_meter_read_date': None,
+                'pdf_url': '',
+                'period_end': None,
+                'period_start': None,
+                'processed': False,
+                'rate_class': 'Unknown',
+                'service': 'Unknown',
+                'service_address': '2 Example St., ,  ',
+                'supplier': 'Unknown',
+                'supply_total': 0,
+                'target_total': 0,
+                'total_energy': 0,
+                'utility': 'Example Utility',
+                'utility_account_id': 1,
+                'utility_account_number': '1',
+                'supply_choice_id': None,
+                'wiki_url': 'http://example.com/utility:Example Utility',
+                'entered': False,
+                'flagged': True,
+                'tou': False
+            }, {
+                'computed_total': 0,
+                'due_date': None,
+                'id': 1,
+                'next_meter_read_date': None,
+                'pdf_url': '',
+                'period_end': None,
+                'period_start': None,
+                'processed': False,
+                'rate_class': 'Some Rate Class',
+                'service': 'Gas',
+                'service_address': '1 Example St., ,  ',
+                'supplier': 'Unknown',
+                'supply_total': 0,
+                'target_total': 0,
+                'total_energy': 0,
+                'utility': 'Example Utility',
+                'utility_account_id': 1,
+                'utility_account_number': '1',
+                'supply_choice_id': None,
+                'wiki_url': 'http://example.com/utility:Example Utility',
+                'entered': False,
+                'flagged': True,
+                'tou': False
+            }]}, rv.data)
+
+        # Unflag one bill
+        self.ub2.un_flag()
+        rv = self.app.get(url_format)
+        self.assertJson({
+            "results": 1,
+            'rows': [{
+                'computed_total': 0,
+                'due_date': None,
+                'id': 1,
+                'next_meter_read_date': None,
+                'pdf_url': '',
+                'period_end': None,
+                'period_start': None,
+                'processed': False,
+                'rate_class': 'Some Rate Class',
+                'service': 'Gas',
+                'service_address': '1 Example St., ,  ',
+                'supplier': 'Unknown',
+                'supply_total': 0,
+                'target_total': 0,
+                'total_energy': 0,
+                'utility': 'Example Utility',
+                'utility_account_id': 1,
+                'utility_account_number': '1',
+                'supply_choice_id': None,
+                'wiki_url': 'http://example.com/utility:Example Utility',
+                'entered': False,
+                'flagged': True,
+                'tou': False
+            }]}, rv.data)
 
     def test_report_utilbills_for_user(self):
         url_format = self.URL_PREFIX + 'user_utilitybills?start=%s&end=%s&id=%s'
