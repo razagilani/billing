@@ -265,8 +265,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
-              'entered': False,
-              'flagged': False
+              'entered': False
              },
              {'computed_total': 0.0,
               'due_date': None,
@@ -286,10 +285,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_account_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
-              'wiki_url': 'http://example.com/utility:Example Utility',
-              'flagged': False}
+              'wiki_url': 'http://example.com/utility:Example Utility'}
          ], }
         self.assertJson(expected, rv.data)
 
@@ -358,8 +357,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
-              'entered': True,
-              'flagged': False
+              'entered': True
               },
          'results': 1}
 
@@ -420,10 +418,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility': 'Example Utility',
               'utility_account_id': 1,
               'utility_account_number': '1',
+              'utility_account_id': 1,
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
-              'entered': False,
-              'flagged': False
+              'entered': False
              },
              {'computed_total': 0.0,
               'due_date': None,
@@ -443,10 +441,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_account_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
-              'wiki_url': 'http://example.com/utility:Example Utility',
-              'flagged': False}
+              'wiki_url': 'http://example.com/utility:Example Utility'}
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
@@ -481,8 +479,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'utility': 'Empty Utility',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
-                'wiki_url': 'http://example.com/utility:Empty Utility',
-                'flagged': False
+                'wiki_url': 'http://example.com/utility:Empty Utility'
             }}, rv.data
         )
 
@@ -515,8 +512,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'utility_account_id': 1,
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
-                  'entered': False,
-                  'flagged': False
+                  'entered': False
             },
             }, rv.data
         )
@@ -691,8 +687,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
-                  'entered': True,
-                  'flagged': False
+                  'entered': True
                  }],
              }, rv.data)
 

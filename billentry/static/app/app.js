@@ -28,8 +28,7 @@ Ext.application({
         'Units',
         'UtilityBills',
         'UserUtilBillCounts',
-        'UserUtilityBills',
-        'AllFlaggedUtilityBills'
+        'UserUtilityBills'
     ],
 
     refs: [{

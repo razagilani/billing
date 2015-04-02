@@ -8,7 +8,8 @@ Ext.define('BillEntry.view.Viewport', {
         'BillEntry.view.accounts.Accounts',
         'BillEntry.view.utilitybills.UtilityBills',
         'BillEntry.view.charges.Charges',
-        'BillEntry.view.reports.Reports'
+        'BillEntry.view.reports.UserUtilBillCount',
+        'BillEntry.view.reports.BillDetails'
     ],
 
     items: {
@@ -73,7 +74,47 @@ Ext.define('BillEntry.view.Viewport', {
                     height: 150
                 }]
             },{
-                xtype: 'reports'
+                xtype: 'panel',
+                name: 'reportsTab',
+                title: 'Reports',
+                layout: {
+                    type: 'vbox',
+                    align : 'stretch',
+                    pack  : 'start'
+                },
+                items: [{
+                    xtype: 'form',
+                    height: 60,
+                    title: 'Select a Date/Time Range',
+                    items: {
+                        xtype: 'fieldcontainer',
+                        layout: 'hbox',
+                        fieldDefaults: {
+                            labelWidth: 30,
+                            allowBlank: false,
+                            flex: 1,
+                            margin: '2 5 5 5'
+                        },
+                        items: [{
+                            xtype: 'datefield',
+                            fieldLabel: 'From:',
+                            name: 'start'
+                        }, {
+                            xtype: 'datefield',
+                            fieldLabel: 'To:',
+                            name: 'end'
+                        }]
+                    }
+                },{
+                    xtype: 'userStatistics',
+                    id: 'userStatisticsGrid',
+                    flex: 1
+                },{
+                    xtype: 'billDetails',
+                    id: 'reportUtilityBillsGrid',
+                    disabled: true,
+                    flex: 1
+                }]
             }],
 
             dockedItems: [{

@@ -127,10 +127,9 @@ class BaseResource(Resource):
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
-            'entered': CallableField(Boolean(), attribute='is_entered'),
+            'entered': CallableField(Boolean(),attribute='is_entered'),
             'supply_choice_id': String,
             'processed': Boolean,
-            'flagged': CallableField(Boolean(), attribute='is_flagged'),
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField
             }
@@ -216,7 +215,6 @@ class UtilBillResource(BaseResource):
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
-        parser.add_argument('flagged', type=bool)
         parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
@@ -247,16 +245,10 @@ class UtilBillResource(BaseResource):
             ub.set_next_meter_read_date(row['next_meter_read_date'])
         self.utilbill_processor.compute_utility_bill(id)
 
-        if row['flagged'] is True:
-            utilbill.flag()
-        elif row['flagged'] is False:
-            utilbill.un_flag()
-
         if row.get('entered') is True:
             if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
                 utilbill = replace_utilbill_with_beutilbill(utilbill)
             utilbill.enter(current_user, datetime.utcnow())
-
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
@@ -376,7 +368,7 @@ class UtilBillCountForUserResource(BaseResource):
                 'email': user.email,
                 'total_count': int(total_count or 0),
                 'gas_count': int(gas_count or 0),
-                'electric_count': int(electric_count or 0)
+                'electric_count': int(electric_count or 0),
             } for (user, total_count, electric_count, gas_count) in q.all()]
             return {'rows': rows, 'results': len(rows)}
 
@@ -405,21 +397,4 @@ class UtilBillListForUserResource(BaseResource):
             ).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
-
-
-class FlaggedUtilBillListResource(BaseResource):
-    """List of utility bills that are flagged
-    """
-
-    def get(self, *args, **kwargs):
-        with project_mgr_permission.require():
-            s = Session()
-            utilbills = s.query(BEUtilBill)\
-                .filter(BEUtilBill.flagged == True)\
-                .order_by(
-                    desc(UtilBill.period_start),
-                    desc(UtilBill.id)
-                ).all()
-            rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
-            return {'rows': rows, 'results': len(rows)}
 

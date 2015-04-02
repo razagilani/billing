@@ -1,6 +1,6 @@
 Ext.define('BillEntry.view.reports.UserUtilBillCount', {
     extend: 'Ext.grid.Panel',
-    alias: 'widget.userUtilBillCount',
+    alias: 'widget.userStatistics',
     store: 'UserUtilBillCounts',
 
     features: [{
@@ -26,7 +26,7 @@ Ext.define('BillEntry.view.reports.UserUtilBillCount', {
     }, {
         header: '# of Electric Bills Entered',
         dataIndex: 'electric_count',
-        width: 160,
+        width: 120,
         items: [
             utils.makeNumericGridFilterTextField('electric_count', '>'),
             utils.makeNumericGridFilterTextField('electric_count', '<')
@@ -41,6 +41,6 @@ Ext.define('BillEntry.view.reports.UserUtilBillCount', {
             utils.makeNumericGridFilterTextField('total_count', '<')
         ],
         summaryType: 'sum'
-    },]
+    }]
 
 });

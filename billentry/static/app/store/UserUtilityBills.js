@@ -26,7 +26,7 @@ Ext.define('BillEntry.store.UserUtilityBills', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('UserUtilityBills'),
+            exception: utils.makeProxyExceptionHandler('UtilityBills'),
             scope: this
         }
 	},

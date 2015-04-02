@@ -8,7 +8,7 @@ import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
 import logging
-from billentry.billentry_model import Role, BEUtilBill
+from billentry.billentry_model import Role
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model
@@ -31,4 +31,5 @@ def upgrade():
     s = Session()
     s.add(create_project_manager_role())
     s.commit()
+
 
