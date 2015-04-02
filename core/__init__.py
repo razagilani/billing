@@ -78,12 +78,10 @@ def import_all_model_modules():
     import brokerage.brokerage_model
     import billentry.billentry_model
 
-def get_private_data_column_names():
-    """Return a list of (table name, column name, substitute value) tuples
-    describing database columns whose data should not be copied outside the
-    production environment. When making a copy of production data for
-    development, all non-null values in the column should be be replaced with
-    the substitute value (a string that can be inserted directly into SQL code).
+def get_scrub_sql():
+    """Return SQL code (string) that can be executed to transform a copy of a
+    production database into one that can be used into a development
+    environment, by replacing certain data with substitute values.
     """
     from reebill.reebill_model import ReeBillCustomer, ReeBill
     columns = {
@@ -92,7 +90,17 @@ def get_private_data_column_names():
         ReeBill.__table__.c.email_recipient: "'example@example.com'",
         # TODO: billentry_user.email and password should probably be included
     }
-    return [(c.table.name, c.name, v) for c, v in columns.iteritems()]
+    # it seems incredibly hard to get SQLAlchemy to emit a fully-compiled SQL
+    # string that including data values. i gave up after trying this method with
+    # the "dialect" sqlalchemy.dialects.mysql.mysqldb.MySQLDialect()
+    # https://sqlalchemy.readthedocs.org/en/latest/faq/sqlexpressions.html
+    # #how-do-i-render-sql-expressions-as-strings-possibly-with-bound
+    # -parameters-inlined
+    sql_format = ("update %(table)s set %(col)s = %(sub_value)s "
+                  "where %(col)s is not null;")
+    return '\n'.join(
+        sql_format % dict(table=c.table.name, col=c.name, sub_value=v)
+        for c, v in columns.iteritems())
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
