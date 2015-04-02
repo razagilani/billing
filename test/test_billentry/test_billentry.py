@@ -139,7 +139,9 @@ class BillEntryIntegrationTest(object):
             quantity=150.0, register_binding='REG_TOTAL')
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                             service_address=Address(street='2 Example St.'))
-
+        register2 = Register(self.ub2, "ABCDEF description",
+            "ABCDEF", 'therms', False, "total", None, "MNOPQR",
+            quantity=250.0, register_binding='REG_TOTAL')
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
                                   None, Address(), Address(), '2')
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
@@ -151,7 +153,8 @@ class BillEntryIntegrationTest(object):
         self.ub3.id = 3
         s = Session()
         s.add_all([self.utility, self.ua1, self.rate_class, self.ub1,
-            self.ub2, self.project_mgr_role, self.admin_role])
+            self.ub2, self.project_mgr_role, self.admin_role, register,
+            register2])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
@@ -734,6 +737,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'computed_total': 0,
                 'due_date': None,
                 'id': 2,
+                'meter_identifier': 'MNOPQR',
                 'next_meter_read_date': None,
                 'pdf_url': '',
                 'period_end': None,
@@ -745,7 +749,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 0,
+                'total_energy': 250,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
@@ -758,6 +762,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'computed_total': 0,
                 'due_date': None,
                 'id': 1,
+                'meter_identifier': 'GHIJKL',
                 'next_meter_read_date': None,
                 'pdf_url': '',
                 'period_end': None,
@@ -769,7 +774,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 0,
+                'total_energy': 150,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
@@ -789,6 +794,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'computed_total': 0,
                 'due_date': None,
                 'id': 1,
+                'meter_identifier': 'GHIJKL',
                 'next_meter_read_date': None,
                 'pdf_url': '',
                 'period_end': None,
@@ -800,7 +806,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 0,
+                'total_energy': 150,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
