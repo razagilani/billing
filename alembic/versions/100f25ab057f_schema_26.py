@@ -50,6 +50,8 @@ def upgrade():
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
 
+    op.add_column('utilbill', sa.Column('tou', sa.Boolean(), nullable=False))
+    
     REGISTER_BINDINGS = [
         'REG_TOTAL',
         'REG_TOTAL_SECONDARY',
