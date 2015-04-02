@@ -34,8 +34,11 @@ def clean_up_register_names(s):
 
         'REG_OFF_PK': 'REG_OFFPEAK',
 
-        'REG_ONPEAK_DEMAND': 'REG_PEAK_DEMAND',
-        'REG_PEAKKW': 'REG_PEAK_DEMAND',
+        # what look like "time-of-use demand" meter readings (in only 3
+        # bills, none of them processed) are actually just regular demand
+        'REG_ONPEAK_DEMAND': 'REG_DEMAND',
+        'REG_DEMAND': 'REG_DEMAND',
+        'REG_PEAKKW': 'REG_DEMAND',
 
         'REG_MAX_DEMAND': 'REG_DEMAND',
         'DEMAND_TOTAL': 'REG_DEMAND',
