@@ -2,7 +2,9 @@ Ext.define('BillEntry.controller.Reports', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'UserUtilBillCounts', 'UserUtilityBills'
+        'UserUtilBillCounts',
+        'UserUtilityBills',
+        'AllFlaggedUtilityBills'
     ],
 
     views:[
@@ -40,6 +42,9 @@ Ext.define('BillEntry.controller.Reports', {
             'panel[name=reportsTab]': {
                 activate: this.handleActivate
             },
+            'panel[id=flaggedUtilityBillsGrid]': {
+                expand: this.handleFlaggedBillsActivate
+            },
             'grid[id=userUtilBillCountGrid]': {
                 selectionchange: this.handleUserUtilBillCountRowSelect
             }
@@ -66,6 +71,13 @@ Ext.define('BillEntry.controller.Reports', {
                 this.getUserUtilityBillsStore().reload();
             }
         }
+    },
+
+    /**
+     * Handle the flagged bills sub-panel being activated.
+     */
+    handleFlaggedBillsActivate: function(){
+        this.getAllFlaggedUtilityBillsStore().reload();
     },
 
     /**

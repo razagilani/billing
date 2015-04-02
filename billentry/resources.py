@@ -406,3 +406,20 @@ class UtilBillListForUserResource(BaseResource):
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
+
+class FlaggedUtilBillListResource(BaseResource):
+    """List of utility bills that are flagged
+    """
+
+    def get(self, *args, **kwargs):
+        with project_mgr_permission.require():
+            s = Session()
+            utilbills = s.query(BEUtilBill)\
+                .filter(BEUtilBill.flagged == True)\
+                .order_by(
+                    desc(UtilBill.period_start),
+                    desc(UtilBill.id)
+                ).all()
+            rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+            return {'rows': rows, 'results': len(rows)}
+

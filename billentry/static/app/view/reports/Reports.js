@@ -4,10 +4,11 @@ Ext.define('BillEntry.view.reports.Reports', {
     title: "Reports",
     name: 'reportsTab',
 
+
     layout: {
-        type: 'vbox',
-        align : 'stretch',
-        pack  : 'start'
+        type: 'accordion',
+        titleCollapse: true,
+        animate: false
     },
 
     requires: [
@@ -16,6 +17,14 @@ Ext.define('BillEntry.view.reports.Reports', {
     ],
 
     items: [{
+        xtype: 'panel',
+        title: 'Entered Bills',
+        layout: {
+            type: 'vbox',
+            align : 'stretch',
+            pack  : 'start'
+        },
+        items:[{
             xtype: 'form',
             height: 60,
             title: 'Select a Date/Time Range',
@@ -29,13 +38,13 @@ Ext.define('BillEntry.view.reports.Reports', {
                     margin: '2 5 5 5'
                 },
                 items: [{
-                    xtype: 'datefield',
-                    fieldLabel: 'From:',
-                    name: 'start'
-                }, {
-                    xtype: 'datefield',
-                    fieldLabel: 'To:',
-                    name: 'end'
+                        xtype: 'datefield',
+                        fieldLabel: 'From:',
+                        name: 'start'
+                    }, {
+                        xtype: 'datefield',
+                        fieldLabel: 'To:',
+                        name: 'end'
                 }]
             }]
         },{
@@ -44,8 +53,18 @@ Ext.define('BillEntry.view.reports.Reports', {
             flex: 1
         },{
             xtype: 'billDetails',
+            store: 'UserUtilityBills',
             id: 'reportUtilityBillsGrid',
             disabled: true,
-            flex: 1
+            flex: 1,
+            omitColumns: ['entered']
+        }]
+    },{
+        title: 'Flagged Bills',
+        xtype: 'billDetails',
+        store: 'AllFlaggedUtilityBills',
+        id: 'flaggedUtilityBillsGrid',
+        omitColumns: ['flagged']
     }]
+
 });
