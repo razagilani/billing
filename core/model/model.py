@@ -114,7 +114,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '44b3d2dcc1d3'
+_schema_revision = '100f25ab057f'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -359,7 +359,6 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
-
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -393,6 +392,12 @@ class UtilBill(Base):
     period_start = Column(Date)
     period_end = Column(Date)
     due_date = Column(Date)
+
+    # this is created for letting bill entry user's marking/un marking a
+    # bill for Time Of Use. The value of the column has nothing to do with
+    # whether there are time-of-use registers or whether the energy is
+    # actually priced according to time of use
+    tou = Column(Boolean, nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -482,7 +487,7 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete):
+                 next_meter_read_date=None, state=Complete, tou=False):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -506,6 +511,7 @@ class UtilBill(Base):
         self.due_date = due_date
         self.account_number = utility_account.account_number
         self.next_meter_read_date = next_meter_read_date
+        self.tou = tou
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -544,6 +550,12 @@ class UtilBill(Base):
         if self.rate_class is None:
             return None
         return self.rate_class.name
+
+    def get_rate_class(self):
+        self.rate_class
+
+    def set_rate_class(self, rate_class):
+        self.rate_class = rate_class
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
