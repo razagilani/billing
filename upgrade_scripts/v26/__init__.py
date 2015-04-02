@@ -55,8 +55,15 @@ def upgrade():
 
     init_model(schema_revision='52a7069819cb')
     s = Session()
-    import ipdb; ipdb.set_trace()
     clean_up_register_names(s)
+
+    # it is necessary to commit and start a new transaction between changing
+    # the data under the old schema and upgrading to the new
+    # schema--otherwise MySQL will wait forever. i think this is because the
+    # schema-change commands are not part of the transaction, and MySQL wants
+    # to wait until all transactions on relevant tables are finished before
+    # changing those tables.
+    s.commit()
 
     log.info('upgrading to 100f25ab057f')
     alembic_upgrade('100f25ab057f')
