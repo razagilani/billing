@@ -24,7 +24,7 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-project_mgr_permission = Permission(RoleNeed('Project Manager'))
+project_mgr_permission = Permission(RoleNeed('Project Manager'), RoleNeed('admin'))
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
@@ -248,7 +248,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.compute_utility_bill(id)
 
         if row['flagged'] is True:
-            utilbill.flag(current_user, datetime.utcnow())
+            utilbill.flag()
         elif row['flagged'] is False:
             utilbill.un_flag()
 
@@ -376,7 +376,7 @@ class UtilBillCountForUserResource(BaseResource):
                 'email': user.email,
                 'total_count': int(total_count or 0),
                 'gas_count': int(gas_count or 0),
-                'electric_count': int(electric_count or 0),
+                'electric_count': int(electric_count or 0)
             } for (user, total_count, electric_count, gas_count) in q.all()]
             return {'rows': rows, 'results': len(rows)}
 
@@ -405,4 +405,21 @@ class UtilBillListForUserResource(BaseResource):
             ).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
+
+
+class FlaggedUtilBillListResource(BaseResource):
+    """List of utility bills that are flagged
+    """
+
+    def get(self, *args, **kwargs):
+        with project_mgr_permission.require():
+            s = Session()
+            utilbills = s.query(BEUtilBill)\
+                .filter(BEUtilBill.flagged == True)\
+                .order_by(
+                    desc(UtilBill.period_start),
+                    desc(UtilBill.id)
+                ).all()
+            rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
+            return {'rows': rows, 'results': len(rows)}
 

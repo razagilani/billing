@@ -16,18 +16,19 @@ from core.model import Session
 
 log = logging.getLogger(__name__)
 
+def create_project_manager_role():
+    manager_role = Role('Project Manager',
+                        'Role for accessing reports view of billentry app')
+    return manager_role
+
 def upgrade():
     log.info('Beginning upgrade to version 26')
 
-    init_model(schema_revision='52a7069819cb')
+    log.info('upgrading to 100f25ab057f')
+    alembic_upgrade('100f25ab057f')
 
-    log.info('upgrading to 44b3d2dcc1d3')
-    alembic_upgrade('44b3d2dcc1d3')
-
+    init_model(schema_revision='100f25ab057f')
     s = Session()
     s.add(create_project_manager_role())
     s.commit()
 
-def create_project_manager_role():
-    manager_role = Role('Project Manager', 'Role for accessing reports view of billentry app')
-    return manager_role
