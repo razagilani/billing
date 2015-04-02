@@ -113,10 +113,6 @@ def init_model(uri=None, schema_revision=None):
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
 
-    # run this whenever the data model is initialized to make sure it doesn't
-    # get out of date when the schema changes
-    get_private_data_column_names()
-
     log.debug('Initialized sqlalchemy model')
 
 def initialize():
