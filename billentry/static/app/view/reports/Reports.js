@@ -50,13 +50,11 @@ Ext.define('BillEntry.view.reports.Reports', {
         },{
             xtype: 'userUtilBillCount',
             id: 'userUtilBillCountGrid',
-            flex: 1
         },{
             xtype: 'billDetails',
             store: 'UserUtilityBills',
             id: 'reportUtilityBillsGrid',
             disabled: true,
-            flex: 1,
             omitColumns: ['entered']
         }]
     },{
@@ -64,7 +62,8 @@ Ext.define('BillEntry.view.reports.Reports', {
         xtype: 'billDetails',
         store: 'AllFlaggedUtilityBills',
         id: 'flaggedUtilityBillsGrid',
-        omitColumns: ['flagged']
+        omitColumns: ['flagged'],
+        layout: 'fit'
     }]
 
 });
