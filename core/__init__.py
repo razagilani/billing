@@ -78,18 +78,24 @@ def import_all_model_modules():
     import brokerage.brokerage_model
     import billentry.billentry_model
 
-def get_scrub_sql():
-    """Return SQL code (string) that can be executed to transform a copy of a
-    production database into one that can be used into a development
-    environment, by replacing certain data with substitute values.
+def get_scrub_columns():
+    """Return a dictionary mapping sqlalchemy.Column objects to values that
+    should replace the real contents of those columns in a copy of a production
+    database used for development.
     """
     from reebill.reebill_model import ReeBillCustomer, ReeBill
-    columns = {
+    return {
         ReeBillCustomer.__table__.c.bill_email_recipient:
             "'example@example.com'",
         ReeBill.__table__.c.email_recipient: "'example@example.com'",
         # TODO: billentry_user.email and password should probably be included
     }
+
+def get_scrub_sql():
+    """Return SQL code (string) that can be executed to transform a copy of a
+    production database into one that can be used into a development
+    environment, by replacing certain data with substitute values.
+    """
     # it seems incredibly hard to get SQLAlchemy to emit a fully-compiled SQL
     # string that including data values. i gave up after trying this method with
     # the "dialect" sqlalchemy.dialects.mysql.mysqldb.MySQLDialect()
@@ -100,7 +106,7 @@ def get_scrub_sql():
                   "where %(col)s is not null;")
     return '\n'.join(
         sql_format % dict(table=c.table.name, col=c.name, sub_value=v)
-        for c, v in columns.iteritems())
+        for c, v in get_scrub_columns().iteritems())
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
