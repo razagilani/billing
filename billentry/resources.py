@@ -343,30 +343,30 @@ class UtilBillCountForUserResource(BaseResource):
         args = parser.parse_args()
 
         s = Session()
-            count_sq = s.query(
-                BEUtilBill.id,
-                BEUtilBill.billentry_user_id,
-                func.count(BEUtilBill.id).label('total_count'),
-                func.sum(
-                    case(((RateClass.service == 'electric', 1),), else_=0)
-                ).label('electric_count'),
-                func.sum(
-                    case(((RateClass.service == 'gas', 1),), else_=0)
-                ).label('gas_count'),
-            ).group_by(BEUtilBill.billentry_user_id).outerjoin(
-                RateClass).filter(and_(
-                BEUtilBill.billentry_date >= args['start'],
-                    BEUtilBill.billentry_date < args['end'])
-            ).subquery()
+        count_sq = s.query(
+            BEUtilBill.id,
+            BEUtilBill.billentry_user_id,
+            func.count(BEUtilBill.id).label('total_count'),
+            func.sum(
+                case(((RateClass.service == 'electric', 1),), else_=0)
+            ).label('electric_count'),
+            func.sum(
+                case(((RateClass.service == 'gas', 1),), else_=0)
+            ).label('gas_count'),
+        ).group_by(BEUtilBill.billentry_user_id).outerjoin(
+            RateClass).filter(and_(
+            BEUtilBill.billentry_date >= args['start'],
+                BEUtilBill.billentry_date < args['end'])
+        ).subquery()
 
-            q = s.query(
-                BillEntryUser,
-                count_sq.c.total_count,
-                count_sq.c.electric_count,
-                count_sq.c.gas_count,
-            ).outerjoin(count_sq).group_by(
-                BillEntryUser.id).order_by(
-                BillEntryUser.id)
+        q = s.query(
+            BillEntryUser,
+            count_sq.c.total_count,
+            count_sq.c.electric_count,
+            count_sq.c.gas_count,
+        ).outerjoin(count_sq).group_by(
+            BillEntryUser.id).order_by(
+            BillEntryUser.id)
 
         rows = [{
             'id': user.id,
