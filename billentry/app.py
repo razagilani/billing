@@ -332,6 +332,8 @@ api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResource,
                  '/utilitybills/user_utilitybills')
+api.add_resource(resources.FlaggedUtilBillListResource,
+                 '/utilitybills/flagged_utilitybills')
 
 # apparently needed for Apache
 application = app
