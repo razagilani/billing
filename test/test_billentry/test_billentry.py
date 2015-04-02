@@ -266,7 +266,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
-              'flagged': False
+              'flagged': False,
+              'tou': False
              },
              {'computed_total': 0.0,
               'due_date': None,
@@ -289,7 +290,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
-              'flagged': False}
+              'flagged': False,
+              'tou': False}
          ], }
         self.assertJson(expected, rv.data)
 
@@ -359,7 +361,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': True,
-              'flagged': False
+              'flagged': False,
+              'tou': False
               },
          'results': 1}
 
@@ -423,7 +426,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
-              'flagged': False
+              'flagged': False,
+              'tou': False
              },
              {'computed_total': 0.0,
               'due_date': None,
@@ -446,7 +450,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
-              'flagged': False}
+              'flagged': False,
+              'tou': False}
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
@@ -482,7 +487,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
-                'flagged': False
+                'flagged': False,
+                'tou': False
             }}, rv.data
         )
 
@@ -516,7 +522,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
-                  'flagged': False
+                  'flagged': False,
+                  'tou': False
             },
             }, rv.data
         )
@@ -529,16 +536,25 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryReport, self).setUp()
         s = Session()
         self.user1 = BillEntryUser(email='1@example.com', password='password')
+        self.user1.id = 1
         self.user2 = BillEntryUser(email='2@example.com', password='password')
+        self.user2.id = 2
         self.user3 = BillEntryUser(email='3@example.com', password='password')
+        self.user3.id = 3
         s.add_all([self.ub1, self.ub2, self.ub3, self.user1, self.user2])
         self.user1.roles = [self.project_mgr_role]
         self.user3.roles = [self.admin_role]
         s.commit()
 
+        self.response_all_counts_0 = {"results": 2, "rows": [
+            {"id": 1, "email": '1@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0},
+            {"id": 2, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]}
+
     def test_report_count_for_user(self):
 
-        data = {'email':'1@example.com', 'password': 'password'}\
+        data = {'email': '1@example.com', 'password': 'password'}
         # post request for user login with valid credentials
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
@@ -554,12 +570,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,2,1).isoformat()))
 
 
-        self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
-                        rv.data)
+        self.assertJson(self.response_all_counts_0, rv.data)
 
         self.ub1.enter(self.user1, datetime(2000,1,10))
         self.ub2.enter(self.user1, datetime(2000,1,20))
@@ -567,23 +578,17 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # no bills in range
         rv = self.app.get(url_format % (datetime(2000,1,11).isoformat(),
                                         datetime(2000,1,20).isoformat()))
-        self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
-                        rv.data)
+        self.assertJson(self.response_all_counts_0, rv.data)
 
         # 1 gas bill and 1 bill without rate class in range for user 1
         # No bill in range for user 2
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
+            {"id": 1, "email": '1@example.com', "total_count": 2,
              "gas_count": 1, "electric_count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
-                        rv.data)
+            {"id": 2, 'email': '2@example.com', "total_count": 0,
+             "gas_count": 0, "electric_count": 0}]}, rv.data)
 
         self.ub3.enter(self.user2, datetime(2000,1,10))
 
@@ -592,11 +597,10 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(url_format % (datetime(2000,1,10).isoformat(),
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
+            {"id": 1, "email": '1@example.com', "total_count": 2,
              "gas_count": 1, "electric_count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
-             "gas_count": 0, "electric_count": 1}]},
-                        rv.data)
+            {"id": 2, 'email': '2@example.com', "total_count": 1,
+             "gas_count": 0, "electric_count": 1}]}, rv.data)
 
     def test_user_permission_for_report(self):
         data = {'email':'2@example.com', 'password': 'password'}
@@ -629,10 +633,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         # this should succeed with 200 as user1 is member of Project Manager
         # Role
         self.assertEqual(200, rv.status_code)
-        self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
-                        rv.data)
+        self.assertJson(self.response_all_counts_0, rv.data)
 
         data = {'email':'3@example.com', 'password': 'password'}
         # post request for user login with for user3, member of
@@ -647,10 +648,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         # this should succeed with 200 as user3 is member of admin role
         self.assertEqual(200, rv.status_code)
-        self.assertJson({"results": 2, "rows": [
-            {"id": self.user1.id, "email": '1@example.com', "count": 0},
-            {"id": self.user2.id, 'email': '2@example.com', "count": 0}]},
-                        rv.data)
+        self.assertJson(self.response_all_counts_0, rv.data)
 
     def test_report_utilbills_for_user(self):
         url_format = self.URL_PREFIX + 'user_utilitybills?start=%s&end=%s&id=%s'
@@ -692,7 +690,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': True,
-                  'flagged': False
+                  'flagged': False,
+                  'tou': False
                  }],
              }, rv.data)
 

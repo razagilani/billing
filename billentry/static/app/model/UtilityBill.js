@@ -39,6 +39,7 @@ Ext.define('BillEntry.model.UtilityBill', {
         {name: 'due_date', type: 'date', dateFormat: 'Y-m-d'},
         {name: 'wiki_url'},
         {name: 'entered'},
-        {name: 'flagged'}
+        {name: 'flagged'},
+        {name: 'tou'}
     ]
 });
