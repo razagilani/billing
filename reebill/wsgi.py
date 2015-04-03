@@ -753,6 +753,13 @@ class RateClassesResource(RESTResource):
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
+class CustomerGroupsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        customer_groups = self.utilbill_views.get_all_customer_groups_json()
+        return True, {'rows': customer_groups, 'results': len(customer_groups)}
+
+
 class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
@@ -948,6 +955,7 @@ class ReebillWSGI(WebResource):
     suppliers = SuppliersResource()
     utilities = UtilitiesResource()
     rateclasses = RateClassesResource()
+    customergroups = CustomerGroupsResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
