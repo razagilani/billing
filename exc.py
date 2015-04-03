@@ -24,20 +24,15 @@ class MissingDataError(BillingError):
     """Data from an external source (e.g. Skyline OLAP or OLTP) were expected
     but not found."""
 
+class MissingFileError(BillingError):
+    pass
+
+class DuplicateFileError(BillingError):
+    '''Attempt to upload or recognize a utility bill file that already exists.
+    '''
+    pass
 
 class NoSuchBillException(BillingError):
-    pass
-
-
-class NotUniqueException(BillingError):
-    pass
-
-
-class NoRateStructureError(BillingError):
-    pass
-
-
-class NoUtilityNameError(BillingError):
     pass
 
 
@@ -50,27 +45,23 @@ class IssuedBillError(BillingError):
     attempt to save changes to an issued reebill document in mongo, not failure
     of a bill-processing operation due to a business rule."""
 
+class ProcessedBillError(BillingError):
+    """Exception for trying to modify a bill that has been processed."""
+
 
 class BillStateError(BillingError):
     """A bill was in a state in which some operation is not allowed."""
 
 
-# TODO maybe remove; BillStateError is specific enough
-class NotAttachable(BillStateError):
-    """Trying to issue a bill that is not issuable."""
-
-
 class NotIssuable(BillStateError):
     """Trying to issue a bill that is not issuable."""
 
+class NotProcessable(BillStateError):
+    """Trying to mark bill as processed that does not have all
+    neccessary data"""
 
 class RSIError(BillingError):
     """Error involving a Rate Structure Item."""
-
-
-class NoRSIError(RSIError):
-    """Trying to compute a charge that no corresponding Rate Structure Item."""
-
 
 class FormulaError(RSIError):
     """Error in the "quantity"/"rate" formula of a Rate Structure Item."""
@@ -81,17 +72,9 @@ class FormulaSyntaxError(FormulaError):
     Python SyntaxError should not be caught for obvious reasons."""
 
 
-class NoSuchRSIError(RSIError):
-    """Could not find the requested RSI"""
+class ConfirmAdjustment(Exception):
+    def __init__(self, correction_sequences, total_adjustment):
+        super(ConfirmAdjustment, self).__init__()
+        self.correction_sequences = correction_sequences
+        self.total_adjustment = total_adjustment
 
-
-class MongoError(BillingError):
-    """MongoDB write error: encapsulates the dictionary returned by PyMongo
-    collection save/remove (when using "safe mode," which we should always be
-    using)."""
-
-    def __init__(self, err_dict):
-        self.err_dict = err_dict
-
-    def __str__(self):
-        return str(self.err_dict)

@@ -6,9 +6,8 @@
 fabric
 coverage
 ipdb
-minimock
 mock
 nose
 nose-progressive
-pudb
-sqlalchemy
+awscli # command-line tool from Amazon for working with AWS
+
