@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 import logging
 from os.path import join
+import os
 from subprocess import CalledProcessError, Popen
 from time import sleep
 import subprocess
@@ -148,8 +149,11 @@ class FakeS3Manager(object):
         # messages to both
         cls.fakes3_command = 'fakes3 --port %s --root %s' % (
             config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
+
+        # On Thomas' computer FakeS3 needs to write its output to somewhere,
+        # because othewise requests to fakes3 raise a socket timeout.
         cls.fakes3_process = Popen(cls.fakes3_command.split(),
-                                   stdout=subprocess.PIPE,
+                                   stdout=open(os.devnull, 'w'),
                                    stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
