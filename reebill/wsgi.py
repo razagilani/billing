@@ -376,9 +376,9 @@ class AccountsResource(RESTResource):
                 row['utility_account_id'], row['utility_account_number'])
 
         if 'tags' in row:
-            self.reebill_processor.a
-            pass
-
+            tags = row['tags'].split()
+            self.reebill_processor.set_groups_for_utility_account(
+                row['utility_account_id'], tags)
         return True, {}
 
 

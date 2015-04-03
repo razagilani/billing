@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from StringIO import StringIO
 
 from sqlalchemy.sql import desc
-from sqlalchemy import not_
-from sqlalchemy import func
+from sqlalchemy import not_, func
+from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
