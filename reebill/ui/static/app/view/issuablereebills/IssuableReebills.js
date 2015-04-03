@@ -113,8 +113,9 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
         },'-',{
             xtype: 'combo',
             fieldLabel: 'Filter Bills on Tags',
-            displayField: 'tags',
-            valueField: 'tags'
+            store: 'CustomerGroups',
+            displayField: 'name',
+            valueField: 'id'
         }]
     }]
 
