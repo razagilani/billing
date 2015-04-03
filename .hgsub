@@ -1,0 +1,5 @@
+skyliner = ssh://hg@bitbucket.org/skylineitops/skyliner
+deploy = ssh://hg@bitbucket.org/skylineitops/deploy
+nexusapi = ssh://hg@bitbucket.org/skylineitops/nexusapi
+prodops = ssh://hg@bitbucket.org/skylineitops/prodops
+mq = ssh://hg@bitbucket.org/skylineitops/mq
