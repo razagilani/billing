@@ -2,24 +2,23 @@ from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from reebill.reebill_model import ReeBillCustomer, ReeBill
-from test.setup_teardown import TestCaseWithSetup
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
     UtilityAccount
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
+from test.setup_teardown import clear_db
+from test.testing_utils import TestCase
 
 
-class StateDBTest(TestCaseWithSetup):
+class StateDBTest(TestCase):
 
     def setUp(self):
         # clear out database
         init_config('test/tstsettings.cfg')
         init_model()
-        self.session = Session()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         blank_address = Address()
         test_utility = Utility(name='FB Test Utility Name',
                                address=blank_address)
@@ -34,6 +33,7 @@ class StateDBTest(TestCaseWithSetup):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account)
+        self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
@@ -41,8 +41,7 @@ class StateDBTest(TestCaseWithSetup):
         self.payment_dao = PaymentDAO()
 
     def tearDown(self):
-        self.session.rollback()
-        self.truncate_tables()
+        clear_db()
 
     def test_versions(self):
         '''Tests max_version(), increment_version(), and
