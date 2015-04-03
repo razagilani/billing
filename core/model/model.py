@@ -317,7 +317,7 @@ class RateClass(Base):
         # register by default (the unit can be picked according to
         # "service"). but for now, all UtilBills initially have no registers
         # when they are created.
-        unit = 'therms' if service == 'gas' else 'electric'
+        unit = 'therms' if service == 'gas' else 'kWh'
         self.register_templates = [
             RegisterTemplate.get_total_register_template(unit)]
 
