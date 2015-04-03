@@ -292,10 +292,14 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 3, 3),
                              processed=True)
 
+        # replaced registers that were automatically created by the rate class
+        # because old tests rely on these specific values
+        u1.registers = []
         u1r1 = Register(u1, "test description", "M60324",
                         'therms', False, "total", None, "M60324",
                         quantity=123.45,
                         register_binding="REG_TOTAL")
+        u2.registers = []
         u2r1 = Register(u2, "test description", "M60324",
                       'therms', False, "total", None, "M60324",
                       quantity=123.45,
