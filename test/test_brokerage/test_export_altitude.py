@@ -10,12 +10,16 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
     AltitudeAccount
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
-    RateClass, Supplier
+    RateClass, Supplier, Register
 from brokerage.export_altitude import PGAltitudeExporter
 from test import init_test_config
 from test.setup_teardown import TestCaseWithSetup
 from util.dateutils import ISO_8601_DATETIME
 
+
+def setUpModule():
+    init_test_config()
+    init_model()
 
 class TestExportAltitude(TestCase):
     def setUp(self):
@@ -38,6 +42,7 @@ class TestExportAltitude(TestCase):
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
         u1.supply_choice_id = None
+        u1.get_total_meter_identifier.return_value = ''
         u1.tou = False
 
         u2 = Mock(autospec=UtilBill)
@@ -59,6 +64,7 @@ class TestExportAltitude(TestCase):
         u2.date_received = None
         u2.date_modified = None
         u2.supply_choice_id = '123xyz'
+        u2.get_total_meter_identifier.return_value = ''
         u2.tou = False
 
         self.utilbills = [u1, u2]
@@ -105,6 +111,7 @@ class TestExportAltitude(TestCase):
                              '2001-01-01T00:00:00Z',
                              '2001-01-02T00:00:00Z',
                              '2000-03-01T00:00:00Z',
+                             '',
                              'FALSE'
                          ), dataset[0])
         self.assertEqual((
@@ -129,6 +136,7 @@ class TestExportAltitude(TestCase):
                              '',
                              '',
                              '2000-03-15T00:00:00Z',
+                             '',
                              'FALSE'
                          ), dataset[1])
 
@@ -157,6 +165,8 @@ class TestAltitudeBillStorage(TestCase):
             service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1),
             due_date=date(2000,2,1))
+        self.utilbill.registers[0].quantity = 150.
+        self.utilbill.registers[0].meter_identifier = 'GHIJKL'
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
@@ -187,12 +197,11 @@ class TestAltitudeBillStorage(TestCase):
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
             'service_address_postal_code,create_date,modified_date,'
-            'ordering_date,time_of_use\r\n'
+            'ordering_date,meter_number,time_of_use\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0.0,0,Rate Class,,1 Service St.,,,,,%s,%s,'
-            'FALSE\r\n' %
+            '2000-01-01T00:00:00Z,,150.0,0,Rate Class,,1 Service St.,,,,,%s,%s,%s,%s\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
-            self.utilbill.due_date.strftime(ISO_8601_DATETIME)))
+            self.utilbill.due_date.strftime(ISO_8601_DATETIME),'GHIJKL', 'FALSE'))
         csv_file.seek(0)
         actual_csv = csv_file.read()
         self.assertEqual(expected_csv, actual_csv)

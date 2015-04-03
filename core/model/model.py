@@ -9,6 +9,7 @@ import json
 from math import floor
 
 import sqlalchemy
+from sqlalchemy import desc
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
@@ -811,6 +812,23 @@ class UtilBill(Base):
         '''
         return sum(c.target_total for c in self.get_supply_charges()
                    if c.target_total is not None and c.has_charge)
+
+    def set_total_meter_identifier(self, meter_identifier):
+        '''sets the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        self.check_editable()
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        register.meter_identifier = meter_identifier
+
+    def get_total_meter_identifier(self):
+        '''returns the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL.'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        return register.meter_identifier
 
     def get_total_energy_consumption(self):
         '''Return total energy consumption, i.e. value of the "REG_TOTAL"
