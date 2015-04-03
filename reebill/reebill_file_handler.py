@@ -1293,34 +1293,6 @@ class PVBillDoc(BillDoc):
         return fl
 
 
-def build_parsers():
-    '''Return initialized argument parser.'''
-    parser = ArgumentParser(description="Send AMQP for recently modified records.")
-
-    parser.add_argument("-v", "--verbose", dest="verbose", 
-                        default=False,  action='store_true',
-                        help="Maximum output to stdout.  Default: %(default)r")
-
-    parser.add_argument("--skindirectory", dest="skin_directory", 
-                        default=False,  nargs="?", required=True,
-                        help="Specify skin bundle directory.  Default: %(default)r")
-
-    parser.add_argument("--skinname", dest="skin_name", 
-                        default=False,  nargs="?", required=True,
-                        help="Specify skin name.  Default: %(default)r")
-
-    parser.add_argument("--outputdirectory", dest="output_directory", 
-                        default=False,  nargs="?", required=True,
-                        help="Specify output directory.  Default: %(default)r")
-
-    parser.add_argument("--outputfile", dest="output_file", 
-                        default=False,  nargs="?", required=True,
-                        help="Specify output file.  Default: %(default)r")
-
-    parser.add_argument("--datafile", dest="data_file", 
-                        default=False,  nargs="?", required=False,
-                        help="Specify input data file. Omit for one bill.  Default: %(default)r")
-    return parser
 
 
 class SummaryFileGenerator(object):
@@ -1346,3 +1318,270 @@ class SummaryFileGenerator(object):
         # TODO: eventually there may be extra pages not taken from the bill
         # PDFs
         self._pdf_concatenator.write_result(output_file)
+
+
+
+def build_parsers():
+    '''Return initialized argument parser.'''
+    parser = ArgumentParser(description="Send AMQP for recently modified records.")
+
+    parser.add_argument("-v", "--verbose", dest="verbose",
+                        default=False,  action='store_true',
+                        help="Maximum output to stdout.  Default: %(default)r")
+
+    parser.add_argument("--skindirectory", dest="skin_directory",
+                        default=False,  nargs="?", required=True,
+                        help="Specify skin bundle directory.  Default: %(default)r")
+
+    parser.add_argument("--skinname", dest="skin_name",
+                        default=False,  nargs="?", required=True,
+                        help="Specify skin name.  Default: %(default)r")
+
+    parser.add_argument("--outputdirectory", dest="output_directory",
+                        default=False,  nargs="?", required=True,
+                        help="Specify output directory.  Default: %(default)r")
+
+    parser.add_argument("--outputfile", dest="output_file",
+                        default=False,  nargs="?", required=True,
+                        help="Specify output file.  Default: %(default)r")
+
+    parser.add_argument("--datafile", dest="data_file",
+                        default=False,  nargs="?", required=False,
+                        help="Specify input data file. Omit for one bill.  Default: %(default)r")
+    return parser
+
+
+if __name__ == '__main__':
+
+    # run pv bill with input data 
+    # python processing/bill_templates.py --skinname skyline_pv --skindirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf --datafile test/bill_templates.csv
+
+    # run one bill with teva template 
+    # python processing/bill_templates.py --skinname skyline_pv --skindirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf 
+
+    parser = build_parsers()
+    args = parser.parse_args()
+
+    logger = init_logging(args)
+
+    if not os.path.exists(args.output_directory):
+        os.mkdir(args.output_directory)
+
+    fake_bill_fields = {
+        "account": "38291",
+        "sequence": "1",
+        "begin_period": datetime.strptime("2013-01-01", "%Y-%m-%d"),
+        "manual_adjustment": float("0"),
+        "balance_forward": float("0"),
+        "payment_received": float("0"),
+        "balance_due": float("12471.62"),
+        "total_energy_consumed": float("159756.09"),
+        "total_re_consumed": float("127914"),
+        "total_ce_consumed": float("31842.09"),
+        "total_re_delivered_grid": float("0"),
+        "total_re_generated": float("127914"),
+        "due_date": datetime.strptime("2013-03-01", "%Y-%m-%d"),
+        "end_period": datetime.strptime("2013-02-01", "%Y-%m-%d"),
+        "hypothetical_charges": float("18371.95"),
+        "actual_charges": float("3661.84"),
+        "discount_rate": float("0.99"),
+        "issue_date": datetime.strptime("2013-02-01", "%Y-%m-%d"),
+        "late_charge": float("0"),
+        "prior_balance": float("0"),
+        "ree_charge": float("12471.62"),
+        "neg_credit_applied": float("0"),
+        "neg_ree_charge": float("0"),
+        "neg_credit_balance": float("0"),
+        "ree_savings": float("2238.5"),
+        "neg_ree_savings": float("0"),
+        "neg_ree_potential_savings": float("0"),
+        "ree_value": float("14710.11"),
+        "service_addressee": "Service Location",
+        "service_city": "Washington",
+        "service_postal_code": "20009",
+        "service_state": "DC",
+        "service_street": "2020 K Street",
+        "total_adjustment": float("0"),
+        "total_hypothetical_charges": float("0"),
+        "total_utility_charges": float("0"),
+        "payment_addressee": "Skyline Innovations",
+        "payment_city": "Washington",
+        "payment_postal_code": "20009",
+        "payment_state": "DC",
+        "payment_street": "1606 20th St NW",
+        "billing_addressee": "Example Billee",
+        "billing_street": "1313 Elm Street",
+        "billing_city": "Washington",
+        "billing_postal_code": "20009",
+        "billing_state": "DC"
+    }
+
+    fake_utility_meters = [
+        {
+            'meter_id':'meter 1',
+            'registers':[
+                {
+                    'register_id':'register 1',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 2',
+                    'description':'description ',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 3',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }
+            ],
+            'total':0
+        }, {
+            'meter_id':'meter 2',
+            'registers':[
+                {
+                    'register_id':'register 1',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 2',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 3',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }
+            ],
+            'total':0
+        }
+    ]
+
+    fake_hypo_chargegroups = {
+        "group 1": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+        "group 2": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+        "group3": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+    } 
+
+    if args.data_file:
+
+        # read in lots of simulated data
+        reader = csv.reader(open(args.data_file))
+
+        for row, record in enumerate(reader):
+            if row == 0:
+                # the first column is the name of the variable
+                # create a dictionary whose keys are date column headers
+                by_date_dict = dict((datetime.strptime(col, '%Y-%m-%d'), dict()) for col in record[1:])
+
+                # keep track of the dates in column order
+                col_hdrs = [datetime.strptime(r, '%Y-%m-%d') for r in record[1:]]
+            else:
+                for col_index, value in enumerate(record[1:]):
+                    the_date = col_hdrs[col_index]
+                    if record[0] in ['begin_period', 'end_period', 'due_date', 'issue_date']:
+                        value = datetime.strptime(value, '%Y-%m-%d')
+                    elif record[0] in ['manual_adjustment', 'balance_due', 'balance_forward', 'hypothetical_charges', 
+                        'late_charge', 'payment_received','prior_balance', 'ree_charge', 'ree_savings', 'ree_value',
+                        'total_adjustment', 'total_hypothetical_charges', 'total_utility_charges', 'actual_charges',
+                        'discount_rate', 'neg_credit_applied', 'neg_ree_savings', 'neg_ree_charge', 'neg_credit_balance', 
+                        'neg_ree_potential_savings', 'total_re_generated', 'total_re_consumed', 'total_ce_consumed',
+                        'total_energy_consumed', 'total_re_delivered_grid']:
+                        value = float(value)
+
+                    by_date_dict[the_date][record[0]] = value
+
+                    # tack on fake meters 
+                    by_date_dict[the_date]['utility_meters'] = fake_utility_meters
+
+                    by_date_dict[the_date]['hypothetical_chargegroups'] = fake_hypo_chargegroups
+    else:
+        logger.info("No datafile supplied, generating one bill")
+        # implemented here so all necessary fields can be seen
+        by_date_dict = {'2014-01-01': fake_bill_fields}
+        by_date_dict['2014-01-01']['utility_meters'] = fake_utility_meters
+        by_date_dict['2014-01-01']['hypothetical_chargegroups'] = fake_hypo_chargegroups
+    
+
+    bill_data = deque([],13)
+
+    for i, kvp in enumerate(sorted(by_date_dict.keys())):
+        bill_data.append(by_date_dict[kvp])
+
+        # pass in all cycles data (for historical lookback)
+
+        # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
+        if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
+            doc = ThermalBillDoc(logger)
+        else:
+            doc = PVBillDoc(logger)
+        doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
+
