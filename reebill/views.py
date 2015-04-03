@@ -68,6 +68,16 @@ class Views(object):
             l.append(column_dict(r))
         return l
 
+    def get_utilbill_json(self, utilbill):
+        return column_dict_utilbill(utilbill)
+
+    def get_register_json(self, register):
+        return column_dict(register)
+
+    def get_charge_json(self, charge):
+        return column_dict(charge)
+
+
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
@@ -81,17 +91,20 @@ class Views(object):
                 for ub in utilbills]
         return data, len(utilbills)
 
+    def _serialize_id_name(self, class_):
+        """JSON serialization for suppliers, utilities, rate classes, ...
+        """
+        return [dict(id=x.id, name=x.name) for x in
+                Session().query(class_).order_by(class_.name).all()]
+
     def get_all_suppliers_json(self):
-        session = Session()
-        return [s.column_dict() for s in session.query(Supplier).all()]
+        return self._serialize_id_name(Supplier)
 
     def get_all_utilities_json(self):
-        session = Session()
-        return [u.column_dict() for u in session.query(Utility).all()]
+        return self._serialize_id_name(Utility)
 
     def get_all_rate_classes_json(self):
-        session = Session()
-        return [r.column_dict() for r in session.query(RateClass).all()]
+        return self._serialize_id_name(RateClass)
 
     def get_utility(self, name):
         session = Session()
@@ -143,16 +156,24 @@ class Views(object):
 
         rows_dict = {}
         for ua in utility_accounts:
+            reebill_customer = Session.query(ReeBillCustomer).filter(
+                ReeBillCustomer.utility_account == ua).first()
+            if reebill_customer is None:
+                group_names = []
+            else:
+                group_names = ' '.join(g.name for g in reebill_customer.groups)
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
                 'fb_utility_name': ua.fb_utility.name,
-                'fb_rate_class': ua.fb_rate_class.name if ua.fb_rate_class else '',
+                'fb_rate_class': ua.fb_rate_class.name \
+                    if ua.fb_rate_class else '',
                 'utility_account_number': ua.account_number,
                 'codename': name_dicts[ua.account].get('codename', ''),
                 'casualname': name_dicts[ua.account].get('casualname', ''),
                 'primusname': name_dicts[ua.account].get('primus', ''),
                 'utilityserviceaddress': str(ua.get_service_address()),
+                'tags': group_names,
                 'lastevent': '',
             }
 
