@@ -410,7 +410,8 @@ class ReeBill(Base):
             'services': [],
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
                          self.readings],
-            'groups': [self.reebill_customer.get_groups()]
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
