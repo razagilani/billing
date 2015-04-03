@@ -627,6 +627,10 @@ class ReeBillCustomer(Base):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
                % (self.name, self.discountrate)
 
+    def __str__(self):
+        return '%(id)s %(nextility_num)s %(name)s' % dict(
+            id=self.id, nextility_num=self.get_account(), name=self.name)
+
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
         version is 0 (i.e. is not a correction), or None if there are no bills.
