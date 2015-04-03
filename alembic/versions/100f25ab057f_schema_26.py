@@ -89,7 +89,17 @@ def upgrade():
         sa.Column('unit', sa.Enum(*PHYSICAL_UNITS), nullable=False),
         sa.Column('active_periods', sa.String(2048)),
         sa.Column('description', sa.String(255), nullable=False, default=''))
-        
+
     op.alter_column('register', 'register_binding',
                     existing_type=sa.String(length=1000),
                     type_=sa.Enum(*REGISTER_BINDINGS))
+
+    # creation of unique constraint for register table will fail due to
+    # existing duplicate values. these can be deleted using "alter ignore table"
+    # in MySQL though Alembic does not seem to support that.
+    # there are 24 duplicate registers in 5 bills, all of which have empty
+    # register_binding
+    op.execute("alter ignore table register add unique index "
+               "(utilbill_id, register_binding)")
+    op.create_unique_constraint(None, 'register_template',
+                                ['rate_class_id', 'register_binding'])
