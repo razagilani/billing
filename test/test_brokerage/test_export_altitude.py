@@ -17,6 +17,10 @@ from test.setup_teardown import TestCaseWithSetup
 from util.dateutils import ISO_8601_DATETIME
 
 
+def setUpModule():
+    init_test_config()
+    init_model()
+
 class TestExportAltitude(TestCase):
     def setUp(self):
         u1 = Mock(autospec=UtilBill)
@@ -161,9 +165,8 @@ class TestAltitudeBillStorage(TestCase):
             service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1),
             due_date=date(2000,2,1))
-        register = Register(self.utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-            quantity=150.0, register_binding='REG_TOTAL')
+        self.utilbill.registers[0].quantity = 150.
+        self.utilbill.registers[0].meter_identifier = 'GHIJKL'
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
@@ -171,7 +174,7 @@ class TestAltitudeBillStorage(TestCase):
         altitude_bill = AltitudeBill(self.utilbill, 'bbb')
         Session().add_all([utility, rate_class, supplier, self.utilbill,
                           altitude_account, altitude_utility, altitude_supplier,
-                          altitude_bill, register])
+                          altitude_bill])
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
