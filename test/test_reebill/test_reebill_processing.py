@@ -1992,6 +1992,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
     def test_two_registers_one_reading(self):
         '''Test the situation where a utiltiy bill has 2 registers, but its
         reebill has only one reading corresponding to the first register,
@@ -2013,8 +2014,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.utilbill_processor.new_register(utilbill_id)
             register_id = self.views.get_registers_json(
                 utilbill_id)[1]['id']
-            self.utilbill_processor.update_register(register_id,
-                                                    {'register_binding': 'REG_2'})
+            self.utilbill_processor.update_register(
+                register_id, {'register_binding': 'REG_DEMAND'})
         add_2nd_register()
 
         # the utility bill must have some charges that depend on both
@@ -2028,7 +2029,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.add_charge(utilbill_id)
         self.utilbill_processor.update_charge({
                                                   'rsi_binding': 'B',
-                                                  'quantity_formula': 'REG_2.quantity',
+                                                  'quantity_formula': 'REG_DEMAND.quantity',
                                                   'rate': 1
                                               }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
         self.utilbill_processor.update_utilbill_metadata(utilbill_id,
@@ -2063,7 +2064,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # register of the utility bill
         self.reebill_processor.update_reebill_readings('99999', 1)
         self.assertEqual(2, len(reebill.readings))
-        self.assertEqual('REG_2', reebill.readings[1].register_binding)
+        self.assertEqual('REG_DEMAND', reebill.readings[1].register_binding)
 
         self.reebill_processor.bind_renewable_energy('99999', 1)
         energy_2 = (self.views.get_reebill_metadata_json('99999')[0]

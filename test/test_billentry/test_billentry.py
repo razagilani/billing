@@ -172,17 +172,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
-        register1 = Register(self.ub1, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150,
-                register_binding='REG_TOTAL')
+        self.ub1.registers[0].quantity = 150
         register2 = Register(self.ub2, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
                 register_binding='REG_TOTAL')
-        s.add_all([register1, register2])
-        self.ub1.registers = [register1]
         self.ub2.registers = [register2]
+        s.add(register2)
 
         c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
                     type='distribution', target_total=1)
