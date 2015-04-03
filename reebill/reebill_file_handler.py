@@ -1333,11 +1333,8 @@ class SummaryFileGenerator(object):
     def generate_summary_file(self, reebills, output_file):
         """
         :param reebills: nonempty iterable of ReeBills that should be included.
-        :param output_path: location of the summary file. (Unfortunately,
-        a file object can't be used because of ReportLab.)
+        :param output_file: file where the summary will be written.
         """
-        # must have at least 1 element (it seems that boolean-izing is the
-        # only way to check if an iterator is empty)
         assert reebills
 
         for reebill in reebills:
