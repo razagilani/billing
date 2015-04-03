@@ -31,7 +31,7 @@ from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
 from brokerage.brokerage_model import BrokerageAccount
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -118,7 +118,7 @@ class BillEntryIntegrationTest(object):
         cls.app = billentry.app.test_client()
 
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
@@ -151,7 +151,7 @@ class BillEntryIntegrationTest(object):
         # TODO: add more database objects used in multiple subclass setUps
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
 class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
     """Integration tests using REST request handlers related to Bill Entry main
@@ -814,14 +814,14 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
     def setUp(self):
         init_test_config()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
         s.commit()
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_oauth_login(self):
         # just an example of a URL the user was trying to go to
