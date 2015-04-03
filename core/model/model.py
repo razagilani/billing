@@ -9,6 +9,7 @@ import json
 from math import floor
 
 import sqlalchemy
+from sqlalchemy import desc
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
@@ -77,13 +78,6 @@ class Base(object):
         return hash((self.__class__.__name__,) + tuple(
             getattr(self, x) for x in self.column_names()))
 
-    # TODO: move UI-related code to views.py
-    def column_dict(self):
-        '''Return dictionary of names and values for all attributes
-        corresponding to database columns.
-        '''
-        return {c: getattr(self, c) for c in self.column_names()}
-
     def clone(self):
         """Return an object identical to this one except for primary keys and
         foreign keys.
@@ -121,7 +115,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '52a7069819cb'
+_schema_revision = '100f25ab057f'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -193,20 +187,6 @@ class Address(Base):
         self.state = state
         self.postal_code = postal_code
 
-    @classmethod
-    def from_other(cls, other_address):
-        """Constructs a new :class:`.Address` instance whose attributes are
-        copied from the given `other_address`.
-        :param other_address: An :class:`.Address` instance from which to
-         copy attributes.
-        """
-        assert isinstance(other_address, cls)
-        return cls(other_address.addressee,
-            other_address.street,
-            other_address.city,
-            other_address.state,
-            other_address.postal_code)
-
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
                     self.postal_code)
@@ -218,21 +198,6 @@ class Address(Base):
     def __str__(self):
         return '%s, %s, %s %s' % (self.street, self.city, self.state,
                                self.postal_code)
-
-    def column_dict(self):
-        raise NotImplementedError
-
-    # TODO: move UI-related code to views.py
-    # TODO rename to column_dict
-    def to_dict(self):
-        return {
-            #'id': self.id,
-            'addressee': self.addressee,
-            'street': self.street,
-            'city': self.city,
-            'state': self.state,
-            'postal_code': self.postal_code,
-        }
 
     @classmethod
     def from_other(cls, other_address):
@@ -384,24 +349,17 @@ class UtilityAccount(Base):
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
 
-
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
                % (self.name, self.account)
 
     def get_service_address(self):
-        '''
-        Gets the service address of the first bill that was added to
-        the account. If the account doesn't have any bills it return
-        self.fb_service_address. A better way might be to pick the most
-        recently modified bill since service addresses don't change, however we
-        decided agaist it for the sake of simplicity and speed.
-        '''
-        session = Session.object_session(self)
-        ub = session.query(UtilBill)\
-            .filter(UtilBill.utility_account_id == self.id).first()
-        return self.fb_service_address if ub is None else ub.service_address
-
+        """Return the service address (Address object) of any bill for this
+        account, or the value of 'fb_service_address' if there are no bills.
+        """
+        if len(self.utilbills) > 0:
+            return self.utilbills[0].service_address
+        return self.fb_service_address
 class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
@@ -435,6 +393,12 @@ class UtilBill(Base):
     period_start = Column(Date)
     period_end = Column(Date)
     due_date = Column(Date)
+
+    # this is created for letting bill entry user's marking/un marking a
+    # bill for Time Of Use. The value of the column has nothing to do with
+    # whether there are time-of-use registers or whether the energy is
+    # actually priced according to time of use
+    tou = Column(Boolean, nullable=False)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
@@ -524,7 +488,7 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete):
+                 next_meter_read_date=None, state=Complete, tou=False):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -548,6 +512,7 @@ class UtilBill(Base):
         self.due_date = due_date
         self.account_number = utility_account.account_number
         self.next_meter_read_date = next_meter_read_date
+        self.tou = tou
 
         # TODO: empty string as default value for sha256_hexdigest is
         # probably a bad idea. if we are writing tests that involve putting
@@ -587,6 +552,12 @@ class UtilBill(Base):
             return None
         return self.rate_class.name
 
+    def get_rate_class(self):
+        self.rate_class
+
+    def set_rate_class(self, rate_class):
+        self.rate_class = rate_class
+
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
         None (unknown).
@@ -594,9 +565,6 @@ class UtilBill(Base):
         if self.supplier is None:
             return None
         return self.supplier.name
-
-    def get_utility_account_number(self):
-        return self.utility_account.account_number
 
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
@@ -614,9 +582,6 @@ class UtilBill(Base):
                 'period_end=%s, state=%s)>') % (
             self.utility_account.account, self.get_service(), self.period_start,
             self.period_end, self.state)
-
-    def is_attached(self):
-        return len(self._utilbill_reebills) > 0
 
     def add_charge(self, **charge_kwargs):
         self.check_editable()
@@ -702,6 +667,15 @@ class UtilBill(Base):
         if raise_exception and exception:
             raise exception
 
+    def regenerate_charges(self, pricing_model):
+        """Replace this bill's charges with new ones generated by
+        'pricing_model'.
+        """
+        self.check_editable()
+        self.charges = []
+        self.charges = pricing_model.get_predicted_charges(self)
+        return self.compute_charges()
+
     def processable(self):
         '''Returns False if a bill is missing any of the required fields
         '''
@@ -784,6 +758,23 @@ class UtilBill(Base):
         return sum(c.target_total for c in self.get_supply_charges()
                    if c.target_total is not None and c.has_charge)
 
+    def set_total_meter_identifier(self, meter_identifier):
+        '''sets the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        self.check_editable()
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        register.meter_identifier = meter_identifier
+
+    def get_total_meter_identifier(self):
+        '''returns the value of meter_identifier field of the register with
+        register_binding of REG_TOTAL.'''
+        #TODO: make this more generic once implementation of Regiter is changed
+        register = next(r for r in self.registers if r.register_binding
+                                                     == 'REG_TOTAL')
+        return register.meter_identifier
+
     def get_total_energy_consumption(self):
         '''Return total energy consumption, i.e. value of the "REG_TOTAL"
         register, in whatever unit it uses. Return 0 if there is no
@@ -800,30 +791,6 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
-
-    # TODO: move UI-related code to views.py
-    def column_dict(self):
-        # human-readable names for utilbill states (used in UI)
-        state_name = {
-            UtilBill.Complete: 'Final',
-            UtilBill.UtilityEstimated: 'Utility Estimated',
-            UtilBill.Estimated: 'Estimated',
-        }[self.state]
-        result = dict(super(UtilBill, self).column_dict().items() +
-                    [('account', self.utility_account.account),
-                     ('service', 'Unknown' if self.get_service() is None
-                                           else self.get_service().capitalize()),
-                     ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges()),
-                     ('reebills', [ur.reebill.column_dict() for ur
-                                   in self._utilbill_reebills]),
-                     ('utility', (self.utility.column_dict() if self.utility
-                                  else None)),
-                     ('supplier', (self.supplier.name if
-                                   self.supplier else None)),
-                     ('rate_class', self.get_rate_class_name()),
-                     ('state', state_name)])
-        return result
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -990,18 +957,11 @@ class Charge(Base):
         self.target_total = target_total
         self.has_charge = has_charge
         self.shared = shared
-        self.rate=rate
+        self.rate = rate
         self.roundrule = roundrule
-        if not type in self.CHARGE_TYPES:
+        if type not in self.CHARGE_TYPES:
             raise ValueError('Invalid charge type "%s"' % type)
         self.type = type
-
-    # TODO rename this
-    @classmethod
-    def formulas_from_other(cls, other):
-        """Constructs a charge copying the formulas and data
-        from the other charge, but does not set the utilbill"""
-        return other.clone()
 
     @staticmethod
     def _evaluate_formula(formula, context):

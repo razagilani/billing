@@ -5,7 +5,7 @@ from itertools import chain
 from operator import attrgetter
 import traceback
 
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
@@ -386,21 +386,30 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def column_dict(self):
+        def address_to_dict(self):
+            return {
+                'addressee': self.addressee,
+                'street': self.street,
+                'city': self.city,
+                'state': self.state,
+                'postal_code': self.postal_code,
+            }
         period_start , period_end = self.get_period()
-        the_dict = super(ReeBill, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update({
             'account': self.get_account(),
             'mailto': self.reebill_customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
-            'billing_address': self.billing_address.to_dict(),
-            'service_address': self.service_address.to_dict(),
+            'billing_address': address_to_dict(self.billing_address),
+            'service_address': address_to_dict(self.service_address),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
-            'readings': [r.column_dict() for r in self.readings]
+            'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.readings]
         })
 
         if self.version > 0:
@@ -502,6 +511,55 @@ class UtilbillReebill(Base):
                     self.utilbill_id, self.reebill_id, self.document_id[-4:],
                     self.uprs_document_id[-4:]))
 
+# intermediate table for many-to-many relationship. should not be used
+# outside this file.
+_customer_customer_group_table = Table(
+    'customer_customer_group', Base.metadata,
+    Column('reebill_customer_id', Integer,
+           ForeignKey('reebill_customer.id', ondelete='cascade'),
+           primary_key=True),
+    Column('customer_group_id', Integer,
+           ForeignKey('customer_group.id', ondelete='cascade'),
+           primary_key=True)
+)
+
+class CustomerGroup(Base):
+    __tablename__ = 'customer_group'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(1000), nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
+    customers = relationship(
+        'ReeBillCustomer',
+        secondary=lambda: _customer_customer_group_table, backref='groups')
+
+    def add(self, customer):
+        """Add the given customer to this group.
+        """
+        self.customers.append(customer)
+
+    def remove(self, customer):
+        """Remove the given customer from this group.
+        """
+        self.customers.remove(customer)
+
+    def get_customers(self):
+        """Return a list of customers in this group (in undefined order).
+        """
+        return self.customers
+
+    def get_bills_to_issue(self):
+        """Return a list of ReeBills that are processed, not issued,
+        are not corrections (i.e. have version == 0) belonging to
+        accounts in this group.
+        """
+        # loading all the bills and then filtering them is not efficient,
+        # but there is a maximum of about 120 bills per customer, and this
+        # doesn't need to run fast.
+        criteria = lambda b: b.processed and not b.issued and b.version == 0
+        return list(chain.from_iterable(
+            (b for b in c.reebills if criteria(b)) for c in self.customers))
+
 class ReeBillCustomer(Base):
     __tablename__ = 'reebill_customer'
 
@@ -509,33 +567,21 @@ class ReeBillCustomer(Base):
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
 
-
     id = Column(Integer, primary_key=True)
     name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
+
+    # identifies a group of accounts that belong to a particular owner,
+    # for the purpose of producing "bill summaries"
+
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-
-    def get_discount_rate(self):
-        return self.discountrate
-
-    def get_account(self):
-        return self.utility_account.account
-
-    def set_discountrate(self, value):
-        self.discountrate = value
-
-    def get_late_charge_rate(self):
-        return self.latechargerate
-
-    def set_late_charge_rate(self, value):
-        self.latechargerate = value
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
@@ -562,9 +608,28 @@ class ReeBillCustomer(Base):
         self.service = service
         self.utility_account = utility_account
 
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
                % (self.name, self.discountrate)
+
+    def __str__(self):
+        return '%(id)s %(nextility_num)s %(name)s' % dict(
+            id=self.id, nextility_num=self.get_account(), name=self.name)
 
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
@@ -578,6 +643,12 @@ class ReeBillCustomer(Base):
         except ValueError:
             return None
         return result
+
+    def get_groups(self):
+        """Return a list of CustomerGroups that this ReeBillCustomer belongs
+        to (normally only one).
+        """
+        return self.groups
 
 
 class ReeBillCharge(Base):
@@ -753,7 +824,7 @@ class Payment(Base):
             self.date_applied, self.description, self.credit)
 
     def column_dict(self):
-        the_dict = super(Payment, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update(editable=self.is_editable())
         return the_dict
 
