@@ -18,6 +18,14 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 
+# for cli bill generation
+import sys
+from datetime import datetime
+import logging
+import csv
+from collections import deque
+
+
 # Important for currency formatting
 import locale
 from exc import InvalidParameter
@@ -1319,6 +1327,28 @@ class SummaryFileGenerator(object):
         # PDFs
         self._pdf_concatenator.write_result(output_file)
 
+def init_logging(args):
+    '''Return initialized logger.'''
+    #globals & logger init
+    LOGGER_NAME = "Bill Renderer"
+    std_formatter = logging.Formatter('%(asctime)s - %(funcName)s : '
+                                      '%(levelname)-8s %(message)s')
+    _logger = logging.getLogger(LOGGER_NAME)
+    _logger.setLevel(logging.DEBUG)
+
+    #configure writing to stdout (bhvr toggled w/ verbose flag)
+    so_handler = logging.StreamHandler(sys.stdout)
+    so_formatter = std_formatter
+
+    so_handler.setFormatter(so_formatter)
+    if args.verbose:
+        so_handler.setLevel(logging.DEBUG)
+    else:
+        so_handler.setLevel(logging.INFO)
+    _logger.addHandler(so_handler)
+
+    return _logger
+
 
 
 def build_parsers():
@@ -1582,6 +1612,7 @@ if __name__ == '__main__':
         if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
             doc = ThermalBillDoc(logger)
         else:
-            doc = PVBillDoc(logger)
+            #doc = PVBillDoc(logger)
+            doc = PVBillDoc()
         doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
 
