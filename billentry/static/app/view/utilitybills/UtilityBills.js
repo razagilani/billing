@@ -152,6 +152,14 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
     },{
+        header: 'Meter Number',
+        dataIndex: 'meter_identifier',
+        editor: {
+            xtype: 'textfield',
+            selectOnFocus: true
+        },
+        width: 100
+    },{
         header: 'Due Date',
         dataIndex: 'due_date',
         width: 100,

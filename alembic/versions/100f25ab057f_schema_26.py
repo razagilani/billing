@@ -48,5 +48,4 @@ def upgrade():
     op.alter_column('billentry_role', 'name',
                existing_type=mysql.VARCHAR(length=10),
                type_=mysql.VARCHAR(length=20))
-
     op.add_column('utilbill', sa.Column('tou', sa.Boolean(), nullable=False))
