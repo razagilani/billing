@@ -1,5 +1,6 @@
 import unittest
 from mock import MagicMock
+from core.model.model import RegisterTemplate
 from test import init_test_config
 init_test_config()
 from core import init_model
@@ -147,11 +148,21 @@ class UtilBillTestWithDB(TestCase):
             RateClass(name='FB Test Rate Class', utility=self.utility,
                       service='gas'),
             Address(), Address())
+        rate_class = RateClass(name='rate class', utility=self.utility,
+                               service='gas')
+        rate_class.register_templates = [
+            RegisterTemplate(register_binding='REG_TOTAL', unit='therms'),
+            RegisterTemplate(register_binding='REG_DEMAND', unit='kWD')]
+        #     "ABCDEF", 'therms', False, 'total', None, "ABCDEF", quantity=150,
+        #     register_binding='REG_TOTAL'),
+        #                       Register(utilbill, "ABCDEF description",
+        #     "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+        # quantity=150, register_binding='SOME_OTHER_BINDING')]
         utilbill = UtilBill(utility_account, self.utility,
-                            RateClass(name='rate class', utility=self.utility,
-                                      service='gas'), supplier=self.supplier,
+                            rate_class, supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
+        assert len(utilbill.registers) == 2
 
         session = Session()
         session.add(utilbill)
@@ -162,29 +173,11 @@ class UtilBillTestWithDB(TestCase):
 
         session.delete(charge)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, 'total', None, "ABCDEF", quantity=150,
-            register_binding='REG_TOTAL'),
-                              Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-            quantity=150, register_binding='SOME_OTHER_BINDING')]
-
         charge = utilbill.add_charge()
         self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
          " quantity formula should be 'REG_TOTAL.quantity' when at least one "
          " register has a register_binding named 'REG_TOTAL'.")
         session.delete(charge)
-
-        for register in utilbill.registers:
-            session.delete(register)
-
-        utilbill.registers = [Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL", quantity=150,
-            register_binding='SOME_OTHER_BINDING')]
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, "SOME_OTHER_BINDING", "The "
-            " quantity formula should be 'SOME_OTHER_BINDING' when no registers"
-            " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
         fb_utility = Utility(name='FB Test Utility', address=Address())
