@@ -146,7 +146,7 @@ class Views(object):
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
         session = Session()
-        utility_accounts = session.query(UtilityAccount)
+        utility_accounts = session.query(UtilityAccount).join(ReeBillCustomer)
         if account is not None:
             utility_accounts = utility_accounts.filter(
                 UtilityAccount.account == account)
@@ -156,6 +156,8 @@ class Views(object):
 
         rows_dict = {}
         for ua in utility_accounts:
+            reebill_customer = ua.reebill_customer[0]
+            tags = ' '.join([g.name for g in reebill_customer.get_groups()])
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
@@ -166,7 +168,7 @@ class Views(object):
                 'casualname': name_dicts[ua.account].get('casualname', ''),
                 'primusname': name_dicts[ua.account].get('primus', ''),
                 'utilityserviceaddress': str(ua.get_service_address()),
-                'tags': '',
+                'tags': tags,
                 'lastevent': '',
             }
 

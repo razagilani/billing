@@ -581,7 +581,8 @@ class ReeBillCustomer(Base):
 
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
-        primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
+        primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id',
+        backref='reebill_customer')
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
