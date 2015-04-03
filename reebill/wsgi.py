@@ -371,8 +371,14 @@ class AccountsResource(RESTResource):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
-        self.utilbill_processor.update_utility_account_number(
-            row['utility_account_id'], row['utility_account_number'])
+        if 'utility_account_number' in row:
+            self.utilbill_processor.update_utility_account_number(
+                row['utility_account_id'], row['utility_account_number'])
+
+        if 'tags' in row:
+            self.reebill_processor.a
+            pass
+
         return True, {}
 
 
