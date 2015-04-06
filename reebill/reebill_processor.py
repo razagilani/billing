@@ -655,6 +655,9 @@ class ReebillProcessor(object):
 
     def issue_summary(self, group):
         bills = group.get_bills_to_issue()
+        if not bills:
+            raise BillingError('No Processed bills were found for customers '
+                               'with group %s' % group.name)
 
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
