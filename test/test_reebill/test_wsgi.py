@@ -21,4 +21,3 @@ class AccountsResourceTest(TestCase):
 
     def test_put(self):
         self.app.put('/accounts/1')
-        self.res.handle_put()

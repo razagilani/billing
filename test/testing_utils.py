@@ -122,13 +122,13 @@ class ReebillRestTestClient(object):
 
         # for consistency with the flask test client, expect urls to begin
         # with '/'
-        if not urlp['path'].startswith('/'):
+        if not urlp.path.startswith('/'):
             raise TestClientRoutingError('%s does not start with "/"' % url)
 
         # uses the first part of the path to route to the resource equally named
         # resource in ReebillWSGI. The rest of the path is passed into the
         # handler method as a tuple
-        path_parts = urlp['path'][1:].split('/')
+        path_parts = urlp.path[1:].split('/')
         if len(path_parts) == 0:
             raise TestClientRoutingError('You must specify a resource')
         elif path_parts[0] not in self.routes:
@@ -146,17 +146,16 @@ class ReebillRestTestClient(object):
 
     def put(self, url, data=None):
         resource, url_parts, qs = self._get_resource_path_query_by_url(url)
-        self._set_json_request_data(data)
+        self._set_json_request_data(data if data is not None else {})
         return resource.handle_put(*url_parts, **qs)
 
     def post(self, url, data=None):
         resource, url_parts, qs = self._get_resource_path_query_by_url(url)
-        self._set_json_request_data(data)
+        self._set_json_request_data(data if data is not None else {})
         return resource.handle_post(*url_parts, **qs)
 
     def get(self, url):
         resource, url_parts, qs = self._get_resource_path_query_by_url(url)
-        self._set_json_request_data(data)
         return resource.handle_get(*url_parts, **qs)
 
     def delete(self, url):
