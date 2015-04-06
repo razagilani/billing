@@ -108,7 +108,7 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
         },{
             xtype: 'button',
             text: 'Create Summary',
-            action: 'createsumary',
+            action: 'createsummary',
             iconCls: 'silk-application-go'
         },'-',{
             xtype: 'combo',
