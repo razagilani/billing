@@ -364,7 +364,6 @@ class AccountsResource(RESTResource):
                 row['account'])
 
         count, result = self.utilbill_views.list_account_status(row['account'])
-        print count, result
         return True, {'rows': result, 'results': count}
 
     def handle_put(self, *vpath, **params):
@@ -376,7 +375,7 @@ class AccountsResource(RESTResource):
                 row['utility_account_id'], row['utility_account_number'])
 
         if 'tags' in row:
-            tags = row['tags'].split()
+            tags = filter(None, (t.strip() for t in row['tags'].split(',')))
             self.reebill_processor.set_groups_for_utility_account(
                 row['utility_account_id'], tags)
         return True, {}

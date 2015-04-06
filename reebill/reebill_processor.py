@@ -738,6 +738,7 @@ class ReebillProcessor(object):
                 name=group_name).one()
         except NoResultFound:
             result = CustomerGroup(name=group_name, bill_email_recipient='')
+            session.add(result)
             return result, True
         return result, False
 
