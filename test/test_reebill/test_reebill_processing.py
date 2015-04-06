@@ -1936,7 +1936,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
-def TestTouMetering(TestCase):
+class TestTouMetering(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # these objects don't change during the tests, so they should be
@@ -1945,10 +1945,21 @@ def TestTouMetering(TestCase):
         cls.billupload = cls.utilbill_processor.bill_file_handler
         cls.reebill_processor, cls.views = create_reebill_objects()
         cls.nexus_util = create_nexus_util()
+        cls.mailer = cls.reebill_processor.bill_mailer
 
     def setUp(self):
         clear_db()
         TestCaseWithSetup.insert_data()
+
+        self.utilbill = self.utilbill_processor.upload_utility_bill(
+            '99999', StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utility = self.utilbill.get_utility()
+        s = Session()
+        self.utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=self.utility_account.id).one()
 
     def tearDown(self):
         clear_db()
@@ -2047,7 +2058,7 @@ def TestTouMetering(TestCase):
 
         # create two reebills for two different customers in the group
         self.reebill_processor.roll_reebill(
-            self.account, start_date=self.utilbill.period_start)
+            self.customer.get_account(), start_date=self.utilbill.period_start)
         self.reebill_processor.toggle_reebill_processed(
             self.customer.get_account(), 1, False)
         self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
