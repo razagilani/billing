@@ -35,6 +35,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             },
             '[action=issueprocessed]': {
                 click: this.handleIssueProcessed
+            },
+            '#filter_bills_combo':{
+                select: this.handleFilterBillsComboChanged
             }
         });
 
@@ -202,6 +205,28 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     handleIssueProcessed: function(){
         var me = this;
         me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
+    },
+
+    handleFilterBillsComboChanged: function(filter_bills_combo, record){
+        var issuable_reebills_store = Ext.getStore("IssuableReebills");
+        if (record[0].get('id') ==-1)
+            issuable_reebills_store.clearFilter();
+        else {
+            issuable_reebills_store.clearFilter(true);
+            name = record[0].get('name');
+            issuable_reebills_store.filterBy(function (rec, id) {
+                groups = rec.get('groups');
+                var filter = false;
+                Ext.each(groups, function (group) {
+                    if (name == group['name'])
+                        filter = true;
+
+                });
+                var result = filter;
+                filter = false;
+                return result;
+            });
+        }
     }
 
 });
