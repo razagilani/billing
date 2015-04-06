@@ -10,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
 from voluptuous import Invalid
+from core import init_model
 
 from core.amqp_exchange import create_dependencies, \
     ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
@@ -20,7 +21,10 @@ from mq import IncomingMessage
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from exc import DuplicateFileError
-from test.setup_teardown import TestCaseWithSetup
+from test import init_test_config
+from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
+    create_utilbill_processor, create_reebill_objects, create_nexus_util, \
+    clear_db
 
 
 class TestValidators(TestCase):
@@ -48,10 +52,27 @@ class TestValidators(TestCase):
         with self.assertRaises(Invalid):
             validator("nonsense")
 
-class TestUploadBillAMQP(TestCaseWithSetup):
+class TestUploadBillAMQP(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        FakeS3Manager.start()
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeS3Manager.stop()
 
     def setUp(self):
-        super(TestUploadBillAMQP, self).setUp()
+        clear_db()
+        TestCaseWithSetup.insert_data()
 
         # parameters for real RabbitMQ connection are stored but never used so
         # there is no actual connection
@@ -65,13 +86,15 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # since we're never instatiating a connection
         self.handler._wait_on_close = 0
 
-        self.utilbill_loader = UtilBillLoader()
+        self.utilbill_loader = self.utilbill_processor._utilbill_loader
 
         # these are for creating IncomingMessage objects for 'handler' to
         # handle
-        _, method, props = create_mock_channel_method_props()
-        self.mock_method = method
-        self.mock_props = props
+        _, self.mock_method, self.mock_props = \
+            create_mock_channel_method_props()
+
+    def tearDown(self):
+        clear_db()
 
     def test_upload_bill_with_no_matching_utility_account_and_utility_amqp(self):
         # put the file in place

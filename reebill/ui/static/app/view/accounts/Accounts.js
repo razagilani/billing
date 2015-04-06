@@ -37,7 +37,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         width: 150,
         renderer: function(value){
             var rtn = [];
-            Ext.Array.each(value.split(' '), function(tag){
+            Ext.Array.each(value.split(','), function(tag){
+                tag = tag.trim()
                 if(tag){
                     rtn.push('<span class="accounts-tag">');
                     rtn.push(tag);
