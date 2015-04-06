@@ -38,7 +38,7 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session
+from core.model import Session, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
@@ -378,7 +378,11 @@ class AccountsResource(RESTResource):
             tags = filter(None, (t.strip() for t in row['tags'].split(',')))
             self.reebill_processor.set_groups_for_utility_account(
                 row['utility_account_id'], tags)
-        return True, {}
+
+        ua = Session().query(UtilityAccount).filter_by(
+            id=row['utility_account_id']).one()
+        count, result = self.utilbill_views.list_account_status(ua.account)
+        return True, {'rows': result, 'results': count}
 
 
 class IssuableReebills(RESTResource):
