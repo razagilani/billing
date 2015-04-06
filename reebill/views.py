@@ -146,7 +146,7 @@ class Views(object):
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
         session = Session()
-        utility_accounts = session.query(UtilityAccount).join(ReeBillCustomer)
+        utility_accounts = session.query(UtilityAccount)
         if account is not None:
             utility_accounts = utility_accounts.filter(
                 UtilityAccount.account == account)

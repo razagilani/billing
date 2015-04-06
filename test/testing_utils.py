@@ -97,11 +97,11 @@ def clean_up_rabbitmq(connection, queue_name):
 
 
 class ReebillRestTestClient(object):
-    """ A minimal flask/django-style test client that is able to emmulate
+    """ A minimal flask/django-style test client that is able to emulate
     requests made against the custom Reebill REST interface. This only works,
     against the cutom rest methods like handle_get, etc.
     because the REST methods are not directly cherrypy.expose()'d, but rather
-    routed automatically through RESTResource.default() by cherrypy. All
+    routed by cherrypy through RESTResource.default(). All
     methods exposed directly via cherrypy cannot be tested with this client
     """
     def __init__(self):
@@ -125,9 +125,10 @@ class ReebillRestTestClient(object):
         if not urlp.path.startswith('/'):
             raise TestClientRoutingError('%s does not start with "/"' % url)
 
-        # uses the first part of the path to route to the resource equally named
+        # uses the first part of the path to route to the equally named
         # resource in ReebillWSGI. The rest of the path is passed into the
-        # handler method as a tuple
+        # handler method as positional arguments. This is equivalent to
+        # cherrypy's behavior
         path_parts = urlp.path[1:].split('/')
         if len(path_parts) == 0:
             raise TestClientRoutingError('You must specify a resource')
