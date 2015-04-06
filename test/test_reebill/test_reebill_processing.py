@@ -723,6 +723,26 @@ class ReebillProcessingTest(testing_utils.TestCase):
         with self.assertRaises(NoSuchBillException) as context:
             self.reebill_processor.roll_reebill(account)
 
+    def test_get_create_customer_group(self):
+        # Create a new group
+        group, created = self.reebill_processor.get_create_customer_group('new')
+        self.assertEqual(True, isinstance(group, CustomerGroup))
+        self.assertEqual(group.name, 'new')
+        self.assertEqual(group.bill_email_recipient, '')
+        self.assertTrue(created)
+
+        # Assert the same group is returned on the second call
+        group2, created = self.reebill_processor.get_create_customer_group(
+            'new')
+        self.assertEqual(True, isinstance(group2, CustomerGroup))
+        self.assertEqual(group2.name, 'new')
+        self.assertEqual(group2.bill_email_recipient, '')
+        self.assertFalse(created)
+        self.assertEqual(group2, group)
+
+    def test_set_groups_for_utility_account(self):
+        pass
+
 
 class ReeBillProcessingTestWithBills(testing_utils.TestCase):
     '''This class is like ReeBillProcessingTest but includes methods that
