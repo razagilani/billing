@@ -216,6 +216,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
     handleCreateSummaryBill: function(){
         var me = this;
+        // couldn't find a better way of getting a reference to docked items
         filter_combo_box = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[4];
         issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
         var selected_tag = filter_combo_box.getValue();
@@ -280,6 +281,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
         var me = this;
         var issuable_reebills_store = Ext.getStore("IssuableReebills");
+        // couldn't find a better way of getting a reference to issue_all_reebills_button
         issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
         if (record[0].get('id') ==-1) {
             issuable_reebills_store.clearFilter();
