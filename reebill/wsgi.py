@@ -441,7 +441,7 @@ class IssuableReebills(RESTResource):
         """
         s = Session()
         group = s.query(CustomerGroup).filter_by(id=customer_group_id).one()
-        reebills, corrections = self.reebill_processor.issue_summary(group)
+        reebills = self.reebill_processor.issue_summary(group)
 
         # journal event for corrections is not logged
         user = cherrypy.session['user']
