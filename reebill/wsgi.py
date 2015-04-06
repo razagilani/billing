@@ -757,6 +757,7 @@ class CustomerGroupsResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
         customer_groups = self.utilbill_views.get_all_customer_groups_json()
+        customer_groups.append({'name': 'show all bills', 'id': '-1'})
         return True, {'rows': customer_groups, 'results': len(customer_groups)}
 
 
