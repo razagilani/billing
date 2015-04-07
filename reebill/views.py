@@ -138,7 +138,8 @@ class Views(object):
             .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
         reebills = session.query(ReeBill) \
             .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence==min_sequence.c.sequence)
+            .filter(ReeBill.sequence==min_sequence.c.sequence)\
+            .filter(ReeBill.processed == 1)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
