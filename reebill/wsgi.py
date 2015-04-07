@@ -404,7 +404,7 @@ class IssuableReebills(RESTResource):
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             try:
-                result = self.reebill_processor.issue_and_mail(
+                self.reebill_processor.issue_and_mail(
                     bill['apply_corrections'],
                     account=account, sequence=sequence, recipients=recipient_list)
             except ConfirmAdjustment as e:
@@ -414,22 +414,25 @@ class IssuableReebills(RESTResource):
                         'apply_corrections': False,
                         'corrections': e.correction_sequences,
                         'adjustment': e.total_adjustment})
-        if not reebills_with_corrections:
-            for bill in bills:
+            else:
                 version = self.state_db.max_version(bill['account'],
                                                     bill['sequence'])
                 journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'], bill['account'],
                         bill['sequence'], version,
                         applied_sequence=version if version!=0 else None)
-            journal.ReeBillMailedEvent.save_instance(
-                cherrypy.session['user'], bill['account'], bill['sequence'],
-                bill['recipients'])
+                journal.ReeBillMailedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'], bill['sequence'],
+                    bill['recipients'])
+
+        if not reebills_with_corrections:
             return self.dumps({'success': True, 'issued': bills})
         else:
-            return self.dumps({'success': True,
-                    'reebills': reebills_with_corrections,
-                    'corrections': True})
+            return self.dumps({
+                'success': True,
+                'reebills': reebills_with_corrections,
+                'corrections': True
+            })
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
