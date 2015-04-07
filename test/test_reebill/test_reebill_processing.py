@@ -1,36 +1,35 @@
 import unittest
-import logging
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
-from boto.s3.connection import S3Connection
 
 from mock import Mock
 import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
-from core import pricing
-from core.bill_file_handler import BillFileHandler
-from core.utilbill_loader import UtilBillLoader
-from core.utilbill_processor import UtilbillProcessor
-from nexusapi.nexus_util import MockNexusUtil
-from reebill import journal
-from reebill.fetch_bill_data import RenewableEnergyGetter
-from reebill.payment_dao import PaymentDAO
-from reebill.reebill_dao import ReeBillDAO
-from reebill.reebill_file_handler import ReebillFileHandler
-from reebill.reebill_processor import ReebillProcessor
-from reebill.views import Views, column_dict
-from skyliner.mock_skyliner import MockSkyInstall, MockSplinter
+from testfixtures.tempdirectory import TempDirectory
 
+from core import init_model
+from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
     CustomerGroup
 from core.model import UtilityAccount, Session, Address
-from test.setup_teardown import TestCaseWithSetup, FakeS3Manager
+from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
+    clear_db, create_utilbill_processor, create_reebill_objects, \
+    create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
     BillingError
-from test import testing_utils
-from testfixtures.tempdirectory import TempDirectory
+from test import testing_utils, init_test_config
+
+
+def setUpModule():
+    init_test_config()
+    init_model()
+    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
+    FakeS3Manager.start()
+
+def tearDownModule():
+    FakeS3Manager.stop()
 
 class MockReeGetter(object):
     def __init__(self, quantity):
@@ -41,11 +40,26 @@ class MockReeGetter(object):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
 
-class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
+class ProcessTest(testing_utils.TestCase):
     '''Tests that involve both utility bills and reebills. TODO: each of
     these should be separated apart and put in one of the other classes
     below, or made into some kind of multi-application integrationt test.
     '''
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+    def tearDown(self):
+        clear_db()
 
     def test_delete_utility_bill_with_reebill(self):
         account = '99999'
@@ -105,90 +119,6 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
-def do_setup(self):
-    '''It is not possible to inherit the setUp method from a TestCase
-    subclass. Instead, test classes that need to share setup code can call this.
-    When ReebillProcessingTest is only one class, this can go back into that
-    class' setUp.
-    '''
-    from core import config
-
-    TestCaseWithSetup.truncate_tables()
-    TestCaseWithSetup.insert_data()
-
-    logger = logging.getLogger('test')
-    logger.addHandler(logging.NullHandler())
-    logger.propagate = False
-
-    # TODO most or all of these dependencies do not need to be instance
-    # variables because they're not accessed outside __init__
-    self.state_db = ReeBillDAO()
-    s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
-                                 config.get('aws_s3', 'aws_secret_access_key'),
-                                 is_secure=config.get('aws_s3', 'is_secure'),
-                                 port=config.get('aws_s3', 'port'),
-                                 host=config.get('aws_s3', 'host'),
-                                 calling_format=config.get('aws_s3',
-                                                           'calling_format'))
-    utilbill_loader = UtilBillLoader()
-    url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
-        config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
-    self.billupload = BillFileHandler(s3_connection,
-                                      config.get('aws_s3', 'bucket'),
-                                      utilbill_loader, url_format)
-
-    mock_install_1 = MockSkyInstall(name='example-1')
-    mock_install_2 = MockSkyInstall(name='example-2')
-    self.splinter = MockSplinter(deterministic=True,
-                                 installs=[mock_install_1, mock_install_2])
-
-    self.pricing_model = pricing.FuzzyPricingModel(utilbill_loader)
-
-    # TODO: 64956642 do not hard code nexus names
-    self.nexus_util = MockNexusUtil([
-        {
-            'billing': '99999',
-            'olap': 'example-1',
-            'casualname': 'Example 1',
-            'primus': '1785 Massachusetts Ave.',
-        }, {
-            'billing': '88888',
-            'olap': 'example-2',
-            'casualname': 'Example 2',
-            'primus': '1786 Massachusetts Ave.',
-        }, {
-            'billing': '100000',
-            'olap': 'example-3',
-            'casualname': 'Example 3',
-            'primus': '1787 Massachusetts Ave.',
-        }, {'billing': '100001',
-            'olap': 'example-4',
-            'casualname': 'Example 4',
-            'primus': '1788 Massachusetts Ave.',
-        },
-    ])
-    self.mailer = Mock()
-
-    self.temp_dir = TempDirectory()
-    reebill_file_handler = ReebillFileHandler(
-        config.get('reebill', 'reebill_file_path'),
-        config.get('reebill', 'teva_accounts'))
-
-    ree_getter = RenewableEnergyGetter(self.splinter, logger)
-    journal_dao = journal.JournalDAO()
-    self.payment_dao = PaymentDAO()
-
-    self.utilbill_processor = UtilbillProcessor(
-        self.pricing_model, self.billupload, self.nexus_util)
-    self.views = Views(self.state_db, self.billupload, self.nexus_util,
-                       journal_dao)
-    self.reebill_processor = ReebillProcessor(
-        self.state_db, self.payment_dao, self.nexus_util, self.mailer,
-        reebill_file_handler, ree_getter, journal_dao, logger=logger)
-
-    # example data to be used in most tests below
-    self.account = '99999'
-
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
@@ -199,19 +129,21 @@ class ReebillProcessingTest(testing_utils.TestCase):
     '''
     @classmethod
     def setUpClass(cls):
-        from test import init_test_config
-        from core import init_model
-        init_test_config()
-        init_model()
-        cls.fakes3_manager = FakeS3Manager()
-        cls.fakes3_manager.start()
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.state_db = cls.reebill_processor.state_db
+        cls.nexus_util = cls.reebill_processor.nexus_util
+        cls.payment_dao = cls.reebill_processor.payment_dao
+        cls.utilbill_processor = create_utilbill_processor()
+
+        # example data to be used in most tests below
+        cls.account = '99999'
 
     def setUp(self):
-        do_setup(self)
+        clear_db()
+        TestCaseWithSetup.insert_data()
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.fakes3_manager.stop()
+    def tearDown(self):
+        clear_db()
 
     def test_list_account_status(self):
         # NOTE this test does not add any data to the database beyond what is
@@ -236,6 +168,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'codename': '',
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
+            'tags': '',
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -247,6 +180,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'codename': '',
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
+            'tags': '',
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -258,6 +192,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'codename': '',
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
+            'tags': '',
         }], data)
 
         # get only one account
@@ -274,6 +209,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'codename': '',
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
+            'tags': '',
         }], data)
 
     def test_correction_adjustment(self):
@@ -795,20 +731,20 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
     '''
     @classmethod
     def setUpClass(cls):
-        from test import init_test_config
-        from core import init_model
-        init_test_config()
-        init_model()
-        cls.fakes3_manager = FakeS3Manager()
-        cls.fakes3_manager.start()
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.state_db = cls.reebill_processor.state_db
+        cls.nexus_util = cls.reebill_processor.nexus_util
+        cls.payment_dao = cls.reebill_processor.payment_dao
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.mailer = cls.reebill_processor.bill_mailer
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.fakes3_manager.stop()
+        # example data to be used in most tests below
+        cls.account = '99999'
 
     def setUp(self):
+        clear_db()
         # TODO: do not rely on previously inserted data
-        do_setup(self)
+        TestCaseWithSetup.insert_data()
         self.utilbill = self.utilbill_processor.upload_utility_bill(
             self.account, StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
             'gas')
@@ -818,6 +754,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             account='99999').one()
         self.customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=self.utility_account.id).one()
+
+    def tearDown(self):
+        clear_db()
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -1723,76 +1662,6 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
 
-    def test_tou_metering(self):
-        # TODO: possibly move to test_fetch_bill_data
-        account = '99999'
-
-        def get_mock_energy_consumption(install, start, end, measure,
-                                        ignore_misisng=True, verbose=False):
-            assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
-            result = []
-            for hourly_period in cross_range(start, end):
-                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
-                # (Sat Jan 15), return number of BTU equal to the hour of
-                # the day. no energy is consumed on other days.
-                if hourly_period.day in (1, 14, 15):
-                    result.append(hourly_period.hour)
-                else:
-                    result.append(0)
-            assert len(result) == 31 * 24  # hours in January
-            return result
-
-        self.reebill_processor.ree_getter.get_billable_energy_timeseries = \
-            get_mock_energy_consumption
-
-        # modify registers of this utility bill so they are TOU
-        u = Session().query(UtilBill).join(UtilityAccount). \
-            filter_by(account=account).one()
-        active_periods = {
-            'active_periods_weekday': [[9, 9]],
-            'active_periods_weekend': [[11, 11]],
-            'active_periods_holiday': [],
-            }
-        r = self.utilbill_processor.new_register(u.id)
-        self.utilbill_processor.update_register(r.id, {
-            'description': 'time-of-use register',
-            'quantity': 0,
-            'unit': 'btu',
-            'identifier': 'test2',
-            'estimated': False,
-            'reg_type': 'tou',
-            'register_binding': 'TOU',
-            'meter_identifier': '',
-            'active_periods': active_periods
-        })
-        self.utilbill_processor.update_utilbill_metadata(u.id,
-                                                         processed=True)
-        self.reebill_processor.roll_reebill(account,
-                                            start_date=date(2000, 1, 1))
-
-        # the reebill starts with one reading corresponding to "reg_total"
-        # so the "update readings" feature must be used to get all 3
-        self.reebill_processor.update_reebill_readings(account, 1)
-        self.reebill_processor.bind_renewable_energy(account, 1)
-
-        # the total energy consumed over the 3 non-0 days is
-        # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-        # when only the hours 9 and 11 are included, the total is just
-        # 9 + 11 + 11 = 33.
-        total_renewable_btu = 23 * 24 / 2. * 3
-        total_renewable_therms = total_renewable_btu / 1e5
-        tou_renewable_btu = 9 + 11 + 11
-
-        # check reading of the reebill corresponding to the utility register
-        reebill = Session().query(ReeBill).one()
-        total_reading, tou_reading = reebill.readings
-        self.assertAlmostEqual('therms', total_reading.unit)
-        self.assertAlmostEqual(total_renewable_therms,
-                               total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
-        self.assertAlmostEqual(tou_renewable_btu,
-                               tou_reading.renewable_quantity)
-
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
         This can be expanded or merged into another test method later on.
@@ -1950,29 +1819,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
         reebills_data = self.views.get_reebill_metadata_json(account)
-        self.assertDictContainsSubset({
-                                          'actual_total': 0,
-                                          'balance_due': 0.0,
-                                          'balance_forward': 0,
-                                          'corrections': '(never issued)',
-                                          'hypothetical_total': 0,
-                                          'issue_date': None,
-                                          'issued': 0,
-                                          'version': 0,
-                                          'payment_received': 0.0,
-                                          'period_end': date(2000, 2, 1),
-                                          'period_start': date(2000, 1, 1),
-                                          'prior_balance': 0,
-                                          'processed': 0,
-                                          'ree_charge': 0.0,
-                                          'ree_value': 0,
-                                          'sequence': 1,
-                                          'services': [],
-                                          'total_adjustment': 0,
-                                          'total_error': 0.0
-                                      }, reebills_data[0])
-        self.assertAlmostEqual(21.63261765398553,
-                               reebills_data[0]['ree_quantity'])
+        self.assertEqual(1, len(reebills_data))
+        self.assertEqual(1, reebills_data[0]['sequence'])
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
@@ -1992,6 +1840,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
     def test_two_registers_one_reading(self):
         '''Test the situation where a utiltiy bill has 2 registers, but its
         reebill has only one reading corresponding to the first register,
@@ -2087,6 +1936,104 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
+class TestTouMetering(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+        cls.mailer = cls.reebill_processor.bill_mailer
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+        self.utilbill = self.utilbill_processor.upload_utility_bill(
+            '99999', StringIO('test'), date(2000, 1, 1), date(2000, 2, 1),
+            'gas')
+        self.utility = self.utilbill.get_utility()
+        s = Session()
+        self.utility_account = s.query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=self.utility_account.id).one()
+
+    def tearDown(self):
+        clear_db()
+
+    def test_tou_metering(self):
+        # TODO: possibly move to test_fetch_bill_data
+        account = '99999'
+
+        def get_mock_energy_consumption(install, start, end, measure,
+                                        ignore_misisng=True, verbose=False):
+            assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
+            result = []
+            for hourly_period in cross_range(start, end):
+                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
+                # (Sat Jan 15), return number of BTU equal to the hour of
+                # the day. no energy is consumed on other days.
+                if hourly_period.day in (1, 14, 15):
+                    result.append(hourly_period.hour)
+                else:
+                    result.append(0)
+            assert len(result) == 31 * 24  # hours in January
+            return result
+
+        self.reebill_processor.ree_getter.get_billable_energy_timeseries = \
+            get_mock_energy_consumption
+
+        # modify registers of this utility bill so they are TOU
+        u = Session().query(UtilBill).join(UtilityAccount). \
+            filter_by(account=account).one()
+        active_periods = {
+            'active_periods_weekday': [[9, 9]],
+            'active_periods_weekend': [[11, 11]],
+            'active_periods_holiday': [],
+            }
+        r = self.utilbill_processor.new_register(u.id)
+        self.utilbill_processor.update_register(r.id, {
+            'description': 'time-of-use register',
+            'quantity': 0,
+            'unit': 'btu',
+            'identifier': 'test2',
+            'estimated': False,
+            'reg_type': 'tou',
+            'register_binding': 'TOU',
+            'meter_identifier': '',
+            'active_periods': active_periods
+        })
+        self.utilbill_processor.update_utilbill_metadata(u.id,
+                                                         processed=True)
+        self.reebill_processor.roll_reebill(account,
+                                            start_date=date(2000, 1, 1))
+
+        # the reebill starts with one reading corresponding to "reg_total"
+        # so the "update readings" feature must be used to get all 3
+        self.reebill_processor.update_reebill_readings(account, 1)
+        self.reebill_processor.bind_renewable_energy(account, 1)
+
+        # the total energy consumed over the 3 non-0 days is
+        # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
+        # when only the hours 9 and 11 are included, the total is just
+        # 9 + 11 + 11 = 33.
+        total_renewable_btu = 23 * 24 / 2. * 3
+        total_renewable_therms = total_renewable_btu / 1e5
+        tou_renewable_btu = 9 + 11 + 11
+
+        # check reading of the reebill corresponding to the utility register
+        reebill = Session().query(ReeBill).one()
+        total_reading, tou_reading = reebill.readings
+        self.assertAlmostEqual('therms', total_reading.unit)
+        self.assertAlmostEqual(total_renewable_therms,
+                               total_reading.renewable_quantity)
+        self.assertEqual('btu', tou_reading.unit)
+        self.assertAlmostEqual(tou_renewable_btu,
+                               tou_reading.renewable_quantity)
+
     def test_summary(self):
         """Issuing a summary bill for a group of accounts.
         """
@@ -2111,7 +2058,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
 
         # create two reebills for two different customers in the group
         self.reebill_processor.roll_reebill(
-            self.account, start_date=self.utilbill.period_start)
+            self.customer.get_account(), start_date=self.utilbill.period_start)
         self.reebill_processor.toggle_reebill_processed(
             self.customer.get_account(), 1, False)
         self.reebill_processor.roll_reebill(utilbill2.utility_account.account,
