@@ -309,7 +309,7 @@ def scrub_dev_data():
     '''
     command = MYSQL_COMMAND % db_params
     stdin, _, check_exit_status = run_command(command)
-    stdin.write("update customer set bill_email_recipient = 'example@example.com';")
+    stdin.write("update reebill_customer set bill_email_recipient = 'example@example.com';")
     stdin.write("update reebill set email_recipient = 'example@example.com';")
     stdin.close()
     check_exit_status()
