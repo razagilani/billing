@@ -39,14 +39,15 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session
+from core.model import Session, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
 from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
-from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
+from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments
 from reebill.excel_export import Exporter
 from core.model import UtilBill
 
@@ -365,16 +366,25 @@ class AccountsResource(RESTResource):
                 row['account'])
 
         count, result = self.utilbill_views.list_account_status(row['account'])
-        print count, result
         return True, {'rows': result, 'results': count}
 
     def handle_put(self, *vpath, **params):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
-        self.utilbill_processor.update_utility_account_number(
-            row['utility_account_id'], row['utility_account_number'])
-        return True, {}
+        if 'utility_account_number' in row:
+            self.utilbill_processor.update_utility_account_number(
+                row['utility_account_id'], row['utility_account_number'])
+
+        if 'tags' in row:
+            tags = filter(None, (t.strip() for t in row['tags'].split(',')))
+            self.reebill_processor.set_groups_for_utility_account(
+                row['utility_account_id'], tags)
+
+        ua = Session().query(UtilityAccount).filter_by(
+            id=row['utility_account_id']).one()
+        count, result = self.utilbill_views.list_account_status(ua.account)
+        return True, {'rows': result, 'results': count}
 
 
 class IssuableReebills(RESTResource):
@@ -397,39 +407,48 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_and_mail(self, reebills, **params):
+    def issue_and_mail(self, reebills, apply_corrections, **params):
         bills = json.loads(reebills)
-        reebills_with_corrections = []
+        apply_corrections = json.loads(apply_corrections)
+        assert apply_corrections is False or apply_corrections is True
+
+        # Check if adjustments are neccessary
+        accounts_list = set([bill['account'] for bill in bills])
+        if not apply_corrections:
+            try:
+                self.reebill_processor.check_confirm_adjustment(accounts_list)
+            except ConfirmMultipleAdjustments as e:
+                reebills_with_corrections = []
+                for acc, d in e.accounts.iteritems():
+                    reebills_with_corrections.append({
+                        'account': acc,
+                        'sequence': '',
+                        'recipients': '',
+                        'apply_corrections': False,
+                        'corrections': d['correction_sequences'],
+                        'adjustment': d['total_adjustment']})
+                return self.dumps({
+                    'success': True,
+                    'reebills': reebills_with_corrections,
+                    'corrections': True
+                })
+
         for bill in bills:
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
-            try:
-                result = self.reebill_processor.issue_and_mail(
-                    bill['apply_corrections'],
-                    account=account, sequence=sequence, recipients=recipient_list)
-            except ConfirmAdjustment as e:
-                reebills_with_corrections.append({'account': bill['account'],
-                        'sequence': bill['sequence'],
-                        'recipients': bill['recipients'],
-                        'apply_corrections': False,
-                        'corrections': e.correction_sequences,
-                        'adjustment': e.total_adjustment})
-        if not reebills_with_corrections:
-            for bill in bills:
-                version = self.state_db.max_version(bill['account'],
-                                                    bill['sequence'])
-                journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'],
-                        bill['sequence'], version,
-                        applied_sequence=version if version!=0 else None)
+            self.reebill_processor.issue_and_mail(
+                True, account=account, sequence=sequence,
+                recipients=recipient_list)
+            version = self.state_db.max_version(bill['account'],
+                                                bill['sequence'])
+            journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'], version,
+                    applied_sequence=version if version!=0 else None)
             journal.ReeBillMailedEvent.save_instance(
                 cherrypy.session['user'], bill['account'], bill['sequence'],
                 bill['recipients'])
-            return self.dumps({'success': True, 'issued': bills})
-        else:
-            return self.dumps({'success': True,
-                    'reebills': reebills_with_corrections,
-                    'corrections': True})
+        return self.dumps({'success': True, 'issued': bills})
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
