@@ -19,8 +19,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         ref: 'issueProcessedButton',
         selector: '[action=issueprocessed]'
     },{
+        ref: 'createSummaryButtonForSelectedBills',
+        selector: '[action=createsummaryforselectedbills]'
+    },{
         ref: 'createSummaryButton',
-        selector: '[action=createsummary]'
+        selector: '[action=createsummaryfortag]'
     },{
         ref: 'filterBillsCombo',
         selector: '#filter_bills_combo'
@@ -42,8 +45,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             '[action=issueprocessed]': {
                 click: this.handleIssueProcessed
             },
-            '[action=createsummary]': {
-                click: this.handleCreateSummaryBill
+            '[action=createsummaryforselectedbills]': {
+                click: this.handleCreateSummaryForSelectedBills
+            },
+            '[action=createsummaryfortag]': {
+                click: this.handleCreateSummaryForTag
             },
 
             '#filter_bills_combo':{
@@ -90,11 +96,47 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         this.getIssueButton().setDisabled(disabled);
     },
 
-    makeIssueRequest: function(url, billRecord, apply_corrections){
+    makeCheckCorrectionsRequest: function(bills, success_callback, failure_callback){
+        console.log(bills)
+        Ext.Ajax.request({
+            url: window.location.origin + '/reebill/issuable/check_corrections',
+            params: {reebills: bills},
+            method: 'POST',
+            success: function(response){
+                //waitMask.hide();
+                var obj = Ext.JSON.decode(response.responseText);
+                if (obj.corrections) {
+                    var reebill_corrections = '';
+                    Ext.each(obj.reebills, function (reebill) {
+                        if (reebill.adjustment != undefined) {
+                            reebill_corrections +='Reebill from account ' + reebill.account+
+                                     ' with sequence ' + reebill.sequence +
+                                      ' with corrections '  + reebill.corrections +
+                                    ' will be applied to this bill as an adjusment of $'
+                                    + reebill.adjustment + '. Are you sure you want to issue it?' + '</br>'
+
+
+                        }
+                    });
+
+                    Ext.MessageBox.confirm(
+                        'Corrections must be applied',reebill_corrections,
+                        function (answer) {
+                            if (answer == 'yes') {
+                                success_callback();
+                            }
+                    });
+                } else {
+                    success_callback(response);
+                }
+            },
+            failure: failure_callback
+        });
+    },
+
+    makeIssueRequest: function(url, billRecords, apply_corrections){
         var me = this;
         var store = me.getIssuableReebillsStore();
-        //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {reebills: billRecord, apply_corrections: false};
 
         var failureFunc = function(response){
             //waitMask.hide();
@@ -122,63 +164,16 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             }, 1000);
         };
 
-        /*if(billRecord !== undefined){
-            params.account = billRecord.get('account');
-            params.sequence = billRecord.get('sequence');
-            params.mailto = billRecord.get('mailto');
-        }*/
-
-        //waitMask.show();
-        Ext.Ajax.request({
-            url: url,
-            params: params,
-            method: 'POST',
-            success: function(response){
-                //waitMask.hide();
-                var obj = Ext.JSON.decode(response.responseText);
-                if (obj.corrections != undefined) {
-                    var reebill_corrections = '';
-                    Ext.each(obj.reebills, function (reebill) {
-                        if (reebill.adjustment != undefined) {
-                            reebill_corrections +='Reebill from account ' + reebill.account+
-                                     ' with sequence ' + reebill.sequence +
-                                      ' with corrections '  + reebill.corrections +
-                                    ' will be applied to this bill as an adjusment of $'
-                                    + reebill.adjustment + '. Are you sure you want to issue it?' + '</br>'
-
-
-                        }
-                    });
-
-                    Ext.MessageBox.confirm(
-                        'Corrections must be applied',reebill_corrections,
-                        function (answer) {
-                            if (answer == 'yes') {
-                                var params = {
-                                    reebills: billRecord,
-                                    apply_corrections: true
-                                };
-                                Ext.Ajax.request({
-                                    url: url,
-                                    method: 'POST',
-                                    params: params,
-                                    failure: failureFunc,
-                                    success: successFunc
-                                });
-                                        //waitMask.show();
-                                }
-
-                        });
-
-                }
-                else
-                {
-                    successFunc(response);
-                }
-
-            },
-            failure: failureFunc
-        });
+        this.makeCheckCorrectionsRequest(billRecords, function(){
+            var params = {reebills: billRecords};
+            Ext.Ajax.request({
+                url: window.location.origin + '/reebill/issuable/issue_and_mail',
+                method: 'POST',
+                params: params,
+                failure: failureFunc,
+                success: successFunc
+            });
+        }, failureFunc);
     },
 
     /**
@@ -209,12 +204,70 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
     },
 
-    handleCreateSummaryBill: function(){
+    handleCreateSummaryForSelectedBills: function(){
+        var selections = this.getIssuableReebillsGrid().getSelectionModel().getSelection();
+        store = this.getIssuableReebillsStore();
+
+        if (!selections.length){
+            return
+        }
+        var data = [];
+        Ext.each(selections, function(item){
+            var obj = {
+                account: item.data.account,
+                sequence: item.data.sequence
+            };
+            data.push(obj);
+        });
+
+        var failureFunc = function(response){
+            //waitMask.hide();
+            Ext.MessageBox.show({
+                title: "Server error - " + response.status + " - " + response.statusText,
+                msg:  response.responseText,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+        };
+        var successFunc = function(response){
+            // Wait for the bill to be issued before reloading the store
+           var obj = Ext.JSON.decode(response.responseText);
+           Ext.MessageBox.show({
+                title: "Issued and Mailed summary bills",
+                msg:  "Mail sent successfully",
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+            Ext.defer(function(){
+                store.reload();
+            }, 1000);
+        };
+
+        this.makeCheckCorrectionsRequest(Ext.encode(data), function(){
+            Ext.MessageBox.prompt('Email Recipient ', 'Please enter e-mail address of recipient:', function(btn, text){
+                if (btn == 'ok'){
+                    var params = {bill_dicts: Ext.encode(data), summary_recipient: text};
+                    Ext.Ajax.request({
+                        url: window.location.origin + '/reebill/issuable/create_summary_for_bills',
+                        method: 'POST',
+                        params: params,
+                        failure: failureFunc,
+                        success: successFunc
+                    });
+                }
+            });
+        }, failureFunc);
+    },
+
+    handleCreateSummaryForTag: function(){
         var me = this;
         var filter_combo_box = this.getFilterBillsCombo();
         var issue_all_reebills_button = this.getIssueProcessedButton();
         var selected_tag = filter_combo_box.getValue();
         var store = me.getIssuableReebillsStore();
+
         //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
 
         var failureFunc = function(response){
@@ -250,22 +303,38 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         if (selected_tag == null || selected_tag == -1){
             Ext.MessageBox.show({
                 title: "Create Summary Error",
-                msg:  "You must select a tag before creating a summary bill",
+                msg:  "You must select a tag before creating a summary of bills by tag",
                 icon: Ext.MessageBox.ERROR,
                 buttons: Ext.Msg.OK,
                 cls: 'messageBoxOverflow'
             });
         }
         else{
-            //waitMask.show();
-            url = window.location.origin + '/reebill/issuable/issue_summary';
-            Ext.Ajax.request({
-                    url: url,
-                    success: successFunc,
-                    failure: failureFunc,
-                    method: 'POST',
-                    params: { customer_group_id: selected_tag }
+            var data = [];
+            Ext.each(this.getIssuableReebillsStore().getRange(), function(item){
+                var obj = {
+                    account: item.data.account,
+                    sequence: item.data.sequence,
+                    recipients: item.data.mailto
+                };
+                data.push(obj);
             });
+            this.makeCheckCorrectionsRequest(Ext.encode(data), function(){
+            Ext.MessageBox.prompt('Email Recipient ', 'Please enter e-mail address of recipient:', function(btn, text){
+                if (btn == 'ok'){
+                    var params = {customer_group_id: selected_tag, summary_recipient: text};
+
+                    Ext.Ajax.request({
+                        url: window.location.origin + '/reebill/issuable/issue_summary_for_customer_group',
+                        method: 'POST',
+                        params: params,
+                        failure: failureFunc,
+                        success: successFunc
+                    });
+                }
+            });
+        }, failureFunc);
+            //waitMask.show()
 
         }
 

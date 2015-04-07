@@ -8,7 +8,7 @@ from core import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
-from reebill.reebill_model import CustomerGroup
+from reebill.reebill_model import CustomerGroup, ReeBill
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
@@ -47,7 +47,7 @@ from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
-    ConfirmMultipleAdjustments
+    ConfirmMultipleAdjustments, BillingError
 from reebill.excel_export import Exporter
 from core.model import UtilBill
 
@@ -407,31 +407,8 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_and_mail(self, reebills, apply_corrections, **params):
+    def issue_and_mail(self, reebills, **params):
         bills = json.loads(reebills)
-        apply_corrections = json.loads(apply_corrections)
-        assert apply_corrections is False or apply_corrections is True
-
-        # Check if adjustments are neccessary
-        accounts_list = set([bill['account'] for bill in bills])
-        if not apply_corrections:
-            try:
-                self.reebill_processor.check_confirm_adjustment(accounts_list)
-            except ConfirmMultipleAdjustments as e:
-                reebills_with_corrections = []
-                for acc, d in e.accounts.iteritems():
-                    reebills_with_corrections.append({
-                        'account': acc,
-                        'sequence': '',
-                        'recipients': '',
-                        'apply_corrections': False,
-                        'corrections': d['correction_sequences'],
-                        'adjustment': d['total_adjustment']})
-                return self.dumps({
-                    'success': True,
-                    'reebills': reebills_with_corrections,
-                    'corrections': True
-                })
 
         for bill in bills:
             account, sequence = bill['account'], int(bill['sequence'])
@@ -450,17 +427,77 @@ class IssuableReebills(RESTResource):
                 bill['recipients'])
         return self.dumps({'success': True, 'issued': bills})
 
+
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_summary(self, customer_group_id, **params):
+    def create_summary_for_bills(self, bill_dicts, summary_recipient, **params):
+        bills = json.loads(bill_dicts)
+
+        reebills = []
+        for bill_dict in bills:
+            reebills.append(self.state_db.get_reebill(bill_dict['account'], bill_dict['sequence']))
+
+        self.reebill_processor.issue_summary_for_bills(reebills, summary_recipient)
+
+        for bill in bills:
+            account, sequence = bill['account'], bill['sequence']
+            version = self.state_db.max_version(account,
+                                                sequence)
+            journal.ReeBillIssuedEvent.save_instance(
+                cherrypy.session['user'], account,
+                sequence, version,
+                applied_sequence=version if version!=0 else None)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence,
+                summary_recipient)
+        return self.dumps({'success': True, 'issued': bills})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def check_corrections(self, reebills, **params):
+        bills = json.loads(reebills)
+        # Check if adjustments are neccessary
+        accounts_list = set([bill['account'] for bill in bills])
+        try:
+            self.reebill_processor.check_confirm_adjustment(accounts_list)
+        except ConfirmMultipleAdjustments as e:
+            reebills_with_corrections = []
+            for acc, d in e.accounts.iteritems():
+                reebills_with_corrections.append({
+                    'account': acc,
+                    'sequence': '',
+                    'recipients': '',
+                    'apply_corrections': False,
+                    'corrections': d['correction_sequences'],
+                    'adjustment': d['total_adjustment']})
+            return self.dumps({
+                'success': True,
+                'reebills': reebills_with_corrections,
+                'corrections': True
+            })
+        else:
+            return self.dumps({
+                'success': True,
+                'corrections': False
+            })
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def issue_summary_for_customer_group(self, customer_group_id, summary_recipient, **params):
         """Generate a summary PDF for all bills in the specified group and
         mail them to the given recipient. All bills are marked as issued and
         corrections are applied.
         """
         s = Session()
         group = s.query(CustomerGroup).filter_by(id=customer_group_id).one()
-        reebills = self.reebill_processor.issue_summary(group)
+        bills = group.get_bills_to_issue()
+        if not bills:
+            raise BillingError('No Processed bills were found for customers '
+                               'with group %s' % group.name)
+        reebills = self.reebill_processor.issue_summary_for_bills(bills, summary_recipient)
 
         # journal event for corrections is not logged
         user = cherrypy.session['user']
