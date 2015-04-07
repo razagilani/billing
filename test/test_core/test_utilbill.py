@@ -157,11 +157,8 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        self.assertEqual(utilbill.registers, [])
-
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, '', "The quantity formula"
-                " should be an empty string when no registers are present")
+        self.assertEqual('REG_TOTAL.quantity', charge.quantity_formula)
 
         session.delete(charge)
 
@@ -376,9 +373,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount('someone', '99999',
                 'utility', 'supplier',
                 'rate class', Address(), Address())
-        utilbill = UtilBill(utility_account, UtilBill.Complete,
-                'gas', 'utility', 'supplier', 'rate class',
-                Address(), Address())
+        utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
         self.assertEqual(0, utilbill.get_total_charges())
