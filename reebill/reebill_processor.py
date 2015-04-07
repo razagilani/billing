@@ -666,12 +666,7 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
-    def issue_summary(self, group):
-        bills = group.get_bills_to_issue()
-        if not bills:
-            raise BillingError('No Processed bills were found for customers '
-                               'with group %s' % group.name)
-
+    def issue_summary_for_bills(self, bills, summary_recipient):
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
@@ -682,12 +677,12 @@ class ReebillProcessor(object):
         sfg.generate_summary_file(bills, summary_file)
         summary_file.seek(0)
         merge_fields = {
-            'street': group.name,
+            'street': '',
             'balance_due': sum(b.balance_due for b in bills),
             'bill_dates': max(b.get_period_end() for b in bills),
             'last_bill': '',
         }
-        self.bill_mailer.mail(group.bill_email_recipient, merge_fields,
+        self.bill_mailer.mail(summary_recipient, merge_fields,
                               summary_file, 'summary.pdf')
         return bills
 
