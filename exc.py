@@ -79,6 +79,11 @@ class ConfirmAdjustment(Exception):
         self.total_adjustment = total_adjustment
 
 
+class ConfirmMultipleAdjustments(ConfirmAdjustment):
+    def __init__(self, accounts):
+        self.accounts = accounts
+
+
 class BillingTestError(Exception):
     """ Generic error class for Exceptions raised in testing utilities
     """
