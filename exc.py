@@ -78,3 +78,8 @@ class ConfirmAdjustment(Exception):
         self.correction_sequences = correction_sequences
         self.total_adjustment = total_adjustment
 
+
+class ConfirmMultipleAdjustments(ConfirmAdjustment):
+    def __init__(self, accounts):
+        self.accounts = accounts
+

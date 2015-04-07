@@ -13,7 +13,8 @@ from core.model import (UtilBill, Address, Session,
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
 from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
-                 FormulaError, RegisterError, BillingError)
+                 FormulaError, RegisterError, BillingError,
+                 ConfirmMultipleAdjustments)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 from util.pdf import PDFConcatenator
 
@@ -549,6 +550,21 @@ class ReebillProcessor(object):
         """
         return [r.column_dict() for r in self.get_issuable_reebills().all()]
 
+    def check_confirm_adjustment(self, accounts_list):
+        accounts_to_be_confirmed = {}
+        for acc in accounts_list:
+            unissued_corrections = self.get_unissued_corrections(acc)
+            if len(unissued_corrections) > 0:
+                sequences = [sequence for sequence, _, _ in unissued_corrections]
+                total_adjustment = sum(adjustment for _, _, adjustment in
+                                       unissued_corrections)
+                accounts_to_be_confirmed[acc] = {
+                    'correction_sequences': sequences,
+                    'total_adjustment': total_adjustment
+                }
+        if accounts_to_be_confirmed:
+            raise ConfirmMultipleAdjustments(accounts_to_be_confirmed)
+
     def issue_and_mail(self, apply_corrections, account, sequence,
                        recipients=None):
         """this function issues a single reebill and sends out a confirmation
@@ -560,7 +576,7 @@ class ReebillProcessor(object):
         # a confirmation message
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
-            # The user has confirmed to issue unissued corrections.
+            # The user has to confirm to issue unissued corrections.
             sequences = [sequence for sequence, _, _ in unissued_corrections]
             total_adjustment = sum(adjustment
                         for _, _, adjustment in unissued_corrections)
