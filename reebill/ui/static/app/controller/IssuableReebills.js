@@ -18,6 +18,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },{
         ref: 'issueProcessedButton',
         selector: '[action=issueprocessed]'
+    },{
+        ref: 'createSummaryButton',
+        selector: '[action=createsummary]'
     }],
 
     init: function() {
@@ -35,6 +38,13 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             },
             '[action=issueprocessed]': {
                 click: this.handleIssueProcessed
+            },
+            '[action=createsummary]': {
+                click: this.handleCreateSummaryBill
+            },
+
+            '#filter_bills_combo':{
+                select: this.handleFilterBillsComboChanged
             }
         });
 
@@ -202,6 +212,98 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     handleIssueProcessed: function(){
         var me = this;
         me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
+    },
+
+    handleCreateSummaryBill: function(){
+        var me = this;
+        // couldn't find a better way of getting a reference to docked items
+        filter_combo_box = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[4];
+        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        var selected_tag = filter_combo_box.getValue();
+        store = me.getIssuableReebillsStore();
+        //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+
+        var failureFunc = function(response){
+            //waitMask.hide();
+            Ext.MessageBox.show({
+                title: "Server error - " + response.status + " - " + response.statusText,
+                msg:  response.responseText,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+            issue_all_reebills_button.enable();
+            filter_combo_box.clearFilter();
+        };
+        var successFunc = function(response){
+            // Wait for the bill to be issued before reloading the store
+           var obj = Ext.JSON.decode(response.responseText);
+           Ext.MessageBox.show({
+                title: "Issued and Mailed summary bills",
+                msg:  "Mail sent successfully",
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+            Ext.defer(function(){
+                store.reload();
+                issue_all_reebills_button.enable();
+                filter_combo_box.clearValue();
+                //waitMask.hide();
+            }, 1000);
+        };
+
+        if (selected_tag == null || selected_tag == -1){
+            Ext.MessageBox.show({
+                title: "Create Summary Error",
+                msg:  "You must select a tag before creating a summary bill",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+        }
+        else{
+            //waitMask.show();
+            url = window.location.origin + '/reebill/issuable/issue_summary';
+            Ext.Ajax.request({
+                    url: url,
+                    success: successFunc,
+                    failure: failureFunc,
+                    method: 'POST',
+                    params: { customer_group_id: selected_tag }
+            });
+
+        }
+
+
+    },
+
+    handleFilterBillsComboChanged: function(filter_bills_combo, record){
+        var me = this;
+        var issuable_reebills_store = Ext.getStore("IssuableReebills");
+        // couldn't find a better way of getting a reference to issue_all_reebills_button
+        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        if (record[0].get('id') ==-1) {
+            issuable_reebills_store.clearFilter();
+            issue_all_reebills_button.enable();
+        }
+        else {
+            issue_all_reebills_button.disable();
+            issuable_reebills_store.clearFilter(true);
+            name = record[0].get('name');
+            issuable_reebills_store.filterBy(function (rec, id) {
+                groups = rec.get('groups');
+                var filter = false;
+                Ext.each(groups, function (group) {
+                    if (name == group['name'])
+                        filter = true;
+
+                });
+                var result = filter;
+                filter = false;
+                return result;
+            });
+        }
     }
 
 });

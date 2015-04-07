@@ -8,6 +8,7 @@ from core import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
+from reebill.reebill_model import CustomerGroup
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(filepath=p)
@@ -442,6 +443,28 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
+    def issue_summary(self, customer_group_id, **params):
+        """Generate a summary PDF for all bills in the specified group and
+        mail them to the given recipient. All bills are marked as issued and
+        corrections are applied.
+        """
+        s = Session()
+        group = s.query(CustomerGroup).filter_by(id=customer_group_id).one()
+        reebills = self.reebill_processor.issue_summary(group)
+
+        # journal event for corrections is not logged
+        user = cherrypy.session['user']
+        for reebill in reebills:
+            journal.ReeBillIssuedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence, reebill.version)
+            journal.ReeBillMailedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence,
+                reebill.email_recipient)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
         bills = self.reebill_processor.issue_processed_and_mail(apply_corrections=True)
@@ -762,6 +785,14 @@ class RateClassesResource(RESTResource):
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
+class CustomerGroupsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        customer_groups = self.utilbill_views.get_all_customer_groups_json()
+        customer_groups.append({'name': 'show all bills', 'id': '-1'})
+        return True, {'rows': customer_groups, 'results': len(customer_groups)}
+
+
 class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
@@ -957,6 +988,7 @@ class ReebillWSGI(WebResource):
     suppliers = SuppliersResource()
     utilities = UtilitiesResource()
     rateclasses = RateClassesResource()
+    customergroups = CustomerGroupsResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

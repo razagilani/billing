@@ -81,7 +81,12 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
         width: 175,
         sortable: true,
         renderer: Ext.util.Format.usMoney
-        }],
+        },{
+        xtype: 'checkcolumn',
+        text: 'Processed',
+        disabled: true,
+        dataIndex: 'processed'
+    }],
 
     dockedItems: [{
         dock: 'top',
@@ -99,17 +104,20 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
             xtype: 'button',
             text: 'Issue All Processed ReeBills',
             action: 'issueprocessed',
-            iconCls: 'silk-email-go',
+            iconCls: 'silk-email-go'
+        },{
+            xtype: 'button',
+            text: 'Create Summary',
+            action: 'createsummary',
+            iconCls: 'silk-application-go'
+        },'-',{
+            xtype: 'combo',
+            fieldLabel: 'Filter Bills on Tags',
+            store: 'CustomerGroups',
+            displayField: 'name',
+            valueField: 'id',
+            itemId: 'filter_bills_combo'
         }]
-    }],
-
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'IssuableReebillsMemory',
-        refreshStore: 'IssuableReebills',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}'
-    }
+    }]
 
 });
