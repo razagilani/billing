@@ -17,13 +17,37 @@ from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register
 from core.model import Session
 from test import testing_utils
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import create_utilbill_processor, clear_db, \
+    TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
 
+def setUpModule():
+    init_test_config()
+    init_model()
+    FakeS3Manager.start()
 
-class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
-    '''Integration tests for features of the ReeBill application that deal
-    with utility bills (to become "NexBill") including database.
-    '''
+def tearDownModule():
+    FakeS3Manager.stop()
+
+class UtilbillProcessingTest(testing_utils.TestCase):
+    """Integration tests for features of the ReeBill application that deal
+    with utility bills including database.
+    """
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+    def tearDown(self):
+        clear_db()
+
     def test_create_new_account(self):
         billing_address = {
             'addressee': 'Andrew Mellon',
@@ -541,8 +565,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                 desc(UtilBill.period_start)).first()
             self.assertEqual(set(['REG_TOTAL', 'OTHER']),
                              set(r.register_binding for r in u.registers))
-            reg_total = next(r for r in u.registers if r.register_binding == 'REG_TOTAL')
-            self.assertEqual(energy_unit, reg_total.unit)
+            other = next(r for r in u.registers if r.register_binding == 'OTHER')
+            self.assertEqual('MMBTU', other.unit)
+            # NOTE: REG_TOTAL unit is determined by service, not unit in
+            # previous bill
             s.delete(u)
             s.flush()
 
@@ -783,7 +809,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.delete_charge(dc_id)
         self.utilbill_processor.delete_charge(pgc_id)
         self.utilbill_processor.delete_charge(not_shared_id)
-        self.session.flush()
+        Session().flush()
         self.utilbill_processor.add_charge(id_a_2)
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'RIGHT_OF_WAY',
