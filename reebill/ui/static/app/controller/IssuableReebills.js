@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'IssuableReebills', 'IssuableReebillsMemory'
+        'IssuableReebills', 'IssuableReebillsMemory', 'CustomerGroups'
     ],
 
     views:[
@@ -77,6 +77,8 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      */
     handleActivate: function() {
         this.getIssuableReebillsStore().reload();
+        this.getCustomerGroupsStore().reload();
+        this.getFilterBillsCombo().clearValue();
     },
 
     /**
