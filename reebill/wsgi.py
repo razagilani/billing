@@ -39,7 +39,7 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session
+from core.model import Session, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
@@ -365,16 +365,25 @@ class AccountsResource(RESTResource):
                 row['account'])
 
         count, result = self.utilbill_views.list_account_status(row['account'])
-        print count, result
         return True, {'rows': result, 'results': count}
 
     def handle_put(self, *vpath, **params):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
-        self.utilbill_processor.update_utility_account_number(
-            row['utility_account_id'], row['utility_account_number'])
-        return True, {}
+        if 'utility_account_number' in row:
+            self.utilbill_processor.update_utility_account_number(
+                row['utility_account_id'], row['utility_account_number'])
+
+        if 'tags' in row:
+            tags = filter(None, (t.strip() for t in row['tags'].split(',')))
+            self.reebill_processor.set_groups_for_utility_account(
+                row['utility_account_id'], tags)
+
+        ua = Session().query(UtilityAccount).filter_by(
+            id=row['utility_account_id']).one()
+        count, result = self.utilbill_views.list_account_status(ua.account)
+        return True, {'rows': result, 'results': count}
 
 
 class IssuableReebills(RESTResource):
