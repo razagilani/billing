@@ -90,11 +90,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     makeIssueRequest: function(url, billRecord, apply_corrections){
         var me = this;
         var store = me.getIssuableReebillsStore();
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
         var params = {reebills: billRecord, apply_corrections: false};
 
         var failureFunc = function(response){
-            waitMask.hide();
+            //waitMask.hide();
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -115,7 +115,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             Ext.defer(function(){
                 store.reload();
-                waitMask.hide();
+                //waitMask.hide();
             }, 1000);
         };
 
@@ -125,13 +125,13 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             params.mailto = billRecord.get('mailto');
         }*/
 
-        waitMask.show();
+        //waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
             method: 'POST',
             success: function(response){
-                waitMask.hide();
+                //waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
                     var reebill_corrections = '';
@@ -162,7 +162,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                                     failure: failureFunc,
                                     success: successFunc
                                 });
-                                waitMask.show();
+                                        //waitMask.show();
                                 }
 
                         });
