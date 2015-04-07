@@ -46,7 +46,8 @@ from reebill import journal, reebill_file_handler
 from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
-from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
+from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments
 from reebill.excel_export import Exporter
 from core.model import UtilBill
 
@@ -406,39 +407,46 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_and_mail(self, reebills, **params):
+    def issue_and_mail(self, reebills, apply_corrections, **params):
         bills = json.loads(reebills)
-        reebills_with_corrections = []
+
+        # Check if adjustments are neccessary
+        accounts_list = set([bill['account'] for bill in bills])
+        if not apply_corrections:
+            try:
+                self.reebill_processor.check_confirm_adjustment(accounts_list)
+            except ConfirmMultipleAdjustments as e:
+                reebills_with_corrections = []
+                for acc, d in e.accounts.iteritems():
+                    reebills_with_corrections.append({
+                        'account': acc,
+                        'sequence': '',
+                        'recipients': '',
+                        'apply_corrections': False,
+                        'corrections': d['correction_sequences'],
+                        'adjustment': d['total_adjustment']})
+                return self.dumps({
+                    'success': True,
+                    'reebills': reebills_with_corrections,
+                    'corrections': True
+                })
+
         for bill in bills:
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
-            try:
-                result = self.reebill_processor.issue_and_mail(
-                    bill['apply_corrections'],
-                    account=account, sequence=sequence, recipients=recipient_list)
-            except ConfirmAdjustment as e:
-                reebills_with_corrections.append({'account': bill['account'],
-                        'sequence': bill['sequence'],
-                        'recipients': bill['recipients'],
-                        'apply_corrections': False,
-                        'corrections': e.correction_sequences,
-                        'adjustment': e.total_adjustment})
-        if not reebills_with_corrections:
-            for bill in bills:
-                version = self.state_db.max_version(bill['account'],
-                                                    bill['sequence'])
-                journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'],
-                        bill['sequence'], version,
-                        applied_sequence=version if version!=0 else None)
+            self.reebill_processor.issue_and_mail(
+                bill['apply_corrections'],
+                account=account, sequence=sequence, recipients=recipient_list)
+            version = self.state_db.max_version(bill['account'],
+                                                bill['sequence'])
+            journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'], version,
+                    applied_sequence=version if version!=0 else None)
             journal.ReeBillMailedEvent.save_instance(
                 cherrypy.session['user'], bill['account'], bill['sequence'],
                 bill['recipients'])
-            return self.dumps({'success': True, 'issued': bills})
-        else:
-            return self.dumps({'success': True,
-                    'reebills': reebills_with_corrections,
-                    'corrections': True})
+        return self.dumps({'success': True, 'issued': bills})
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
@@ -540,7 +548,7 @@ class ReebillsResource(RESTResource):
             recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.reebill_processor.mail_reebills(account, [int(sequence)], recipient_list)
+            self.reebill_processor.mail_reebill(account, int(sequence), recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(
