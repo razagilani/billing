@@ -531,7 +531,7 @@ class ReebillsResource(RESTResource):
             recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.reebill_processor.mail_reebills(account, [int(sequence)], recipient_list)
+            self.reebill_processor.mail_reebill(account, int(sequence), recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(

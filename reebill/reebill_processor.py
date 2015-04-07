@@ -501,31 +501,27 @@ class ReebillProcessor(object):
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 
-    def mail_reebills(self, account, sequences, recipient_list):
-        all_reebills = [self.state_db.get_reebill(account, sequence)
-                for sequence in sequences]
+    def mail_reebill(self, account, sequence, recipient_list):
+        reebill = self.state_db.get_reebill(account, sequence)
 
-        # render all the bills
-        for reebill in all_reebills:
-            self.reebill_file_handler.render(reebill)
+        # render the bills
+        self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
-        most_recent_reebill = all_reebills[-1]
-        bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
-                sequence in sequences]
-        bill_dates = ', '.join(["%s" % (b.get_period()[0])
-                for b in all_reebills])
+        bill_file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+        bill_date = "%s" % reebill.get_period()[0]
         merge_fields = {
-            'street': most_recent_reebill.service_address.street,
-            'balance_due': round(most_recent_reebill.balance_due, 2),
-            'bill_dates': bill_dates,
-            'last_bill': bill_file_names[-1],
+            'street': reebill.service_address.street,
+            'balance_due': round(reebill.balance_due, 2),
+            'bill_dates': bill_date,
+            'last_bill': bill_file_name,
         }
-        bill_file_paths = [self.reebill_file_handler.get_file_path(r)
-                for r in all_reebills]
-        bill_file_dir_path = os.path.dirname(bill_file_paths[0])
-        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_dir_path,
-                bill_file_paths)
+        bill_file_path = self.reebill_file_handler.get_file_path(reebill)
+        self.bill_mailer.mail(
+            recipient_list,
+            merge_fields,
+            open(bill_file_path, 'r'),
+            bill_file_path)
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for
@@ -589,7 +585,7 @@ class ReebillProcessor(object):
             recipient_list = ['']
         else:
             recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.mail_reebills(account, [sequence], recipient_list)
+        self.mail_reebill(account, sequence, recipient_list)
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''
@@ -634,8 +630,8 @@ class ReebillProcessor(object):
             else:
                 recipient_list = [rec.strip() for rec in
                                   bill.email_recipient.split(',')]
-            self.mail_reebills(bill.get_account(), [bill.sequence],
-                               recipient_list)
+            self.mail_reebill(bill.get_account(), bill.sequence,
+                              recipient_list)
         bills_dict = [bill.column_dict() for bill in bills]
         return bills_dict
 
