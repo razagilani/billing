@@ -409,6 +409,8 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_and_mail(self, reebills, apply_corrections, **params):
         bills = json.loads(reebills)
+        apply_corrections = json.loads(apply_corrections)
+        assert apply_corrections is False or apply_corrections is True
 
         # Check if adjustments are neccessary
         accounts_list = set([bill['account'] for bill in bills])
@@ -435,8 +437,8 @@ class IssuableReebills(RESTResource):
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             self.reebill_processor.issue_and_mail(
-                bill['apply_corrections'],
-                account=account, sequence=sequence, recipients=recipient_list)
+                True, account=account, sequence=sequence,
+                recipients=recipient_list)
             version = self.state_db.max_version(bill['account'],
                                                 bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(
