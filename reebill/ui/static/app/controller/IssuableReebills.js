@@ -21,6 +21,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },{
         ref: 'createSummaryButton',
         selector: '[action=createsummary]'
+    },{
+        ref: 'filterBillsCombo',
+        selector: '#filter_bills_combo'
     }],
 
     init: function() {
@@ -208,11 +211,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
     handleCreateSummaryBill: function(){
         var me = this;
-        // couldn't find a better way of getting a reference to docked items
-        filter_combo_box = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[4];
-        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        var filter_combo_box = this.getFilterBillsCombo();
+        var issue_all_reebills_button = this.getIssueProcessedButton();
         var selected_tag = filter_combo_box.getValue();
-        store = me.getIssuableReebillsStore();
+        var store = me.getIssuableReebillsStore();
         //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
 
         var failureFunc = function(response){
@@ -273,8 +275,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
         var me = this;
         var issuable_reebills_store = Ext.getStore("IssuableReebills");
-        // couldn't find a better way of getting a reference to issue_all_reebills_button
-        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        var issue_all_reebills_button = this.getIssueProcessedButton();
         if (record[0].get('id') ==-1) {
             issuable_reebills_store.clearFilter();
             issue_all_reebills_button.enable();
