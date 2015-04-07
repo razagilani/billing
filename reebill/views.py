@@ -165,7 +165,7 @@ class Views(object):
             if reebill_customer is None:
                 group_names = []
             else:
-                group_names = ' '.join(g.name for g in reebill_customer.groups)
+                group_names = ','.join(g.name for g in reebill_customer.groups)
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,

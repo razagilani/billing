@@ -21,6 +21,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },{
         ref: 'createSummaryButton',
         selector: '[action=createsummary]'
+    },{
+        ref: 'filterBillsCombo',
+        selector: '#filter_bills_combo'
     }],
 
     init: function() {
@@ -87,14 +90,14 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         this.getIssueButton().setDisabled(disabled);
     },
 
-    makeIssueRequest: function(url, billRecord){
+    makeIssueRequest: function(url, billRecord, apply_corrections){
         var me = this;
         var store = me.getIssuableReebillsStore();
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {reebills: billRecord}
+        //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        var params = {reebills: billRecord, apply_corrections: false};
 
         var failureFunc = function(response){
-            waitMask.hide();
+            //waitMask.hide();
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -115,9 +118,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             Ext.defer(function(){
                 store.reload();
-                waitMask.hide();
+                //waitMask.hide();
             }, 1000);
-        }
+        };
 
         /*if(billRecord !== undefined){
             params.account = billRecord.get('account');
@@ -125,14 +128,13 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             params.mailto = billRecord.get('mailto');
         }*/
 
-        waitMask.show();
+        //waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
-            reebills: params,
             method: 'POST',
             success: function(response){
-                waitMask.hide();
+                //waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
                     var reebill_corrections = '';
@@ -149,30 +151,24 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                     });
 
                     Ext.MessageBox.confirm(
-                                'Corrections must be applied',reebill_corrections,
-
-                                function (answer) {
-                                    if (answer == 'yes') {
-                                        var reebills = new Array();
-                                        Ext.each(obj.reebills, function (reebill) {
-                                            if (reebill.adjustment != undefined)
-                                                reebill.apply_corrections = true;
-                                            reebills.push(reebill.reebill);
-                                        });
-                                        var params = Ext.encode(obj.reebills);
-                                        var json_data = {reebills: params}
-                                        Ext.Ajax.request({
-                                            url: url,
-                                            method: 'POST',
-                                            params: json_data,
-                                            reebills: json_data,
-                                            failure: failureFunc,
-                                            success: successFunc
-                                        });
-                                        waitMask.show();
-                                        }
-
+                        'Corrections must be applied',reebill_corrections,
+                        function (answer) {
+                            if (answer == 'yes') {
+                                var params = {
+                                    reebills: billRecord,
+                                    apply_corrections: true
+                                };
+                                Ext.Ajax.request({
+                                    url: url,
+                                    method: 'POST',
+                                    params: params,
+                                    failure: failureFunc,
+                                    success: successFunc
                                 });
+                                        //waitMask.show();
+                                }
+
+                        });
 
                 }
                 else
@@ -195,13 +191,12 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         if (!selections.length)
             return;
 
-        data = []
+        var data = [];
         Ext.each(selections, function(item){
             var obj = {
                 account: item.data.account,
                 sequence: item.data.sequence,
-                recipients: item.data.mailto,
-                apply_corrections: false
+                recipients: item.data.mailto
             };
             data.push(obj);
         });
@@ -216,11 +211,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
     handleCreateSummaryBill: function(){
         var me = this;
-        // couldn't find a better way of getting a reference to docked items
-        filter_combo_box = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[4];
-        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        var filter_combo_box = this.getFilterBillsCombo();
+        var issue_all_reebills_button = this.getIssueProcessedButton();
         var selected_tag = filter_combo_box.getValue();
-        store = me.getIssuableReebillsStore();
+        var store = me.getIssuableReebillsStore();
         //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
 
         var failureFunc = function(response){
@@ -281,8 +275,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
         var me = this;
         var issuable_reebills_store = Ext.getStore("IssuableReebills");
-        // couldn't find a better way of getting a reference to issue_all_reebills_button
-        issue_all_reebills_button = me.getIssuableReebillsGrid().getDockedItems()[0].items.items[1];
+        var issue_all_reebills_button = this.getIssueProcessedButton();
         if (record[0].get('id') ==-1) {
             issuable_reebills_store.clearFilter();
             issue_all_reebills_button.enable();
