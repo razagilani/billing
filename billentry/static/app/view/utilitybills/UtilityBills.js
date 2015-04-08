@@ -103,6 +103,25 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         },
         width: 100
     },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        emptyText: 'Unknown Supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 150
+    },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         emptyText: 'Unknown Rate Class',
@@ -151,6 +170,14 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         renderer: function(value) {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
+    },{
+        header: 'Meter Number',
+        dataIndex: 'meter_identifier',
+        editor: {
+            xtype: 'textfield',
+            selectOnFocus: true
+        },
+        width: 100
     },{
         header: 'Due Date',
         dataIndex: 'due_date',

@@ -4,14 +4,14 @@ from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
 from flask.ext.login import current_user
-from flask.ext.principal import Permission, RoleNeed
+from flask.ext.principal import Permission, RoleNeed, Identity
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
-from billentry.billentry_model import BEUtilBill
+from billentry.billentry_model import BEUtilBill, Role
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
@@ -132,7 +132,8 @@ class BaseResource(Resource):
             'processed': Boolean,
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField,
-            'tou': Boolean
+            'tou': Boolean,
+            'meter_identifier': CallableField(String(), attribute='get_total_meter_identifier')
             }
 
         self.charge_fields = {
@@ -213,12 +214,14 @@ class UtilBillResource(BaseResource):
         parser.add_argument('processed', type=bool)
         parser.add_argument('rate_class', type=str)
         parser.add_argument('utility', type=str)
+        parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
         parser.add_argument('next_meter_read_date', type=parse_date)
         parser.add_argument('service',
                             type=lambda v: None if v is None else v.lower())
+        parser.add_argument('meter_identifier', type=str)
         parser.add_argument('tou', type=bool)
         row = parser.parse_args()
 
@@ -239,8 +242,10 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
+            supplier=row['supplier'],
             supply_choice_id=row['supply_choice_id'],
-            tou=row['tou']
+            tou=row['tou'],
+            meter_identifier=row['meter_identifier']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
@@ -334,25 +339,31 @@ class RateClassesResource(BaseResource):
 class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
-        with project_mgr_permission.require():
-            parser = RequestParser()
-            parser.add_argument('start', type=parse_date, required=True)
-            parser.add_argument('end', type=parse_date, required=True)
-            args = parser.parse_args()
+        parser = RequestParser()
+        parser.add_argument('start', type=parse_date, required=True)
+        parser.add_argument('end', type=parse_date, required=True)
+        args = parser.parse_args()
 
-            s = Session()
-            utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
-                .filter(and_(
-                    BEUtilBill.billentry_date >= args['start'],
-                    BEUtilBill.billentry_date < args['end']
-                )).subquery()
-            q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
-                utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
-            rows = [{
-                'id': user.id,
-                'email': user.email,
-                'count': count,
-            } for (user, count) in q.all()]
+        s = Session()
+        utilbill_sq = s.query(BEUtilBill.id, BEUtilBill.billentry_user_id)\
+            .filter(and_(
+                BEUtilBill.billentry_date >= args['start'],
+                BEUtilBill.billentry_date < args['end']
+            )).subquery()
+        q = s.query(BillEntryUser, func.count(utilbill_sq.c.id)).outerjoin(
+            utilbill_sq).group_by(BillEntryUser.id).order_by(BillEntryUser.id)
+        rows = [{
+            'id': user.id,
+            'email': user.email,
+            'count': count,
+        } for (user, count) in q.all()]
+
+        from core import config
+        if config.get('billentry', 'disable_authentication'):
+            assert current_user.is_anonymous()
+            return {'rows': rows, 'results': len(rows)}
+
+        with project_mgr_permission.require():
             return {'rows': rows, 'results': len(rows)}
 
 

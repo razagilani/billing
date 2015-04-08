@@ -4,6 +4,7 @@ Ext.define('ReeBill.model.Account', {
         // Received from server when the accounts list is loaded
         {name: 'utility_account_id', type: 'int'},
         {name: 'account', type: 'string'},
+        {name: 'tags', type: 'string'},
         {name: 'utility_account_number', type: 'string'},
         {name: 'utilityserviceaddress', type: 'string'},
         {name: 'fb_utility_name', type: 'string'},
