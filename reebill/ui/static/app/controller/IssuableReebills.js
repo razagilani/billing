@@ -205,7 +205,22 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
     handleIssueProcessed: function(){
         var me = this;
-        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
+        issuable_reebills = me.getIssuableReebillsStore().getRange();
+
+        if(!issuable_reebills.length)
+            return;
+
+        var data = [];
+        Ext.each(issuable_reebills, function(item){
+            var obj = {
+                account: item.data.account,
+                sequence: item.data.sequence,
+                recipients: item.data.mailto
+            };
+            data.push(obj);
+        });
+
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail', Ext.encode(data));
     },
 
     handleCreateSummaryForSelectedBills: function(){
