@@ -177,7 +177,8 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 100
+        width: 100,
+        hidden: true
     },{
         header: 'Due Date',
         dataIndex: 'due_date',
