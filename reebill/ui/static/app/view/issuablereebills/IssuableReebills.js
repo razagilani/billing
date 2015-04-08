@@ -109,11 +109,13 @@ Ext.define('ReeBill.view.issuablereebills.IssuableReebills', {
             xtype: 'button',
             text: 'Summary For Selected Bills',
             action: 'createsummaryforselectedbills',
+            disabled: true,
             iconCls: 'silk-application-go'
         },{
             xtype: 'button',
             text: 'Summary Of Bills For Selected Tag',
             action: 'createsummaryfortag',
+            disabled: true,
             iconCls: 'silk-application-go'
         },'-',{
             xtype: 'combo',

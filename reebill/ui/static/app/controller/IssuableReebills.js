@@ -19,7 +19,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         ref: 'issueProcessedButton',
         selector: '[action=issueprocessed]'
     },{
-        ref: 'createSummaryButtonForSelectedBills',
+        ref: 'createSummaryButtonForSelectedBillsButton',
         selector: '[action=createsummaryforselectedbills]'
     },{
         ref: 'createSummaryButton',
@@ -96,6 +96,8 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             disabled = true;
 
         this.getIssueButton().setDisabled(disabled);
+        this.getCreateSummaryButtonForSelectedBillsButton().setDisabled(!selections.length);
+        this.getCreateSummaryButton().disable();
     },
 
     makeCheckCorrectionsRequest: function(bills, success_callback, failure_callback){
@@ -283,6 +285,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             issue_all_reebills_button.enable();
             filter_combo_box.clearFilter();
+            this.getCreateSummaryButton().disable();
         };
         var successFunc = function(response){
             // Wait for the bill to be issued before reloading the store
@@ -298,30 +301,23 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 store.reload();
                 issue_all_reebills_button.enable();
                 filter_combo_box.clearValue();
+                this.getCreateSummaryButton().disable();
                 //waitMask.hide();
             }, 1000);
         };
 
-        if (selected_tag == null || selected_tag == -1){
-            Ext.MessageBox.show({
-                title: "Create Summary Error",
-                msg:  "You must select a tag before creating a summary of bills by tag",
-                icon: Ext.MessageBox.ERROR,
-                buttons: Ext.Msg.OK,
-                cls: 'messageBoxOverflow'
-            });
-        }
-        else{
-            var data = [];
-            Ext.each(this.getIssuableReebillsStore().getRange(), function(item){
-                var obj = {
-                    account: item.data.account,
-                    sequence: item.data.sequence,
-                    recipients: item.data.mailto
-                };
-                data.push(obj);
-            });
-            this.makeCheckCorrectionsRequest(Ext.encode(data), function(){
+
+
+        var data = [];
+        Ext.each(this.getIssuableReebillsStore().getRange(), function(item){
+            var obj = {
+                account: item.data.account,
+                sequence: item.data.sequence,
+                recipients: item.data.mailto
+            };
+            data.push(obj);
+        });
+        this.makeCheckCorrectionsRequest(Ext.encode(data), function(){
             Ext.MessageBox.prompt('Email Recipient ', 'Please enter e-mail address of recipient:', function(btn, text){
                 if (btn == 'ok'){
                     var params = {customer_group_id: selected_tag, summary_recipient: text};
@@ -336,23 +332,26 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 }
             });
         }, failureFunc);
-            //waitMask.show()
+        //waitMask.show()
 
-        }
+
 
 
     },
 
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
         var me = this;
+        var button_for_summary_by_tags = this.getCreateSummaryButton();
         var issuable_reebills_store = Ext.getStore("IssuableReebills");
         var issue_all_reebills_button = this.getIssueProcessedButton();
         if (record[0].get('id') ==-1) {
             issuable_reebills_store.clearFilter();
             issue_all_reebills_button.enable();
+            button_for_summary_by_tags.disable();
         }
         else {
             issue_all_reebills_button.disable();
+            button_for_summary_by_tags.enable();
             issuable_reebills_store.clearFilter(true);
             name = record[0].get('name');
             issuable_reebills_store.filterBy(function (rec, id) {
@@ -367,6 +366,8 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 filter = false;
                 return result;
             });
+            if (issuable_reebills_store.count() == 0)
+                button_for_summary_by_tags.disable();
         }
     }
 
