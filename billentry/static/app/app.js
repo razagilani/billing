@@ -25,6 +25,7 @@ Ext.application({
         'Utilities',
         'RateClasses',
         'Charges',
+        'Suppliers',
         'Units',
         'UtilityBills',
         'UserUtilBillCounts',
