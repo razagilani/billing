@@ -18,8 +18,10 @@ def replace_utilbill_with_beutilbill(utilbill):
     """
     assert type(utilbill) is UtilBill
     assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
-    beutilbill = BEUtilBill.create_from_utilbill(utilbill)
     s = Session.object_session(utilbill)
+    # flushing changes too early causes conflict before utilbill is deleted
+    with s.no_autoflush:
+        beutilbill = BEUtilBill.create_from_utilbill(utilbill)
     s.add(beutilbill)
     s.delete(utilbill)
     utilbill.id = None

@@ -31,7 +31,7 @@ from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
 from brokerage.brokerage_model import BrokerageAccount
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -40,16 +40,16 @@ class TestBEUtilBill(unittest.TestCase):
     def setUp(self):
         self.utility = Mock(autospec=Utility)
         self.rate_class = Mock(autospec=RateClass)
+        self.rate_class.get_register_list.return_value = []
         self.ua = UtilityAccount('Account 1', '11111', self.utility, None, None,
                             Address(), Address(), '1')
         self.user = Mock(autospec=BillEntryUser)
         self.user.is_anonymous.return_value = False
-        self.ub = BEUtilBill(self.ua, UtilBill.Complete, self.utility, None,
-                             self.rate_class, Address(), Address())
+        self.ub = BEUtilBill(self.ua, self.utility, self.rate_class, None)
 
     def test_create_from_utilbill(self):
-        utilbill = UtilBill(self.ua, UtilBill.Complete, self.utility, None,
-                             self.rate_class, Address(), Address())
+        utilbill = UtilBill(self.ua, self.utility, self.rate_class, None,
+                            self.rate_class)
         beutilbill = BEUtilBill.create_from_utilbill(utilbill)
         self.assertIs(BEUtilBill, type(beutilbill))
         for attr_name in UtilBill.column_names():
@@ -118,7 +118,7 @@ class BillEntryIntegrationTest(object):
         cls.app = billentry.app.test_client()
 
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
@@ -134,8 +134,14 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
+        # register = Register(self.ub1, "ABCDEF description",
+        #     "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+        #     quantity=150.0, register_binding='REG_TOTAL')
+        self.ub1.registers[0].quantity = 150
+        self.ub1.registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                             service_address=Address(street='2 Example St.'))
+        #self.ub2.registers[0].quantity = 150
         self.ub1.id = 1
         self.ub2.id = 2
         s = Session()
@@ -145,7 +151,7 @@ class BillEntryIntegrationTest(object):
         # TODO: add more database objects used in multiple subclass setUps
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
 class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
     """Integration tests using REST request handlers related to Bill Entry main
@@ -258,6 +264,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
+              'meter_identifier': 'GHIJKL',
               'tou': False
              },
              {'computed_total': 0.0,
@@ -282,6 +289,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
         self.assertJson(expected, rv.data)
@@ -352,6 +360,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': True,
+              'meter_identifier': 'GHIJKL',
               'tou': False
               },
          'results': 1}
@@ -416,6 +425,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'entered': False,
               'tou': False
              },
@@ -441,6 +451,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
+              'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
@@ -477,6 +488,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
+                'meter_identifier': 'GHIJKL',
                 'tou': False
             }}, rv.data
         )
@@ -511,6 +523,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
+                  'meter_identifier': 'GHIJKL',
                   'tou': False
             },
             }, rv.data
@@ -660,13 +673,14 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'supplier': 'Unknown',
                   'supply_total': 0,
                   'target_total': 0,
-                  'total_energy': 0,
+                  'total_energy': 150.0,
                   'utility': 'Example Utility',
                   'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': True,
+                  'meter_identifier': 'GHIJKL',
                   'tou': False
                  }],
              }, rv.data)
@@ -800,14 +814,14 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
     def setUp(self):
         init_test_config()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
         s.commit()
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_oauth_login(self):
         # just an example of a URL the user was trying to go to
