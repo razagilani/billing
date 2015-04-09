@@ -131,14 +131,14 @@ class WebResource(object):
         self.utilbill_processor = utilbill_processor
         self.reebill_processor = reebill_processor
 
-        # determine whether authentication is on or off
-        self.authentication_on = self.config.get('reebill', 'authenticate')
-
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
         if self.config.get('reebill', 'sessions_key'):
             self.sessions_key = self.config.get('reebill', 'sessions_key')
 
+        # determine whether authentication is on or off
+        self.authentication_on = self.config.get('reebill', 'authenticate')
+        
         self.reconciliation_report_dir = self.config.get(
             'reebillreconciliation', 'report_directory')
         self.estimated_revenue_report_dir = self.config.get(
