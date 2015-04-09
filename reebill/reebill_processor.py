@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 from StringIO import StringIO
 
 from sqlalchemy.sql import desc
-from sqlalchemy import not_
-from sqlalchemy import func
+from sqlalchemy import not_, func
+from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import (UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
 from reebill.reebill_file_handler import SummaryFileGenerator
-from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
+from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
+                                   CustomerGroup)
 from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
                  FormulaError, RegisterError, BillingError)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
@@ -730,3 +731,32 @@ class ReebillProcessor(object):
             self.compute_reebill(account, reebill.sequence)
             reebill.processed = True
 
+    def get_create_customer_group(self, group_name):
+        session = Session()
+        try:
+            result = session.query(CustomerGroup).filter_by(
+                name=group_name).one()
+        except NoResultFound:
+            result = CustomerGroup(name=group_name, bill_email_recipient='')
+            session.add(result)
+            return result, True
+        return result, False
+
+    def set_groups_for_utility_account(self, account_id, group_name_array):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+
+        # Remove the customer from groups that are not in 'group_name_array'
+        customer_groups = customer.get_groups()
+        for g in customer_groups:
+            if g.name not in group_name_array:
+                g.remove(customer)
+
+        # Add the customer to groups in group_name_array that they are not
+        # yet part of
+        customer_group_names = [g.name for g in customer_groups]
+        for group_name in group_name_array:
+            if group_name not in customer_group_names:
+                new_group, _ = self.get_create_customer_group(group_name)
+                new_group.add(customer)
