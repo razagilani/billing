@@ -19,7 +19,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         ref: 'issueProcessedButton',
         selector: '[action=issueprocessed]'
     },{
-        ref: 'createSummaryButtonForSelectedBillsButton',
+        ref: 'createSummaryForSelectedBillsButton',
         selector: '[action=createsummaryforselectedbills]'
     },{
         ref: 'createSummaryButton',
@@ -85,6 +85,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      * Handle the row selection.
      */
     handleRowSelect: function() {
+        me = this;
         var issuableMailListRegex = new RegExp("^[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*(,\\s*[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*)*$")
 
         var selections = this.getIssuableReebillsGrid().getSelectionModel().getSelection();
@@ -95,9 +96,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         else if (!issuableMailListRegex.test(selections[0].get('mailto')))
             disabled = true;
 
-        this.getIssueButton().setDisabled(disabled);
-        this.getCreateSummaryButtonForSelectedBillsButton().setDisabled(!selections.length);
-        this.getCreateSummaryButton().disable();
+        me.getIssueButton().setDisabled(disabled);
+        me.getCreateSummaryForSelectedBillsButton().setDisabled(!selections.length);
+        me.getCreateSummaryButton().disable();
     },
 
     makeCheckCorrectionsRequest: function(bills, success_callback, failure_callback){
@@ -142,8 +143,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var me = this;
         var store = me.getIssuableReebillsStore();
 
+
         var failureFunc = function(response){
-            //waitMask.hide();
+            Ext.getBody().unmask()
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -164,7 +166,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             Ext.defer(function(){
                 store.reload();
-                //waitMask.hide();
+                Ext.getBody().unmask();
             }, 1000);
         };
 
@@ -178,6 +180,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 success: successFunc
             });
         }, failureFunc);
+        Ext.getBody().mask('Please wait...');
     },
 
     /**
@@ -240,7 +243,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         });
 
         var failureFunc = function(response){
-            //waitMask.hide();
+            Ext.getBody().unmask()
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -261,6 +264,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             Ext.defer(function(){
                 store.reload();
+                Ext.getBody().unmask();
             }, 1000);
         };
 
@@ -278,19 +282,19 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 }
             });
         }, failureFunc);
+        Ext.getBody().mask('Please wait ....');
     },
 
     handleCreateSummaryForTag: function(){
         var me = this;
-        var filter_combo_box = this.getFilterBillsCombo();
-        var issue_all_reebills_button = this.getIssueProcessedButton();
+        var create_summary_button = me.getCreateSummaryButton();
+        var filter_combo_box = me.getFilterBillsCombo();
+        var issue_all_reebills_button = me.getIssueProcessedButton();
         var selected_tag = filter_combo_box.getValue();
         var store = me.getIssuableReebillsStore();
 
-        //var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-
         var failureFunc = function(response){
-            //waitMask.hide();
+            Ext.getBody().unmask();
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -300,7 +304,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
             issue_all_reebills_button.enable();
             filter_combo_box.clearFilter();
-            this.getCreateSummaryButton().disable();
+            create_summary_button.disable();
         };
         var successFunc = function(response){
             // Wait for the bill to be issued before reloading the store
@@ -316,12 +320,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 store.reload();
                 issue_all_reebills_button.enable();
                 filter_combo_box.clearValue();
-                this.getCreateSummaryButton().disable();
-                //waitMask.hide();
+                create_summary_button.disable();
+                Ext.getBody().unmask();
             }, 1000);
         };
-
-
 
         var data = [];
         Ext.each(this.getIssuableReebillsStore().getRange(), function(item){
@@ -347,11 +349,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 }
             });
         }, failureFunc);
-        //waitMask.show()
-
-
-
-
+        Ext.getBody().mask('Please wait ....');
     },
 
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
