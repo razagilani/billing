@@ -1,25 +1,47 @@
 from test.setup_teardown import TestCaseWithSetup, clear_db
 from test.testing_utils import TestCase, ReebillRestTestClient
+from test.setup_teardown import create_reebill_resource_objects
 from test import init_test_config
 from core import init_model
 from core.model import Session, UtilityAccount
 from reebill.reebill_model import ReeBillCustomer
+from reebill.wsgi import AccountsResource
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
+from reebill.users import UserDAO
+from reebill.bill_mailer import Mailer
+from reebill.journal import JournalDAO
+from skyliner.mock_skyliner import MockSplinter
+from reebill import fetch_bill_data as fbd
+import pymongo
+import mongoengine
+import logging
 
 
 def setUpModule():
     init_test_config()
     init_model()
+    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
 
 
 class AccountsResourceTest(TestCase):
 
     def setUp(self):
+        from core import config
+        self.database = 'test'
+        # Clear out mongo database
+        mongo_connection = pymongo.Connection()
+        mongo_connection.drop_database(self.database)
         clear_db()
         TestCaseWithSetup.insert_data()
-        self.app = ReebillRestTestClient()
+        resource = AccountsResource(*create_reebill_resource_objects())
+        self.app = ReebillRestTestClient('accounts', resource)
 
     def tearDown(self):
         clear_db()
+        # Clear out mongo database
+        mongo_connection = pymongo.Connection()
+        mongo_connection.drop_database(self.database)
 
     def test_put(self):
         session = Session()
@@ -38,7 +60,7 @@ class AccountsResourceTest(TestCase):
             }
         )
         self.assertTrue(success)
-        self.assertEqual(response, {'count': 1, 'rows': [{
+        self.assertEqual(response, {'results': 1, 'rows': [{
             'utility_account_id': utility_account.id,
             'account': '99999',
             'fb_rate_class': 'Test Rate Class Template',
@@ -63,7 +85,7 @@ class AccountsResourceTest(TestCase):
             }
         )
         self.assertTrue(success)
-        self.assertEqual(response, {'count': 1, 'rows': [{
+        self.assertEqual(response, {'results': 1, 'rows': [{
             'utility_account_id': utility_account.id,
             'account': '99999',
             'fb_rate_class': 'Test Rate Class Template',
@@ -87,7 +109,7 @@ class AccountsResourceTest(TestCase):
             }
         )
         self.assertTrue(success)
-        self.assertEqual(response, {'count': 1, 'rows': [{
+        self.assertEqual(response, {'results': 1, 'rows': [{
             'utility_account_id': utility_account.id,
             'account': '99999',
             'fb_rate_class': 'Test Rate Class Template',

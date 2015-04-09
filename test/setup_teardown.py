@@ -26,9 +26,16 @@ from reebill.fetch_bill_data import RenewableEnergyGetter
 from reebill.reebill_processor import ReebillProcessor
 from core.utilbill_processor import UtilbillProcessor
 from reebill.views import Views
+from reebill.users import UserDAO
+from reebill.reebill_dao import ReeBillDAO
+from reebill import fetch_bill_data as fbd
+from reebill.journal import JournalDAO
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from reebill.reebill_file_handler import ReebillFileHandler
+from reebill.views import Views
+from reebill.bill_mailer import Mailer
+import smtplib
 
 
 def clear_db():
@@ -40,6 +47,7 @@ def clear_db():
     for t in reversed(Base.metadata.sorted_tables):
         session.execute(t.delete())
     session.commit()
+
 
 def create_nexus_util():
     return MockNexusUtil([
@@ -69,6 +77,7 @@ def create_nexus_util():
             },
         ])
 
+
 def create_bill_file_handler():
     """Return a BillFileHandler instance.
 
@@ -90,10 +99,42 @@ def create_bill_file_handler():
                                    config.get('aws_s3', 'bucket'),
                                    UtilBillLoader(), url_format)
 
+
+def create_bill_mailer():
+    from core import config
+    mailer_opts = dict(config.items("mailer"))
+    return Mailer(
+        mailer_opts['mail_from'],
+        mailer_opts['originator'],
+        mailer_opts['password'],
+        mailer_opts['template_file_name'],
+        smtplib.SMTP(),
+        mailer_opts['smtp_host'],
+        mailer_opts['smtp_port'],
+        mailer_opts['bcc_list']
+    )
+
+
 def create_utilbill_processor():
         file_handler = create_bill_file_handler()
         pricing_model = pricing.FuzzyPricingModel(UtilBillLoader())
         return UtilbillProcessor(pricing_model, file_handler)
+
+
+def create_utility_bill_views():
+    file_handler = create_bill_file_handler()
+    nexus_util = create_nexus_util()
+    reebill_dao = ReeBillDAO()
+    journal_dao = JournalDAO()
+    return Views(reebill_dao, file_handler, nexus_util, journal_dao)
+
+
+def create_reebill_file_handler():
+    from core import config
+    return ReebillFileHandler(
+        config.get('reebill', 'reebill_file_path'),
+        config.get('reebill', 'teva_accounts'))
+
 
 def create_reebill_objects():
     from core import config
@@ -107,14 +148,10 @@ def create_reebill_objects():
     mock_install_2 = MockSkyInstall(name='example-2')
     splinter = MockSplinter(deterministic=True,
                                  installs=[mock_install_1, mock_install_2])
-
     # TODO: 64956642 do not hard code nexus names
     nexus_util = create_nexus_util()
     bill_mailer = Mock()
-
-    reebill_file_handler = ReebillFileHandler(
-        config.get('reebill', 'reebill_file_path'),
-        config.get('reebill', 'teva_accounts'))
+    reebill_file_handler = create_reebill_file_handler()
 
     ree_getter = RenewableEnergyGetter(splinter, logger)
     journal_dao = journal.JournalDAO()
@@ -126,6 +163,28 @@ def create_reebill_objects():
     reebill_views = Views(state_db, create_bill_file_handler(), nexus_util,
                           journal_dao)
     return reebill_processor, reebill_views
+
+
+def create_reebill_resource_objects():
+    from core import config
+    logger = logging.getLogger('test')
+    nexus_util = create_nexus_util()
+    bill_file_handler = create_bill_file_handler()
+    utilbill_processor = create_utilbill_processor()
+    reebill_processor, _ = create_reebill_objects()
+    user_dao = UserDAO('test')
+    journal_dao = JournalDAO()
+    payment_dao = PaymentDAO()
+    reebill_dao = ReeBillDAO()
+    splinter = MockSplinter()
+    reebill_file_handler = create_reebill_file_handler()
+    utilbill_views = create_utility_bill_views()
+    bill_mailer = create_bill_mailer()
+    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    return (config, logger, nexus_util, user_dao, payment_dao, reebill_dao,
+            bill_file_handler, journal_dao, splinter, reebill_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor)
 
 class FakeS3Manager(object):
     '''Encapsulates starting and stopping the FakeS3 server process for tests
@@ -172,6 +231,7 @@ class FakeS3Manager(object):
         exit_status = cls.fakes3_process.poll()
         # don't care if it exited with 0 or not
         assert exit_status is not None
+
 
 class TestCaseWithSetup(test_utils.TestCase):
     '''Shared setup and teardown code for various tests. This class should go
