@@ -550,8 +550,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         while len(u.registers) > 0:
             del u.registers[0]
         u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
-                 register_binding='OTHER')]
-        self.assertEqual(set(['OTHER']),
+                 register_binding='REG_DEMAND')]
+        self.assertEqual(set(['REG_DEMAND']),
                          set(r.register_binding for r in u.registers))
 
         for service, energy_unit in [('gas', 'therms'), ('electric', 'kWh')]:
@@ -563,9 +563,10 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             u = s.query(UtilBill).join(UtilityAccount).filter(
                 UtilityAccount.account == account).order_by(
                 desc(UtilBill.period_start)).first()
-            self.assertEqual(set(['REG_TOTAL', 'OTHER']),
+            self.assertEqual(set(['REG_TOTAL', 'REG_DEMAND']),
                              set(r.register_binding for r in u.registers))
-            other = next(r for r in u.registers if r.register_binding == 'OTHER')
+            other = next(
+                r for r in u.registers if r.register_binding == 'REG_DEMAND')
             self.assertEqual('MMBTU', other.unit)
             # NOTE: REG_TOTAL unit is determined by service, not unit in
             # previous bill
