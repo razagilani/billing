@@ -62,10 +62,10 @@ def upgrade():
         'REG_TOTAL',
         'REG_TOTAL_SECONDARY',
         'REG_TOTAL_TERTIARY',
-        'REG_PEAK'
+        'REG_PEAK',
         'REG_INTERMEDIATE',
-        'REG_OFFPEAK'
-        'REG_DEMAND'
+        'REG_OFFPEAK',
+        'REG_DEMAND',
         'REG_POWERFACTOR',
 
         'REG_PEAK_RATE_INCREASE',
