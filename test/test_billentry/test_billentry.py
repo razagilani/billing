@@ -134,9 +134,9 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
-        # register = Register(self.ub1, "ABCDEF description",
-        #     "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-        #     quantity=150.0, register_binding='REG_TOTAL')
+        register = Register(self.ub1, "ABCDEF description",
+            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
+            quantity=150.0, register_binding='REG_TOTAL')
         self.ub1.registers[0].quantity = 150
         self.ub1.registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
