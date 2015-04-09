@@ -593,8 +593,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         id_1 = self.views.get_all_utilbills_json(account, 0, 30)[0][0]['id']
         register = self.utilbill_processor.new_register(
             id_1, meter_identifier='M60324', identifier='R')
-        self.utilbill_processor.update_register(register.id,
-                                                {'register_binding': 'OTHER'})
+        self.utilbill_processor.update_register(
+            register.id, {'register_binding': 'REG_DEMAND'})
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         # 2nd utility bill should have the same registers as the first
@@ -2002,8 +2002,9 @@ class TestTouMetering(unittest.TestCase):
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
-            'register_binding': 'TOU',
+            'register_binding': 'REG_PEAK',
             'meter_identifier': '',
+            # these periods do not actually correspond to normal peak time
             'active_periods': active_periods
         })
         self.utilbill_processor.update_utilbill_metadata(u.id,
