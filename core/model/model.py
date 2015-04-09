@@ -283,8 +283,11 @@ class Register(Base):
     OFFPEAK = 'REG_OFFPEAK'
     INTERMEDIATE = 'REG_INTERMEDIATE'
 
+    # complete set of allowed register binding values (should match the
+    # definition of enum columns in the datababase)
     REGISTER_BINDINGS = [
         TOTAL,
+        DEMAND,
         PEAK,
         INTERMEDIATE,
         OFFPEAK,
@@ -944,9 +947,9 @@ class UtilBill(Base):
         return register.meter_identifier
 
     def get_total_energy_consumption(self):
-        '''Return total energy consumption, i.e. value of the "REG_TOTAL"
+        '''Return total energy consumption, i.e. value of the total
         register, in whatever unit it uses. Return 0 if there is no
-        "REG_TOTAL" (which is not supposed to happen).
+        total register (which is not supposed to happen).
         '''
         try:
             total_register = next(r for r in self.registers
@@ -1024,6 +1027,18 @@ class Charge(Base):
         if filter_builtins:
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
+
+    @staticmethod
+    def get_simple_formula(register_binding):
+        """
+        :param register: one of the register binding values in
+        Register.REGISTER_BINDINGS.
+        :return: a formula for a charge that is directly proportional to the
+        value of the register, such as "REG_TOTAL.quantity". Most charge
+        formulas are like this.
+        """
+        assert register_binding in Register.REGISTER_BINDINGS
+        return register_binding + '.quantity'
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
                  target_total=None, description='', unit='',
