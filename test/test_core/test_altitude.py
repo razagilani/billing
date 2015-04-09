@@ -2,8 +2,8 @@ from unittest import TestCase
 from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
-from core import init_config, init_model
-from test.setup_teardown import TestCaseWithSetup
+from core import init_model
+from test.setup_teardown import clear_db
 from test import init_test_config
 init_test_config()
 init_model()
@@ -40,14 +40,14 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
         self.u = Utility(name='A Utility', address=Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
         Session().rollback()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_get_utility_from_guid(self):
         s = Session()
@@ -118,7 +118,7 @@ class TestWithDB(TestCase):
 
 class TestAltitudeBillWithDB(TestCase):
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
         self.u = Utility(name='A Utility', address=Address())
         utility = Utility(name='example', address=None)
@@ -142,4 +142,4 @@ class TestAltitudeBillWithDB(TestCase):
         self.assertEqual(0, s.query(AltitudeBill).count())
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()

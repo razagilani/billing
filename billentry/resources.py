@@ -214,6 +214,7 @@ class UtilBillResource(BaseResource):
         parser.add_argument('processed', type=bool)
         parser.add_argument('rate_class', type=str)
         parser.add_argument('utility', type=str)
+        parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
@@ -241,6 +242,7 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
+            supplier=row['supplier'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
             meter_identifier=row['meter_identifier']
