@@ -10,7 +10,7 @@ from core.model import UtilBill, Address, \
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 
 
 class ReeBillCustomerTest(unittest.TestCase):
@@ -89,7 +89,7 @@ class ReeBillUnitTest(unittest.TestCase):
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         washgas = Utility(name='washgas', address=Address('', '', '', '',
                                                           ''))
         supplier = Supplier('supplier', Address())
@@ -128,7 +128,7 @@ class ReebillTest(unittest.TestCase):
                 self.utilbill)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
