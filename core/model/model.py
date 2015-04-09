@@ -305,9 +305,9 @@ class Register(Base):
         'FIRST_MONTH_THERMS',
         'SECOND_MONTH_THERMS',
 
-        # related to gas supply contracts. BEGIN/END inventory might be
-        # considered real meter reads, but CONTRACT_VOLUME is a term of the
-        # supply contract and should not be a register.
+        # related to gas supply contracts. BEGIN/END_INVENTORY might be
+        # considered real meter reads, but CONTRACT_VOLUME is one of the
+        # terms of the supply contract and should not be a register.
         'BEGIN_INVENTORY',
         'END_INVENTORY',
         'CONTRACT_VOLUME',
