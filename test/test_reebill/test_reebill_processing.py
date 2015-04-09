@@ -1071,8 +1071,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
         self.reebill_processor.reebill_file_handler.get_file_path = Mock()
         temp_dir = TempDirectory()
-        self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
-            temp_dir.path
+        self.reebill_processor.reebill_file_handler.get_file_contents.return_value = \
+            temp_dir, StringIO().read()
         self.utilbill_processor.update_utilbill_metadata(
             self.utilbill.id, processed=True)
         ub = self.utilbill_processor.upload_utility_bill(
@@ -1144,11 +1144,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler = Mock()
         self.reebill_processor.reebill_file_handler.render_max_version \
             .return_value = 1
-        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+        self.reebill_processor.reebill_file_handler.get_file_contents = Mock()
         temp_dir = TempDirectory()
         self.reebill_processor.reebill_file_handler \
-            .get_file_path.return_value = \
-            temp_dir.path
+            .get_file_contents.return_value = \
+            temp_dir.path, StringIO().read()
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
                                                          processed=True)
         ub = self.utilbill_processor.upload_utility_bill(
@@ -2104,7 +2104,7 @@ class TestTouMetering(unittest.TestCase):
         # with these
 
         # create and send the summary bill
-        self.reebill_processor.issue_summary(group)
+        self.reebill_processor.issue_summary_for_bills(group.get_bills_to_issue(), group.bill_email_recipient)
 
         # don't care about email details
         self.mailer.mail.assert_called()
