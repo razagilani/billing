@@ -151,13 +151,8 @@ class UtilBillTestWithDB(TestCase):
         rate_class = RateClass(name='rate class', utility=self.utility,
                                service='gas')
         rate_class.register_templates = [
-            RegisterTemplate(register_binding='REG_TOTAL', unit='therms'),
-            RegisterTemplate(register_binding='REG_DEMAND', unit='kWD')]
-        #     "ABCDEF", 'therms', False, 'total', None, "ABCDEF", quantity=150,
-        #     register_binding='REG_TOTAL'),
-        #                       Register(utilbill, "ABCDEF description",
-        #     "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-        # quantity=150, register_binding='SOME_OTHER_BINDING')]
+            RegisterTemplate(register_binding=Register.TOTAL, unit='therms'),
+            RegisterTemplate(register_binding=Register.DEMAND, unit='kWD')]
         utilbill = UtilBill(utility_account, self.utility,
                             rate_class, supplier=self.supplier,
                             period_start=date(2000, 1, 1),
@@ -169,14 +164,13 @@ class UtilBillTestWithDB(TestCase):
         session.flush()
 
         charge = utilbill.add_charge()
-        self.assertEqual('REG_TOTAL.quantity', charge.quantity_formula)
+        self.assertEqual('%s.quantity' % Register.TOTAL,
+                         charge.quantity_formula)
 
         session.delete(charge)
 
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
-         " quantity formula should be 'REG_TOTAL.quantity' when at least one "
-         " register has a register_binding named 'REG_TOTAL'.")
+        self.assertEqual(charge.quantity_formula, Register.TOTAL + '.quantity')
         session.delete(charge)
 
     def test_compute(self):
@@ -193,7 +187,7 @@ class UtilBillTestWithDB(TestCase):
         register = Register(utilbill, "ABCDEF description",
                 "ABCDEF", 'therms', False, "total", None, "GHIJKL",
                 quantity=150,
-                register_binding='REG_TOTAL')
+                register_binding=Register.TOTAL)
         utilbill.registers = [register]
         charges = [
             dict(
@@ -383,10 +377,9 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(utilbill, '',
-                '', 'kWh', False, "total", '', '',
-                quantity=150,
-                register_binding='REG_TOTAL')]
+        utilbill.registers = [
+            Register(utilbill, '', '', 'kWh', False, "total", '', '',
+                     quantity=150, register_binding=Register.TOTAL)]
         utilbill.charges = [
             Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity',
                    '', '', 'kWh'),
@@ -464,9 +457,10 @@ class UtilBillTestWithDB(TestCase):
         utilbill.registers = [Register(utilbill, '',
                 '', 'kWh', False, "total", '', '',
                 quantity=150,
-                register_binding='REG_TOTAL')]
+                register_binding=Register.TOTAL)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity', '', '', 'kWh'),
+            Charge(utilbill, 'A', 1, Register.TOTAL + '.quantity', '', '',
+                   'kWh'),
             Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
             # this has an error
             Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
@@ -486,7 +480,7 @@ class UtilBillTestWithDB(TestCase):
             Register(utilbill, '', '', 'therms', False, '', '', '',
                      register_binding='X', quantity=1),
             Register(utilbill, '', '', 'kWh', False, '', '', '',
-                     register_binding='REG_TOTAL', quantity=2),
+                     register_binding=Register.TOTAL, quantity=2),
         ]
         self.assertEqual(2, utilbill.get_total_energy_consumption())
 

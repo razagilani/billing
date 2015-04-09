@@ -275,14 +275,22 @@ class Register(Base):
 
     __tablename__ = 'register'
 
+    # commonly used register_binding values--there aren't any known bills
+    # showing meter readings for things other than these
+    TOTAL = 'REG_TOTAL'
+    DEMAND = 'REG_DEMAND'
+    PEAK = 'REG_PEAK'
+    OFFPEAK = 'REG_OFFPEAK'
+    INTERMEDIATE = 'REG_INTERMEDIATE'
+
     REGISTER_BINDINGS = [
-        'REG_TOTAL',
+        TOTAL,
+        PEAK,
+        INTERMEDIATE,
+        OFFPEAK,
+        INTERMEDIATE,
         'REG_TOTAL_SECONDARY',
         'REG_TOTAL_TERTIARY',
-        'REG_PEAK'
-        'REG_INTERMEDIATE',
-        'REG_OFFPEAK'
-        'REG_DEMAND'
         'REG_POWERFACTOR',
 
         # related to "sub-bills": these are regular meter readings but belong
@@ -300,7 +308,7 @@ class Register(Base):
         'BEGIN_INVENTORY',
         'END_INVENTORY',
         'CONTRACT_VOLUME',
-        ]
+    ]
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -388,7 +396,7 @@ class RegisterTemplate(Base):
 
     @classmethod
     def get_total_register_template(cls, unit):
-        return cls(register_binding='REG_TOTAL', unit=unit)
+        return cls(register_binding=Register.TOTAL, unit=unit)
 
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
@@ -762,8 +770,8 @@ class UtilBill(Base):
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
-            'REG_TOTAL.quantity' if any([register.register_binding ==
-                'REG_TOTAL' for register in registers]) else \
+            '%s.quantity' % Register.TOTAL if any([register.register_binding ==
+                Register.TOTAL for register in registers]) else \
             registers[0].register_binding
         session.flush()
         return charge
@@ -898,7 +906,7 @@ class UtilBill(Base):
         # remove duplicate when merged
         try:
             total_register = next(r for r in self.registers if
-                                  r.register_binding == 'REG_TOTAL')
+                                  r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity
@@ -906,7 +914,7 @@ class UtilBill(Base):
     def set_total_energy(self, quantity):
         self.check_editable()
         total_register = next(r for r in self.registers if
-                              r.register_binding == 'REG_TOTAL')
+                              r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
     def get_supply_target_total(self):
@@ -924,7 +932,7 @@ class UtilBill(Base):
         #TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
         register = next(r for r in self.registers if r.register_binding
-                                                     == 'REG_TOTAL')
+                                                     == Register.TOTAL)
         register.meter_identifier = meter_identifier
 
     def get_total_meter_identifier(self):
@@ -932,7 +940,7 @@ class UtilBill(Base):
         register_binding of REG_TOTAL.'''
         #TODO: make this more generic once implementation of Regiter is changed
         register = next(r for r in self.registers if r.register_binding
-                                                     == 'REG_TOTAL')
+                                                     == Register.TOTAL)
         return register.meter_identifier
 
     def get_total_energy_consumption(self):
@@ -942,7 +950,7 @@ class UtilBill(Base):
         '''
         try:
             total_register = next(r for r in self.registers
-                                  if r.register_binding == 'REG_TOTAL')
+                                  if r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity

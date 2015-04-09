@@ -293,13 +293,12 @@ class TestCaseWithSetup(test_utils.TestCase):
         u1.registers = []
         u1r1 = Register(u1, "test description", "M60324",
                         'therms', False, "total", None, "M60324",
-                        quantity=123.45,
-                        register_binding="REG_TOTAL")
+                        quantity=123.45, register_binding=Register.TOTAL)
         u2.registers = []
         u2r1 = Register(u2, "test description", "M60324",
                       'therms', False, "total", None, "M60324",
                       quantity=123.45,
-                      register_binding='REG_TOTAL')
+                      register_binding=Register.TOTAL)
 
         session.add_all([u1, u2, u1r1, u2r1])
         session.flush()
