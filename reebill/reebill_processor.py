@@ -519,10 +519,11 @@ class ReebillProcessor(object):
             'last_bill': bill_file_name,
         }
         bill_file_path = self.reebill_file_handler.get_file_path(reebill)
+        bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
         self.bill_mailer.mail(
             recipient_list,
             merge_fields,
-            open(bill_file_path, 'r'),
+            bill_file_contents,
             bill_file_path)
 
     def _get_issuable_reebills(self):
@@ -683,7 +684,7 @@ class ReebillProcessor(object):
             'last_bill': '',
         }
         self.bill_mailer.mail(summary_recipient, merge_fields,
-                              summary_file, 'summary.pdf')
+                              summary_file.read(), 'summary.pdf')
         return bills
 
     def toggle_reebill_processed(self, account, sequence,
