@@ -3,7 +3,7 @@
 from datetime import datetime
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
-from flask.ext.login import current_user
+from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed, Identity
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
@@ -360,6 +360,10 @@ class UtilBillCountForUserResource(BaseResource):
 
         from core import config
         if config.get('billentry', 'disable_authentication'):
+            # the login from last session is still active if
+            # user is not anonymous, so we log user out.
+            if not current_user.is_anonymous():
+                logout_user()
             assert current_user.is_anonymous()
             return {'rows': rows, 'results': len(rows)}
 

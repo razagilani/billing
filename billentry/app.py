@@ -21,7 +21,7 @@ from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app
+    render_template, current_app, Response
 from flask_oauth import OAuth, OAuthException
 
 from billentry.billentry_model import BillEntryUser, Role
@@ -207,8 +207,7 @@ def before_request():
     if not user.is_authenticated():
         if ('index.html' in request.path or request.endpoint == '/' or not
                         request.endpoint in ALLOWED_ENDPOINTS):
-            set_next_url()
-            return redirect(url_for('login_page'))
+            return Response('Could not verify your access level for that URL', 401)
 
 @app.after_request
 def db_commit(response):
@@ -245,23 +244,6 @@ def oauth_login():
     callback_url = url_for('oauth2callback', _external=True)
     result = google.authorize(callback=callback_url)
     return result
-
-def set_next_url():
-    next_path = request.args.get('next') or request.path
-    if next_path:
-        # Since passing along the "next" URL as a GET param requires
-        # a different callback for each page, and Google requires
-        # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
-        path = urllib.unquote(next_path)
-        if path[0] == '/':
-            # This first slash is unnecessary since we force it in when we
-            # format next_url.
-            path = path[1:]
-
-        next_url = "{path}".format(
-            path=path,)
-        session['next_url'] = next_url
 
 @app.route('/login-page')
 def login_page():
@@ -305,8 +287,7 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(),
                           identity=Identity(user.id))
     session['user_name'] = str(user)
-    next_url = session.pop('next_url', url_for('index'))
-    return redirect(next_url)
+    return redirect(url_for('index'))
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time

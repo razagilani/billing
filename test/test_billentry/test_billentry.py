@@ -827,11 +827,9 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # just an example of a URL the user was trying to go to
         original_url = '/admin'
 
-        # first the user tries to go to 'original_url', and gets redirected to
-        # /login-page
+        # first the user tries to go to 'original_url' and 401 is returned
         rv = self.app.get(original_url)
-        self.assertEqual(302, rv.status_code)
-        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+        self.assertEqual(401, rv.status_code)
 
         # then the user clicks on the "Log in with Google" link, whose URL is
         #  /login, and gets redirected to Google's OAuth URL
@@ -849,15 +847,13 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         # after unsuccessful login, the user still can't get to a normal page
         rv = self.app.get('/')
-        self.assertEqual(302, rv.status_code)
-        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+        self.assertEqual(401, rv.status_code)
 
     def test_local_login(self):
         response = self.app.get('/')
         # because user is not logged in so a redirect to login-page should
         # happen
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual('http://localhost/login-page', response.location)
+        self.assertEqual(response.status_code, 401)
 
         # valid data for user login
         data = {'email':'user1@test.com', 'password': 'password'}\
@@ -865,7 +861,6 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
 
-        # on successful login user is routed to the next url
         self.assertTrue(response.status_code == 302)
         self.assertEqual('http://localhost/', response.location)
 
@@ -880,10 +875,8 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # test redirection to the page the user originally wanted to go to.
 
         response = self.app.get('/')
-        # because user is not logged in so a redirect to login-page should
-        # happen
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual('http://localhost/login-page', response.location)
+        # because user is not logged in so a 401 is returned
+        self.assertEqual(response.status_code, 401)
 
         # invalid email for user login
         data = {'email':'user2@test.com', 'password': 'password'}
@@ -891,7 +884,8 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # post request for user login with invalid credentials
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
-        # the login should fail and user should be redirected to login-page
+
+        # the login should fail and user should be redirected to login page
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
 
@@ -901,7 +895,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # post request for user login with invalid credentials
         response = self.app.post('/userlogin',
                                  content_type='multipart/form-data', data=data)
-        # the login should fail and user should be redirected to login-page
+        # the login should fail and user should be redirected to login page
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
 
