@@ -336,14 +336,13 @@ class Register(Base):
         """Return a new Register created based on the given RegisterTemplate.
         :param register_template: RegisterTemplate instance.
         """
-        return cls(None, register_template.description, '',
-                   register_template.unit, False, '',
-                   register_template.active_periods, '',
-                   register_binding=register_template.register_binding)
+        return cls(register_template.register_binding, register_template.unit,
+                   description=register_template.description,
+                   active_periods=register_template.active_periods)
 
-    def __init__(self, utilbill, description, identifier, unit,
-                 estimated, reg_type, active_periods, meter_identifier,
-                 quantity=0.0, register_binding=''):
+    def __init__(self, register_binding, unit, quantity=0.0, description='',
+                 identifier='', estimated=False, active_periods=None,
+                 meter_identifier='', reg_type=''):
         """Construct a new :class:`.Register`.
 
         :param utilbill: The :class:`.UtilBill` on which the register appears
@@ -357,7 +356,6 @@ class Register(Base):
         :param active_periods:
         :param meter_identifier:
         """
-        self.utilbill = utilbill
         self.description = description
         self.quantity = quantity
         self.unit = unit
