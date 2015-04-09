@@ -51,3 +51,21 @@ def upgrade():
 
     op.add_column(u'utilbill', sa.Column('flagged', sa.Boolean()))
     op.add_column('utilbill', sa.Column('tou', sa.Boolean(), nullable=False))
+    
+    # can't import this from model.py
+    PHYSICAL_UNITS = [
+        'BTU',
+        'MMBTU',
+        'kWD',
+        'kWh',
+        'therms',
+    ]
+
+    op.create_table('register_template',
+        sa.Column('register_template_id', sa.Integer, primary_key=True),
+        sa.Column('rate_class_id', sa.Integer, sa.ForeignKey('rate_class.id'),
+                  nullable=False),
+        sa.Column('register_binding', sa.String(255), nullable=False),
+        sa.Column('unit', sa.Enum(*PHYSICAL_UNITS), nullable=False),
+        sa.Column('active_periods', sa.String(2048)),
+        sa.Column('description', sa.String(255), nullable=False, default=''))

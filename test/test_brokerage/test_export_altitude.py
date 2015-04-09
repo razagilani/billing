@@ -13,9 +13,13 @@ from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier, Register
 from brokerage.export_altitude import PGAltitudeExporter
 from test import init_test_config
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 from util.dateutils import ISO_8601_DATETIME
 
+
+def setUpModule():
+    init_test_config()
+    init_model()
 
 class TestExportAltitude(TestCase):
     def setUp(self):
@@ -148,7 +152,7 @@ class TestAltitudeBillStorage(TestCase):
     querying AltitudeBill objects.
     """
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         utility = Utility(name='example', address=None)
         rate_class = RateClass(name='Rate Class', utility=utility,
                                service='electric')
@@ -161,9 +165,8 @@ class TestAltitudeBillStorage(TestCase):
             service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1),
             due_date=date(2000,2,1))
-        register = Register(self.utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-            quantity=150.0, register_binding='REG_TOTAL')
+        self.utilbill.registers[0].quantity = 150.
+        self.utilbill.registers[0].meter_identifier = 'GHIJKL'
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
@@ -171,11 +174,11 @@ class TestAltitudeBillStorage(TestCase):
         altitude_bill = AltitudeBill(self.utilbill, 'bbb')
         Session().add_all([utility, rate_class, supplier, self.utilbill,
                           altitude_account, altitude_utility, altitude_supplier,
-                          altitude_bill, register])
+                          altitude_bill])
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_export_with_db(self):
         """Integration test with core.altitude module and database, making sure

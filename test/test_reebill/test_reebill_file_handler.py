@@ -47,7 +47,7 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(utility_account, 'Test Utility', 'Test Rate Class',
+        u = UtilBill(utility_account, None, None,
                      supplier='Test Supplier', billing_address=ba3,
                      service_address=sa3, period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1))
