@@ -12,7 +12,7 @@ from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
     CustomerGroup
-from core.model import UtilityAccount, Session, Address
+from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     clear_db, create_utilbill_processor, create_reebill_objects, \
     create_nexus_util
@@ -232,7 +232,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
             self.utilbill_processor.update_charge(
                 {
                     'rsi_binding': 'A',
-                    'quantity_formula': 'REG_TOTAL.quantity',
+                    'quantity_formula': Charge.get_simple_formula(
+                        Register.TOTAL),
                     'rate': 1
                 }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
             self.utilbill_processor.compute_utility_bill(utilbill.id)
@@ -476,10 +477,10 @@ class ReebillProcessingTest(testing_utils.TestCase):
             self.utilbill_processor.add_charge(ub.id)  #creates a charge with
             # rsi_binding 'New RSI #1'
             #update the just-created charge
-            self.utilbill_processor.update_charge({'rsi_binding': 'THE_CHARGE',
-                             'quantity_formula': 'REG_TOTAL.quantity',
-                             'rate': 1}, utilbill_id=ub.id,
-                            rsi_binding='New Charge 1')
+            self.utilbill_processor.update_charge(
+                {'rsi_binding': 'THE_CHARGE',
+                 'quantity_formula':  Charge.get_simple_formula(Register.TOTAL),
+                'rate': 1}, utilbill_id=ub.id, rsi_binding='New Charge 1')
 
             self.utilbill_processor.update_register(ub.registers[0].id,
                                                     {'quantity': 100})
@@ -589,12 +590,12 @@ class ReebillProcessingTest(testing_utils.TestCase):
             account, StringIO('April 2000'), date(2000, 1, 4), date(2000, 2, 2),
             'gas')
         # add a register to the first utility bill so there are 2,
-        # REG_TOTAL and OTHER
+        # total and demand
         id_1 = self.views.get_all_utilbills_json(account, 0, 30)[0][0]['id']
         register = self.utilbill_processor.new_register(
             id_1, meter_identifier='M60324', identifier='R')
-        self.utilbill_processor.update_register(register.id,
-                                                {'register_binding': 'OTHER'})
+        self.utilbill_processor.update_register(
+            register.id, {'register_binding': Register.DEMAND})
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         # 2nd utility bill should have the same registers as the first
@@ -770,7 +771,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_charge(
             {
                 'rsi_binding': 'THE_CHARGE',
-                'quantity_formula': 'REG_TOTAL.quantity',
+                'quantity_formula': Charge.get_simple_formula(Register.TOTAL),
                 'unit': 'therms',
                 'rate': 1,
             }, utilbill_id=self.utilbill.id, rsi_binding='New Charge 1')
@@ -1277,7 +1278,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         charge = self.utilbill_processor.add_charge(self.utilbill.id)
         self.utilbill_processor.update_charge(
             dict(rsi_binding='THE_CHARGE',
-                 quantity_formula="REG_TOTAL.quantity",
+                 quantity_formula=Charge.get_simple_formula(Register.TOTAL),
                  unit='therms', rate=1), charge_id=charge.id)
 
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
@@ -1295,7 +1296,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                                                   start_date=date(2000, 1, 1))
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
-        one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+        one.set_renewable_energy_reading(Register.TOTAL, 100 * 1e5)
         self.reebill_processor.compute_reebill(acc, 1)
         self.assertAlmostEqual(50.0, one.ree_charge)
         self.assertAlmostEqual(50.0, one.balance_due)
@@ -1367,7 +1368,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.add_charge(id_1)
         self.utilbill_processor.update_charge(
             {'rsi_binding': 'THE_CHARGE',
-             'quantity_formula': 'REG_TOTAL.quantity',
+             'quantity_formula': Charge.get_simple_formula(Register.TOTAL),
              'rate': 1},
             utilbill_id=id_1,
             rsi_binding='New Charge 1')
@@ -1689,6 +1690,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         utilbill_id = self.views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
+        formula = Charge.get_simple_formula(Register.TOTAL)
         example_charge_fields = [
             dict(rate=23.14,
                  rsi_binding='PUC',
@@ -1697,28 +1699,28 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             dict(rate=0.03059,
                  rsi_binding='RIGHT_OF_WAY',
                  roundrule='ROUND_HALF_EVEN',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.01399,
                  rsi_binding='SETF',
                  roundrule='ROUND_UP',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rsi_binding='SYSTEM_CHARGE',
                  rate=11.2,
                  quantity_formula='1'),
             dict(rsi_binding='DELIVERY_TAX',
                  rate=0.07777,
                  unit='therms',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=.2935,
                  rsi_binding='DISTRIBUTION_CHARGE',
                  roundrule='ROUND_UP',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=.7653,
                  rsi_binding='PGC',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.006,
                  rsi_binding='EATF',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.06,
                  rsi_binding='SALES_TAX',
                  quantity_formula=(
@@ -1862,34 +1864,32 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.utilbill_processor.new_register(utilbill_id)
             register_id = self.views.get_registers_json(
                 utilbill_id)[1]['id']
-            self.utilbill_processor.update_register(register_id,
-                                                    {'register_binding': 'REG_2'})
+            self.utilbill_processor.update_register(
+                register_id, {'register_binding': Register.DEMAND})
         add_2nd_register()
 
         # the utility bill must have some charges that depend on both
         # registers' values
         self.utilbill_processor.add_charge(utilbill_id)
-        self.utilbill_processor.update_charge({
-                                                  'rsi_binding': 'A',
-                                                  'quantity_formula': 'REG_TOTAL.quantity',
-                                                  'rate': 1
-                                              }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            {'rsi_binding': 'A',
+             'quantity_formula': Charge.get_simple_formula(Register.TOTAL),
+             'rate': 1}, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
         self.utilbill_processor.add_charge(utilbill_id)
-        self.utilbill_processor.update_charge({
-                                                  'rsi_binding': 'B',
-                                                  'quantity_formula': 'REG_2.quantity',
-                                                  'rate': 1
-                                              }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            { 'rsi_binding': 'B',
+              'quantity_formula': Charge.get_simple_formula(Register.DEMAND),
+              'rate': 1}, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
         self.utilbill_processor.update_utilbill_metadata(utilbill_id,
                                                          processed=True)
 
         reebill = self.reebill_processor.roll_reebill(
             '99999', start_date=date(2000,1,1))
 
-        # verify reebill has a reading only for REG_TOTAL (currently there is
-        # no way to do this through the UI)
+        # verify reebill has a reading only for total register (currently
+        # there is no way to do this through the UI)
         self.assertEqual(1, len(reebill.readings))
-        self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
+        self.assertEqual(Register.TOTAL, reebill.readings[0].register_binding)
 
         self.reebill_processor.compute_reebill('99999', 1)
         self.reebill_processor.bind_renewable_energy('99999', 1)
@@ -1904,7 +1904,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.new_version('99999', 1)
         reebill = Session().query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, len(reebill.readings))
-        self.assertEqual('REG_TOTAL', reebill.readings[0].register_binding)
+        self.assertEqual(Register.TOTAL, reebill.readings[0].register_binding)
         self.assertAlmostEqual(energy_1,
                                reebill.readings[0].renewable_quantity, places=4)
 
@@ -1912,7 +1912,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # register of the utility bill
         self.reebill_processor.update_reebill_readings('99999', 1)
         self.assertEqual(2, len(reebill.readings))
-        self.assertEqual('REG_2', reebill.readings[1].register_binding)
+        self.assertEqual(Register.DEMAND, reebill.readings[1].register_binding)
 
         self.reebill_processor.bind_renewable_energy('99999', 1)
         energy_2 = (self.views.get_reebill_metadata_json('99999')[0]
@@ -2002,8 +2002,9 @@ class TestTouMetering(unittest.TestCase):
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
-            'register_binding': 'TOU',
+            'register_binding': Register.PEAK,
             'meter_identifier': '',
+            # these periods do not actually correspond to normal peak time
             'active_periods': active_periods
         })
         self.utilbill_processor.update_utilbill_metadata(u.id,
