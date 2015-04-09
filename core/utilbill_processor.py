@@ -33,7 +33,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None, supply_choice_id=None, tou=None):
+            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -75,6 +75,9 @@ class UtilbillProcessor(object):
             utilbill.utility, new_utility = self.get_create_utility(utility)
             if new_utility:
                 utilbill.rate_class = None
+
+        if meter_identifier is not None:
+            utilbill.set_total_meter_identifier(meter_identifier)
 
         period_start = period_start if period_start else \
             utilbill.period_start
