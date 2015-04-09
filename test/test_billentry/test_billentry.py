@@ -176,9 +176,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         ub3.id = 3
 
         self.ub1.registers[0].quantity = 150
-        register2 = Register(self.ub2, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150, register_binding=Register.TOTAL)
+        register2 = Register(Register.TOTAL, 'therms', quantity=150,
+                             identifier='ABCDEF', meter_identifier='GHIJKL')
         self.ub2.registers = [register2]
         s.add(register2)
 
