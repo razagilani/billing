@@ -548,8 +548,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
         while len(u.registers) > 0:
             del u.registers[0]
-        u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
-                 register_binding=Register.DEMAND)]
+        u.registers = [Register(Register.DEMAND, 'MMBTU')]
         self.assertEqual({Register.DEMAND},
                          {r.register_binding for r in u.registers})
 

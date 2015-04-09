@@ -51,9 +51,9 @@ class ReebillFileHandlerTest(TestCase):
                      supplier='Test Supplier', billing_address=ba3,
                      service_address=sa3, period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1))
-        u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
-                                'total', None, 'METERID', quantity=100,
-                                register_binding=Register.TOTAL)]
+        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+                                identifier='REGID', meter_identifier='METERID',
+                                reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
         self.reebill.replace_readings_from_utility_bill_registers(u)

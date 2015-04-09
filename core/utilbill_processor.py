@@ -201,12 +201,12 @@ class UtilbillProcessor(object):
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
                 continue
-            # no need to append this Register to new_utilbill.registers because
-            # SQLAlchemy does it automatically
-            Register(new_utilbill, register.description, register.identifier,
-                     register.unit, False, register.reg_type,
-                     register.active_periods, register.meter_identifier,
-                     quantity=0, register_binding=register.register_binding)
+            new_utilbill.registers.append(
+                Register(register.register_binding, unit=register.unit,
+                         quantity=0, identifier=register.identifier,
+                         reg_type=register.reg_type,
+                         active_periods=register.active_periods,
+                         meter_identifier=register.meter_identifier))
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -386,20 +386,18 @@ class UtilbillProcessor(object):
             raise BillingError("No more registers can be added")
 
         r = Register(
-            utility_bill,
+            register_kwargs.get('register_binding', new_reg_binding),
+            register_kwargs.get('unit', 'therms'),
             description=register_kwargs.get(
                 'description',"Insert description"),
             identifier=register_kwargs.get(
                 'identifier', "Insert register ID here"),
-            unit=register_kwargs.get('unit', 'therms'),
             estimated=register_kwargs.get('estimated', False),
             reg_type=register_kwargs.get('reg_type', "total"),
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
-            quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get('register_binding',
-                                                 new_reg_binding)
-        )
+            quantity=register_kwargs.get('quantity', 0))
+        r.utilbill = utility_bill
         session.add(r)
         session.flush()
         return r
