@@ -25,7 +25,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'ID',
+s        header: 'ID',
         dataIndex: 'id',
         width: 50,
         disabled: true
@@ -113,6 +113,25 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         },
         width: 100
     },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        emptyText: 'Unknown Supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 150
+    },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         emptyText: 'Unknown Rate Class',
@@ -168,7 +187,8 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 100
+        width: 100,
+        hidden: true
     },{
         header: 'Due Date',
         dataIndex: 'due_date',
