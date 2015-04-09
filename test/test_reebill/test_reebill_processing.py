@@ -12,7 +12,7 @@ from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
     CustomerGroup
-from core.model import UtilityAccount, Session, Address
+from core.model import UtilityAccount, Session, Address, Register
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     clear_db, create_utilbill_processor, create_reebill_objects, \
     create_nexus_util
@@ -232,7 +232,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             self.utilbill_processor.update_charge(
                 {
                     'rsi_binding': 'A',
-                    'quantity_formula': 'REG_TOTAL.quantity',
+                    'quantity_formula': '%s.quantity' % Register.TOTAL,
                     'rate': 1
                 }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
             self.utilbill_processor.compute_utility_bill(utilbill.id)
@@ -477,7 +477,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             # rsi_binding 'New RSI #1'
             #update the just-created charge
             self.utilbill_processor.update_charge({'rsi_binding': 'THE_CHARGE',
-                             'quantity_formula': 'REG_TOTAL.quantity',
+                             'quantity_formula': '%s.quantity' % Register.TOTAL,
                              'rate': 1}, utilbill_id=ub.id,
                             rsi_binding='New Charge 1')
 
@@ -589,12 +589,12 @@ class ReebillProcessingTest(testing_utils.TestCase):
             account, StringIO('April 2000'), date(2000, 1, 4), date(2000, 2, 2),
             'gas')
         # add a register to the first utility bill so there are 2,
-        # REG_TOTAL and OTHER
+        # total and demand
         id_1 = self.views.get_all_utilbills_json(account, 0, 30)[0][0]['id']
         register = self.utilbill_processor.new_register(
             id_1, meter_identifier='M60324', identifier='R')
         self.utilbill_processor.update_register(
-            register.id, {'register_binding': 'REG_DEMAND'})
+            register.id, {'register_binding': Register.DEMAND})
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
         # 2nd utility bill should have the same registers as the first
@@ -770,7 +770,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_charge(
             {
                 'rsi_binding': 'THE_CHARGE',
-                'quantity_formula': 'REG_TOTAL.quantity',
+                'quantity_formula': '%s.quantity' % Register.TOTAL,
                 'unit': 'therms',
                 'rate': 1,
             }, utilbill_id=self.utilbill.id, rsi_binding='New Charge 1')
@@ -1277,7 +1277,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         charge = self.utilbill_processor.add_charge(self.utilbill.id)
         self.utilbill_processor.update_charge(
             dict(rsi_binding='THE_CHARGE',
-                 quantity_formula="REG_TOTAL.quantity",
+                 quantity_formula=Register.TOTAL + ".quantity",
                  unit='therms', rate=1), charge_id=charge.id)
 
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
@@ -1295,7 +1295,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                                                   start_date=date(2000, 1, 1))
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
-        one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+        one.set_renewable_energy_reading(Register.TOTAL, 100 * 1e5)
         self.reebill_processor.compute_reebill(acc, 1)
         self.assertAlmostEqual(50.0, one.ree_charge)
         self.assertAlmostEqual(50.0, one.balance_due)
