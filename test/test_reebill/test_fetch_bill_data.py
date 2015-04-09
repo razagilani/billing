@@ -68,8 +68,7 @@ class FetchTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', '', 'therms', False,
-                'total', '', '', quantity=0,
-                register_binding='REG_TOTAL')]
+                'total', '', '', quantity=0, register_binding=Register.TOTAL)]
         self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -209,14 +208,14 @@ class ReeGetterTestPV(unittest.TestCase):
         utilbill.period_start = date(2000,1,1)
         utilbill.period_end = date(2000,2,1)
         energy_register = Mock(autospec=Register)
-        energy_register.register_binding = 'REG_TOTAL'
+        energy_register.register_binding = Register.TOTAL
         energy_register.get_active_periods.return_value = {
             'active_periods_weekday': [(0, 23)],
             'active_periods_weekend': [(0, 23)],
             'active_periods_holiday': [(0, 23)],
         }
         demand_register = Mock(autospec=Register)
-        demand_register.register_binding = 'REG_DEMAND'
+        demand_register.register_binding = Register.DEMAND
         demand_register.get_active_periods.return_value = \
                 energy_register.get_active_periods.return_value
         utilbill.registers = [energy_register, demand_register]
