@@ -97,6 +97,11 @@ def on_identity_loaded(sender, identity):
         for role in current_user.roles:
             identity.provides.add(RoleNeed(role.name))
 
+    # if the local user is anonymous (i.e. authentication is disabled)
+    # consider the user to be an admin
+    if current_user.is_anonymous():
+        identity.provides.add(RoleNeed('admin'))
+
 @login_manager.user_loader
 def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
