@@ -75,15 +75,20 @@ app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
 
-# The order here of the following is important. We first need to initialize,
-# flask login, then flask principal, and only then we can check whether the user
-# is anonymous so that the anonymous user can be assigned the approriate
-# flask-principal roles
 login_manager = LoginManager()
 login_manager.init_app(app)
 principals = Principal(app)
+
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
+
+
+@principals.identity_loader
+def load_identity_for_anonymous_user():
+    if config.get('billentry', 'disable_authentication'):
+        identity = AnonymousIdentity()
+        identity.provides.add(RoleNeed('admin'))
+        return identity
 
 
 @identity_loaded.connect_via(app)
@@ -100,6 +105,7 @@ def on_identity_loaded(sender, identity):
     if hasattr(current_user, 'roles'):
         for role in current_user.roles:
             identity.provides.add(RoleNeed(role.name))
+
 
 @login_manager.user_loader
 def load_user(id):
@@ -196,6 +202,7 @@ def create_user_in_db(access_token):
 def before_request():
     if app.config['LOGIN_DISABLED']:
         return
+
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
