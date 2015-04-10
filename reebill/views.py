@@ -6,7 +6,7 @@ from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
-from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge
+from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -100,6 +100,9 @@ class Views(object):
     def get_all_suppliers_json(self):
         return self._serialize_id_name(Supplier)
 
+    def get_all_customer_groups_json(self):
+        return  self._serialize_id_name(CustomerGroup)
+
     def get_all_utilities_json(self):
         return self._serialize_id_name(Utility)
 
@@ -135,7 +138,8 @@ class Views(object):
             .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
         reebills = session.query(ReeBill) \
             .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence==min_sequence.c.sequence)
+            .filter(ReeBill.sequence==min_sequence.c.sequence)\
+            .filter(ReeBill.processed == 1)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
