@@ -58,7 +58,7 @@ else:
     initialize()
 
     # WSGI Mode
-    ui_root = join(dirname(realpath(__file__)), 'ui')
+    ui_root = join(dirname(dirname(realpath(__file__))), 'reebill/ui')
     cherrypy_conf = {
         '/': {
             'tools.sessions.on': True,
