@@ -368,9 +368,23 @@ class UtilbillProcessor(object):
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
         """
+        # TODO: this code belongs inside UtilBill, if it has to exist at all
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utility_bill.check_editable()
+        # register must have a valid "register_binding" value. yes this is a
+        # pretty bad way to do it.
+        i = 0
+        new_reg_binding = Register.REGISTER_BINDINGS[0]
+        while i < Register.REGISTER_BINDINGS:
+            new_reg_binding = Register.REGISTER_BINDINGS[i]
+            if new_reg_binding not in (r.register_binding for r in
+                                   utility_bill.registers):
+                break
+            i += 1
+        if i == len(Register.REGISTER_BINDINGS):
+            raise BillingError("No more registers can be added")
+
         r = Register(
             utility_bill,
             description=register_kwargs.get(
@@ -383,8 +397,8 @@ class UtilbillProcessor(object):
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
             quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get(
-                'register_binding', "Insert register binding here")
+            register_binding=register_kwargs.get('register_binding',
+                                                 new_reg_binding)
         )
         session.add(r)
         session.flush()

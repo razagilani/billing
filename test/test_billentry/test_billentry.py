@@ -134,13 +134,11 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
-        register = Register(self.ub1, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-            quantity=150.0, register_binding='REG_TOTAL')
         self.ub1.registers[0].quantity = 150
         self.ub1.registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
-                            service_address=Address(street='2 Example St.'))
+                              service_address=Address(street='2 Example St.'))
+        # UB2 does not have a rateclass so we must manually create a register
         register2 = Register(self.ub2, "ABCDEF description",
             "ABCDEF", 'therms', False, "total", None, "MNOPQR",
             quantity=250.0, register_binding='REG_TOTAL')
@@ -154,9 +152,11 @@ class BillEntryIntegrationTest(object):
         self.ub2.id = 2
         self.ub3.id = 3
         s = Session()
-        s.add_all([self.utility, self.ua1, self.rate_class, self.ub1,
-            self.ub2, self.project_mgr_role, self.admin_role, register,
-            register2])
+        s.add_all([
+            self.utility, self.ua1, self.rate_class, self.ub1,
+            self.ub2, self.project_mgr_role, self.admin_role,
+            register2
+        ])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
@@ -188,17 +188,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
-        register1 = Register(self.ub1, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150,
-                register_binding='REG_TOTAL')
-        register2 = Register(self.ub2, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150,
-                register_binding='REG_TOTAL')
-        s.add_all([register1, register2])
-        self.ub1.registers = [register1]
-        self.ub2.registers = [register2]
+        self.ub1.registers[0].quantity = 150
+        self.ub2.registers[0].quantity = 150
+        self.ub2.registers[0].meter_identifier = "GHIJKL"
 
         c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
                     type='distribution', target_total=1)
