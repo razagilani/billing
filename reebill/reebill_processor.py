@@ -9,7 +9,8 @@ from sqlalchemy import not_
 from sqlalchemy import func
 
 from core.model import (UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass,
+                           Register)
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer)
 from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
@@ -234,14 +235,10 @@ class ReebillProcessor(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         if last_reebill_row is None:
-            # this is the first reebill: choose only REG_TOTAL complain if it
-            # doesn't exist
-            try:
-                reg_total_register = next(r for r in utilbill.registers if
-                                          r.register_binding == 'REG_TOTAL')
-            except StopIteration:
-                raise RegisterError('The utility bill must have a register '
-                                    'called "REG_TOTAL"')
+            # this is the first reebill: choose only total register, which is
+            #  guaranteed to exist
+            reg_total_register = next(r for r in utilbill.registers if
+                                      r.register_binding == Register.TOTAL)
             new_reebill.readings = [Reading.make_reading_from_register(
                 reg_total_register)]
         else:
