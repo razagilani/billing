@@ -40,6 +40,7 @@ Ext.define('BillEntry.model.UtilityBill', {
         {name: 'wiki_url'},
         {name: 'entered'},
         {name: 'meter_identifier'},
+        {name: 'flagged'},
         {name: 'tou'}
     ]
 });
