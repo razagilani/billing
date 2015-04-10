@@ -1,17 +1,17 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
 from datetime import datetime
+
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
 from flask.ext.login import current_user, logout_user
-from flask.ext.principal import Permission, RoleNeed, Identity
+from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
-from flask.ext.restful.inputs import boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func
 
-from billentry.billentry_model import BEUtilBill, Role
+from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
@@ -24,7 +24,10 @@ from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
 
 
-project_mgr_permission = Permission(RoleNeed('Project Manager'), RoleNeed('admin'))
+project_mgr_permission = Permission(RoleNeed('Project Manager'),
+                                    RoleNeed('admin'))
+
+
 # TODO: would be even better to make flask-restful automatically call any
 # callable attribute, because no callable attributes will be normally
 # formattable things like strings/numbers anyway.
@@ -48,16 +51,19 @@ class CallableField(Raw):
             return self.default
         return self.result_field.format(value)
 
+
 class CapString(String):
     '''Like String, but first letter is capitalized.'''
     def format(self, value):
         return value.capitalize()
+
 
 class IsoDatetime(Raw):
     def format(self, value):
         if value is None:
             return None
         return value.isoformat()
+
 
 class BaseResource(Resource):
     '''Base class of all resources. Contains UtilbillProcessor object to be
@@ -93,8 +99,8 @@ class BaseResource(Resource):
 
         class WikiUrlField(Raw):
             def output(self, key, obj):
-                return config.get('billentry', 'wiki_url') + \
-                       obj.get_utility_name()
+                return config.get('billentry',
+                                  'wiki_url') + obj.get_utility_name()
 
         # TODO: see if these JSON formatters can be moved to classes that
         # only deal with the relevant objects (UtilBills or Charges). they're
@@ -127,20 +133,20 @@ class BaseResource(Resource):
                                           attribute='get_supply_target_total'),
             'utility_account_number': CallableField(
                 String(), attribute='get_utility_account_number'),
-            'entered': CallableField(Boolean(),attribute='is_entered'),
+            'entered': CallableField(Boolean(), attribute='is_entered'),
             'supply_choice_id': String,
             'processed': Boolean,
             'due_date': IsoDatetime,
-            'wiki_url': WikiUrlField,
-            'tou': Boolean,
-            'meter_identifier': CallableField(String(), attribute='get_total_meter_identifier')
-            }
+            'wiki_url': WikiUrlField, 'tou': Boolean,
+            'meter_identifier': CallableField(
+                String(), attribute='get_total_meter_identifier')
+        }
 
         self.charge_fields = {
             'id': Integer,
             'rsi_binding': String,
             'target_total': Float,
-            }
+        }
 
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
@@ -167,9 +173,9 @@ class AccountListResource(BaseResource):
             'utility_account_number': String(attribute='account_number'),
             'utility': String(attribute='fb_utility'),
             'service_address': CallableField(String(),
-                                             attribute='get_service_address'),
-        }), bills_to_be_entered=account_has_bills_for_data_entry(account))
-                for account in accounts]
+                attribute='get_service_address'),
+            }),bills_to_be_entered=account_has_bills_for_data_entry(
+                         account)) for account in accounts]
 
 
 class AccountResource(BaseResource):
@@ -186,17 +192,15 @@ class AccountResource(BaseResource):
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
 
 
-
 class UtilBillListResource(BaseResource):
     def get(self):
         args = id_parser.parse_args()
         s = Session()
         # TODO: pre-join with Charge to make this faster
-        utilbills = s.query(UtilBill).join(UtilityAccount).filter \
-            (UtilityAccount.id == args['id']).filter \
-            (UtilBill.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY). \
-                order_by(desc(UtilBill.period_start), desc(UtilBill.id))\
-            .all()
+        utilbills = s.query(UtilBill).join(UtilityAccount).filter(
+            UtilityAccount.id == args['id']).filter(
+            UtilBill.discriminator == BEUtilBill.POLYMORPHIC_IDENTITY).order_by(
+            desc(UtilBill.period_start), desc(UtilBill.id)).all()
         rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
         return {'rows': rows, 'results': len(rows)}
 
@@ -264,6 +268,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.delete_utility_bill_by_id(id)
         return {}
 
+
 class ChargeListResource(BaseResource):
     def get(self):
         parser = RequestParser()
@@ -272,8 +277,10 @@ class ChargeListResource(BaseResource):
         utilbill = Session().query(UtilBill).filter_by(
             id=args['utilbill_id']).one()
         # TODO: return only supply charges here
-        rows = [marshal(c, self.charge_fields) for c in utilbill.get_supply_charges()]
+        rows = [marshal(c, self.charge_fields) for c in
+                utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
+
 
 class ChargeResource(BaseResource):
 
