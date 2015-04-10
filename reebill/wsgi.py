@@ -48,6 +48,7 @@ from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments, BillingError
 from reebill.excel_export import Exporter
 from core.model import UtilBill
+from reebill.reebill_model import CustomerGroup
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 
