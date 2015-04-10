@@ -78,3 +78,17 @@ class ConfirmAdjustment(Exception):
         self.correction_sequences = correction_sequences
         self.total_adjustment = total_adjustment
 
+
+class ConfirmMultipleAdjustments(ConfirmAdjustment):
+    def __init__(self, accounts):
+        self.accounts = accounts
+
+
+class BillingTestError(Exception):
+    """ Generic error class for Exceptions raised in testing utilities
+    """
+
+
+class TestClientRoutingError(BillingTestError):
+    """ The TestClient was unable to route a request
+    """
