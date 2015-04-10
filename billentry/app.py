@@ -74,13 +74,17 @@ google = oauth.remote_app(
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
+
+# The order here of the following is important. We first need to initialize,
+# flask login, then flask principal, and only then we can check whether the user
+# is anonymous so that the anonymous user can be assigned the approriate
+# flask-principal roles
 login_manager = LoginManager()
 login_manager.init_app(app)
+principals = Principal(app)
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
 
-# load the extension
-principals = Principal(app)
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
