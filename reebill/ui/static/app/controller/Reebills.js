@@ -394,7 +394,6 @@ Ext.define('ReeBill.controller.Reebills', {
         var me = this;
         var store = this.getReebillsStore();
         var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
         var url = 'http://'+window.location.host+'/reebill/reebills/toggle_processed'
 
         var params = {
@@ -402,18 +401,18 @@ Ext.define('ReeBill.controller.Reebills', {
             apply_corrections: false
         };
         var failureFunc = function(response){
-            waitMask.hide();
+            Ext.getBody().unmask();
             utils.makeServerExceptionWindow(response.status, response.statusText, response.responseText);
         };
 
-        waitMask.show();
+        Ext.getBody().mask('Please wait ....');
         Ext.Ajax.request({
             url: url,
             params: params,
             method: 'POST',
             failure: failureFunc,
             success: function (response) {
-                waitMask.hide();
+                Ext.getBody().unmask();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
                     var msg = Ext.String.format("Corrections {0} will be applied to this bill for a total adjustment of ${1}. </br></br> Do you want to mark this bill as processed and apply these corrections?",
@@ -432,12 +431,12 @@ Ext.define('ReeBill.controller.Reebills', {
                                     // multiple records are updated when applying
                                     // corrections
                                     store.reload({callback:function(){
-                                        waitMask.hide();
+                                        Ext.getBody().unmask();
                                         me.handleRowSelect();
                                     }});
                                 }
                             });
-                            waitMask.show();
+                            Ext.getBody().mask('Please wait ....');
                         }
                     });
                 }else if(obj.success === true){
@@ -446,7 +445,7 @@ Ext.define('ReeBill.controller.Reebills', {
                     selected.commit();
                     store.resumeAutoSync();
                     me.handleRowSelect();
-                    waitMask.hide();
+                    Ext.getBody().unmask();
                 }
             }
         });
@@ -462,17 +461,15 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
         var selected = selections[0];
 
-        var waitMask = new Ext.LoadMask(Ext.getBody(),
-            { msg: 'Creating new version. Please wait...' });
         selected.set('action', 'newversion');
-        waitMask.show();
+        Ext.getBody().mask('Please wait ....');
 
         // We have to reload the store, because the new version will be a
         // completely new Reebill, with a new id
         Ext.Function.defer(function(){
             store.reload({
                 callback: function(){
-                   waitMask.hide();
+                   Ext.getBody().unmask();
                 }
             });
             this.getReebillsGrid().setLoading(false);
