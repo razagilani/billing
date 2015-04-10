@@ -291,9 +291,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         # replaced registers that were automatically created by the rate class
         # because old tests rely on these specific values
         u1.registers = []
-        # u1r1 = Register(u1, "test description", "M60324",
-        #                 'therms', False, "total", None, "M60324",
-        #                 quantity=123.45, register_binding=Register.TOTAL)
         u1r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
@@ -303,7 +300,6 @@ class TestCaseWithSetup(test_utils.TestCase):
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
         u2r1.utilbill = u2
-
         session.add_all([u1, u2, u1r1, u2r1])
         session.flush()
         session.commit()
