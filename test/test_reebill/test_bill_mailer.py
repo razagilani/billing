@@ -34,7 +34,7 @@ class BillMailerTest(TestCase):
             'balance_due': 20
         }
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         StringIO('data'), 'text.txt', boundary='abc')
+                         StringIO('data').read(), 'text.txt', boundary='abc')
         contents1 = []
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
@@ -98,13 +98,13 @@ class BillMailerTest(TestCase):
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         StringIO('data'), 'utility_bill.pdf', boundary='abc' )
+                         StringIO('data').read(), 'utility_bill.pdf', boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         StringIO('data'), 'audio.wav', boundary='abc' )
+                         StringIO('data').read(), 'audio.wav', boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         StringIO('data'), 'image.jpg', boundary='abc' )
+                         StringIO('data').read(), 'image.jpg', boundary='abc' )
         bill_mailer.mail(['one@example.com', 'one@gmail.com'], merge_fields,
-                         StringIO('data'), 'video.mov', boundary='abc' )
+                         StringIO('data').read(), 'video.mov', boundary='abc' )
         server.ehlo.assert_has_calls([call(), call(), call(), call(), call(), call()])
         server.starttls.asserrt_has_calls([call(), call(), call(), call()])
         server.login.assert_has_calls([call(mailer_opts['originator'], mailer_opts['password']),
