@@ -31,14 +31,15 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         header: 'Tags',
         dataIndex: 'tags',
         editor: {
-            xtype: 'textfield'
+            xtype: 'textfield',
+            emptyText: 'Enter comma-separated list'
         },
         tdCls: 'grid-cell-wrap-text',
         width: 150,
         renderer: function(value){
             var rtn = [];
             Ext.Array.each(value.split(','), function(tag){
-                tag = tag.trim()
+                tag = tag.trim();
                 if(tag){
                     rtn.push('<span class="accounts-tag">');
                     rtn.push(tag);

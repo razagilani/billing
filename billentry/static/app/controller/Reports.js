@@ -2,12 +2,15 @@ Ext.define('BillEntry.controller.Reports', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'UserUtilBillCounts', 'UserUtilityBills'
+        'UserUtilBillCounts',
+        'UserUtilityBills',
+        'AllFlaggedUtilityBills'
     ],
 
     views:[
         'reports.BillDetails',
-        'reports.UserUtilBillCount'
+        'reports.UserUtilBillCount',
+        'reports.Reports'
     ],
 
     refs: [{
@@ -20,8 +23,8 @@ Ext.define('BillEntry.controller.Reports', {
         ref: 'reportUtilityBillsGrid',
         selector: 'grid[id=reportUtilityBillsGrid]'
     },{
-        ref: 'userStatisticsGrid',
-        selector: 'grid[id=userStatisticsGrid]'
+        ref: 'userUtilBillCountGrid',
+        selector: 'grid[id=userUtilBillCountGrid]'
     }],
 
     init: function() {
@@ -39,8 +42,11 @@ Ext.define('BillEntry.controller.Reports', {
             'panel[name=reportsTab]': {
                 activate: this.handleActivate
             },
-            'grid[id=userStatisticsGrid]': {
-                selectionchange: this.handleUserStatisticsRowSelect
+            'panel[id=flaggedUtilityBillsGrid]': {
+                expand: this.handleFlaggedBillsActivate
+            },
+            'grid[id=userUtilBillCountGrid]': {
+                selectionchange: this.handleUserUtilBillCountRowSelect
             }
         });
 
@@ -54,7 +60,7 @@ Ext.define('BillEntry.controller.Reports', {
         var endField = this.getEndDateField();
         if(!startField.getValue() && !endField.getValue()) {
             var today = new Date();
-            startField.setValue(Ext.Date.add(today, Ext.Date.DAY, -7))
+            startField.setValue(Ext.Date.add(today, Ext.Date.DAY, -7));
             // The end is exclusive, so add a day
             endField.setValue(Ext.Date.add(today, Ext.Date.DAY, 1));
         }else{
@@ -68,12 +74,19 @@ Ext.define('BillEntry.controller.Reports', {
     },
 
     /**
+     * Handle the flagged bills sub-panel being activated.
+     */
+    handleFlaggedBillsActivate: function(){
+        this.getAllFlaggedUtilityBillsStore().reload();
+    },
+
+    /**
      * Handle the selected date range changing
      */
     handleDateRangeChange: function() {
         var start = this.getStartDateField().getValue();
         var end = this.getEndDateField().getValue();
-        var grid = this.getUserStatisticsGrid();
+        var grid = this.getUserUtilBillCountGrid();
         if (start && end){
             var selections = grid.getSelectionModel().getSelection();
             if (selections.length){
@@ -91,7 +104,7 @@ Ext.define('BillEntry.controller.Reports', {
     /**
      * Handle a user row becoming selected
      */
-    handleUserStatisticsRowSelect: function(store, records ){
+    handleUserUtilBillCountRowSelect: function(store, records ){
         var start = this.getStartDateField().getValue();
         var end = this.getEndDateField().getValue();
         if (records.length){
