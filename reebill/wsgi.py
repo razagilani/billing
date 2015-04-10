@@ -2,19 +2,6 @@ from os.path import dirname, realpath, join
 import smtplib
 from boto.s3.connection import S3Connection
 from core import init_config, init_model, init_logging, config
-
-# Conditionally initialize the configuration so that wsgi is importable in tests
-# This will go away as soon as the executable part of this file is put into a
-#  seperate file
-if config is None:
-    # TODO: is it necessary to specify file path?
-    p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-    init_logging(filepath=p)
-    init_config(filepath=p)
-    init_model()
-    del config
-    from core import config
-
 import sys
 import json
 import cherrypy
@@ -48,7 +35,6 @@ from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from reebill.excel_export import Exporter
 from core.model import UtilBill
 
-user_dao = UserDAO(**dict(config.items('mongodb')))
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
 
@@ -95,6 +81,7 @@ def check_authentication():
             return True
         raise Unauthenticated("No Session")
     return True
+
 
 def db_commit(method):
     '''CherryPY Decorator for committing a database transaction when the method
@@ -1065,83 +1052,3 @@ class ReebillWSGI(WebResource):
         return config_dict
 
 cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
-
-if __name__ == '__main__':
-    app = ReebillWSGI(*create_webresource_args())
-
-    class CherryPyRoot(object):
-        reebill = app
-
-    ui_root = join(dirname(realpath(__file__)), 'ui')
-    cherrypy_conf = {
-        '/': {
-            'tools.sessions.on': True,
-            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-        },
-        '/reebill/login.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "login.html")
-        },
-        '/reebill/index.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "index.html")
-        },
-        '/reebill/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': join(ui_root, "static")
-        },
-        '/reebills': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': app.config.get('reebill',
-                                                  'reebill_file_path')
-        }
-    }
-
-    cherrypy.config.update({
-        'server.socket_host': app.config.get("reebill", "socket_host"),
-        'server.socket_port': app.config.get("reebill", "socket_port")})
-    cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
-    cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
-                                     stream=sys.stdout)
-    cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
-else:
-    # WSGI Mode
-    ui_root = join(dirname(realpath(__file__)), 'ui')
-    cherrypy_conf = {
-        '/': {
-            'tools.sessions.on': True,
-            'tools.staticdir.root': ui_root,
-            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-        },
-        '/login.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "login.html")
-        },
-        '/index.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "index.html")
-        },
-        '/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': 'static'
-        },
-        '/static/revision.txt': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': join(ui_root, "../../revision.txt")
-        }
-
-    }
-    cherrypy.config.update({
-        'environment': 'embedded',
-        'tools.sessions.on': True,
-        'tools.sessions.timeout': 240,
-        'request.show_tracebacks': True
-
-    })
-
-    if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
-        cherrypy.engine.start()
-        atexit.register(cherrypy.engine.stop)
-    application = cherrypy.Application(
-        ReebillWSGI(*create_webresource_args()),
-        script_name=None, config=cherrypy_conf)
