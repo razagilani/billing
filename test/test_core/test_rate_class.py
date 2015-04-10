@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from core.model import RateClass
+from core.model import RateClass, Register
 
 
 class RateClassTest(TestCase):
@@ -13,11 +13,11 @@ class RateClassTest(TestCase):
         register_templates = self.rate_class.register_templates
         self.assertEqual(1, len(register_templates))
         template = register_templates[0]
-        self.assertEqual('REG_TOTAL', template.register_binding)
+        self.assertEqual(Register.TOTAL, template.register_binding)
         # no assertions about units or TOU data because there is no good way
         # to determine those right now
 
         registers = self.rate_class.get_register_list()
         self.assertEqual(1, len(registers))
         register = registers[0]
-        self.assertEqual('REG_TOTAL', register.register_binding)
+        self.assertEqual(Register.TOTAL, register.register_binding)

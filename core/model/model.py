@@ -270,20 +270,136 @@ class Supplier(Base):
         return self.name
 
 
+class Register(Base):
+    """A register reading on a utility bill"""
+
+    __tablename__ = 'register'
+
+    # commonly used register_binding values--there aren't any known bills
+    # showing meter readings for things other than these
+    TOTAL = 'REG_TOTAL'
+    DEMAND = 'REG_DEMAND'
+    PEAK = 'REG_PEAK'
+    OFFPEAK = 'REG_OFFPEAK'
+    INTERMEDIATE = 'REG_INTERMEDIATE'
+
+    # complete set of allowed register binding values (should match the
+    # definition of enum columns in the datababase)
+    REGISTER_BINDINGS = [
+        TOTAL,
+        DEMAND,
+        PEAK,
+        INTERMEDIATE,
+        OFFPEAK,
+        INTERMEDIATE,
+        'REG_TOTAL_SECONDARY',
+        'REG_TOTAL_TERTIARY',
+        'REG_POWERFACTOR',
+
+        # related to "sub-bills": these are regular meter readings but belong
+        # to a sub-period so there is more than one per bill. using special
+        # register names is not a good way to implement this.
+        'REG_PEAK_RATE_INCREASE',
+        'REG_INTERMEDIATE_RATE_INCREASE',
+        'REG_OFFPEAK_RATE_INCREASE',
+        'FIRST_MONTH_THERMS',
+        'SECOND_MONTH_THERMS',
+
+        # related to gas supply contracts. BEGIN/END_INVENTORY might be
+        # considered real meter reads, but CONTRACT_VOLUME is one of the
+        # terms of the supply contract and should not be a register.
+        'BEGIN_INVENTORY',
+        'END_INVENTORY',
+        'CONTRACT_VOLUME',
+    ]
+
+    id = Column(Integer, primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
+
+    description = Column(String(255), nullable=False, default='')
+    quantity = Column(Float, nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    identifier = Column(String(255), nullable=False)
+    estimated = Column(Boolean, nullable=False)
+    # "reg_type" field seems to be unused (though "type" values include
+    # "total", "tou", "demand", and "")
+    reg_type = Column(String(255), nullable=False)
+    register_binding = Column(Enum(*REGISTER_BINDINGS), nullable=False)
+    active_periods = Column(String(2048))
+    meter_identifier = Column(String(255), nullable=False)
+
+    utilbill = relationship(
+        "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
+
+    @classmethod
+    def create_from_template(cls, register_template):
+        """Return a new Register created based on the given RegisterTemplate.
+        :param register_template: RegisterTemplate instance.
+        """
+        return cls(None, register_template.description, '',
+                   register_template.unit, False, '',
+                   register_template.active_periods, '',
+                   register_binding=register_template.register_binding)
+
+    def __init__(self, utilbill, description, identifier, unit,
+                 estimated, reg_type, active_periods, meter_identifier,
+                 quantity=0.0, register_binding=''):
+        """Construct a new :class:`.Register`.
+
+        :param utilbill: The :class:`.UtilBill` on which the register appears
+        :param description: A description of the register
+        :param quantity: The register quantity
+        :param unit: The units of the quantity (i.e. Therms/kWh)
+        :param identifier: ??
+        :param estimated: Boolean; whether the indicator is an estimation.
+        :param reg_type:
+        :param register_binding:
+        :param active_periods:
+        :param meter_identifier:
+        """
+        self.utilbill = utilbill
+        self.description = description
+        self.quantity = quantity
+        self.unit = unit
+        self.identifier = identifier
+        self.estimated = estimated
+        self.reg_type = reg_type
+        self.register_binding = register_binding
+        self.active_periods = active_periods
+        self.meter_identifier = meter_identifier
+
+    def get_active_periods(self):
+        """Return a dictionary describing "active periods" of this register.
+        For a time-of-use register, this dictionary should have the keys
+        "active_periods_weekday" and "active_periods_weekend". A
+        non-time-of-use register will have an empty dictionary.
+        The value of each key is a list of (start, end) pairs of hours in [0,23]
+        where the end hour is inclusive.
+        """
+        keys = ['active_periods_weekday', 'active_periods_weekend']
+        # blank means active every hour of every day
+        if self.active_periods in ('', None):
+            return {key: [[0, 23]] for key in keys}
+        # non-blank: parse JSON and make sure it contains all 3 keys
+        result = json.loads(self.active_periods)
+        assert all(key in result for key in keys)
+        return result
+
+
 class RegisterTemplate(Base):
     __tablename__ = 'register_template'
 
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column(String(255), nullable=False)
+    register_binding = Column(Enum(*Register.REGISTER_BINDINGS), nullable=False)
     unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
     @classmethod
     def get_total_register_template(cls, unit):
-        return cls(register_binding='REG_TOTAL', unit=unit)
+        return cls(register_binding=Register.TOTAL, unit=unit)
 
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
@@ -657,8 +773,8 @@ class UtilBill(Base):
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
-            'REG_TOTAL.quantity' if any([register.register_binding ==
-                'REG_TOTAL' for register in registers]) else \
+            '%s.quantity' % Register.TOTAL if any([register.register_binding ==
+                Register.TOTAL for register in registers]) else \
             registers[0].register_binding
         session.flush()
         return charge
@@ -793,7 +909,7 @@ class UtilBill(Base):
         # remove duplicate when merged
         try:
             total_register = next(r for r in self.registers if
-                                  r.register_binding == 'REG_TOTAL')
+                                  r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity
@@ -801,7 +917,7 @@ class UtilBill(Base):
     def set_total_energy(self, quantity):
         self.check_editable()
         total_register = next(r for r in self.registers if
-                              r.register_binding == 'REG_TOTAL')
+                              r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
     def get_supply_target_total(self):
@@ -819,7 +935,7 @@ class UtilBill(Base):
         #TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
         register = next(r for r in self.registers if r.register_binding
-                                                     == 'REG_TOTAL')
+                                                     == Register.TOTAL)
         register.meter_identifier = meter_identifier
 
     def get_total_meter_identifier(self):
@@ -827,17 +943,17 @@ class UtilBill(Base):
         register_binding of REG_TOTAL.'''
         #TODO: make this more generic once implementation of Regiter is changed
         register = next(r for r in self.registers if r.register_binding
-                                                     == 'REG_TOTAL')
+                                                     == Register.TOTAL)
         return register.meter_identifier
 
     def get_total_energy_consumption(self):
-        '''Return total energy consumption, i.e. value of the "REG_TOTAL"
+        '''Return total energy consumption, i.e. value of the total
         register, in whatever unit it uses. Return 0 if there is no
-        "REG_TOTAL" (which is not supposed to happen).
+        total register (which is not supposed to happen).
         '''
         try:
             total_register = next(r for r in self.registers
-                                  if r.register_binding == 'REG_TOTAL')
+                                  if r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity
@@ -846,84 +962,6 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
-
-class Register(Base):
-    """A register reading on a utility bill"""
-
-    __tablename__ = 'register'
-
-    id = Column(Integer, primary_key=True)
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
-
-    description = Column(String(255), nullable=False, default='')
-    quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
-    identifier = Column(String(255), nullable=False)
-    estimated = Column(Boolean, nullable=False)
-    # "reg_type" field seems to be unused (though "type" values include
-    # "total", "tou", "demand", and "")
-    reg_type = Column(String(255), nullable=False)
-    register_binding = Column(String(255), nullable=False)
-    active_periods = Column(String(2048))
-    meter_identifier = Column(String(255), nullable=False)
-
-    utilbill = relationship(
-        "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
-
-    @classmethod
-    def create_from_template(cls, register_template):
-        """Return a new Register created based on the given RegisterTemplate.
-        :param register_template: RegisterTemplate instance.
-        """
-        return cls(None, register_template.description, '',
-                   register_template.unit, False, '',
-                   register_template.active_periods, '',
-                   register_binding=register_template.register_binding)
-
-    def __init__(self, utilbill, description, identifier, unit,
-                estimated, reg_type, active_periods, meter_identifier,
-                quantity=0.0, register_binding=''):
-        """Construct a new :class:`.Register`.
-
-        :param utilbill: The :class:`.UtilBill` on which the register appears
-        :param description: A description of the register
-        :param quantity: The register quantity
-        :param unit: The units of the quantity (i.e. Therms/kWh)
-        :param identifier: ??
-        :param estimated: Boolean; whether the indicator is an estimation.
-        :param reg_type:
-        :param register_binding:
-        :param active_periods:
-        :param meter_identifier:
-        """
-        self.utilbill = utilbill
-        self.description = description
-        self.quantity = quantity
-        self.unit = unit
-        self.identifier = identifier
-        self.estimated = estimated
-        self.reg_type = reg_type
-        self.register_binding = register_binding
-        self.active_periods = active_periods
-        self.meter_identifier = meter_identifier
-
-    def get_active_periods(self):
-        """Return a dictionary describing "active periods" of this register.
-        For a time-of-use register, this dictionary should have the keys
-        "active_periods_weekday" and "active_periods_weekend". A
-        non-time-of-use register will have an empty dictionary.
-        The value of each key is a list of (start, end) pairs of hours in [0,23]
-        where the end hour is inclusive.
-        """
-        keys = ['active_periods_weekday', 'active_periods_weekend']
-        # blank means active every hour of every day
-        if self.active_periods in ('', None):
-            return {key: [[0, 23]] for key in keys}
-        # non-blank: parse JSON and make sure it contains all 3 keys
-        result = json.loads(self.active_periods)
-        assert all(key in result for key in keys)
-        return result
-
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
@@ -989,6 +1027,18 @@ class Charge(Base):
         if filter_builtins:
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
+
+    @staticmethod
+    def get_simple_formula(register_binding):
+        """
+        :param register: one of the register binding values in
+        Register.REGISTER_BINDINGS.
+        :return: a formula for a charge that is directly proportional to the
+        value of the register, such as "REG_TOTAL.quantity". Most charge
+        formulas are like this.
+        """
+        assert register_binding in Register.REGISTER_BINDINGS
+        return register_binding + '.quantity'
 
     def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
                  target_total=None, description='', unit='',
