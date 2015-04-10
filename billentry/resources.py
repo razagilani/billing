@@ -346,46 +346,46 @@ class RateClassesResource(BaseResource):
 class UtilBillCountForUserResource(BaseResource):
 
     def get(self, *args, **kwargs):
-        parser = RequestParser()
-        parser.add_argument('start', type=parse_date, required=True)
-        parser.add_argument('end', type=parse_date, required=True)
-        args = parser.parse_args()
-
-        s = Session()
-        count_sq = s.query(
-            BEUtilBill.id,
-            BEUtilBill.billentry_user_id,
-            func.count(BEUtilBill.id).label('total_count'),
-            func.sum(
-                case(((RateClass.service == 'electric', 1),), else_=0)
-            ).label('electric_count'),
-            func.sum(
-                case(((RateClass.service == 'gas', 1),), else_=0)
-            ).label('gas_count'),
-        ).group_by(BEUtilBill.billentry_user_id).outerjoin(
-            RateClass).filter(and_(
-            BEUtilBill.billentry_date >= args['start'],
-                BEUtilBill.billentry_date < args['end'])
-        ).subquery()
-
-        q = s.query(
-            BillEntryUser,
-            count_sq.c.total_count,
-            count_sq.c.electric_count,
-            count_sq.c.gas_count,
-        ).outerjoin(count_sq).group_by(
-            BillEntryUser.id).order_by(
-            BillEntryUser.id)
-
-        rows = [{
-            'id': user.id,
-            'email': user.email,
-                'total_count': int(total_count or 0),
-                'gas_count': int(gas_count or 0),
-                'electric_count': int(electric_count or 0),
-            } for (user, total_count, electric_count, gas_count) in q.all()]
-
         with project_mgr_permission.require():
+            parser = RequestParser()
+            parser.add_argument('start', type=parse_date, required=True)
+            parser.add_argument('end', type=parse_date, required=True)
+            args = parser.parse_args()
+
+            s = Session()
+            count_sq = s.query(
+                BEUtilBill.id,
+                BEUtilBill.billentry_user_id,
+                func.count(BEUtilBill.id).label('total_count'),
+                func.sum(
+                    case(((RateClass.service == 'electric', 1),), else_=0)
+                ).label('electric_count'),
+                func.sum(
+                    case(((RateClass.service == 'gas', 1),), else_=0)
+                ).label('gas_count'),
+            ).group_by(BEUtilBill.billentry_user_id).outerjoin(
+                RateClass).filter(and_(
+                BEUtilBill.billentry_date >= args['start'],
+                    BEUtilBill.billentry_date < args['end'])
+            ).subquery()
+
+            q = s.query(
+                BillEntryUser,
+                count_sq.c.total_count,
+                count_sq.c.electric_count,
+                count_sq.c.gas_count,
+            ).outerjoin(count_sq).group_by(
+                BillEntryUser.id).order_by(
+                BillEntryUser.id)
+
+            rows = [{
+                'id': user.id,
+                'email': user.email,
+                    'total_count': int(total_count or 0),
+                    'gas_count': int(gas_count or 0),
+                    'electric_count': int(electric_count or 0),
+                } for (user, total_count, electric_count, gas_count) in q.all()]
+
             return {'rows': rows, 'results': len(rows)}
 
 
