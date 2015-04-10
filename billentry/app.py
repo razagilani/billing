@@ -204,10 +204,36 @@ def before_request():
         # special endpoint name for all static files--not a URL
         'static'
     ]
+    NON_REST_ENDPOINTS = [
+        'admin',
+        'index'
+    ]
+
     if not user.is_authenticated():
-        if ('index.html' in request.path or request.endpoint == '/' or not
-                        request.endpoint in ALLOWED_ENDPOINTS):
-            return Response('Could not verify your access level for that URL', 401)
+        if request.endpoint in ALLOWED_ENDPOINTS:
+            return
+        if (request.endpoint in NON_REST_ENDPOINTS or 'admin' in
+            request.path or 'index' in request.path):
+            set_next_url()
+            return redirect(url_for('login_page'))
+        return Response('Could not verify your access level for that URL', 401)
+
+def set_next_url():
+    next_path = request.args.get('next') or request.path
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
 
 @app.after_request
 def db_commit(response):
@@ -287,7 +313,8 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(),
                           identity=Identity(user.id))
     session['user_name'] = str(user)
-    return redirect(url_for('index'))
+    next_url = session.pop('next_url', url_for('index'))
+    return redirect(next_url)
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time

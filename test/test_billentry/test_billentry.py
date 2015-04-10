@@ -829,7 +829,8 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         # first the user tries to go to 'original_url' and 401 is returned
         rv = self.app.get(original_url)
-        self.assertEqual(401, rv.status_code)
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
 
         # then the user clicks on the "Log in with Google" link, whose URL is
         #  /login, and gets redirected to Google's OAuth URL
@@ -847,13 +848,15 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         # after unsuccessful login, the user still can't get to a normal page
         rv = self.app.get('/')
-        self.assertEqual(401, rv.status_code)
+        self.assertEqual(302, rv.status_code)
+        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
 
     def test_local_login(self):
         response = self.app.get('/')
         # because user is not logged in so a redirect to login-page should
         # happen
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.URL_PREFIX + '/login-page', response.location)
 
         # valid data for user login
         data = {'email':'user1@test.com', 'password': 'password'}\
@@ -876,7 +879,8 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         response = self.app.get('/')
         # because user is not logged in so a 401 is returned
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.URL_PREFIX + '/login-page', response.location)
 
         # invalid email for user login
         data = {'email':'user2@test.com', 'password': 'password'}
