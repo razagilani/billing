@@ -104,7 +104,9 @@ class Views(object):
         return self._serialize_id_name(Utility)
 
     def get_all_rate_classes_json(self):
-        return self._serialize_id_name(RateClass)
+        return [dict(id=x.id, name=x.name,
+                     utility_id=x.utility_id) for x in
+                Session().query(RateClass).order_by(RateClass.name).all()]
 
     def get_utility(self, name):
         session = Session()
