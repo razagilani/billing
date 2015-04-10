@@ -25,7 +25,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-s        header: 'ID',
+        header: 'ID',
         dataIndex: 'id',
         width: 50,
         disabled: true
