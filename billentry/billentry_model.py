@@ -29,7 +29,7 @@ class BillEntryUser(Base, UserMixin):
         assert config.get('billentry', 'disable_authentication') == True
         if cls._anonymous_user is None:
             cls._anonymous_user = BillEntryUser(email='anonymous@example.com')
-            cls._anonymous_user.is_anonymous = lambda : True
+            cls._anonymous_user.is_anonymous = lambda: True
         return cls._anonymous_user
 
     id = Column(Integer, primary_key=True)

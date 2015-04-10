@@ -3,6 +3,8 @@ Ext.define('BillEntry.model.UserUtilBillCount', {
     fields: [
         {name: 'id', type: 'int'},
         {name: 'email', type: 'string'},
-        {name: 'count', type: 'int'}
+        {name: 'total_count', type: 'int'},
+        {name: 'gas_count', type: 'int'},
+        {name: 'electric_count', type: 'int'}
     ]
 });
