@@ -74,13 +74,22 @@ google = oauth.remote_app(
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
+principals = Principal(app)
+
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
 
-# load the extension
-principals = Principal(app)
+
+@principals.identity_loader
+def load_identity_for_anonymous_user():
+    if config.get('billentry', 'disable_authentication'):
+        identity = AnonymousIdentity()
+        identity.provides.add(RoleNeed('admin'))
+        return identity
+
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
@@ -97,10 +106,6 @@ def on_identity_loaded(sender, identity):
         for role in current_user.roles:
             identity.provides.add(RoleNeed(role.name))
 
-    # if the local user is anonymous (i.e. authentication is disabled)
-    # consider the user to be an admin
-    if current_user.is_anonymous():
-        identity.provides.add(RoleNeed('admin'))
 
 @login_manager.user_loader
 def load_user(id):
@@ -197,6 +202,7 @@ def create_user_in_db(access_token):
 def before_request():
     if app.config['LOGIN_DISABLED']:
         return
+
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in

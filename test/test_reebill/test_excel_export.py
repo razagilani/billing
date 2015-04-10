@@ -289,7 +289,7 @@ class ExporterSheetTest(unittest.TestCase):
         register1.unit = 'therms'
         register1.estimated = False
         register1.reg_type = 'total'
-        register1.register_binding = 'REG_TOTAL'
+        register1.register_binding = Register.TOTAL
         register1.active_periods = None
         u1.registers = [register1]
         u2 = deepcopy(u1)
