@@ -6,8 +6,8 @@ import cherrypy
 from datetime import date, datetime, timedelta
 from copy import deepcopy
 from pika.exceptions import ChannelClosed
-from reebill.wsgi import ReebillWSGI, RESTResource
 from exc import TestClientRoutingError
+
 
 class TestCase(unittest.TestCase):
     '''Extra assert methods.'''
@@ -104,12 +104,9 @@ class ReebillRestTestClient(object):
     routed by cherrypy through RESTResource.default(). All
     methods exposed directly via cherrypy cannot be tested with this client
     """
-    def __init__(self):
-        self.routes = {}
-        enabled_resources = inspect.getmembers(
-            ReebillWSGI, lambda a: isinstance(a, RESTResource))
-        for route, resource in enabled_resources:
-            self.routes[route] = resource
+    def __init__(self, resource_path, resource_obj):
+        self.route = resource_path
+        self.resource = resource_obj
 
     def _set_json_request_data(self, data):
         # cherrypy.request.json is a variable that normally contains the
@@ -132,9 +129,9 @@ class ReebillRestTestClient(object):
         path_parts = urlp.path[1:].split('/')
         if len(path_parts) == 0:
             raise TestClientRoutingError('You must specify a resource')
-        elif path_parts[0] not in self.routes:
-            raise TestClientRoutingError('No resource is enabled for route '
-                                         '%s' % path_parts[0])
+        elif path_parts[0] != self.route:
+            raise TestClientRoutingError('The path %s is not equal to %s' %
+                                         (path_parts[0], self.route))
 
         # cherrypy flattens the query string if possible (i.e. if there is
         # only one element in a parameter array)
@@ -143,23 +140,23 @@ class ReebillRestTestClient(object):
             if len(v) == 1:
                 qs[k] = v[0]
 
-        return self.routes[path_parts[0]], path_parts[1:], qs
+        return path_parts[1:], qs
 
     def put(self, url, data=None):
-        resource, url_parts, qs = self._get_resource_path_query_by_url(url)
+        url_parts, qs = self._get_resource_path_query_by_url(url)
         self._set_json_request_data(data if data is not None else {})
-        return resource.handle_put(*url_parts, **qs)
+        return self.resource.handle_put(*url_parts, **qs)
 
     def post(self, url, data=None):
-        resource, url_parts, qs = self._get_resource_path_query_by_url(url)
+        url_parts, qs = self._get_resource_path_query_by_url(url)
         self._set_json_request_data(data if data is not None else {})
-        return resource.handle_post(*url_parts, **qs)
+        return self.resource.handle_post(*url_parts, **qs)
 
     def get(self, url):
-        resource, url_parts, qs = self._get_resource_path_query_by_url(url)
-        return resource.handle_get(*url_parts, **qs)
+        url_parts, qs = self._get_resource_path_query_by_url(url)
+        return self.resource.handle_get(*url_parts, **qs)
 
     def delete(self, url):
-        resource, url_parts, qs = self._get_resource_path_query_by_url(url)
+        url_parts, qs = self._get_resource_path_query_by_url(url)
         self._set_json_request_data(data)
-        return resource.handle_delete(*url_parts, **qs)
+        return self.resource.handle_delete(*url_parts, **qs)
