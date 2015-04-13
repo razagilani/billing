@@ -5,7 +5,15 @@ from datetime import date, datetime, timedelta
 from time import sleep
 from reebill import journal
 from util.dateutils import ISO_8601_DATE
-from test import testing_utils
+from test import testing_utils, init_test_config
+from core import init_model
+
+
+def setUpModule():
+    init_test_config()
+    init_model()
+    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
+
 
 class JournalTest(testing_utils.TestCase):
 
@@ -294,6 +302,7 @@ class JournalTest(testing_utils.TestCase):
         # they have have the exact same date)
         self.assertDatetimesClose(events[0].date + timedelta(seconds=5),
                 events[1].date, seconds=1)
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)

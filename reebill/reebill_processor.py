@@ -2,19 +2,23 @@ import os
 import traceback
 import re
 from datetime import datetime, timedelta
+from StringIO import StringIO
 
-from sqlalchemy.sql import desc, functions
-from sqlalchemy import not_, and_
-from sqlalchemy import func
+from sqlalchemy.sql import desc
+from sqlalchemy import not_, func
+from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import (UtilBill, Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass)
-from reebill.reebill_model import (ReeBill, ReeBillCharge, Reading, ReeBillCustomer)
-from exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, ConfirmAdjustment, FormulaError, RegisterError, \
-    BillingError
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass,
+                           Register)
+from reebill.reebill_file_handler import SummaryFileGenerator
+from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
+                                   CustomerGroup)
+from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
+                 FormulaError, RegisterError, BillingError,
+                 ConfirmMultipleAdjustments)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
-from reebill.views import column_dict
+from util.pdf import PDFConcatenator
 
 
 class ReebillProcessor(object):
@@ -233,14 +237,10 @@ class ReebillProcessor(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         if last_reebill_row is None:
-            # this is the first reebill: choose only REG_TOTAL complain if it
-            # doesn't exist
-            try:
-                reg_total_register = next(r for r in utilbill.registers if
-                                          r.register_binding == 'REG_TOTAL')
-            except StopIteration:
-                raise RegisterError('The utility bill must have a register '
-                                    'called "REG_TOTAL"')
+            # this is the first reebill: choose only total register, which is
+            #  guaranteed to exist
+            reg_total_register = next(r for r in utilbill.registers if
+                                      r.register_binding == Register.TOTAL)
             new_reebill.readings = [Reading.make_reading_from_register(
                 reg_total_register)]
         else:
@@ -325,8 +325,10 @@ class ReebillProcessor(object):
                     "correction.") % (account, target_sequence))
 
         all_unissued_corrections = self.get_unissued_corrections(account)
+
         if len(all_unissued_corrections) == 0:
-            raise ValueError('%s has no corrections to apply' % account)
+            # no corrections to apply
+            return
 
         if not reebill.processed:
             self.compute_reebill(account, target_sequence,
@@ -498,31 +500,28 @@ class ReebillProcessor(object):
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 
-    def mail_reebills(self, account, sequences, recipient_list):
-        all_reebills = [self.state_db.get_reebill(account, sequence)
-                for sequence in sequences]
+    def mail_reebill(self, account, sequence, recipient_list):
+        reebill = self.state_db.get_reebill(account, sequence)
 
-        # render all the bills
-        for reebill in all_reebills:
-            self.reebill_file_handler.render(reebill)
+        # render the bills
+        self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
-        most_recent_reebill = all_reebills[-1]
-        bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
-                sequence in sequences]
-        bill_dates = ', '.join(["%s" % (b.get_period()[0])
-                for b in all_reebills])
+        bill_file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+        bill_date = "%s" % reebill.get_period()[0]
         merge_fields = {
-            'street': most_recent_reebill.service_address.street,
-            'balance_due': round(most_recent_reebill.balance_due, 2),
-            'bill_dates': bill_dates,
-            'last_bill': bill_file_names[-1],
+            'street': reebill.service_address.street,
+            'balance_due': round(reebill.balance_due, 2),
+            'bill_dates': bill_date,
+            'last_bill': bill_file_name,
         }
-        bill_file_paths = [self.reebill_file_handler.get_file_path(r)
-                for r in all_reebills]
-        bill_file_dir_path = os.path.dirname(bill_file_paths[0])
-        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_dir_path,
-                bill_file_paths)
+        bill_file_path = self.reebill_file_handler.get_file_path(reebill)
+        bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
+        self.bill_mailer.mail(
+            recipient_list,
+            merge_fields,
+            bill_file_contents,
+            bill_file_path)
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for
@@ -550,6 +549,23 @@ class ReebillProcessor(object):
         """
         return [r.column_dict() for r in self.get_issuable_reebills().all()]
 
+    # TODO: what does this do?
+    # TODO: no test coverage
+    def check_confirm_adjustment(self, accounts_list):
+        accounts_to_be_confirmed = {}
+        for acc in accounts_list:
+            unissued_corrections = self.get_unissued_corrections(acc)
+            if len(unissued_corrections) > 0:
+                sequences = [sequence for sequence, _, _ in unissued_corrections]
+                total_adjustment = sum(adjustment for _, _, adjustment in
+                                       unissued_corrections)
+                accounts_to_be_confirmed[acc] = {
+                    'correction_sequences': sequences,
+                    'total_adjustment': total_adjustment
+                }
+        if accounts_to_be_confirmed:
+            raise ConfirmMultipleAdjustments(accounts_to_be_confirmed)
+
     def issue_and_mail(self, apply_corrections, account, sequence,
                        recipients=None):
         """this function issues a single reebill and sends out a confirmation
@@ -561,7 +577,7 @@ class ReebillProcessor(object):
         # a confirmation message
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
-            # The user has confirmed to issue unissued corrections.
+            # The user has to confirm to issue unissued corrections.
             sequences = [sequence for sequence, _, _ in unissued_corrections]
             total_adjustment = sum(adjustment
                         for _, _, adjustment in unissued_corrections)
@@ -586,7 +602,7 @@ class ReebillProcessor(object):
             recipient_list = ['']
         else:
             recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.mail_reebills(account, [sequence], recipient_list)
+        self.mail_reebill(account, sequence, recipient_list)
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''
@@ -631,8 +647,8 @@ class ReebillProcessor(object):
             else:
                 recipient_list = [rec.strip() for rec in
                                   bill.email_recipient.split(',')]
-            self.mail_reebills(bill.get_account(), [bill.sequence],
-                               recipient_list)
+            self.mail_reebill(bill.get_account(), bill.sequence,
+                              recipient_list)
         bills_dict = [bill.column_dict() for bill in bills]
         return bills_dict
 
@@ -646,10 +662,32 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.reebill_customer.bill_email_recipient = recepients
 
+    # TODO: no test coverage
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
-        
+
+    # TODO: what does this do?
+    def issue_summary_for_bills(self, bills, summary_recipient):
+        for b in bills:
+            self.issue_corrections(b.get_account(), b.sequence)
+            b.issue(datetime.utcnow(), self)
+
+        # create and email combined PDF file
+        summary_file = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(bills, summary_file)
+        summary_file.seek(0)
+        merge_fields = {
+            'street': '',
+            'balance_due': sum(b.balance_due for b in bills),
+            'bill_dates': max(b.get_period_end() for b in bills),
+            'last_bill': '',
+        }
+        self.bill_mailer.mail(summary_recipient, merge_fields,
+                              summary_file.read(), 'summary.pdf')
+        return bills
+
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
@@ -705,3 +743,32 @@ class ReebillProcessor(object):
             self.compute_reebill(account, reebill.sequence)
             reebill.processed = True
 
+    def get_create_customer_group(self, group_name):
+        session = Session()
+        try:
+            result = session.query(CustomerGroup).filter_by(
+                name=group_name).one()
+        except NoResultFound:
+            result = CustomerGroup(name=group_name, bill_email_recipient='')
+            session.add(result)
+            return result, True
+        return result, False
+
+    def set_groups_for_utility_account(self, account_id, group_name_array):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+
+        # Remove the customer from groups that are not in 'group_name_array'
+        customer_groups = customer.get_groups()
+        for g in customer_groups:
+            if g.name not in group_name_array:
+                g.remove(customer)
+
+        # Add the customer to groups in group_name_array that they are not
+        # yet part of
+        customer_group_names = [g.name for g in customer_groups]
+        for group_name in group_name_array:
+            if group_name not in customer_group_names:
+                new_group, _ = self.get_create_customer_group(group_name)
+                new_group.add(customer)

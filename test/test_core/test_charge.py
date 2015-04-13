@@ -24,7 +24,7 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
                                  'FB Test Supplier', 'FB Test Rate Class',
                                  Address(), Address()),
-                                 'utility', 'rate class',
+                                 'utility', None,
                                  supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))

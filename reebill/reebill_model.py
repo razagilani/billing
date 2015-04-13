@@ -5,11 +5,12 @@ from itertools import chain
 from operator import attrgetter
 import traceback
 
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
+from core.model.model import PHYSICAL_UNITS
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
     NoSuchBillException
@@ -409,7 +410,9 @@ class ReeBill(Base):
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
-                         self.readings]
+                         self.readings],
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
@@ -511,6 +514,55 @@ class UtilbillReebill(Base):
                     self.utilbill_id, self.reebill_id, self.document_id[-4:],
                     self.uprs_document_id[-4:]))
 
+# intermediate table for many-to-many relationship. should not be used
+# outside this file.
+_customer_customer_group_table = Table(
+    'customer_customer_group', Base.metadata,
+    Column('reebill_customer_id', Integer,
+           ForeignKey('reebill_customer.id', ondelete='cascade'),
+           primary_key=True),
+    Column('customer_group_id', Integer,
+           ForeignKey('customer_group.id', ondelete='cascade'),
+           primary_key=True)
+)
+
+class CustomerGroup(Base):
+    __tablename__ = 'customer_group'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(1000), nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
+    customers = relationship(
+        'ReeBillCustomer',
+        secondary=lambda: _customer_customer_group_table, backref='groups')
+
+    def add(self, customer):
+        """Add the given customer to this group.
+        """
+        self.customers.append(customer)
+
+    def remove(self, customer):
+        """Remove the given customer from this group.
+        """
+        self.customers.remove(customer)
+
+    def get_customers(self):
+        """Return a list of customers in this group (in undefined order).
+        """
+        return self.customers
+
+    def get_bills_to_issue(self):
+        """Return a list of ReeBills that are processed, not issued,
+        are not corrections (i.e. have version == 0) belonging to
+        accounts in this group.
+        """
+        # loading all the bills and then filtering them is not efficient,
+        # but there is a maximum of about 120 bills per customer, and this
+        # doesn't need to run fast.
+        criteria = lambda b: b.processed and not b.issued and b.version == 0
+        return list(chain.from_iterable(
+            (b for b in c.reebills if criteria(b)) for c in self.customers))
+
 class ReeBillCustomer(Base):
     __tablename__ = 'reebill_customer'
 
@@ -518,33 +570,21 @@ class ReeBillCustomer(Base):
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
 
-
     id = Column(Integer, primary_key=True)
     name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
+
+    # identifies a group of accounts that belong to a particular owner,
+    # for the purpose of producing "bill summaries"
+
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-
-    def get_discount_rate(self):
-        return self.discountrate
-
-    def get_account(self):
-        return self.utility_account.account
-
-    def set_discountrate(self, value):
-        self.discountrate = value
-
-    def get_late_charge_rate(self):
-        return self.latechargerate
-
-    def set_late_charge_rate(self, value):
-        self.latechargerate = value
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
@@ -571,9 +611,28 @@ class ReeBillCustomer(Base):
         self.service = service
         self.utility_account = utility_account
 
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
                % (self.name, self.discountrate)
+
+    def __str__(self):
+        return '%(id)s %(nextility_num)s %(name)s' % dict(
+            id=self.id, nextility_num=self.get_account(), name=self.name)
 
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
@@ -587,6 +646,12 @@ class ReeBillCustomer(Base):
         except ValueError:
             return None
         return result
+
+    def get_groups(self):
+        """Return a list of CustomerGroups that this ReeBillCustomer belongs
+        to (normally only one).
+        """
+        return self.groups
 
 
 class ReeBillCharge(Base):
@@ -654,7 +719,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
 
     @staticmethod
     def make_reading_from_register(register):
