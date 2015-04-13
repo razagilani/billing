@@ -410,7 +410,9 @@ class ReeBill(Base):
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
-                         self.readings]
+                         self.readings],
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
