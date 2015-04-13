@@ -112,6 +112,13 @@ Ext.define('BillEntry.controller.UtilityBills', {
             var proxy = chargesStore.getProxy();
             proxy.extraParams = {utilbill_id: selected.get('id')};
             chargesStore.reload();
+            if (selected.get('meter_identifier') == '')
+            {
+                row_index = this.getUtilityBillsStore().indexOf(selected);
+                last_row = this.getUtilityBillsStore().getAt(row_index-1);
+                if (last_row != null)
+                    selected.set('meter_identifier', last_row.get('meter_identifier'))
+            }
         }
     },
 

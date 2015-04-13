@@ -38,6 +38,9 @@ Ext.define('BillEntry.model.UtilityBill', {
         {name: 'supply_choice_id'},
         {name: 'due_date', type: 'date', dateFormat: 'Y-m-d'},
         {name: 'wiki_url'},
-        {name: 'entered'}
+        {name: 'entered'},
+        {name: 'meter_identifier'},
+        {name: 'flagged'},
+        {name: 'tou'}
     ]
 });

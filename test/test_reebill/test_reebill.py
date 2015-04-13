@@ -10,7 +10,7 @@ from core.model import UtilBill, Address, \
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 
 
 class ReeBillCustomerTest(unittest.TestCase):
@@ -89,7 +89,7 @@ class ReeBillUnitTest(unittest.TestCase):
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         washgas = Utility(name='washgas', address=Address('', '', '', '',
                                                           ''))
         supplier = Supplier('supplier', Address())
@@ -111,10 +111,11 @@ class ReebillTest(unittest.TestCase):
                                  period_end=date(2000, 2, 1))
         self.register = Register(self.utilbill, '', '', 'therms', False,
                                  'total', None, '', quantity=100,
-                                register_binding='REG_TOTAL')
+                                register_binding=Register.TOTAL)
         self.utilbill.registers = [self.register]
-        self.utilbill.charges = [
-            Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity',
+        self.utilbill.charges = [Charge(self.utilbill, 'A', 2,
+                                        Charge.get_simple_formula(
+                                            Register.TOTAL),
                    description='a', unit='therms'),
             Charge(self.utilbill, 'B', 1, '1', 'b', 'All Charges','therms')
         ]
@@ -127,7 +128,7 @@ class ReebillTest(unittest.TestCase):
                 self.utilbill)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
@@ -167,7 +168,7 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 2.00, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 2.00, 2)
         # if the unit is already btu then no conversion is needed
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 200000)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 200000)
         self.assertEqual(self.reebill.readings[0].renewable_quantity, 200000)
         # 29.307111111 is approximately equal to 1 therm
         self.reebill.readings[0].unit = 'kwh'
@@ -176,7 +177,7 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 1.00, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 1.00, 2)
         # 1btu is equal to 0.00029307107 kwh
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEquals(self.reebill.readings[0].renewable_quantity, 0.00029307107)
         self.reebill.readings[0].unit = 'therms'
         self.reebill.readings[0].conventional_quantity = 29.307111111
@@ -185,28 +186,28 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 29.307, 3)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 29.307, 3)
         # 1 btu is equal to 1.0000000000000003e-05 therms
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'ccf'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(ccf_conversion_factor=2), 58.61, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(ccf_conversion_factor=2), 58.61, 2)
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'kwd'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertEquals(self.reebill.get_total_conventional_energy(), 0)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 0)
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertEquals(self.reebill.readings[0].renewable_quantity, 1)
 
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
         new_register = Register(self.utilbill, '', '',
                  'kWh', False, 'total', [], '',quantity=200,
-                 register_binding='NEW_REG')
+                 register_binding=Register.DEMAND)
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings

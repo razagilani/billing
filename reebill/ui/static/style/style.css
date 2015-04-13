@@ -73,3 +73,24 @@
 .x-datepicker{
     width: 200px !important;
 }
+
+.grid-cell-wrap-text div {
+    white-space: normal !important;
+    overflow: unset !important;
+    word-break: break-word;
+    word-wrap: normal;
+}
+
+.accounts-tag{
+    padding: 2px 5px;
+    margin: 1px 3px 0px 0px;
+    border-radius: 10px;
+    background: #00a4e4;
+    color: #fff;
+    display: inline-block;
+}
+
+.x-grid-cell{
+    vertical-align: middle;
+}
+

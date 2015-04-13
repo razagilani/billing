@@ -14,16 +14,40 @@ from datetime import date
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
-    RateClass, Register
+    RateClass, Register, Charge
 from core.model import Session
 from test import testing_utils
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import create_utilbill_processor, clear_db, \
+    TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
 
+def setUpModule():
+    init_test_config()
+    init_model()
+    FakeS3Manager.start()
 
-class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
-    '''Integration tests for features of the ReeBill application that deal
-    with utility bills (to become "NexBill") including database.
-    '''
+def tearDownModule():
+    FakeS3Manager.stop()
+
+class UtilbillProcessingTest(testing_utils.TestCase):
+    """Integration tests for features of the ReeBill application that deal
+    with utility bills including database.
+    """
+    @classmethod
+    def setUpClass(cls):
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    def setUp(self):
+        clear_db()
+        TestCaseWithSetup.insert_data()
+
+    def tearDown(self):
+        clear_db()
+
     def test_create_new_account(self):
         billing_address = {
             'addressee': 'Andrew Mellon',
@@ -85,11 +109,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        }, utilbill_data)
 
         self.utilbill_processor.add_charge(utilbill_data['id'])
-        self.utilbill_processor.update_charge({'quantity_formula': 'REG_TOTAL.quantity',
-                                    'rate': 1, 'rsi_binding': 'A',
-                                    'description':'a'},
-                                   utilbill_id=utilbill_data['id'],
-                                   rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            {'quantity_formula': Charge.get_simple_formula(Register.TOTAL),
+             'rate': 1, 'rsi_binding': 'A', 'description': 'a'},
+            utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
         ubdata = self.views.get_all_utilbills_json('88888', 0, 30)[0][0]
         self.assertDictContainsSubset({
@@ -508,7 +531,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(0, count)
 
     def test_upload_uility_bill_without_reg_total(self):
-        '''Check that a register called "REG_TOTAL" is added to new bills
+        '''Check that a total register is added to new bills
         even though some old bills don't have it.
         '''
         account = '99999'
@@ -517,8 +540,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         files = [StringIO(c) for c in 'abc']
 
         # upload a first utility bill to serve as the "predecessor" for the
-        # next one. this will have only a register called "OTHER" so
-        # "REG_TOTAL" is missing.
+        # next one. this will have only a demand register called so
+        # the total register is missing
         self.utilbill_processor.upload_utility_bill(
             account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric',
             utility='pepco', rate_class='Residential-R', supplier='supplier')
@@ -526,12 +549,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         while len(u.registers) > 0:
             del u.registers[0]
         u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
-                 register_binding='OTHER')]
-        self.assertEqual(set(['OTHER']),
-                         set(r.register_binding for r in u.registers))
+                 register_binding=Register.DEMAND)]
+        self.assertEqual({Register.DEMAND},
+                         {r.register_binding for r in u.registers})
 
         for service, energy_unit in [('gas', 'therms'), ('electric', 'kWh')]:
-            # the next utility bill will still have "REG_TOTAL" (in addition to "OTHER"),
+            # the next utility bill will still have the total register (in addition to demand),
             # and its unit will be 'energy_unit'
             self.utilbill_processor.upload_utility_bill(
                 account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service,
@@ -539,13 +562,15 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             u = s.query(UtilBill).join(UtilityAccount).filter(
                 UtilityAccount.account == account).order_by(
                 desc(UtilBill.period_start)).first()
-            self.assertEqual(set(['REG_TOTAL', 'OTHER']),
-                             set(r.register_binding for r in u.registers))
-            reg_total = next(r for r in u.registers if r.register_binding == 'REG_TOTAL')
-            self.assertEqual(energy_unit, reg_total.unit)
+            self.assertEqual({Register.TOTAL, Register.DEMAND},
+                             {r.register_binding for r in u.registers})
+            other = next(
+                r for r in u.registers if r.register_binding == Register.DEMAND)
+            self.assertEqual('MMBTU', other.unit)
+            # NOTE: total register unit is determined by service, not unit in
+            # previous bill
             s.delete(u)
             s.flush()
-
 
     def test_create_utility_bill_for_existing_file(self):
         account = '99999'
@@ -783,7 +808,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.utilbill_processor.delete_charge(dc_id)
         self.utilbill_processor.delete_charge(pgc_id)
         self.utilbill_processor.delete_charge(not_shared_id)
-        self.session.flush()
+        Session().flush()
         self.utilbill_processor.add_charge(id_a_2)
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'RIGHT_OF_WAY',
@@ -952,6 +977,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill_id = self.views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
+        formula = Charge.get_simple_formula(Register.TOTAL)
         example_charge_fields = [
             dict(rate=23.14,
                  rsi_binding='PUC',
@@ -960,28 +986,28 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             dict(rate=0.03059,
                  rsi_binding='RIGHT_OF_WAY',
                  roundrule='ROUND_HALF_EVEN',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.01399,
                  rsi_binding='SETF',
                  roundrule='ROUND_UP',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rsi_binding='SYSTEM_CHARGE',
                  rate=11.2,
                  quantity_formula='1'),
             dict(rsi_binding='DELIVERY_TAX',
                  rate=0.07777,
                  unit='therms',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=.2935,
                  rsi_binding='DISTRIBUTION_CHARGE',
                  roundrule='ROUND_UP',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=.7653,
                  rsi_binding='PGC',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.006,
                  rsi_binding='EATF',
-                 quantity_formula='REG_TOTAL.quantity'),
+                 quantity_formula=formula),
             dict(rate=0.06,
                  rsi_binding='SALES_TAX',
                  quantity_formula=(

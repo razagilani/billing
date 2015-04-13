@@ -33,7 +33,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None, supply_choice_id=None):
+            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -51,6 +51,9 @@ class UtilbillProcessor(object):
             utilbill.processed = processed
 
         utilbill.check_editable()
+        if tou is not None:
+            utilbill.tou = tou
+
         if target_total is not None:
             utilbill.target_total = target_total
 
@@ -72,6 +75,9 @@ class UtilbillProcessor(object):
             utilbill.utility, new_utility = self.get_create_utility(utility)
             if new_utility:
                 utilbill.rate_class = None
+
+        if meter_identifier is not None:
+            utilbill.set_total_meter_identifier(meter_identifier)
 
         period_start = period_start if period_start else \
             utilbill.period_start
@@ -184,27 +190,23 @@ class UtilbillProcessor(object):
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
 
+        # a register called "REG_TOTAL" should always exist because it's in
+        # the rate class' register list. however, since rate classes don't yet
+        # contain all the registers they should, copy any registers from the
+        # predecessor to the current bill that the current bill does not already
+        # have (as determined by "register_binding").
+        # TODO: in the future, registers should be determined entirely by the
+        # rate class, not by copying from other bills.
         for register in predecessor.registers if predecessor else []:
-            # no need to append this Register to new_utilbill.Registers because
+            if register.register_binding in (r.register_binding for r in
+                                             new_utilbill.registers):
+                continue
+            # no need to append this Register to new_utilbill.registers because
             # SQLAlchemy does it automatically
             Register(new_utilbill, register.description, register.identifier,
                      register.unit, False, register.reg_type,
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
-        # a register called "REG_TOTAL" is always required to exist but may be
-        # missing from some existing bills. there is no way to tell what unit
-        # it is supposed to measure energy in because the rate class may not
-        # be known.
-        if predecessor is None or 'REG_TOTAL' not in (
-                r.register_binding for r in predecessor.registers):
-            if service == 'electric':
-                unit = 'kWh'
-            else:
-                assert service == 'gas'
-                unit = 'therms'
-            Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
-                     register_binding='REG_TOTAL')
-
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -280,7 +282,6 @@ class UtilbillProcessor(object):
         assert isinstance(target_total, (float, int, type(None)))
         assert isinstance(service_address, (Address, type(None)))
 
-        s = Session()
         if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
@@ -367,9 +368,23 @@ class UtilbillProcessor(object):
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
         """
+        # TODO: this code belongs inside UtilBill, if it has to exist at all
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utility_bill.check_editable()
+        # register must have a valid "register_binding" value. yes this is a
+        # pretty bad way to do it.
+        i = 0
+        new_reg_binding = Register.REGISTER_BINDINGS[0]
+        while i < Register.REGISTER_BINDINGS:
+            new_reg_binding = Register.REGISTER_BINDINGS[i]
+            if new_reg_binding not in (r.register_binding for r in
+                                   utility_bill.registers):
+                break
+            i += 1
+        if i == len(Register.REGISTER_BINDINGS):
+            raise BillingError("No more registers can be added")
+
         r = Register(
             utility_bill,
             description=register_kwargs.get(
@@ -382,8 +397,8 @@ class UtilbillProcessor(object):
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
             quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get(
-                'register_binding', "Insert register binding here")
+            register_binding=register_kwargs.get('register_binding',
+                                                 new_reg_binding)
         )
         session.add(r)
         session.flush()

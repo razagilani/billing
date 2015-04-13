@@ -59,6 +59,7 @@ Ext.Ajax.request({
                 'AccountsFilter',
                 'AccountsMemory',
                 'Charges',
+                'CustomerGroups',
                 'EstimatedRevenue',
                 'IssuableReebills',
                 'IssuableReebillsMemory',
