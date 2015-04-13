@@ -99,7 +99,7 @@ class ReeBill(Base):
 
     @property
     def utilbill(self):
-        assert len(self.utilbills) == 1
+        # there should only be one, but some early bills had more than one
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
