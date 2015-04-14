@@ -706,7 +706,7 @@ class Reading(Base):
     # identifies which utility bill register this corresponds to
     # TODO: may have to be changed to same type as register.register_binding
     # for comparison to work
-    register_binding = Column(String(1000), nullable=False)
+    register_binding = Column(Register.register_binding_type, nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
     # quantity

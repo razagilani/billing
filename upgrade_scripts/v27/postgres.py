@@ -102,6 +102,11 @@ if __name__ == '__main__':
     old_db_config = Config('alembic.ini')
     old_db_config.set_main_option("sqlalchemy.url", old_uri)
 
+    # TODO: temporary--this enables converting reading.register_binding to
+    # the same type as register.register_binding to enable comparisons.
+    mysql_engine = create_engine(old_uri)
+    mysql_engine.execute("update reading set register_binding = 'REG_TOTAL'")
+
     log.info('Upgrading schema to revision %s' % REVISION)
     alembic_upgrade(REVISION, config=old_db_config)
 

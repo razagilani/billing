@@ -10,6 +10,8 @@ Create Date: 2015-03-12 15:02:51.153207
 """
 
 # revision identifiers, used by Alembic.
+from core.model import Register
+
 revision = '58383ed620d3'
 down_revision = '100f25ab057f'
 
@@ -20,6 +22,9 @@ import sqlalchemy as sa
 def upgrade():
     op.alter_column('reebill', 'issued', existing_type=sa.Integer,
                     type_=sa.Boolean)
+    op.alter_column('reading', 'register_binding',
+                    existing_type=sa.String(length=1000),
+                    type_=Register.register_binding_type)
 
 def downgrade():
     op.alter_column('reebill', 'issued', existing_type=sa.Boolean,
