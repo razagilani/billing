@@ -291,7 +291,6 @@ class Register(Base):
         PEAK,
         INTERMEDIATE,
         OFFPEAK,
-        INTERMEDIATE,
         'REG_TOTAL_SECONDARY',
         'REG_TOTAL_TERTIARY',
         'REG_POWERFACTOR',
