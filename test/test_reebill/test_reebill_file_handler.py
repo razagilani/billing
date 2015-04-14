@@ -1,4 +1,8 @@
+from StringIO import StringIO
+from mock import Mock, call
 from test import init_test_config
+from util.pdf import PDFConcatenator
+
 init_test_config()
 
 from datetime import date
@@ -11,8 +15,10 @@ from testfixtures import TempDirectory
 
 from core.model import Address, UtilBill, \
     Register, UtilityAccount
-from reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
-from reebill.reebill_file_handler import ReebillFileHandler
+from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
+from reebill.reebill_file_handler import ReebillFileHandler, \
+    SummaryFileGenerator
+
 
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
@@ -41,13 +47,13 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(utility_account, 'Test Utility', 'Test Rate Class',
+        u = UtilBill(utility_account, None, None,
                      supplier='Test Supplier', billing_address=ba3,
                      service_address=sa3, period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1))
         u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
                                 'total', None, 'METERID', quantity=100,
-                                register_binding='REG_TOTAL')]
+                                register_binding=Register.TOTAL)]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
         self.reebill.replace_readings_from_utility_bill_registers(u)
@@ -153,4 +159,33 @@ class ReebillFileHandlerTest(TestCase):
         # to make sure it stays that way.
         self.assertEqual('8aba74f1f80c6251c936fdfd6dec235097f978b6',
                          filtered_pdf_hash)
+
+
+class SummaryFileGeneratorTest(TestCase):
+    """Unit test for SummaryFileGenerator.
+    """
+    def setUp(self):
+        self.reebill_1 =Mock(autospec=ReeBill)
+        self.reebill_2 = Mock(autospec=ReeBill)
+        self.file1, self.file2 = StringIO('1'), StringIO('2')
+        self.reebills = [Mock]
+        self.reebill_file_handler = Mock(autospec=ReebillFileHandler)
+        self.reebill_file_handler.get_file.side_effect = [self.file1,
+                                                          self.file2]
+        self.pdf_concatenator = Mock(autospec=PDFConcatenator)
+        self.output_file = StringIO()
+        self.sfg = SummaryFileGenerator(self.reebill_file_handler,
+                                        self.pdf_concatenator)
+
+    def test_generate_summary_file(self):
+        self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
+                                       self.output_file)
+        self.reebill_file_handler.render.assert_has_calls(
+            [call(self.reebill_1), call(self.reebill_2)])
+        self.reebill_file_handler.get_file.assert_has_calls(
+            [call(self.reebill_1), call(self.reebill_2)])
+        self.pdf_concatenator.append.assert_has_calls(
+            [call(self.file1), call(self.file2)])
+        self.pdf_concatenator.write_result.assert_called_once_with(
+            self.output_file)
 

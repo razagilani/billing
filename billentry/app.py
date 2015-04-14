@@ -21,7 +21,7 @@ from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app
+    render_template, current_app, Response
 from flask_oauth import OAuth, OAuthException
 
 from billentry.billentry_model import BillEntryUser, Role
@@ -71,23 +71,25 @@ google = oauth.remote_app(
     consumer_key=config.get('billentry', 'google_client_id'),
     consumer_secret=config.get('billentry', 'google_client_secret'))
 
-
-        # TODO: there's supposed to be an option to show only bills that
-        # "should be entered", i.e. BEUtilBills
-        # only BEUtilBills are counted here because only they have data about
-        #  when they were "entered" and who entered them.
-        # TODO: there's supposed to be an option to show only bills that
-        # "should be entered", i.e. BEUtilBills
-        # only BEUtilBills are counted here because only they have data about
-        #  when they were "entered" and who entered them.
-
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
-# load the extension
 principals = Principal(app)
+
+if app.config['LOGIN_DISABLED']:
+    login_manager.anonymous_user = BillEntryUser.get_anonymous_user
+
+
+@principals.identity_loader
+def load_identity_for_anonymous_user():
+    if config.get('billentry', 'disable_authentication'):
+        identity = AnonymousIdentity()
+        identity.provides.add(RoleNeed('admin'))
+        return identity
+
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
@@ -103,6 +105,7 @@ def on_identity_loaded(sender, identity):
     if hasattr(current_user, 'roles'):
         for role in current_user.roles:
             identity.provides.add(RoleNeed(role.name))
+
 
 @login_manager.user_loader
 def load_user(id):
@@ -199,6 +202,7 @@ def create_user_in_db(access_token):
 def before_request():
     if app.config['LOGIN_DISABLED']:
         return
+
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
@@ -211,11 +215,36 @@ def before_request():
         # special endpoint name for all static files--not a URL
         'static'
     ]
+    NON_REST_ENDPOINTS = [
+        'admin',
+        'index'
+    ]
+
     if not user.is_authenticated():
-        if ('index.html' in request.path or request.endpoint == '/' or not
-                        request.endpoint in ALLOWED_ENDPOINTS):
+        if request.endpoint in ALLOWED_ENDPOINTS:
+            return
+        if (request.endpoint in NON_REST_ENDPOINTS or 'admin' in
+            request.path or 'index' in request.path):
             set_next_url()
             return redirect(url_for('login_page'))
+        return Response('Could not verify your access level for that URL', 401)
+
+def set_next_url():
+    next_path = request.args.get('next') or request.path
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
 
 @app.after_request
 def db_commit(response):
@@ -252,23 +281,6 @@ def oauth_login():
     callback_url = url_for('oauth2callback', _external=True)
     result = google.authorize(callback=callback_url)
     return result
-
-def set_next_url():
-    next_path = request.args.get('next') or request.path
-    if next_path:
-        # Since passing along the "next" URL as a GET param requires
-        # a different callback for each page, and Google requires
-        # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
-        path = urllib.unquote(next_path)
-        if path[0] == '/':
-            # This first slash is unnecessary since we force it in when we
-            # format next_url.
-            path = path[1:]
-
-        next_url = "{path}".format(
-            path=path,)
-        session['next_url'] = next_url
 
 @app.route('/login-page')
 def login_page():
@@ -325,7 +337,8 @@ def check_password(plain_text_password, hashed_password):
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 api = Api(app)
-api.add_resource(resources.AccountResource, '/utilitybills/accounts')
+api.add_resource(resources.AccountListResource, '/utilitybills/accounts')
+api.add_resource(resources.AccountResource, '/utilitybills/accounts/<int:id>')
 api.add_resource(resources.UtilBillListResource, '/utilitybills/utilitybills')
 api.add_resource(resources.UtilBillResource,
                  '/utilitybills/utilitybills/<int:id>')
@@ -336,8 +349,10 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
-api.add_resource(resources.UtilBillListForUserResourece,
-                 '/utilitybills/user_utilitybills/<int:id>')
+api.add_resource(resources.UtilBillListForUserResource,
+                 '/utilitybills/user_utilitybills')
+api.add_resource(resources.FlaggedUtilBillListResource,
+                 '/utilitybills/flagged_utilitybills')
 
 # apparently needed for Apache
 application = app

@@ -143,7 +143,7 @@ class FuzzyPricingModel(PricingModel):
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
                 charge = closest_occurrence[binding][1]
-                result.append(Charge.formulas_from_other(charge))
+                result.append(charge.clone())
         return result
 
     def _load_relevant_bills_distribution(self, utilbill, ignore_func):
@@ -234,7 +234,7 @@ class FuzzyPricingModel(PricingModel):
             for charge in predecessor.charges:
                 if not (charge.shared or charge.rsi_binding in (
                         c.rsi_binding for c in result)):
-                    result.append(Charge.formulas_from_other(charge))
+                    result.append(charge.clone())
 
         return result
 

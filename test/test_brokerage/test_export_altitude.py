@@ -10,12 +10,16 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
     AltitudeAccount
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
-    RateClass, Supplier
+    RateClass, Supplier, Register
 from brokerage.export_altitude import PGAltitudeExporter
 from test import init_test_config
-from test.setup_teardown import TestCaseWithSetup
+from test.setup_teardown import clear_db
 from util.dateutils import ISO_8601_DATETIME
 
+
+def setUpModule():
+    init_test_config()
+    init_model()
 
 class TestExportAltitude(TestCase):
     def setUp(self):
@@ -26,6 +30,7 @@ class TestExportAltitude(TestCase):
         u1.get_utility_account_number.return_value = '1'
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
+        u1.due_date = datetime(2000,3,1)
         u1.get_next_meter_read_date.return_value = datetime(2000,3,1)
         u1.get_total_energy_consumption.return_value = 10
         u1.get_supply_target_total.return_value = 100
@@ -37,6 +42,8 @@ class TestExportAltitude(TestCase):
         u1.date_received = datetime(2001,1,1)
         u1.date_modified = datetime(2001,1,2)
         u1.supply_choice_id = None
+        u1.get_total_meter_identifier.return_value = ''
+        u1.tou = False
 
         u2 = Mock(autospec=UtilBill)
         u2.get_nextility_account_number.return_value = '22222'
@@ -45,6 +52,7 @@ class TestExportAltitude(TestCase):
         u2.get_utility_account_number.return_value = '2'
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
+        u2.due_date = datetime(2000,3,15)
         u2.get_next_meter_read_date.return_value = datetime(2000,3,15)
         u2.get_total_energy_consumption.return_value = 20
         u2.get_supply_target_total.return_value = 200
@@ -56,6 +64,8 @@ class TestExportAltitude(TestCase):
         u2.date_received = None
         u2.date_modified = None
         u2.supply_choice_id = '123xyz'
+        u2.get_total_meter_identifier.return_value = ''
+        u2.tou = False
 
         self.utilbills = [u1, u2]
 
@@ -100,6 +110,9 @@ class TestExportAltitude(TestCase):
                              '10000',
                              '2001-01-01T00:00:00Z',
                              '2001-01-02T00:00:00Z',
+                             '2000-03-01T00:00:00Z',
+                             '',
+                             'FALSE'
                          ), dataset[0])
         self.assertEqual((
                              '',
@@ -122,6 +135,9 @@ class TestExportAltitude(TestCase):
                              '20000',
                              '',
                              '',
+                             '2000-03-15T00:00:00Z',
+                             '',
+                             'FALSE'
                          ), dataset[1])
 
     def test_export_csv(self):
@@ -136,7 +152,7 @@ class TestAltitudeBillStorage(TestCase):
     querying AltitudeBill objects.
     """
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         utility = Utility(name='example', address=None)
         rate_class = RateClass(name='Rate Class', utility=utility,
                                service='electric')
@@ -147,7 +163,10 @@ class TestAltitudeBillStorage(TestCase):
             ua, utility, rate_class, supplier=supplier,
             billing_address=Address(street='1 Billing St.'),
             service_address=Address(street='1 Service St.'),
-            period_start=date(2000,1,1), period_end=date(2000,1,1))
+            period_start=date(2000,1,1), period_end=date(2000,1,1),
+            due_date=date(2000,2,1))
+        self.utilbill.registers[0].quantity = 150.
+        self.utilbill.registers[0].meter_identifier = 'GHIJKL'
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
@@ -159,7 +178,7 @@ class TestAltitudeBillStorage(TestCase):
         self.pgae = PGAltitudeExporter(lambda: str(uuid4()), altitude)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_export_with_db(self):
         """Integration test with core.altitude module and database, making sure
@@ -177,10 +196,12 @@ class TestAltitudeBillStorage(TestCase):
             'next_estimated_meter_read_date,total_usage,total_supply_charge,'
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
-            'service_address_postal_code,create_date,modified_date\r\n'
+            'service_address_postal_code,create_date,modified_date,'
+            'ordering_date,meter_number,time_of_use\r\n'
             'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
-            '2000-01-01T00:00:00Z,,0,0,Rate Class,,1 Service St.,,,,,%s\r\n' %
-            self.utilbill.date_modified.strftime(ISO_8601_DATETIME))
+            '2000-01-01T00:00:00Z,,150.0,0,Rate Class,,1 Service St.,,,,,%s,%s,%s,%s\r\n' %
+            (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
+            self.utilbill.due_date.strftime(ISO_8601_DATETIME),'GHIJKL', 'FALSE'))
         csv_file.seek(0)
         actual_csv = csv_file.read()
         self.assertEqual(expected_csv, actual_csv)

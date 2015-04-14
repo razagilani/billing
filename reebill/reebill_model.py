@@ -1,16 +1,19 @@
 '''SQLAlchemy model classes for ReeBill-related database tables.
 '''
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from itertools import chain
+from operator import attrgetter
 import traceback
 
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
+from core.model.model import PHYSICAL_UNITS
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError
+from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+    NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
 from util.units import ureg, convert_to_therms
@@ -168,11 +171,20 @@ class ReeBill(Base):
         if self.processed:
             raise ProcessedBillError("Can't modify a processed reebill")
 
+    def get_period_start(self):
+        """Return start of the utility bill's period (date).
+        """
+        return self.utilbill.period_start
+
+    def get_period_end(self):
+        """Return end of the utility bill's period (date).
+        """
+        return self.utilbill.period_end
+
     def get_period(self):
-        '''Returns period of the first (only) utility bill for this reebill
-        as tuple of dates.
-        '''
-        return self.utilbills[0].period_start, self.utilbills[0].period_end
+        """Return period of the utility bill as a tuple of dates (start, end).
+        """
+        return self.utilbill.period_start, self.utilbill.period_end
 
     def copy_reading_conventional_quantities_from_utility_bill(self):
         """Sets the conventional_quantity of each reading to match the
@@ -278,6 +290,8 @@ class ReeBill(Base):
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
         updates reebill charges."""
+        self.check_editable()
+
         # make sure the utility bill charges are up to date by recomputing them
         # (if the bill is already processed, you can't recompute the charges but
         # it should not be necessary to recompute the charges anyway.)
@@ -306,6 +320,46 @@ class ReeBill(Base):
             evaluated_charges[charge.rsi_binding] = evaluation
         self._replace_charges_with_evaluations(evaluated_charges)
 
+        # update the various derived values that are based on charges
+        actual_total = self.get_total_actual_charges()
+        hypothetical_total = self.get_total_hypothetical_charges()
+        self.ree_value = hypothetical_total - actual_total
+        self.ree_charge = round(
+            self.ree_value * (1 - self.discount_rate), 2)
+        self.ree_savings = round(self.ree_value * self.discount_rate, 2)
+
+    def set_adjustment(self, predecessor, reebill_processor):
+        if self.sequence == 1:
+            assert predecessor is None
+            self.total_adjustment = 0
+        elif self.version == 0 and predecessor.issued:
+            self.total_adjustment = reebill_processor.get_total_adjustment(
+                self.get_account())
+        else:
+            self.total_adjustment = 0
+
+    def set_payments(self, payments, predecessor_balance_due):
+        """Associate the given Payment objects with this bill and update the
+        value of "payment_received" and payment-related derived values.
+        """
+        self.payments = []
+        for payment in payments:
+            payment.reebill_id = self.id
+        self.payment_received = float(
+            sum(payment.credit for payment in payments))
+
+        if self.sequence == 1:
+            self.prior_balance = 0
+            self.balance_forward = 0
+        else:
+            self.prior_balance = predecessor_balance_due
+            self.balance_forward = (predecessor_balance_due -
+                                   self.payment_received +
+                                   self.total_adjustment +
+                                   self.manual_adjustment)
+        self.balance_due = self.balance_forward + self.ree_charge + \
+                           self.late_charge
+
     @property
     def total(self):
         '''The sum of all charges on this bill that do not come from other
@@ -333,21 +387,32 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def column_dict(self):
+        def address_to_dict(self):
+            return {
+                'addressee': self.addressee,
+                'street': self.street,
+                'city': self.city,
+                'state': self.state,
+                'postal_code': self.postal_code,
+            }
         period_start , period_end = self.get_period()
-        the_dict = super(ReeBill, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update({
             'account': self.get_account(),
             'mailto': self.reebill_customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
-            'billing_address': self.billing_address.to_dict(),
-            'service_address': self.service_address.to_dict(),
+            'billing_address': address_to_dict(self.billing_address),
+            'service_address': address_to_dict(self.service_address),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
-            'readings': [r.column_dict() for r in self.readings]
+            'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.readings],
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
@@ -370,6 +435,53 @@ class ReeBill(Base):
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
         return the_dict
+
+    def issue(self, issue_date, reebill_processor):
+        """Set the values of all fields for an issued bill. Does not actually
+        generate a file or send an email.
+
+        :param issue_date: datetime when this bill was issued (customer
+        should receive the email near this time because it is used to
+        determine the due date).
+        :param reebill_processor: ReeBillProcessor object, needed because
+        some of these values depend on other bills, and it does the queries
+        to get those values. However, because of old code that had no
+        encapsulation, 'reebill_processor' also does a lot of other things,
+        many of which should be moved into this method.
+        """
+        assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
+        assert self.issue_date is None
+        assert self.due_date is None
+
+        # for a non-correction, all earlier bills must be issued first.
+        # (ReeBillCustomer is used to avoid doing a direct database query here)
+        if self.version == 0 and self is not \
+                    self.reebill_customer.get_first_unissued_bill():
+            raise NotIssuable("Predecessor must be issued before this one")
+
+        if not self.processed:
+            # a ton of attributes of this object get set in this method
+            reebill_processor.compute_reebill(
+                self.reebill_customer.get_account(), self.sequence)
+            self.compute_charges()
+            self.processed = True
+
+        # late_charge was already calculated in compute_reebill above if this
+        # bill was not processed, but needs to be continually updated even for
+        # a processed, because it changes over time.
+        # TODO: find a better way to do this, such as a compute() method that
+        # calls compute_charges() only if the bill is not processed
+        self.late_charge = reebill_processor.get_late_charge(self,
+                                                             issue_date.date())
+
+        # these fields only get set for an issued bill (and never change
+        # after that)
+        self.email_recipient = self.reebill_customer.bill_email_recipient
+        self.issue_date = issue_date
+        # TODO: due_date does not make sense for a correction; should
+        # probably be None or the same as the due date of the original version.
+        self.due_date = (issue_date + timedelta(days=30)).date()
+        self.issued = True
 
 
 class UtilbillReebill(Base):
@@ -401,6 +513,55 @@ class UtilbillReebill(Base):
                     self.utilbill_id, self.reebill_id, self.document_id[-4:],
                     self.uprs_document_id[-4:]))
 
+# intermediate table for many-to-many relationship. should not be used
+# outside this file.
+_customer_customer_group_table = Table(
+    'customer_customer_group', Base.metadata,
+    Column('reebill_customer_id', Integer,
+           ForeignKey('reebill_customer.id', ondelete='cascade'),
+           primary_key=True),
+    Column('customer_group_id', Integer,
+           ForeignKey('customer_group.id', ondelete='cascade'),
+           primary_key=True)
+)
+
+class CustomerGroup(Base):
+    __tablename__ = 'customer_group'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(1000), nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
+    customers = relationship(
+        'ReeBillCustomer',
+        secondary=lambda: _customer_customer_group_table, backref='groups')
+
+    def add(self, customer):
+        """Add the given customer to this group.
+        """
+        self.customers.append(customer)
+
+    def remove(self, customer):
+        """Remove the given customer from this group.
+        """
+        self.customers.remove(customer)
+
+    def get_customers(self):
+        """Return a list of customers in this group (in undefined order).
+        """
+        return self.customers
+
+    def get_bills_to_issue(self):
+        """Return a list of ReeBills that are processed, not issued,
+        are not corrections (i.e. have version == 0) belonging to
+        accounts in this group.
+        """
+        # loading all the bills and then filtering them is not efficient,
+        # but there is a maximum of about 120 bills per customer, and this
+        # doesn't need to run fast.
+        criteria = lambda b: b.processed and not b.issued and b.version == 0
+        return list(chain.from_iterable(
+            (b for b in c.reebills if criteria(b)) for c in self.customers))
+
 class ReeBillCustomer(Base):
     __tablename__ = 'reebill_customer'
 
@@ -408,33 +569,21 @@ class ReeBillCustomer(Base):
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
 
-
     id = Column(Integer, primary_key=True)
     name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
+
+    # identifies a group of accounts that belong to a particular owner,
+    # for the purpose of producing "bill summaries"
+
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'))
 
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
-
-    def get_discount_rate(self):
-        return self.discountrate
-
-    def get_account(self):
-        return self.utility_account.account
-
-    def set_discountrate(self, value):
-        self.discountrate = value
-
-    def get_late_charge_rate(self):
-        return self.latechargerate
-
-    def set_late_charge_rate(self, value):
-        self.latechargerate = value
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
@@ -461,9 +610,48 @@ class ReeBillCustomer(Base):
         self.service = service
         self.utility_account = utility_account
 
+    def get_discount_rate(self):
+        return self.discountrate
+
+    def get_account(self):
+        return self.utility_account.account
+
+    def set_discountrate(self, value):
+        self.discountrate = value
+
+    def get_late_charge_rate(self):
+        return self.latechargerate
+
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
     def __repr__(self):
         return '<ReeBillCustomer(name=%s, discountrate=%s)>' \
                % (self.name, self.discountrate)
+
+    def __str__(self):
+        return '%(id)s %(nextility_num)s %(name)s' % dict(
+            id=self.id, nextility_num=self.get_account(), name=self.name)
+
+    def get_first_unissued_bill(self):
+        """Return the reebill with lowest sequence for this customer whose
+        version is 0 (i.e. is not a correction), or None if there are no bills.
+        """
+        # querying for all bills (SQLAlchemy default behavior is "lazy
+        # loading"), then filtering them in application code--not efficient
+        g = (r for r in self.reebills if not r.issued and r.version == 0)
+        try:
+            result = min(g, key=attrgetter('sequence'))
+        except ValueError:
+            return None
+        return result
+
+    def get_groups(self):
+        """Return a list of CustomerGroups that this ReeBillCustomer belongs
+        to (normally only one).
+        """
+        return self.groups
+
 
 class ReeBillCharge(Base):
     '''Table representing "hypothetical" versions of charges in reebills (so
@@ -530,7 +718,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*Register.PHYSICAL_UNITS, name='physical_units'), nullable=False)
+    unit = Column(Enum(PHYSICAL_UNITS, name='physical_units'), nullable=False)
 
     @staticmethod
     def make_reading_from_register(register):
@@ -638,7 +826,7 @@ class Payment(Base):
             self.date_applied, self.description, self.credit)
 
     def column_dict(self):
-        the_dict = super(Payment, self).column_dict()
+        the_dict = {c: getattr(self, c) for c in self.column_names()}
         the_dict.update(editable=self.is_editable())
         return the_dict
 

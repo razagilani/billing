@@ -1,18 +1,15 @@
-#!/usr/bin/env python2
 import sys
-from operator import itemgetter
-import pymongo
+import pprint
+
 from sqlalchemy import desc
 import tablib
-import traceback
-from reebill import state
-from reebill.state import UtilBill
+
+from reebill import reebill_model
+from reebill.reebill_model import UtilBill
 from util import dateutils
 from util.monthmath import approximate_month
 from exc import *
 from core.model import Session, UtilityAccount
-
-import pprint
 
 pformat = pprint.PrettyPrinter().pformat
 
@@ -436,11 +433,10 @@ def main(export_func, filename, account=None):
     init_logging(path=p)
     init_config(filename=p)
     init_model()
-    from core import config
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.ReeBillDAO(logger=logger)
+    state_db = reebill_model.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
@@ -449,15 +445,4 @@ def main(export_func, filename, account=None):
         elif export_func == 'reebill_details':
             exporter.export_reebill_details(output_file)
         else:
-            exporter.export_account_charges(output_file,
-                                            account=account)
-
-if __name__ == '__main__':
-    filename = 'spreadsheet.xls'
-    export_func = ''
-    account = None
-    if len(sys.argv) > 1:
-        export_func = sys.argv[1]
-    if len(sys.argv) > 2:
-        account = sys.argv[2]
-    main(export_func, filename, account)
+            exporter.export_account_charges(output_file, account=account)
