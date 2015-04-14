@@ -25,6 +25,7 @@ def replace_utilbill_with_beutilbill(utilbill):
     s.add(beutilbill)
     s.delete(utilbill)
     utilbill.id = None
+    s.commit()
     return beutilbill
 
 _bcrypt = None
