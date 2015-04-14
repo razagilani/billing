@@ -1,38 +1,25 @@
-'''Tests for ReeBill-specific data-access objects, including the database.
-Currently the only one is StateDB.
-'''
+from datetime import date, datetime
+
+from sqlalchemy.orm.exc import NoResultFound
+
+from reebill.reebill_model import ReeBillCustomer, ReeBill
+from core import init_config, init_model
+from core.model import Session, Address, Utility, Supplier, RateClass, \
+    UtilityAccount
+from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test.setup_teardown import init_logging, TestCaseWithSetup
-from core.model.model import Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBillCustomer
+from test.setup_teardown import clear_db
+from test.testing_utils import TestCase
 
-init_logging()
-import unittest
-from datetime import date, datetime
-from sqlalchemy.orm.exc import NoResultFound
-from core import init_config, init_model
-from reebill import state
-from core.model import UtilBill, Session, Address
-from reebill.state import ReeBill
 
-billdb_config = {
-    'billpath': '/db-dev/skyline/bills/',
-    'database': 'skyline',
-    'utilitybillpath': '/db-dev/skyline/utilitybills/',
-    'collection': 'reebills',
-    'host': 'localhost',
-    'port': '27017'
-}
-
-class StateDBTest(TestCaseWithSetup):
+class StateDBTest(TestCase):
 
     def setUp(self):
         # clear out database
         init_config('test/tstsettings.cfg')
         init_model()
-        self.session = Session()
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         blank_address = Address()
         test_utility = Utility(name='FB Test Utility Name',
                                address=blank_address)
@@ -47,6 +34,7 @@ class StateDBTest(TestCaseWithSetup):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account)
+        self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
         self.session.commit()
@@ -54,20 +42,38 @@ class StateDBTest(TestCaseWithSetup):
         self.payment_dao = PaymentDAO()
 
     def tearDown(self):
-        self.session.rollback()
-        self.truncate_tables()
+        clear_db()
 
     def test_versions(self):
-        '''Tests max_version(), max_issued_version(), increment_version(), and
+        '''Tests max_version(), increment_version(), and
         the behavior of is_issued() with multiple versions.'''
-        session = Session()
+        def max_issued_version(account, sequence):
+            '''Returns the greatest version of the given reebill that has been
+            issued. (This should differ by at most 1 from the maximum version
+            overall, since a new version can't be created if the last one hasn't
+            been issued.) If no version has ever been issued, returns None.'''
+            # weird filtering on other table without a join
+            session = Session()
+            reebill_customer = Session.query(ReeBillCustomer).join(
+                UtilityAccount).filter(UtilityAccount.account == account).one()
+            from sqlalchemy import func
+            result = session.query(func.max(ReeBill.version)) \
+                .filter(ReeBill.reebill_customer == reebill_customer) \
+                .filter(ReeBill.issued == 1).one()[0]
+            # SQLAlchemy returns None if no reebills with that customer are issued
+            if result is None:
+                return None
+            # version number is a long, so convert to int
+            return int(result)
+
+        s = Session()
         acc, seq = '99999', 1
         # initially max_version is 0, max_issued_version is None, and issued
         # is false
         b = ReeBill(self.reebill_customer, seq)
-        session.add(b)
+        s.add(b)
         self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(None, max_issued_version(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq,
                 version=0))
@@ -81,7 +87,7 @@ class StateDBTest(TestCaseWithSetup):
         # adding versions of bills for other accounts should have no effect
         fb_test_utility = Utility(name='FB Test Utility', address=Address())
         fb_test_supplier = Supplier(name='FB Test Supplier', address=Address())
-        rate_class = session.query(RateClass).one()
+        rate_class = s.query(RateClass).one()
         utility_account1 = UtilityAccount('some_account', '11111',
                 fb_test_utility, fb_test_supplier, rate_class,
                 Address(), Address())
@@ -97,9 +103,9 @@ class StateDBTest(TestCaseWithSetup):
                             late_charge_rate=0.1, service='thermal',
                             bill_email_recipient='customer2@example.com',
                             utility_account=utility_account2))
-        session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
-        session.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
-        session.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
+        s.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
+        s.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
+        s.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
         self.state_db.issue('11111', 1)
         self.state_db.issue('22222', 1)
         self.state_db.increment_version('11111', 1)
@@ -107,7 +113,7 @@ class StateDBTest(TestCaseWithSetup):
         self.state_db.issue('22222', 1)
         self.state_db.increment_version('22222', 1)
         self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(None, max_issued_version(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq, version=0))
         self.assertRaises(NoResultFound, self.state_db.is_issued,
@@ -121,7 +127,7 @@ class StateDBTest(TestCaseWithSetup):
         self.assertRaises(Exception, self.state_db.increment_version,
                 acc, seq)
         self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(None, max_issued_version(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq,
                 version=0))
@@ -144,7 +150,7 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
         self.state_db.increment_version(acc, seq)
         self.assertEqual(1, self.state_db.max_version(acc, seq))
-        self.assertEqual(0, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(0, max_issued_version(acc, seq))
         self.assertEqual(True, self.state_db.is_issued(acc, seq, version=0))
         self.assertEqual(False, self.state_db.is_issued(acc, seq,
                 version=1))
@@ -156,7 +162,7 @@ class StateDBTest(TestCaseWithSetup):
 
         # issue version 1 & create version 2
         self.state_db.issue(acc, seq)
-        self.assertEqual(1, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(1, max_issued_version(acc, seq))
         self.assertEqual(True, self.state_db.is_issued(acc, seq))
         self.assertEqual(True, self.state_db.is_issued(acc, seq,
                 version=0))
@@ -174,42 +180,11 @@ class StateDBTest(TestCaseWithSetup):
         self.assertRaises(NoResultFound, self.state_db.is_issued,
                 acc, seq, version=10)
         self.assertEqual(2, self.state_db.max_version(acc, seq))
-        self.assertEqual(1, self.state_db.max_issued_version(acc, seq))
+        self.assertEqual(1, max_issued_version(acc, seq))
 
         # issue version 2
         self.state_db.issue(acc, seq)
-        self.assertEqual(2, self.state_db.max_issued_version(acc, seq))
-
-
-    def test_get_unissued_corrections(self):
-        session = Session()
-        # reebills 1-4, 1-3 issued
-        session.add(ReeBill(self.reebill_customer, 1))
-        session.add(ReeBill(self.reebill_customer, 2))
-        session.add(ReeBill(self.reebill_customer, 3))
-        self.state_db.issue('99999', 1)
-        self.state_db.issue('99999', 2)
-        self.state_db.issue('99999', 3)
-
-        # no unissued corrections yet
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # make corrections on 1 and 3
-        self.state_db.increment_version('99999', 1)
-        self.state_db.increment_version('99999', 3)
-        self.assertEquals([(1, 1), (3, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 3
-        self.state_db.issue('99999', 3)
-        self.assertEquals([(1, 1)],
-                self.state_db.get_unissued_corrections('99999'))
-
-        # issue 1
-        self.state_db.issue('99999', 1)
-        self.assertEquals([],
-                self.state_db.get_unissued_corrections('99999'))
+        self.assertEqual(2, max_issued_version(acc, seq))
 
     def test_get_all_reebills_for_account(self):
         session = Session()
@@ -282,5 +257,3 @@ class StateDBTest(TestCaseWithSetup):
         self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
-if __name__ == '__main__':
-    unittest.main()

@@ -1,7 +1,6 @@
-Ext.define('ReeBill.store.Utilities', {
+Ext.define('BillEntry.store.Utilities', {
     extend: 'Ext.data.Store',
-    requires: ['ReeBill.model.Utility'],
-    model: 'ReeBill.model.Utility',
+    model: 'BillEntry.model.Utility',
 
     autoLoad: true,
     autoSync: true,

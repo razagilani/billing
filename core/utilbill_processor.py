@@ -24,10 +24,7 @@ class UtilbillProcessor(object):
         self.pricing_model = pricing_model
         self.bill_file_handler = bill_file_handler
         self.logger = logger
-
-    # TODO this method might be replaced by the UtilbillLoader method
-    def _get_utilbill(self, utilbill_id):
-        return UtilBillLoader().get_utilbill_by_id(utilbill_id)
+        self._utilbill_loader = UtilBillLoader()
 
     ############################################################################
     # methods that are actually for "processing" UtilBills
@@ -36,12 +33,12 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None, supply_choice_id=None):
+            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
-        utilbill = self._get_utilbill(utilbill_id)
+        utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         assert utilbill.utility is not None
 
         if processed is True:
@@ -54,6 +51,9 @@ class UtilbillProcessor(object):
             utilbill.processed = processed
 
         utilbill.check_editable()
+        if tou is not None:
+            utilbill.tou = tou
+
         if target_total is not None:
             utilbill.target_total = target_total
 
@@ -75,6 +75,9 @@ class UtilbillProcessor(object):
             utilbill.utility, new_utility = self.get_create_utility(utility)
             if new_utility:
                 utilbill.rate_class = None
+
+        if meter_identifier is not None:
+            utilbill.set_total_meter_identifier(meter_identifier)
 
         period_start = period_start if period_start else \
             utilbill.period_start
@@ -155,8 +158,6 @@ class UtilbillProcessor(object):
 
         # order of preference for picking value of "service" field: value
         # passed as an argument, or 'electric' by default
-        # TODO: this doesn't really make sense; probably the "service" field
-        # should belong to the rate class.
         if service is None and predecessor is not None:
             service = predecessor.get_service()
         if service is None:
@@ -189,27 +190,23 @@ class UtilbillProcessor(object):
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
 
+        # a register called "REG_TOTAL" should always exist because it's in
+        # the rate class' register list. however, since rate classes don't yet
+        # contain all the registers they should, copy any registers from the
+        # predecessor to the current bill that the current bill does not already
+        # have (as determined by "register_binding").
+        # TODO: in the future, registers should be determined entirely by the
+        # rate class, not by copying from other bills.
         for register in predecessor.registers if predecessor else []:
-            # no need to append this Register to new_utilbill.Registers because
+            if register.register_binding in (r.register_binding for r in
+                                             new_utilbill.registers):
+                continue
+            # no need to append this Register to new_utilbill.registers because
             # SQLAlchemy does it automatically
             Register(new_utilbill, register.description, register.identifier,
                      register.unit, False, register.reg_type,
                      register.active_periods, register.meter_identifier,
                      quantity=0, register_binding=register.register_binding)
-        # a register called "REG_TOTAL" is always required to exist but may be
-        # missing from some existing bills. there is no way to tell what unit
-        # it is supposed to measure energy in because the rate class may not
-        # be known.
-        if predecessor is None or 'REG_TOTAL' not in (
-                r.register_binding for r in predecessor.registers):
-            if service == 'electric':
-                unit = 'kWh'
-            else:
-                assert service == 'gas'
-                unit = 'therms'
-            Register(new_utilbill, '', '', unit, False, 'total', None, '', 0,
-                     register_binding='REG_TOTAL')
-
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -285,7 +282,6 @@ class UtilbillProcessor(object):
         assert isinstance(target_total, (float, int, type(None)))
         assert isinstance(service_address, (Address, type(None)))
 
-        s = Session()
         if UtilBillLoader().count_utilbills_with_hash(sha256_hexdigest) != 0:
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
@@ -312,12 +308,7 @@ class UtilbillProcessor(object):
             new_utilbill.due_date = due_date
 
         self.bill_file_handler.check_file_exists(new_utilbill)
-
         return new_utilbill
-
-    def get_service_address(self, account):
-        return UtilBillLoader().get_last_real_utilbill(
-            account, end=datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -355,22 +346,16 @@ class UtilbillProcessor(object):
         """Replace the charges of the bill given by utilbill_id with new ones
         generated by the pricing model.
         """
-        session = Session()
-        utilbill = self._get_utilbill(utilbill_id)
-        utilbill.check_editable()
-        for charge in utilbill.charges:
-            session.delete(charge)
-        utilbill.charges = []
-        utilbill.charges = self.pricing_model.get_predicted_charges(utilbill)
-        return self.compute_utility_bill(utilbill_id)
+        utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
+        utilbill.regenerate_charges(self.pricing_model)
+        return utilbill
 
     def compute_utility_bill(self, utilbill_id):
         '''Updates all charges in the utility bill given by 'utilbill_id'.
         Also updates some keys in the document that are duplicates of columns
         in the MySQL table.
         '''
-        utilbill = self._get_utilbill(utilbill_id)
-        utilbill.check_editable()
+        utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         utilbill.compute_charges()
         return utilbill
 
@@ -383,9 +368,23 @@ class UtilbillProcessor(object):
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
         """
+        # TODO: this code belongs inside UtilBill, if it has to exist at all
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utility_bill.check_editable()
+        # register must have a valid "register_binding" value. yes this is a
+        # pretty bad way to do it.
+        i = 0
+        new_reg_binding = Register.REGISTER_BINDINGS[0]
+        while i < Register.REGISTER_BINDINGS:
+            new_reg_binding = Register.REGISTER_BINDINGS[i]
+            if new_reg_binding not in (r.register_binding for r in
+                                   utility_bill.registers):
+                break
+            i += 1
+        if i == len(Register.REGISTER_BINDINGS):
+            raise BillingError("No more registers can be added")
+
         r = Register(
             utility_bill,
             description=register_kwargs.get(
@@ -398,8 +397,8 @@ class UtilbillProcessor(object):
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
             quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get(
-                'register_binding', "Insert register binding here")
+            register_binding=register_kwargs.get('register_binding',
+                                                 new_reg_binding)
         )
         session.add(r)
         session.flush()
@@ -430,7 +429,7 @@ class UtilbillProcessor(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
-        utilbill = self._get_utilbill(utilbill_id)
+        utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         utilbill.check_editable()
         session.delete(register)
         session.commit()
@@ -439,7 +438,7 @@ class UtilbillProcessor(object):
     def add_charge(self, utilbill_id, **charge_kwargs):
         """Add a new charge to the given utility bill. charge_kwargs are
         passed as keyword arguments to the charge"""
-        utilbill = self._get_utilbill(utilbill_id)
+        utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         utilbill.check_editable()
         charge = utilbill.add_charge(**charge_kwargs)
         self.compute_utility_bill(utilbill_id)
@@ -456,7 +455,7 @@ class UtilbillProcessor(object):
             session.query(Charge). \
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
-        utilbill = self._get_utilbill(charge.utilbill.id)
+        utilbill = self._utilbill_loader.get_utilbill_by_id(charge.utilbill.id)
         utilbill.check_editable()
         for k, v in fields.iteritems():
             if k not in Charge.column_names():

@@ -8,12 +8,11 @@ import configuration as config_file_schema
 __version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config', 'ureg']
+           'initialize', 'config', 'import_all_model_modules', 'ROOT_PATH']
+
+ROOT_PATH = dirname(dirname(realpath(__file__)))
 
 config = None
-
-
-root_path = dirname(dirname(realpath(__file__)))
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -33,8 +32,7 @@ def init_config(filepath='settings.cfg', fp=None):
         log.debug('Reading configuration fp')
         config.readfp(fp)
     else:
-        absolute_path = path.join(dirname(dirname(realpath(__file__))),
-                                  filepath)
+        absolute_path = path.join(ROOT_PATH, filepath)
         log.debug('Reading configuration file %s' % absolute_path)
         config.read(absolute_path)
     
@@ -63,7 +61,7 @@ def init_config(filepath='settings.cfg', fp=None):
 def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
     import logging, logging.config
-    absolute_path = path.join(dirname(realpath(__file__)), '..', filepath)
+    absolute_path = path.join(ROOT_PATH, filepath)
     logging.config.fileConfig(absolute_path)
     log = logging.getLogger(__name__)
     log.debug('Initialized logging')
@@ -76,9 +74,39 @@ def import_all_model_modules():
     """
     import core.model
     import core.altitude
-    import reebill.state
+    import reebill.reebill_model
     import brokerage.brokerage_model
     import billentry.billentry_model
+
+def get_scrub_columns():
+    """Return a dictionary mapping sqlalchemy.Column objects to values that
+    should replace the real contents of those columns in a copy of a production
+    database used for development.
+    """
+    from reebill.reebill_model import ReeBillCustomer, ReeBill
+    return {
+        ReeBillCustomer.__table__.c.bill_email_recipient:
+            "'example@example.com'",
+        ReeBill.__table__.c.email_recipient: "'example@example.com'",
+        # TODO: billentry_user.email and password should probably be included
+    }
+
+def get_scrub_sql():
+    """Return SQL code (string) that can be executed to transform a copy of a
+    production database into one that can be used into a development
+    environment, by replacing certain data with substitute values.
+    """
+    # it seems incredibly hard to get SQLAlchemy to emit a fully-compiled SQL
+    # string that including data values. i gave up after trying this method with
+    # the "dialect" sqlalchemy.dialects.mysql.mysqldb.MySQLDialect()
+    # https://sqlalchemy.readthedocs.org/en/latest/faq/sqlexpressions.html
+    # #how-do-i-render-sql-expressions-as-strings-possibly-with-bound
+    # -parameters-inlined
+    sql_format = ("update %(table)s set %(col)s = %(sub_value)s "
+                  "where %(col)s is not null;")
+    return '\n'.join(
+        sql_format % dict(table=c.table.name, col=c.name, sub_value=v)
+        for c, v in get_scrub_columns().iteritems())
 
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
@@ -94,10 +122,15 @@ def init_model(uri=None, schema_revision=None):
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
     Session.rollback()
     Session.remove()
-    engine = create_engine(uri)
+    engine = create_engine(uri, echo=config.get('db', 'echo'),
+                           # recreate database connections every hour, to avoid
+                           # "MySQL server has gone away" error when they get
+                           # closed due to inactivity
+                           pool_recycle=3600)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
+
     log.debug('Initialized sqlalchemy model')
 
 def initialize():
