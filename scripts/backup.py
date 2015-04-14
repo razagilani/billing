@@ -42,8 +42,8 @@ ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
-db_uri = config.get('db', 'uri')
-m = re.match(r'^mysql://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
+db_uri = config.get('db', 'old_uri')
+m = re.match(r'^\w+://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
 # amount of data to send to S3 at one time in bytes

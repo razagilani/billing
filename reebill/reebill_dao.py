@@ -52,7 +52,7 @@ class ReeBillDAO(object):
         # highest existing version must be issued
         session = Session()
         current_max_version_reebill = self.get_reebill(account, sequence)
-        if current_max_version_reebill.issued != 1:
+        if current_max_version_reebill.issued != True:
             raise ValueError(("Can't increment version of reebill %s-%s "
                     "because version %s is not issued yet") % (account,
                     sequence, current_max_version_reebill.version))
@@ -114,7 +114,7 @@ class ReeBillDAO(object):
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.version > 0) \
-            .filter(ReeBill.issued == 0).all()
+            .filter(ReeBill.issued == False).order_by(ReeBill.sequence).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
@@ -140,11 +140,11 @@ class ReeBillDAO(object):
         reebill = self.get_reebill(account, sequence)
         if issue_date is None:
             issue_date = datetime.utcnow()
-        if reebill.issued == 1:
+        if reebill.issued == True:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
-        reebill.issued = 1
-        reebill.processed = 1
+        reebill.issued = True
+        reebill.processed = True
         reebill.issue_date = issue_date
 
     def is_issued(self, account, sequence, version='max'):
@@ -166,7 +166,7 @@ class ReeBillDAO(object):
         # NOTE: reebill.issued is an int, and it converts the entire
         # expression to an int unless explicitly cast! see
         # https://www.pivotaltracker.com/story/show/35965271
-        return bool(reebill.issued == 1)
+        return bool(reebill.issued == True)
 
     def account_exists(self, account):
         session = Session()
