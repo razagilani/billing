@@ -1,6 +1,5 @@
-"""The goal of this file is to collect in one place all the code for to
-serializing data into JSON for the ReeBill UI. Some of that code is still in
-other files.
+"""All the code for serializing data into JSON for the ReeBill UI. If any
+code for that is still in other files it should be moved here.
 """
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
@@ -121,6 +120,7 @@ class Views(object):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
 
+    # TODO: no test coverage
     def get_issuable_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries
             of the earliest unissued version-0 reebill account. If
@@ -195,6 +195,7 @@ class Views(object):
         rows = list(rows_dict.itervalues())
         return len(rows), rows
 
+    # TODO: no test coverage
     def list_all_versions(self, account, sequence):
         ''' Returns all Reebills with sequence and account ordered by versions
             a list of dictionaries
