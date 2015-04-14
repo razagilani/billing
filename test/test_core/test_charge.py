@@ -24,7 +24,7 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
                                  'FB Test Supplier', 'FB Test Rate Class',
                                  Address(), Address()),
-                                 'utility', 'rate class',
+                                 'utility', None,
                                  supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
@@ -54,12 +54,6 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   ('5*usage + 15 - spent', ['spent', 'usage']),
                                   ('range(20) + somevar', ['somevar'])]:
             self.assertEqual(expected, Charge.get_variable_names(formula))
-
-    def test_formulas_from_other(self):
-        charge_2 = Charge.formulas_from_other(self.charge)
-        for key in Charge.column_names():
-            self.assertEqual(getattr(charge_2, key), None if key == 'utilbill'
-                             else getattr(self.charge, key))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),

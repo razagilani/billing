@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.utilitybills.UtilityBills', {
+Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     extend: 'Ext.grid.Panel',
     alias: 'widget.utilityBills',
     store: 'UtilityBills',
@@ -25,7 +25,17 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
-        header: 'Total',
+        header: 'ID',
+        dataIndex: 'id',
+        width: 50,
+        disabled: true
+    },{
+        header: 'Flag',
+        dataIndex: 'flagged',
+        xtype: 'checkcolumn',
+        width: 50
+    },{
+        header: 'Total Due',
         dataIndex: 'target_total',
         editor: {
             xtype: 'numberfield',
@@ -67,9 +77,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 125
+        minWidth: 125,
+        flex: 1
     },{
-        header: 'Energy',
+        header: 'Usage',
         dataIndex: 'total_energy',
         editor: {
             xtype: 'numberfield',
@@ -77,6 +88,11 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 100
+    },{
+        header: 'Total Charges',
+        dataIndex: 'computed_total',
+        width: 100,
+        renderer: Ext.util.Format.usMoney
     },{
         header: 'Utility',
         dataIndex: 'utility',
@@ -96,6 +112,25 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 100
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        emptyText: 'Unknown Supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 150
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -146,6 +181,15 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
     },{
+        header: 'Meter Number',
+        dataIndex: 'meter_identifier',
+        editor: {
+            xtype: 'textfield',
+            selectOnFocus: true
+        },
+        width: 100,
+        hidden: true
+    },{
         header: 'Due Date',
         dataIndex: 'due_date',
         width: 100,
@@ -153,6 +197,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         },
         hidden:true
+    },{
+        xtype: 'checkcolumn',
+        text: 'Time Of Use',
+        dataIndex: 'tou'
+    },{
+        xtype: 'checkcolumn',
+        text: 'Bill Entered',
+        dataIndex: 'entered'
     }],
 
     dockedItems: [{

@@ -1,7 +1,8 @@
-Ext.define('ReeBill.view.accounts.Accounts', {
+Ext.define('BillEntry.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
-    requires: [],
+    requires: ['BillEntry.store.AccountsFilter'],
     title: 'Accounts',
+    id: 'AccountsGrid',
     alias: 'widget.accounts',   
     store: 'Accounts',
 
@@ -17,6 +18,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         getRowClass: function(record) {
             if (record.get('provisionable'))
                 return 'account-grid-gray';
+            else if (record.get('bills_to_be_entered'))
+                return 'account-grid-blue';
         }
     },
     
@@ -44,8 +47,37 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         header: 'Service Address',
         dataIndex: 'service_address',
         minWidth: 150,
-        flex:1,
+        flex: 1,
         items: utils.makeGridFilterTextField('service_address')
+    }],
+    dockedItems: [
+    {
+        xtype: 'toolbar',
+        dock: 'bottom',
+        items: ['->', {
+            xtype: 'combo',
+            name: 'accountsFilter',
+            fieldLabel: 'Filter',
+            labelWidth: 50,
+            width: 400,
+            value: 'none',
+            editable: false,
+            store: 'AccountsFilter',
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'label',
+            forceSelection: true,
+            listeners:{
+                scope: this,
+                'select': function(combo, record, index) {
+                    var g = combo.findParentByType('grid');
+                    g.getStore().clearFilter();
+                    if (combo.getValue() == 'enter_bills')
+                        g.getStore().filter('bills_to_be_entered', true);
+                    else if(combo.getValue() == 'entered_bills')
+                        g.getStore().filter('bills_to_be_entered', false);
+                }
+            }
+       }, '->']
     }]
-
 });

@@ -4,11 +4,11 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
-from core.model import Utility
+from core.model import Utility, Session
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from reebill.state import ReeBill, UtilBill, Address, \
+from reebill.reebill_model import ReeBill, UtilBill, Address, \
     Register, Reading, ReeBillCustomer
 from core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
@@ -56,22 +56,19 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        utility_account = UtilityAccount(
-            'someone', '12345', Mock(autospec=Utility), Mock(autospec=Supplier), Mock(autospec=RateClass), Address(), Address())
+        utility_account = UtilityAccount('someone', '12345',
+            Mock(autospec=Utility), Mock(autospec=Supplier),
+            Mock(autospec=RateClass), Address(), Address())
         reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account)
-        # TODO: how can this work with strings where SQLAlchemy objects are
-        # supposed to be?
-        utilbill = UtilBill(utility_account, utility='washgas',
-                rate_class='DC Non Residential Non Heat',
-                supplier='supplier',
-                period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+        utility = Utility('Washington Gas')
+        rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
+        utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', '', 'therms', False,
-                'total', '', '', quantity=0,
-                register_binding='REG_TOTAL')]
+                'total', '', '', quantity=0, register_binding=Register.TOTAL)]
         self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -211,14 +208,14 @@ class ReeGetterTestPV(unittest.TestCase):
         utilbill.period_start = date(2000,1,1)
         utilbill.period_end = date(2000,2,1)
         energy_register = Mock(autospec=Register)
-        energy_register.register_binding = 'REG_TOTAL'
+        energy_register.register_binding = Register.TOTAL
         energy_register.get_active_periods.return_value = {
             'active_periods_weekday': [(0, 23)],
             'active_periods_weekend': [(0, 23)],
             'active_periods_holiday': [(0, 23)],
         }
         demand_register = Mock(autospec=Register)
-        demand_register.register_binding = 'REG_DEMAND'
+        demand_register.register_binding = Register.DEMAND
         demand_register.get_active_periods.return_value = \
                 energy_register.get_active_periods.return_value
         utilbill.registers = [energy_register, demand_register]

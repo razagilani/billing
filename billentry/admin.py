@@ -10,7 +10,7 @@ from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
-from reebill.state import ReeBillCustomer, ReeBill
+from reebill.reebill_model import ReeBillCustomer, ReeBill, CustomerGroup
 from billentry.common import get_bcrypt_object
 
 
@@ -90,6 +90,11 @@ class ReeBillCustomerModelView(LoginModelView):
         super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session,
                                                        **kwargs)
 
+# it is not necessary to create a subclass just to create one instance of
+# LoginModelView with certain arguments!
+customer_group_model_view = LoginModelView(CustomerGroup, Session,
+                                           name='ReeBill Customer Group')
+
 class UserModelView(LoginModelView):
     form_columns = ('email', 'password', )
 
@@ -120,4 +125,5 @@ def make_admin(app):
     admin.add_view(LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
     admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
     admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
+    admin.add_view(customer_group_model_view)
     return admin

@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 from operator import attrgetter
 import os
-from datetime import datetime
 from argparse import ArgumentParser
 from itertools import groupby
 from errno import EEXIST, ENOENT
 
-from pyPdf import PdfFileWriter, PdfFileReader
 import reportlab
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
@@ -23,6 +21,7 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 # Important for currency formatting
 import locale
 from exc import InvalidParameter
+from util.pdf import PDFConcatenator
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -83,12 +82,29 @@ class ReebillFileHandler(object):
         return ReebillFileHandler.FILE_NAME_FORMAT % dict(
                 account=reebill.get_account(), sequence=reebill.sequence)
 
+    def get_file_contents(self, reebill):
+        '''Return contents of the PDF file associated with the given
+        :class:`ReeBill` (the file may not exist).
+        '''
+        file_path = os.path.join(self._pdf_dir_path, reebill.get_account(),
+                self.get_file_name(reebill))
+        file_obj = open(file_path, 'r')
+        contents = file_obj.read()
+        file_obj.close()
+        return contents
+
     def get_file_path(self, reebill):
         '''Return full path to the PDF file associated with the given
         :class:`ReeBill` (the file may not exist).
         '''
         return os.path.join(self._pdf_dir_path, reebill.get_account(),
                 self.get_file_name(reebill))
+
+    def get_file(self, reebill):
+        """Return the file itself opened in "rb" mode. The consumer must
+        close it.
+        """
+        return open(self.get_file_path(reebill), 'rb')
 
     def delete_file(self, reebill, ignore_missing=False):
         '''Delete the file belonging to the given :class:`ReeBill`.
@@ -1317,3 +1333,27 @@ def build_parsers():
                         help="Specify input data file. Omit for one bill.  Default: %(default)r")
     return parser
 
+
+class SummaryFileGenerator(object):
+    """Generates a "summary" document from multiple ReeBills.
+    """
+    def __init__(self, reebill_file_handler, pdf_concatenator):
+        self._reebill_file_handler = reebill_file_handler
+        self._pdf_concatenator = pdf_concatenator
+
+    def generate_summary_file(self, reebills, output_file):
+        """
+        :param reebills: nonempty iterable of ReeBills that should be included.
+        :param output_file: file where the summary will be written.
+        """
+        assert reebills
+
+        for reebill in reebills:
+            # write every bill to a file, read it back again, and append it
+            self._reebill_file_handler.render(reebill)
+            input_file = self._reebill_file_handler.get_file(reebill)
+            self._pdf_concatenator.append(input_file)
+
+        # TODO: eventually there may be extra pages not taken from the bill
+        # PDFs
+        self._pdf_concatenator.write_result(output_file)

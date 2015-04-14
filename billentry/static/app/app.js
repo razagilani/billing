@@ -1,30 +1,35 @@
 Ext.Ajax.on('requestexception', function (conn, response, options) {
     if (response.status === 401) {
-        Ext.Msg.alert('Error', 'Please log in!');
-        window.location = 'login';
+        window.location = '/';
     }
 });
 
 Ext.application({
-    name: 'ReeBill', // TODO change
+    name: 'BillEntry',
     autoCreateViewport: true,
 
-    paths: {'ReeBill': 'app'},
+    paths: {'BillEntry': 'app'},
 
     controllers: [
         'UtilityBills',
         'Charges',
-        'Viewer'
+        'Viewer',
+        'Reports'
     ],
 
     stores: [
         'Accounts',
+        'AccountsFilter',
         'Services',
         'Utilities',
         'RateClasses',
         'Charges',
+        'Suppliers',
         'Units',
-        'UtilityBills'
+        'UtilityBills',
+        'UserUtilBillCounts',
+        'UserUtilityBills',
+        'AllFlaggedUtilityBills'
     ],
 
     refs: [{

@@ -1,16 +1,95 @@
+"""Unit tests (or what should be unit tests) for SQLAlchemy classes in
+reebill.reebill_model.
+"""
 import unittest
-from datetime import date
+from datetime import date, datetime, timedelta
+from mock import Mock
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
-from reebill.state import ReeBill, ReeBillCustomer
-from test.setup_teardown import TestCaseWithSetup
+from exc import NoSuchBillException, NotIssuable
+from reebill.reebill_model import ReeBill, ReeBillCustomer
+from reebill.reebill_processor import ReebillProcessor
+from test.setup_teardown import clear_db
 
+
+class ReeBillCustomerTest(unittest.TestCase):
+    """Unit tests for the ReeBillCustomer class.
+    """
+    def setUp(self):
+        self.customer = ReeBillCustomer()
+
+    def test_get_first_unissued_bill(self):
+        self.assertIsNone(self.customer.get_first_unissued_bill())
+
+        # unfortunately it is necessary to use real ReeBill objects here
+        # because mocks won't work with SQLAlchemy
+        one = ReeBill(self.customer, 1)
+        correction = ReeBill(self.customer, 1, version=1)
+        two = ReeBill(self.customer, 2)
+
+        for bill_set in [
+            [one],
+            [correction, one],
+            [two, one],
+            [one, two, correction],
+        ]:
+            self.customer.reebills = bill_set
+            self.assertIs(one, self.customer.get_first_unissued_bill())
+
+
+class ReeBillUnitTest(unittest.TestCase):
+    def setUp(self):
+        # unfortunately mocks will not work for any of the SQLAlchemy objects
+        # because of relationships. replace with mocks if/when possible.
+        utility_account = UtilityAccount('', '', None, None, None, Address(),
+                                         Address())
+        self.customer = ReeBillCustomer(
+            utility_account=utility_account,
+            bill_email_recipient='test@example.com')
+
+        utilbill = UtilBill(utility_account, None, None,
+                            period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
+        self.reebill = ReeBill(self.customer, 1, utilbills=[utilbill])
+
+        # currently it doesn't matter if the 2nd bill has the same utilbill
+        # as the first, but might need to change
+        self.reebill_2 = ReeBill(self.customer, 2, utilbills=[utilbill])
+
+    def test_issue(self):
+        self.assertEqual(None, self.reebill.email_recipient)
+        self.assertEqual(None, self.reebill.issue_date)
+        self.assertEqual(None, self.reebill.due_date)
+        self.assertEqual(False, self.reebill.issued)
+
+        reebill_processor = Mock(autospec=ReebillProcessor)
+        now = datetime(2000,2,15)
+
+        # can't issue this one yet
+        with self.assertRaises(NotIssuable):
+            self.reebill_2.issue(now, reebill_processor)
+
+        self.reebill.issue(now, reebill_processor)
+
+        # these calls may change or go away when more code is moved out of
+        # ReebillProcessor
+        self.assertEqual(1, reebill_processor.compute_reebill.call_count)
+        self.assertEqual(1, reebill_processor.get_late_charge.call_count)
+
+        self.assertEqual(self.customer.bill_email_recipient,
+                         self.reebill.email_recipient)
+        self.assertEqual(now, self.reebill.issue_date)
+        self.assertEqual(now.date() + timedelta(30), self.reebill.due_date)
+        self.assertEqual(True, self.reebill.issued)
+
+        # after the first bill is issued, the 2nd one can be issued
+        self.reebill_2.issue(now, reebill_processor)
 
 class ReebillTest(unittest.TestCase):
 
     def setUp(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
         washgas = Utility(name='washgas', address=Address('', '', '', '',
                                                           ''))
         supplier = Supplier('supplier', Address())
@@ -32,10 +111,11 @@ class ReebillTest(unittest.TestCase):
                                  period_end=date(2000, 2, 1))
         self.register = Register(self.utilbill, '', '', 'therms', False,
                                  'total', None, '', quantity=100,
-                                register_binding='REG_TOTAL')
+                                register_binding=Register.TOTAL)
         self.utilbill.registers = [self.register]
-        self.utilbill.charges = [
-            Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity',
+        self.utilbill.charges = [Charge(self.utilbill, 'A', 2,
+                                        Charge.get_simple_formula(
+                                            Register.TOTAL),
                    description='a', unit='therms'),
             Charge(self.utilbill, 'B', 1, '1', description='b',
                    unit='therms', has_charge=False),
@@ -49,7 +129,7 @@ class ReebillTest(unittest.TestCase):
                 self.utilbill)
 
     def tearDown(self):
-        TestCaseWithSetup.truncate_tables()
+        clear_db()
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
@@ -89,7 +169,7 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 2.00, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 2.00, 2)
         # if the unit is already btu then no conversion is needed
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 200000)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 200000)
         self.assertEqual(self.reebill.readings[0].renewable_quantity, 200000)
         # 29.307111111 is approximately equal to 1 therm
         self.reebill.readings[0].unit = 'kwh'
@@ -98,7 +178,7 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 1.00, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 1.00, 2)
         # 1btu is equal to 0.00029307107 kwh
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEquals(self.reebill.readings[0].renewable_quantity, 0.00029307107)
         self.reebill.readings[0].unit = 'therms'
         self.reebill.readings[0].conventional_quantity = 29.307111111
@@ -107,28 +187,28 @@ class ReebillTest(unittest.TestCase):
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(), 29.307, 3)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 29.307, 3)
         # 1 btu is equal to 1.0000000000000003e-05 therms
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'ccf'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertAlmostEqual(self.reebill.get_total_conventional_energy(ccf_conversion_factor=2), 58.61, 2)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(ccf_conversion_factor=2), 58.61, 2)
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertAlmostEqual(self.reebill.readings[0].renewable_quantity, 1.0000000000000003e-05)
         self.reebill.readings[0].unit = 'kwd'
         self.reebill.readings[0].conventional_quantity = 29.307111111
         self.reebill.readings[0].renewable_quantity = 29.307111111
         self.assertEquals(self.reebill.get_total_conventional_energy(), 0)
         self.assertAlmostEqual(self.reebill.get_total_renewable_energy(), 0)
-        self.reebill.set_renewable_energy_reading('REG_TOTAL', 1)
+        self.reebill.set_renewable_energy_reading(Register.TOTAL, 1)
         self.assertEquals(self.reebill.readings[0].renewable_quantity, 1)
 
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
         new_register = Register(self.utilbill, '', '',
                  'kWh', False, 'total', [], '',quantity=200,
-                 register_binding='NEW_REG')
+                 register_binding=Register.DEMAND)
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings
