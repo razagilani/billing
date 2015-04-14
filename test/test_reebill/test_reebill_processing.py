@@ -2033,7 +2033,7 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill_processor.update_register(r.id, {
             'description': 'time-of-use register',
             'quantity': 0,
-            'unit': 'btu',
+            'unit': 'BTU',
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
@@ -2066,7 +2066,7 @@ class TestTouMetering(unittest.TestCase):
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
                                total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
+        self.assertEqual('BTU', tou_reading.unit)
         self.assertAlmostEqual(tou_renewable_btu,
                                tou_reading.renewable_quantity)
 
