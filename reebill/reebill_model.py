@@ -817,7 +817,6 @@ class Payment(Base):
         editable. Payments should be editable as long as it is not applied to
         a reebill
         """
-        today = datetime.utcnow()
         if self.reebill_id is None:
             return True
         return False
