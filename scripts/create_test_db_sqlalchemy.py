@@ -11,7 +11,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine
 
 from test import init_test_config
-from core import init_model, root_path, import_all_model_modules
+from core import init_model, ROOT_PATH, import_all_model_modules
 from core.model import Base, Session
 
 import_all_model_modules()
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     # "stamp" with current alembic version
     # TODO: why doesn't this do anything?
-    chdir(root_path)
+    chdir(ROOT_PATH)
     alembic_cfg = Config('alembic.ini')
     alembic_cfg.set_main_option('sqlalchemy.url', uri)
     command.stamp(alembic_cfg, 'head')
