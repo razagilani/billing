@@ -318,13 +318,13 @@ class Register(Base):
 
     description = Column(String(255), nullable=False, default='')
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
     # "total", "tou", "demand", and "")
     reg_type = Column(String(255), nullable=False)
-    register_binding = Column(Enum(*REGISTER_BINDINGS), nullable=False)
+    register_binding = Column(Enum(*REGISTER_BINDINGS, name='register_bindings'), nullable=False)
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
@@ -392,8 +392,10 @@ class RegisterTemplate(Base):
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column(Enum(*Register.REGISTER_BINDINGS), nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    register_binding = Column(
+        Enum(*Register.REGISTER_BINDINGS, name='register_bindings'),
+        nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS, name='physial_units'), nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
