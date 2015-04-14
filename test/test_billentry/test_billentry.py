@@ -877,8 +877,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         s.flush() # set u.id
 
         self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
-        self.assertEqual(0,
-                         s.query(BEUtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0, s.query(BEUtilBill).filter_by(id=u.id).count())
 
         the_id = u.id
         new_beutilbill = replace_utilbill_with_beutilbill(u)
