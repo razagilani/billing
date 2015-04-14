@@ -284,7 +284,7 @@ class Register(Base):
     INTERMEDIATE = 'REG_INTERMEDIATE'
 
     # complete set of allowed register binding values (should match the
-    # definition of enum columns in the datababase)
+    # definition of enum columns in the database)
     REGISTER_BINDINGS = [
         TOTAL,
         DEMAND,
@@ -843,9 +843,8 @@ class UtilBill(Base):
         'pricing_model'.
         """
         self.check_editable()
-        self.charges = []
         self.charges = pricing_model.get_predicted_charges(self)
-        return self.compute_charges()
+        self.compute_charges()
 
     def processable(self):
         '''Returns False if a bill is missing any of the required fields

@@ -258,7 +258,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
                                     value: record[0].get('id'), exactMatch:true});
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var utility_store = this.getUtilityBillsStore();
-        selected.set('rate_class', rate_class_store.getAt(0).get('name'));
+        if (rate_class_store.getAt(0) !=null)
+            selected.set('rate_class', rate_class_store.getAt(0).get('name'));
+        else
+            selected.set('rate_class', 'Unknown Rate Class')
     },
 
 

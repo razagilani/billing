@@ -72,7 +72,9 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        user = user_dao.load_by_session_token(credentials) if credentials else None
+        # TODO: unbound local--this code never gets run?
+        user = user_dao.load_by_session_token(
+            credentials) if credentials else None
         if user is None:
             logger.info('Remember Me login attempt failed:'
                         ' username "%s"' % username)
@@ -319,9 +321,11 @@ class IssuableReebills(RESTResource):
 
         reebills = []
         for bill_dict in bills:
-            reebills.append(self.state_db.get_reebill(bill_dict['account'], bill_dict['sequence']))
+            reebills.append(self.state_db.get_reebill(bill_dict['account'],
+                                                      bill_dict['sequence']))
 
-        self.reebill_processor.issue_summary_for_bills(reebills, summary_recipient)
+        self.reebill_processor.issue_summary_for_bills(reebills,
+                                                       summary_recipient)
 
         for bill in bills:
             account, sequence = bill['account'], bill['sequence']
@@ -369,7 +373,8 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_summary_for_customer_group(self, customer_group_id, summary_recipient, **params):
+    def issue_summary_for_customer_group(self, customer_group_id,
+                                         summary_recipient, **params):
         """Generate a summary PDF for all bills in the specified group and
         mail them to the given recipient. All bills are marked as issued and
         corrections are applied.
@@ -380,7 +385,8 @@ class IssuableReebills(RESTResource):
         if not bills:
             raise BillingError('No Processed bills were found for customers '
                                'with group %s' % group.name)
-        reebills = self.reebill_processor.issue_summary_for_bills(bills, summary_recipient)
+        reebills = self.reebill_processor.issue_summary_for_bills(
+            bills, summary_recipient)
 
         # journal event for corrections is not logged
         user = cherrypy.session['user']
@@ -430,7 +436,8 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        reebill = self.reebill_processor.roll_reebill(account, start_date=start_date)
+        reebill = self.reebill_processor.roll_reebill(account,
+                                                      start_date=start_date)
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
