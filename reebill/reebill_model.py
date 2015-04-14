@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
-from core.model.model import PHYSICAL_UNITS
+from core.model.model import physical_unit_type
 
 from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
     NoSuchBillException
@@ -676,7 +676,7 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*Charge.CHARGE_UNITS, name='charge_units'), nullable=False)
+    unit = Column(Charge.charge_unit_type, nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -704,6 +704,8 @@ class Reading(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
     # identifies which utility bill register this corresponds to
+    # TODO: may have to be changed to same type as register.register_binding
+    # for comparison to work
     register_binding = Column(String(1000), nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
@@ -718,7 +720,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(PHYSICAL_UNITS, name='physical_units'), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
 
     @staticmethod
     def make_reading_from_register(register):
