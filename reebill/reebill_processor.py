@@ -549,6 +549,8 @@ class ReebillProcessor(object):
         """
         return [r.column_dict() for r in self.get_issuable_reebills().all()]
 
+    # TODO: what does this do?
+    # TODO: no test coverage
     def check_confirm_adjustment(self, accounts_list):
         accounts_to_be_confirmed = {}
         for acc in accounts_list:
@@ -660,10 +662,12 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.reebill_customer.bill_email_recipient = recepients
 
+    # TODO: no test coverage
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
+    # TODO: what does this do?
     def issue_summary_for_bills(self, bills, summary_recipient):
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
