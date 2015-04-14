@@ -90,7 +90,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         width: 100
     },{
         header: 'Total Charges',
-        dataIndex: 'computed_total',
+        dataIndex: 'supply_total',
         width: 100,
         renderer: Ext.util.Format.usMoney
     },{
