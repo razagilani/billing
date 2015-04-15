@@ -266,7 +266,14 @@ class UtilBillResource(BaseResource):
 
         if row.get('entered') is True:
             if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                utilbill = replace_utilbill_with_beutilbill(utilbill)
+                #utilbill = replace_utilbill_with_beutilbill(utilbill)
+                s = Session()
+                sql = ("update utilbill set discriminator = %s, "
+                       "billentry_date = '%s', billentry_user_id = '%s', "
+                       "0 where id = %s") % (
+                          BEUtilBill.POLYMORPHIC_IDENTITY, datetime.utcnow(),
+                          current_user.id, utilbill.id)
+                s.execute(sql)
             utilbill.enter(current_user, datetime.utcnow())
 
         s.commit()
