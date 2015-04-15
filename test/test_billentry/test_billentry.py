@@ -899,6 +899,12 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertIs(u.billing_address, new_beutilbill.billing_address)
         self.assertIs(u.service_address, new_beutilbill.service_address)
 
+        # also the child objects should really exist in the database
+        self.assertEqual(1, s.query(Address).filter_by(
+            id=new_beutilbill.billing_address_id).count())
+        self.assertEqual(1, s.query(Address).filter_by(
+            id=new_beutilbill.service_address_id).count())
+
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
