@@ -891,6 +891,14 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
                          new_beutilbill.discriminator)
 
+        # foreign keys and child objects are the same
+        self.assertEqual(u.billing_address_id,
+                         new_beutilbill.billing_address_id)
+        self.assertEqual(u.service_address_id,
+                         new_beutilbill.service_address_id)
+        self.assertIs(u.billing_address, new_beutilbill.billing_address)
+        self.assertIs(u.service_address, new_beutilbill.service_address)
+
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
