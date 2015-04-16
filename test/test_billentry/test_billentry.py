@@ -978,9 +978,11 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
             guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        self.core_altitude_module.get_utilbill_from_guid.side_effect = NoResultFound
+        self.core_altitude_module.get_utilbill_from_guid.side_effect = \
+            NoResultFound
         self.assertRaises(NoResultFound, self.handler.handle, message_obj)
-        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls([])
+        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls(
+            [])
 
     def test_process_utilbill_guid_with_matching_guid(self):
         message = create_channel_message_body(dict(
@@ -988,7 +990,8 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
             guid=self.guid))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        self.core_altitude_module.get_utilbill_from_guid.return_value = self.utilbill
+        self.core_altitude_module.get_utilbill_from_guid.return_value = \
+            self.utilbill
         self.handler.handle(message_obj)
         self.billentry_common_module.replace_utilbill_with_beutilbill\
                 .assert_called_once_with(self.utilbill)
