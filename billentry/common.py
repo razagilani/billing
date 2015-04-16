@@ -12,19 +12,27 @@ from core.model import UtilBill, Session
 
 def replace_utilbill_with_beutilbill(utilbill):
     """Return a BEUtilBill object identical to 'utilbill' except for its
-    class, and delete 'utilbill' from the session. 'utilbill.id' is set to
-    None because 'utilbill' no longer corresponds to a row in the database.
-    Do not use 'utilbill' after passing it to this function.
+    class, and expunge 'utilbill' from the session. The new BEUtilBill has
+    the same id as 'utilbill' and corresponds to the same database row,
+    but is a distinct object. The same applies to all child objects of the
+    BEUtilBill.
+
+    Do not use 'utilbill' or any of its child objects after passing it to
+    this function, because they are no longer in the session.
     """
     assert type(utilbill) is UtilBill
     assert utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY
     s = Session.object_session(utilbill)
-    # flushing changes too early causes conflict before utilbill is deleted
-    with s.no_autoflush:
-        beutilbill = BEUtilBill.create_from_utilbill(utilbill)
-    s.add(beutilbill)
-    s.delete(utilbill)
-    utilbill.id = None
+    utilbill.discriminator = BEUtilBill.POLYMORPHIC_IDENTITY
+    # the change to utilbill.discriminator MUST be flushed here or it will be
+    # discarded when 'utilbill' is expunged.
+    s.flush()
+    # remove 'utilbill' from the session. this is propagated to other objects
+    # according to the SQLAlchemy cascade setting of the relationships
+    # defined in UtilBill (if cascade='expunge' or cascade='all', as in the
+    # case of 'billing_address' and 'service_address')
+    s.expunge(utilbill)
+    beutilbill = s.query(BEUtilBill).filter_by(id=utilbill.id).one()
     return beutilbill
 
 _bcrypt = None
