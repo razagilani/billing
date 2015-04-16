@@ -1,5 +1,4 @@
 import logging
-from billentry.billentry_model import BEUtilBill
 from core.altitude import AltitudeGUID
 from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from pika import URLParameters
@@ -67,13 +66,9 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
         try:
             utilbill = self.core_altitude_module.get_utilbill_from_guid(guid)
             if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                # self.billentry_common_module.\
-                #     replace_utilbill_with_beutilbill(utilbill)
-                sql = "update utilbill set discriminator = %s where id = %s" %(
-                    BEUtilBill.POLYMORPHIC_IDENTITY, utilbill.id)
-                s = Session()
-                s.execute(sql)
-                s.commit()
+                self.billentry_common_module.\
+                    replace_utilbill_with_beutilbill(utilbill)
+                Session().commit()
         except NoResultFound:
             logger.error('Utility Bill for guid %s not found' % guid)
             raise
