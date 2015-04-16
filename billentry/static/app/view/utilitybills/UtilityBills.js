@@ -8,8 +8,15 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             clicksToEdit: 2,
             listeners: {
                 beforeedit: function (e, editor) {
-                    if (editor.record.get('processed'))
+                    if (editor.record.get('processed') || editor.record.get('entered')) {
+                        Ext.MessageBox.show({
+                            title: 'Entered Record Cannot be edited',
+                            msg: 'Please clear the entered checkbox before editing this record',
+                            buttons: Ext.MessageBox.OK
+                        });
+
                         return false;
+                    }
                 }
             }
         })
@@ -32,6 +39,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },{
         header: 'Flag',
         dataIndex: 'flagged',
+        itemId: 'flagged',
         xtype: 'checkcolumn',
         width: 50
     },{
@@ -200,6 +208,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },{
         xtype: 'checkcolumn',
         text: 'Time Of Use',
+        itemId: 'tou',
         dataIndex: 'tou'
     },{
         xtype: 'checkcolumn',

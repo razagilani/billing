@@ -72,6 +72,12 @@ Ext.define('BillEntry.controller.UtilityBills', {
             },
             '#service_combo': {
                 blur: this.handleServiceComboBlur
+            },
+            '#flagged': {
+                beforecheckchange: this.handleCheckChange
+            },
+            '#tou': {
+                beforecheckchange: this.handleCheckChange
             }
         });
 
@@ -163,6 +169,11 @@ Ext.define('BillEntry.controller.UtilityBills', {
         this.updateCurrentAccountId(records[0]);
     },
 
+
+    /**
+     * Handle filtering rate_class combo on the utility of currently selected row
+     * When rate_class combo is selected in the UI
+     */
     handleRateClassComboFocus: function(combo) {
         var utility_bill_grid = combo.findParentByType('grid');
         var selected = utility_bill_grid.getSelectionModel().getSelection()[0];
@@ -174,12 +185,42 @@ Ext.define('BillEntry.controller.UtilityBills', {
                                     value: utility.get('id'), exactMatch:true});
     },
 
+    /**
+     * Handle reloading utility bills tore when service combo loses focus
+     */
     handleServiceComboBlur: function(combo){
         var utility_bill_grid = combo.findParentByType('grid');
         utility_bill_grid.getStore().reload();
         utility_bill_grid.getView().refresh();
     },
 
+    /**
+     * Handle updating flagged and tou checkboxes in the UI
+     * Disables editing these two check boxes if the currently
+     * selected row is marked as entered
+     */
+    handleCheckChange: function(checkbox, rowIndex, checked, eOpts ){
+        var utility_bills_grid = this.getUtilityBillsGrid();
+        if (checkbox.itemId == 'flagged' || checkbox.itemId=='tou')
+        {
+            row = utility_bills_grid.getStore().getAt(rowIndex);
+            if (row.get('processed') || row.get('entered'))
+            {
+                Ext.MessageBox.show({
+                            title: 'Entered Record Cannot be edited',
+                            msg: 'Please clear the entered checkbox before editing this record',
+                            buttons: Ext.MessageBox.OK
+                                    });
+                return false;
+            }
+        }
+    },
+
+    /**
+     * Update the rate_class combo to display either the first rate_class
+     * for the currently selected utility or Unknown if the currently
+     * selected utility has no rate_classes
+     */
     handleUtilityComboChanged: function(utility_combo, record){
         var rate_class_store = Ext.getStore("RateClasses");
         rate_class_store.clearFilter(true);
@@ -192,7 +233,6 @@ Ext.define('BillEntry.controller.UtilityBills', {
         else
             selected.set('rate_class', null)
     },
-
 
     /**
      * Finds the store index of the record that is offset by 'offset' from
