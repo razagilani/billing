@@ -884,6 +884,10 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         # utilbill.id, but it may
         original_id = u.id
 
+        # load charges and registers while 'utilbill' is still valid, so they
+        # can be compared below
+        u.charges, u.registers
+
         new_beutilbill = replace_utilbill_with_beutilbill(u)
         self.assertEqual(original_id, new_beutilbill.id)
 
@@ -906,6 +910,11 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          new_beutilbill.service_address.id)
         self.assertEqual(u.billing_address, new_beutilbill.billing_address)
         self.assertEqual(u.service_address, new_beutilbill.service_address)
+        self.assertEqual(u.charges, new_beutilbill.charges)
+        self.assertEqual([c.id for c in u.charges],
+                         [c.id for c in new_beutilbill.charges])
+        self.assertEqual([r.id for r in u.registers],
+                         [r.id for r in new_beutilbill.registers])
 
         # also the child objects should really exist in the database
         self.assertEqual(1, s.query(Address).filter_by(
