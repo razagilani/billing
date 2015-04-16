@@ -880,12 +880,16 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(0,
                          s.query(BEUtilBill).filter_by(id=u.id).count())
 
-        the_id = u.id
-        new_beutilbill = replace_utilbill_with_beutilbill(u)
+        # replace_utilbill_with_beutilbill does not have to destroy
+        # utilbill.id, but it may
+        original_id = u.id
 
-        # note that new_beutilbill has the same id
-        query_result = s.query(UtilBill).filter_by(id=the_id).one()
-        self.assertIsNone(u.id)
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
+        self.assertEqual(original_id, new_beutilbill.id)
+
+        # new_beutilbill has the same id, because it corresponds to the same
+        # database row
+        query_result = s.query(UtilBill).filter_by(id=original_id).one()
         self.assertIs(new_beutilbill, query_result)
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
@@ -896,8 +900,12 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          new_beutilbill.billing_address_id)
         self.assertEqual(u.service_address_id,
                          new_beutilbill.service_address_id)
-        self.assertIs(u.billing_address, new_beutilbill.billing_address)
-        self.assertIs(u.service_address, new_beutilbill.service_address)
+        self.assertEqual(u.billing_address.id,
+                         new_beutilbill.billing_address.id)
+        self.assertEqual(u.service_address.id,
+                         new_beutilbill.service_address.id)
+        self.assertEqual(u.billing_address, new_beutilbill.billing_address)
+        self.assertEqual(u.service_address, new_beutilbill.service_address)
 
         # also the child objects should really exist in the database
         self.assertEqual(1, s.query(Address).filter_by(
