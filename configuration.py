@@ -94,8 +94,11 @@ class reebillestimatedrevenue(Schema):
     report_directory = Directory()
 
 class db(Schema):
-    # MySQL database
+    # database connection URI
     uri = String()
+    # URI to be used for restoring from a backup of an old database--this will
+    # differ from "uri" only when migrating to a different database.
+    old_uri = String()
     echo = StringBool()
 
 class mongodb(Schema):

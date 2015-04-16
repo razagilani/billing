@@ -75,8 +75,10 @@ class RoleBEUser(Base):
     many-to-many relationship between "billentry_user" and "roles"'''
     __tablename__ = 'billentry_role_user'
 
-    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'), primary_key=True)
-    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'), primary_key=True)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'),
+                               primary_key=True)
+    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'),
+                               primary_key=True)
 
     # bidirectional attribute/collection of "billentry_user"/"role_beuser"
     beuser = relationship(BillEntryUser,
