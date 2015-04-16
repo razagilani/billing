@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 '''Create a test database with the same schema as the development
-database, but empty. Any existing database of the same name is replaced.'''
+database, but empty. Any existing database of the same name is replaced.
+
+This is specific to MySQL and won't work with Postgres.
+'''
 from MySQLdb import Connection
 import tsort
 

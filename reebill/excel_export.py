@@ -131,8 +131,8 @@ class Exporter(object):
         book = tablib.Databook()
         def list_utilbills(account):
             session = Session()
-            query = session.query(UtilBill).with_lockmode('read').join(UtilityAccount) \
-                .filter(UtilityAccount.account == account) \
+            query = session.query(UtilBill).with_lockmode('read').join(
+                UtilityAccount).filter(UtilBill.utility_account == account) \
                 .order_by(UtilityAccount.account, desc(UtilBill.period_start))
             return query.all()
 
