@@ -130,6 +130,7 @@ class BEUtilBill(UtilBill):
     billentry_user = relationship(BillEntryUser)
     flagged = Column(Boolean)
 
+    # TODO remove--no longer necessary
     @classmethod
     def create_from_utilbill(cls, utilbill):
         """Return a new BEUtilBill, identical to 'utilbill' except for its

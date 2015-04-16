@@ -917,14 +917,13 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
         utility = Utility('Empty Utility', Address())
-
-        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
-                             Address(), Address(), '2')
+        utility_account = UtilityAccount('Account 2', '22222', utility, None,
+                                         None, Address(), Address(), '2')
 
         regular_utilbill = UtilBill(utility_account, utility, None,
                        service_address=Address(street='2 Example St.'))
-
-        beutilbill = BEUtilBill.create_from_utilbill(regular_utilbill)
+        beutilbill = BEUtilBill(utility_account, utility, None,
+                                service_address=Address(street='2 Example St.'))
 
         utility_account.utilbills = []
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
@@ -935,11 +934,11 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-
         utility_account.utilbills = [beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)),
+                         datetime.utcnow())
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
 
 
