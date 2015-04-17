@@ -428,7 +428,7 @@ class RateClass(Base):
     service = Column(Enum(*SERVICES), nullable=False)
     name = Column(String(255), nullable=False)
 
-    utility = relationship('Utility')
+    utility = relationship('Utility', backref='rate_classes')
     register_templates = relationship('RegisterTemplate')
 
     def __init__(self, name='', utility=None, service='gas'):

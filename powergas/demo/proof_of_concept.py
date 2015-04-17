@@ -63,26 +63,30 @@ def create_companies(session):
                       address=Address("Direct Energy",
                                       "1 Some Street", "Annapolis", "MD", "19930"))]
 
-    elec_utilities = [Utility(name='Pepco',
+    e1 = Utility(name='Pepco',
                         address=Address("Charlie",
-                                       "123 Some Street", "Washington", "DC", "13093"),
-                        service='electric',
-                        rate_classes=['R', 'RAD', 'CTM']),
-                      Utility(name='Delmarva',
+                                       "123 Some Street", "Washington", "DC", "13093"))
+    e1.rate_classes = [
+        RateClass(name='R'),
+        RateClass(name='RAD'),
+        RateClass(name='CTM'),
+    ]
+    e2 = Utility(name='Delmarva',
                         address=Address("Delmarva Mail Room",
-                                        "Great Street", "Fredericksburg", "VA", "22401"),
-                          service='electric',
-                        rate_classes=["R", "RAD", "RTM"])]
+                                        "Great Street", "Fredericksburg", "VA", "22401"))
+    e2.rate_classes = [
+        RateClass(name='R'),
+        RateClass(name='RAD'),
+        RateClass(name='RTM'),
+    ]
+    elec_utilities = [e1, e2]
 
     elec_suppliers = [Supplier(name='Think Energy',
-                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093"),
-                            service='electric'),
+                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093")),
                       Supplier(name='Hudson Energy',
-                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093"),
-                            service='electric'),
+                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093")),
                       Supplier(name='Liberty Power',
-                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093"),
-                            service='electric')]
+                          address=Address("TE", "123 Some Street", "Washington", "DC", "13093"))]
 
     session.add_all(gas_utilities + gas_suppliers + elec_utilities + elec_suppliers)
     session.flush()
