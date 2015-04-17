@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from core import config
+from core import config, import_all_model_modules
 from core.model import RateClass, Base, Session, Supplier, Utility, \
     UtilityAccount, Address
 
@@ -15,6 +15,7 @@ from data.model.powergas import TermQuote
 from data.model.powergas import BlockOfferMaker
 from data.model.powergas import TermOfferMaker
 from data.model.auth import User
+from test.setup_teardown import clear_db
 
 log = logging.getLogger(__name__)
 
@@ -27,9 +28,11 @@ def tuplize(ls):
 
 
 def drop_create_tables():
-    log.debug('Dropping all tables')
-    Base.metadata.drop_all(checkfirst=True)
-    log.debug('Creating all tables')
+    clear_db()
+    # log.debug('Dropping all tables')
+    # Base.metadata.drop_all(checkfirst=True)
+    # log.debug('Creating all tables')
+    import_all_model_modules()
     Base.metadata.create_all(checkfirst=True)
 
 
@@ -67,17 +70,17 @@ def create_companies(session):
                         address=Address("Charlie",
                                        "123 Some Street", "Washington", "DC", "13093"))
     e1.rate_classes = [
-        RateClass(name='R'),
-        RateClass(name='RAD'),
-        RateClass(name='CTM'),
+        RateClass(name='R', service='electric'),
+        RateClass(name='RAD', service='electric'),
+        RateClass(name='CTM', service='electric'),
     ]
     e2 = Utility(name='Delmarva',
                         address=Address("Delmarva Mail Room",
                                         "Great Street", "Fredericksburg", "VA", "22401"))
     e2.rate_classes = [
-        RateClass(name='R'),
-        RateClass(name='RAD'),
-        RateClass(name='RTM'),
+        RateClass(name='R', service='electric'),
+        RateClass(name='RAD', service='electric'),
+        RateClass(name='RTM', service='electric'),
     ]
     elec_utilities = [e1, e2]
 
@@ -205,7 +208,7 @@ def create_quotes(session):
 
     term_months = [6, 12, 24]
 
-    gas_utilities = session.query(Utility).filter_by(service='gas').all()
+    gas_utilities = session.query(Utility).join(RateClass).filter(RateClass.service=='gas').count()
     gas_suppliers = session.query(Supplier).filter_by(service='gas').all()
     gas_annual_volumes = [(0, None)]
     gas_blocks = [(0, None)]
@@ -302,7 +305,9 @@ def create_customer_interest(session):
 Proof of concept
 """
 def run_poc():
-    drop_create_tables()
+    import_all_model_modules()
+    Base.metadata.create_all()
+    clear_db()
     session = Session()
 
     create_companies(session)

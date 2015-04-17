@@ -10,7 +10,7 @@ from math import floor
 from alembic.migration import MigrationContext
 
 import sqlalchemy
-from sqlalchemy import desc
+from sqlalchemy import func
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
@@ -267,6 +267,8 @@ class Supplier(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
 
+    service = Column(String(1000)) # TODO enum
+
     def __init__(self, name='', address=None):
         self.name = name
         self.address = address
@@ -430,6 +432,9 @@ class RateClass(Base):
 
     utility = relationship('Utility', backref='rate_classes')
     register_templates = relationship('RegisterTemplate')
+
+    time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
+    time_deactivated = Column(DateTime, default=datetime(2999, 12, 31))
 
     def __init__(self, name='', utility=None, service='gas'):
         self.name = name
