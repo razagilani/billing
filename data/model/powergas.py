@@ -8,10 +8,11 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.schema import Column, ForeignKey, Table
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Date,\
     Float, Interval, Enum
-from billing.data.model.orm import Base
+from data.model.orm import Base, Session
 from exc import DatabaseError
-from billing.data.model.company import Company
-import billing.data.model
+from data.model.company import Company
+from core.model import Address
+import data.model
 import logging
 
 log = logging.getLogger(__name__)
@@ -257,7 +258,7 @@ class CustomerInterest(Base):
     time_offers_generated = Column(DateTime)
 
     def generate_offers(self):
-        session = billing.data.model.orm.Session.object_session(self)
+        session = Session.object_session(self)
         session.query(Offer).filter_by(customer_interest=self).\
             filter_by(created_by_user=None).delete()
         session.flush()
@@ -495,7 +496,7 @@ class BlockOfferMaker(OfferMaker):
         :param term_end: a datetime ending the term
         :return:
         """
-        session = billing.data.model.Session.object_session(self)
+        session = Session.object_session(self)
         blq = session.query(BlockQuote).\
             filter_by(rate_class=rate_class).\
             filter_by(company=company).\
@@ -526,7 +527,7 @@ class BlockOfferMaker(OfferMaker):
                           term_months_lst):
         """Returns a dictionary mapping a tuple (company, term_months) to
         a list of quotes"""
-        session = billing.data.model.Session.object_session(self)
+        session = Session.object_session(self)
         companies = session.query(Company).all()
         company_quotes = {}
         for company, term_months in product(companies, term_months_lst):

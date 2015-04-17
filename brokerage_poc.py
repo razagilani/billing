@@ -1,4 +1,4 @@
-from billing import initialize
+from core import initialize
 initialize()
-from billing.powergas.demo.proof_of_concept import run_poc
+from powergas.demo.proof_of_concept import run_poc
 run_poc()

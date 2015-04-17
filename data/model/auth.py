@@ -1,9 +1,9 @@
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Enum
-from billing.data.model.orm import Base
+from data.model.orm import Base
 from hashlib import sha256
 from sqlalchemy.sql.functions import func
-from billing import config
+from core import config
 
 class User(Base):
 

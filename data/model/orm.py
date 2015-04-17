@@ -2,7 +2,7 @@ from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.scoping import scoped_session
 from sqlalchemy.orm.session import sessionmaker
-import billing.data.model
+import data.model
 
 class Base(object):
 

@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
-from billing import config
-from billing.data.model import RateClass, Address, Base, Session, Supplier, Utility, \
-    BlockQuote, BlockOfferMaker, TermOfferMaker, OfferMaker, TermQuote, UsePeriod, Company, \
-    Customer, CustomerInterest, User
+from core import config
+from core.model import RateClass, Base, Session, Supplier, Utility, \
+    UtilityAccount, Address
 
 from itertools import product
 from hashlib import sha256
@@ -10,6 +9,12 @@ from hashlib import sha256
 import logging
 #from processing.state import Customer
 #from data.model.powergas import CustomerInterest
+from data.model.powergas import BlockQuote, UsePeriod, CustomerInterest, \
+    OfferMaker
+from data.model.powergas import TermQuote
+from data.model.powergas import BlockOfferMaker
+from data.model.powergas import TermOfferMaker
+from data.model.auth import User
 
 log = logging.getLogger(__name__)
 
@@ -262,18 +267,18 @@ def create_customer_interest(session):
     js = session.query(User).filter_by(name='Justin Schafer').one()
 
     customer_data = [(rcq('Pepco', 'R'),
-                      Customer.for_powergas("Barack Obama"),
+                      UtilityAccount.for_powergas("Barack Obama"),
                       Address.for_powergas("1600 Pennsylvania Avenue",
                                             "Washington", "DC", "20006"),
                       js),
 
                      (rcq('Pepco', 'RAD'),
-                      Customer.for_powergas("George Washington"),
+                      UtilityAccount.for_powergas("George Washington"),
                       Address.for_powergas("123 George St",
                                             "Alexandria", "VA", "20384"),
                       js),
                      (rcq('Delmarva', 'RTM'),
-                      Customer.for_powergas('Mickey Mouse'),
+                      UtilityAccount.for_powergas('Mickey Mouse'),
                       Address.for_powergas("777 Third Ave",
                                             "New York", "NY", "10017"),
                       mn)]
@@ -314,7 +319,7 @@ def run_poc():
     address = Address("Barack Obama",
                       "1600 Pennsylvania Avenue",
                       "Washington, DC", "20006")
-    customer = Customer("Bacack Obama", "123", 0.0, 0.0,
+    customer = UtilityAccount("Bacack Obama", "123", 0.0, 0.0,
                         "barack@example.com", "Washington Gas", "G1",
                         address, address)
 
