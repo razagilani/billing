@@ -1,8 +1,8 @@
 from collections import defaultdict
-from billing import initialize
+from core import initialize
 initialize()
 
-from billing.data.model import Session, UtilBill
+from core.model import Session, UtilBill
 
 
 s = Session()
