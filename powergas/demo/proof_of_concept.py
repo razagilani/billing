@@ -208,13 +208,13 @@ def create_quotes(session):
 
     term_months = [6, 12, 24]
 
-    gas_utilities = session.query(Utility).join(RateClass).filter(RateClass.service=='gas').count()
+    gas_utilities = session.query(Utility).join(RateClass).filter(RateClass.service=='gas').all()
     gas_suppliers = session.query(Supplier).filter_by(service='gas').all()
     gas_annual_volumes = [(0, None)]
     gas_blocks = [(0, None)]
     gas_expiration_times = [datetime(2013, 12, 15), None]
 
-    elec_utilities = session.query(Utility).filter_by(service='electric').all()
+    elec_utilities = session.query(Utility).join(RateClass).filter_by(service='electric').all()
     elec_suppliers = session.query(Supplier).filter_by(service='electric').all()
     elec_annual_volumes = tuplize([0, 75, 150, 250, 500, 2000])
     elec_blocks = tuplize([0, 350, 800, None])
@@ -306,8 +306,8 @@ Proof of concept
 """
 def run_poc():
     import_all_model_modules()
+    Base.metadata.drop_all()
     Base.metadata.create_all()
-    clear_db()
     session = Session()
 
     create_companies(session)
