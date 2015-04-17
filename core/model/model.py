@@ -21,7 +21,6 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
-from alembic.migration import MigrationContext
 
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
@@ -223,6 +222,10 @@ class Address(Base):
                    other_address.state,
                    other_address.postal_code)
 
+    @classmethod
+    def for_powergas(cls, street, city, state, postal_code):
+        return cls("", street, city, state, postal_code)
+
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution
@@ -239,6 +242,10 @@ class Utility(Base):
     def __init__(self, name='', address=None):
         self.name = name
         self.address = address
+
+    @classmethod
+    def for_powergas(cls, name):
+        return cls(name, "", 0.0, 0.0, "", "", "", None, None)
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name

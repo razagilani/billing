@@ -69,6 +69,7 @@ class reebill(Schema):
 class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
+    secret_key = String()
 
 class billentry(Schema):
     google_client_id = String()

@@ -137,7 +137,7 @@ class Exporter(object):
             return query.all()
 
         if account == None:
-            #Only export brokerage accounts (id>20000)
+            #Only export powergas accounts (id>20000)
             s = Session()
             for acc in [
                 ua for ua in s.query(UtilityAccount).all() if
