@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from itertools import chain
 import json
 from math import floor
+from alembic.migration import MigrationContext
 
 import sqlalchemy
 from sqlalchemy import desc
