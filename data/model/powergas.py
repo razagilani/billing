@@ -16,24 +16,6 @@ import logging
 
 log = logging.getLogger(__name__)
 
-class DemoRateClass(Base):
-    """Represents a rate class for a utility company"""
-    __tablename__ = 'demo_rate_class'
-
-    id = Column(Integer, primary_key=True)
-    utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
-    utility = relationship(Company,
-                           backref=backref("rate_classes", lazy='dynamic',
-                                           cascade="all, delete-orphan"))
-    name = Column(String(1000))
-    time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
-    time_deactivated = Column(DateTime, default=datetime(2999, 12, 31))
-
-    def __init__(self, utility, name):
-        self.utility = utility
-        self.name = name
-
-
 class Quote(Base):
     """Represents a quote for an energy supplier."""
 

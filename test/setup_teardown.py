@@ -14,7 +14,7 @@ from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
-from core import pricing
+from core import pricing, import_all_model_modules
 from core.model import Supplier, RateClass, UtilityAccount, Base
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
