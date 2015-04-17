@@ -176,10 +176,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         ub3.id = 3
 
         self.ub1.registers[0].quantity = 150
-        register2 = Register(Register.TOTAL, 'therms', quantity=150,
-                             identifier='ABCDEF', meter_identifier='GHIJKL')
-        self.ub2.registers = [register2]
-        s.add(register2)
+        self.ub2.set_rate_class(self.rate_class)
+        self.ub2.registers[0].identifier = 'ABCDEF'
+        self.ub2.registers[0].meter_identifier = 'GHIJKL'
+        self.ub2.registers[0].quantity = 150
 
         c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
                     type='distribution', target_total=1)
@@ -242,8 +242,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': 'Some Rate Class',
+              'service': 'Gas',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
               'supply_total': 0.0,
@@ -276,7 +276,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
-              'utility_account_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -393,58 +392,54 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         # TODO: why aren't there tests for editing all the other fields?
 
     def test_update_utilbill_rate_class(self):
-        expected = {'results': 2,
-         'rows': [
-             {'computed_total': 0.0,
-              'due_date': None,
-              'id': 2,
-              'next_meter_read_date': None,
-              'pdf_url': '',
-              'period_end': None,
-              'period_start': None,
-              'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
-              'service_address': '2 Example St., ,  ',
-              'supplier': 'Unknown',
-              'supply_total': 0.0,
-              'target_total': 0.0,
-              'total_energy': 150.0,
-              'utility': 'Example Utility',
-              'utility_account_id': 1,
-              'utility_account_number': '1',
-              'utility_account_id': 1,
-              'supply_choice_id': None,
-              'wiki_url': 'http://example.com/utility:Example Utility',
-              'meter_identifier': 'GHIJKL',
-              'entered': False,
-              'tou': False
-             },
-             {'computed_total': 0.0,
-              'due_date': None,
-              'entered': False,
-              'id': 1,
-              'next_meter_read_date': None,
-              'pdf_url': '',
-              'period_end': None,
-              'period_start': None,
-              'processed': False,
-              'rate_class': 'Some Rate Class',
-              'service': 'Gas',
-              'service_address': '1 Example St., ,  ',
-              'supplier': 'Unknown',
-              'supply_choice_id': None,
-              'supply_total': 2.0,
-              'target_total': 0.0,
-              'total_energy': 150.0,
-              'utility': 'Example Utility',
-              'utility_account_id': 1,
-              'utility_account_number': '1',
-              'utility_account_id': 1,
-              'wiki_url': 'http://example.com/utility:Example Utility',
-              'meter_identifier': 'GHIJKL',
-              'tou': False}
-         ], }
+        expected = { 'results': 2,
+            'rows': [
+                {'computed_total': 0.0,
+                 'due_date': None,
+                 'entered': False,
+                 'id': 2,
+                 'meter_identifier': 'GHIJKL',
+                 'next_meter_read_date': None,
+                 'pdf_url': '',
+                 'period_end': None,
+                 'period_start': None,
+                 'processed': False,
+                 'rate_class': 'Some Rate Class',
+                 'service': 'Gas',
+                 'service_address': '2 Example St., ,  ',
+                 'supplier': 'Unknown',
+                 'supply_choice_id': None,
+                 'supply_total': 0.0,
+                 'target_total': 0.0,
+                 'total_energy': 150.0,
+                 'tou': False,
+                 'utility': 'Example Utility',
+                 'utility_account_id': 1,
+                 'utility_account_number': '1',
+                 'wiki_url': 'http://example.com/utility:Example Utility'},
+                {'computed_total': 0.0,
+                 'due_date': None,
+                 'entered': False,
+                 'id': 1,
+                 'meter_identifier': 'GHIJKL',
+                 'next_meter_read_date': None,
+                 'pdf_url': '',
+                 'period_end': None,
+                 'period_start': None,
+                 'processed': False,
+                 'rate_class': 'Some Rate Class',
+                 'service': 'Gas',
+                 'service_address': '1 Example St., ,  ',
+                 'supplier': 'Unknown',
+                 'supply_choice_id': None,
+                 'supply_total': 2.0,
+                 'target_total': 0.0,
+                 'total_energy': 150.0,
+                 'tou': False,
+                 'utility': 'Example Utility',
+                 'utility_account_id': 1,
+                 'utility_account_number': '1',
+                 'wiki_url': 'http://example.com/utility:Example Utility'}]}
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
