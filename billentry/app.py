@@ -302,7 +302,7 @@ def internal_server_error(e):
     error_message = "Internal Server Error. Error Token <b>%s</b>" % token
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
+    return e.message, 500
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
