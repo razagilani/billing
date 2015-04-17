@@ -47,8 +47,6 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
 
     for table in sorted_tables:
         log.info('Copying table %s' % table.name)
-        # TODO: log call does not work
-        print 'Copying table %s' % table.name
         data = mysql_engine.execute(table.select()).fetchall()
 
         count_query = 'select count(*) from %s' % table.name
