@@ -35,6 +35,7 @@ MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 # force no password prompt because it shouldn't be necessary and isn't
 # entered through the subprocess stdin
 DUMP_COMMAND = 'pg_dump %(db)s -U %(user)s -w'
+OLD_DB_SHELL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
 DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
@@ -217,16 +218,17 @@ def _recreate_main_db(root_password):
     '''Drop and re-create the main database because mysqldump only includes drop
     commands for tables that already exist in the backup.
     '''
-    command = DB_SHELL_COMMAND % cur_db_params
+    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
+                                          password='root')
     stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database %s;' % cur_db_params['db'])
+    stdin.write('drop database if exists %s;' % cur_db_params['db'])
     stdin.write('create database %s;' % cur_db_params['db'])
     stdin.close()
     check_exit_status()
 
 def restore_main_db_s3(bucket, root_password):
     _recreate_main_db(root_password)
-    command = DB_SHELL_COMMAND % dict(cur_db_params)
+    command = OLD_DB_SHELL_COMMAND % dict(old_db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -244,7 +246,7 @@ def restore_main_db_s3(bucket, root_password):
 
 def restore_main_db_local(dump_file_path, root_password):
     _recreate_main_db(root_password)
-    command = DB_SHELL_COMMAND % dict(cur_db_params, user='root',
+    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
@@ -312,7 +314,7 @@ def scrub_dev_data():
     TODO: the right way to do this is to scrub the data before it even gets
     into a development environment, just in case.
     '''
-    command = DB_SHELL_COMMAND % cur_db_params
+    command = OLD_DB_SHELL_COMMAND % old_db_params
     stdin, _, check_exit_status = run_command(command)
     sql = get_scrub_sql()
     print 'scrub commands:\n%s' % sql
