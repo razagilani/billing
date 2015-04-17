@@ -120,7 +120,6 @@ Ext.define('ReeBill.controller.Charges', {
         var processed = selectedAccount.get('processed');
         this.getRemoveCharge().setDisabled(!hasSelections || processed);
         this.updateTextFields();
-        this.getChargesGrid().focus();
      },
 
     /**
