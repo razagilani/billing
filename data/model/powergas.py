@@ -8,25 +8,24 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.schema import Column, ForeignKey, Table
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Date,\
     Float, Interval, Enum
-from data.model.orm import Base, Session
 from exc import DatabaseError
 from data.model.company import Company
-from core.model import Address
-import data.model
+from core.model import Base
+from data.model.auth import User
 import logging
 
 log = logging.getLogger(__name__)
 
-class RateClass(Base):
+class DemoRateClass(Base):
     """Represents a rate class for a utility company"""
-    __tablename__ = 'rate_class'
+    __tablename__ = 'demo_rate_class'
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('company.id'), nullable=False)
     utility = relationship(Company,
                            backref=backref("rate_classes", lazy='dynamic',
                                            cascade="all, delete-orphan"))
-    name = Column(String)
+    name = Column(String(1000))
     time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
     time_deactivated = Column(DateTime, default=datetime(2999, 12, 31))
 
@@ -35,7 +34,7 @@ class RateClass(Base):
         self.name = name
 
 
-class   Quote(Base):
+class Quote(Base):
     """Represents a quote for an energy supplier."""
 
     __tablename__ = 'quote'
@@ -54,7 +53,7 @@ class   Quote(Base):
     time_expired = Column(DateTime, default=datetime(2999, 12, 31))
     units = Column(Enum('therm', 'kWh', name='supplier_offer_source'),
                     nullable=False)  # therms or kWh
-    company_ref = Column(String)
+    company_ref = Column(String(1000))
 
     rate_class = relationship('RateClass')
     company = relationship('Company')
@@ -237,14 +236,14 @@ class CustomerInterest(Base):
     __tablename__ = 'customer_interest'
 
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    customer_id = Column(Integer, ForeignKey('utility_account.id'), nullable=False)
     address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
     created_by_user_id = Column(Integer, ForeignKey('user.id'))
     last_updated_by_user_id = Column(Integer, ForeignKey('user.id'))
 
     #relationships
-    customer = relationship("Customer", backref="customer_interests")
+    customer = relationship("UtilityAccount", backref="customer_interests")
     address = relationship("Address", backref="customer_interests")
     rate_class = relationship("RateClass", backref='customer_interests')
     created_by_user = relationship('User', backref='customer_interests_created',

@@ -30,36 +30,38 @@ def drop_create_tables():
     log.debug('Dropping all tables')
     Base.metadata.drop_all(checkfirst=True)
     log.debug('Creating all tables')
-    Base.metadata.create_all()
+    Base.metadata.create_all(checkfirst=True)
 
 
 def create_companies(session):
 
     log.info("Creating companies")
     """Create utilities and suppliers"""
-    gas_utilities = [Utility(name='Washington Gas',
+    u1 = Utility(name='Washington Gas',
                         address=Address("Washington Gas Distribution",
-                                       "123 Some Street", "Washington", "DC", "13093"),
-                        service='gas',
-                        rate_classes=['C1', 'GS1', 'GS2']),
-                    Utility(name='Columbia Gas',
-                        address=Address("Columbia Gas Mail Room",
-                                        "Great Street", "Fredericksburg", "VA", "22401"),
-                        service='gas',
-                        rate_classes=["R1", "C1", "C2"])]
+                                       "123 Some Street", "Washington", "DC", "13093"))
+    u1.rate_classes = [
+        RateClass(name='C1', service='gas'),
+        RateClass(name='GS1', service='gas'),
+        RateClass(name='GS2', service='gas')]
+    u2 = Utility(name='Columbia Gas',
+        address=Address("Columbia Gas Mail Room",
+                        "Great Street", "Fredericksburg", "VA", "22401"))
+    u2.rate_classes = [
+        RateClass(name='R1', service='gas'),
+        RateClass(name='C1', service='gas'),
+        RateClass(name='C2', service='gas')]
+    gas_utilities = [u1, u2]
 
     gas_suppliers = [Supplier(name='Hess',
                          address=Address("Hess Small Business",
-                                         "1 Hess Plaza", "Woodbridge", "NJ", "07095"),
-                         service='gas'),
+                                         "1 Hess Plaza", "Woodbridge", "NJ", "07095")),
                     Supplier(name="Constillation",
                       address=Address("Constillation Mailroom",
-                                      "1 Hess Plaza", "Woodbridge", "NJ", "07095"),
-                      service='gas'),
+                                      "1 Hess Plaza", "Woodbridge", "NJ", "07095")),
                     Supplier(name="Direct Energy",
                       address=Address("Direct Energy",
-                                      "1 Some Street", "Annapolis", "MD", "19930"),
-                        service='gas')]
+                                      "1 Some Street", "Annapolis", "MD", "19930"))]
 
     elec_utilities = [Utility(name='Pepco',
                         address=Address("Charlie",
