@@ -1,8 +1,9 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Enum
-from billing.data.model.orm import Base
-import billing.data.model.powergas
+from data.model.orm import Base
+import data.model.powergas
+from core.model import Address
 
 class Company(Base):
     __tablename__ = 'company'
