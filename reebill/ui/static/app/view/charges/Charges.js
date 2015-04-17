@@ -54,6 +54,14 @@ Ext.define('ReeBill.view.charges.Charges', {
     forceFit: true,
     
     columns: [{
+        header: 'hidden',
+        editor: {
+            xtype: 'textfield',
+            allowBlank: true,
+            editable: false
+        },
+        hidden: true
+    },{
         xtype: 'checkcolumn',
         header: 'Shared',
         dataIndex: 'shared',
