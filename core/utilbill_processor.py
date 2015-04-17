@@ -514,13 +514,18 @@ class UtilbillProcessor(object):
         # when sent from the server to the client.
         if rate_class_name == 'Unknown Rate Class':
             return None
-        try:
-            result = session.query(RateClass).filter_by(
-                name=rate_class_name).one()
-        except NoResultFound:
-            result = RateClass(name=rate_class_name, utility=utility,
-                               service=service)
-        return result
+            
+        def filter_powergascustomers(row):
+            return int(row['account'])>=20000
+        # Function to format the "Utility Service Address" grid column
+        def format_service_address(service_address, account):
+            try:
+                return '%(street)s, %(city)s, %(state)s' % service_address
+            except KeyError as e:
+                self.logger.error(('Utility bill service address for %s '
+                        'lacks key "%s": %s') % (
+                                account, e.message, service_address))
+                return '?'
 
     def update_utility_account_number(self, utility_account_id,
                                       utility_account_number):
