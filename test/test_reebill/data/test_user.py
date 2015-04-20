@@ -11,7 +11,7 @@ class TestUser(TestCase):
     """Unit tests for User class.
     """
     def setUp(self):
-        self.u = User(identifier='someone@example.com', username='someone',
+        self.u = User(identifier='someone@example.com',
                       password_hash='passwordhash', salt='abc123')
 
     def test_set_preference(self):
@@ -40,6 +40,8 @@ class TestUserDAO(TestCase):
         # no users yet
         self.assertFalse(self.dao.user_exists('someone@example.com'))
         self.assertIsNone(self.dao.load_user('someone@example.com', 'secret'))
+        self.assertFalse(
+            self.dao.change_password('someone@example.com', 'secret', 'new'))
 
         # create and load user
         self.dao.create_user('someone@example.com', 'secret', name='someone')
@@ -48,7 +50,8 @@ class TestUserDAO(TestCase):
         self.assertIsNotNone(u)
 
         # change password
-        self.dao.change_password('someone@example.com', 'secret', 'new')
+        self.assertTrue(
+            self.dao.change_password('someone@example.com', 'secret', 'new'))
         self.assertIsNone(self.dao.load_user('someone@example.com', 'secret'))
         self.assertIsNotNone(self.dao.load_user('someone@example.com', 'new'))
 
