@@ -1,5 +1,4 @@
 import json
-import copy
 
 import bcrypt
 from sqlalchemy.orm.exc import NoResultFound
@@ -43,8 +42,7 @@ class UserDAO(object):
         new_user = User(identifier=identifier, username=name,
                         password_hash=pw_hash, salt=salt)
 
-        # save in db
-        self.save_user(new_user)
+        Session().add(new_user)
 
     def user_exists(self, identifier):
         '''Returns True if there is a user with the given identifier (no
@@ -74,14 +72,6 @@ class UserDAO(object):
 
     def load_by_session_token(self, token):
         return Session().query(User).filter_by(session_token=token).first()
-
-    def save_user(self, user):
-        '''Saves the User object 'user' into the database. This overwrites any
-        existing user with the same identifier.'''
-        # for the default user, do nothing
-        if user is UserDAO.default_user:
-            return
-        Session().add(user)
 
     def change_password(self, identifier, old_password, new_password):
         '''Sets a new password for the given user. Returns True for success,
