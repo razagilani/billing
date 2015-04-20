@@ -1,20 +1,20 @@
 """ Unit tests for the UtilityAccount class
 """
-from test import init_test_config
-init_test_config()
-from core import init_model
-
 from unittest import TestCase
 
+from test import init_test_config
+from core import init_model
 from test.setup_teardown import clear_db
 from core.model import UtilBill, Session, Address, Utility, Supplier, \
     RateClass, UtilityAccount
 
+def setUpModule():
+    init_test_config()
+    init_model()
 
 class UtilityAccountTest(TestCase):
 
     def setUp(self):
-        init_model()
         clear_db()
 
         self.utility = Utility(name='utility', address=Address())
