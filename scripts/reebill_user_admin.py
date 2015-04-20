@@ -1,7 +1,12 @@
 import argparse
 from reebill.users import UserDAO
+from core import init_config, init_model
+from core.model import Session
 
 if __name__ == '__main__':
+    init_config()
+    init_model()
+
     # command-line arguments
     parser = argparse.ArgumentParser(
         description='Create and authenticate user accounts')
@@ -23,6 +28,7 @@ if __name__ == '__main__':
                   % args.identifier
         else:
             print 'New user created'
+        Session().commit()
 
     elif args.command == 'check':
         result = dao.load_user(args.identifier, args.password)
@@ -30,6 +36,7 @@ if __name__ == '__main__':
             print 'Authentication failed'
         else:
             print 'Authentication succeeded'
+        Session.remove()
 
     elif args.command == 'change':
         if args.newpassword is None:
@@ -41,3 +48,4 @@ if __name__ == '__main__':
             print 'Password changed'
         else:
             print 'Password change failed'
+        Session().commit()

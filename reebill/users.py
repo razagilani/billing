@@ -40,12 +40,8 @@ class UserDAO(object):
         pw_hash = bcrypt.hashpw(password, salt)
 
         # new user is based on default user
-        new_user = copy.deepcopy(UserDAO.default_user)
-        # TODO 40963069 user property API
-        new_user.identifier = identifier
-        new_user.name = name
-        new_user.password_hash = pw_hash
-        new_user.salt = salt
+        new_user = User(identifier=identifier, username=name,
+                        password_hash=pw_hash, salt=salt)
 
         # save in db
         self.save_user(new_user)
