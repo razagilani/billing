@@ -90,9 +90,8 @@ class ReebillTest(unittest.TestCase):
 
     def setUp(self):
         clear_db()
-        washgas = Utility(name='washgas', address=Address('', '', '', '',
-                                                          ''))
-        supplier = Supplier('supplier', Address())
+        washgas = Utility(name='washgas', address=Address())
+        supplier = Supplier(name='supplier')
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
                                  service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
