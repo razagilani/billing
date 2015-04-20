@@ -2,6 +2,7 @@
 '''
 from datetime import datetime, date, timedelta
 from itertools import chain
+import json
 from operator import attrgetter
 import traceback
 
@@ -831,4 +832,29 @@ class Payment(Base):
         return the_dict
 
 
+class User(Base):
+    """User account (not to be confused with customer account).
+    """
+    __tablename__ = 'reebill_user'
+
+    reebill_user_id = Column(Integer, primary_key=True)
+    identifier = Column(String(1000), nullable=False)
+    username = Column(String(1000), nullable=False, default='')
+    password_hash = Column(String(1000), nullable=False)
+    salt = Column(String(1000), nullable=False)
+    # JSON, seems not used very often
+    _preferences = Column('preferences', String(1000))
+    session_token = Column(String(1000))
+
+    def __repr__(self):
+        return '<User %s %s %s>' % (self.id, self.identifier, self.username)
+
+    def get_preferences(self):
+        return json.loads(self._preferences)
+    preferences = property(get_preferences)
+
+    def set_preference(self, key, value):
+        pref_dict = json.loads(self._preferences)
+        pref_dict[key] = value
+        self._preferences = json.dumps(pref_dict)
 

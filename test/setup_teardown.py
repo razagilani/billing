@@ -172,7 +172,7 @@ def create_reebill_resource_objects():
     bill_file_handler = create_bill_file_handler()
     utilbill_processor = create_utilbill_processor()
     reebill_processor, _ = create_reebill_objects()
-    user_dao = UserDAO('test')
+    user_dao = UserDAO()
     journal_dao = JournalDAO()
     payment_dao = PaymentDAO()
     reebill_dao = ReeBillDAO()
