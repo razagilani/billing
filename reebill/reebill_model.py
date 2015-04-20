@@ -849,16 +849,19 @@ class User(Base):
     def __repr__(self):
         return '<User %s %s %s>' % (self.id, self.identifier, self.username)
 
+
     def get_preferences(self):
-        return json.loads(self._preferences)
+        pref_str = self._preferences
+        if pref_str is None:
+            return {}
+        try:
+            return json.loads(pref_str)
+        except ValueError:
+            return {}
     preferences = property(get_preferences)
 
     def set_preference(self, key, value):
-        pref_str = self._preferences
-        try:
-            pref_dict = json.loads(pref_str)
-        except ValueError:
-            pref_dict = {}
+        pref_dict = self.get_preferences()
         pref_dict[key] = value
         self._preferences = json.dumps(pref_dict)
 
