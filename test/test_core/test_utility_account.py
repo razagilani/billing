@@ -9,7 +9,7 @@ from datetime import date
 from unittest import TestCase
 
 from test.setup_teardown import clear_db
-from exc import RSIError, ProcessedBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from reebill.reebill_model import Payment, ReeBillCustomer
