@@ -183,19 +183,11 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    addressee = Column(String(1000), nullable=False)
-    street = Column(String(1000), nullable=False)
-    city = Column(String(1000), nullable=False)
-    state = Column(String(1000), nullable=False)
-    postal_code = Column(String(1000), nullable=False)
-
-    def __init__(self, addressee='', street='', city='', state='',
-                 postal_code=''):
-        self.addressee = addressee
-        self.street = street
-        self.city = city
-        self.state = state
-        self.postal_code = postal_code
+    addressee = Column(String(1000), nullable=False, default='')
+    street = Column(String(1000), nullable=False, default='')
+    city = Column(String(1000), nullable=False, default='')
+    state = Column(String(1000), nullable=False, default='')
+    postal_code = Column(String(1000), nullable=False, default='')
 
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
