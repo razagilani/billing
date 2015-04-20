@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
+from exc import ProcessedBillError
 from test import init_test_config
 init_test_config()
 
@@ -378,16 +379,19 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
 
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
-            id=2,
-            next_meter_read_date=date(2000, 2, 5).isoformat()
-            ))
+        # catch ProcessedBillError because a 500 response is returned
+        # when the user tries to edit a bill that is not editable=
+        with self.assertRaises(ProcessedBillError):
+            rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+                id=2,
+                next_meter_read_date=date(2000, 2, 5).isoformat()
+                ))
+
         # this request is being made using a different content-type because
         # with the default content-type of form-urlencoded bool False
         # was interpreted as a string and it was evaluating to True on the
         # server. Also in out app, the content-type is application/json so
         # we should probably update all our test code to use application/json
-        self.assertEqual(500, rv.status_code)
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
             data=json.dumps(dict(
                 id=2,
