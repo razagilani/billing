@@ -213,10 +213,6 @@ class Utility(Base):
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
 
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
-
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
@@ -235,10 +231,6 @@ class Supplier(Base):
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
-
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
 
     def __repr__(self):
         return '<Supplier(%s)>' % self.name

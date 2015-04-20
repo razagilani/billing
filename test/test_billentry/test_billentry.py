@@ -128,7 +128,7 @@ class BillEntryIntegrationTest(object):
 
         self.project_mgr_role = Role('Project Manager', 'Role for accessing reports view of billentry app' )
         self.admin_role = Role('admin', 'admin role for bill entry app')
-        self.utility = Utility('Example Utility', Address())
+        self.utility = Utility(name='Example Utility')
         self.utility.id = 1
         self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
                                   Address(), Address(), '1')
@@ -174,8 +174,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryMain, self).setUp()
 
         s = Session()
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility1 = Utility(name='Empty Utility')
+        utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
@@ -898,10 +898,10 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
-        utility = Utility('Empty Utility', Address())
+        utility = Utility(name='Empty Utility')
 
-        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
-                             Address(), Address(), '2')
+        utility_account = UtilityAccount('Account 2', '22222', utility, None,
+                                         None, Address(), Address(), '2')
 
         regular_utilbill = UtilBill(utility_account, utility, None,
                        service_address=Address(street='2 Example St.'))
@@ -917,11 +917,11 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-
         utility_account.utilbills = [beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)),
+                         datetime.utcnow())
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
 
 
