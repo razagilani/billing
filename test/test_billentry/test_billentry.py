@@ -115,6 +115,7 @@ class BillEntryIntegrationTest(object):
         # TODO: this should prevent the method decorated with
         # "app.errorhandler" from running, but doesn't
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['PROPAGATE_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
