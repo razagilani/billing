@@ -487,7 +487,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address())
             return result, True
         return result, False
 
@@ -502,7 +502,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address())
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):

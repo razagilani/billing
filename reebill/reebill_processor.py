@@ -452,17 +452,9 @@ class ReebillProcessor(object):
 
         new_utility_account = UtilityAccount(
             name, account, utility, supplier, rate_class,
-            Address(billing_address['addressee'],
-                    billing_address['street'],
-                    billing_address['city'],
-                    billing_address['state'],
-                    billing_address['postal_code']),
-            Address(service_address['addressee'],
-                    service_address['street'],
-                    service_address['city'],
-                    service_address['state'],
-                    service_address['postal_code']),
-                    account_number=utility_account_number)
+            Address(**billing_address),
+            Address(**service_address),
+            account_number=utility_account_number)
 
         session.add(new_utility_account)
 
