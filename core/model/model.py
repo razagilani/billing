@@ -25,7 +25,7 @@ from alembic.migration import MigrationContext
 
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    ProcessedBillError, NotProcessable
+    UnEditableBillError, NotProcessable
 
 
 __all__ = [
@@ -849,7 +849,7 @@ class UtilBill(Base):
         this before modifying a UtilBill or its child objects.
         '''
         if not self.editable():
-            raise ProcessedBillError('Utility bill is not editable')
+            raise UnEditableBillError('Utility bill is not editable')
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this

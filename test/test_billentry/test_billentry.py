@@ -11,7 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from exc import ProcessedBillError
+from exc import UnEditableBillError
 from test import init_test_config
 init_test_config()
 
@@ -381,7 +381,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
 
         # catch ProcessedBillError because a 500 response is returned
         # when the user tries to edit a bill that is not editable=
-        with self.assertRaises(ProcessedBillError):
+        with self.assertRaises(UnEditableBillError):
             rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id=2,
                 next_meter_read_date=date(2000, 2, 5).isoformat()
