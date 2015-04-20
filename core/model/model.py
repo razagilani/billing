@@ -206,23 +206,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s %s' % (self.street, self.city, self.state,
-                               self.postal_code)
-
-    @classmethod
-    def from_other(cls, other_address):
-        """Constructs a new :class:`.Address` instance whose attributes are
-        copied from the given `other_address`.
-        :param other_address: An :class:`.Address` instance from which to
-         copy attributes.
-        """
-        assert isinstance(other_address, cls)
-        return cls(other_address.addressee,
-                   other_address.street,
-                   other_address.city,
-                   other_address.state,
-                   other_address.postal_code)
-
+        return '%s, %s, %s %s' % (
+            self.street, self.city, self.state, self.postal_code)
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution

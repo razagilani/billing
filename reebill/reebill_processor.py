@@ -227,12 +227,10 @@ class ReebillProcessor(object):
         assert len(new_utilbills) == 1
 
         # create reebill row in state database
-        new_reebill = ReeBill(reebill_customer, new_sequence, 0,
-                              utilbills=new_utilbills,
-                              billing_address=Address.from_other(
-                                new_utilbills[0].billing_address),
-                              service_address=Address.from_other(
-                                new_utilbills[0].service_address))
+        new_reebill = ReeBill(
+            reebill_customer, new_sequence, 0, utilbills=new_utilbills,
+            billing_address=new_utilbills[0].billing_address.clone(),
+            service_address=new_utilbills[0].service_address.clone())
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document

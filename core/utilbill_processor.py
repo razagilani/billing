@@ -182,8 +182,8 @@ class UtilbillProcessor(object):
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
-            billing_address= Address.from_other(billing_address),
-            service_address= Address.from_other(service_address),
+            billing_address=billing_address.clone(),
+            service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
