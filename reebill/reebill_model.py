@@ -843,7 +843,7 @@ class User(Base):
     password_hash = Column(String(1000), nullable=False)
     salt = Column(String(1000), nullable=False)
     # JSON, seems not used very often
-    _preferences = Column('preferences', String(1000))
+    _preferences = Column('preferences', String(1000), default='')
     session_token = Column(String(1000))
 
     def __repr__(self):
@@ -854,7 +854,11 @@ class User(Base):
     preferences = property(get_preferences)
 
     def set_preference(self, key, value):
-        pref_dict = json.loads(self._preferences)
+        pref_str = self._preferences
+        try:
+            pref_dict = json.loads(pref_str)
+        except ValueError:
+            pref_dict = {}
         pref_dict[key] = value
         self._preferences = json.dumps(pref_dict)
 
