@@ -2,7 +2,6 @@ import json
 import copy
 import argparse
 
-import pymongo
 import bcrypt
 from sqlalchemy.orm.exc import NoResultFound
 
