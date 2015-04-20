@@ -293,6 +293,12 @@ def page_not_found(e):
 
 @app.errorhandler(Exception)
 def internal_server_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
     from core import config
     # Generate a unique error token that can be used to uniquely identify the
     # errors stacktrace in a logfile
