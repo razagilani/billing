@@ -59,7 +59,7 @@ class StateDBTest(TestCase):
             from sqlalchemy import func
             result = session.query(func.max(ReeBill.version)) \
                 .filter(ReeBill.reebill_customer == reebill_customer) \
-                .filter(ReeBill.issued == 1).one()[0]
+                .filter(ReeBill.issued == True).one()[0]
             # SQLAlchemy returns None if no reebills with that customer are issued
             if result is None:
                 return None
