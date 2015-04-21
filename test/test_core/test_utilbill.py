@@ -8,7 +8,7 @@ from core import init_model
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, ProcessedBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from reebill.reebill_model import Payment, ReeBillCustomer
@@ -117,7 +117,7 @@ class UtilBillTestWithDB(TestCase):
 
         utilbill.processed = True
         self.assertTrue(utilbill.processed)
-        self.assertRaises(ProcessedBillError, utilbill.check_editable)
+        self.assertRaises(UnEditableBillError, utilbill.check_editable)
 
     def test_processable(self):
         utility_account = UtilityAccount(
@@ -461,7 +461,7 @@ class UtilBillTestWithDB(TestCase):
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)
         utilbill.processed = True
-        self.assertRaises(ProcessedBillError, utilbill.compute_charges)
+        self.assertRaises(UnEditableBillError, utilbill.compute_charges)
         self.assertFalse(utilbill.editable())
 
     def test_get_total_energy_consumption(self):
