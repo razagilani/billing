@@ -12,7 +12,6 @@ from brokerage.brokerage_model import MatrixQuote
 
 
 # TODO:
-# - tests
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
 # - make sure all spreadsheet format errors are ValidationErrors,
@@ -54,6 +53,7 @@ class QuoteParser(object):
         :param quote_file: file to read from.
         """
         self._databook = self._get_databook_from_file(quote_file)
+        # it is assumed that only one sheet actually contains the quotes
         self._sheet = self._databook.sheets()[1]
         self._validated = False
 
@@ -98,6 +98,33 @@ class QuoteParser(object):
         _assert_true(isinstance(value, type))
         return value
 
+    def _get_matches(self, row, col, regex, types):
+        """Return a tuple of values extracted from the spreadsheet cell at (
+        row, col) using groups in the given regular expression. Values are
+        converted from strings to the given types.
+        Raise ValidationError if there are 0 matches or the wrong number of
+        matches or they could not be converted to the expected types.
+        :param row: row index
+        :param row: column index
+        :param regex: regular expression string
+        :param types: expected type of each match, e.g. (int, float,
+        str). length must correspond to the number of matches.
+        """
+        text = self._get(row, col, basestring)
+        m = re.match(regex, text)
+        if m is None:
+            raise ValidationError
+        if len(m.groups()) != len(types):
+            raise ValidationError
+        results = []
+        for group, the_type in zip(m.groups(), types):
+            try:
+                value = the_type(group)
+            except ValueError:
+                raise ValidationError
+            results.append(value)
+        return results
+
 
 class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
@@ -125,35 +152,31 @@ class DirectEnergyMatrixParser(QuoteParser):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
-        _assert_equal('Date:', self._sheet[self.DATE_ROW][8])
-        _assert_equal('Annual Volume (MWh)', self._sheet[6][8])
+        _assert_equal('Date:', self._get(self.DATE_ROW, 8, basestring))
+        _assert_equal('Annual Volume (MWh)', self._get(6, 8, basestring))
         _assert_equal('***** For easier print view, use the filters '
                       'to narrow down the prices displayed ******',
-                      self._sheet[6][1])
+                      self._get(6, 1, basestring))
 
         # TODO: ...
 
+    def _extract_volume_range(self, row, col):
+        # these cells are strings like like "75-149" where "149" really
+        # means < 150, so 1 is added to the 2nd number--unless it is the
+        # highest volume range, in which case the 2nd number really means
+        # what it says.
+        regex = r'(\d+)-(\d+)'
+        low, high = self._get_matches(row, col, regex, (float, float))
+        if col != self.PRICE_END_COL:
+            high += 1
+        return low, high
 
     def _extract_quotes(self):
-        def _extract_volume_range(row, col):
-            # these cells are strings like like "75-149" where "149" really
-            # means < 150, so 1 is added to the 2nd number--unless it is the
-            # highest volume range, in which case the 2nd number really means
-            # what it says.
-            text = self._get(row, col, basestring)
-            m = re.match(r'(\d+)-(\d+)', text)
-            if m is None:
-                raise ValidationError
-            low, high = float(m.group(1)), float(m.group(2))
-            if col != self.PRICE_END_COL:
-                high += 1
-            return low, high
-
         # date at the top of the sheet: validity/expiration date for every
         # quote in this sheet
         the_date = self._get(self.DATE_ROW, self.DATE_COL, datetime)
 
-        volume_ranges = [_extract_volume_range(self.VOLUME_RANGE_ROW, col)
+        volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
                          for col in xrange(self.PRICE_START_COL,
                                            self.PRICE_END_COL + 1)]
 
@@ -180,6 +203,7 @@ class DirectEnergyMatrixParser(QuoteParser):
                                   valid_until=the_date + timedelta(days=1),
                                   min_volume=min_vol, limit_volume=max_vol,
                                   price=price)
+
 
 class AEPMatrixParser(QuoteParser):
     def _validate(self):
