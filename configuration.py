@@ -66,13 +66,28 @@ class reebill(Schema):
     # account numbers for bills whose PDFs are rendered using the "teva" format
     teva_accounts = String()
 
-    # path for utility bills on local file system (not used after migrating
-    # to S3)
-    utilitybillpath = Directory()
-
 class reebillreconciliation(Schema):
     log_directory = Directory()
     report_directory = Directory()
+
+class billentry(Schema):
+    google_client_id = String()
+    google_client_secret = String()
+    google_user_info_url = URL()
+    redirect_uri = String()
+    base_url = URL()
+    authorize_url = URL()
+    request_token_url = URL()
+    request_token_params_scope = String()
+    request_token_params_resp_type = String()
+    access_token_url = URL()
+    access_token_method = String()
+    access_token_params_grant_type = String()
+    disable_authentication = StringBool()
+    authorized_domain = String()
+    show_traceback_on_error = StringBool()
+    secret_key = String()
+    wiki_url = String()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
@@ -104,6 +119,7 @@ class amqp(Schema):
     url = String()
     exchange = String()
     utilbill_routing_key = String()
+    utilbill_guids_routing_key = String()
 
 class aws_s3(Schema):
     # utility bill file storage in Amazon S3
@@ -148,6 +164,22 @@ class logger_reebill(Schema):
     qualname = String()
     propagate = Int()
 
+class logger_billentry(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+    propagate = Int()
+
+class logger_amqp_utilbill_file(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
+class logger_amqp_utilbill_guids_file(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
 class handler_consoleHandler(Schema):
     level = String()
     formatter = String()
@@ -165,6 +197,24 @@ class handler_fileHandler(Schema):
     formatter = String()
     args = String()
 handler_fileHandler.add_field('class', String())
+
+class handler_billentry_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_billentry_file_handler.add_field('class', String())
+
+class handler_amqp_utilbill_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_amqp_utilbill_file_handler.add_field('class', String())
+
+class handler_amqp_utilbill_guids_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_amqp_utilbill_guids_file_handler.add_field('class', String())
 
 class formatter_simpleFormatter(Schema):
     format = String()

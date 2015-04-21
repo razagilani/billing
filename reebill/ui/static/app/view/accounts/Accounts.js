@@ -27,15 +27,35 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         header: 'Account',
         dataIndex: 'account',
         width: 100
-    },
-      {
+    },{
+        header: 'Tags',
+        dataIndex: 'tags',
+        editor: {
+            xtype: 'textfield',
+            emptyText: 'Enter comma-separated list'
+        },
+        tdCls: 'grid-cell-wrap-text',
+        width: 150,
+        renderer: function(value){
+            var rtn = [];
+            Ext.Array.each(value.split(','), function(tag){
+                tag = tag.trim();
+                if(tag){
+                    rtn.push('<span class="accounts-tag">');
+                    rtn.push(tag);
+                    rtn.push('</span>');
+                }
+            });
+            return rtn.join('')
+        }
+    },{
         header: 'Utility Account Number',
         dataIndex: 'utility_account_number',
         editor: {
             xtype: 'textfield'
         },
         width: 100
-      },{
+    },{
         header: 'Codename',
         dataIndex: 'codename',
         width: 120
@@ -49,27 +69,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         width: 120
     },{
         header: 'Utility Service Address',
-        dataIndex: 'lastutilityserviceaddress',
+        dataIndex: 'utilityserviceaddress',
         width: 200
-    },{
-        header: 'Last Issued',
-        dataIndex: 'lastissuedate',
-        width: 120,
-        renderer: function(value) {
-            return Ext.util.Format.date(value, 'Y-m-d');
-        },
-    },{
-        header: 'Days Since',
-        tooltip: 'Days Since Last Issued Utility Bill',
-        dataIndex: 'lastperiodend',
-        renderer: function(value){
-            if(value === Infinity){
-                return ''
-            }
-            return value
-        },
-        align: 'right',
-        width: 100
     },{
         header: 'Last Event',
         dataIndex: 'lastevent',

@@ -1,4 +1,8 @@
-from billing.test import init_test_config
+from StringIO import StringIO
+from mock import Mock, call
+from test import init_test_config
+from util.pdf import PDFConcatenator
+
 init_test_config()
 
 from datetime import date
@@ -9,17 +13,16 @@ import os.path
 
 from testfixtures import TempDirectory
 
-from billing.core.model import Address, Customer, UtilBill, \
+from core.model import Address, UtilBill, \
     Register, UtilityAccount
-from billing.reebill.state import ReeBill, ReeBillCharge, ReeBillCustomer
-from billing.reebill.reebill_file_handler import ReebillFileHandler
-from billing import init_config
+from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
+from reebill.reebill_file_handler import ReebillFileHandler, \
+    SummaryFileGenerator
 
-init_config(filepath='test/tstsettings.cfg')
 
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
-        from billing import config
+        from core import config
         self.temp_dir = TempDirectory()
         self.file_handler = ReebillFileHandler(
                 self.temp_dir.path,
@@ -32,35 +35,38 @@ class ReebillFileHandlerTest(TestCase):
         utility_account = UtilityAccount('someaccount', '00001',
                         'Test Utility', 'Test Supplier', 'Test Rate Class',
                         ba, sa)
-        c = ReeBillCustomer('Test Customer', 0.2, 0.1, 'test@example.com',
-                            'thermal', utility_account)
-        ba2 = Address.from_other(ba)
+        c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
+                            late_charge_rate=0.1,
+                            bill_email_recipient='test@example.com',
+                            service='thermal', utility_account=utility_account)
+        ba2 = ba.clone()
         ba2.addressee = 'Reebill Billing Addressee'
-        sa2 = Address.from_other(sa)
+        sa2 = sa.clone()
         ba2.addressee = 'Reebill Service Addressee'
-        ba3 = Address.from_other(ba)
+        ba3 = ba.clone()
         ba2.addressee = 'Utility Billing Addressee'
-        sa3 = Address.from_other(sa)
+        sa3 = sa.clone()
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(utility_account, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
-            'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
-            period_end=date(2000,2,1))
-        u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
-                                'total', [], 'METERID', quantity=100,
-                                register_binding='REG_TOTAL')]
+        u = UtilBill(utility_account, None, None,
+                     supplier='Test Supplier', billing_address=ba3,
+                     service_address=sa3, period_start=date(2000, 1, 1),
+                     period_end=date(2000, 2, 1))
+        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+                                identifier='REGID', meter_identifier='METERID',
+                                reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
         self.reebill.replace_readings_from_utility_bill_registers(u)
         self.reebill.charges = [
             ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply',
                           10, 20, 'therms', 1, 10, 20),
-            ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution', 30, 40,
-                          'therms', 1, 30, 40),
+            ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution',
+                          30, 40, 'therms', 1, 30, 40),
             # charges are not in group order to make sure they are sorted
             # before grouping; otherwise some charges could be omitted
             # (this was bug #80340044)
-            ReeBillCharge(self.reebill, 'C', 'Example Charge C', 'Supply', 50, 60,
-                          'therms', 1, 50, 60),
+            ReeBillCharge(self.reebill, 'C', 'Example Charge C', 'Supply', 50,
+                          60, 'therms', 1, 50, 60),
         ]
 
         self.file_handler.render(self.reebill)
@@ -114,7 +120,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('f3e0e94dabfd339933cd4c7913e30c0f73226c1c',
+        self.assertEqual('59e6e188f306d5bcb2c96133b4e5fd61e5c015e4',
                 filtered_pdf_hash)
 
         # delete the file
@@ -151,6 +157,35 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('f479f2a1661fd48dc1107a27e254003b481065bd',
+        self.assertEqual('8aba74f1f80c6251c936fdfd6dec235097f978b6',
                          filtered_pdf_hash)
+
+
+class SummaryFileGeneratorTest(TestCase):
+    """Unit test for SummaryFileGenerator.
+    """
+    def setUp(self):
+        self.reebill_1 =Mock(autospec=ReeBill)
+        self.reebill_2 = Mock(autospec=ReeBill)
+        self.file1, self.file2 = StringIO('1'), StringIO('2')
+        self.reebills = [Mock]
+        self.reebill_file_handler = Mock(autospec=ReebillFileHandler)
+        self.reebill_file_handler.get_file.side_effect = [self.file1,
+                                                          self.file2]
+        self.pdf_concatenator = Mock(autospec=PDFConcatenator)
+        self.output_file = StringIO()
+        self.sfg = SummaryFileGenerator(self.reebill_file_handler,
+                                        self.pdf_concatenator)
+
+    def test_generate_summary_file(self):
+        self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
+                                       self.output_file)
+        self.reebill_file_handler.render.assert_has_calls(
+            [call(self.reebill_1), call(self.reebill_2)])
+        self.reebill_file_handler.get_file.assert_has_calls(
+            [call(self.reebill_1), call(self.reebill_2)])
+        self.pdf_concatenator.append.assert_has_calls(
+            [call(self.file1), call(self.file2)])
+        self.pdf_concatenator.write_result.assert_called_once_with(
+            self.output_file)
 

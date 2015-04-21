@@ -6,20 +6,20 @@ for an application using the Billing data model (such as Acquisitor).
 """
 
 """Initialize the application before other imports."""
-from billing import initialize
+from core import initialize
 initialize()
 
 """Now begin your application imports"""
 
 import logging
-from billing.processing.state import Session, Customer
+from core.model import Session, UtilityAccount
 
 log = logging.getLogger(__name__)
 
 log.info('Application running')
 
 s = Session()
-for c in s.query(Customer).all():
+for c in s.query(UtilityAccount).limit(10).all():
     log.info('Customer name %s account %s' % (c.name, c.account))
 
 log.info('All done!')

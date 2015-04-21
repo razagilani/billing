@@ -9,7 +9,7 @@ import mimetypes
 import os
 import smtplib
 from jinja2 import Template
-from billing.util.email_util import send_email
+from util.email_util import send_email
 
 TEMPLATE_FILE_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -40,23 +40,12 @@ class Mailer(object):
         self.template_html = template_html
 
 
-    def mail(self, recipients, merge_fields, bill_path, bill_files, boundary=None):
-        ''' Wrapper to send_mail method in email_utils that Send email to
-        'recipients', using an HTML template 'template_html'
-        populated with values from the dictionary 'merge_fields'.
-        'bill_paths' and bill_files are used to construct lists of paths
-        to files that are included as attachments
-        '''
-        subject = "Nextility: Your Monthly Bill for %s" % (merge_fields["street"])
-        attachment_paths = [os.path.join(bill_path, file_name) for file_name in
-                bill_files]
+    def mail(self, recipients, merge_fields, attachment_contents, attachment_name,
+             boundary=None):
+        subject = "Nextility: Your Monthly Bill for %s" % (
+            merge_fields["street"])
         with open(TEMPLATE_FILE_PATH) as template_file:
             template_html = template_file.read()
-            '''send_email(self._mail_from, recipients, subject, self._originator, self._password,
-                    self._smtp_host,
-                    self._smtp_port, template_html, merge_fields,
-                    bcc_addrs=self._bcc_list,
-                    attachment_paths=attachment_paths)'''
         if boundary:
             container = MIMEMultipart(boundary=boundary)
         else:
@@ -66,37 +55,24 @@ class Mailer(object):
         container['To'] = u', '.join(recipients)
         html = Template(template_html).render(merge_fields)
 
-        for path in attachment_paths:
-            ctype, encoding = mimetypes.guess_type(path)
-            if ctype is None or encoding is not None:
-                # No guess could be made, or the file is encoded (compressed), so
-                # use a generic bag-of-bits type.
-                ctype = 'application/octet-stream'
-            maintype, subtype = ctype.split('/', 1)
-            if maintype == 'text':
-                fp = open(path)
-                # Note: we should handle calculating the charset
-                attachment = MIMEText(fp.read(), _subtype=subtype)
-                fp.close()
-            elif maintype == 'image':
-                fp = open(path, 'rb')
-                attachment = MIMEImage(fp.read(), _subtype=subtype)
-                fp.close()
-            elif maintype == 'audio':
-                fp = open(path, 'rb')
-                attachment = MIMEAudio(fp.read(), _subtype=subtype)
-                fp.close()
-            else:
-                fp = open(path, 'rb')
-                attachment = MIMEBase(maintype, subtype)
-                attachment.set_payload(fp.read())
-                fp.close()
-                # Encode the payload using Base64
-                encoders.encode_base64(attachment)
-            # Set the filename parameter
-            attachment.add_header('Content-Disposition', 'attachment',
-                    filename=os.path.split(path)[1])
-            container.attach(attachment)
+        ctype, encoding = mimetypes.guess_type(attachment_name)
+        if ctype is None or encoding is not None:
+            # No guess could be made, or the file is encoded (compressed), so
+            # use a generic bag-of-bits type.
+            ctype = 'application/octet-stream'
+        maintype, subtype = ctype.split('/', 1)
+        if maintype in ('text', 'image', 'audio'):
+            # Note: we should handle calculating the charset
+            attachment = MIMEText(attachment_contents, _subtype=subtype)
+        else:
+            attachment = MIMEBase(maintype, subtype)
+            attachment.set_payload(attachment_contents)
+            # Encode the payload using Base64
+            encoders.encode_base64(attachment)
+        # Set the filename parameter
+        attachment.add_header('Content-Disposition', 'attachment',
+                filename=attachment_name)
+        container.attach(attachment)
 
         # Record the MIME types of both parts - text/plain and text/html.
         #part1 = MIMEText(text, 'plain')
@@ -115,11 +91,13 @@ class Mailer(object):
         self.server.starttls()
         self.server.ehlo()
         self.server.login(self._originator, self._password)
-        self.server.sendmail(self._originator, recipients, container.as_string())
+        self.server.sendmail(self._originator, recipients,
+                             container.as_string())
 
         if self._bcc_list:
-            bcc_list = [bcc_addr.strip() for bcc_addr in self._bcc_list.split(",")]
+            bcc_list = [bcc_addr.strip() for bcc_addr in
+                        self._bcc_list.split(",")]
             container['Bcc'] = self._bcc_list
-            self.server.sendmail(self._originator, bcc_list, container.as_string())
-
+            self.server.sendmail(self._originator, bcc_list,
+                                 container.as_string())
         self.server.close()

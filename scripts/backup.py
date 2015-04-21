@@ -17,15 +17,13 @@ import zlib
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from billing import init_config
-from billing import init_model
+from core import init_config, init_model, get_scrub_sql
+from core.bill_file_handler import BillFileHandler
+from core.utilbill_loader import UtilBillLoader
 
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.model import Session
-from billing.core.utilbill_loader import UtilBillLoader
 
 init_config()
-from billing import config
+from core import config
 
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
@@ -310,8 +308,9 @@ def scrub_dev_data():
     '''
     command = MYSQL_COMMAND % db_params
     stdin, _, check_exit_status = run_command(command)
-    stdin.write("update customer set bill_email_recipient = 'example@example.com';")
-    stdin.write("update reebill set email_recipient = 'example@example.com';")
+    sql = get_scrub_sql()
+    print 'scrub commands:\n%s' % sql
+    stdin.write(sql)
     stdin.close()
     check_exit_status()
 
@@ -440,7 +439,7 @@ def restore_files(args):
             file.seek(0)
             dest_key.set_contents_from_file(file)
         else:
-            print 'Destination already has key {0}, not copying'.format(key.name)
+            print 'Destination already has key {0}, not copying'.format(key_name)
 
 def backup_local(args):
     backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))

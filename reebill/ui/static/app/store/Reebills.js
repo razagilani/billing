@@ -10,9 +10,10 @@ Ext.define('ReeBill.store.Reebills', {
 		type: 'rest',
 
         simpleSortMode: true,
-
         pageParam: false,
-
+        startParam: false,
+        sortParam: false,
+        limitParam: false,
 
         url: 'http://'+window.location.host+'/reebill/reebills',
 		reader: {

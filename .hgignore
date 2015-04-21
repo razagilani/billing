@@ -1,14 +1,15 @@
-atlassian-ide-plugin.xml
-glob:*.pyc
-glob:*.swp
-glob:*.log
-reebill/reebill.cfg
-settings.cfg
-reebill/reebill.log
-reebill/reconciliation.log
-reebill/reconciliation_report.json
-reebill/ui/revision.txt
-revision.txt
-alembic.ini
+.DS_Store # annoying invisible files created by Mac OS
 .directory
 .idea
+alembic.ini
+glob:*.log
+glob:*.pyc
+glob:*.swp
+logs/*.log
+reebill/reconciliation.log
+reebill/reconciliation_report.json
+reebill/reebill.cfg
+reebill/reebill.log
+reebill/ui/revision.txt
+revision.txt
+settings.cfg

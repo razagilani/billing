@@ -1,18 +1,15 @@
-#!/usr/bin/env python2
 import sys
-from operator import itemgetter
-import pymongo
+import pprint
+
 from sqlalchemy import desc
 import tablib
-import traceback
-from billing.reebill import state
-from billing.reebill.state import UtilBill
-from billing.util import dateutils
-from billing.util.monthmath import approximate_month
-from billing.exc import *
-from billing.core.model import Session, UtilityAccount
 
-import pprint
+from reebill import reebill_model
+from reebill.reebill_model import UtilBill
+from util import dateutils
+from util.monthmath import approximate_month
+from exc import *
+from core.model import Session, UtilityAccount
 
 pformat = pprint.PrettyPrinter().pformat
 
@@ -23,9 +20,10 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 
-    def __init__(self, state_db, verbose=False):
+    def __init__(self, state_db, payment_dao, verbose=False):
         # objects for database access
         self.state_db = state_db
+        self.payment_dao = payment_dao
         self.verbose = verbose
 
     def export_account_charges(self, output_file, account=None,
@@ -170,7 +168,7 @@ class Exporter(object):
                 # Find the register whose binding is reg_total and get the quantity and units
                 for register in ub.registers:
                     if register.register_binding.lower() == 'reg_total':
-                        units = register.quantity_units
+                        units = register.unit
                         quantity = register.quantity
             except NoSuchBillException:
                 units = quantity = "ERROR"
@@ -321,7 +319,7 @@ class Exporter(object):
                     continue
 
                 applicable_payments = \
-                    self.state_db.get_payments_for_reebill_id(reebill.id)
+                    self.payment_dao.get_payments_for_reebill_id(reebill.id)
 
                 savings = 0
                 if reebill.ree_value and reebill.ree_charge:
@@ -429,17 +427,16 @@ def main(export_func, filename, account=None):
                 Account number (optional, uses all accounts or standard range)
     Saves output in "spreadsheet.xls".'''
     from os.path import dirname, realpath, join
-    from billing import init_config, init_model, init_logging
+    from core import init_config, init_model, init_logging
 
     p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
     init_logging(path=p)
     init_config(filename=p)
     init_model()
-    from billing import config
     import logging
 
     logger = logging.getLogger('reebill')
-    state_db = state.StateDB(logger=logger)
+    state_db = reebill_model.ReeBillDAO(logger=logger)
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
@@ -448,15 +445,4 @@ def main(export_func, filename, account=None):
         elif export_func == 'reebill_details':
             exporter.export_reebill_details(output_file)
         else:
-            exporter.export_account_charges(output_file,
-                                            account=account)
-
-if __name__ == '__main__':
-    filename = 'spreadsheet.xls'
-    export_func = ''
-    account = None
-    if len(sys.argv) > 1:
-        export_func = sys.argv[1]
-    if len(sys.argv) > 2:
-        account = sys.argv[2]
-    main(export_func, filename, account)
+            exporter.export_account_charges(output_file, account=account)

@@ -8,23 +8,71 @@ from pika import URLParameters
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy.orm.exc import NoResultFound
+from unittest import TestCase
+from voluptuous import Invalid
+from core import init_model
 
-from billing.core.model import Session, UtilityAccount, Supplier, Address, Utility, RateClass
-from billing.core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import DuplicateFileError
-from billing.mq.tests import create_channel_message_body, create_mock_channel_method_props
-from billing.mq import IncomingMessage
-from billing.core.amqp_exchange import ConsumeUtilbillFileHandler, \
-    create_dependencies
+from core.amqp_exchange import create_dependencies, \
+    ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+from core.model import Session, UtilityAccount, Utility, Address
+from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
+from core.utilbill_loader import UtilBillLoader
+from mq import IncomingMessage
+from mq.tests import create_mock_channel_method_props, \
+    create_channel_message_body
+from exc import DuplicateFileError
+from test import init_test_config
+from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
+    create_utilbill_processor, create_reebill_objects, create_nexus_util, \
+    clear_db
 
 
-class TestUploadBillAMQP(TestCaseWithSetup):
+class TestValidators(TestCase):
+
+    def test_total_validator(self):
+        validator = TotalValidator()
+        self.assertEqual(validator('$123.45'), 123.45)
+        self.assertEqual(validator(''), None)
+        self.assertEqual(123, validator('$123'))
+        self.assertEqual(.4, validator('$.4'))
+        self.assertEqual(.45, validator('$.45'))
+        self.assertEqual(1234.56, validator('$1,234.56'))
+        self.assertEqual(1234, validator('$1,234'))
+        # commas in the wrong place are allowed
+        self.assertEqual(1234, validator('$12,34'))
+        with self.assertRaises(Invalid):
+            validator("nonsense")
+        with self.assertRaises(Invalid):
+            validator('$123.4,5')
+
+    def test_due_date_validator(self):
+        validator = DueDateValidator()
+        self.assertEqual(validator('2010-07-21T23:15:12'), date(2010, 7, 21))
+        self.assertEqual(validator(''), None)
+        with self.assertRaises(Invalid):
+            validator("nonsense")
+
+class TestUploadBillAMQP(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        FakeS3Manager.start()
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        cls.reebill_processor, cls.views = create_reebill_objects()
+        cls.nexus_util = create_nexus_util()
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeS3Manager.stop()
 
     def setUp(self):
-        super(TestUploadBillAMQP, self).setUp()
-        from billing import config
+        clear_db()
+        TestCaseWithSetup.insert_data()
 
         # parameters for real RabbitMQ connection are stored but never used so
         # there is no actual connection
@@ -38,13 +86,15 @@ class TestUploadBillAMQP(TestCaseWithSetup):
         # since we're never instatiating a connection
         self.handler._wait_on_close = 0
 
-        self.utilbill_loader = UtilBillLoader()
+        self.utilbill_loader = self.utilbill_processor._utilbill_loader
 
         # these are for creating IncomingMessage objects for 'handler' to
         # handle
-        _, method, props = create_mock_channel_method_props()
-        self.mock_method = method
-        self.mock_props = props
+        _, self.mock_method, self.mock_props = \
+            create_mock_channel_method_props()
+
+    def tearDown(self):
+        clear_db()
 
     def test_upload_bill_with_no_matching_utility_account_and_utility_amqp(self):
         # put the file in place
@@ -74,7 +124,8 @@ class TestUploadBillAMQP(TestCaseWithSetup):
             account_guids=['C' * AltitudeGUID.LENGTH,
                            'D' * AltitudeGUID.LENGTH]))
 
-        message_obj = IncomingMessage(self.mock_method, self.mock_props, message)
+        message_obj = IncomingMessage(self.mock_method, self.mock_props,
+                                      message)
 
         # Process the message
         message_obj = self.handler.validate(message_obj)
@@ -97,7 +148,7 @@ class TestUploadBillAMQP(TestCaseWithSetup):
 
         s = Session()
         guid = '9980ff2b-df6f-4a2f-8e01-e5f0a3ec09af'
-        utility = Utility('Some Utility', Address())
+        utility = Utility(name='Some Utility', address=Address())
         s.add(AltitudeUtility(utility, guid))
 
         message = create_channel_message_body(dict(

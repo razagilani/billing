@@ -6,7 +6,6 @@ Ext.define('ReeBill.view.charges.Charges', {
         'Ext.data.*',
         'Ext.dd.*',
         'ReeBill.view.charges.FormulaField',
-        'ReeBill.view.charges.GroupTextField',
         'ReeBill.view.charges.RoundRuleTextField'
     ],
 
@@ -22,7 +21,7 @@ Ext.define('ReeBill.view.charges.Charges', {
     features: [{
         ftype: 'groupingsummary',
         groupHeaderTpl: 'Charge Group: {name} ({rows.length} Item{[values.rows.length > 1 ? "s" : ""]})',
-        hideGroupedHeader: true
+        hideGroupedHeader: false
     }, {
         ftype: 'summary'
     }],
@@ -41,8 +40,13 @@ Ext.define('ReeBill.view.charges.Charges', {
         }],
         listeners: {
             drop: function(node, data, overModel, dropPosition, eOpts) {
-                data.records[0].set('group', overModel.get('group'));
-                Ext.getStore('Charges').group('group', 'ASC');
+                if (overModel.store.groupers.keys.length > 0){
+                    var groupByField = overModel.store.groupers.keys[0];
+                    Ext.Array.each(data.records, function(record){
+                        record.set(groupByField, overModel.get(groupByField));
+                    });
+                    Ext.getStore('Charges').group(groupByField, 'ASC');
+                }
             }
         }
     },
@@ -122,12 +126,20 @@ Ext.define('ReeBill.view.charges.Charges', {
         sortable: true,
         width: 100
     },{
-        header: 'Group',
-        dataIndex: 'group',
+        header: 'Type',
+        dataIndex: 'type',
         sortable: true,
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Types',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'name',
+            queryMode: 'local',
+            forceSelection: true
         },
         width: 90
     },{
@@ -142,7 +154,7 @@ Ext.define('ReeBill.view.charges.Charges', {
                     sum += record.get('total');
                 }
             });
-            return sum;
+            return Ext.util.Format.usMoney(sum);
         },
         align: 'right',
         renderer: Ext.util.Format.usMoney
@@ -177,9 +189,6 @@ Ext.define('ReeBill.view.charges.Charges', {
         },'-',{
             xtype: 'formulaField',
             name: 'formulaField'
-        },'-',{
-            xtype: 'groupTextField',
-            name: 'groupTextField'
         }]
     }]
 });

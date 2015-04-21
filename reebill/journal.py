@@ -8,7 +8,7 @@ import mongoengine
 from mongoengine.document import MapReduceDocument
 from bson import ObjectId
 
-from billing.util.dateutils import ISO_8601_DATE
+from util.dateutils import ISO_8601_DATE
 
 
 # list of event types proposed but not used yet:

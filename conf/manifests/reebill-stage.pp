@@ -33,14 +33,28 @@ file { "/db-${env}":
     owner       => $username,
     group       => $username,
 }
-file { "/etc/httpd/conf.d/${username}.conf":
+file { "/home/reebill-${env}/logs":
+    ensure      => directory,
+    owner       => $username,
+    group       => $username,
+}
+file { "/etc/httpd/conf.d/billing-stage.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/reebill-stage.conf"
+    source => "puppet:///modules/conf/vhosts/billing-stage.conf"
+}
+file { "/etc/httpd/conf.d/billentry-stage.conf":
+    ensure => file,
+    source => "puppet:///modules/conf/vhosts/billentry-stage.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
 ensure => file,
 content => template('conf/billing-exchange.conf.erb')
+}
+
+file { "/etc/init/billentry-${env}-exchange.conf":
+ensure => file,
+content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':

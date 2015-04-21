@@ -9,10 +9,10 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
 
-from billing.core.model import UtilBill
-from billing.core.bill_file_handler import BillFileHandler
-from billing.core.utilbill_loader import UtilBillLoader
-from billing.exc import MissingFileError, DuplicateFileError
+from core.model import UtilBill
+from core.bill_file_handler import BillFileHandler
+from core.utilbill_loader import UtilBillLoader
+from exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):
@@ -119,6 +119,21 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill_loader.count_utilbills_with_hash.assert_called_with(
             self.file_hash)
         self.assertEqual(0, self.key.delete.call_count)
+
+    def test_delete_missing_file(self):
+        """Test that no exception is raised when trying to delete a file that
+        is already missing--we saw this happen in production.
+
+        This situation could be caused by rolling back a database transaction
+        when an error happened while trying to delete a bill, after the file was
+        deleted, leaving the database pointing to a nonexistent key.
+        """
+        self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
+        self.utilbill_loader.count_utilbills_with_hash.return_value = 1
+        self.bucket.get_key.return_value = None
+
+        # no exception raised here
+        self.bfh.delete_utilbill_pdf_from_s3(self.utilbill)
 
     def test_upload_duplicate_file(self):
         self.utilbill_loader.count_utilbills_with_hash.return_value = 1
