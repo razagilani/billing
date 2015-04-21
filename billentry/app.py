@@ -329,7 +329,7 @@ def log_error(exception_name, traceback):
                     "<b>%s</b>" % (e.message, token)
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
+    return error_message
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():

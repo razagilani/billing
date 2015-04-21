@@ -241,6 +241,7 @@ class Views(object):
             .filter(UtilityAccount.account == account) \
             .order_by(ReeBill.reebill_customer_id,
                       ReeBill.sequence).group_by(
+            ReeBill.reebill_customer_id,
             ReeBill.reebill_customer, ReeBill.sequence).subquery()
 
         # query ReeBill joined to the above subquery to get only
