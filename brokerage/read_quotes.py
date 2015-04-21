@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-from billing.exc import BillingError
-from billing.pg.pg_model import MatrixQuote
+from exc import BillingError
+from brokerage.brokerage_model import MatrixQuote
 
 # TODO:
 # - tests
@@ -179,10 +179,13 @@ class AEPMatrixParser(QuoteParser):
 
 if __name__ == '__main__':
     # example usage
-   qp = DirectEnergyMatrixParser()
-   with open('directenergy.xlsm', 'rb') as spreadsheet_file:
-       qp.load_file(spreadsheet_file)
-   qp.validate()
-   for quote in qp.extract_quotes():
-       print quote
+    import os
+    from core import ROOT_PATH
+    path = os.path.join(ROOT_PATH, 'test/test_brokerage/directenergy.xlsm')
+    qp = DirectEnergyMatrixParser()
+    with open(path, 'rb') as spreadsheet_file:
+        qp.load_file(spreadsheet_file)
+    qp.validate()
+    for quote in qp.extract_quotes():
+        print quote
 
