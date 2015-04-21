@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
 from sqlalchemy.orm import relationship
 
 from core.model import Base, UtilityAccount
+from exc import ValidationError
 
 
 class BrokerageAccount(Base):
@@ -32,8 +33,8 @@ class Quote(Base):
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
-    start_from = Column(Integer, nullable=False)
-    start_until = Column(Integer, nullable=False)
+    start_from = Column(DateTime, nullable=False)
+    start_until = Column(DateTime, nullable=False)
 
     # term length in number of utility billing periods
     term_months = Column(Integer, nullable=False)
@@ -60,6 +61,9 @@ class Quote(Base):
         'polymorphic_on': discriminator,
     }
 
+    MIN_PRICE = .01
+    MAX_PRICE = .5
+
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
                  price=None):
@@ -71,6 +75,17 @@ class Quote(Base):
         self.valid_until = valid_until
         self.price = price
 
+    def validate(self):
+        """Sanity check to catch any values that are obviously wrong.
+        """
+        criteria = [
+            self.start_from < self.start_until,
+            self.term_months >= 1 and self.term_months <= 24,
+            self.valid_from < self.valid_until,
+            self.price > self.MIN_PRICE and self.price < self.MAX_PRICE,
+        ]
+        if not all(criteria):
+            raise ValidationError
 
 class MatrixQuote(Quote):
     """Fixed-price candidate supply contract that applies to any customer with
