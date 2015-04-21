@@ -201,7 +201,7 @@ class UtilbillProcessor(object):
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
                 # the values of identifier and meter_identifier
-                # are not copied from predecessor's register to
+                # are not copied automatically from predecessor's register to
                 # new_utilbill registers by SQLAlchemy
                 for r in new_utilbill.registers:
                     r.identifier = register.identifier
