@@ -499,47 +499,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         _, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
-    def test_upload_uility_bill_without_reg_total(self):
-        '''Check that a total register is added to new bills
-        even though some old bills don't have it.
-        '''
-        account = '99999'
-        s = Session()
-
-        files = [StringIO(c) for c in 'abc']
-
-        # upload a first utility bill to serve as the "predecessor" for the
-        # next one. this will have only a demand register called so
-        # the total register is missing
-        self.utilbill_processor.upload_utility_bill(
-            account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric',
-            utility='pepco', rate_class='Residential-R', supplier='supplier')
-        u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
-        while len(u.registers) > 0:
-            del u.registers[0]
-        u.registers = [Register(Register.DEMAND, 'MMBTU')]
-        self.assertEqual({Register.DEMAND},
-                         {r.register_binding for r in u.registers})
-
-        for service, energy_unit in [('gas', 'therms'), ('electric', 'kWh')]:
-            # the next utility bill will still have the total register (in addition to demand),
-            # and its unit will be 'energy_unit'
-            self.utilbill_processor.upload_utility_bill(
-                account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service,
-                utility='pepco', rate_class='Residential-R', supplier='supplier')
-            u = s.query(UtilBill).join(UtilityAccount).filter(
-                UtilityAccount.account == account).order_by(
-                desc(UtilBill.period_start)).first()
-            self.assertEqual({Register.TOTAL, Register.DEMAND},
-                             {r.register_binding for r in u.registers})
-            other = next(
-                r for r in u.registers if r.register_binding == Register.DEMAND)
-            self.assertEqual('MMBTU', other.unit)
-            # NOTE: total register unit is determined by service, not unit in
-            # previous bill
-            s.delete(u)
-            s.flush()
-
     def test_create_utility_bill_for_existing_file(self):
         account = '99999'
 

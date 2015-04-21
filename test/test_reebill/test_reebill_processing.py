@@ -646,14 +646,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1,
                            issue_date=datetime(2000, 2, 1))
-        # delete register from the 2nd utility bill
-        id_2 = self.views.get_all_utilbills_json(
-            account, 0, 30)[0][0]['id']
-
-        register = filter(lambda x: x.identifier == 'R' and
-                                    x.meter_identifier == 'M60324',
-                          utilbill.registers)[0]
-        self.utilbill_processor.delete_register(register.id)
 
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                                          processed=True)
