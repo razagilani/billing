@@ -25,6 +25,16 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
+        header: 'ID',
+        dataIndex: 'id',
+        width: 50,
+        disabled: true
+    },{
+        header: 'Flag',
+        dataIndex: 'flagged',
+        xtype: 'checkcolumn',
+        width: 50
+    },{
         header: 'Total Due',
         dataIndex: 'target_total',
         editor: {
@@ -80,7 +90,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         width: 100
     },{
         header: 'Total Charges',
-        dataIndex: 'computed_total',
+        dataIndex: 'supply_total',
         width: 100,
         renderer: Ext.util.Format.usMoney
     },{

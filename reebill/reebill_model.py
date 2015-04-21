@@ -99,7 +99,7 @@ class ReeBill(Base):
 
     @property
     def utilbill(self):
-        assert len(self.utilbills) == 1
+        # there should only be one, but some early bills had more than one
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
@@ -410,7 +410,9 @@ class ReeBill(Base):
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
-                         self.readings]
+                         self.readings],
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
@@ -814,7 +816,6 @@ class Payment(Base):
         editable. Payments should be editable as long as it is not applied to
         a reebill
         """
-        today = datetime.utcnow()
         if self.reebill_id is None:
             return True
         return False

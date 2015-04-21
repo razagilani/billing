@@ -39,13 +39,13 @@ class ReebillFileHandlerTest(TestCase):
                             late_charge_rate=0.1,
                             bill_email_recipient='test@example.com',
                             service='thermal', utility_account=utility_account)
-        ba2 = Address.from_other(ba)
+        ba2 = ba.clone()
         ba2.addressee = 'Reebill Billing Addressee'
-        sa2 = Address.from_other(sa)
+        sa2 = sa.clone()
         ba2.addressee = 'Reebill Service Addressee'
-        ba3 = Address.from_other(ba)
+        ba3 = ba.clone()
         ba2.addressee = 'Utility Billing Addressee'
-        sa3 = Address.from_other(sa)
+        sa3 = sa.clone()
         ba2.addressee = 'Utility Service Addressee'
         u = UtilBill(utility_account, None, None,
                      supplier='Test Supplier', billing_address=ba3,

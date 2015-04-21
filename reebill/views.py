@@ -1,12 +1,11 @@
-"""The goal of this file is to collect in one place all the code for to
-serializing data into JSON for the ReeBill UI. Some of that code is still in
-other files.
+"""All the code for serializing data into JSON for the ReeBill UI. If any
+code for that is still in other files it should be moved here.
 """
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
-from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge
+from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -100,11 +99,16 @@ class Views(object):
     def get_all_suppliers_json(self):
         return self._serialize_id_name(Supplier)
 
+    def get_all_customer_groups_json(self):
+        return  self._serialize_id_name(CustomerGroup)
+
     def get_all_utilities_json(self):
         return self._serialize_id_name(Utility)
 
     def get_all_rate_classes_json(self):
-        return self._serialize_id_name(RateClass)
+        return [dict(id=x.id, name=x.name,
+                     utility_id=x.utility_id) for x in
+                Session().query(RateClass).order_by(RateClass.name).all()]
 
     def get_utility(self, name):
         session = Session()
@@ -118,6 +122,7 @@ class Views(object):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
 
+    # TODO: no test coverage
     def get_issuable_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries
             of the earliest unissued version-0 reebill account. If
@@ -135,7 +140,8 @@ class Views(object):
             .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
         reebills = session.query(ReeBill) \
             .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence==min_sequence.c.sequence)
+            .filter(ReeBill.sequence==min_sequence.c.sequence)\
+            .filter(ReeBill.processed == 1)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
@@ -161,7 +167,7 @@ class Views(object):
             if reebill_customer is None:
                 group_names = []
             else:
-                group_names = ' '.join(g.name for g in reebill_customer.groups)
+                group_names = ','.join(g.name for g in reebill_customer.groups)
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
@@ -191,6 +197,7 @@ class Views(object):
         rows = list(rows_dict.itervalues())
         return len(rows), rows
 
+    # TODO: no test coverage
     def list_all_versions(self, account, sequence):
         ''' Returns all Reebills with sequence and account ordered by versions
             a list of dictionaries

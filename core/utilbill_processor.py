@@ -182,8 +182,8 @@ class UtilbillProcessor(object):
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
-            billing_address= Address.from_other(billing_address),
-            service_address= Address.from_other(service_address),
+            billing_address=billing_address.clone(),
+            service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
@@ -485,7 +485,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address())
             return result, True
         return result, False
 
@@ -500,7 +500,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address())
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):

@@ -175,6 +175,11 @@ class logger_amqp_utilbill_file(Schema):
     handlers = String()
     qualname = String()
 
+class logger_amqp_utilbill_guids_file(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
 class handler_consoleHandler(Schema):
     level = String()
     formatter = String()
@@ -204,6 +209,12 @@ class handler_amqp_utilbill_file_handler(Schema):
     formatter = String()
     args = String()
 handler_amqp_utilbill_file_handler.add_field('class', String())
+
+class handler_amqp_utilbill_guids_file_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_amqp_utilbill_guids_file_handler.add_field('class', String())
 
 class formatter_simpleFormatter(Schema):
     format = String()

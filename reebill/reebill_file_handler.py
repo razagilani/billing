@@ -82,6 +82,17 @@ class ReebillFileHandler(object):
         return ReebillFileHandler.FILE_NAME_FORMAT % dict(
                 account=reebill.get_account(), sequence=reebill.sequence)
 
+    def get_file_contents(self, reebill):
+        '''Return contents of the PDF file associated with the given
+        :class:`ReeBill` (the file may not exist).
+        '''
+        file_path = os.path.join(self._pdf_dir_path, reebill.get_account(),
+                self.get_file_name(reebill))
+        file_obj = open(file_path, 'r')
+        contents = file_obj.read()
+        file_obj.close()
+        return contents
+
     def get_file_path(self, reebill):
         '''Return full path to the PDF file associated with the given
         :class:`ReeBill` (the file may not exist).
