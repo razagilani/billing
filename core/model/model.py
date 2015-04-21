@@ -183,19 +183,11 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    addressee = Column(String(1000), nullable=False)
-    street = Column(String(1000), nullable=False)
-    city = Column(String(1000), nullable=False)
-    state = Column(String(1000), nullable=False)
-    postal_code = Column(String(1000), nullable=False)
-
-    def __init__(self, addressee='', street='', city='', state='',
-                 postal_code=''):
-        self.addressee = addressee
-        self.street = street
-        self.city = city
-        self.state = state
-        self.postal_code = postal_code
+    addressee = Column(String(1000), nullable=False, default='')
+    street = Column(String(1000), nullable=False, default='')
+    city = Column(String(1000), nullable=False, default='')
+    state = Column(String(1000), nullable=False, default='')
+    postal_code = Column(String(1000), nullable=False, default='')
 
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
@@ -206,23 +198,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s %s' % (self.street, self.city, self.state,
-                               self.postal_code)
-
-    @classmethod
-    def from_other(cls, other_address):
-        """Constructs a new :class:`.Address` instance whose attributes are
-        copied from the given `other_address`.
-        :param other_address: An :class:`.Address` instance from which to
-         copy attributes.
-        """
-        assert isinstance(other_address, cls)
-        return cls(other_address.addressee,
-                   other_address.street,
-                   other_address.city,
-                   other_address.state,
-                   other_address.postal_code)
-
+        return '%s, %s, %s %s' % (
+            self.street, self.city, self.state, self.postal_code)
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution
@@ -235,10 +212,6 @@ class Utility(Base):
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
-
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
@@ -258,10 +231,6 @@ class Supplier(Base):
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
-
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
 
     def __repr__(self):
         return '<Supplier(%s)>' % self.name
@@ -284,14 +253,13 @@ class Register(Base):
     INTERMEDIATE = 'REG_INTERMEDIATE'
 
     # complete set of allowed register binding values (should match the
-    # definition of enum columns in the datababase)
+    # definition of enum columns in the database)
     REGISTER_BINDINGS = [
         TOTAL,
         DEMAND,
         PEAK,
         INTERMEDIATE,
         OFFPEAK,
-        INTERMEDIATE,
         'REG_TOTAL_SECONDARY',
         'REG_TOTAL_TERTIARY',
         'REG_POWERFACTOR',
@@ -841,9 +809,8 @@ class UtilBill(Base):
         'pricing_model'.
         """
         self.check_editable()
-        self.charges = []
         self.charges = pricing_model.get_predicted_charges(self)
-        return self.compute_charges()
+        self.compute_charges()
 
     def processable(self):
         '''Returns False if a bill is missing any of the required fields

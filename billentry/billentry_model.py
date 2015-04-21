@@ -29,7 +29,7 @@ class BillEntryUser(Base, UserMixin):
         assert config.get('billentry', 'disable_authentication') == True
         if cls._anonymous_user is None:
             cls._anonymous_user = BillEntryUser(email='anonymous@example.com')
-            cls._anonymous_user.is_anonymous = lambda : True
+            cls._anonymous_user.is_anonymous = lambda: True
         return cls._anonymous_user
 
     id = Column(Integer, primary_key=True)
@@ -75,8 +75,10 @@ class RoleBEUser(Base):
     many-to-many relationship between "billentry_user" and "roles"'''
     __tablename__ = 'billentry_role_user'
 
-    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'), primary_key=True)
-    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'), primary_key=True)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'),
+                               primary_key=True)
+    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'),
+                               primary_key=True)
 
     # bidirectional attribute/collection of "billentry_user"/"role_beuser"
     beuser = relationship(BillEntryUser,
@@ -128,6 +130,7 @@ class BEUtilBill(UtilBill):
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser)
+    flagged = Column(Boolean)
 
     @classmethod
     def create_from_utilbill(cls, utilbill):
@@ -201,6 +204,23 @@ class BEUtilBill(UtilBill):
         assert self.billentry_user is None or self.billentry_date is not None
 
         return self.processed or (self.billentry_date is not None)
+
+    def flag(self):
+        """ 'Flag' a utility bill, i.e. mark a bill as difficult to process
+        """
+        assert not self.is_flagged()
+        self.flagged = True
+
+    def un_flag(self):
+        """ 'Unflag' a utility bill, i.e. mark the processing difficulty as
+        resolved
+        """
+        assert self.is_flagged()
+        self.flagged = False
+
+    def is_flagged(self):
+        """Return True if the bill has been flagged. False otherwise"""
+        return self.flagged is True
 
     def editable(self):
         if self.is_entered():

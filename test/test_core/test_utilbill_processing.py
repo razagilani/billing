@@ -238,16 +238,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.assertEqual(200, utilbill.target_total)
         # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
-        # change utility name
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              utility='BGE')
-        self.assertEqual('BGE', utilbill.utility.name)
-
-        # change rate class
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              rate_class='something else')
-        self.assertEqual('something else', utilbill.rate_class.name)
-
         # change supplier
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                               supplier='some supplier')
@@ -258,7 +248,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                                          processed=False)
         self.assertEqual(False, utilbill.processed)
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              processed=True)
+                                                         processed=True)
         self.assertEqual(True, utilbill.processed)
 
     def test_update_account_number(self):
@@ -330,23 +320,18 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                                                     0, 30)
         self.assertEqual(1, count)
         self.assertDictContainsSubset({
-                                          'state': 'Final',
-                                          'service': 'Gas',
-                                          'utility':
-                                            column_dict(self.views.get_utility('pepco')),
-                                          'supplier': self.views.
-                                            get_supplier('supplier').name,
-                                          'rate_class': self.views.
-                                            get_rate_class('Residential-R').
-                                            name,
-                                          'period_start': date(2012, 1, 1),
-                                          'period_end': date(2012, 2, 1),
-                                          'total_charges': 0,
-                                          'computed_total': 0,
-                                          'processed': 0,
-                                          'account': '99999',
-                                          'reebills': []
-                                      }, utilbills_data[0])
+            'state': 'Final',
+            'service': 'Gas',
+            'utility': column_dict(self.views.get_utility('pepco')),
+            'supplier': self.views.get_supplier('supplier').name,
+            'period_start': date(2012, 1, 1),
+            'period_end': date(2012, 2, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
 
         # TODO check "meters and registers" data here
         # TODO check "charges" data here
@@ -378,8 +363,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 column_dict(self.views.get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -394,9 +377,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -424,9 +404,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 get_utility('washgas')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('DC Non Residential Non Heat').
-                                name,
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
                                                1),
@@ -442,9 +419,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -459,9 +433,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 get_utility('pepco')),
                             'supplier': self.views.
                                 get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -490,8 +461,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                 'service': 'Gas',
                 'utility': column_dict(self.views.get_utility('washgas')),
                 'supplier': self.views.get_supplier('supplier').name,
-                'rate_class': self.views.get_rate_class(
-                    'DC Non Residential Non Heat').name,
                 'period_start': date(2012, 4, 1),
                 'period_end': date(2012, 5, 1),
                 'total_charges': 0,
@@ -839,67 +808,36 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # create reebill and utility bill
         # NOTE Process._generate_docs_for_new_utility_bill requires utility
         # and rate_class arguments to match those of the template
-        self.utilbill_processor.upload_utility_bill('99999', StringIO('A Water Bill'),
-                                         date(2013, 5, 6), date(2013, 7, 8),
-                                         'gas', utility='washgas',
-                                         rate_class='some rate structure')
+        self.utilbill_processor.upload_utility_bill('99999',
+            StringIO('A Water Bill'), date(2013, 5, 6), date(2013, 7, 8), 'gas',
+            utility='washgas', rate_class='Test Rate Class Template')
         utilbill_data = self.views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
-        self.assertDictContainsSubset({
-                                          'account': '99999',
-                                          'computed_total': 0,
-                                          'period_end': date(2013, 7, 8),
-                                          'period_start': date(2013, 5, 6),
-                                          'processed': 0,
-                                          'rate_class': self.views.
-                                      get_rate_class('some rate structure').name,
-                                          'reebills': [],
-                                          'service': 'Gas',
-                                          'state': 'Final',
-                                          'total_charges': 0.0,
-                                          'utility': column_dict(
-                                          self.views.get_utility('washgas')),
-                                          }, utilbill_data)
-
-        # doc = self.utilbill_processor.get_utilbill_doc(session, utilbill_data['id'])
-        # TODO enable these assertions when upload_utility_bill stops
-        # ignoring them; currently they are set to match the template's
-        # values regardless of the arguments to upload_utility_bill, and
-        # Process._generate_docs_for_new_utility_bill requires them to
-        # match the template.
-        #self.assertEquals('water', doc['service'])
-        #self.assertEquals('pepco', doc['utility'])
-        #self.assertEquals('pepco', doc['rate_class'])
-
-        # modify the MySQL utility bill
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                              period_start=date(2013, 6, 6),
-                                              period_end=date(2013, 8, 8),
-                                              service='electric',
-                                              utility='BGE',
-                                              rate_class='General Service - Schedule C')
-
-        # add some RSIs to the UPRS, and charges to match
+        self.assertDictContainsSubset({'account': '99999', 'computed_total': 0,
+                                       'period_end': date(2013, 7, 8),
+                                       'period_start': date(2013, 5, 6),
+                                       'processed': 0,
+                                       'rate_class': self.views.get_rate_class(
+                                           'Test Rate Class Template').name,
+                                       'reebills': [], 'service': 'Gas',
+                                       'state': 'Final', 'total_charges': 0.0,
+                                       'utility': column_dict(
+                                           self.views.get_utility(
+                                               'washgas')), }, utilbill_data)
 
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Some Supplier',
-                                                         rate_class='rate class')
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Other Supplier',
                                                          processed=True)
         # no other attributes of a utilbill can be changed if
         # update_utilbill_metadata is called with processed = True
         s = Session()
         utilbill = s.query(UtilBill).filter_by(id=utilbill_data['id']).one()
-        self.assertEqual('Some Supplier', utilbill.supplier.name)
+        self.assertEqual('Test Supplier', utilbill.supplier.name)
         self.assertRaises(ProcessedBillError,
                           self.utilbill_processor.add_charge,
                           utilbill_data['id'])
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Other Supplier',
                                                          processed=False)
 
-        self.assertEqual('Other Supplier', utilbill.supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
@@ -918,8 +856,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'shared': False
-                                   }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
+                                       'shared': False},
+            utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
         # compute_utility_bill should update the document to match
         self.utilbill_processor.compute_utility_bill(utilbill_data['id'])
@@ -948,20 +886,16 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 },
                             ], charges):
             self.assertDictContainsSubset(x, y)
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         rate_class='some rate class')
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='some supplier')
+        self.utilbill_processor.update_utilbill_metadata(
+            utilbill_data['id'], supplier='some supplier')
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
                                                          processed=True)
-        self.assertRaises(ProcessedBillError, self.utilbill_processor.update_charge, {
-                                       'rsi_binding': 'C',
-                                       'description':'not shared',
-                                       'quantity_formula': '6',
-                                       'rate': 7,
-                                       'unit':'therms',
-                                       'shared': False
-                                   }, utilbill_id=utilbill_data['id'], rsi_binding='B')
+        self.assertRaises(ProcessedBillError,
+                          self.utilbill_processor.update_charge,
+                          {'rsi_binding': 'C', 'description': 'not shared',
+                           'quantity_formula': '6', 'rate': 7, 'unit': 'therms',
+                           'shared': False}, utilbill_id=utilbill_data['id'],
+                          rsi_binding='B')
 
     def test_compute_realistic_charges(self):
         '''Tests computing utility bill charges and reebill charge for a
