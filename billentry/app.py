@@ -183,10 +183,12 @@ def create_user_in_db(access_token):
     if user is None:
         # generate a random password
         wordfile = xp.locate_wordfile()
-        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
-        user = BillEntryUser(email=session['email'],
-                                 password=get_hashed_password(xp.generate_xkcdpassword(mywords,
-                                                        acrostic="face")))
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6,
+                                       max_length=8)
+        user = BillEntryUser(
+            email=session['email'],
+            password=get_hashed_password(
+                xp.generate_xkcdpassword(mywords, acrostic="face")))
         # add user to the admin role
         admin_role = s.query(Role).filter_by(name='admin').first()
         user.roles = [admin_role]
@@ -196,7 +198,8 @@ def create_user_in_db(access_token):
     s.commit()
     login_user(user)
     # Tell Flask-Principal the identity changed
-    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    identity_changed.send(current_app._get_current_object(),
+        identity=Identity(user.id))
     return userInfo['email']
 
 @app.before_request
@@ -322,7 +325,8 @@ def log_error(exception_name, traceback):
     token = str(uuid.uuid4())
     logger = logging.getLogger(LOG_NAME)
     logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "%s. Error Token <b>%s</b>" % (exception_name, token)
+    error_message = "Internal Server Error. Error Message: %s, Error Token: " \
+                    "<b>%s</b>" % (e.message, token)
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
     return error_message
