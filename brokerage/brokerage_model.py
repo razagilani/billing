@@ -1,6 +1,6 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
-import datetime
+from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float
 from sqlalchemy.orm import relationship
@@ -103,5 +103,5 @@ class MatrixQuote(Quote):
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
-            ['%s: %s' % (name, value) for name, value in
-            self.column_dict().iteritems()] + [''])
+            ['%s: %s' % (name, getattr(self, name)) for name in
+            self.column_names()] + [''])
