@@ -299,10 +299,10 @@ def internal_server_error(e):
     token = str(uuid.uuid4())
     logger = logging.getLogger(LOG_NAME)
     logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    error_message = "Internal Server Error. Error Message: %s, Error Token: <b>%s</b>" % (e.message, token)
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return e.message, 500
+    return error_message, 500
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
