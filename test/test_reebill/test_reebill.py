@@ -108,9 +108,7 @@ class ReebillTest(unittest.TestCase):
                                  supplier=supplier,
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
-        self.register = Register(self.utilbill, '', '', 'therms', False,
-                                 'total', None, '', quantity=100,
-                                register_binding=Register.TOTAL)
+        self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [Charge(self.utilbill, 'A', 2,
                                         Charge.get_simple_formula(
@@ -205,9 +203,8 @@ class ReebillTest(unittest.TestCase):
 
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
-        new_register = Register(self.utilbill, '', '',
-                 'kWh', False, 'total', [], '',quantity=200,
-                 register_binding=Register.DEMAND)
+        new_register = Register(Register.DEMAND, 'kWh', quantity=200)
+        self.utilbill.registers.append(new_register)
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings
