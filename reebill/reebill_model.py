@@ -12,7 +12,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import physical_unit_type
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
@@ -169,7 +169,7 @@ class ReeBill(Base):
         if self.issued:
             raise IssuedBillError("Can't modify an issued reebill")
         if self.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+            raise UnEditableBillError("Can't modify a processed reebill")
 
     def get_period_start(self):
         """Return start of the utility bill's period (date).

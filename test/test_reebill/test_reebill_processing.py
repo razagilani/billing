@@ -17,7 +17,7 @@ from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     clear_db, create_utilbill_processor, create_reebill_objects, \
     create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
+    ConfirmAdjustment, UnEditableBillError, IssuedBillError, NotIssuable, \
     BillingError
 from test import testing_utils, init_test_config
 
@@ -379,12 +379,12 @@ class ReebillProcessingTest(testing_utils.TestCase):
         reebill = self.state_db.get_reebill(acc, 2)
         correction = self.state_db.get_reebill(acc, 1, version=1)
         # any processed regular bill or correction can't be modified (compute, bind_ree, sequential_account_info)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.compute_reebill, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.bind_renewable_energy, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.update_sequential_account_info, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.compute_reebill, acc, correction.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.bind_renewable_energy, acc, correction.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.update_sequential_account_info, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.compute_reebill, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.bind_renewable_energy, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.update_sequential_account_info, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.compute_reebill, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.bind_renewable_energy, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.update_sequential_account_info, acc, correction.sequence)
 
         # when you do specify apply_corrections=True, the corrections are marked as processed.
         self.assertEqual(reebill.processed, True)
@@ -1709,7 +1709,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.update_reebill_readings(self.account, 1)
         self.reebill_processor.update_sequential_account_info(self.account, 1,
                                                               processed=True)
-        with self.assertRaises(ProcessedBillError):
+        with self.assertRaises(UnEditableBillError):
             self.reebill_processor.update_reebill_readings(self.account, 1)
         self.reebill_processor.issue(self.account, 1)
         with self.assertRaises(IssuedBillError):

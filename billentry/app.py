@@ -29,6 +29,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
+from exc import UnEditableBillError
 
 LOG_NAME = 'billentry'
 
@@ -291,6 +292,17 @@ def login_page():
 def page_not_found(e):
     return render_template('403.html'), 403
 
+@app.errorhandler(UnEditableBillError)
+def uneditable_bill_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('UnProcessedBillError', traceback)
+    return error_message, 400
+
 @app.errorhandler(Exception)
 def internal_server_error(e):
     # Flask is not supposed to run error handler functions
@@ -299,16 +311,21 @@ def internal_server_error(e):
     if (app.config['TRAP_HTTP_EXCEPTIONS'] or
         app.config['PROPAGATE_EXCEPTIONS']):
         raise
+    error_message = log_error('Internal Server Error', traceback)
+
+    return error_message, 500
+
+def log_error(exception_name, traceback):
     from core import config
     # Generate a unique error token that can be used to uniquely identify the
     # errors stacktrace in a logfile
     token = str(uuid.uuid4())
     logger = logging.getLogger(LOG_NAME)
     logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    error_message = "%s. Error Token <b>%s</b>" % (exception_name, token)
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
+    return error_message
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
