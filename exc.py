@@ -45,7 +45,7 @@ class IssuedBillError(BillingError):
     attempt to save changes to an issued reebill document in mongo, not failure
     of a bill-processing operation due to a business rule."""
 
-class ProcessedBillError(BillingError):
+class UnEditableBillError(BillingError):
     """Exception for trying to modify a bill that has been processed."""
 
 
