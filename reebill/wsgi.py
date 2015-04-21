@@ -1,22 +1,8 @@
 from os.path import dirname, realpath, join
 import smtplib
-
 from boto.s3.connection import S3Connection
-
-from core import init_config, init_model, init_logging
-
-
-
-# TODO: is it necessary to specify file path?
-
-p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(filepath=p)
-init_config(filepath=p)
-init_model()
-
-from core import config
+from core import init_config, init_model, init_logging, config
 import sys
-
 import json
 import cherrypy
 import os
@@ -38,18 +24,19 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session
+from core.model import Session, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
 from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
-from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
+from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments, BillingError
 from reebill.excel_export import Exporter
 from core.model import UtilBill
+from reebill.reebill_model import CustomerGroup
 
-user_dao = UserDAO(**dict(config.items('mongodb')))
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
 
@@ -85,7 +72,9 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        user = user_dao.load_by_session_token(credentials) if credentials else None
+        # TODO: unbound local--this code never gets run?
+        user = user_dao.load_by_session_token(
+            credentials) if credentials else None
         if user is None:
             logger.info('Remember Me login attempt failed:'
                         ' username "%s"' % username)
@@ -96,6 +85,7 @@ def check_authentication():
             return True
         raise Unauthenticated("No Session")
     return True
+
 
 def db_commit(method):
     '''CherryPY Decorator for committing a database transaction when the method
@@ -112,137 +102,34 @@ def db_commit(method):
 
 class WebResource(object):
 
-    def __init__(self):
-        self.config = config
-        self.logger = logging.getLogger('reebill')
-
-        # create a NexusUtil
-        cache_file_path = self.config.get('reebill', 'nexus_offline_cache_file')
-        if cache_file_path == '':
-            cache = None
-        else:
-            with open(cache_file_path) as cache_file:
-                text = cache_file.read()
-            if text == '':
-                cache = []
-            else:
-                cache = json.load(text)
-        self.nexus_util = NexusUtil(self.config.get('reebill',
-                                                    'nexus_web_host'),
-                                    offline_cache=cache)
-
-        # load users database
-        self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
-
-        # create an instance representing the database
-        self.payment_dao = PaymentDAO()
-        self.state_db = ReeBillDAO()
-
-        s3_connection = S3Connection(
-                config.get('aws_s3', 'aws_access_key_id'),
-                config.get('aws_s3', 'aws_secret_access_key'),
-                is_secure=config.get('aws_s3', 'is_secure'),
-                port=config.get('aws_s3', 'port'),
-                host=config.get('aws_s3', 'host'),
-                calling_format=config.get('aws_s3', 'calling_format'))
-        utilbill_loader = UtilBillLoader()
-        # TODO: ugly. maybe put entire url_format in config file.
-        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
-                'https' if config.get('aws_s3', 'is_secure') is True else
-                'http', config.get('aws_s3', 'host'),
-                config.get('aws_s3', 'port'))
-        self.bill_file_handler = BillFileHandler(s3_connection,
-                                     config.get('aws_s3', 'bucket'),
-                                     utilbill_loader, url_format)
-
-        # create a FuzzyPricingModel
-        self.ratestructure_dao = FuzzyPricingModel(utilbill_loader,
-                                                   logger=self.logger)
-
-        # configure journal:
-        # create a MongoEngine connection "alias" named "journal" with which
-        # journal.Event subclasses (in journal.py) can associate themselves by
-        # setting meta = {'db_alias': 'journal'}.
-        journal_config = dict(self.config.items('mongodb'))
-        mongoengine.connect(
-            journal_config['database'],
-            host=journal_config['host'], port=int(journal_config['port']),
-            alias='journal')
-        self.journal_dao = journal.JournalDAO()
+    def __init__(self, config_, logger, nexus_util, users_dao, payment_dao,
+                 state_db, bill_file_handler, journal_dao, splinter,
+                 rb_file_handler, bill_mailer, ree_getter, utilbill_views,
+                 utilbill_processor, reebill_processor):
+        self.config = config_
+        self.logger = logger
+        self.nexus_util = nexus_util
+        self.user_dao = users_dao
+        self.payment_dao = payment_dao
+        self.state_db = state_db
+        self.bill_file_handler = bill_file_handler
+        self.journal_dao = journal_dao
+        self.splinter = splinter
+        self.reebill_file_handler = rb_file_handler
+        self.bill_mailer = bill_mailer
+        self.ree_getter = ree_getter
+        self.utilbill_views = utilbill_views
+        self.utilbill_processor = utilbill_processor
+        self.reebill_processor = reebill_processor
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
         if self.config.get('reebill', 'sessions_key'):
             self.sessions_key = self.config.get('reebill', 'sessions_key')
 
-        # create a Splinter
-        if self.config.get('reebill', 'mock_skyliner'):
-            self.splinter = mock_skyliner.MockSplinter()
-        else:
-            self.splinter = Splinter(
-                self.config.get('reebill', 'oltp_url'),
-                skykit_host=self.config.get('reebill', 'olap_host'),
-                skykit_db=self.config.get('reebill', 'olap_database'),
-                olap_cache_host=self.config.get('reebill', 'olap_host'),
-                olap_cache_db=self.config.get('reebill', 'olap_database'),
-                monguru_options={
-                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
-                    'olap_cache_db': self.config.get('reebill',
-                                                     'olap_database'),
-                    'cartographer_options': {
-                        'olap_cache_host': self.config.get('reebill',
-                                                           'olap_host'),
-                        'olap_cache_db': self.config.get('reebill',
-                                                         'olap_database'),
-                        'measure_collection': 'skymap',
-                        'install_collection': 'skyit_installs',
-                        'nexus_host': self.config.get('reebill',
-                                                      'nexus_db_host'),
-                        'nexus_db': 'nexus',
-                        'nexus_collection': 'skyline',
-                    },
-                },
-                cartographer_options={
-                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
-                    'olap_cache_db': self.config.get('reebill',
-                                                     'olap_database'),
-                    'measure_collection': 'skymap',
-                    'install_collection': 'skyit_installs',
-                    'nexus_host': self.config.get('reebill', 'nexus_db_host'),
-                    'nexus_db': 'nexus',
-                    'nexus_collection': 'skyline',
-                },
-            )
-
-        # create a ReebillRenderer
-        self.reebill_file_handler = reebill_file_handler.ReebillFileHandler(
-                self.config.get('reebill', 'reebill_file_path'),
-                self.config.get('reebill', 'teva_accounts'))
-        mailer_opts = dict(self.config.items("mailer"))
-        server = smtplib.SMTP()
-        self.bill_mailer = Mailer(mailer_opts['mail_from'],
-                mailer_opts['originator'],
-                mailer_opts['password'],
-                mailer_opts['template_file_name'],
-                server,
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
-                mailer_opts['bcc_list'])
-
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
-
-        self.utilbill_views = Views(self.state_db, self.bill_file_handler,
-                                    self.nexus_util, self.journal_dao)
-        self.utilbill_processor = UtilbillProcessor(
-            self.ratestructure_dao, self.bill_file_handler, logger=self.logger)
-        self.reebill_processor = ReebillProcessor(
-            self.state_db, self.payment_dao, self.nexus_util, self.bill_mailer,
-            self.reebill_file_handler, self.ree_getter, self.journal_dao,
-            logger=self.logger)
-
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('reebill', 'authenticate')
-
+        
         self.reconciliation_report_dir = self.config.get(
             'reebillreconciliation', 'report_directory')
         self.estimated_revenue_report_dir = self.config.get(
@@ -364,16 +251,25 @@ class AccountsResource(RESTResource):
                 row['account'])
 
         count, result = self.utilbill_views.list_account_status(row['account'])
-        print count, result
         return True, {'rows': result, 'results': count}
 
     def handle_put(self, *vpath, **params):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
-        self.utilbill_processor.update_utility_account_number(
-            row['utility_account_id'], row['utility_account_number'])
-        return True, {}
+        if 'utility_account_number' in row:
+            self.utilbill_processor.update_utility_account_number(
+                row['utility_account_id'], row['utility_account_number'])
+
+        if 'tags' in row:
+            tags = filter(None, (t.strip() for t in row['tags'].split(',')))
+            self.reebill_processor.set_groups_for_utility_account(
+                row['utility_account_id'], tags)
+
+        ua = Session().query(UtilityAccount).filter_by(
+            id=row['utility_account_id']).one()
+        count, result = self.utilbill_views.list_account_status(ua.account)
+        return True, {'rows': result, 'results': count}
 
 
 class IssuableReebills(RESTResource):
@@ -398,37 +294,109 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_and_mail(self, reebills, **params):
         bills = json.loads(reebills)
-        reebills_with_corrections = []
+
         for bill in bills:
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
-            try:
-                result = self.reebill_processor.issue_and_mail(
-                    bill['apply_corrections'],
-                    account=account, sequence=sequence, recipients=recipient_list)
-            except ConfirmAdjustment as e:
-                reebills_with_corrections.append({'account': bill['account'],
-                        'sequence': bill['sequence'],
-                        'recipients': bill['recipients'],
-                        'apply_corrections': False,
-                        'corrections': e.correction_sequences,
-                        'adjustment': e.total_adjustment})
-        if not reebills_with_corrections:
-            for bill in bills:
-                version = self.state_db.max_version(bill['account'],
-                                                    bill['sequence'])
-                journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'],
-                        bill['sequence'], version,
-                        applied_sequence=version if version!=0 else None)
+            self.reebill_processor.issue_and_mail(
+                True, account=account, sequence=sequence,
+                recipients=recipient_list)
+            version = self.state_db.max_version(bill['account'],
+                                                bill['sequence'])
+            journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'], version,
+                    applied_sequence=version if version!=0 else None)
             journal.ReeBillMailedEvent.save_instance(
                 cherrypy.session['user'], bill['account'], bill['sequence'],
                 bill['recipients'])
-            return self.dumps({'success': True, 'issued': bills})
+        return self.dumps({'success': True, 'issued': bills})
+
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def create_summary_for_bills(self, bill_dicts, summary_recipient, **params):
+        bills = json.loads(bill_dicts)
+
+        reebills = []
+        for bill_dict in bills:
+            reebills.append(self.state_db.get_reebill(bill_dict['account'],
+                                                      bill_dict['sequence']))
+
+        self.reebill_processor.issue_summary_for_bills(reebills,
+                                                       summary_recipient)
+
+        for bill in bills:
+            account, sequence = bill['account'], bill['sequence']
+            version = self.state_db.max_version(account,
+                                                sequence)
+            journal.ReeBillIssuedEvent.save_instance(
+                cherrypy.session['user'], account,
+                sequence, version,
+                applied_sequence=version if version!=0 else None)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence,
+                summary_recipient)
+        return self.dumps({'success': True, 'issued': bills})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def check_corrections(self, reebills, **params):
+        bills = json.loads(reebills)
+        # Check if adjustments are neccessary
+        accounts_list = set([bill['account'] for bill in bills])
+        try:
+            self.reebill_processor.check_confirm_adjustment(accounts_list)
+        except ConfirmMultipleAdjustments as e:
+            reebills_with_corrections = []
+            for acc, d in e.accounts.iteritems():
+                reebills_with_corrections.append({
+                    'account': acc,
+                    'sequence': '',
+                    'recipients': '',
+                    'apply_corrections': False,
+                    'corrections': d['correction_sequences'],
+                    'adjustment': d['total_adjustment']})
+            return self.dumps({
+                'success': True,
+                'reebills': reebills_with_corrections,
+                'corrections': True
+            })
         else:
-            return self.dumps({'success': True,
-                    'reebills': reebills_with_corrections,
-                    'corrections': True})
+            return self.dumps({
+                'success': True,
+                'corrections': False
+            })
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def issue_summary_for_customer_group(self, customer_group_id,
+                                         summary_recipient, **params):
+        """Generate a summary PDF for all bills in the specified group and
+        mail them to the given recipient. All bills are marked as issued and
+        corrections are applied.
+        """
+        s = Session()
+        group = s.query(CustomerGroup).filter_by(id=customer_group_id).one()
+        bills = group.get_bills_to_issue()
+        if not bills:
+            raise BillingError('No Processed bills were found for customers '
+                               'with group %s' % group.name)
+        reebills = self.reebill_processor.issue_summary_for_bills(
+            bills, summary_recipient)
+
+        # journal event for corrections is not logged
+        user = cherrypy.session['user']
+        for reebill in reebills:
+            journal.ReeBillIssuedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence, reebill.version)
+            journal.ReeBillMailedEvent.save_instance(
+                user, reebill.get_account(), reebill.sequence,
+                reebill.email_recipient)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
@@ -468,7 +436,8 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        reebill = self.reebill_processor.roll_reebill(account, start_date=start_date)
+        reebill = self.reebill_processor.roll_reebill(account,
+                                                      start_date=start_date)
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
@@ -508,7 +477,7 @@ class ReebillsResource(RESTResource):
             recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.reebill_processor.mail_reebills(account, [int(sequence)], recipient_list)
+            self.reebill_processor.mail_reebill(account, int(sequence), recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(
@@ -753,6 +722,14 @@ class RateClassesResource(RESTResource):
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
 
+class CustomerGroupsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        customer_groups = self.utilbill_views.get_all_customer_groups_json()
+        customer_groups.append({'name': 'show all bills', 'id': '-1'})
+        return True, {'rows': customer_groups, 'results': len(customer_groups)}
+
+
 class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
@@ -932,22 +909,155 @@ class ReportsResource(WebResource):
             })
 
 
+def create_webresource_args():
+    logger = logging.getLogger('reebill')
+
+    # create a NexusUtil
+    cache_file_path = config.get('reebill', 'nexus_offline_cache_file')
+    if cache_file_path == '':
+        cache = None
+    else:
+        with open(cache_file_path) as cache_file:
+            text = cache_file.read()
+        if text == '':
+            cache = []
+        else:
+            cache = json.load(text)
+    nexus_util = NexusUtil(
+        config.get('reebill', 'nexus_web_host'),
+        offline_cache=cache
+    )
+
+    # load users database
+    user_dao = UserDAO(**dict(config.items('mongodb')))
+
+    # create an instance representing the database
+    payment_dao = PaymentDAO()
+    state_db = ReeBillDAO()
+
+    s3_connection = S3Connection(
+        config.get('aws_s3', 'aws_access_key_id'),
+        config.get('aws_s3', 'aws_secret_access_key'),
+        is_secure=config.get('aws_s3', 'is_secure'),
+        port=config.get('aws_s3', 'port'),
+        host=config.get('aws_s3', 'host'),
+        calling_format=config.get('aws_s3', 'calling_format'))
+    utilbill_loader = UtilBillLoader()
+    # TODO: ugly. maybe put entire url_format in config file.
+    url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+            'https' if config.get('aws_s3', 'is_secure') is True else
+            'http', config.get('aws_s3', 'host'),
+            config.get('aws_s3', 'port'))
+    bill_file_handler = BillFileHandler(
+        s3_connection,
+        config.get('aws_s3', 'bucket'),
+        utilbill_loader, url_format
+    )
+
+    # create a FuzzyPricingModel
+    fuzzy_pricing_model = FuzzyPricingModel(
+        utilbill_loader,
+        logger=logger
+    )
+
+    # configure journal:
+    # create a MongoEngine connection "alias" named "journal" with which
+    # journal.Event subclasses (in journal.py) can associate themselves by
+    # setting meta = {'db_alias': 'journal'}.
+    journal_config = dict(config.items('mongodb'))
+    mongoengine.connect(
+        journal_config['database'],
+        host=journal_config['host'],
+        port=int(journal_config['port']),
+        alias='journal')
+    journal_dao = journal.JournalDAO()
+
+    # create a Splinter
+    if config.get('reebill', 'mock_skyliner'):
+        splinter = mock_skyliner.MockSplinter()
+    else:
+        splinter = Splinter(
+            config.get('reebill', 'oltp_url'),
+            skykit_host=config.get('reebill', 'olap_host'),
+            skykit_db=config.get('reebill', 'olap_database'),
+            olap_cache_host=config.get('reebill', 'olap_host'),
+            olap_cache_db=config.get('reebill', 'olap_database'),
+            monguru_options={
+                'olap_cache_host': config.get('reebill', 'olap_host'),
+                'olap_cache_db': config.get('reebill',
+                                                 'olap_database'),
+                'cartographer_options': {
+                    'olap_cache_host': config.get('reebill',
+                                                       'olap_host'),
+                    'olap_cache_db': config.get('reebill',
+                                                     'olap_database'),
+                    'measure_collection': 'skymap',
+                    'install_collection': 'skyit_installs',
+                    'nexus_host': config.get('reebill',
+                                                  'nexus_db_host'),
+                    'nexus_db': 'nexus',
+                    'nexus_collection': 'skyline',
+                },
+            },
+            cartographer_options={
+                'olap_cache_host': config.get('reebill', 'olap_host'),
+                'olap_cache_db': config.get('reebill',
+                                                 'olap_database'),
+                'measure_collection': 'skymap',
+                'install_collection': 'skyit_installs',
+                'nexus_host': config.get('reebill', 'nexus_db_host'),
+                'nexus_db': 'nexus',
+                'nexus_collection': 'skyline',
+            },
+        )
+
+    # create a ReebillRenderer
+    rb_file_handler = reebill_file_handler.ReebillFileHandler(
+            config.get('reebill', 'reebill_file_path'),
+            config.get('reebill', 'teva_accounts'))
+    mailer_opts = dict(config.items("mailer"))
+    bill_mailer = Mailer(mailer_opts['mail_from'],
+            mailer_opts['originator'],
+            mailer_opts['password'],
+            mailer_opts['template_file_name'],
+            smtplib.SMTP(),
+            mailer_opts['smtp_host'],
+            mailer_opts['smtp_port'],
+            mailer_opts['bcc_list'])
+
+    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+
+    utilbill_views = Views(state_db, bill_file_handler,
+                           nexus_util, journal_dao)
+    utilbill_processor = UtilbillProcessor(
+        fuzzy_pricing_model, bill_file_handler, logger=logger)
+    reebill_processor = ReebillProcessor(
+        state_db, payment_dao, nexus_util, bill_mailer,
+        rb_file_handler, ree_getter, journal_dao,
+        logger=logger)
+    return (config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter,
+            rb_file_handler, bill_mailer, ree_getter, utilbill_views,
+            utilbill_processor, reebill_processor)
+
+
 class ReebillWSGI(WebResource):
-    accounts = AccountsResource()
-    reebills = ReebillsResource()
-    utilitybills = UtilBillResource()
-    registers = RegistersResource()
-    charges = ChargesResource()
-    payments = PaymentsResource()
-    reebillcharges = ReebillChargesResource()
-    reebillversions = ReebillVersionsResource()
-    journal = JournalResource()
-    reports = ReportsResource()
-    preferences = PreferencesResource()
-    issuable = IssuableReebills()
-    suppliers = SuppliersResource()
-    utilities = UtilitiesResource()
-    rateclasses = RateClassesResource()
+    accounts = AccountsResource(*create_webresource_args())
+    reebills = ReebillsResource(*create_webresource_args())
+    utilitybills = UtilBillResource(*create_webresource_args())
+    registers = RegistersResource(*create_webresource_args())
+    charges = ChargesResource(*create_webresource_args())
+    payments = PaymentsResource(*create_webresource_args())
+    reebillcharges = ReebillChargesResource(*create_webresource_args())
+    reebillversions = ReebillVersionsResource(*create_webresource_args())
+    journal = JournalResource(*create_webresource_args())
+    reports = ReportsResource(*create_webresource_args())
+    preferences = PreferencesResource(*create_webresource_args())
+    issuable = IssuableReebills(*create_webresource_args())
+    suppliers = SuppliersResource(*create_webresource_args())
+    utilities = UtilitiesResource(*create_webresource_args())
+    rateclasses = RateClassesResource(*create_webresource_args())
+    customergroups = CustomerGroupsResource(*create_webresource_args())
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
@@ -1028,4 +1138,3 @@ class ReebillWSGI(WebResource):
         return config_dict
 
 cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
-

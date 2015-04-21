@@ -1,4 +1,4 @@
-Ext.define('BillEntry.store.UserUtilityBills', {
+Ext.define('BillEntry.store.AllFlaggedUtilityBills', {
     extend: 'Ext.data.Store',
     model: 'BillEntry.model.UtilityBill',
 
@@ -14,7 +14,7 @@ Ext.define('BillEntry.store.UserUtilityBills', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://'+window.location.host+'/utilitybills/user_utilitybills',
+        url: 'http://'+window.location.host+'/utilitybills/flagged_utilitybills',
 		reader: {
 			type: 'json',
 			root: 'rows',
@@ -26,7 +26,7 @@ Ext.define('BillEntry.store.UserUtilityBills', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('UserUtilityBills'),
+            exception: utils.makeProxyExceptionHandler('AllFlaggedUtilityBills'),
             scope: this
         }
 	},

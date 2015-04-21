@@ -119,6 +119,42 @@ class ProcessTest(testing_utils.TestCase):
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
+    def test_get_create_customer_group(self):
+        # Create a new group
+        group, created = self.reebill_processor.get_create_customer_group('new')
+        self.assertEqual(True, isinstance(group, CustomerGroup))
+        self.assertEqual(group.name, 'new')
+        self.assertEqual(group.bill_email_recipient, '')
+        self.assertTrue(created)
+        # Assert the same group is returned on the second call
+        group2, created = self.reebill_processor.get_create_customer_group(
+            'new')
+        self.assertEqual(True, isinstance(group2, CustomerGroup))
+        self.assertEqual(group2.name, 'new')
+        self.assertEqual(group2.bill_email_recipient, '')
+        self.assertFalse(created)
+        self.assertEqual(group2, group)
+    def test_set_groups_for_utility_account(self):
+        utility_account = Session().query(UtilityAccount).filter_by(
+            account='99999').one()
+        reebill_customer = Session().query(ReeBillCustomer).filter_by(
+            utility_account_id=utility_account.id).one()
+        self.assertEqual(reebill_customer.get_groups(), [])
+        # Add some groups
+        self.reebill_processor.set_groups_for_utility_account(
+            utility_account.id, ['group1', 'another group', 'unit test'])
+        customer_groups = reebill_customer.get_groups()
+        self.assertEqual([g.name for g in customer_groups],
+                         ['group1', 'another group', 'unit test'])
+        another_group_id = customer_groups[1].id
+        # Add and remove some groups
+        self.reebill_processor.set_groups_for_utility_account(
+            utility_account.id, ['another group', 'something else'])
+        customer_groups = reebill_customer.get_groups()
+        self.assertEqual([g.name for g in customer_groups],
+                         ['another group', 'something else'])
+        # Assert 'another group' remained the same object
+        self.assertEqual(another_group_id, customer_groups[0].id)
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
@@ -724,7 +760,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
         with self.assertRaises(NoSuchBillException) as context:
             self.reebill_processor.roll_reebill(account)
 
-
 class ReeBillProcessingTestWithBills(testing_utils.TestCase):
     '''This class is like ReeBillProcessingTest but includes methods that
     share test data to reduce duplicate code. As many methods as possible from
@@ -1037,8 +1072,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
         self.reebill_processor.reebill_file_handler.get_file_path = Mock()
         temp_dir = TempDirectory()
-        self.reebill_processor.reebill_file_handler.get_file_path.return_value = \
-            temp_dir.path
+        self.reebill_processor.reebill_file_handler.get_file_contents.return_value = \
+            temp_dir, StringIO().read()
         self.utilbill_processor.update_utilbill_metadata(
             self.utilbill.id, processed=True)
         ub = self.utilbill_processor.upload_utility_bill(
@@ -1110,11 +1145,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler = Mock()
         self.reebill_processor.reebill_file_handler.render_max_version \
             .return_value = 1
-        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+        self.reebill_processor.reebill_file_handler.get_file_contents = Mock()
         temp_dir = TempDirectory()
         self.reebill_processor.reebill_file_handler \
-            .get_file_path.return_value = \
-            temp_dir.path
+            .get_file_contents.return_value = \
+            temp_dir.path, StringIO().read()
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
                                                          processed=True)
         ub = self.utilbill_processor.upload_utility_bill(
@@ -2070,7 +2105,7 @@ class TestTouMetering(unittest.TestCase):
         # with these
 
         # create and send the summary bill
-        self.reebill_processor.issue_summary(group)
+        self.reebill_processor.issue_summary_for_bills(group.get_bills_to_issue(), group.bill_email_recipient)
 
         # don't care about email details
         self.mailer.mail.assert_called()

@@ -1,8 +1,9 @@
-Ext.define('BillEntry.store.UserUtilBillCounts', {
+Ext.define('ReeBill.store.CustomerGroups', {
     extend: 'Ext.data.Store',
-    model: 'BillEntry.model.UserUtilBillCount',
+    requires: ['ReeBill.model.CustomerGroup'],
+    model: 'ReeBill.model.CustomerGroup',
 
-    autoLoad: false,
+    autoLoad: true,
     autoSync: true,
 
 	proxy: {
@@ -14,7 +15,7 @@ Ext.define('BillEntry.store.UserUtilBillCounts', {
         sortParam: false,
         limitParam: false,
 
-        url: 'http://' + window.location.host + '/utilitybills/users_counts',
+        url: 'http://' + window.location.host + '/reebill/customergroups',
 
         reader: {
             type: 'json',
@@ -23,14 +24,14 @@ Ext.define('BillEntry.store.UserUtilBillCounts', {
         },
 
         listeners:{
-            exception: utils.makeProxyExceptionHandler('UserUtilBillCounts'),
+            exception: utils.makeProxyExceptionHandler('CustomerGroups'),
             scope: this
         }
 	},
 
     sorters: [{
-        property: 'email',
-        direction: 'DESC'
+        property: 'name',
+        direction: 'ASC'
     }]
 
 });
