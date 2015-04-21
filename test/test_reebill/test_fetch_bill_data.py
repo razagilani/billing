@@ -4,18 +4,18 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
-from billing.core.model import Utility
+from core.model import Utility, Session
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from billing.reebill.state import ReeBill, UtilBill, Address, \
+from reebill.reebill_model import ReeBill, UtilBill, Address, \
     Register, Reading, ReeBillCustomer
-from billing.core.model import UtilityAccount, RateClass, Supplier
+from core.model import UtilityAccount, RateClass, Supplier
 from skyliner.sky_handlers import cross_range
-from billing.util import dateutils
+from util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-import billing.reebill.fetch_bill_data as fbd
-from billing.util.dateutils import date_to_datetime
+import reebill.fetch_bill_data as fbd
+from util.dateutils import date_to_datetime
 
 
 
@@ -56,17 +56,18 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        utility_account = UtilityAccount(
-            'someone', '12345', Mock(autospec=Utility), Mock(autospec=Supplier), Mock(autospec=RateClass), Address(), Address())
-        reebill_customer = ReeBillCustomer('someone', 0.5, 0.1, 'thermal',
-                            'example@example.com', utility_account)
-        utilbill = UtilBill(utility_account, UtilBill.Complete, 'gas', 'washgas',
-                'supplier', 'DC Non Residential Non Heat', Address(), Address(),
-                period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', '', 'therms', False,
-                'total', '', '', quantity=0,
-                register_binding='REG_TOTAL')]
+        utility_account = UtilityAccount('someone', '12345',
+            Mock(autospec=Utility), Mock(autospec=Supplier),
+            Mock(autospec=RateClass), Address(), Address())
+        reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
+                                late_charge_rate=0.1, service='thermal',
+                                bill_email_recipient='example@example.com',
+                                utility_account=utility_account)
+        utility = Utility(name='Washington Gas')
+        rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
+        utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
+        utilbill.registers = [Register(Register.TOTAL, 'therms')]
         self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -206,14 +207,14 @@ class ReeGetterTestPV(unittest.TestCase):
         utilbill.period_start = date(2000,1,1)
         utilbill.period_end = date(2000,2,1)
         energy_register = Mock(autospec=Register)
-        energy_register.register_binding = 'REG_TOTAL'
+        energy_register.register_binding = Register.TOTAL
         energy_register.get_active_periods.return_value = {
             'active_periods_weekday': [(0, 23)],
             'active_periods_weekend': [(0, 23)],
             'active_periods_holiday': [(0, 23)],
         }
         demand_register = Mock(autospec=Register)
-        demand_register.register_binding = 'REG_DEMAND'
+        demand_register.register_binding = Register.DEMAND
         demand_register.get_active_periods.return_value = \
                 energy_register.get_active_periods.return_value
         utilbill.registers = [energy_register, demand_register]

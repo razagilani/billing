@@ -2,7 +2,8 @@ import unittest
 import calendar
 import math
 from datetime import date, time, timedelta
-from billing.util.dateutils import *
+# TODO: import * is bad because it confuses both humans and IDEs
+from util.dateutils import *
 
 class DateUtilsTest(unittest.TestCase):
     def test_iso_year_start(self):

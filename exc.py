@@ -32,25 +32,7 @@ class DuplicateFileError(BillingError):
     '''
     pass
 
-class AltitudeDuplicateError(BillingError):
-    '''Attempt to create a new entity from Altitude (e.g. Utility,
-    Supplier) that already exists.
-    '''
-    pass
-
 class NoSuchBillException(BillingError):
-    pass
-
-
-class NotUniqueException(BillingError):
-    pass
-
-
-class NoRateStructureError(BillingError):
-    pass
-
-
-class NoUtilityNameError(BillingError):
     pass
 
 
@@ -63,7 +45,7 @@ class IssuedBillError(BillingError):
     attempt to save changes to an issued reebill document in mongo, not failure
     of a bill-processing operation due to a business rule."""
 
-class ProcessedBillError(BillingError):
+class UnEditableBillError(BillingError):
     """Exception for trying to modify a bill that has been processed."""
 
 
@@ -71,25 +53,15 @@ class BillStateError(BillingError):
     """A bill was in a state in which some operation is not allowed."""
 
 
-# TODO maybe remove; BillStateError is specific enough
-class NotAttachable(BillStateError):
-    """Trying to issue a bill that is not issuable."""
-
-
 class NotIssuable(BillStateError):
     """Trying to issue a bill that is not issuable."""
 
-class NotComputable(BillStateError):
-    '''Trying to compute processed bill'''
-
+class NotProcessable(BillStateError):
+    """Trying to mark bill as processed that does not have all
+    neccessary data"""
 
 class RSIError(BillingError):
     """Error involving a Rate Structure Item."""
-
-
-class NoRSIError(RSIError):
-    """Trying to compute a charge that no corresponding Rate Structure Item."""
-
 
 class FormulaError(RSIError):
     """Error in the "quantity"/"rate" formula of a Rate Structure Item."""
@@ -100,33 +72,23 @@ class FormulaSyntaxError(FormulaError):
     Python SyntaxError should not be caught for obvious reasons."""
 
 
-class NoSuchRSIError(RSIError):
-    """Could not find the requested RSI"""
-
-
-class MongoError(BillingError):
-    """MongoDB write error: encapsulates the dictionary returned by PyMongo
-    collection save/remove (when using "safe mode," which we should always be
-    using)."""
-
-    def __init__(self, err_dict):
-        self.err_dict = err_dict
-
-    def __str__(self):
-        return str(self.err_dict)
-
-
-class RenderError(Exception):
-    pass
-
 class ConfirmAdjustment(Exception):
     def __init__(self, correction_sequences, total_adjustment):
         super(ConfirmAdjustment, self).__init__()
         self.correction_sequences = correction_sequences
         self.total_adjustment = total_adjustment
 
-class ConfirmAdjustments(Exception):
-    def __init__(self, corrections):
-        super(ConfirmAdjustment, self).__init__()
-        self.corrections = corrections
 
+class ConfirmMultipleAdjustments(ConfirmAdjustment):
+    def __init__(self, accounts):
+        self.accounts = accounts
+
+
+class BillingTestError(Exception):
+    """ Generic error class for Exceptions raised in testing utilities
+    """
+
+
+class TestClientRoutingError(BillingTestError):
+    """ The TestClient was unable to route a request
+    """

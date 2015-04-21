@@ -1,9 +1,11 @@
 from __future__ import division
 from collections import defaultdict
+from datetime import date, timedelta
+from itertools import chain
 from sys import maxint
 
-from billing.exc import NoSuchBillException
-from billing.core.model import Charge
+from exc import NoSuchBillException
+from core.model import Charge, Utility, RateClass
 
 
 class PricingModel(object):
@@ -28,7 +30,7 @@ class FuzzyPricingModel(PricingModel):
     '''
     # minimum normlized score for a charge to get included in a bill
     # (between 0 and 1)
-    RSI_PRESENCE_THRESHOLD = 0.5
+    THRESHOLD = 0.5
 
     @staticmethod
     def _manhattan_distance(p1, p2):
@@ -41,7 +43,8 @@ class FuzzyPricingModel(PricingModel):
     @staticmethod
     def _exp_weight_with_min(a, b, minimum):
         '''Exponentially-decreasing weight function with a minimum value so it's
-        always nonnegative.'''
+        always positive.
+        '''
         return lambda x: max(a**(x * b), minimum)
 
     def __init__(self, utilbill_loader, logger=None):
@@ -54,48 +57,55 @@ class FuzzyPricingModel(PricingModel):
         super(FuzzyPricingModel, self).__init__(logger)
         self._utilbill_loader = utilbill_loader
 
-    def _get_probable_shared_charges(self, utility, service,
-            rate_class, period, threshold=RSI_PRESENCE_THRESHOLD,
-            ignore=lambda x: False, verbose=False):
-        """Constructs and returns a list of :py:class:`processing.state.Charge`
-        instances, each of which is unattached to any
-        :py:class:`proessing.state.UtilBill`.
+    def _get_probable_shared_charges(self, period, relevant_bills, charge_type,
+                                     threshold=THRESHOLD,
+                                     ignore=lambda x: False, verbose=False):
+        """Constructs and returns a list of :py:class:`Charge`
+        instances, each of which is unattached to any :py:class:`UtilBill`.
 
         The charges returned represent a guess as to which formulas should
         be present on the utilbill.
 
+        :param relevant_bills: iterable of other bills to look at when
+        deciding which charges should be included in this bill.
         :param threshold: the minimum score (between 0 and 1) for an RSI to be
         included.
         :param ignore: an optional function to exclude UPRSs from the input data
         """
+        assert isinstance(period[0], date) and isinstance(period[1], date)
+        assert charge_type in Charge.CHARGE_TYPES
+        assert isinstance(threshold, (int, float))
+        assert callable(ignore)
+
         distance_func=self.__class__._manhattan_distance
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
-        all_utilbills = [utilbill for utilbill in
-                         self._utilbill_loader.load_real_utilbills(
-                            service=service,
-                            utility=utility,
-                            rate_class=rate_class,
-                            processed=True
-                         ) if not ignore(utilbill)]
-
-        bindings = set()
-        for utilbill in all_utilbills:
-            for charge in utilbill.charges:
-                bindings.add(charge.rsi_binding)
+        # the unique identifier of "the same charge" across more than one bill
+        # is a combination of both 'type' (e.g. "distribution" or "supply") and
+        # 'rsi_binding' (standardized name). in theory charges with the same
+        # rsi_binding always have the same type; that could be guaranteed in
+        # by a database constraint but it currently isn't.
+        # only rsi_binding values are collected here because only charges
+        # matching the 'charge_type' argument are relevant.
+        bindings = set(c.rsi_binding for c in chain.from_iterable(
+            utilbill.charges for utilbill in relevant_bills) if
+                       c.type == charge_type)
 
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (maxint, None))
 
         for binding in bindings:
-            for utilbill in all_utilbills:
+            for utilbill in relevant_bills:
                 distance = distance_func((utilbill.period_start,
                                           utilbill.period_end), period)
                 weight = weight_func(distance)
                 try:
-                    charge = next(c for c in utilbill.charges
-                                  if c.rsi_binding == binding)
+                    # an "occurrence of the same charge" is one that has the
+                    # same 'rsi_binding' AND the relevant 'type'
+                    charge = next(c for c in utilbill.charges if
+                                  (c.type, c.rsi_binding) == (
+                                  charge_type, binding))
                 except StopIteration:
                     pass
                 else:
@@ -103,7 +113,7 @@ class FuzzyPricingModel(PricingModel):
                         # binding present in charge and shared: add 1 * weight
                         # to score
                         scores[binding] += weight
-                        # if this distance is closer than the closest occurence
+                        # if this distance is closer than the closest occurrence
                         # seen so far, put charge object in closest_occurrence
                         if distance < closest_occurrence[binding][0]:
                             closest_occurrence[binding] = (distance, charge)
@@ -113,14 +123,12 @@ class FuzzyPricingModel(PricingModel):
                 # whether the binding was present or not, update total weight
                 total_weight[binding] += weight
 
-
         # include in the result all charges whose normalized weight
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
         result = []
         if verbose:
-            self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
-                    rate_class, period[0], period[1]))
+            self.logger.info('Predicted charges for %s - %s' % period)
             self.logger.info('%35s %s %s' % ('binding:', 'weight:',
                 'normalized weight %:'))
 
@@ -135,8 +143,38 @@ class FuzzyPricingModel(PricingModel):
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
                 charge = closest_occurrence[binding][1]
-                result.append(Charge.formulas_from_other(charge))
+                result.append(charge.clone())
         return result
+
+    def _load_relevant_bills_distribution(self, utilbill, ignore_func):
+        """Return an iterable of UtilBills relevant for determining the
+        distribution charges of 'utilbill' (currently defined as having the
+        same rate class).
+        :param utilbill: UtilBill whose charges are being generated
+        :param ignore_func: exclude bills for which this returns true
+        """
+        if None in (utilbill.utility, utilbill.rate_class):
+            return []
+        return [utilbill for utilbill in
+                         self._utilbill_loader.load_real_utilbills(
+                             utility=utilbill.utility,
+                             rate_class=utilbill.rate_class,
+                             processed=True
+                         ) if not ignore_func(utilbill)]
+
+    def _load_relevant_bills_supply(self, utilbill, ignore_func):
+        """Return an iterable of UtilBills relevant for determining the
+        supply charges of 'utilbill' (currently defined as having the
+        same supplier).
+        :param utilbill: UtilBill whose charges are being generated
+        :param ignore_func: exclude bills for which this returns true
+        """
+        if utilbill.supplier is None:
+            return []
+        return [utilbill for utilbill in
+                self._utilbill_loader.load_real_utilbills(
+                    supplier=utilbill.supplier, processed=True
+                ) if not ignore_func(utilbill)]
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -148,25 +186,55 @@ class FuzzyPricingModel(PricingModel):
 
         :utilbill: a :class:`processing.state.UtilBill` instance
         """
-        result = self._get_probable_shared_charges(utilbill.utility,
-                utilbill.service, utilbill.rate_class,
-                (utilbill.period_start, utilbill.period_end),
-                ignore=lambda ub:ub.id == utilbill.id)
+        # shared charges
+        if (utilbill.period_start, utilbill.period_end) == (None, None):
+            # no dates known: no shared charges
+            return []
 
+        # if only one date is known, the other one is probably about 30 days
+        # away from it, which is enough to guess the charges
+        start = utilbill.period_start or utilbill.period_end - timedelta(30)
+        end = utilbill.period_end or utilbill.period_start + timedelta(30)
+
+        # only ignore the target bill
+        ignore_func = lambda ub:ub.id == utilbill.id
+
+        # get distribution charges
+        distribution_relevant_bills = self._load_relevant_bills_distribution(
+            utilbill, ignore_func)
+        distribution_charges = self._get_probable_shared_charges(
+            (start, end), distribution_relevant_bills, Charge.DISTRIBUTION,
+            ignore=ignore_func)
+        del distribution_relevant_bills
+
+        # get supply charges
+        supply_relevant_bills = self._load_relevant_bills_supply(
+            utilbill, ignore_func)
+        supply_charges = self._get_probable_shared_charges(
+            (start, end), supply_relevant_bills, Charge.SUPPLY,
+            ignore=ignore_func)
+        del supply_relevant_bills
+
+        # combine distribution and supply charges to get the full set of
+        # shared charges. there shouldn't be any overlap between the two groups.
+        assert set(distribution_charges).isdisjoint(set(supply_charges))
+        result = distribution_charges + supply_charges
+
+        # individual charges:
         # add any charges from the predecessor that are not already there
         try:
             predecessor = self._utilbill_loader.get_last_real_utilbill(
-                    utilbill.utility_account.account, end=utilbill.period_start,
-                service=utilbill.service, utility=utilbill.utility,
-                rate_class=utilbill.rate_class, processed=True)
+                utilbill.utility_account.account, end=utilbill.period_start,
+                utility=utilbill.utility, rate_class=utilbill.rate_class,
+                processed=True)
         except NoSuchBillException:
             # if there's no predecessor, there are no charges to add
             pass
         else:
             for charge in predecessor.charges:
-                if not (charge.shared or charge.rsi_binding in (c.rsi_binding for c in
-                            result)):
-                    result.append(Charge.formulas_from_other(charge))
+                if not (charge.shared or charge.rsi_binding in (
+                        c.rsi_binding for c in result)):
+                    result.append(charge.clone())
 
         return result
 

@@ -36,9 +36,6 @@ Ext.define('ReeBill.controller.Charges', {
     },{
         ref: 'formulaField',
         selector: 'formulaField'
-    },{
-        ref: 'groupTextField',
-        selector: 'groupTextField'
     }],
 
     init: function() {
@@ -70,9 +67,6 @@ Ext.define('ReeBill.controller.Charges', {
             },
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
-            },
-            'groupTextField':{
-                specialkey: this.handleGroupTextFieldEnter
             }
         });
 
@@ -118,19 +112,6 @@ Ext.define('ReeBill.controller.Charges', {
     },
 
     /**
-     * Handle a special key press in the GroupTextField
-     */
-    handleGroupTextFieldEnter: function(f, e) {
-        var field = this.getGroupTextField();
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
-
-        if (e.getKey() == e.ENTER) {
-            selected.set('group', field.getValue());
-            this.getChargesGrid().focus();
-        }
-    },
-
-    /**
      * Handle the row selection.
      */
     handleRowSelect: function() {
@@ -143,23 +124,18 @@ Ext.define('ReeBill.controller.Charges', {
      },
 
     /**
-     * Update the GroupTextField
+     * Update the textFields
      */
     updateTextFields: function(){
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
-        var groupTextField = this.getGroupTextField();
         var formulaField = this.getFormulaField();
 
         if(hasSelections && selected !== undefined){
-            groupTextField.setDisabled(false);
-            groupTextField.setValue(selected.get('group'));
             formulaField.setDisabled(false);
             formulaField.setValue(selected.get('quantity_formula'));
         }else{
-            groupTextField.setDisabled(true);
-            groupTextField.setValue('');
             formulaField.setDisabled(true);
             formulaField.setValue('');
         }
@@ -181,6 +157,7 @@ Ext.define('ReeBill.controller.Charges', {
             description: 'Enter Description',
             rate: 0,
             unit: 'dollars',
+            type: 'supply',
             utilbill_id: selectedBill[0].internalId
         });
         store.sync({success:function(batch){
@@ -204,6 +181,7 @@ Ext.define('ReeBill.controller.Charges', {
 
         store.remove(selected);
         this.updateTextFields();
+        store.reload();
     },
 
     /**

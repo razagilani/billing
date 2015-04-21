@@ -1,29 +1,27 @@
-#!/usr/bin/env python2
 from copy import deepcopy
 from datetime import date, datetime
 from itertools import cycle
 from StringIO import StringIO
-
 import unittest
-import mock
-import logging
 
-from billing.reebill.excel_export import Exporter
-from billing.core.model import UtilBill, Register, Charge
-from billing.reebill.state import StateDB, ReeBill, Payment
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import testing_utils
-from billing import init_config, init_model
-from billing.core.model import Session, UtilityAccount, Utility, Supplier, \
-    Address, RateClass, UtilBill
+import mock
+
+from core import init_config, init_model
+from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
+    Supplier, RateClass, UtilityAccount
+from reebill.excel_export import Exporter
+from reebill.reebill_model import ReeBill, Payment
+from reebill.reebill_dao import ReeBillDAO
+from reebill.payment_dao import PaymentDAO
 
 
 class ExporterSheetTest(unittest.TestCase):
 
     def setUp(self):
         #Set up the mock
-        self.mock_StateDB = mock.create_autospec(StateDB)
-        self.exp = Exporter(self.mock_StateDB)
+        self.mock_StateDB = mock.create_autospec(ReeBillDAO)
+        self.payment_dao = mock.Mock(autospec=PaymentDAO)
+        self.exp = Exporter(self.mock_StateDB, self.payment_dao)
 
     def test_get_reebill_details_dataset(self):
 
@@ -69,7 +67,8 @@ class ExporterSheetTest(unittest.TestCase):
             else:
                 return []
 
-        self.mock_StateDB.get_payments_for_reebill_id.side_effect = get_payments_for_reebill_id
+        self.payment_dao.get_payments_for_reebill_id.side_effect = \
+            get_payments_for_reebill_id
         self.mock_StateDB.get_all_reebills_for_account.side_effect = cycle([
             [make_reebill(1, 1)],   # For account '10003'
             [make_reebill(2, 2), make_reebill(3, 3), make_reebill(4, 4)] # 10004
@@ -287,10 +286,10 @@ class ExporterSheetTest(unittest.TestCase):
         register1 = mock.Mock(autospec=Register)
         register1.description = ''
         register1.quantity = 561.9
-        register1.quantity_units = 'therms'
+        register1.unit = 'therms'
         register1.estimated = False
         register1.reg_type = 'total'
-        register1.register_binding = 'REG_TOTAL'
+        register1.register_binding = Register.TOTAL
         register1.active_periods = None
         u1.registers = [register1]
         u2 = deepcopy(u1)
@@ -316,17 +315,18 @@ class ExporterDataBookTest(unittest.TestCase):
     def setUp(self):
         init_config('test/tstsettings.cfg')
         init_model()
-        logger = logging.getLogger('test')
-        self.exp = Exporter(StateDB(logger))
+
+        self.exp = Exporter(ReeBillDAO(), PaymentDAO())
 
         s = Session()
-        utility = Utility('New Utility', Address())
+        utility = Utility(name='New Utility', address=Address())
         s.add(utility)
 
-        supplier = Supplier('New Supplier', Address())
+        supplier = Supplier(name='New Supplier', address=Address())
         s.add(supplier)
 
-        rate_class = RateClass('New Rate Class', utility)
+        rate_class = RateClass(name='New Rate Class', utility=utility,
+                               service='electric')
         s.add(rate_class)
 
         utility_account = UtilityAccount(
@@ -343,10 +343,11 @@ class ExporterDataBookTest(unittest.TestCase):
 
         s.add(
             UtilBill(
-                utility_account, UtilBill.Estimated, 'electric', utility,
-                supplier, rate_class, Address(), Address(),
+                utility_account, utility,
+                rate_class, supplier=supplier,
                 period_start=date(2010, 11, 1), period_end=date(2011, 2, 3),
-                date_received=datetime.utcnow().date()
+                date_received=datetime.utcnow().date(),
+                state=UtilBill.Estimated,
             )
         )
 

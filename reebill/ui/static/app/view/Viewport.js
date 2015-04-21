@@ -227,7 +227,7 @@ Ext.define('ReeBill.view.Viewport', {
                     },{
                         text: 'Logout',
                         handler: function(){
-                            window.location.pathname = 'reebill/logout';
+                            window.location.pathname = '/reebill/logout';
                         }
                     },'->',{
                         xtype: 'tbtext',

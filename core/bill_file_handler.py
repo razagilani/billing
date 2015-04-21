@@ -1,9 +1,7 @@
-#!/usr/bin/python
 import hashlib
-import requests
 
-from billing.core.model import UtilBill
-from billing.exc import MissingFileError, DuplicateFileError
+from core.model import UtilBill
+from exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandler(object):
@@ -72,7 +70,8 @@ class BillFileHandler(object):
         if utilbill.sha256_hexdigest in (None, ''):
             return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
-                                      key_name=self.get_key_name_for_utilbill(utilbill))
+                                       key_name=self.get_key_name_for_utilbill(
+                                           utilbill))
 
     def check_file_exists(self, utilbill):
         '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
@@ -84,15 +83,22 @@ class BillFileHandler(object):
             raise MissingFileError('Key "%s" does not exist' % key_name)
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
-        """Removes the pdf file associated with utilbill from s3 (unless
-        there are any other UtilBills referring to the same file).
+        """Remove the file associated with 'utilbill' (unless there are any
+        other UtilBills referring to the same file). If for some reason the file
+        is already missing (e.g. an earlier attempt to delete file caused a
+        transaction rollback after deleting it), nothing happens.
         """
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
                 utilbill.sha256_hexdigest) == 1:
             key_name = BillFileHandler.get_key_name_for_utilbill(utilbill)
             key = self._get_amazon_bucket().get_key(key_name)
-            key.delete()
+            if key is None:
+                # key is already gone
+                # TODO: this error should be logged somewhere...
+                pass
+            else:
+                key.delete()
 
     def upload_file(self, file):
         '''Upload the given file to s3.

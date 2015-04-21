@@ -1,6 +1,7 @@
 import unittest
 from datetime import date
-from billing.util.holidays import *
+# TODO: import * is bad because it confuses both humans and IDEs
+from util.holidays import *
 
 class HolidaysTest(unittest.TestCase):
     def test_all_holidays(self):

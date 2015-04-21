@@ -1,5 +1,5 @@
 from boto.s3.connection import S3Connection
-from billing.core.model import UtilBill
+from core.model import UtilBill
 
 def check_s3_files_in_db(session):
     s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
@@ -21,11 +21,11 @@ def check_s3_files_in_db(session):
 if __name__ == '__main__':
     # for checking that al files from S3 were processed correctly in production
     # this should be run after upgrade_scripts are run in production for billing release 23
-    from billing import init_config, init_model, init_logging
+    from core import init_config, init_model, init_logging
     init_config()
     init_model()
     init_logging()
-    from billing import config
-    from billing.core.model import Session
+    from core import config
+    from core.model import Session
     session = Session()
     check_s3_files_in_db(session)
