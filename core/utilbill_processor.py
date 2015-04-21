@@ -200,6 +200,12 @@ class UtilbillProcessor(object):
         for register in predecessor.registers if predecessor else []:
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
+                # the values of identifier and meter_identifier
+                # are not copied from predecessor's register to
+                # new_utilbill registers by SQLAlchemy
+                for r in new_utilbill.registers:
+                    r.identifier = register.identifier
+                    r.meter_identifier = register.meter_identifier
                 continue
             # no need to append this Register to new_utilbill.registers because
             # SQLAlchemy does it automatically
