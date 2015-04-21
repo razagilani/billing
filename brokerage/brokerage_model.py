@@ -9,11 +9,11 @@ from core.model import Base, UtilityAccount
 
 
 class BrokerageAccount(Base):
-    '''Table for storing brokerage-related data associated with a
+    """Table for storing brokerage-related data associated with a
     UtilityAccount. May represent the same thing as one of the "accounts",
     "customers" etc. in other databases. The current purpose is only to keep
     track of which UtilityAccounts are "brokerage-related".
-    '''
+    """
     __tablename__ = 'brokerage_account'
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
                                 primary_key=True)
@@ -24,8 +24,8 @@ class BrokerageAccount(Base):
 
 
 class Quote(Base):
-    '''Fixed-price candidate supply contract.
-    '''
+    """Fixed-price candidate supply contract.
+    """
     __tablename__ = 'quote'
 
     quote_id = Column(Integer, primary_key=True)
@@ -50,8 +50,8 @@ class Quote(Base):
     price = Column(Float, nullable=False)
 
     # other attributes that may need to be added
-    #swing_range (%)
-    #swing_penalty_rate (is there just one? how do we determine what it is?)
+    # swing_range (%)
+    # swing_penalty_rate (is there just one? how do we determine what it is?)
 
     # joined-table inheritance
     discriminator = Column(String(50), nullable=False)
@@ -73,10 +73,10 @@ class Quote(Base):
 
 
 class MatrixQuote(Quote):
-    '''Fixed-price candidate supply contract that applies to any customer with
+    """Fixed-price candidate supply contract that applies to any customer with
     a particular utility, rate class, and annual total energy usage, taken
     from a daily "matrix" spreadsheet.
-    '''
+    """
     __tablename__ = 'matrix_quote'
 
     # lower and upper limits on annual total energy consumption for customers
@@ -92,8 +92,8 @@ class MatrixQuote(Quote):
     }
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
-            date_received=None, valid_from=None, valid_until=None, price=None,
-            min_volume=None, limit_volume=None):
+                 date_received=None, valid_from=None, valid_until=None,
+                 price=None, min_volume=None, limit_volume=None):
         super(MatrixQuote, self).__init__(
             start_from=start_from, start_until=start_until,
             term_months=term_months, date_received=date_received,
@@ -103,5 +103,5 @@ class MatrixQuote(Quote):
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
-            ['%s: %s' % (name, getattr(self, name)) for name in
-            self.column_names()] + [''])
+                         ['%s: %s' % (name, getattr(self, name)) for name in
+                          self.column_names()] + [''])

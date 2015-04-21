@@ -1,6 +1,6 @@
-'''Code for reading quote files. Could include both matrix quotes and custom
+"""Code for reading quote files. Could include both matrix quotes and custom
 quotes.
-'''
+"""
 import calendar
 import re
 from datetime import datetime, timedelta
@@ -22,22 +22,26 @@ from brokerage.brokerage_model import MatrixQuote
 # - "sanity check" quote values after extraction, e.g. start/end dates are in
 #  order and near each other, volume/price values are reasonable
 
+
 class ValidationError(BillingError):
     pass
+
 
 # for validation
 def _assert_true(p):
     if not p:
         raise ValidationError('Assertion failed')
+
+
 def _assert_equal(a, b):
     if a != b:
         raise ValidationError("Expected %s, found %s" % (a, b))
 
 
 class QuoteParser(object):
-    '''Class for parsing a particular quote spreadsheet. This is stateful and
+    """Class for parsing a particular quote spreadsheet. This is stateful and
     one instance should be used per file.
-    '''
+    """
     @staticmethod
     def _get_databook_from_file(quote_file):
         # TODO tablib always chooses the "active" sheet to make a Dataset,
@@ -51,26 +55,27 @@ class QuoteParser(object):
         self._validated = False
 
     def load_file(self, quote_file):
-        '''Read from 'quote_file'. May be very slow and take a huge amount of
+        """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
-        '''
+        :param quote_file: file to read from.
+        """
         self._databook = self._get_databook_from_file(quote_file)
         self._validated = False
 
     def validate(self):
-        '''Raise ValidationError if the file does not match expectations about
+        """Raise ValidationError if the file does not match expectations about
         its format. This is supposed to detect format changes or prevent
         reading the wrong file by accident, not to find all possible
         problems the contents in advance.
-        '''
+        """
         assert self._databook is not None
         self._validate()
         self._validated = True
 
     def extract_quotes(self):
-        '''Yield Quotes extracted from the file. Raises ValidationError if
+        """Yield Quotes extracted from the file. Raises ValidationError if
         the quote file is malformed.
-        '''
+        """
         if not self._validated:
             self.validate()
         return self._extract_quotes()
@@ -83,7 +88,10 @@ class QuoteParser(object):
         # subclasses do extraction here
         raise NotImplementedError
 
+
 class DirectEnergyMatrixParser(QuoteParser):
+    """Parser for Direct Energy spreadsheet.
+    """
 
     QUOTE_START_ROW = 9
     DATE_ROW = 0
@@ -102,8 +110,8 @@ class DirectEnergyMatrixParser(QuoteParser):
             'LF',
             'Restricted Use'
         ]
-        _assert_equal(expected_sheet_titles, [s.title for s in
-            self._databook.sheets()])
+        _assert_equal(expected_sheet_titles,
+                      [s.title for s in self._databook.sheets()])
 
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
@@ -157,8 +165,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         for row in xrange(self.QUOTE_START_ROW, sheet.height):
             # TODO use time zone here
             start_from = get(row, 0, datetime)
-            end_day = calendar.monthrange(start_from.year,
-                    start_from.month)[1]
+            end_day = calendar.monthrange(start_from.year, start_from.month)[1]
             start_until = datetime(start_from.year, start_from.month,
                                    end_day) + timedelta(days=1)
             term_months = get(row, 6, int)
@@ -174,8 +181,10 @@ class DirectEnergyMatrixParser(QuoteParser):
                                   min_volume=min_vol, limit_volume=max_vol,
                                   price=price)
 
+
 class AEPMatrixParser(QuoteParser):
     pass
+
 
 if __name__ == '__main__':
     # example usage
