@@ -52,6 +52,7 @@ class QuoteParser(object):
 
     def __init__(self):
         self._databook = None
+        self._sheet = None
         self._validated = False
 
     def load_file(self, quote_file):
@@ -60,6 +61,7 @@ class QuoteParser(object):
         :param quote_file: file to read from.
         """
         self._databook = self._get_databook_from_file(quote_file)
+        self._sheet = self._databook.sheets()[1]
         self._validated = False
 
     def validate(self):
@@ -88,11 +90,25 @@ class QuoteParser(object):
         # subclasses do extraction here
         raise NotImplementedError
 
+    def _get(self, row, col, type):
+        """Return a value extracted from the spreadsheet cell at (row, col),
+        and expect the given type (e.g. int, float, basestring, datetime).
+        Raise ValidationError if the cell does not exist or has the wrong type.
+        :param row: row index
+        :param row: column index
+        :param type: expected type of the cell contents
+        """
+        try:
+            value = self._sheet[row][col]
+        except IndexError:
+            raise ValidationError('No cell (%s, %s)' % (row, col))
+        _assert_true(isinstance(value, type))
+        return value
+
 
 class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
-
     QUOTE_START_ROW = 9
     DATE_ROW = 0
     DATE_COL = 10
@@ -116,31 +132,22 @@ class DirectEnergyMatrixParser(QuoteParser):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
-        relevant_sheet = self._databook.sheets()[1]
-        _assert_equal('Date:', relevant_sheet[self.DATE_ROW][8])
-        _assert_equal('Annual Volume (MWh)', relevant_sheet[6][8])
+        _assert_equal('Date:', self._sheet[self.DATE_ROW][8])
+        _assert_equal('Annual Volume (MWh)', self._sheet[6][8])
         _assert_equal('***** For easier print view, use the filters '
                       'to narrow down the prices displayed ******',
-                      relevant_sheet[6][1])
+                      self._sheet[6][1])
+
         # TODO: ...
 
+
     def _extract_quotes(self):
-        sheet = self._databook.sheets()[1]
-
-        def get(row, col, type):
-            try:
-                value = sheet[row][col]
-            except IndexError:
-                raise ValidationError('No cell (%s, %s)' % (row, col))
-            _assert_true(isinstance(value, type))
-            return value
-
         def _extract_volume_range(row, col):
             # these cells are strings like like "75-149" where "149" really
             # means < 150, so 1 is added to the 2nd number--unless it is the
             # highest volume range, in which case the 2nd number really means
             # what it says.
-            text = get(row, col, basestring)
+            text = self._get(row, col, basestring)
             m = re.match(r'(\d+)-(\d+)', text)
             if m is None:
                 raise ValidationError
@@ -151,7 +158,7 @@ class DirectEnergyMatrixParser(QuoteParser):
 
         # date at the top of the sheet: validity/expiration date for every
         # quote in this sheet
-        the_date = get(self.DATE_ROW, self.DATE_COL, datetime)
+        the_date = self._get(self.DATE_ROW, self.DATE_COL, datetime)
 
         volume_ranges = [_extract_volume_range(self.VOLUME_RANGE_ROW, col)
                          for col in xrange(self.PRICE_START_COL,
@@ -162,17 +169,17 @@ class DirectEnergyMatrixParser(QuoteParser):
             next_vr = volume_ranges[i+1]
             _assert_equal(vr[1], next_vr[0])
 
-        for row in xrange(self.QUOTE_START_ROW, sheet.height):
+        for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
             # TODO use time zone here
-            start_from = get(row, 0, datetime)
+            start_from = self._get(row, 0, datetime)
             end_day = calendar.monthrange(start_from.year, start_from.month)[1]
             start_until = datetime(start_from.year, start_from.month,
                                    end_day) + timedelta(days=1)
-            term_months = get(row, 6, int)
+            term_months = self._get(row, 6, int)
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = get(row, col, (int, float))
+                price = self._get(row, col, (int, float))
                 yield MatrixQuote(start_from=start_from,
                                   start_until=start_until,
                                   term_months=term_months,
@@ -183,7 +190,10 @@ class DirectEnergyMatrixParser(QuoteParser):
 
 
 class AEPMatrixParser(QuoteParser):
-    pass
+    def _validate(self):
+        raise NotImplementedError
+    def _extract_quotes(self):
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
