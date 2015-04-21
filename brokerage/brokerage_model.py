@@ -61,8 +61,10 @@ class Quote(Base):
         'polymorphic_on': discriminator,
     }
 
+    MIN_TERM_MONTHS = 1
+    MAX_TERM_MONTHS = 36
     MIN_PRICE = .01
-    MAX_PRICE = .5
+    MAX_PRICE = 2.0
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
@@ -78,14 +80,22 @@ class Quote(Base):
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
         """
-        criteria = [
-            self.start_from < self.start_until,
-            self.term_months >= 1 and self.term_months <= 24,
-            self.valid_from < self.valid_until,
-            self.price > self.MIN_PRICE and self.price < self.MAX_PRICE,
-        ]
-        if not all(criteria):
-            raise ValidationError
+        conditions = {
+            self.start_from < self.start_until: 'start_from >= start_until',
+            self.term_months >= self.MIN_TERM_MONTHS and self.term_months <=
+                                                         self.MAX_TERM_MONTHS:
+                'Expected term_months between %s and %s, found %s' % (
+                    self.MIN_TERM_MONTHS, self.MAX_TERM_MONTHS,
+                    self.term_months),
+            self.valid_from < self.valid_until: 'valid_from >= valid_until',
+            self.price >= self.MIN_PRICE and self.price <= self.MAX_PRICE:
+                'Expected price between %s and %s, found %s' % (
+            self.MIN_PRICE, self.MAX_PRICE, self.price)
+        }
+        all_errors = [error_message for value, error_message in
+                      conditions.iteritems() if not value]
+        if all_errors != []:
+            raise ValidationError('. '.join(all_errors))
 
 class MatrixQuote(Quote):
     """Fixed-price candidate supply contract that applies to any customer with
