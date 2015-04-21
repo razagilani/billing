@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
+from exc import UnEditableBillError
 from test import init_test_config
 init_test_config()
 
@@ -115,6 +116,7 @@ class BillEntryIntegrationTest(object):
         # TODO: this should prevent the method decorated with
         # "app.errorhandler" from running, but doesn't
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['PROPAGATE_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -126,7 +128,7 @@ class BillEntryIntegrationTest(object):
 
         self.project_mgr_role = Role('Project Manager', 'Role for accessing reports view of billentry app' )
         self.admin_role = Role('admin', 'admin role for bill entry app')
-        self.utility = Utility('Example Utility', Address())
+        self.utility = Utility(name='Example Utility')
         self.utility.id = 1
         self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
                                   Address(), Address(), '1')
@@ -172,8 +174,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryMain, self).setUp()
 
         s = Session()
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility1 = Utility(name='Empty Utility')
+        utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
@@ -377,16 +379,19 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
 
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
-            id=2,
-            next_meter_read_date=date(2000, 2, 5).isoformat()
-            ))
+        # catch ProcessedBillError because a 500 response is returned
+        # when the user tries to edit a bill that is not editable=
+        with self.assertRaises(UnEditableBillError):
+            rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+                id=2,
+                next_meter_read_date=date(2000, 2, 5).isoformat()
+                ))
+
         # this request is being made using a different content-type because
         # with the default content-type of form-urlencoded bool False
         # was interpreted as a string and it was evaluating to True on the
         # server. Also in out app, the content-type is application/json so
         # we should probably update all our test code to use application/json
-        self.assertEqual(500, rv.status_code)
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
             data=json.dumps(dict(
                 id=2,
@@ -893,10 +898,10 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
-        utility = Utility('Empty Utility', Address())
+        utility = Utility(name='Empty Utility')
 
-        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
-                             Address(), Address(), '2')
+        utility_account = UtilityAccount('Account 2', '22222', utility, None,
+                                         None, Address(), Address(), '2')
 
         regular_utilbill = UtilBill(utility_account, utility, None,
                        service_address=Address(street='2 Example St.'))
@@ -912,11 +917,11 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-
         utility_account.utilbills = [beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)),
+                         datetime.utcnow())
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
 
 
