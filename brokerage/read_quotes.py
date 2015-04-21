@@ -172,7 +172,7 @@ class DirectEnergyMatrixParser(QuoteParser):
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._get(row, col, (int, float))
+                price = self._get(row, col, (int, float)) / 100.
                 yield MatrixQuote(start_from=start_from,
                                   start_until=start_until,
                                   term_months=term_months,
@@ -181,23 +181,9 @@ class DirectEnergyMatrixParser(QuoteParser):
                                   min_volume=min_vol, limit_volume=max_vol,
                                   price=price)
 
-
 class AEPMatrixParser(QuoteParser):
     def _validate(self):
         raise NotImplementedError
     def _extract_quotes(self):
         raise NotImplementedError
-
-
-if __name__ == '__main__':
-    # example usage
-    import os
-    from core import ROOT_PATH
-    path = os.path.join(ROOT_PATH, 'test/test_brokerage/directenergy.xlsm')
-    qp = DirectEnergyMatrixParser()
-    with open(path, 'rb') as spreadsheet_file:
-        qp.load_file(spreadsheet_file)
-    qp.validate()
-    for quote in qp.extract_quotes():
-        print quote
 
