@@ -54,7 +54,10 @@ Ext.define('ReeBill.view.charges.Charges', {
     forceFit: true,
     
     columns: [{
-        // To fix BILL-6254 where entering a space in any text field triggered write on the store
+        // To fix BILL-6254 where entering a space in any text field toggled
+        // the flagged field on/off in the utility bills tab of reebill
+        // This was due to a bug in Extjs 4.2.3 where Space pressed in grid
+        // cell editor fires first column action in first cell
         // See the bug in Extjs 4.2.3 below http://www.sencha.com/forum/showthread.php?296487
         header: 'hidden',
         editor: {
