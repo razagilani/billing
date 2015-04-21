@@ -92,3 +92,8 @@ class BillingTestError(Exception):
 class TestClientRoutingError(BillingTestError):
     """ The TestClient was unable to route a request
     """
+
+class ValidationError(BillingError):
+    pass
+
+
