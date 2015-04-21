@@ -16,3 +16,5 @@ log = logging.getLogger(__name__)
 
 def upgrade():
     log.info('Beginning upgrade to version 27')
+    alembic_upgrade('a583e412020')
+    init_model()

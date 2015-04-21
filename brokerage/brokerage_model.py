@@ -28,7 +28,7 @@ class Quote(Base):
     '''
     __tablename__ = 'quote'
 
-    id = Column(Integer, primary_key=True)
+    quote_id = Column(Integer, primary_key=True)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
@@ -86,7 +86,7 @@ class MatrixQuote(Quote):
     min_volume = Column(Float)
     limit_volume = Column(Float)
 
-    quote_id = Column(Integer, ForeignKey('quote.id'), primary_key=True)
+    quote_id = Column(Integer, ForeignKey('quote.quote_id'), primary_key=True)
     __mapper_args__ = {
         'polymorphic_identity': 'matrixquote',
     }
