@@ -13,6 +13,8 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" is imported.
 from exc import ProcessedBillError
 from test import init_test_config
+from util.dictutils import deep_map
+
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
@@ -33,6 +35,10 @@ from brokerage.brokerage_model import BrokerageAccount
 from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from test.setup_teardown import clear_db
+
+
+def unicodify(x):
+    return unicode(x) if isinstance(x, basestring) else x
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -100,9 +106,9 @@ class BillEntryIntegrationTest(object):
         either string or dict/list form.
         '''
         if isinstance(expected, basestring):
-            expected = loads(expected)
+            expected = deep_map(unicodify, loads(expected))
         if isinstance(actual, basestring):
-            actual = loads(actual)
+            actual = deep_map(unicodify, loads(actual))
         self.assertEqual(expected, actual)
 
     @classmethod
@@ -140,14 +146,14 @@ class BillEntryIntegrationTest(object):
         self.ub1.registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
-        register2 = Register('REG_TOTAL', 'therms', quantity=250.0,
-                             description='ABCDEF description',
-                             identifier='ABCDEF', meter_identifier="MNOPQR")
-        register2.utilbill = self.ub2
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
                                   None, Address(), Address(), '2')
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
+        self.ub2.set_rate_class(self.rate_class2)
+        self.ub2.registers[0].unit = 'therms'
+        self.ub2.registers[0].quantity = 250.0
+        self.ub2.registers[0].meter_identifier = 'MNOPQR'
         self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
@@ -157,7 +163,6 @@ class BillEntryIntegrationTest(object):
         s.add_all([
             self.utility, self.ua1, self.rate_class, self.ub1,
             self.ub2, self.project_mgr_role, self.admin_role,
-            register2
         ])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
@@ -255,8 +260,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': 'Some Electric Rate Class',
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
               'supply_total': 0.0,
@@ -445,8 +450,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': 'Some Electric Rate Class',
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
               'supply_total': 0.0,
@@ -622,7 +627,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0}]},
                         rv.data)
@@ -635,7 +640,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
              "gas_count": 0, "electric_count": 1}]},
                         rv.data)
@@ -745,13 +750,13 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Unknown',
-                'service': 'Unknown',
+                'rate_class': 'Some Electric Rate Class',
+                'service': 'Electric',
                 'service_address': '2 Example St., ,  ',
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 250,
+                'total_energy': 250.0,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
@@ -776,7 +781,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 150,
+                'total_energy': 150.0,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
