@@ -7,8 +7,9 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-from exc import BillingError
+from exc import ValidationError
 from brokerage.brokerage_model import MatrixQuote
+
 
 # TODO:
 # - tests
@@ -18,16 +19,8 @@ from brokerage.brokerage_model import MatrixQuote
 # not IndexErrors, ValueErrors, etc (might want to use different exceptions
 # for validation and errors while extracting quotes)
 # - extract code for asserting sheet names and cell contents into superclass
-# - extract 'get' function and 'sheet' into superclass
-# - "sanity check" quote values after extraction, e.g. start/end dates are in
-#  order and near each other, volume/price values are reasonable
 
 
-class ValidationError(BillingError):
-    pass
-
-
-# for validation
 def _assert_true(p):
     if not p:
         raise ValidationError('Assertion failed')
