@@ -1,5 +1,6 @@
 import unittest
 from mock import MagicMock
+from core.model.model import RegisterTemplate
 from test import init_test_config
 init_test_config()
 from core import init_model
@@ -7,7 +8,7 @@ from core import init_model
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, ProcessedBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from reebill.reebill_model import Payment, ReeBillCustomer
@@ -116,7 +117,7 @@ class UtilBillTestWithDB(TestCase):
 
         utilbill.processed = True
         self.assertTrue(utilbill.processed)
-        self.assertRaises(ProcessedBillError, utilbill.check_editable)
+        self.assertRaises(UnEditableBillError, utilbill.check_editable)
 
     def test_processable(self):
         utility_account = UtilityAccount(
@@ -147,44 +148,31 @@ class UtilBillTestWithDB(TestCase):
             RateClass(name='FB Test Rate Class', utility=self.utility,
                       service='gas'),
             Address(), Address())
+        rate_class = RateClass(name='rate class', utility=self.utility,
+                               service='gas')
+        rate_class.register_templates = [
+            RegisterTemplate(register_binding=Register.TOTAL, unit='therms'),
+            RegisterTemplate(register_binding=Register.DEMAND, unit='kWD')]
         utilbill = UtilBill(utility_account, self.utility,
-                            RateClass(name='rate class', utility=self.utility,
-                                      service='gas'), supplier=self.supplier,
+                            rate_class, supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
+        assert len(utilbill.registers) == 2
 
         session = Session()
         session.add(utilbill)
         session.flush()
 
         charge = utilbill.add_charge()
-        self.assertEqual('REG_TOTAL.quantity', charge.quantity_formula)
+        self.assertEqual('%s.quantity' % Register.TOTAL,
+                         charge.quantity_formula)
 
         session.delete(charge)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, 'total', None, "ABCDEF", quantity=150,
-            register_binding='REG_TOTAL'),
-                              Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-            quantity=150, register_binding='SOME_OTHER_BINDING')]
-
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
-         " quantity formula should be 'REG_TOTAL.quantity' when at least one "
-         " register has a register_binding named 'REG_TOTAL'.")
+        self.assertEqual(charge.quantity_formula,
+                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
-
-        for register in utilbill.registers:
-            session.delete(register)
-
-        utilbill.registers = [Register(utilbill, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "GHIJKL", quantity=150,
-            register_binding='SOME_OTHER_BINDING')]
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, "SOME_OTHER_BINDING", "The "
-            " quantity formula should be 'SOME_OTHER_BINDING' when no registers"
-            " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
         fb_utility = Utility(name='FB Test Utility', address=Address())
@@ -197,10 +185,7 @@ class UtilBillTestWithDB(TestCase):
             RateClass(name='rate class', utility=utility, service='gas'),
             supplier=Supplier(name='supplier', address=Address()),
             period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
-        register = Register(utilbill, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150,
-                register_binding='REG_TOTAL')
+        register = Register(Register.TOTAL, 'therms', quantity=150)
         utilbill.registers = [register]
         charges = [
             dict(
@@ -390,10 +375,7 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(utilbill, '',
-                '', 'kWh', False, "total", '', '',
-                quantity=150,
-                register_binding='REG_TOTAL')]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
             Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity',
                    '', '', 'kWh'),
@@ -468,12 +450,10 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(utilbill, '',
-                '', 'kWh', False, "total", '', '',
-                quantity=150,
-                register_binding='REG_TOTAL')]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity', '', '', 'kWh'),
+            Charge(utilbill, 'A', 1, Register.TOTAL + '.quantity', '', '',
+                   'kWh'),
             Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
             # this has an error
             Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
@@ -481,7 +461,7 @@ class UtilBillTestWithDB(TestCase):
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)
         utilbill.processed = True
-        self.assertRaises(ProcessedBillError, utilbill.compute_charges)
+        self.assertRaises(UnEditableBillError, utilbill.compute_charges)
         self.assertFalse(utilbill.editable())
 
     def test_get_total_energy_consumption(self):
@@ -489,12 +469,8 @@ class UtilBillTestWithDB(TestCase):
                             supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [
-            Register(utilbill, '', '', 'therms', False, '', '', '',
-                     register_binding='X', quantity=1),
-            Register(utilbill, '', '', 'kWh', False, '', '', '',
-                     register_binding='REG_TOTAL', quantity=2),
-        ]
+        utilbill.registers = [Register('X', 'kWh', quantity=1),
+                              Register(Register.TOTAL, 'kWh', quantity=2)]
         self.assertEqual(2, utilbill.get_total_energy_consumption())
 
     def test_charge_types(self):

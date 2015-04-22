@@ -40,7 +40,7 @@ class Mailer(object):
         self.template_html = template_html
 
 
-    def mail(self, recipients, merge_fields, attachment_file, attachment_name,
+    def mail(self, recipients, merge_fields, attachment_contents, attachment_name,
              boundary=None):
         subject = "Nextility: Your Monthly Bill for %s" % (
             merge_fields["street"])
@@ -63,10 +63,10 @@ class Mailer(object):
         maintype, subtype = ctype.split('/', 1)
         if maintype in ('text', 'image', 'audio'):
             # Note: we should handle calculating the charset
-            attachment = MIMEText(attachment_file.read(), _subtype=subtype)
+            attachment = MIMEText(attachment_contents, _subtype=subtype)
         else:
             attachment = MIMEBase(maintype, subtype)
-            attachment.set_payload(attachment_file.read())
+            attachment.set_payload(attachment_contents)
             # Encode the payload using Base64
             encoders.encode_base64(attachment)
         # Set the filename parameter

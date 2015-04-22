@@ -52,6 +52,11 @@ ensure => file,
 content => template('conf/billing-exchange.conf.erb')
 }
 
+file { "/etc/init/billentry-${env}-exchange.conf":
+ensure => file,
+content => template('conf/billentry-exchange.conf.erb')
+}
+
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
     cluster => 'rabbit@ip-10-0-0-158'
 }
