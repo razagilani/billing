@@ -35,8 +35,7 @@ class MockReeGetter(object):
     def __init__(self, quantity):
         self.quantity = quantity
 
-    def update_renewable_readings(self, olap_id, reebill,
-                                  use_olap=True, verbose=False):
+    def update_renewable_readings(self, reebill, use_olap=True, verbose=False):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
 
@@ -1345,8 +1344,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # (it needs energy data only so its correction will have the same
         # energy in it as the original version; only the late charge will
         # differ)
-        self.reebill_processor.ree_getter.update_renewable_readings(
-            self.nexus_util.olap_id(acc), two)
+        self.reebill_processor.ree_getter.update_renewable_readings(two)
 
         # if given a late_charge_rate > 0, 2nd reebill should have a late
         # charge

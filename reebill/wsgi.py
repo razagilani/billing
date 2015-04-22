@@ -1025,7 +1025,7 @@ def create_webresource_args():
             mailer_opts['smtp_port'],
             mailer_opts['bcc_list'])
 
-    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
 
     utilbill_views = Views(state_db, bill_file_handler,
                            nexus_util, journal_dao)
