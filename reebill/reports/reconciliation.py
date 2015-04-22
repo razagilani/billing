@@ -15,8 +15,8 @@ class ReconciliationReport(object):
     def get_dataset(self):
         """Return a tablib.Dataset containing the report data.
         """
-        dataset = Dataset(headers=['Customer ID', 'Sequence', 'Total Energy',
-                                   'Current Total Energy'])
+        dataset = Dataset(headers=['customer_id', 'sequence', 'energy',
+                                   'current_energy'])
         for reebill in self.reebill_dao.get_all_reebills():
             original_energy = reebill.get_total_renewable_energy()
             self.ree_getter.update_renewable_readings(reebill)
