@@ -12,7 +12,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import PHYSICAL_UNITS
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
@@ -99,7 +99,7 @@ class ReeBill(Base):
 
     @property
     def utilbill(self):
-        assert len(self.utilbills) == 1
+        # there should only be one, but some early bills had more than one
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
@@ -158,6 +158,9 @@ class ReeBill(Base):
             self.get_account(), self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
 
+    def get_customer_id(self):
+        return self.reebill_customer.id
+
     def get_account(self):
         return self.reebill_customer.get_account()
 
@@ -169,7 +172,7 @@ class ReeBill(Base):
         if self.issued:
             raise IssuedBillError("Can't modify an issued reebill")
         if self.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+            raise UnEditableBillError("Can't modify a processed reebill")
 
     def get_period_start(self):
         """Return start of the utility bill's period (date).
@@ -410,7 +413,9 @@ class ReeBill(Base):
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
-                         self.readings]
+                         self.readings],
+            'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
+                         self.reebill_customer.get_groups()]
         })
 
         if self.version > 0:
@@ -814,7 +819,6 @@ class Payment(Base):
         editable. Payments should be editable as long as it is not applied to
         a reebill
         """
-        today = datetime.utcnow()
         if self.reebill_id is None:
             return True
         return False

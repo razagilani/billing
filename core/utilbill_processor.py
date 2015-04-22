@@ -182,8 +182,8 @@ class UtilbillProcessor(object):
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
-            billing_address= Address.from_other(billing_address),
-            service_address= Address.from_other(service_address),
+            billing_address=billing_address.clone(),
+            service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
@@ -201,12 +201,12 @@ class UtilbillProcessor(object):
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
                 continue
-            # no need to append this Register to new_utilbill.registers because
-            # SQLAlchemy does it automatically
-            Register(new_utilbill, register.description, register.identifier,
-                     register.unit, False, register.reg_type,
-                     register.active_periods, register.meter_identifier,
-                     quantity=0, register_binding=register.register_binding)
+            new_utilbill.registers.append(
+                Register(register.register_binding, unit=register.unit,
+                         quantity=0, identifier=register.identifier,
+                         reg_type=register.reg_type,
+                         active_periods=register.active_periods,
+                         meter_identifier=register.meter_identifier))
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -368,24 +368,36 @@ class UtilbillProcessor(object):
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
         """
+        # TODO: this code belongs inside UtilBill, if it has to exist at all
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utility_bill.check_editable()
+        # register must have a valid "register_binding" value. yes this is a
+        # pretty bad way to do it.
+        i = 0
+        new_reg_binding = Register.REGISTER_BINDINGS[0]
+        while i < Register.REGISTER_BINDINGS:
+            new_reg_binding = Register.REGISTER_BINDINGS[i]
+            if new_reg_binding not in (r.register_binding for r in
+                                   utility_bill.registers):
+                break
+            i += 1
+        if i == len(Register.REGISTER_BINDINGS):
+            raise BillingError("No more registers can be added")
+
         r = Register(
-            utility_bill,
+            register_kwargs.get('register_binding', new_reg_binding),
+            register_kwargs.get('unit', 'therms'),
             description=register_kwargs.get(
                 'description',"Insert description"),
             identifier=register_kwargs.get(
                 'identifier', "Insert register ID here"),
-            unit=register_kwargs.get('unit', 'therms'),
             estimated=register_kwargs.get('estimated', False),
             reg_type=register_kwargs.get('reg_type', "total"),
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
-            quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get(
-                'register_binding', "Insert register binding here")
-        )
+            quantity=register_kwargs.get('quantity', 0))
+        r.utilbill = utility_bill
         session.add(r)
         session.flush()
         return r
@@ -473,7 +485,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address())
             return result, True
         return result, False
 
@@ -488,7 +500,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address())
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):

@@ -9,7 +9,7 @@ import mock
 from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
-from reebill.excel_export import Exporter
+from reebill.reports.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
@@ -289,7 +289,7 @@ class ExporterSheetTest(unittest.TestCase):
         register1.unit = 'therms'
         register1.estimated = False
         register1.reg_type = 'total'
-        register1.register_binding = 'REG_TOTAL'
+        register1.register_binding = Register.TOTAL
         register1.active_periods = None
         u1.registers = [register1]
         u2 = deepcopy(u1)

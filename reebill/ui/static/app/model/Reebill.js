@@ -41,6 +41,7 @@ Ext.define('ReeBill.model.Reebill', {
         // Data for Issuable Reebills
         {name: 'mailto'},
         {name: 'readings'},
+        {name: 'groups'},
         {name: 'utilbill_total'},
         {name: 'adjustment', convert: function(value, record){
             return record.get('manual_adjustment') + record.get('total_adjustment')
