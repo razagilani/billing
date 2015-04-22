@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from sqlalchemy.sql.expression import desc
 
 from exc import IssuedBillError
@@ -176,6 +176,22 @@ class ReeBillDAO(object):
         except NoResultFound:
             return False
         return True
+
+    def get_all_reebills(self):
+        """Return an iterator of all ReeBills, ordered by account, sequence.
+        Only the highest version of each one is included.
+        """
+        s = Session()
+        max_versions = s.query(ReeBill.reebill_customer_id, ReeBill.sequence,
+                               func.max(ReeBill.version).label('version')).join(
+            ReeBillCustomer).group_by(ReeBill.reebill_customer_id,
+            ReeBill.sequence).subquery()
+        return s.query(ReeBill).join(
+            max_versions, and_(
+                ReeBill.reebill_customer_id, max_versions.c.reebill_customer_id,
+                ReeBill.sequence == max_versions.c.sequence,
+                ReeBill.version == max_versions.c.version)).order_by(
+            ReeBill.reebill_customer_id, ReeBill.sequence).all()
 
     def get_all_reebills_for_account(self, account):
         """

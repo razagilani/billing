@@ -186,6 +186,26 @@ class StateDBTest(TestCase):
         self.state_db.issue(acc, seq)
         self.assertEqual(2, max_issued_version(acc, seq))
 
+    def test_get_all_reebills(self):
+        # two different customers, one bill has multiple versions.
+        customer2 = ReeBillCustomer()
+        customer2.id = self.reebill_customer.id + 1
+        one_1 = ReeBill(self.reebill_customer, 1)
+        one_2_0 = ReeBill(self.reebill_customer, 2)
+        one_2_1 = ReeBill(self.reebill_customer, 2, version=1)
+        two_1 = ReeBill(customer2, 1)
+
+        # mixed-up order
+        Session().add_all([two_1, one_2_1, one_1, one_2_0])
+
+        # result should be ordered by customer, sequence and not include
+        # 'one_2_0'
+        actual = self.state_db.get_all_reebills()
+        expected = [one_1, one_2_1, two_1]
+        self.assertEqual(len(expected), len(actual))
+        for a, b in zip(expected, actual):
+            self.assertIs(a, b)
+
     def test_get_all_reebills_for_account(self):
         session = Session()
 
