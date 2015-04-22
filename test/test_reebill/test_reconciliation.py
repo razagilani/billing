@@ -32,7 +32,7 @@ class TestReconciliationReport(TestCase):
     def test_get_dataset(self):
         dataset = self.rr.get_dataset()
         self.assertEqual(
-            ['Customer ID', 'Sequence', 'Total Energy', 'Current Total Energy'],
+            ['reebill_customer_id', 'sequence', 'energy', 'current_energy'],
             dataset.headers)
         self.assertEqual([
             (1, 1, 100, 110),
