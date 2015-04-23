@@ -54,6 +54,12 @@ Ext.define('ReeBill.view.accounts.AccountForm', {
             allowBlank: false
         },
         {
+            xtype: 'textfield',
+            fieldLabel: 'Remit To',
+            name: 'payee',
+            allowBlank: false
+        },
+        {
             xtype: 'combobox',
             fieldLabel: 'Renewable Energy Service',
             name: 'service_type',
