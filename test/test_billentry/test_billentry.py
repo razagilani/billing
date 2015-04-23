@@ -880,12 +880,20 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(0,
                          s.query(BEUtilBill).filter_by(id=u.id).count())
 
-        the_id = u.id
-        new_beutilbill = replace_utilbill_with_beutilbill(u)
+        # replace_utilbill_with_beutilbill does not have to destroy
+        # utilbill.id, but it may
+        original_id = u.id
 
-        # note that new_beutilbill has the same id
-        query_result = s.query(UtilBill).filter_by(id=the_id).one()
-        self.assertIsNone(u.id)
+        # load charges and registers while 'utilbill' is still valid, so they
+        # can be compared below
+        u.charges, u.registers
+
+        new_beutilbill = replace_utilbill_with_beutilbill(u)
+        self.assertEqual(original_id, new_beutilbill.id)
+
+        # new_beutilbill has the same id, because it corresponds to the same
+        # database row
+        query_result = s.query(UtilBill).filter_by(id=original_id).one()
         self.assertIs(new_beutilbill, query_result)
         self.assertIsInstance(new_beutilbill, BEUtilBill)
         self.assertEqual(BEUtilBill.POLYMORPHIC_IDENTITY,
@@ -896,21 +904,35 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
                          new_beutilbill.billing_address_id)
         self.assertEqual(u.service_address_id,
                          new_beutilbill.service_address_id)
-        self.assertIs(u.billing_address, new_beutilbill.billing_address)
-        self.assertIs(u.service_address, new_beutilbill.service_address)
+        self.assertEqual(u.billing_address.id,
+                         new_beutilbill.billing_address.id)
+        self.assertEqual(u.service_address.id,
+                         new_beutilbill.service_address.id)
+        self.assertEqual(u.billing_address, new_beutilbill.billing_address)
+        self.assertEqual(u.service_address, new_beutilbill.service_address)
+        self.assertEqual(u.charges, new_beutilbill.charges)
+        self.assertEqual([c.id for c in u.charges],
+                         [c.id for c in new_beutilbill.charges])
+        self.assertEqual([r.id for r in u.registers],
+                         [r.id for r in new_beutilbill.registers])
+
+        # also the child objects should really exist in the database
+        self.assertEqual(1, s.query(Address).filter_by(
+            id=new_beutilbill.billing_address_id).count())
+        self.assertEqual(1, s.query(Address).filter_by(
+            id=new_beutilbill.service_address_id).count())
 
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
         utility = Utility('Empty Utility', Address())
-
-        utility_account = UtilityAccount('Account 2', '22222', utility, None, None,
-                             Address(), Address(), '2')
+        utility_account = UtilityAccount('Account 2', '22222', utility, None,
+                                         None, Address(), Address(), '2')
 
         regular_utilbill = UtilBill(utility_account, utility, None,
                        service_address=Address(street='2 Example St.'))
-
-        beutilbill = BEUtilBill.create_from_utilbill(regular_utilbill)
+        beutilbill = BEUtilBill(utility_account, utility, None,
+                                service_address=Address(street='2 Example St.'))
 
         utility_account.utilbills = []
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
@@ -921,11 +943,11 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
         utility_account.utilbills = [regular_utilbill, beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-
         utility_account.utilbills = [beutilbill]
         self.assertTrue(account_has_bills_for_data_entry(utility_account))
 
-        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)), datetime.utcnow())
+        beutilbill.enter(BillEntryUser(Mock(autospecs=BillEntryUser)),
+                         datetime.utcnow())
         self.assertFalse(account_has_bills_for_data_entry(utility_account))
 
 
@@ -965,9 +987,11 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
             guid='3e7f9bf5-f729-423c-acde-58f6174df551'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        self.core_altitude_module.get_utilbill_from_guid.side_effect = NoResultFound
+        self.core_altitude_module.get_utilbill_from_guid.side_effect = \
+            NoResultFound
         self.assertRaises(NoResultFound, self.handler.handle, message_obj)
-        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls([])
+        self.billentry_common_module.replace_utilbill_with_beutilbill.has_calls(
+            [])
 
     def test_process_utilbill_guid_with_matching_guid(self):
         message = create_channel_message_body(dict(
@@ -975,7 +999,8 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
             guid=self.guid))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
-        self.core_altitude_module.get_utilbill_from_guid.return_value = self.utilbill
+        self.core_altitude_module.get_utilbill_from_guid.return_value = \
+            self.utilbill
         self.handler.handle(message_obj)
         self.billentry_common_module.replace_utilbill_with_beutilbill\
                 .assert_called_once_with(self.utilbill)
