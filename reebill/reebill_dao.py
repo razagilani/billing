@@ -57,11 +57,12 @@ class ReeBillDAO(object):
                     "because version %s is not issued yet") % (account,
                     sequence, current_max_version_reebill.version))
 
-        new_reebill = ReeBill(current_max_version_reebill.reebill_customer, sequence,
+        new_reebill = ReeBill(
+            current_max_version_reebill.reebill_customer, sequence,
             current_max_version_reebill.version + 1,
             discount_rate=current_max_version_reebill.discount_rate,
             late_charge_rate=current_max_version_reebill.late_charge_rate,
-            utilbills=current_max_version_reebill.utilbills)
+            utilbill=current_max_version_reebill.utilbill)
 
         # copy "sequential account info"
         new_reebill.billing_address = current_max_version_reebill\
