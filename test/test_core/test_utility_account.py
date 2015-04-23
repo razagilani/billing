@@ -7,7 +7,7 @@ from core import init_model
 from test.setup_teardown import clear_db
 from core.model import UtilBill, Session, Address, Utility, Supplier, \
     RateClass, UtilityAccount
-
+from exc import RSIError, UnEditableBillError, NotProcessable
 def setUpModule():
     init_test_config()
     init_model()
