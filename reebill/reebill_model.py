@@ -592,7 +592,7 @@ class ReeBillCustomer(Base):
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
-                utility_account=None):
+                utility_account=None, payee=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -614,6 +614,7 @@ class ReeBillCustomer(Base):
         self.bill_email_recipient = bill_email_recipient
         self.service = service
         self.utility_account = utility_account
+        self.payee = payee
 
     def get_discount_rate(self):
         return self.discountrate
@@ -623,6 +624,12 @@ class ReeBillCustomer(Base):
 
     def set_discountrate(self, value):
         self.discountrate = value
+
+    def get_payee(self):
+        return self.payee
+
+    def set_payee(self, value):
+        self.payee = value
 
     def get_late_charge_rate(self):
         return self.latechargerate
