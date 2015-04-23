@@ -108,6 +108,32 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill',
                             cascade='all, delete-orphan')
 
+    @staticmethod
+    def increment_version(reebill):
+        """Return a new ReeBill that is a correction of the given one.
+        :param reebill: ReeBill, should be issued and should be the highest
+        issued version for its account.
+        """
+        if reebill.issued != 1:
+            raise ValueError(("Can't increment version of reebill"
+                              "because version %s is not issued yet"))
+        new_reebill = ReeBill(
+            reebill.reebill_customer, reebill.sequence, reebill.version + 1,
+            discount_rate=reebill.discount_rate,
+            late_charge_rate=reebill.late_charge_rate,
+            utilbills=reebill.utilbills)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = reebill.billing_address.clone()
+        new_reebill.service_address = reebill.service_address.clone()
+        new_reebill.discount_rate = reebill.discount_rate
+        new_reebill.late_charge_rate = reebill.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.update_readings_from_reebill(reebill.readings)
+        return new_reebill
+
     def __init__(self, reebill_customer, sequence, version=0,
                  discount_rate=None, late_charge_rate=None,
                  billing_address=None, service_address=None, utilbills=[]):
