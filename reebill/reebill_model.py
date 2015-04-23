@@ -158,6 +158,9 @@ class ReeBill(Base):
             self.get_account(), self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
 
+    def get_customer_id(self):
+        return self.reebill_customer.id
+
     def get_account(self):
         return self.reebill_customer.get_account()
 
