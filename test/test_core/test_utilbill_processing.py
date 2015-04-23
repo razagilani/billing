@@ -3,7 +3,7 @@ from sqlalchemy import desc
 from reebill.views import column_dict
 
 from test import init_test_config
-from exc import DuplicateFileError, ProcessedBillError, BillingError
+from exc import DuplicateFileError, UnEditableBillError, BillingError
 
 init_test_config()
 from core import init_model
@@ -517,8 +517,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
         while len(u.registers) > 0:
             del u.registers[0]
-        u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
-                 register_binding=Register.DEMAND)]
+        u.registers = [Register(Register.DEMAND, 'MMBTU')]
         self.assertEqual({Register.DEMAND},
                          {r.register_binding for r in u.registers})
 
@@ -833,7 +832,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         s = Session()
         utilbill = s.query(UtilBill).filter_by(id=utilbill_data['id']).one()
         self.assertEqual('Test Supplier', utilbill.supplier.name)
-        self.assertRaises(ProcessedBillError,
+        self.assertRaises(UnEditableBillError,
                           self.utilbill_processor.add_charge,
                           utilbill_data['id'])
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
@@ -891,7 +890,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             utilbill_data['id'], supplier='some supplier')
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
                                                          processed=True)
-        self.assertRaises(ProcessedBillError,
+        self.assertRaises(UnEditableBillError,
                           self.utilbill_processor.update_charge,
                           {'rsi_binding': 'C', 'description': 'not shared',
                            'quantity_formula': '6', 'rate': 7, 'unit': 'therms',
