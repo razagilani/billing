@@ -72,7 +72,8 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        # TODO: unbound local--this code never gets run?
+        # load users database
+        user_dao = UserDAO(**dict(config.items('mongodb')))
         user = user_dao.load_by_session_token(
             credentials) if credentials else None
         if user is None:
