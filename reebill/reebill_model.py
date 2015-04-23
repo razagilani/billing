@@ -488,9 +488,8 @@ class ReeBill(Base):
         self.issued = True
 
     def make_correction(self):
-        """Return a new ReeBill that is a correction of this one.
-        This ReeBill should be issued and should be the highest issued
-        version for its sequence.
+        """Return a new ReeBill that is a correction of this one. This one
+        should be issued and should be the highest version for its sequence.
         """
         if not self.issued:
             raise ValueError("Can't correct an unissued bill")
