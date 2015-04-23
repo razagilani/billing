@@ -411,7 +411,7 @@ class ReebillProcessor(object):
 
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
-            template_account, utility_account_number):
+            template_account, utility_account_number, payee):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
@@ -463,7 +463,8 @@ class ReebillProcessor(object):
                 name=name, discount_rate=discount_rate,
                 late_charge_rate=late_charge_rate, service=service_type,
                 bill_email_recipient='example@example.com',
-                utility_account=new_utility_account)
+                utility_account=new_utility_account,
+                payee=payee)
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer
