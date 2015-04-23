@@ -269,7 +269,7 @@ class ReebillProcessor(object):
             raise ValueError("Can't create new version of an un-issued bill.")
 
         old_reebill = self.state_db.get_reebill(account, sequence)
-        reebill = ReeBill.increment_version(old_reebill)
+        reebill = old_reebill.make_correction()
 
         assert len(reebill.utilbills) == 1
 
