@@ -169,6 +169,7 @@ class ReebillFileHandler(object):
             'service_street': reebill.service_address.street,
             'total_adjustment': reebill.total_adjustment,
             'total_utility_charges': reebill.get_total_actual_charges(),
+            'payee': reebill.get_payee(),
             'payment_addressee': 'Nextility',
             'payment_city': 'Washington',
             'payment_postal_code': '20009',
@@ -370,9 +371,9 @@ class BillDoc(BaseDocTemplate):
     # Middle y 264
     # Bottom Y 0
 
-    def _assemble_pages(self):
+    def _assemble_pages(self, data):
         pages = []
-        for i, frames in enumerate(self._page_frames()):
+        for i, frames in enumerate(self._page_frames(payee_frame=data['payee'])):
             pages.append(PageTemplate(id=self.page_names[i], frames=frames))
 
         self.addPageTemplates(pages)
@@ -390,14 +391,14 @@ class BillDoc(BaseDocTemplate):
         self.skin = skin_name
         self._load_fonts()
         self._set_styles()
-        self._assemble_pages()
+        self._assemble_pages(data[-1])
         self.build(self._flowables(data))
 
 class ThermalBillDoc(BillDoc):
 
     page_names = ['First Page', 'Second Page']
 
-    def _page_frames(self):
+    def _page_frames(self, payee_frame=None):
 
         _showBoundaries = 0
 
@@ -457,12 +458,18 @@ class ThermalBillDoc(BillDoc):
         # balance forward block
         balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
+        # remit to block
+        if payee_frame is not None:
+            remitToF = Frame(77, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='remitTo', showBoundary=_showBoundaries)
+
         # balance due block
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
-
-        # build page container for _flowables to populate
-        firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
+        if payee_frame is not None:
+            # build page container for _flowables to populate
+            firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, remitToF, balanceDueF]
+        else:
+            firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
 
         # page two frames
 
@@ -662,7 +669,16 @@ class ThermalBillDoc(BillDoc):
         fl.append(t)
         fl.append(UseUpSpace())
 
+        #populate remitTo
+        if b['payee'] is not None:
+            remitTo = [
+                [Paragraph("Remit To", s['BillLabelLgRight']), Paragraph(b["payee"] if b['payee'] is not None else '', s['BillFieldRight'])]
+            ]
 
+            t = Table(remitTo, [135,85])
+            t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
+            fl.append(t)
+            fl.append(UseUpSpace())
 
         # populate balanceDueFrame
         balanceDue = [

@@ -72,7 +72,7 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        # TODO: unbound local--this code never gets run?
+        user_dao = UserDAO(**dict(config.items('mongodb')))
         user = user_dao.load_by_session_token(
             credentials) if credentials else None
         if user is None:
@@ -245,7 +245,7 @@ class AccountsResource(RESTResource):
                 row['account'], row['name'], row['service_type'],
                 float(row['discount_rate']), float(row['late_charge_rate']),
                 billing_address, service_address, row['template_account'],
-                row['utility_account_number'])
+                row['utility_account_number'], row['payee'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
