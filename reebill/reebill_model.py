@@ -164,6 +164,8 @@ class ReeBill(Base):
     def get_account(self):
         return self.reebill_customer.get_account()
 
+    def get_payee(self):
+        return self.reebill_customer.get_payee()
 
     def check_editable(self):
         '''Raise a ProcessedBillError or IssuedBillError to prevent editing a
