@@ -51,11 +51,11 @@ class ReeBillUnitTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, None, None,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        self.reebill = ReeBill(self.customer, 1, utilbills=[utilbill])
+        self.reebill = ReeBill(self.customer, 1, utilbill=utilbill)
 
         # currently it doesn't matter if the 2nd bill has the same utilbill
         # as the first, but might need to change
-        self.reebill_2 = ReeBill(self.customer, 2, utilbills=[utilbill])
+        self.reebill_2 = ReeBill(self.customer, 2, utilbill=utilbill)
 
     def test_issue(self):
         self.assertEqual(None, self.reebill.email_recipient)
@@ -119,11 +119,9 @@ class ReebillTest(unittest.TestCase):
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,
-                               late_charge_rate=0.1,
-                               utilbills=[self.utilbill])
+                               late_charge_rate=0.1, utilbill=self.utilbill)
         Session().add_all([self.utilbill, self.reebill])
-        self.reebill.replace_readings_from_utility_bill_registers(
-                self.utilbill)
+        self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
     def tearDown(self):
         clear_db()

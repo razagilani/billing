@@ -100,6 +100,8 @@ class ReeBill(Base):
     @property
     def utilbill(self):
         # there should only be one, but some early bills had more than one
+        if self.utilbills == []:
+            return None
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
@@ -110,7 +112,7 @@ class ReeBill(Base):
 
     def __init__(self, reebill_customer, sequence, version=0,
                  discount_rate=None, late_charge_rate=None,
-                 billing_address=None, service_address=None, utilbills=[]):
+                 billing_address=None, service_address=None, utilbill=None):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
@@ -151,7 +153,10 @@ class ReeBill(Base):
         # can be fixed by setting 'utilbills' last, but there may be a better
         # solution. see related bug:
         # https://www.pivotaltracker.com/story/show/65502556
-        self.utilbills = utilbills
+        if utilbill is None:
+            self.utilbills = []
+        else:
+            self.utilbills = [utilbill]
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
@@ -630,6 +635,13 @@ class ReeBillCustomer(Base):
         return '%(id)s %(nextility_num)s %(name)s' % dict(
             id=self.id, nextility_num=self.get_account(), name=self.name)
 
+    def get_last_bill(self):
+        try:
+            result = max(self.reebills, key=lambda r: (r.sequence, r.version))
+        except ValueError:
+            return None
+        return result
+
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
         version is 0 (i.e. is not a correction), or None if there are no bills.
@@ -712,17 +724,25 @@ class Reading(Base):
 
     unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
 
-    @staticmethod
-    def make_reading_from_register(register):
-        '''Return a new 'Reading' instance based on the given utility bill
+    @classmethod
+    def make_reading_from_register(cls, register, estimate=False):
+        """Return a new 'Reading' instance based on the given utility bill
         register  with default values for its measure name and aggregation
         function.
         :param register: Register on which this reading is based.
-        '''
-        return Reading(register.register_binding, "Energy Sold",
-                              register.quantity, 0, "SUM",
-                              register.unit)
+        :param estimate: use a different measure to get an estimated
+        renewable energy usage number instead of the actual value.
+        """
+        if estimate:
+            measure_name = 'Estimated Energy Sold'
+        else:
+            measure_name = 'Energy Sold'
+        agg_func_name = 'SUM'
+        return Reading(register.register_binding, measure_name,
+                       register.quantity, 0, agg_func_name, register.unit)
 
+    # this should probably not be called directly; use
+    # make_reading_from_register instead
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
