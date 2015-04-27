@@ -174,12 +174,14 @@ class ReebillProcessor(object):
         reebill.set_payments(payments, predecessor.balance_due)
         return reebill
 
-    def roll_reebill(self, account, start_date=None):
+    def roll_reebill(self, account, start_date=None, estimate=False):
         """ Create first or roll the next reebill for given account.
         After the bill is rolled, this function also binds renewable energy data
         and computes the bill by default. This behavior can be modified by
         adjusting the appropriate parameters.
-        'start_date': must be given for the first reebill.
+        :param 'start_date': datetime, must be given for the first reebill.
+        :param estimate: bool: whether to use real or estimated measurements
+        of renewable energy consumption.
         """
         session = Session()
         customer = self.state_db.get_reebill_customer(account)
@@ -211,13 +213,13 @@ class ReebillProcessor(object):
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
-        if last_reebill is None:
+        if last_reebill is None or estimate:
             # this is the first reebill: choose only total register, which is
             #  guaranteed to exist
             reg_total_register = next(r for r in new_utilbill.registers if
                                       r.register_binding == Register.TOTAL)
             new_reebill.readings = [Reading.make_reading_from_register(
-                reg_total_register, estimate=False)]
+                reg_total_register, estimate=estimate)]
         else:
             # not the first reebill: copy readings from the previous one
             new_reebill.update_readings_from_reebill(last_reebill.readings)
