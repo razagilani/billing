@@ -222,6 +222,7 @@ class ReebillProcessor(object):
                 reg_total_register, estimate=estimate)]
         else:
             # not the first reebill: copy readings from the previous one
+            # TODO: this could be bad if the last bill was estimated
             new_reebill.update_readings_from_reebill(last_reebill.readings)
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
