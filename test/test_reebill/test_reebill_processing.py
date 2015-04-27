@@ -492,7 +492,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }
         self.reebill_processor.create_new_account('55555', 'Another New Account',
                                         'thermal', 0.6, 0.2, billing_address,
-                                        service_address, '99999', '123')
+                                        service_address, '99999', '123', 'test')
         self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 
