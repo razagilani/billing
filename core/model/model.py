@@ -3,19 +3,16 @@ SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
 import ast
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from itertools import chain
 import json
-from math import floor
 
 import sqlalchemy
-from sqlalchemy import desc
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
-from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
@@ -25,7 +22,7 @@ from alembic.migration import MigrationContext
 
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    ProcessedBillError, NotProcessable
+    UnEditableBillError, NotProcessable
 
 
 __all__ = [
@@ -183,19 +180,11 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    addressee = Column(String(1000), nullable=False)
-    street = Column(String(1000), nullable=False)
-    city = Column(String(1000), nullable=False)
-    state = Column(String(1000), nullable=False)
-    postal_code = Column(String(1000), nullable=False)
-
-    def __init__(self, addressee='', street='', city='', state='',
-                 postal_code=''):
-        self.addressee = addressee
-        self.street = street
-        self.city = city
-        self.state = state
-        self.postal_code = postal_code
+    addressee = Column(String(1000), nullable=False, default='')
+    street = Column(String(1000), nullable=False, default='')
+    city = Column(String(1000), nullable=False, default='')
+    state = Column(String(1000), nullable=False, default='')
+    postal_code = Column(String(1000), nullable=False, default='')
 
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
@@ -206,23 +195,8 @@ class Address(Base):
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
-        return '%s, %s, %s %s' % (self.street, self.city, self.state,
-                               self.postal_code)
-
-    @classmethod
-    def from_other(cls, other_address):
-        """Constructs a new :class:`.Address` instance whose attributes are
-        copied from the given `other_address`.
-        :param other_address: An :class:`.Address` instance from which to
-         copy attributes.
-        """
-        assert isinstance(other_address, cls)
-        return cls(other_address.addressee,
-                   other_address.street,
-                   other_address.city,
-                   other_address.state,
-                   other_address.postal_code)
-
+        return '%s, %s, %s %s' % (
+            self.street, self.city, self.state, self.postal_code)
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution
@@ -235,10 +209,6 @@ class Utility(Base):
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
-
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
@@ -258,10 +228,6 @@ class Supplier(Base):
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
-
-    def __init__(self, name='', address=None):
-        self.name = name
-        self.address = address
 
     def __repr__(self):
         return '<Supplier(%s)>' % self.name
@@ -291,7 +257,6 @@ class Register(Base):
         PEAK,
         INTERMEDIATE,
         OFFPEAK,
-        INTERMEDIATE,
         'REG_TOTAL_SECONDARY',
         'REG_TOTAL_TERTIARY',
         'REG_POWERFACTOR',
@@ -336,17 +301,15 @@ class Register(Base):
         """Return a new Register created based on the given RegisterTemplate.
         :param register_template: RegisterTemplate instance.
         """
-        return cls(None, register_template.description, '',
-                   register_template.unit, False, '',
-                   register_template.active_periods, '',
-                   register_binding=register_template.register_binding)
+        return cls(register_template.register_binding, register_template.unit,
+                   description=register_template.description,
+                   active_periods=register_template.active_periods)
 
-    def __init__(self, utilbill, description, identifier, unit,
-                 estimated, reg_type, active_periods, meter_identifier,
-                 quantity=0.0, register_binding=''):
+    def __init__(self, register_binding, unit, quantity=0.0, description='',
+                 identifier='', estimated=False, active_periods=None,
+                 meter_identifier='', reg_type=''):
         """Construct a new :class:`.Register`.
 
-        :param utilbill: The :class:`.UtilBill` on which the register appears
         :param description: A description of the register
         :param quantity: The register quantity
         :param unit: The units of the quantity (i.e. Therms/kWh)
@@ -357,7 +320,6 @@ class Register(Base):
         :param active_periods:
         :param meter_identifier:
         """
-        self.utilbill = utilbill
         self.description = description
         self.quantity = quantity
         self.unit = unit
@@ -387,6 +349,9 @@ class Register(Base):
 
 
 class RegisterTemplate(Base):
+    """Used by RateClass to determine the set of Registers in UtilBills
+    belonging to each rate class. This should not be used outside of RateClass.
+    """
     __tablename__ = 'register_template'
 
     register_template_id = Column(Integer, primary_key=True)
@@ -686,6 +651,7 @@ class UtilBill(Base):
         if rate_class is not None:
             self.registers = rate_class.get_register_list()
 
+        self.charges = []
         self.date_modified = datetime.utcnow()
 
     def get_utility(self):
@@ -719,7 +685,7 @@ class UtilBill(Base):
         return self.rate_class.name
 
     def get_rate_class(self):
-        self.rate_class
+        return self.rate_class
 
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
@@ -873,7 +839,7 @@ class UtilBill(Base):
         this before modifying a UtilBill or its child objects.
         '''
         if not self.editable():
-            raise ProcessedBillError('Utility bill is not editable')
+            raise UnEditableBillError('Utility bill is not editable')
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
@@ -940,7 +906,6 @@ class UtilBill(Base):
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
-        #TODO: make this more generic once implementation of Regiter is changed
         register = next(r for r in self.registers if r.register_binding
                                                      == Register.TOTAL)
         return register.meter_identifier
@@ -1030,7 +995,7 @@ class Charge(Base):
     @staticmethod
     def get_simple_formula(register_binding):
         """
-        :param register: one of the register binding values in
+        :param register_binding: one of the register binding values in
         Register.REGISTER_BINDINGS.
         :return: a formula for a charge that is directly proportional to the
         value of the register, such as "REG_TOTAL.quantity". Most charge
@@ -1101,9 +1066,6 @@ class Charge(Base):
         `Evaluation` instance
         :param context: map of binding name to `Evaluation`
         :param update: if true, set charge attributes to formula evaluations
-        :param raise_exception: Raises an exception if the charge could not be
-        computed. Otherwise silently sets the error attribute of the charge
-        to the exception message.
         :returns: a `Evaluation`
         """
         try:
