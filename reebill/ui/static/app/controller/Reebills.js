@@ -100,7 +100,14 @@ Ext.define('ReeBill.controller.Reebills', {
                 click: this.handleRenderPdf
             },
             '[action=createNext]': {
-                click: this.handleCreateNext
+                click: function() {
+                    this.handleCreateNext(false);
+                }
+            },
+            '[action=createEstimated]': {
+                click: function() {
+                    this.handleCreateNext(true);
+                }
             },
             '[action=saveAccountInformation]': {
                 click: this.handleSaveAccountInformation
@@ -478,8 +485,9 @@ Ext.define('ReeBill.controller.Reebills', {
 
     /**
      * Handle the create next reebill button.
+     * estimated: boolean, normally false, true to create an estimated bill.
      */
-    handleCreateNext: function() {
+    handleCreateNext: function(estimated) {
         var store = this.getReebillsStore();
         if(store.count() === 0){
            if(this._lastCreateNextDate === undefined){
@@ -488,21 +496,21 @@ Ext.define('ReeBill.controller.Reebills', {
            Ext.Msg.prompt(
                'Service Start Date',
                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
-               function(button, text){
-                   if(button === 'ok'){
+               function (button, text) {
+                   if (button === 'ok') {
                        var controller = this;
                        controller._lastCreateNextDate = text;
-                       if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
-                           store.insert(0, {period_start: text});
-                       }else{
+                       if(Ext.Date.parse(text, 'Y-m-d') === undefined) {
                            Ext.Msg.alert(
                                'Invalid Date',
                                'Please enter a date in the format (YYYY-MM-DD)',
-                               function(){
-                                   controller.handleCreateNext();
+                               function () {
+                                   controller.handleCreateNext(estimated);
                                }
                            )
+                           return;
                        }
+                   store.insert(0, {period_start: text});
                    }
                },
                this,

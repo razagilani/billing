@@ -437,8 +437,9 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        reebill = self.reebill_processor.roll_reebill(account,
-                                                      start_date=start_date)
+        estimate = bool(params['estimated'])
+        reebill = self.reebill_processor.roll_reebill(
+            account, start_date=start_date, estimate=bool(estimate))
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
