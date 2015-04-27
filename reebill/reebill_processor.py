@@ -225,8 +225,7 @@ class ReebillProcessor(object):
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(new_reebill)
 
         try:
             self.compute_reebill(account, new_sequence)
@@ -250,8 +249,7 @@ class ReebillProcessor(object):
 
         assert len(reebill.utilbills) == 1
 
-        self.ree_getter.\
-            update_renewable_readings(self.nexus_util.olap_id(account), reebill)
+        self.ree_getter.update_renewable_readings(reebill)
         try:
             self.compute_reebill(account, sequence, version=max_version+1)
         except Exception as e:
@@ -464,8 +462,7 @@ class ReebillProcessor(object):
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.check_editable()
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(reebill, use_olap=True)
 
     def mail_reebill(self, account, sequence, recipient_list):
         reebill = self.state_db.get_reebill(account, sequence)

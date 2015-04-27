@@ -106,7 +106,6 @@ class ReebillFileHandlerTest(TestCase):
         # check the case where the directory for the PDF already exists by
         # creating it before calling 'render'
         path = self.file_handler.get_file_path(self.reebill)
-        os.makedirs(os.path.dirname(path))
 
         self.file_handler.render(self.reebill)
 
