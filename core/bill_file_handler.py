@@ -5,9 +5,10 @@ from exc import MissingFileError, DuplicateFileError
 
 
 class BillFileHandler(object):
-    '''This class handles everything related to utility bill files, which are
-    stored in Amazon S3.
-    '''
+    """Handles everything related to utility bill files. These are
+    stored in Amazon S3 but the interface is intended to be independent of S3
+    so they could potentially be stored anywhere.
+    """
     HASH_CHUNK_SIZE = 1024 ** 2
 
     # for validating file hash strings
@@ -15,7 +16,7 @@ class BillFileHandler(object):
     HASH_DIGEST_REGEX = '^[0-9a-f]{%s}$' % HASH_DIGEST_LENGTH
 
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
-        ''':param connection: boto.s3.S3Connection
+        """param connection: boto.s3.S3Connection
         :param bucket_name: name of S3 bucket where utility bill files are
         :param utilbill_loader: UtilBillLoader object to access the utility
         bill database.
@@ -24,16 +25,17 @@ class BillFileHandler(object):
         "https://s3.amazonaws.com/%(bucket_name)s/utilbill/%(key_name)s"
         (must be formattable with a dict having "bucket_name" and "key_name"
         keys).
-        '''
+        """
         self._connection = connection
         self._bucket_name = bucket_name
         self._utilbill_loader = utilbill_loader
         self._url_format = url_format
 
     @classmethod
-    def compute_hexdigest(cls, file):
-        '''Return SHA-256 hash of the given file (must be seekable).
-        '''
+    def _compute_hexdigest(cls, file):
+        """Return SHA-256 hash of the given file (must be seekable).
+        :param file: seekable file
+        """
         hash_function = hashlib.sha256()
         position = file.tell()
         while True:
@@ -50,18 +52,19 @@ class BillFileHandler(object):
 
     @classmethod
     def get_key_name_for_utilbill(cls, utilbill):
-        '''Return the S3 key name for the file belonging to the given UtilBill.
-        '''
+        """Return the S3 key name for the file belonging to the given UtilBill.
+        """
         return cls._get_key_name_for_hash(utilbill.sha256_hexdigest)
 
     def _get_amazon_bucket(self):
         return self._connection.get_bucket(self._bucket_name)
 
-    def get_s3_url(self, utilbill):
-        '''Return a URL to access the file corresponding to the given utility
+    def get_url(self, utilbill):
+        """Return a URL to access the file corresponding to the given utility
         bill. Return empty string for a UtilBill that has no file or whose
         sha256_hexdigest is None or "".
-        '''
+        :param utilbill: UtilBill
+        """
         # some bills have no file and therefore no URL
         if utilbill.state > UtilBill.Complete:
             return ''
@@ -74,19 +77,30 @@ class BillFileHandler(object):
                                            utilbill))
 
     def check_file_exists(self, utilbill):
-        '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
+        """Raise MissingFileError if the S3 key corresponding to 'utilbill'
         does not exist.
-        '''
+        """
         key_name = self.get_key_name_for_utilbill(utilbill)
         key = self._get_amazon_bucket().get_key(key_name)
         if key is None:
             raise MissingFileError('Key "%s" does not exist' % key_name)
 
-    def delete_utilbill_pdf_from_s3(self, utilbill):
+    def write_copy_to_file(self, utilbill, output_file):
+        """Write a copy of the given bill's file to 'output_file'. (boto
+        doesn't allow directly opening a file corresponding to the S3 key.)
+        :param utilbill: UtilBill
+        :param output_file: writeable file object
+        """
+        key_name = self.get_key_name_for_utilbill(utilbill)
+        key = self._get_amazon_bucket().get_key(key_name)
+        key.get_contents_to_file(output_file)
+
+    def delete_file(self, utilbill):
         """Remove the file associated with 'utilbill' (unless there are any
         other UtilBills referring to the same file). If for some reason the file
         is already missing (e.g. an earlier attempt to delete file caused a
         transaction rollback after deleting it), nothing happens.
+        :param utilbill: UtilBill
         """
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
@@ -101,10 +115,10 @@ class BillFileHandler(object):
                 key.delete()
 
     def upload_file(self, file):
-        '''Upload the given file to s3.
+        """Upload the given file to s3.
         :param file: a seekable file
-        '''
-        sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
+        """
+        sha256_hexdigest = BillFileHandler._compute_hexdigest(file)
         if self._utilbill_loader.count_utilbills_with_hash(
                 sha256_hexdigest) != 0:
             raise DuplicateFileError('File already exists with hash %s ' %
@@ -114,11 +128,11 @@ class BillFileHandler(object):
         key.set_contents_from_file(file)
         return sha256_hexdigest
 
-    def upload_utilbill_pdf_to_s3(self, utilbill, file):
-        '''Upload the given file to s3, and also set the
+    def upload_file_for_utilbill(self, utilbill, file):
+        """Upload the given file to s3, and also set the
         'UtilBill.sha256_hexdigest' attribute according to the file.
         :param utilbill: a :class:`billing.process.state.UtilBill`
         :param file: a seekable file
-        '''
+        """
         utilbill.sha256_hexdigest = self.upload_file(file)
 
