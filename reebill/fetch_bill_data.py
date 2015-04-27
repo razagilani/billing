@@ -15,8 +15,9 @@ from exc import MissingDataError, RegisterError
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, logger):
+    def __init__(self, splinter, nexus_util, logger):
         self._splinter = splinter
+        self._nexus_util = nexus_util
         self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
@@ -71,12 +72,15 @@ class RenewableEnergyGetter(object):
                     result.append(data)
         return result
 
-    def update_renewable_readings(self, olap_id, reebill, use_olap=True,
-                verbose=False):
-        '''Update hypothetical register quantities in 'reebill' with
-        renewable energy. The OLAP database is the default source of
-        energy-sold values; use use_olap=False to get them directly from OLTP.
-        '''
+    def update_renewable_readings(self, reebill, use_olap=True, verbose=False):
+        """Update hypothetical register quantities in 'reebill' with
+        renewable energy.
+        :param reebill: ReeBill to update
+        :param use_olap: get data from OLAP database; if False, use OLTP
+        database
+        :param verbose: print log messages
+        """
+        olap_id = self._nexus_util.olap_id(reebill.get_account())
         install_obj = self._splinter.get_install_obj_for(olap_id)
         utilbill = reebill.utilbill
         start, end = reebill.get_period()
