@@ -200,6 +200,14 @@ class UtilbillProcessor(object):
         for register in predecessor.registers if predecessor else []:
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
+                # Since these registers were created from rate_class
+                # template, and because rate_class template cannot fill in the
+                # correct values for identifier and meter_identifier
+                # so we need to copy these two values from corresponding
+                # predecessor registers
+                for r in new_utilbill.registers:
+                    r.identifier = register.identifier
+                    r.meter_identifier = register.meter_identifier
                 continue
             new_utilbill.registers.append(
                 Register(register.register_binding, unit=register.unit,
@@ -250,7 +258,7 @@ class UtilbillProcessor(object):
 
         # upload the file
         if bill_file is not None:
-            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill,
+            self.bill_file_handler.upload_file_for_utilbill(new_utilbill,
                                                              bill_file)
 
         # adding UtilBill should also add Charges and Registers due to cascade
@@ -330,7 +338,7 @@ class UtilbillProcessor(object):
         # of ReeBill)
         utility_bill.check_editable()
 
-        self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
+        self.bill_file_handler.delete_file(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -339,7 +347,7 @@ class UtilbillProcessor(object):
             session.delete(register)
         session.delete(utility_bill)
 
-        pdf_url = self.bill_file_handler.get_s3_url(utility_bill)
+        pdf_url = self.bill_file_handler.get_url(utility_bill)
         return utility_bill, pdf_url
 
     def regenerate_charges(self, utilbill_id):

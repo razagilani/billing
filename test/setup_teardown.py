@@ -153,7 +153,7 @@ def create_reebill_objects():
     bill_mailer = Mock()
     reebill_file_handler = create_reebill_file_handler()
 
-    ree_getter = RenewableEnergyGetter(splinter, logger)
+    ree_getter = RenewableEnergyGetter(splinter, nexus_util, logger)
     journal_dao = journal.JournalDAO()
     payment_dao = PaymentDAO()
 
@@ -180,7 +180,7 @@ def create_reebill_resource_objects():
     reebill_file_handler = create_reebill_file_handler()
     utilbill_views = create_utility_bill_views()
     bill_mailer = create_bill_mailer()
-    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
     return (config, logger, nexus_util, user_dao, payment_dao, reebill_dao,
             bill_file_handler, journal_dao, splinter, reebill_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
