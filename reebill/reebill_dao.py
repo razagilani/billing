@@ -64,10 +64,10 @@ class ReeBillDAO(object):
             utilbills=current_max_version_reebill.utilbills)
 
         # copy "sequential account info"
-        new_reebill.billing_address = Address.from_other(
-                current_max_version_reebill.billing_address)
-        new_reebill.service_address = Address.from_other(
-                current_max_version_reebill.service_address)
+        new_reebill.billing_address = current_max_version_reebill\
+            .billing_address.clone()
+        new_reebill.service_address = current_max_version_reebill\
+            .service_address.clone()
         new_reebill.discount_rate = current_max_version_reebill.discount_rate
         new_reebill.late_charge_rate = \
                 current_max_version_reebill.late_charge_rate

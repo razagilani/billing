@@ -29,6 +29,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
+from exc import UnEditableBillError
 
 LOG_NAME = 'billentry'
 
@@ -182,10 +183,12 @@ def create_user_in_db(access_token):
     if user is None:
         # generate a random password
         wordfile = xp.locate_wordfile()
-        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
-        user = BillEntryUser(email=session['email'],
-                                 password=get_hashed_password(xp.generate_xkcdpassword(mywords,
-                                                        acrostic="face")))
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6,
+                                       max_length=8)
+        user = BillEntryUser(
+            email=session['email'],
+            password=get_hashed_password(
+                xp.generate_xkcdpassword(mywords, acrostic="face")))
         # add user to the admin role
         admin_role = s.query(Role).filter_by(name='admin').first()
         user.roles = [admin_role]
@@ -195,7 +198,8 @@ def create_user_in_db(access_token):
     s.commit()
     login_user(user)
     # Tell Flask-Principal the identity changed
-    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    identity_changed.send(current_app._get_current_object(),
+        identity=Identity(user.id))
     return userInfo['email']
 
 @app.before_request
@@ -291,8 +295,30 @@ def login_page():
 def page_not_found(e):
     return render_template('403.html'), 403
 
+@app.errorhandler(UnEditableBillError)
+def uneditable_bill_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('UnProcessedBillError', traceback)
+    return error_message, 400
+
 @app.errorhandler(Exception)
 def internal_server_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('Internal Server Error', traceback)
+
+    return error_message, 500
+
+def log_error(exception_name, traceback):
     from core import config
     # Generate a unique error token that can be used to uniquely identify the
     # errors stacktrace in a logfile
