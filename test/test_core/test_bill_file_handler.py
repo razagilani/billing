@@ -1,6 +1,6 @@
-'''Unit tests for core.bill_file_handler.BillFileHandler.
+"""Unit tests for core.bill_file_handler.BillFileHandler.
 These tests should not connect to a network or database.
-'''
+"""
 from StringIO import StringIO
 import unittest
 
@@ -153,6 +153,3 @@ class BillFileHandlerTest(unittest.TestCase):
 
         output_file.seek(0)
         self.assertEqual('data', output_file.read())
-
-if __name__ == '__main__':
-    unittest.main()
