@@ -200,6 +200,14 @@ class UtilbillProcessor(object):
         for register in predecessor.registers if predecessor else []:
             if register.register_binding in (r.register_binding for r in
                                              new_utilbill.registers):
+                # Since these registers were created from rate_class
+                # template, and because rate_class template cannot fill in the
+                # correct values for identifier and meter_identifier
+                # so we need to copy these two values from corresponding
+                # predecessor registers
+                for r in new_utilbill.registers:
+                    r.identifier = register.identifier
+                    r.meter_identifier = register.meter_identifier
                 continue
             new_utilbill.registers.append(
                 Register(register.register_binding, unit=register.unit,
