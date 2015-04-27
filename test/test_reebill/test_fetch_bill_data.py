@@ -63,12 +63,11 @@ class FetchTest(unittest.TestCase):
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account)
-        utility = Utility('Washington Gas')
+        utility = Utility(name='Washington Gas')
         rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', '', 'therms', False,
-                'total', '', '', quantity=0, register_binding=Register.TOTAL)]
+        utilbill.registers = [Register(Register.TOTAL, 'therms')]
         self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
