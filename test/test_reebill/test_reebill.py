@@ -78,6 +78,7 @@ class ReeBillUnitTest(unittest.TestCase):
                             period_end=date(2000, 2, 1))
         utilbill.registers = [Register(Register.TOTAL, 'kWh')]
         self.reebill = ReeBill(self.customer, 1, utilbill=utilbill)
+        self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         # currently it doesn't matter if the 2nd bill has the same utilbill
         # as the first, but might need to change
