@@ -51,7 +51,7 @@ class ReadingTest(unittest.TestCase):
         self.assertEqual(123, reading.conventional_quantity)
         self.assertEqual(0, reading.renewable_quantity)
         self.assertEqual(123, reading.hypothetical_quantity)
-        self.assertEqual('Energy Sold', reading.measure)
+        self.assertEqual(Reading.ENERGY_SOLD_MEASURE, reading.measure)
         self.assertEqual('SUM', reading.aggregate_function)
 
         reading = Reading.create_from_register(register, estimate=True)
@@ -59,7 +59,7 @@ class ReadingTest(unittest.TestCase):
         self.assertEqual(123, reading.conventional_quantity)
         self.assertEqual(0, reading.renewable_quantity)
         self.assertEqual(123, reading.hypothetical_quantity)
-        self.assertEqual('Estimated Energy Sold', reading.measure)
+        self.assertEqual(Reading.ESTIMATED_MEASURE, reading.measure)
         self.assertEqual('SUM', reading.aggregate_function)
 
 class ReeBillUnitTest(unittest.TestCase):
