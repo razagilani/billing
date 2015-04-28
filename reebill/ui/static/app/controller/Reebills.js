@@ -489,8 +489,7 @@ Ext.define('ReeBill.controller.Reebills', {
      */
     handleCreateNext: function(estimated) {
         var store = this.getReebillsStore();
-        var data = {issued: false, action: estimated ? 'create_estimated' : 'create'};
-        console.log(estimated, data);
+        var data = {issued: false, estimated: estimated};
         if (store.count() > 0) {
             store.insert(0, data);
             return;
