@@ -7,6 +7,7 @@ from mock import Mock
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
+from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
@@ -75,11 +76,22 @@ class ReeBillUnitTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, None, None,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
+        utilbill.registers = [Register(Register.TOTAL, 'kWh')]
         self.reebill = ReeBill(self.customer, 1, utilbill=utilbill)
 
         # currently it doesn't matter if the 2nd bill has the same utilbill
         # as the first, but might need to change
         self.reebill_2 = ReeBill(self.customer, 2, utilbill=utilbill)
+
+    def test_is_estimated(self):
+        self.assertFalse(self.reebill.is_estimated())
+
+        self.reebill.readings[0].measure = Reading.ESTIMATED_MEASURE
+        self.assertTrue(self.reebill.is_estimated())
+
+        self.reebill.readings.append(
+            Reading(Register.DEMAND, 'Demand', 0, 0, 'MAX', 'kW'))
+        self.assertFalse(self.reebill.is_estimated())
 
     def test_issue(self):
         self.assertEqual(None, self.reebill.email_recipient)
