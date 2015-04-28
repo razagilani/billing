@@ -437,11 +437,7 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        action = params['action']
-        if action == 'create_estimated':
-            estimate = True
-        else:
-            estimate = False
+        estimate = bool(params['estimated'])
         reebill = self.reebill_processor.roll_reebill(
             account, start_date=start_date, estimate=estimate)
 
