@@ -242,9 +242,12 @@ class ReeBill(Base):
         session.flush()
 
     def is_estimated(self):
-        return all([len(self.readings) == 1,
-                    self.readings[0].register_binding == Register.TOTAL,
-                    self.readings[0].measure == Reading.ESTIMATED_MEASURE])
+        """Return True if this bill has one Reading corresponding to the
+        REG_TOTAL register, False otherwise.
+        """
+        return (len(self.readings) == 1
+                and self.readings[0].register_binding == Register.TOTAL
+                and self.readings[0].measure == Reading.ESTIMATED_MEASURE)
 
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
