@@ -105,7 +105,7 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         },{
             xtype: 'button',
             text: 'Create Estimated',
-            action: 'createNext',
+            action: 'createEstimated',
             iconCls: 'silk-add'
         },{
             xtype: 'button',
