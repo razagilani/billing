@@ -86,7 +86,7 @@ class Views(object):
             account=account).order_by(UtilityAccount.account,
                                       desc(UtilBill.period_start)).all()
         data = [dict(column_dict_utilbill(ub),
-                     pdf_url=self._bill_file_handler.get_s3_url(ub))
+                     pdf_url=self._bill_file_handler.get_url(ub))
                 for ub in utilbills]
         return data, len(utilbills)
 
