@@ -709,6 +709,7 @@ class Reading(Base):
     '''
     __tablename__ = 'reading'
 
+    ENERGY_SOLD_MEASURE = 'Energy Sold'
     ESTIMATED_MEASURE = 'Estimated Energy Sold'
 
     id = Column(Integer, primary_key=True)
@@ -741,9 +742,9 @@ class Reading(Base):
         renewable energy usage number instead of the actual value.
         """
         if estimate:
-            measure_name = self.ESTIMATED_MEASURE
+            measure_name = cls.ESTIMATED_MEASURE
         else:
-            measure_name = 'Energy Sold'
+            measure_name = cls.ENERGY_SOLD_MEASURE
         agg_func_name = 'SUM'
         return Reading(register.register_binding, measure_name,
                        register.quantity, 0, agg_func_name, register.unit)
