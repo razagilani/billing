@@ -57,6 +57,7 @@ PHYSICAL_UNITS = [
     'kWh',
     'therms',
 ]
+physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 
 
 class Base(object):
@@ -122,7 +123,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '100f25ab057f'
+_schema_revision = '58383ed620d3'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -277,19 +278,20 @@ class Register(Base):
         'END_INVENTORY',
         'CONTRACT_VOLUME',
     ]
+    register_binding_type = Enum(*REGISTER_BINDINGS, name='register_binding')
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False, default='')
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
     # "total", "tou", "demand", and "")
     reg_type = Column(String(255), nullable=False)
-    register_binding = Column(Enum(*REGISTER_BINDINGS), nullable=False)
+    register_binding = Column(register_binding_type, nullable=False)
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
@@ -357,8 +359,8 @@ class RegisterTemplate(Base):
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column(Enum(*Register.REGISTER_BINDINGS), nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    register_binding = Column( Register.register_binding_type, nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
@@ -383,7 +385,7 @@ class RateClass(Base):
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES), nullable=False)
+    service = Column(Enum(*SERVICES, name='services'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -542,7 +544,7 @@ class UtilBill(Base):
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its charges and other data are supposed to be accurate.
-    processed = Column(Integer, nullable=False)
+    processed = Column(Boolean, nullable=False)
 
     # date when a process was run to extract data from the bill file to fill in
     # data automatically. (note this is different from data scraped from the
@@ -702,6 +704,9 @@ class UtilBill(Base):
         if self.supplier is None:
             return None
         return self.supplier.name
+
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
 
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
@@ -934,6 +939,7 @@ class Charge(Base):
 
     # allowed units for "quantity" field of charges
     CHARGE_UNITS = PHYSICAL_UNITS + ['dollars']
+    charge_unit_type = Enum(*CHARGE_UNITS, name='charge_unit')
 
     # allowed values for "type" field of charges
     SUPPLY, DISTRIBUTION = 'supply', 'distribution'
@@ -944,7 +950,7 @@ class Charge(Base):
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float)
-    unit = Column(Enum(*CHARGE_UNITS), nullable=False)
+    unit = Column(charge_unit_type, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
 
     quantity_formula = Column(String(1000), nullable=False)
@@ -964,7 +970,7 @@ class Charge(Base):
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
-    type = Column(Enum(*CHARGE_TYPES), nullable=False)
+    type = Column(Enum(*CHARGE_TYPES, name='charge_types'), nullable=False)
 
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
 
