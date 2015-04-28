@@ -24,3 +24,11 @@ def create_and_assign_supply_groups(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 27')
+
+    init_model(schema_revision='100f25ab057f')
+    s = Session()
+
+    log.info('upgrading to 44557759112a')
+    alembic_upgrade('44557759112a')
+    create_and_assign_supply_groups(s)
+    s.commit()

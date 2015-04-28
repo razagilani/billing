@@ -123,7 +123,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '100f25ab057f'
+_schema_revision = '44557759112a'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -537,7 +537,7 @@ class UtilBill(Base):
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=True)
-    supply_group_id = Column(Integer, ForeignKey('supply_group_id'),
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
         nullable=True)
 
     state = Column(Integer, nullable=False)
