@@ -218,7 +218,7 @@ class ReebillProcessor(object):
             #  guaranteed to exist
             reg_total_register = next(r for r in new_utilbill.registers if
                                       r.register_binding == Register.TOTAL)
-            new_reebill.readings = [Reading.make_reading_from_register(
+            new_reebill.readings = [Reading.create_from_register(
                 reg_total_register, estimate=estimate)]
         else:
             # not the first reebill: copy readings from the previous one

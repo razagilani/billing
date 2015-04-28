@@ -8,7 +8,7 @@ from mock import Mock
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from exc import NoSuchBillException, NotIssuable
-from reebill.reebill_model import ReeBill, ReeBillCustomer
+from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
 from test.setup_teardown import clear_db
 
@@ -37,6 +37,30 @@ class ReeBillCustomerTest(unittest.TestCase):
             self.customer.reebills = bill_set
             self.assertIs(one, self.customer.get_first_unissued_bill())
 
+class ReadingTest(unittest.TestCase):
+    """Unit tests for the Reading class.
+    """
+    def test_create_from_register(self):
+        register = Mock(autospec=Register)
+        register.register_binding = Register.DEMAND
+        register.quantity = 123
+        register.unit = 'kW'
+
+        reading = Reading.create_from_register(register)
+        self.assertEqual(register.register_binding, reading.register_binding)
+        self.assertEqual(123, reading.conventional_quantity)
+        self.assertEqual(0, reading.renewable_quantity)
+        self.assertEqual(123, reading.hypothetical_quantity)
+        self.assertEqual('Energy Sold', reading.measure)
+        self.assertEqual('SUM', reading.aggregate_function)
+
+        reading = Reading.create_from_register(register, estimate=True)
+        self.assertEqual(register.register_binding, reading.register_binding)
+        self.assertEqual(123, reading.conventional_quantity)
+        self.assertEqual(0, reading.renewable_quantity)
+        self.assertEqual(123, reading.hypothetical_quantity)
+        self.assertEqual('Estimated Energy Sold', reading.measure)
+        self.assertEqual('SUM', reading.aggregate_function)
 
 class ReeBillUnitTest(unittest.TestCase):
     def setUp(self):
