@@ -487,6 +487,26 @@ class ReeBill(Base):
         self.due_date = (issue_date + timedelta(days=30)).date()
         self.issued = True
 
+    def make_correction(self):
+        """Return a new ReeBill that is a correction of this one. This one
+        should be issued and should be the highest version for its sequence.
+        """
+        if not self.issued:
+            raise ValueError("Can't correct an unissued bill")
+        new_reebill = ReeBill(self.reebill_customer, self.sequence,
+            self.version + 1, discount_rate=self.discount_rate,
+            late_charge_rate=self.late_charge_rate, utilbills=self.utilbills)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = self.billing_address.clone()
+        new_reebill.service_address = self.service_address.clone()
+        new_reebill.discount_rate = self.discount_rate
+        new_reebill.late_charge_rate = self.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.update_readings_from_reebill(self.readings)
+        return new_reebill
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
