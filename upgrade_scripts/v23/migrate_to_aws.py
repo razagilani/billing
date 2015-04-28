@@ -89,7 +89,7 @@ def upload_utilbills_to_aws(session):
         try:
             local_file_path, extension = get_utilbill_file_path(utilbill)
             with open(local_file_path + extension) as local_file:
-                sha256_hexdigest = bu.compute_hexdigest(local_file)
+                sha256_hexdigest = bu._compute_hexdigest(local_file)
         except IOError:
             log.error('Local pdf file for utilbill id %s not found' % \
                       utilbill.id)
