@@ -437,9 +437,13 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        estimate = bool(params['estimated'])
+        action = params['action']
+        if action == 'create_estimated':
+            estimate = True
+        else:
+            estimate = False
         reebill = self.reebill_processor.roll_reebill(
-            account, start_date=start_date, estimate=bool(estimate))
+            account, start_date=start_date, estimate=estimate)
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
@@ -451,7 +455,9 @@ class ReebillsResource(RESTResource):
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
-        return True, {'rows': reebill.column_dict(), 'results': 1}
+        rtn = reebill.column_dict()
+        rtn.update({'action': '', 'action_value': ''})
+        return True, {'rows': rtn, 'results': 1}
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json

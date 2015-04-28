@@ -489,37 +489,40 @@ Ext.define('ReeBill.controller.Reebills', {
      */
     handleCreateNext: function(estimated) {
         var store = this.getReebillsStore();
-        if(store.count() === 0){
-           if(this._lastCreateNextDate === undefined){
-               this._lastCreateNextDate = ''
-           }
-           Ext.Msg.prompt(
-               'Service Start Date',
-               'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
-               function (button, text) {
-                   if (button === 'ok') {
-                       var controller = this;
-                       controller._lastCreateNextDate = text;
-                       if(Ext.Date.parse(text, 'Y-m-d') === undefined) {
-                           Ext.Msg.alert(
-                               'Invalid Date',
-                               'Please enter a date in the format (YYYY-MM-DD)',
-                               function () {
-                                   controller.handleCreateNext(estimated);
-                               }
-                           )
-                           return;
-                       }
-                   store.insert(0, {period_start: text});
-                   }
-               },
-               this,
-               false,
-               this._lastCreateNextDate
-           )
-        }else{
-           store.insert(0, {issued:false});
+        var data = {issued: false, action: estimated ? 'create_estimated' : 'create'};
+        console.log(estimated, data);
+        if (store.count() > 0) {
+            store.insert(0, data);
+            return;
         }
+        if(this._lastCreateNextDate === undefined){
+            this._lastCreateNextDate = '';
+        }
+        Ext.Msg.prompt(
+            'Service Start Date',
+            'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
+            function (button, text) {
+                if (button === 'ok') {
+                    var controller = this;
+                    controller._lastCreateNextDate = text;
+                    if(Ext.Date.parse(text, 'Y-m-d') === undefined) {
+                        Ext.Msg.alert(
+                            'Invalid Date',
+                            'Please enter a date in the format (YYYY-MM-DD)',
+                            function () {
+                                controller.handleCreateNext(estimated);
+                            }
+                        )
+                        return;
+                    }
+                    data.period_start = text;
+                    store.insert(0, data);
+                }
+            },
+            this,
+            false,
+            this._lastCreateNextDate
+        )
     },
 
      /**
