@@ -35,6 +35,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'SupplyGroup',
     'RateClass',
     'Utility',
     'UtilBill',
