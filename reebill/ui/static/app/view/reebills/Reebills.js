@@ -89,6 +89,12 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         align: 'right',
         width: 120,
         renderer: Ext.util.Format.usMoney
+    },{
+        xtype: 'checkcolumn',
+        header: 'Estimated',
+        disabled: true,
+        dataIndex: 'estimated',
+        width: 60
     }],
 
     dockedItems: [{

@@ -241,6 +241,11 @@ class ReeBill(Base):
                 if r.register_binding in utilbill_register_bindings]
         session.flush()
 
+    def is_estimated(self):
+        return all([len(self.readings) == 1,
+                    self.readings[0].register_binding == Register.TOTAL,
+                    self.readings[0].measure == Reading.ESTIMATED_MEASURE])
+
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
@@ -704,6 +709,8 @@ class Reading(Base):
     '''
     __tablename__ = 'reading'
 
+    ESTIMATED_MEASURE = 'Estimated Energy Sold'
+
     id = Column(Integer, primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
@@ -734,7 +741,7 @@ class Reading(Base):
         renewable energy usage number instead of the actual value.
         """
         if estimate:
-            measure_name = 'Estimated Energy Sold'
+            measure_name = self.ESTIMATED_MEASURE
         else:
             measure_name = 'Energy Sold'
         agg_func_name = 'SUM'

@@ -254,7 +254,9 @@ class Views(object):
         ).outerjoin(ReeBillCharge) \
             .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        return [dict(rb.column_dict().items() +
-                     [('total_error', _get_total_error(account, rb.sequence))])
-                for rb in q]
+        return [
+            dict(rb.column_dict().items(),
+                total_error=_get_total_error(account, rb.sequence),
+                estimated=rb.is_estimated())
+        for rb in q]
 
