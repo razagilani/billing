@@ -1004,6 +1004,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         "prior balance" because it was not recomputed before issuing to
         reflect a change to its predecessor.
         '''
+        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.reebill_file_handler = Mock()
+        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
+        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+
         acc = self.account
         # first reebill is needed so the others get computed correctly
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
