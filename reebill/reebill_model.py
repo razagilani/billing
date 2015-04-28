@@ -505,7 +505,7 @@ class ReeBill(Base):
 
         # copy readings (rather than creating one for every utility bill
         # register, which may not be correct)
-        new_reebill.update_readings_from_reebill(self.readings)
+        new_reebill.readings = [r.clone() for r in self.readings]
         return new_reebill
 
 class UtilbillReebill(Base):
