@@ -94,6 +94,25 @@ class ReeBillUnitTest(unittest.TestCase):
             Reading(Register.DEMAND, 'Demand', 0, 0, 'MAX', 'kW'))
         self.assertFalse(self.reebill.is_estimated())
 
+    def test_make_correction(self):
+        # can't make a correction when the bill is not issued
+        with self.assertRaises(ValueError):
+            self.reebill.make_correction()
+
+        self.reebill.issue(datetime(2000,3,1), Mock())
+        correction = self.reebill.make_correction()
+
+        self.assertEqual(1, correction.sequence)
+        self.assertEqual(1, correction.version)
+        self.assertEqual(self.reebill.discount_rate, correction.discount_rate)
+        self.assertEqual(self.reebill.late_charge_rate,
+                         correction.late_charge_rate)
+        self.assertEqual(self.reebill.utilbill, correction.utilbill)
+        self.assertEqual(self.reebill.billing_address,
+                         correction.billing_address)
+        self.assertEqual(self.reebill.service_address,
+                         correction.service_address)
+
     def test_issue(self):
         self.assertEqual(None, self.reebill.email_recipient)
         self.assertEqual(None, self.reebill.issue_date)
