@@ -227,12 +227,10 @@ class ReebillProcessor(object):
         assert len(new_utilbills) == 1
 
         # create reebill row in state database
-        new_reebill = ReeBill(reebill_customer, new_sequence, 0,
-                              utilbills=new_utilbills,
-                              billing_address=Address.from_other(
-                                new_utilbills[0].billing_address),
-                              service_address=Address.from_other(
-                                new_utilbills[0].service_address))
+        new_reebill = ReeBill(
+            reebill_customer, new_sequence, 0, utilbills=new_utilbills,
+            billing_address=new_utilbills[0].billing_address.clone(),
+            service_address=new_utilbills[0].service_address.clone())
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
@@ -250,8 +248,7 @@ class ReebillProcessor(object):
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(new_reebill)
 
         try:
             self.compute_reebill(account, new_sequence)
@@ -275,8 +272,7 @@ class ReebillProcessor(object):
 
         assert len(reebill.utilbills) == 1
 
-        self.ree_getter.\
-            update_renewable_readings(self.nexus_util.olap_id(account), reebill)
+        self.ree_getter.update_renewable_readings(reebill)
         try:
             self.compute_reebill(account, sequence, version=max_version+1)
         except Exception as e:
@@ -454,17 +450,9 @@ class ReebillProcessor(object):
 
         new_utility_account = UtilityAccount(
             name, account, utility, supplier, rate_class,
-            Address(billing_address['addressee'],
-                    billing_address['street'],
-                    billing_address['city'],
-                    billing_address['state'],
-                    billing_address['postal_code']),
-            Address(service_address['addressee'],
-                    service_address['street'],
-                    service_address['city'],
-                    service_address['state'],
-                    service_address['postal_code']),
-                    account_number=utility_account_number)
+            Address(**billing_address),
+            Address(**service_address),
+            account_number=utility_account_number)
 
         session.add(new_utility_account)
 
@@ -497,8 +485,7 @@ class ReebillProcessor(object):
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.check_editable()
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(reebill, use_olap=True)
 
     def mail_reebill(self, account, sequence, recipient_list):
         reebill = self.state_db.get_reebill(account, sequence)
@@ -515,12 +502,13 @@ class ReebillProcessor(object):
             'bill_dates': bill_date,
             'last_bill': bill_file_name,
         }
+        bill_file_path = self.reebill_file_handler.get_file_path(reebill)
         bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
         self.bill_mailer.mail(
             recipient_list,
             merge_fields,
             bill_file_contents,
-            bill_file_name)
+            bill_file_path)
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for

@@ -153,7 +153,7 @@ def create_reebill_objects():
     bill_mailer = Mock()
     reebill_file_handler = create_reebill_file_handler()
 
-    ree_getter = RenewableEnergyGetter(splinter, logger)
+    ree_getter = RenewableEnergyGetter(splinter, nexus_util, logger)
     journal_dao = journal.JournalDAO()
     payment_dao = PaymentDAO()
 
@@ -180,7 +180,7 @@ def create_reebill_resource_objects():
     reebill_file_handler = create_reebill_file_handler()
     utilbill_views = create_utility_bill_views()
     bill_mailer = create_bill_mailer()
-    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
     return (config, logger, nexus_util, user_dao, payment_dao, reebill_dao,
             bill_file_handler, journal_dao, splinter, reebill_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
@@ -244,60 +244,62 @@ class TestCaseWithSetup(test_utils.TestCase):
     def insert_data():
         session = Session()
         #Customer Addresses
-        fa_ba1 = Address('Test Customer 1 Billing',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
-        fa_sa1 = Address('Test Customer 1 Service',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
-        fa_ba2 = Address('Test Customer 2 Billing',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
-        fa_sa2 = Address('Test Customer 2 Service',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
+        fa_ba1 = Address(addressee='Test Customer 1 Billing',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
+        fa_sa1 = Address(addressee='Test Customer 1 Service',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
+        fa_ba2 = Address(addressee='Test Customer 2 Billing',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                    postal_code='12345')
+        fa_sa2 = Address(addressee='Test Customer 2 Service',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
         #Utility Bill Addresses
-        ub_sa1 = Address('Test Customer 2 UB 1 Service',
-                         '123 Test Street',
-                         'Test City',
-                         'XX',
-                         '12345')
-        ub_ba1 = Address('Test Customer 2 UB 1 Billing',
-                         '123 Test Street',
-                         'Test City',
-                         'XX',
-                         '12345')
-        ub_sa2 = Address('Test Customer 2 UB 2 Service',
-                         '123 Test Street',
-                         'Test City',
-                         'XX',
-                         '12345')
-        ub_ba2 = Address('Test Customer 2 UB 2 Billing',
-                         '123 Test Street',
-                         'Test City',
-                         'XX',
-                         '12345')
+        ub_sa1 = Address(addressee='Test Customer 2 UB 1 Service',
+                         street='123 Test Street',
+                         city='Test City',
+                         state='XX',
+                         postal_code='12345')
+        ub_ba1 = Address(addressee='Test Customer 2 UB 1 Billing',
+                         street='123 Test Street',
+                         city='Test City',
+                         state='XX',
+                         postal_code='12345')
+        ub_sa2 = Address(addressee='Test Customer 2 UB 2 Service',
+                         street='123 Test Street',
+                         city='Test City',
+                         state='XX',
+                         postal_code='12345')
+        ub_ba2 = Address(addressee='Test Customer 2 UB 2 Billing',
+                         street='123 Test Street',
+                         city='Test City',
+                         state='XX',
+                         postal_code='12345')
 
-        ca1 = Address('Test Utilco Address',
-                      '123 Utilco Street',
-                      'Utilco City',
-                      'XX', '12345')
+        ca1 = Address(addressee='Test Utilco Address',
+                      street='123 Utilco Street',
+                      city='Utilco City',
+                      state='XX',
+                      postal_code='12345')
 
         uc = Utility(name='Test Utility Company Template', address=ca1)
         supplier = Supplier(name='Test Supplier', address=ca1)
 
-        ca2 = Address('Test Other Utilco Address',
-                      '123 Utilco Street',
-                      'Utilco City',
-                      'XX', '12345')
+        ca2 = Address(addressee='Test Other Utilco Address',
+                      street='123 Utilco Street',
+                      city='Utilco City',
+                      state='XX',
+                      postal_code='12345')
 
         other_uc = Utility(name='Other Utility', address=ca1)
         other_supplier = Supplier(name='Other Supplier', address=ca1)
@@ -351,30 +353,30 @@ class TestCaseWithSetup(test_utils.TestCase):
         # replaced registers that were automatically created by the rate class
         # because old tests rely on these specific values
         u1.registers = []
-        u1r1 = Register(u1, "test description", "M60324",
-                        'therms', False, "total", None, "M60324",
-                        quantity=123.45, register_binding=Register.TOTAL)
+        u1r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
+                        description='test description', identifier="M60324",
+                        meter_identifier="M60324", reg_type='total')
+        u1r1.utilbill = u1
         u2.registers = []
-        u2r1 = Register(u2, "test description", "M60324",
-                      'therms', False, "total", None, "M60324",
-                      quantity=123.45,
-                      register_binding=Register.TOTAL)
-
+        u2r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
+                        description='test description', identifier="M60324",
+                        meter_identifier="M60324", reg_type='total')
+        u2r1.utilbill = u2
         session.add_all([u1, u2, u1r1, u2r1])
         session.flush()
         session.commit()
 
         #Utility BIll with no Rate structures
-        c4ba = Address('Test Customer 1 Billing',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
-        c4sa = Address('Test Customer 1 Service',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
+        c4ba = Address(addressee='Test Customer 1 Billing',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
+        c4sa = Address(addressee='Test Customer 1 Service',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
         other_rate_class = RateClass(name='Other Rate Class',
                                      utility=other_uc, service='gas')
         utility_account4 = UtilityAccount(
@@ -389,16 +391,16 @@ class TestCaseWithSetup(test_utils.TestCase):
         session.add(utility_account4)
         session.add(reebill_customer4)
 
-        ub_sa = Address('Test Customer 3 UB 1 Service',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
-        ub_ba = Address('Test Customer 3 UB 1 Billing',
-                     '123 Test Street',
-                     'Test City',
-                     'XX',
-                     '12345')
+        ub_sa = Address(addressee='Test Customer 3 UB 1 Service',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
+        ub_ba = Address(addressee='Test Customer 3 UB 1 Billing',
+                     street='123 Test Street',
+                     city='Test City',
+                     state='XX',
+                     postal_code='12345')
 
         u = UtilBill(utility_account4, other_uc, other_rate_class,
                      supplier=other_supplier, billing_address=ub_ba,

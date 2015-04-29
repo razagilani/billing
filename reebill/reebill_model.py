@@ -12,7 +12,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import PHYSICAL_UNITS
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
@@ -158,6 +158,9 @@ class ReeBill(Base):
             self.get_account(), self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
 
+    def get_customer_id(self):
+        return self.reebill_customer.id
+
     def get_account(self):
         return self.reebill_customer.get_account()
 
@@ -169,7 +172,7 @@ class ReeBill(Base):
         if self.issued:
             raise IssuedBillError("Can't modify an issued reebill")
         if self.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+            raise UnEditableBillError("Can't modify a processed reebill")
 
     def get_period_start(self):
         """Return start of the utility bill's period (date).
@@ -497,7 +500,7 @@ class UtilbillReebill(Base):
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
-    def __init__(self, utilbill, document_id=None):
+    def __init__(self, utilbill):
         # UtilbillReebill has only 'utilbill' in its __init__ because the
         # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
         # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
@@ -506,13 +509,6 @@ class UtilbillReebill(Base):
         assert isinstance(utilbill, UtilBill)
 
         self.utilbill = utilbill
-        self.document_id = document_id
-
-    def __repr__(self):
-        return (('UtilbillReebill(utilbill_id=%s, reebill_id=%s, '
-                 'document_id=...%s, uprs_document_id=...%s, ') % (
-                    self.utilbill_id, self.reebill_id, self.document_id[-4:],
-                    self.uprs_document_id[-4:]))
 
 # intermediate table for many-to-many relationship. should not be used
 # outside this file.
@@ -655,14 +651,9 @@ class ReeBillCustomer(Base):
 
 
 class ReeBillCharge(Base):
-    '''Table representing "hypothetical" versions of charges in reebills (so
-    named because these may not have the same schema as utility bill charges).
-    Note that, in the past, a set of "hypothetical charges" was associated
-    with each utility bill subdocument of a reebill Mongo document, of which
-    there was always 1 in practice. Now these charges are associated directly
-    with a reebill, so there would be no way to distinguish between charges
-    from different utility bills, if there mere multiple utility bills.
-    '''
+    """Table representing "hypothetical" versions of utility bill charges in
+    reebills.
+    """
     __tablename__ = 'reebill_charge'
 
     id = Column(Integer, primary_key=True)
@@ -774,9 +765,8 @@ class Reading(Base):
             return sum
         if self.aggregate_function == 'MAX':
             return max
-        else:
-            raise ValueError('Unknown aggregation function "%s"' %
-                             self.aggregate_function)
+        raise ValueError('Unknown aggregation function "%s"' %
+                         self.aggregate_function)
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -816,7 +806,6 @@ class Payment(Base):
         editable. Payments should be editable as long as it is not applied to
         a reebill
         """
-        today = datetime.utcnow()
         if self.reebill_id is None:
             return True
         return False
