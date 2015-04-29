@@ -17,7 +17,7 @@ from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     clear_db, create_utilbill_processor, create_reebill_objects, \
     create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable, \
+    ConfirmAdjustment, UnEditableBillError, IssuedBillError, NotIssuable, \
     BillingError
 from test import testing_utils, init_test_config
 
@@ -35,8 +35,7 @@ class MockReeGetter(object):
     def __init__(self, quantity):
         self.quantity = quantity
 
-    def update_renewable_readings(self, olap_id, reebill,
-                                  use_olap=True, verbose=False):
+    def update_renewable_readings(self, reebill, use_olap=True, verbose=False):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
 
@@ -379,12 +378,12 @@ class ReebillProcessingTest(testing_utils.TestCase):
         reebill = self.state_db.get_reebill(acc, 2)
         correction = self.state_db.get_reebill(acc, 1, version=1)
         # any processed regular bill or correction can't be modified (compute, bind_ree, sequential_account_info)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.compute_reebill, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.bind_renewable_energy, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.update_sequential_account_info, acc, reebill.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.compute_reebill, acc, correction.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.bind_renewable_energy, acc, correction.sequence)
-        self.assertRaises(ProcessedBillError, self.reebill_processor.update_sequential_account_info, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.compute_reebill, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.bind_renewable_energy, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.update_sequential_account_info, acc, reebill.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.compute_reebill, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.bind_renewable_energy, acc, correction.sequence)
+        self.assertRaises(UnEditableBillError, self.reebill_processor.update_sequential_account_info, acc, correction.sequence)
 
         # when you do specify apply_corrections=True, the corrections are marked as processed.
         self.assertEqual(reebill.processed, True)
@@ -1005,6 +1004,11 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         "prior balance" because it was not recomputed before issuing to
         reflect a change to its predecessor.
         '''
+        self.reebill_processor.bill_mailer = Mock()
+        self.reebill_processor.reebill_file_handler = Mock()
+        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 1
+        self.reebill_processor.reebill_file_handler.get_file_path = Mock()
+
         acc = self.account
         # first reebill is needed so the others get computed correctly
         self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
@@ -1345,8 +1349,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # (it needs energy data only so its correction will have the same
         # energy in it as the original version; only the late charge will
         # differ)
-        self.reebill_processor.ree_getter.update_renewable_readings(
-            self.nexus_util.olap_id(acc), two)
+        self.reebill_processor.ree_getter.update_renewable_readings(two)
 
         # if given a late_charge_rate > 0, 2nd reebill should have a late
         # charge
@@ -1709,7 +1712,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.update_reebill_readings(self.account, 1)
         self.reebill_processor.update_sequential_account_info(self.account, 1,
                                                               processed=True)
-        with self.assertRaises(ProcessedBillError):
+        with self.assertRaises(UnEditableBillError):
             self.reebill_processor.update_reebill_readings(self.account, 1)
         self.reebill_processor.issue(self.account, 1)
         with self.assertRaises(IssuedBillError):
