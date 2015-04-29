@@ -839,7 +839,6 @@ class User(Base):
     def __repr__(self):
         return '<User %s %s %s>' % (self.id, self.identifier, self.username)
 
-
     def get_preferences(self):
         pref_str = self._preferences
         if pref_str is None:
