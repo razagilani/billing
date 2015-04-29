@@ -73,7 +73,7 @@ def check_authentication():
         username = cookie['username'].value if 'username' in cookie else None
 
         # load users database
-        user_dao = UserDAO(**dict(config.items('mongodb')))
+        user_dao = UserDAO()
         user = user_dao.load_by_session_token(
             credentials) if credentials else None
         if user is None:
