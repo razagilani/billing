@@ -73,7 +73,7 @@ def check_authentication():
         username = cookie['username'].value if 'username' in cookie else None
 
         # load users database
-        user_dao = UserDAO(**dict(config.items('mongodb')))
+        user_dao = UserDAO()
         user = user_dao.load_by_session_token(
             credentials) if credentials else None
         if user is None:
@@ -793,7 +793,7 @@ class PreferencesResource(RESTResource):
 
     def handle_post(self, *vpath, **params):
         row = cherrypy.request.json
-        cherrypy.session['user'].preferences[row['key']] = row['value']
+        cherrypy.session['user'].set_preference(row['key'], row['value'])
         self.user_dao.save_user(cherrypy.session['user'])
         return True, {'rows': row,  'results': 1}
 
@@ -930,7 +930,7 @@ def create_webresource_args():
     )
 
     # load users database
-    user_dao = UserDAO(**dict(config.items('mongodb')))
+    user_dao = UserDAO()
 
     # create an instance representing the database
     payment_dao = PaymentDAO()
