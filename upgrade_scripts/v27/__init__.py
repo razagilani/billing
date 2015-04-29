@@ -7,14 +7,19 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
+import json
 import logging
 
 from alembic.config import Config
+import pymongo
 
 from sqlalchemy import create_engine
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model
+from core.model import Session
+from reebill.reebill_model import User
+from upgrade_scripts import alembic_upgrade
 from core.model import Register
 from upgrade_scripts.v27.postgres import migrate_to_postgres
 
@@ -23,14 +28,28 @@ REVISION = '58383ed620d3'
 
 log = logging.getLogger(__name__)
 
+
+def migrate_users(s):
+    from core import config
+    host = config.get('mongodb', 'host')
+    port = config.get('mongodb', 'port')
+    db_name = config.get('mongodb', 'database')
+    log.info('Migrating %s.users from MongoDB' % db_name)
+    con = pymongo.Connection(host=host, port=port)
+    db = con[db_name]
+    for mongo_user in db.users.find():
+        log.info('Copying user %s' % mongo_user['_id'])
+        user = User(username=mongo_user['name'],
+                    identifier=mongo_user['_id'],
+                    _preferences=json.dumps(mongo_user['preferences']),
+                    password_hash=mongo_user['password_hash'],
+                    salt=mongo_user['salt'],
+                    session_token=mongo_user.get('session_token', None))
+        s.add(user)
+
 def upgrade():
     log.info('Beginning upgrade to version 27')
 
-    # the OLD database URL must be used in order to upgrade the old database
-    # before copying to the new database. but the URL for general use (and for
-    # "stamping" the alembic revision on the new database) be the new one, so
-    # it is necessary to overwrite the "sqlalchmy.url" key in the config object
-    # after moving the file.
     from core import config
     old_uri = config.get('db', 'old_uri')
     new_uri = config.get('db', 'uri')
