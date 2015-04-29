@@ -117,6 +117,7 @@ class ReebillFileHandlerTest(TestCase):
         # check the case where the directory for the PDF already exists by
         # creating it before calling 'render'
         path = self.file_handler.get_file_path(self.reebill)
+        os.makedirs(os.path.dirname(path))
 
         self.file_handler.render(self.reebill)
 
@@ -159,6 +160,8 @@ class ReebillFileHandlerTest(TestCase):
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time
         path = self.file_handler.get_file_path(self.reebill)
+        self.assertEqual(os.path.isabs(path), True)
+
         with open(path, 'rb') as pdf_file:
             filtered_lines = self._filter_pdf_file(pdf_file)
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
