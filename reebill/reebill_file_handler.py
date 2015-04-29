@@ -97,7 +97,7 @@ class ReebillFileHandler(object):
         '''Return full path to the PDF file associated with the given
         :class:`ReeBill` (the file may not exist).
         '''
-        return os.path.join(reebill.get_account(),
+        return os.path.join(self._pdf_dir_path,reebill.get_account(),
                 self.get_file_name(reebill))
 
     def get_file(self, reebill):

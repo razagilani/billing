@@ -5,7 +5,8 @@ doc
 *.swp
 *.swn
 *.swo
-reebill.cfg
+settings.cfg
+alembic.ini
 ext-3.3.1/docs
 ext-3.3.1/ext-all-debug-w-comments.js
 ext-3.3.1/ext.jsb2
