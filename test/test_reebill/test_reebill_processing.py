@@ -1162,9 +1162,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         one = self.reebill_processor.roll_reebill(acc,
                                                   start_date=date(2000, 1, 1))
-        one.processed = 1
+        one.processed = True
         two = self.reebill_processor.roll_reebill(acc)
-        two.processed = 1
+        two.processed = True
 
         # neither reebill should be issued yet
         self.assertEquals(False, self.state_db.is_issued(acc, 1))
@@ -2036,7 +2036,7 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill_processor.update_register(r.id, {
             'description': 'time-of-use register',
             'quantity': 0,
-            'unit': 'btu',
+            'unit': 'BTU',
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
@@ -2069,7 +2069,7 @@ class TestTouMetering(unittest.TestCase):
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
                                total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
+        self.assertEqual('BTU', tou_reading.unit)
         self.assertAlmostEqual(tou_renewable_btu,
                                tou_reading.renewable_quantity)
 

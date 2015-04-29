@@ -516,7 +516,7 @@ class ReebillProcessor(object):
         session = Session()
         unissued_v0_reebills = session.query(
             ReeBill.sequence, ReeBill.reebill_customer_id).filter(
-            ReeBill.issued == 0, ReeBill.version == 0)
+            ReeBill.issued == False, ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
             unissued_v0_reebills.c.reebill_customer_id.label(
