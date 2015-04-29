@@ -182,8 +182,8 @@ class UtilbillProcessor(object):
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
-            billing_address= Address.from_other(billing_address),
-            service_address= Address.from_other(service_address),
+            billing_address=billing_address.clone(),
+            service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
@@ -209,12 +209,12 @@ class UtilbillProcessor(object):
                     r.identifier = register.identifier
                     r.meter_identifier = register.meter_identifier
                 continue
-            # no need to append this Register to new_utilbill.registers because
-            # SQLAlchemy does it automatically
-            Register(new_utilbill, register.description, register.identifier,
-                     register.unit, False, register.reg_type,
-                     register.active_periods, register.meter_identifier,
-                     quantity=0, register_binding=register.register_binding)
+            new_utilbill.registers.append(
+                Register(register.register_binding, unit=register.unit,
+                         quantity=0, identifier=register.identifier,
+                         reg_type=register.reg_type,
+                         active_periods=register.active_periods,
+                         meter_identifier=register.meter_identifier))
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -258,7 +258,7 @@ class UtilbillProcessor(object):
 
         # upload the file
         if bill_file is not None:
-            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill,
+            self.bill_file_handler.upload_file_for_utilbill(new_utilbill,
                                                              bill_file)
 
         # adding UtilBill should also add Charges and Registers due to cascade
@@ -338,7 +338,7 @@ class UtilbillProcessor(object):
         # of ReeBill)
         utility_bill.check_editable()
 
-        self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
+        self.bill_file_handler.delete_file(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -347,7 +347,7 @@ class UtilbillProcessor(object):
             session.delete(register)
         session.delete(utility_bill)
 
-        pdf_url = self.bill_file_handler.get_s3_url(utility_bill)
+        pdf_url = self.bill_file_handler.get_url(utility_bill)
         return utility_bill, pdf_url
 
     def regenerate_charges(self, utilbill_id):
@@ -394,20 +394,18 @@ class UtilbillProcessor(object):
             raise BillingError("No more registers can be added")
 
         r = Register(
-            utility_bill,
+            register_kwargs.get('register_binding', new_reg_binding),
+            register_kwargs.get('unit', 'therms'),
             description=register_kwargs.get(
                 'description',"Insert description"),
             identifier=register_kwargs.get(
                 'identifier', "Insert register ID here"),
-            unit=register_kwargs.get('unit', 'therms'),
             estimated=register_kwargs.get('estimated', False),
             reg_type=register_kwargs.get('reg_type', "total"),
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
-            quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get('register_binding',
-                                                 new_reg_binding)
-        )
+            quantity=register_kwargs.get('quantity', 0))
+        r.utilbill = utility_bill
         session.add(r)
         session.flush()
         return r
@@ -495,7 +493,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address())
             return result, True
         return result, False
 
@@ -510,7 +508,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address())
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):
