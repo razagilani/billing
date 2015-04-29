@@ -247,14 +247,14 @@ class ReebillProcessor(object):
         if not self.state_db.is_issued(account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        max_version = self.state_db.max_version(account, sequence)
-        reebill = self.state_db.increment_version(account, sequence)
+        old_reebill = self.state_db.get_reebill(account, sequence)
+        reebill = old_reebill.make_correction()
 
         assert len(reebill.utilbills) == 1
 
         self.ree_getter.update_renewable_readings(reebill)
         try:
-            self.compute_reebill(account, sequence, version=max_version+1)
+            self.compute_reebill(account, sequence, reebill.version)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -266,7 +266,6 @@ class ReebillProcessor(object):
                     "version %s of reebill %s-%s: %s\n%s") % (
                     reebill.version, reebill.get_account(),
                     reebill.sequence, e, traceback.format_exc()))
-
         return reebill
 
     def get_unissued_corrections(self, account):
