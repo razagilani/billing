@@ -100,6 +100,13 @@ class ReebillFileHandler(object):
         return os.path.join(self._pdf_dir_path,reebill.get_account(),
                 self.get_file_name(reebill))
 
+    def get_file_display_path(self, reebill):
+        ''' Returns relative path to the PDF file accosiated with the given
+        reebill for path used in the sent e-mail to customer
+        '''
+        return os.path.join(reebill.get_account(),
+                self.get_file_name(reebill))
+
     def get_file(self, reebill):
         """Return the file itself opened in "rb" mode. The consumer must
         close it.
@@ -371,9 +378,9 @@ class BillDoc(BaseDocTemplate):
     # Middle y 264
     # Bottom Y 0
 
-    def _assemble_pages(self, data):
+    def _assemble_pages(self):
         pages = []
-        for i, frames in enumerate(self._page_frames(payee_frame=data['payee'])):
+        for i, frames in enumerate(self._page_frames()):
             pages.append(PageTemplate(id=self.page_names[i], frames=frames))
 
         self.addPageTemplates(pages)
@@ -391,14 +398,14 @@ class BillDoc(BaseDocTemplate):
         self.skin = skin_name
         self._load_fonts()
         self._set_styles()
-        self._assemble_pages(data[-1])
+        self._assemble_pages()
         self.build(self._flowables(data))
 
 class ThermalBillDoc(BillDoc):
 
     page_names = ['First Page', 'Second Page']
 
-    def _page_frames(self, payee_frame=None):
+    def _page_frames(self):
 
         _showBoundaries = 0
 
@@ -459,17 +466,13 @@ class ThermalBillDoc(BillDoc):
         balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
         # remit to block
-        if payee_frame is not None:
-            remitToF = Frame(77, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='remitTo', showBoundary=_showBoundaries)
+        remitToF = Frame(77, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='remitTo', showBoundary=_showBoundaries)
 
         # balance due block
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
-        if payee_frame is not None:
-            # build page container for _flowables to populate
-            firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, remitToF, balanceDueF]
-        else:
-            firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
+        # build page container for _flowables to populate
+        firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, remitToF, balanceDueF]
 
         # page two frames
 
