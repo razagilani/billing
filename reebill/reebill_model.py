@@ -596,7 +596,7 @@ class ReeBillCustomer(Base):
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES), nullable=False)
-    payee = Column(String(100))
+    payee = Column(String(100), nullable=False)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"

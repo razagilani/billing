@@ -504,11 +504,12 @@ class ReebillProcessor(object):
         }
         bill_file_path = self.reebill_file_handler.get_file_path(reebill)
         bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
+        display_file_path = self.reebill_file_handler.get_file_display_path(reebill)
         self.bill_mailer.mail(
             recipient_list,
             merge_fields,
             bill_file_contents,
-            bill_file_path)
+            display_file_path)
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for
