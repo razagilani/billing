@@ -122,7 +122,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '11f17961314c'
+_schema_revision = '3e4ceae0f397'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -556,7 +556,7 @@ class UtilBill(Base):
     # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
     # shown on electric bills and gas bills). this is not a foreign key
     # despite the name.
-    supply_choice_id = Column(String)
+    supply_choice_id = Column(String(1000))
 
     next_meter_read_date = Column(Date)
 
