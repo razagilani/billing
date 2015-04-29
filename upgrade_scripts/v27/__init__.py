@@ -9,12 +9,15 @@ calling :func:`.core.init_model`.
 """
 import json
 import logging
+from core.model import Session
 
 import pymongo
 
 from core import init_model
 from core.model import Session
 from reebill.reebill_model import User
+from upgrade_scripts.v27.create_register_templates import \
+    create_register_templates
 from upgrade_scripts import alembic_upgrade
 
 
@@ -46,5 +49,6 @@ def upgrade():
 
     init_model()
     s = Session()
+    create_register_templates(s, log)
     migrate_users(s)
     s.commit()
