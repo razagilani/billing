@@ -558,7 +558,7 @@ class UtilBill(Base):
     # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
     # shown on electric bills and gas bills). this is not a foreign key
     # despite the name.
-    supply_choice_id = Column(String)
+    supply_choice_id = Column(String(1000))
 
     next_meter_read_date = Column(Date)
 
