@@ -70,8 +70,19 @@ class ReebillFileHandlerTest(TestCase):
         ]
 
         self.file_handler.render(self.reebill)
+
+    def tearDown(self):
         # TODO: this seems to not always remove the directory?
         self.temp_dir.cleanup()
+
+    def test_file_name_path(self):
+        expected_name = '%s_%04d.pdf' % (
+            self.reebill.get_account(), self.reebill.sequence)
+        self.assertEqual(expected_name,
+                         self.file_handler.get_file_name(self.reebill))
+        file_path = self.file_handler.get_file_path(self.reebill)
+        self.assertTrue(file_path.endswith(expected_name))
+        self.assertTrue(file_path.startswith(self.temp_dir.path))
 
     def _filter_pdf_file(self, pdf_file):
         '''Read 'pdf_file' and return a list of lines from the file excluding
