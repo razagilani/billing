@@ -70,8 +70,19 @@ class ReebillFileHandlerTest(TestCase):
         ]
 
         self.file_handler.render(self.reebill)
+
+    def tearDown(self):
         # TODO: this seems to not always remove the directory?
         self.temp_dir.cleanup()
+
+    def test_file_name_path(self):
+        expected_name = '%s_%04d.pdf' % (
+            self.reebill.get_account(), self.reebill.sequence)
+        self.assertEqual(expected_name,
+                         self.file_handler.get_file_name(self.reebill))
+        file_path = self.file_handler.get_file_path(self.reebill)
+        self.assertTrue(file_path.endswith(expected_name))
+        self.assertTrue(file_path.startswith(self.temp_dir.path))
 
     def _filter_pdf_file(self, pdf_file):
         '''Read 'pdf_file' and return a list of lines from the file excluding
@@ -103,15 +114,12 @@ class ReebillFileHandlerTest(TestCase):
         whether the PDF file matches the expected value will tell you when
         something is broken but it won't tell you what's broken.
         '''
-        # check the case where the directory for the PDF already exists by
-        # creating it before calling 'render'
-        path = self.file_handler.get_file_path(self.reebill)
-        os.makedirs(os.path.dirname(path))
-
+        # directory for the PDF already exists by before 'render' is called
         self.file_handler.render(self.reebill)
 
-        # get hash of the PDF file, excluding certain parts where ReportLab puts data
-        # that are different every time
+        # get hash of the PDF file, excluding certain parts where ReportLab
+        # puts data that are different every time
+        path = self.file_handler.get_file_path(self.reebill)
         with open(path, 'rb') as pdf_file:
             filtered_lines = self._filter_pdf_file(pdf_file)
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
@@ -149,6 +157,8 @@ class ReebillFileHandlerTest(TestCase):
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time
         path = self.file_handler.get_file_path(self.reebill)
+        self.assertEqual(os.path.isabs(path), True)
+
         with open(path, 'rb') as pdf_file:
             filtered_lines = self._filter_pdf_file(pdf_file)
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
