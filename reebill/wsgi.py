@@ -267,6 +267,11 @@ class AccountsResource(RESTResource):
             self.reebill_processor.set_groups_for_utility_account(
                 row['utility_account_id'], tags)
 
+        if 'payee' in row:
+            self.reebill_processor.set_payee_for_utility_account(
+                row['utility_account_id'], row['payee']
+            )
+
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
