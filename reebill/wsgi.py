@@ -787,14 +787,12 @@ class PreferencesResource(RESTResource):
 
     def handle_put(self, *vpath, **params):
         row = cherrypy.request.json
-        cherrypy.session['user'].preferences[row['key']] = row['value']
-        self.user_dao.save_user(cherrypy.session['user'])
+        cherrypy.session['user'].set_preference(row['key'], row['value'])
         return True, {'rows': row,  'results': 1}
 
     def handle_post(self, *vpath, **params):
         row = cherrypy.request.json
         cherrypy.session['user'].set_preference(row['key'], row['value'])
-        self.user_dao.save_user(cherrypy.session['user'])
         return True, {'rows': row,  'results': 1}
 
 class ReportsResource(WebResource):
@@ -1089,7 +1087,6 @@ class ReebillWSGI(WebResource):
             credentials = ''.join('%02x' % ord(x) for x in os.urandom(16))
 
             user.session_token = credentials
-            self.user_dao.save_user(user)
 
             # this cookie has no expiration,
             # so lasts as long as the browser is open
