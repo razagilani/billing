@@ -35,6 +35,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'SupplyGroup',
     'RateClass',
     'Utility',
     'UtilBill',
@@ -58,6 +59,7 @@ PHYSICAL_UNITS = [
     'therms',
 ]
 
+SERVICES = ('gas', 'electric')
 
 class Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
@@ -366,6 +368,32 @@ class RegisterTemplate(Base):
     def get_total_register_template(cls, unit):
         return cls(register_binding=Register.TOTAL, unit=unit)
 
+
+class SupplyGroup(Base):
+    """This class determines what supply contracts may be available to
+    a customer.
+    """
+    __tablename__ = 'supply_group'
+
+    id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    service = Column(Enum(*SERVICES), nullable=False)
+    name = Column(String(255), nullable=False)
+
+    supplier = relationship('Supplier')
+
+    def __init__(self, name='', supplier=None, service='gas'):
+        self.name = name
+        self.supplier = supplier
+        self.service = service
+
+    def __repr__(self):
+        return '<SupplyGroup(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
+
+
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
     and the same pricing for distribution.
@@ -373,13 +401,8 @@ class RateClass(Base):
     Every bill in a rate class gets billed according to the same kinds of
     meter values (like total energy, demand, etc.) so the rate class also
     determines which registers exist in each bill.
-
-    The rate class also determines what supply contracts may be available to
-    a customer.
     """
     __tablename__ = 'rate_class'
-
-    SERVICES = ('gas', 'electric')
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
@@ -515,6 +538,8 @@ class UtilBill(Base):
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     period_start = Column(Date)
@@ -575,6 +600,8 @@ class UtilBill(Base):
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilBill.rate_class_id==RateClass.id')
+    supply_group = relationship('SupplyGroup', uselist=False,
+        primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
