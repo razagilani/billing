@@ -204,6 +204,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -216,6 +217,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -228,6 +230,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }], data)
 
         # get only one account
@@ -245,6 +248,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }], data)
 
     def test_correction_adjustment(self):
