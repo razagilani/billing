@@ -202,6 +202,10 @@ class ReebillFileHandler(object):
         '''Create a summary PDF of a list of bills
         '''
         pass
+        path = self.get_file_path(reebill[0])
+        print path
+        doc = SummaryBillDoc()
+        doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), path), args.skin_directory, args.skin_name)
 
 
 
@@ -218,6 +222,11 @@ class SummaryFileGenerator(object):
         :param output_file: file where the summary will be written.
         """
         assert reebills
+
+        # write summary to a file
+        summary_file = self._reebill_file_handler.render_summary(reebills)
+        summary_input_file = self._reebill_file_handler.get_file(summary_file)
+        self._pdf_concatenator.append(summary_input_file)
 
         for reebill in reebills:
             # write every bill to a file, read it back again, and append it
