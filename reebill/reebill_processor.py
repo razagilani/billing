@@ -248,8 +248,7 @@ class ReebillProcessor(object):
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(new_reebill)
 
         try:
             self.compute_reebill(account, new_sequence)
@@ -268,15 +267,14 @@ class ReebillProcessor(object):
         if not self.state_db.is_issued(account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        max_version = self.state_db.max_version(account, sequence)
-        reebill = self.state_db.increment_version(account, sequence)
+        old_reebill = self.state_db.get_reebill(account, sequence)
+        reebill = old_reebill.make_correction()
 
         assert len(reebill.utilbills) == 1
 
-        self.ree_getter.\
-            update_renewable_readings(self.nexus_util.olap_id(account), reebill)
+        self.ree_getter.update_renewable_readings(reebill)
         try:
-            self.compute_reebill(account, sequence, version=max_version+1)
+            self.compute_reebill(account, sequence, reebill.version)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -288,7 +286,6 @@ class ReebillProcessor(object):
                     "version %s of reebill %s-%s: %s\n%s") % (
                     reebill.version, reebill.get_account(),
                     reebill.sequence, e, traceback.format_exc()))
-
         return reebill
 
     def get_unissued_corrections(self, account):
@@ -487,8 +484,7 @@ class ReebillProcessor(object):
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.check_editable()
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(reebill, use_olap=True)
 
     def mail_reebill(self, account, sequence, recipient_list):
         reebill = self.state_db.get_reebill(account, sequence)

@@ -2,6 +2,7 @@
 '''
 from datetime import datetime, date, timedelta
 from itertools import chain
+import json
 from operator import attrgetter
 import traceback
 
@@ -487,6 +488,27 @@ class ReeBill(Base):
         self.due_date = (issue_date + timedelta(days=30)).date()
         self.issued = True
 
+    def make_correction(self):
+        """Return a new ReeBill that is a correction of this one (with
+        version number equal to the current version number + 1). This bill
+        should be issued and should be the highest version for its sequence.
+        """
+        if not self.issued:
+            raise ValueError("Can't correct an unissued bill")
+        new_reebill = ReeBill(self.reebill_customer, self.sequence,
+            self.version + 1, discount_rate=self.discount_rate,
+            late_charge_rate=self.late_charge_rate, utilbills=self.utilbills)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = self.billing_address.clone()
+        new_reebill.service_address = self.service_address.clone()
+        new_reebill.discount_rate = self.discount_rate
+        new_reebill.late_charge_rate = self.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.readings = [r.clone() for r in self.readings]
+        return new_reebill
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -500,7 +522,7 @@ class UtilbillReebill(Base):
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
-    def __init__(self, utilbill, document_id=None):
+    def __init__(self, utilbill):
         # UtilbillReebill has only 'utilbill' in its __init__ because the
         # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
         # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
@@ -509,13 +531,6 @@ class UtilbillReebill(Base):
         assert isinstance(utilbill, UtilBill)
 
         self.utilbill = utilbill
-        self.document_id = document_id
-
-    def __repr__(self):
-        return (('UtilbillReebill(utilbill_id=%s, reebill_id=%s, '
-                 'document_id=...%s, uprs_document_id=...%s, ') % (
-                    self.utilbill_id, self.reebill_id, self.document_id[-4:],
-                    self.uprs_document_id[-4:]))
 
 # intermediate table for many-to-many relationship. should not be used
 # outside this file.
@@ -658,14 +673,9 @@ class ReeBillCustomer(Base):
 
 
 class ReeBillCharge(Base):
-    '''Table representing "hypothetical" versions of charges in reebills (so
-    named because these may not have the same schema as utility bill charges).
-    Note that, in the past, a set of "hypothetical charges" was associated
-    with each utility bill subdocument of a reebill Mongo document, of which
-    there was always 1 in practice. Now these charges are associated directly
-    with a reebill, so there would be no way to distinguish between charges
-    from different utility bills, if there mere multiple utility bills.
-    '''
+    """Table representing "hypothetical" versions of utility bill charges in
+    reebills.
+    """
     __tablename__ = 'reebill_charge'
 
     id = Column(Integer, primary_key=True)
@@ -777,9 +787,8 @@ class Reading(Base):
             return sum
         if self.aggregate_function == 'MAX':
             return max
-        else:
-            raise ValueError('Unknown aggregation function "%s"' %
-                             self.aggregate_function)
+        raise ValueError('Unknown aggregation function "%s"' %
+                         self.aggregate_function)
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -834,4 +843,35 @@ class Payment(Base):
         return the_dict
 
 
+class User(Base):
+    """User account (not to be confused with customer account).
+    """
+    __tablename__ = 'reebill_user'
+
+    reebill_user_id = Column(Integer, primary_key=True)
+    identifier = Column(String(1000), nullable=False)
+    username = Column(String(1000), nullable=False, default='')
+    password_hash = Column(String(1000), nullable=False)
+    salt = Column(String(1000), nullable=False)
+    # JSON, seems not used very often
+    _preferences = Column('preferences', String(1000), default='')
+    session_token = Column(String(1000))
+
+    def __repr__(self):
+        return '<User %s %s %s>' % (self.id, self.identifier, self.username)
+
+    def get_preferences(self):
+        pref_str = self._preferences
+        if pref_str is None:
+            return {}
+        try:
+            return json.loads(pref_str)
+        except ValueError:
+            return {}
+    preferences = property(get_preferences)
+
+    def set_preference(self, key, value):
+        pref_dict = self.get_preferences()
+        pref_dict[key] = value
+        self._preferences = json.dumps(pref_dict)
 
