@@ -191,21 +191,37 @@ class ReebillFileHandler(object):
         path = self.get_file_path(reebill)
         self._ensure_directory_exists(path)
         dir_path, file_name = os.path.split(path)
+
+        # convert reebill into dictionary
         document = self._generate_document(reebill)
         ThermalBillDoc().render([document], dir_path,
                 file_name, self._template_dir_path,
                 self._get_skin_directory_name_for_account(
                         reebill.get_account()))
 
-    #TODO implement for summary page
     def render_summary(self, reebills):
-        '''Create a summary PDF of a list of bills
+        '''Create a summary PDF of a list given :class:`ReeBill`s.
         '''
-        pass
-        path = self.get_file_path(reebill[0])
-        print path
-        doc = SummaryBillDoc()
-        doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), path), args.skin_directory, args.skin_name)
+
+        # TODO: the summary file name is based off the first ReeBill.
+        # This is a side-effect of using existing code for the
+        # summary that handles file names and paths for ReeBills.
+        path = self.get_file_path(reebills[0])
+        self._ensure_directory_exists(path)
+        dir_path, file_name = os.path.split(path)
+        file_name = "summary-%s" % (file_name)
+
+        # convert reebills into dictionaries
+        bill_data = []
+        for reebill in reebills:
+            bill_data.append(self._generate_document(reebill))
+
+        SummaryBillDoc().render(bill_data, dir_path, 
+            file_name, self._template_dir_path,
+            self._get_skin_directory_name_for_account(
+            reebill.get_account()))
+
+        return dir_path, file_name
 
 
 
@@ -224,8 +240,16 @@ class SummaryFileGenerator(object):
         assert reebills
 
         # write summary to a file
-        summary_file = self._reebill_file_handler.render_summary(reebills)
-        summary_input_file = self._reebill_file_handler.get_file(summary_file)
+        dir_path, file_name = self._reebill_file_handler.render_summary(reebills)
+
+        # Open the file which is to be closed when the pdf concatenator 
+        # is destroyed
+        # the summary file name is based on the first bill file name
+        # Unfortunately, the way bill file names are constructed needs to be
+        # refactored to include the concept of a summary page
+        summary_input_file = open(os.path.join(dir_path, file_name), 'rb')
+        # We might like:
+        #summary_input_file = self._reebill_file_handler.get_summary_file(reebills)
         self._pdf_concatenator.append(summary_input_file)
 
         for reebill in reebills:
