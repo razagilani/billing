@@ -251,6 +251,14 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'payee': None
         }], data)
 
+    def test_set_payee_for_utility_account(self):
+        utility_account_9 = Session().query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.reebill_processor.set_payee_for_utility_account\
+            (utility_account_9.id, 'test')
+        self.assertEqual(self.reebill_processor.get_payee_for_utility_account
+                         (utility_account_9.id), 'test')
+
     def test_correction_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
             earliest unissued bill.'''

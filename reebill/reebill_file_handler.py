@@ -673,15 +673,14 @@ class ThermalBillDoc(BillDoc):
         fl.append(UseUpSpace())
 
         #populate remitTo
-        if b['payee'] is not None:
-            remitTo = [
-                [Paragraph("Remit To", s['BillLabelLgRight']), Paragraph(b["payee"] if b['payee'] is not None else '', s['BillFieldRight'])]
-            ]
+        remitTo = [
+            [Paragraph("Remit To", s['BillLabelLgRight']), Paragraph(b["payee"] if b['payee'] is not None else '', s['BillFieldRight'])]
+        ]
 
-            t = Table(remitTo, [135,85])
-            t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
-            fl.append(t)
-            fl.append(UseUpSpace())
+        t = Table(remitTo, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
+        fl.append(t)
+        fl.append(UseUpSpace())
 
         # populate balanceDueFrame
         balanceDue = [
