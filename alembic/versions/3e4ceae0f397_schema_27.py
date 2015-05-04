@@ -36,6 +36,8 @@ def upgrade():
         sa.PrimaryKeyConstraint('id')
     )
     op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), nullable=True))
+    op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=True))
+
     ### end Alembic commands ###
 
 def downgrade():

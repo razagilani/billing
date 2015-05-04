@@ -15,7 +15,7 @@ import pymongo
 
 from core import init_model
 from core.model import Session
-from reebill.reebill_model import User
+from reebill.reebill_model import User, ReeBillCustomer
 from upgrade_scripts import alembic_upgrade
 
 
@@ -54,6 +54,12 @@ def migrate_users(s):
                     session_token=mongo_user.get('session_token', None))
         s.add(user)
 
+def set_payee_for_reebill_customers(s):
+    reebill_customers = s.query(ReeBillCustomer).all()
+    for customer in reebill_customers:
+        customer.payee = 'Nextility'
+
+
 def upgrade():
     log.info('Beginning upgrade to version 27')
 
@@ -62,6 +68,6 @@ def upgrade():
     init_model()
     s = Session()
     migrate_users(s)
-    s.commit()
+    set_payee_for_reebill_customers(s)
     create_and_assign_supply_groups(s)
     s.commit()
