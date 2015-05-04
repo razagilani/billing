@@ -388,7 +388,7 @@ class ReebillProcessor(object):
 
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
-            template_account, utility_account_number):
+            template_account, utility_account_number, payee):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
@@ -440,7 +440,8 @@ class ReebillProcessor(object):
                 name=name, discount_rate=discount_rate,
                 late_charge_rate=late_charge_rate, service=service_type,
                 bill_email_recipient='example@example.com',
-                utility_account=new_utility_account)
+                utility_account=new_utility_account,
+                payee=payee)
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer
@@ -483,11 +484,12 @@ class ReebillProcessor(object):
         }
         bill_file_path = self.reebill_file_handler.get_file_path(reebill)
         bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
+        display_file_path = self.reebill_file_handler.get_file_display_path(reebill)
         self.bill_mailer.mail(
             recipient_list,
             merge_fields,
             bill_file_contents,
-            bill_file_path)
+            display_file_path)
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for
@@ -719,6 +721,19 @@ class ReebillProcessor(object):
             session.add(result)
             return result, True
         return result, False
+
+    def set_payee_for_utility_account(self, account_id, payee):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+        customer.payee = payee
+
+    def get_payee_for_utility_account(self, account_id):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+        return customer.get_payee()
+
 
     def set_groups_for_utility_account(self, account_id, group_name_array):
         s = Session()
