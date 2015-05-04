@@ -77,10 +77,11 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
         assert mysql_engine.execute(count_query).fetchall() \
                == pg_engine.execute(count_query).fetchall()
 
-    # "stamp" the database with the current revision as described here:
+    # "stamp" the new database with the current revision as described here:
     # http://alembic.readthedocs.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
     alembic_cfg = Config(path.join(ROOT_PATH, "alembic.ini"))
+    alembic_cfg.set_section_option('alembic', 'sqlalchemy.url', new_uri)
     stamp(alembic_cfg, 'head')
 
     # just to check that it worked
-    init_model()
+    init_model(uri=new_uri)
