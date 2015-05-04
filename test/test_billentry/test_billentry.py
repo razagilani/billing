@@ -939,6 +939,7 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
         utility = Utility(name='Empty Utility')
+
         utility_account = UtilityAccount('Account 2', '22222', utility, None,
                                          None, Address(), Address(), '2')
 
