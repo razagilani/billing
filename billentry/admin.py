@@ -84,7 +84,7 @@ class UtilityModelView(LoginModelView):
 class ReeBillCustomerModelView(LoginModelView):
     form_columns = (
         'name', 'discountrate', 'latechargerate', 'bill_email_recipient',
-        'service', )
+        'service', 'payee', )
 
     def __init__(self, session, **kwargs):
         super(ReeBillCustomerModelView, self).__init__(ReeBillCustomer, session,
