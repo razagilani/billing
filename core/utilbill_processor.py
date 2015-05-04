@@ -179,6 +179,10 @@ class UtilbillProcessor(object):
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
+        if predecessor is not None:
+            new_utilbill.set_total_meter_identifier(
+                predecessor.get_total_meter_identifier())
+
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
         new_utilbill.compute_charges()
