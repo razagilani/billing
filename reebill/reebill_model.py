@@ -156,7 +156,7 @@ class ReeBill(Base):
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
-            self.get_account(), self.sequence, self.version, 'issued' if
+            self.reebill_customer.id, self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
 
     def get_customer_id(self):
