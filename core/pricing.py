@@ -173,7 +173,7 @@ class FuzzyPricingModel(PricingModel):
             return []
         return [utilbill for utilbill in
                 self._utilbill_loader.load_real_utilbills(
-                    supplier=utilbill.supplier, processed=True
+                    supply_group=utilbill.supply_group, processed=True
                 ) if not ignore_func(utilbill)]
 
     def get_predicted_charges(self, utilbill):
