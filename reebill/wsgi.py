@@ -246,7 +246,7 @@ class AccountsResource(RESTResource):
                 row['account'], row['name'], row['service_type'],
                 float(row['discount_rate']), float(row['late_charge_rate']),
                 billing_address, service_address, row['template_account'],
-                row['utility_account_number'])
+                row['utility_account_number'], row['payee'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
@@ -266,6 +266,11 @@ class AccountsResource(RESTResource):
             tags = filter(None, (t.strip() for t in row['tags'].split(',')))
             self.reebill_processor.set_groups_for_utility_account(
                 row['utility_account_id'], tags)
+
+        if 'payee' in row:
+            self.reebill_processor.set_payee_for_utility_account(
+                row['utility_account_id'], row['payee']
+            )
 
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()

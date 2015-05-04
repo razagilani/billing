@@ -70,6 +70,13 @@ class ReebillFileHandler(object):
         return os.path.join(self._pdf_dir_path,reebill.get_account(),
                 self.get_file_name(reebill))
 
+    def get_file_display_path(self, reebill):
+        ''' Returns relative path to the PDF file accosiated with the given
+        reebill for path used in the sent e-mail to customer
+        '''
+        return os.path.join(reebill.get_account(),
+                self.get_file_name(reebill))
+
     def get_file(self, reebill):
         """Return the file itself opened in "rb" mode. The consumer must
         close it.
@@ -139,7 +146,7 @@ class ReebillFileHandler(object):
             'service_street': reebill.service_address.street,
             'total_adjustment': reebill.total_adjustment,
             'total_utility_charges': reebill.get_total_actual_charges(),
-            'payment_addressee': 'Nextility',
+            'payment_payee': reebill.get_payee(),
             'payment_city': 'Washington',
             'payment_postal_code': '20009',
             'payment_state': 'DC',

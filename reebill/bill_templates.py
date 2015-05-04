@@ -262,7 +262,7 @@ class ThermalBillDoc(BillDoc):
 
         # section 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
 
-        billPeriodTableF = Frame(36, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=False)
+        billPeriodTableF = Frame(36, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=_showBoundaries)
 
 
         # Customer service address Frame
@@ -286,11 +286,10 @@ class ThermalBillDoc(BillDoc):
         summaryBackgroundF = Frame(141, 75, 443, 152, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryBackground', showBoundary=_showBoundaries)
 
         # Skyline Account number frame
-        billIdentificationF = Frame(90, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
+        billIdentificationF = Frame(0, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
 
-        # Due date and Amount frame
-        amountDueF = Frame(353, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
-
+        # Due date and Amount and remit to  frame
+        amountDueF = Frame(230, 657, 360, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
 
         # summary charges block
         summaryChargesTableF = Frame(328, 167, 252, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryCharges', showBoundary=_showBoundaries)
@@ -310,7 +309,6 @@ class ThermalBillDoc(BillDoc):
 
         # balance due block
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
-
 
         # build page container for _flowables to populate
         firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
@@ -376,11 +374,13 @@ class ThermalBillDoc(BillDoc):
             .strftime('%m-%d-%Y') if b["due_date"] is not None
             else 'None', s['BillFieldRight'])],
             [Paragraph("Balance Due", s['BillLabelRight']), Paragraph(
-                format_for_display(b["balance_due"]), s[
-                    'BillFieldRight'])]
+                format_for_display(b["balance_due"]), s['BillFieldRight'])],
+            [Paragraph("Remit Payment To", s['BillLabelRight']), Paragraph(
+                b["payment_payee"] if b['payment_payee'] is not None else '' ,
+                s['BillFieldRight'])]
         ]
         
-        t = Table(dueDateAndAmount, [135,85])
+        t = Table(dueDateAndAmount, [135,160])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
         fl.append(t)
         fl.append(UseUpSpace())
@@ -512,7 +512,6 @@ class ThermalBillDoc(BillDoc):
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
         fl.append(t)
         fl.append(UseUpSpace())
-
 
 
         # populate balanceDueFrame
@@ -992,7 +991,7 @@ class PVBillDoc(BillDoc):
 
         fl.append(Paragraph("Remit Payment To:", s['BillLabel']))
         fl.append(Spacer(220,10))
-        fl.append(Paragraph(b["payment_addressee"], s['BillField']))
+        fl.append(Paragraph(b["payment_payee"], s['BillField']))
         fl.append(Paragraph(b["payment_street"], s['BillField']))
         fl.append(Paragraph(" ".join((b["payment_city"], b["payment_state"], b["payment_postal_code"])), s['BillField']))
         fl.append(UseUpSpace())
@@ -1212,11 +1211,14 @@ class SummaryBillDoc(BillDoc):
 
         # 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
 
-        fl.append(Paragraph("Make Payment To:", s['BillLabelLg']))
+        # TODO: make sure there is a first bill
+        first_bill = bill_data[0]
+
+        fl.append(Paragraph("Remit Payment To:", s['BillLabelLg']))
         fl.append(Spacer(10,10))
-        fl.append(Paragraph("Nextility Inc.", s['BillLabel']))
-        fl.append(Paragraph("1606 20th St NW", s['BillLabel']))
-        fl.append(Paragraph("Washington, DC  20009", s['BillLabel']))
+        fl.append(Paragraph(first_bill["payment_payee"], s['BillLabel']))
+        fl.append(Paragraph(first_bill["payment_street"], s['BillLabel']))
+        fl.append(Paragraph("%s, %s  %s" % (first_bill["payment_state"], first_bill["payment_city"], first_bill["payment_postal_code"]), s['BillLabel']))
         fl.append(UseUpSpace())
 
         # determine total of all bills
@@ -1366,7 +1368,7 @@ if __name__ == '__main__':
         "total_adjustment": float("0"),
         "total_hypothetical_charges": float("0"),
         "total_utility_charges": float("0"),
-        "payment_addressee": "Skyline Innovations",
+        "payment_payee": "Skyline Innovations",
         "payment_city": "Washington",
         "payment_postal_code": "20009",
         "payment_state": "DC",
@@ -1543,7 +1545,7 @@ if __name__ == '__main__':
         # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
         if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
             doc = ThermalBillDoc()
-        elif args.skin_name == "nextility_pv":
+        elif args.skin_name == "skyline_pv":
             doc = PVBillDoc()
         elif args.skin_name == "summary":
             doc = SummaryBillDoc()
