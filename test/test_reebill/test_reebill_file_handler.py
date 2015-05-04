@@ -128,7 +128,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('59e6e188f306d5bcb2c96133b4e5fd61e5c015e4',
+        self.assertEqual('46d71483b66c2beaf168d591dda7879546ea2e68',
                 filtered_pdf_hash)
 
         # delete the file
@@ -167,7 +167,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('8aba74f1f80c6251c936fdfd6dec235097f978b6',
+        self.assertEqual('d1fa43fb3d18bd865121895181c40e1686256b57',
                          filtered_pdf_hash)
 
 

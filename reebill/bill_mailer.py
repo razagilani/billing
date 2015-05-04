@@ -40,8 +40,8 @@ class Mailer(object):
         self.template_html = template_html
 
 
-    def mail(self, recipients, merge_fields, attachment_contents, attachment_name,
-             boundary=None):
+    def mail(self, recipients, merge_fields, attachment_contents, display_file_path,
+            boundary=None):
         subject = "Nextility: Your Monthly Bill for %s" % (
             merge_fields["street"])
         with open(TEMPLATE_FILE_PATH) as template_file:
@@ -55,7 +55,7 @@ class Mailer(object):
         container['To'] = u', '.join(recipients)
         html = Template(template_html).render(merge_fields)
 
-        ctype, encoding = mimetypes.guess_type(attachment_name)
+        ctype, encoding = mimetypes.guess_type(display_file_path)
         if ctype is None or encoding is not None:
             # No guess could be made, or the file is encoded (compressed), so
             # use a generic bag-of-bits type.
@@ -71,7 +71,7 @@ class Mailer(object):
             encoders.encode_base64(attachment)
         # Set the filename parameter
         attachment.add_header('Content-Disposition', 'attachment',
-                filename=attachment_name)
+                filename=display_file_path)
         container.attach(attachment)
 
         # Record the MIME types of both parts - text/plain and text/html.
