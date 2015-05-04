@@ -39,8 +39,7 @@ class Mailer(object):
         self._bcc_list = bcc_list
         self.template_html = template_html
 
-
-    def mail(self, recipients, merge_fields, attachment_contents, display_file_path,
+    def mail(self, recipients, template, merge_fields, attachment_contents, display_file_path,
             boundary=None):
         subject = "Nextility: Your Monthly Bill for %s" % (
             merge_fields["street"])

@@ -672,12 +672,10 @@ class ReebillProcessor(object):
         sfg.generate_summary_file(bills, summary_file)
         summary_file.seek(0)
         merge_fields = {
-            'street': '',
             'balance_due': sum(b.balance_due for b in bills),
             'bill_dates': max(b.get_period_end() for b in bills),
-            'last_bill': '',
         }
-        self.bill_mailer.mail(summary_recipient, merge_fields,
+        self.bill_mailer.mail_summary(summary_recipient, merge_fields,
                               summary_file.read(), 'summary.pdf')
         return bills
 
