@@ -79,8 +79,7 @@ def upgrade():
     log.info('Upgrading schema to revision %s' % REVISION)
     alembic_upgrade(REVISION, config=old_db_config)
 
-    #init_model(uri=old_uri, schema_revision=REVISION)
-    init_model(uri=old_uri)
+    init_model(uri=old_uri, schema_revision=REVISION)
 
     s = Session()
     migrate_users(s)
