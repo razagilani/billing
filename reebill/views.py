@@ -147,7 +147,7 @@ class Views(object):
 
     def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
-          Casual name, Primus Name, Utility Service Address, Date of last
+          Casual name, Primus Name, Utility Service Address, payee, Date of last
           issued bill, Days since then and the last event) and the length
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
@@ -166,8 +166,10 @@ class Views(object):
                 ReeBillCustomer.utility_account == ua).first()
             if reebill_customer is None:
                 group_names = []
+                payee = ''
             else:
                 group_names = ','.join(g.name for g in reebill_customer.groups)
+                payee = reebill_customer.payee
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
@@ -181,6 +183,7 @@ class Views(object):
                 'utilityserviceaddress': str(ua.get_service_address()),
                 'tags': group_names,
                 'lastevent': '',
+                'payee': payee
             }
 
         if account is not None:
