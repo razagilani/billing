@@ -204,6 +204,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -216,6 +217,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -228,6 +230,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }], data)
 
         # get only one account
@@ -245,7 +248,16 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }], data)
+
+    def test_set_payee_for_utility_account(self):
+        utility_account_9 = Session().query(UtilityAccount).filter_by(
+            account='99999').one()
+        self.reebill_processor.set_payee_for_utility_account\
+            (utility_account_9.id, 'test')
+        self.assertEqual(self.reebill_processor.get_payee_for_utility_account
+                         (utility_account_9.id), 'test')
 
     def test_correction_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
@@ -491,7 +503,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }
         self.reebill_processor.create_new_account('55555', 'Another New Account',
                                         'thermal', 0.6, 0.2, billing_address,
-                                        service_address, '99999', '123')
+                                        service_address, '99999', '123', 'test')
         self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 

@@ -56,6 +56,13 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         },
         width: 100
     },{
+        header: 'Remit To',
+        dataIndex: 'payee',
+        editor:{
+            xtype: 'textfield'
+        },
+        width: 120
+    },{
         header: 'Codename',
         dataIndex: 'codename',
         width: 120
