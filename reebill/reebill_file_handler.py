@@ -100,6 +100,13 @@ class ReebillFileHandler(object):
         return os.path.join(self._pdf_dir_path,reebill.get_account(),
                 self.get_file_name(reebill))
 
+    def get_file_display_path(self, reebill):
+        ''' Returns relative path to the PDF file accosiated with the given
+        reebill for path used in the sent e-mail to customer
+        '''
+        return os.path.join(reebill.get_account(),
+                self.get_file_name(reebill))
+
     def get_file(self, reebill):
         """Return the file itself opened in "rb" mode. The consumer must
         close it.
@@ -169,6 +176,7 @@ class ReebillFileHandler(object):
             'service_street': reebill.service_address.street,
             'total_adjustment': reebill.total_adjustment,
             'total_utility_charges': reebill.get_total_actual_charges(),
+            'payee': reebill.get_payee(),
             'payment_addressee': 'Nextility',
             'payment_city': 'Washington',
             'payment_postal_code': '20009',
@@ -457,12 +465,14 @@ class ThermalBillDoc(BillDoc):
         # balance forward block
         balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
+        # remit to block
+        remitToF = Frame(77, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='remitTo', showBoundary=_showBoundaries)
+
         # balance due block
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
-
         # build page container for _flowables to populate
-        firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
+        firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, remitToF, balanceDueF]
 
         # page two frames
 
@@ -662,7 +672,15 @@ class ThermalBillDoc(BillDoc):
         fl.append(t)
         fl.append(UseUpSpace())
 
+        #populate remitTo
+        remitTo = [
+            [Paragraph("Remit To", s['BillLabelLgRight']), Paragraph(b["payee"] if b['payee'] is not None else '', s['BillFieldRight'])]
+        ]
 
+        t = Table(remitTo, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
+        fl.append(t)
+        fl.append(UseUpSpace())
 
         # populate balanceDueFrame
         balanceDue = [

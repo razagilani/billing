@@ -72,6 +72,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }]})
         self.assertEqual(utility_account.account_number, '987654321')
 
@@ -97,6 +98,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some tag,some other tag',
+            'payee': None
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some tag', 'some other tag'])
@@ -121,6 +123,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some other tag,one more tag',
+            'payee': None
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some other tag', 'one more tag'])
