@@ -27,7 +27,7 @@ class UtilbillLoaderTest(unittest.TestCase):
                             utility,
                             Supplier(name='Test Supplier', address=Address()),
                             RateClass(name='FB Test Rate Class',
-                                      utility=utility, service='gas'),
+                                      utility=utility, service='gas'), None,
                             blank_address, blank_address)
         self.session.add(self.utility_account)
         self.session.commit()
@@ -154,6 +154,7 @@ class UtilbillLoaderTest(unittest.TestCase):
             'other', '1', self.utility_account.fb_utility,
             self.utility_account.fb_supplier,
             self.utility_account.fb_rate_class,
+            None,
             self.utility_account.fb_billing_address,
             self.utility_account.fb_service_address)
         self.session.add(other_account)

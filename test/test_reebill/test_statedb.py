@@ -28,7 +28,7 @@ class StateDBTest(TestCase):
                             test_utility, test_supplier,
                             RateClass(name='FB Test Rate Class',
                                       utility=test_utility, service='gas'),
-                            blank_address, blank_address)
+                            None, blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer(name='Test Customer',
                                     discount_rate=.12, late_charge_rate=.34,
                                     service='thermal',
