@@ -711,6 +711,23 @@ class UtilBill(Base):
             return None
         return self.rate_class.name
 
+    def get_supply_group_name(self):
+        '''Return name of this bill's supply_group or None if the rate class is
+        None (unknown).
+        '''
+        if self.supply_group is None:
+            return None
+        return self.supply_group.name
+
+    def get_supply_group(self):
+        return self.supply_group
+
+    def set_supply_group(self, supply_group):
+        """Set the supply_group
+        """
+        self.supply_group = supply_group
+
+
     def get_rate_class(self):
         return self.rate_class
 

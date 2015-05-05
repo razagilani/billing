@@ -323,7 +323,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             'state': 'Final',
             'service': 'Gas',
             'utility': column_dict(self.views.get_utility('pepco')),
-            'supplier': self.views.get_supplier('supplier').name,
+            'supplier': column_dict(self.views.get_supplier('supplier')),
             'period_start': date(2012, 1, 1),
             'period_end': date(2012, 2, 1),
             'total_charges': 0,
@@ -361,8 +361,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             'service': 'Gas',
                             'utility':
                                 column_dict(self.views.get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
+                            'supplier': column_dict(self.views.
+                                get_supplier('supplier')),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -375,8 +375,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             'service': 'Gas',
                             'utility': column_dict(self.views.
                                 get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
+                            'supplier': column_dict(self.views.
+                                get_supplier('supplier')),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -402,8 +402,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             'service': 'Gas',
                             'utility': column_dict(self.views.
                                 get_utility('washgas')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
+                            'supplier': column_dict(self.views.
+                                get_supplier('supplier')),
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
                                                1),
@@ -417,8 +417,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             'service': 'Gas',
                             'utility': column_dict(self.views.
                                 get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
+                            'supplier': column_dict(self.views.
+                                get_supplier('supplier')),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -431,8 +431,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             'service': 'Gas',
                             'utility': column_dict(self.views.
                                 get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
+                            'supplier': column_dict(self.views.
+                                get_supplier('supplier')),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -460,7 +460,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                 'state': 'Final',
                 'service': 'Gas',
                 'utility': column_dict(self.views.get_utility('washgas')),
-                'supplier': self.views.get_supplier('supplier').name,
+                'supplier': column_dict(self.views.get_supplier('supplier')),
                 'period_start': date(2012, 4, 1),
                 'period_end': date(2012, 5, 1),
                 'total_charges': 0,
@@ -561,7 +561,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             'state': 'Final',
             'service': 'Gas',
             'utility': column_dict(customer.fb_utility),
-            'supplier': customer.fb_supplier.name,
+            'supplier': column_dict(customer.fb_supplier),
             'rate_class': customer.fb_rate_class.name,
             'period_start': None,
             'period_end': None,
@@ -607,7 +607,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                           'state': 'Final',
                                           'service': 'Gas',
                                           'utility': column_dict(customer.fb_utility),
-                                          'supplier': customer.fb_supplier.name,
+                                          'supplier': column_dict(customer.fb_supplier),
                                           'rate_class': customer.fb_rate_class.name,
                                           'period_start': None,
                                           'period_end': None,
