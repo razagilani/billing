@@ -107,7 +107,6 @@ def create_bill_mailer():
         mailer_opts['mail_from'],
         mailer_opts['originator'],
         mailer_opts['password'],
-        mailer_opts['template_file_name'],
         smtplib.SMTP(),
         mailer_opts['smtp_host'],
         mailer_opts['smtp_port'],
