@@ -96,7 +96,8 @@ class UtilbillProcessor(object):
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
                                utility=None, rate_class=None, total=0,
-                               state=UtilBill.Complete, supplier=None):
+                               state=UtilBill.Complete, supplier=None,
+                               supply_group=None):
         '''
         Returns a UtilBill with related objects (Charges and Registers
         assigned to it). Does not add anything to the session, so callers can
@@ -176,6 +177,8 @@ class UtilbillProcessor(object):
             rate_class = getattr(predecessor, 'rate_class', None)
         if rate_class is None:
             rate_class = utility_account.fb_rate_class
+        if supply_group is None:
+            supply_group = utility_account.fb_supply_group
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
@@ -217,7 +220,8 @@ class UtilbillProcessor(object):
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
                             service=None, utility=None, rate_class=None,
-                            total=0, state=UtilBill.Complete, supplier=None):
+                            total=0, state=UtilBill.Complete, supplier=None,
+                            supply_group=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -246,6 +250,8 @@ class UtilbillProcessor(object):
             rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
         if supplier is not None:
            supplier = self.get_create_supplier(supplier)
+        if supply_group is not None:
+            supply_group = self.get_create_supply_group(supply_group, supplier)
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
