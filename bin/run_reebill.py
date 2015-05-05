@@ -18,6 +18,10 @@ if __name__ == '__main__':
     initialize()
 
     app = ReebillWSGI.set_up()
+
+    class CherryPyRoot(object):
+        reebill = app
+
     ui_root = join(ROOT_PATH, 'reebill', 'ui')
     cherrypy_conf = {
         '/': {
@@ -50,8 +54,6 @@ if __name__ == '__main__':
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
 
-    class CherryPyRoot(object):
-        reebill = app
     cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
     initialize()
