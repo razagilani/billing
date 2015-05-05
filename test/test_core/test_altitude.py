@@ -75,7 +75,7 @@ class TestWithDB(TestCase):
         ua = UtilityAccount('example', '00001', self.u,
                             Supplier(name='s', address=Address()),
                             RateClass(name='r', utility=self.u,
-                                      service='electric'),
+                                      service='electric'), None,
                             Address(), Address(), account_number='1')
         s.add(ua)
 
@@ -100,7 +100,7 @@ class TestWithDB(TestCase):
 
         # more than one utility account can share the same AltitudeAccount
         ua2 = UtilityAccount('example2', '00002', self.u, ua.fb_supplier,
-                             ua.fb_rate_class, Address(), Address(),
+                             ua.fb_rate_class, None, Address(), Address(),
                              account_number='2')
         update_altitude_account_guids(ua2, ['c'])
         c1, c2 = s.query(AltitudeAccount).order_by(
@@ -122,7 +122,8 @@ class TestAltitudeBillWithDB(TestCase):
 
         self.u = Utility(name='A Utility', address=Address())
         utility = Utility(name='example', address=None)
-        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        ua = UtilityAccount('', '', utility, None, None, None, Address(),
+                            Address())
         self.utilbill = UtilBill(ua, utility, None)
 
     def test_create_delete(self):
