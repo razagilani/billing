@@ -4,7 +4,7 @@ from datetime import datetime,date
 from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
-    Supplier, Utility, RateClass, UtilityAccount
+    Supplier, Utility, RateClass, UtilityAccount, SupplyGroup
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
@@ -33,7 +33,8 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
+            supply_group=None, processed=None, supply_choice_id=None,
+            meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -65,6 +66,10 @@ class UtilbillProcessor(object):
 
         if supplier is not None:
             utilbill.supplier = self.get_create_supplier(supplier)
+
+        if supply_group is not None:
+            utilbill.supply_group = self.get_create_supply_group(
+                supply_group, utilbill.supplier)
 
         if rate_class is not None:
             utilbill.rate_class = self.get_create_rate_class(
@@ -488,7 +493,7 @@ class UtilbillProcessor(object):
 
     def get_create_supplier(self, name):
         session = Session()
-        # rate classes are identified in the client by name, rather than
+        # suppliers are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
@@ -498,6 +503,20 @@ class UtilbillProcessor(object):
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
             result = Supplier(name=name, address=Address())
+        return result
+
+    def get_create_supply_group(self, name, supplier):
+        session = Session()
+        # supply_groups are identified in the client by name, rather than
+        # their primary key. "Unknown Supply Group" is a name sent by the client
+        # to the server to identify a supply group that is identified by "null"
+        # when sent from the server to the client.
+        if name == 'Unknown Supply Group':
+            return None
+        try:
+            result = session.query(SupplyGroup).filter_by(name=name).one()
+        except NoResultFound:
+            result = SupplyGroup(name=name, supplier=supplier)
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):
