@@ -217,7 +217,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': "Nextility"
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -230,7 +230,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': "Someone Else!"
         }], data)
 
         # get only one account

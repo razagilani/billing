@@ -1216,9 +1216,13 @@ class SummaryBillDoc(BillDoc):
 
         fl.append(Paragraph("Remit Payment To:", s['BillLabelLg']))
         fl.append(Spacer(10,10))
-        fl.append(Paragraph(first_bill["payment_payee"], s['BillLabel']))
-        fl.append(Paragraph(first_bill["payment_street"], s['BillLabel']))
-        fl.append(Paragraph("%s, %s  %s" % (first_bill["payment_state"], first_bill["payment_city"], first_bill["payment_postal_code"]), s['BillLabel']))
+        fl.append(Paragraph(first_bill["payment_payee"] if first_bill["payment_payee"] is not None else "None", s['BillLabel']))
+        fl.append(Paragraph(first_bill["payment_street"] if first_bill["payment_street"] is not None else "None", s['BillLabel']))
+        fl.append(Paragraph("%s, %s  %s" % (
+            first_bill["payment_state"] if first_bill["payment_state"] is not None else "None",
+            first_bill["payment_city"] if first_bill["payment_city"] is not None else "None",
+            first_bill["payment_postal_code"] if first_bill["payment_postal_code"] is not None else "None"
+        ), s['BillLabel']))
         fl.append(UseUpSpace())
 
         # determine total of all bills

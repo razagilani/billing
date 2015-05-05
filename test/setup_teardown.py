@@ -329,7 +329,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                 discount_rate=.12, late_charge_rate=.34,
                                 service='thermal',
                                 bill_email_recipient='example2@example.com',
-                                utility_account=utility_account2)
+                                utility_account=utility_account2,
+                                payee="Someone Else!")
         session.add(utility_account2)
         session.add(reebill_customer2)
 
@@ -386,7 +387,8 @@ class TestCaseWithSetup(test_utils.TestCase):
             name='Test Customer 3 No Rate Strucutres', discount_rate=.12,
             late_charge_rate=.34, service='thermal',
             bill_email_recipient='example2@example.com',
-            utility_account=utility_account4)
+            utility_account=utility_account4,
+            payee="Nextility")
 
         session.add(utility_account4)
         session.add(reebill_customer4)
