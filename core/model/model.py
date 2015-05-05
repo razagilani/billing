@@ -463,9 +463,13 @@ class UtilityAccount(Base):
         nullable=False)
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
+    fb_supply_group = relationship('SupplyGroup', uselist=False,
+        primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
@@ -475,8 +479,8 @@ class UtilityAccount(Base):
     fb_utility = relationship('Utility')
 
     def __init__(self, name, account, fb_utility, fb_supplier,
-                fb_rate_class, fb_billing_address, fb_service_address,
-                account_number=''):
+                fb_rate_class, fb_supply_group, fb_billing_address,
+                fb_service_address, account_number=''):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -496,6 +500,7 @@ class UtilityAccount(Base):
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
+        self.fb_supply_group = fb_supply_group
 
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
