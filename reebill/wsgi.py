@@ -203,8 +203,6 @@ class RESTResource(WebResource):
                 cherrypy.response.status = "204 No Content"
             else:
                 raise cherrypy.HTTPError(404, "Not Found")
-
-
         return self.dumps(return_value)
 
     def check_modifiable(self, sequence, version):
@@ -569,6 +567,7 @@ class ReebillsResource(RESTResource):
                 'corrections': True
             })
         return self.dumps({'success': True, 'reebill': r.column_dict()})
+
 
 class UtilBillResource(RESTResource):
 
@@ -1144,7 +1143,6 @@ class ReebillWSGI(object):
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         ))
-
         return wsgi
 
     def __init__(self, config, user_dao, logger):
@@ -1193,7 +1191,7 @@ class ReebillWSGI(object):
 
     @cherrypy.expose
     def logout(self):
-       # delete remember me
+        # delete remember me
         # The key in the response cookie must be set before expires can be set
         cherrypy.response.cookie['username'] = ""
         cherrypy.response.cookie['username'].expires = 0
