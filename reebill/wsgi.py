@@ -1047,102 +1047,102 @@ class ReebillWSGI(object):
 
         # Instantiate the object
         wsgi = cls(config, user_dao, logger)
-        setattr(wsgi, 'accounts', AccountsResource(
+        wsgi.accounts = AccountsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'reebills', ReebillsResource(
+        )
+        wsgi.reebills = ReebillsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'utilitybills', UtilBillResource(
+        )
+        wsgi.utilitybills = UtilBillResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'registers', RegistersResource(
+        )
+        wsgi.registers = RegistersResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'charges', ChargesResource(
+        )
+        wsgi.charges = ChargesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'payments', PaymentsResource(
+        )
+        wsgi.payments = PaymentsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'reebillcharges', ReebillChargesResource(
+        )
+        wsgi.reebillcharges = ReebillChargesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'reebillversions', ReebillVersionsResource(
+        )
+        wsgi.reebillversions = ReebillVersionsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'journal', JournalResource(
+        )
+        wsgi.journal = JournalResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'reports', ReportsResource(
+        )
+        wsgi.reports = ReportsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'preferences', PreferencesResource(
+        )
+        wsgi.preferences = PreferencesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'issuable', IssuableReebills(
+        )
+        wsgi.issuable = IssuableReebills(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'suppliers', SuppliersResource(
+        )
+        wsgi.suppliers = SuppliersResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'utilities', UtilitiesResource(
+        )
+        wsgi.utilities = UtilitiesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'rateclasses', RateClassesResource(
+        )
+        wsgi.rateclasses = RateClassesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
-        setattr(wsgi, 'customergroups', CustomerGroupsResource(
+        )
+        wsgi.customergroups = CustomerGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
-        ))
+        )
         return wsgi
 
     def __init__(self, config, user_dao, logger):
