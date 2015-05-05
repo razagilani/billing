@@ -725,7 +725,7 @@ class ReebillProcessor(object):
             b.issue(datetime.utcnow(), self)
 
         # Summary depends on data of first ReeBill of those summarized 
-        self.mail_summary("issue_summary_template.html", "Energy Bills Due", reebills, summary_recipient)
+        self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)
 
         return reebills
 
