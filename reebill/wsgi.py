@@ -919,6 +919,13 @@ class ReebillWSGI(object):
 
     @classmethod
     def set_up(cls):
+        """
+        Instantiates resource dependencies and uses them to instantiate all
+        resources. Resources are then assigned to attributes in a newly
+        created ReebillWSGI instance because CherryPy uses the attribute name to
+        route requests to the approriate resource.
+        :return: ReebillWSGI instance with instantiated Resources
+        """
         from core import config
 
         # Set up Dependencies
