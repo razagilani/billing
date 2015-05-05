@@ -11,7 +11,6 @@ from boto.s3.connection import S3Connection
 import cherrypy
 import mongoengine
 
-from core import config
 from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
 from util import json_util as ju
@@ -59,6 +58,7 @@ cherrypy.tools.authenticate_ajax = cherrypy.Tool(
 
 
 def check_authentication():
+    from core import config
     logger = logging.getLogger('reebill')
     if not config.get('reebill', 'authenticate'):
         if 'user' not in cherrypy.session:
@@ -423,11 +423,13 @@ class IssuableReebills(RESTResource):
         return self.dumps({'success': True,
                     'issued': bills})
 
+
 class ReebillVersionsResource(RESTResource):
 
     def handle_get(self, account, sequence, *vpath, **params):
         result = self.utilbill_views.list_all_versions(account, sequence)
         return True, {'rows': result, 'results': len(result)}
+
 
 class ReebillsResource(RESTResource):
 
@@ -800,6 +802,7 @@ class PreferencesResource(RESTResource):
         cherrypy.session['user'].set_preference(row['key'], row['value'])
         return True, {'rows': row,  'results': 1}
 
+
 class ReportsResource(WebResource):
 
     @cherrypy.expose
@@ -913,155 +916,241 @@ class ReportsResource(WebResource):
             })
 
 
-def create_webresource_args():
-    logger = logging.getLogger('reebill')
+class ReebillWSGI(object):
 
-    # create a NexusUtil
-    cache_file_path = config.get('reebill', 'nexus_offline_cache_file')
-    if cache_file_path == '':
-        cache = None
-    else:
-        with open(cache_file_path) as cache_file:
-            text = cache_file.read()
-        if text == '':
-            cache = []
+    @classmethod
+    def set_up(cls):
+        from core import config
+
+        # Set up Dependencies
+        logger = logging.getLogger('reebill')
+        # create a NexusUtil
+        cache_file_path = config.get('reebill', 'nexus_offline_cache_file')
+        if cache_file_path == '':
+            cache = None
         else:
-            cache = json.load(text)
-    nexus_util = NexusUtil(
-        config.get('reebill', 'nexus_web_host'),
-        offline_cache=cache
-    )
+            with open(cache_file_path) as cache_file:
+                text = cache_file.read()
+            if text == '':
+                cache = []
+            else:
+                cache = json.load(text)
+        nexus_util = NexusUtil(
+            config.get('reebill', 'nexus_web_host'),
+            offline_cache=cache
+        )
 
-    # load users database
-    user_dao = UserDAO()
+        # load users database
+        user_dao = UserDAO()
 
-    # create an instance representing the database
-    payment_dao = PaymentDAO()
-    state_db = ReeBillDAO()
+        # create an instance representing the database
+        payment_dao = PaymentDAO()
+        state_db = ReeBillDAO()
 
-    s3_connection = S3Connection(
-        config.get('aws_s3', 'aws_access_key_id'),
-        config.get('aws_s3', 'aws_secret_access_key'),
-        is_secure=config.get('aws_s3', 'is_secure'),
-        port=config.get('aws_s3', 'port'),
-        host=config.get('aws_s3', 'host'),
-        calling_format=config.get('aws_s3', 'calling_format'))
-    utilbill_loader = UtilBillLoader()
-    # TODO: ugly. maybe put entire url_format in config file.
-    url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
-            'https' if config.get('aws_s3', 'is_secure') is True else
-            'http', config.get('aws_s3', 'host'),
-            config.get('aws_s3', 'port'))
-    bill_file_handler = BillFileHandler(
-        s3_connection,
-        config.get('aws_s3', 'bucket'),
-        utilbill_loader, url_format
-    )
+        s3_connection = S3Connection(
+            config.get('aws_s3', 'aws_access_key_id'),
+            config.get('aws_s3', 'aws_secret_access_key'),
+            is_secure=config.get('aws_s3', 'is_secure'),
+            port=config.get('aws_s3', 'port'),
+            host=config.get('aws_s3', 'host'),
+            calling_format=config.get('aws_s3', 'calling_format'))
+        utilbill_loader = UtilBillLoader()
+        # TODO: ugly. maybe put entire url_format in config file.
+        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                'https' if config.get('aws_s3', 'is_secure') is True else
+                'http', config.get('aws_s3', 'host'),
+                config.get('aws_s3', 'port'))
+        bill_file_handler = BillFileHandler(
+            s3_connection,
+            config.get('aws_s3', 'bucket'),
+            utilbill_loader, url_format
+        )
 
-    # create a FuzzyPricingModel
-    fuzzy_pricing_model = FuzzyPricingModel(
-        utilbill_loader,
-        logger=logger
-    )
+        # create a FuzzyPricingModel
+        fuzzy_pricing_model = FuzzyPricingModel(
+            utilbill_loader,
+            logger=logger
+        )
 
-    # configure journal:
-    # create a MongoEngine connection "alias" named "journal" with which
-    # journal.Event subclasses (in journal.py) can associate themselves by
-    # setting meta = {'db_alias': 'journal'}.
-    journal_config = dict(config.items('mongodb'))
-    mongoengine.connect(
-        journal_config['database'],
-        host=journal_config['host'],
-        port=int(journal_config['port']),
-        alias='journal')
-    journal_dao = journal.JournalDAO()
+        # configure journal:
+        # create a MongoEngine connection "alias" named "journal" with which
+        # journal.Event subclasses (in journal.py) can associate themselves by
+        # setting meta = {'db_alias': 'journal'}.
+        journal_config = dict(config.items('mongodb'))
+        mongoengine.connect(
+            journal_config['database'],
+            host=journal_config['host'],
+            port=int(journal_config['port']),
+            alias='journal')
+        journal_dao = journal.JournalDAO()
 
-    # create a Splinter
-    if config.get('reebill', 'mock_skyliner'):
-        splinter = mock_skyliner.MockSplinter()
-    else:
-        splinter = Splinter(
-            config.get('reebill', 'oltp_url'),
-            skykit_host=config.get('reebill', 'olap_host'),
-            skykit_db=config.get('reebill', 'olap_database'),
-            olap_cache_host=config.get('reebill', 'olap_host'),
-            olap_cache_db=config.get('reebill', 'olap_database'),
-            monguru_options={
-                'olap_cache_host': config.get('reebill', 'olap_host'),
-                'olap_cache_db': config.get('reebill',
-                                                 'olap_database'),
-                'cartographer_options': {
-                    'olap_cache_host': config.get('reebill',
-                                                       'olap_host'),
+        # create a Splinter
+        if config.get('reebill', 'mock_skyliner'):
+            splinter = mock_skyliner.MockSplinter()
+        else:
+            splinter = Splinter(
+                config.get('reebill', 'oltp_url'),
+                skykit_host=config.get('reebill', 'olap_host'),
+                skykit_db=config.get('reebill', 'olap_database'),
+                olap_cache_host=config.get('reebill', 'olap_host'),
+                olap_cache_db=config.get('reebill', 'olap_database'),
+                monguru_options={
+                    'olap_cache_host': config.get('reebill', 'olap_host'),
+                    'olap_cache_db': config.get('reebill',
+                                                     'olap_database'),
+                    'cartographer_options': {
+                        'olap_cache_host': config.get('reebill',
+                                                           'olap_host'),
+                        'olap_cache_db': config.get('reebill',
+                                                         'olap_database'),
+                        'measure_collection': 'skymap',
+                        'install_collection': 'skyit_installs',
+                        'nexus_host': config.get('reebill',
+                                                      'nexus_db_host'),
+                        'nexus_db': 'nexus',
+                        'nexus_collection': 'skyline',
+                    },
+                },
+                cartographer_options={
+                    'olap_cache_host': config.get('reebill', 'olap_host'),
                     'olap_cache_db': config.get('reebill',
                                                      'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
-                    'nexus_host': config.get('reebill',
-                                                  'nexus_db_host'),
+                    'nexus_host': config.get('reebill', 'nexus_db_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
-            },
-            cartographer_options={
-                'olap_cache_host': config.get('reebill', 'olap_host'),
-                'olap_cache_db': config.get('reebill',
-                                                 'olap_database'),
-                'measure_collection': 'skymap',
-                'install_collection': 'skyit_installs',
-                'nexus_host': config.get('reebill', 'nexus_db_host'),
-                'nexus_db': 'nexus',
-                'nexus_collection': 'skyline',
-            },
-        )
+            )
 
-    # create a ReebillRenderer
-    rb_file_handler = reebill_file_handler.ReebillFileHandler(
-            config.get('reebill', 'reebill_file_path'),
-            config.get('reebill', 'teva_accounts'))
-    mailer_opts = dict(config.items("mailer"))
-    bill_mailer = Mailer(mailer_opts['mail_from'],
-            mailer_opts['originator'],
-            mailer_opts['password'],
-            mailer_opts['template_file_name'],
-            smtplib.SMTP(),
-            mailer_opts['smtp_host'],
-            mailer_opts['smtp_port'],
-            mailer_opts['bcc_list'])
+        # create a ReebillRenderer
+        rb_file_handler = reebill_file_handler.ReebillFileHandler(
+                config.get('reebill', 'reebill_file_path'),
+                config.get('reebill', 'teva_accounts'))
+        mailer_opts = dict(config.items("mailer"))
+        bill_mailer = Mailer(mailer_opts['mail_from'],
+                mailer_opts['originator'],
+                mailer_opts['password'],
+                mailer_opts['template_file_name'],
+                smtplib.SMTP(),
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
+                mailer_opts['bcc_list'])
 
-    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
+        ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
+        utilbill_views = Views(state_db, bill_file_handler,
+                               nexus_util, journal_dao)
+        utilbill_processor = UtilbillProcessor(
+            fuzzy_pricing_model, bill_file_handler, logger=logger)
+        reebill_processor = ReebillProcessor(
+            state_db, payment_dao, nexus_util, bill_mailer,
+            rb_file_handler, ree_getter, journal_dao, logger=logger)
 
-    utilbill_views = Views(state_db, bill_file_handler,
-                           nexus_util, journal_dao)
-    utilbill_processor = UtilbillProcessor(
-        fuzzy_pricing_model, bill_file_handler, logger=logger)
-    reebill_processor = ReebillProcessor(
-        state_db, payment_dao, nexus_util, bill_mailer,
-        rb_file_handler, ree_getter, journal_dao,
-        logger=logger)
-    return (config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter,
-            rb_file_handler, bill_mailer, ree_getter, utilbill_views,
-            utilbill_processor, reebill_processor)
+        # Instantiate the object
+        wsgi = cls(config, user_dao, logger)
+        setattr(wsgi, 'accounts', AccountsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'reebills', ReebillsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'utilitybills', UtilBillResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'registers', RegistersResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'charges', ChargesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'payments', PaymentsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'reebillcharges', ReebillChargesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'reebillversions', ReebillVersionsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'journal', JournalResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'reports', ReportsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'preferences', PreferencesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'issuable', IssuableReebills(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'suppliers', SuppliersResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'utilities', UtilitiesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'rateclasses', RateClassesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
+        setattr(wsgi, 'customergroups', CustomerGroupsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        ))
 
+        return wsgi
 
-class ReebillWSGI(WebResource):
-    accounts = AccountsResource(*create_webresource_args())
-    reebills = ReebillsResource(*create_webresource_args())
-    utilitybills = UtilBillResource(*create_webresource_args())
-    registers = RegistersResource(*create_webresource_args())
-    charges = ChargesResource(*create_webresource_args())
-    payments = PaymentsResource(*create_webresource_args())
-    reebillcharges = ReebillChargesResource(*create_webresource_args())
-    reebillversions = ReebillVersionsResource(*create_webresource_args())
-    journal = JournalResource(*create_webresource_args())
-    reports = ReportsResource(*create_webresource_args())
-    preferences = PreferencesResource(*create_webresource_args())
-    issuable = IssuableReebills(*create_webresource_args())
-    suppliers = SuppliersResource(*create_webresource_args())
-    utilities = UtilitiesResource(*create_webresource_args())
-    rateclasses = RateClassesResource(*create_webresource_args())
-    customergroups = CustomerGroupsResource(*create_webresource_args())
+    def __init__(self, config, user_dao, logger):
+        self.config = config
+        self.user_dao = user_dao
+        self.logger = logger
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

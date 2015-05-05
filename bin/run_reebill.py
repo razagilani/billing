@@ -8,6 +8,7 @@ from os.path import join, dirname, realpath
 
 import cherrypy
 from core import initialize, ROOT_PATH
+from reebill.wsgi import ReebillWSGI
 
 # TODO: lots of duplicate code in here
 # TODO: no substantive code should go in an executable script like this--move
@@ -15,13 +16,8 @@ from core import initialize, ROOT_PATH
 
 if __name__ == '__main__':
     initialize()
-    from reebill.wsgi import ReebillWSGI, create_webresource_args
 
-    app = ReebillWSGI(*create_webresource_args())
-
-    class CherryPyRoot(object):
-        reebill = app
-
+    app = ReebillWSGI.set_up()
     ui_root = join(ROOT_PATH, 'reebill', 'ui')
     cherrypy_conf = {
         '/': {
@@ -53,10 +49,12 @@ if __name__ == '__main__':
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
+
+    class CherryPyRoot(object):
+        reebill = app
     cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
     initialize()
-    from reebill.wsgi import ReebillWSGI, create_webresource_args
 
     # WSGI Mode
     ui_root = join(dirname(dirname(realpath(__file__))), 'reebill/ui')
@@ -96,5 +94,5 @@ else:
         cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
     application = cherrypy.Application(
-        ReebillWSGI(*create_webresource_args()),
+        ReebillWSGI.set_up(),
         script_name=None, config=cherrypy_conf)
