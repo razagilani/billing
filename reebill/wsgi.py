@@ -485,7 +485,7 @@ class ReebillsResource(RESTResource):
 
             # TODO: BILL-6288 place in config file
             reebill = self.state_db.get_reebill(account, sequence)
-            self.reebill_processor.mail_reebill("email_template.html", reebill, recipient_list)
+            self.reebill_processor.mail_reebill("email_template.html", "A copy of your bill", reebill, recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(
