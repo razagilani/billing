@@ -185,7 +185,8 @@ class UtilbillProcessor(object):
             billing_address=billing_address.clone(),
             service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow(), state=state)
+            date_received=datetime.utcnow(), state=state,
+            supply_group=supply_group)
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
@@ -257,7 +258,7 @@ class UtilbillProcessor(object):
             account=account).one()
         new_utilbill = self._create_utilbill_in_db(utility_account, start=start,
             end=end, utility=utility, rate_class=rate_class, total=total,
-            state=state, supplier=supplier)
+            state=state, supplier=supplier, supply_group=supply_group)
 
         # upload the file
         if bill_file is not None:

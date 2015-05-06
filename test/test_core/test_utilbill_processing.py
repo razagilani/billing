@@ -680,15 +680,21 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(acc_a, StringIO('January 2000 A'),
                                          date(2000, 1, 1), date(2000, 2, 1),
                                          'gas', total=0,
-                                         state=UtilBill.Complete)
+                                         state=UtilBill.Complete,
+                                         supplier='test_supplier',
+                                         supply_group='test')
         self.utilbill_processor.upload_utility_bill(acc_b, StringIO('January 2000 B'),
                                          date(2000, 1, 1), date(2000, 2, 1),
                                          'gas', total=0,
-                                         state=UtilBill.Complete)
+                                         state=UtilBill.Complete,
+                                         supplier='test_supplier',
+                                         supply_group='test')
         self.utilbill_processor.upload_utility_bill(acc_c, StringIO('January 2000 C'),
                                          date(2000, 1, 1), date(2000, 2, 1),
                                          'gas', total=0,
-                                         state=UtilBill.Complete)
+                                         state=UtilBill.Complete,
+                                         supplier='test_supplier',
+                                         supply_group='test')
 
         id_a = next(obj['id'] for obj in
                     self.views.get_all_utilbills_json(
@@ -742,7 +748,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(acc_a, StringIO('February 2000 A'),
                                          date(2000, 2, 1), date(2000, 3, 1),
                                          'gas', total=0,
-                                         state=UtilBill.Complete)
+                                         state=UtilBill.Complete,
+                                         supplier='test_supplier',
+                                         supply_group='test')
         id_a_2 = [obj for obj in self.views.get_all_utilbills_json(
             acc_a, 0, 30)][0][0]['id']
 

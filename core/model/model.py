@@ -647,7 +647,8 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete, tou=False):
+                 next_meter_read_date=None, state=Complete, tou=False,
+                 supply_group=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -657,6 +658,7 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        self.supply_group = supply_group
         if billing_address is None:
             billing_address = Address()
         self.billing_address = billing_address
@@ -784,7 +786,7 @@ class UtilBill(Base):
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
-            type=charge_kwargs.get('type', "distribution"))
+            type=charge_kwargs.get('type', "supply"))
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
