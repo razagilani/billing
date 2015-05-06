@@ -2092,7 +2092,7 @@ class TestTouMetering(unittest.TestCase):
         # created
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
-                             None, Address(), Address())
+                             Address(), Address())
         customer2 = ReeBillCustomer(utility_account=ua2, name='')
         utilbill2 = self.utilbill.clone()
         utilbill2.utility = self.utilbill.utility

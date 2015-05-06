@@ -22,7 +22,7 @@ class UtilityAccountTest(TestCase):
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), None, Address(), Address())
+                      service='gas'), Address(), Address())
         self.rate_class = RateClass(name='rate class', utility=self.utility,
                                     service='gas')
 
@@ -60,7 +60,7 @@ class UtilityAccountTest(TestCase):
         # returned
         utility_account2 = UtilityAccount(
             'someone', '98987', self.utility, self.supplier,
-            self.rate_class, None, Address(), service_address2)
+            self.rate_class, Address(), service_address2)
         session.add(utility_account2)
         session.flush()
         self.assertEqual(service_address2,

@@ -157,7 +157,7 @@ class TestAltitudeBillStorage(TestCase):
         rate_class = RateClass(name='Rate Class', utility=utility,
                                service='electric')
         supplier = Supplier(name='Supplier', address=Address())
-        ua = UtilityAccount('', '', utility, None, None, None, Address(),
+        ua = UtilityAccount('', '', utility, None, None, Address(),
                             Address())
         self.utilbill = UtilBill(
             ua, utility, rate_class, supplier=supplier,

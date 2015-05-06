@@ -311,7 +311,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         rate_class = RateClass(name='Test Rate Class Template', utility=uc,
                                service='gas')
         utility_account = UtilityAccount(
-            'Test Customer', '99999', uc, supplier, rate_class, None, fa_ba1, fa_sa1,
+            'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
         reebill_customer = ReeBillCustomer(name='Test Customer',
                                 discount_rate=.12, late_charge_rate=.34,
@@ -323,7 +323,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         #Template Customer aka "Template Account" in UI
         utility_account2 = UtilityAccount(
-            'Test Customer 2', '100000', uc, supplier, rate_class, None,
+            'Test Customer 2', '100000', uc, supplier, rate_class,
             fa_ba2, fa_sa2, account_number='2')
         reebill_customer2 = ReeBillCustomer(name='Test Customer 2',
                                 discount_rate=.12, late_charge_rate=.34,
@@ -381,7 +381,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                      utility=other_uc, service='gas')
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
-            other_supplier, other_rate_class, None, c4ba, c4sa)
+            other_supplier, other_rate_class, c4ba, c4sa)
         reebill_customer4 = ReeBillCustomer(
             name='Test Customer 3 No Rate Strucutres', discount_rate=.12,
             late_charge_rate=.34, service='thermal',
