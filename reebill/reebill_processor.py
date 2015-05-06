@@ -19,6 +19,7 @@ from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
                  ConfirmMultipleAdjustments)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 from util.pdf import PDFConcatenator
+from jinja2 import Template
 
 
 class ReebillProcessor(object):
@@ -487,29 +488,74 @@ class ReebillProcessor(object):
         reebill.check_editable()
         self.ree_getter.update_renewable_readings(reebill, use_olap=True)
 
-    def mail_reebill(self, account, sequence, recipient_list):
-        reebill = self.state_db.get_reebill(account, sequence)
+    # used to email a reebill for a variety of business reasons
+    def mail_reebill(self, template_filename, subject, reebill, recipient_list):
 
-        # render the bills
+        # render the bill to ensure pdf file exists
         self.reebill_file_handler.render(reebill)
 
-        # "the last element" (???)
-        bill_file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+        # read the pdf file data in
+        bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
+
+        # superset of all fields for all templates
         bill_date = "%s" % reebill.get_period()[0]
         merge_fields = {
+            'subject': subject,
             'street': reebill.service_address.street,
             'balance_due': round(reebill.balance_due, 2),
             'bill_dates': bill_date,
-            'last_bill': bill_file_name,
+            'last_bill': "%.5d_%.4d.pdf" % (int(reebill.get_account()),int(reebill.sequence)),
+            'display_file_path': self.reebill_file_handler.get_file_display_path(reebill)
         }
-        bill_file_path = self.reebill_file_handler.get_file_path(reebill)
-        bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
-        display_file_path = self.reebill_file_handler.get_file_display_path(reebill)
+
+        self.merge_and_mail(template_filename, merge_fields, bill_file_contents, recipient_list)
+
+    # used to mail a summary, for a variety of business reasons
+    def mail_summary(self, template_filename, subject, reebills, recipient_list):
+
+        # create combined PDF file
+        summary_file_contents = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(reebills, summary_file_contents)
+        summary_file_contents.seek(0)
+
+        # Set up the fields to be shown in the email msg
+        merge_fields = {
+            'subject': subject,
+            'balance_due': sum(b.balance_due for b in reebills),
+            'bill_dates': max(b.get_period_end() for b in reebills),
+            'display_file_path': "summary.pdf"
+        }
+
+        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), recipient_list)
+
+    def merge_and_mail(self, template_filename, fields, attachment, recipient_list):
+
+        print type(attachment)
+
+        # Identify the jinja2 template by filename
+        TEMPLATE_FILE_PATH = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            '..', 'reebill', 'reebill_templates', template_filename)
+
+        # Load the jinja2 template 
+        with open(TEMPLATE_FILE_PATH) as template_file:
+            template_html = template_file.read()
+        
+        # Render the jinja2 template with template fields
+        html_body = Template(template_html).render(fields)
+
+        # Hand this content off to the mailer
         self.bill_mailer.mail(
             recipient_list,
-            merge_fields,
-            bill_file_contents,
-            display_file_path)
+            "Nextility: %s" % fields["subject"] 
+                if "subject" in fields and fields["subject"] is not None 
+                else "Your Renewable Energy Bill(s)",
+            html_body,
+            attachment,
+            fields["display_file_path"] 
+                if "display_file_path" in fields and fields["display_file_path"] is not None 
+                else "attachment.pdf")
 
     def _get_issuable_reebills(self):
         '''Return a Query of "issuable" reebills (lowest-sequence bill for
@@ -582,7 +628,7 @@ class ReebillProcessor(object):
             self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                     account, sequence, e.__class__.__name__),) + e.args)
             raise
-        # Let's mail!
+
         # Recepients can be a comma seperated list of email addresses
         if recipients is None:
             # this is not supposed to be allowed but somehow it happens
@@ -590,7 +636,9 @@ class ReebillProcessor(object):
             recipient_list = ['']
         else:
             recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.mail_reebill(account, sequence, recipient_list)
+
+        # TODO: BILL-6288 place in config file
+        self.mail_reebill("issue_email_template.html", "Energy Bill Due", reebill, recipient_list)
 
     def issue_processed_and_mail(self, apply_corrections):
         '''This function issues all processed reebills'''
@@ -635,8 +683,14 @@ class ReebillProcessor(object):
             else:
                 recipient_list = [rec.strip() for rec in
                                   bill.email_recipient.split(',')]
-            self.mail_reebill(bill.get_account(), bill.sequence,
-                              recipient_list)
+
+            # TODO: BILL-6288 place in config file.
+            # TODO: one email per bill? That is bad.
+            self.mail_reebill("issue_email_template.html", 
+                "Energy Bill Due",
+                bill,
+                recipient_list)
+
         bills_dict = [bill.column_dict() for bill in bills]
         return bills_dict
 
@@ -656,30 +710,24 @@ class ReebillProcessor(object):
         self.reebill_file_handler.render(reebill)
 
 
-    def issue_summary_for_bills(self, bills, summary_recipient):
+    def issue_summary_for_bills(self, reebills, summary_recipient):
         """ For a set of ReeBills, make a summary and conctatenate
             all ReeBills to it.
+            When a summary is issued, the summary has to consider
+            a bill that is the primary one, so the first bill
+            is in that list is used.  The reason is that bills in
+            a summary can be mixed and for multiple properties.
         """
 
         # sweep up corrections and issue bills
-        for b in bills:
+        for b in reebills:
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
 
-        # create and email combined PDF file
-        summary_file = StringIO()
-        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
-        sfg.generate_summary_file(bills, summary_file)
-        summary_file.seek(0)
-        merge_fields = {
-            'street': '',
-            'balance_due': sum(b.balance_due for b in bills),
-            'bill_dates': max(b.get_period_end() for b in bills),
-            'last_bill': '',
-        }
-        self.bill_mailer.mail(summary_recipient, merge_fields,
-                              summary_file.read(), 'summary.pdf')
-        return bills
+        # Summary depends on data of first ReeBill of those summarized 
+        self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)
+
+        return reebills
 
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
