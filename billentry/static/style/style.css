@@ -1,0 +1,79 @@
+.region {
+	cursor: pointer; 
+	padding: 0.5em; 
+	float: left;
+	margin: 0 10px 10px 0;
+}
+
+.account-grid-gray, .payment-grid-frozen {
+	color: gray;
+}
+
+.account-grid-blue {
+    color: blue;
+}
+
+.utilbill-grid-unprocessed {
+	color: blue;
+}
+
+.reebill-grid-unissued {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: blue;
+}
+
+.reebill-grid-unissued-processed {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: green;
+}
+
+.reebill-grid-unissued-correction {
+    font-style: italic;
+    color: red;
+}
+
+.utilbill-grid-unprocessed {
+    font-style: italic;
+    color: blue;
+}
+
+.charges-grid-error{
+    font-weight: bold;
+    color: red;
+}
+
+.messageBoxOverflow #traceback {
+    overflow: auto;
+}
+
+.messageBoxOverflow .x-panel-body-default{
+    padding: 5px;
+}
+
+.x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
+    font-weight: bold !important;
+}
+
+.panel-noborder > .x-panel > .x-panel-body {
+    border: 0px !important
+}
+
+.noteform-noborder textarea{
+    height: 100%;
+    padding: 3px !important;
+    border: 0 !important;
+}
+.noteform-noborder #noteForm-body{
+    border-top: 0 !important;
+    top: 23px !important;
+}
+
+.x-menu-item-icon{
+    display: inline-block !important;
+    position: relative !important;
+    margin-right: 5px !important;
+}
+
+.x-datepicker{
+    width: 200px !important;
+}
