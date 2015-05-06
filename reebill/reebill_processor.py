@@ -655,8 +655,13 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
-    # TODO: what does this do?
+
     def issue_summary_for_bills(self, bills, summary_recipient):
+        """ For a set of ReeBills, make a summary and conctatenate
+            all ReeBills to it.
+        """
+
+        # sweep up corrections and issue bills
         for b in bills:
             self.issue_corrections(b.get_account(), b.sequence)
             b.issue(datetime.utcnow(), self)
