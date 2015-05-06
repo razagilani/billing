@@ -225,3 +225,7 @@ class SummaryFileGeneratorTest(TestCase):
             sha1(self.output_file.getvalue()).hexdigest()
         )
 
+    def tearDown(self):
+        # TODO: this seems to not always remove the directory?
+        self.temp_dir.cleanup()
+
