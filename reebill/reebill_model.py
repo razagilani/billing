@@ -231,14 +231,9 @@ class ReeBill(Base):
         for r in self.readings:
             session.delete(r)
 
-        # this works even when len(self.utilbills) == 0, which is currently
-        # happening in a test but should never actually happen in real life
-        # TODO replace with
-        # [r.register_binding for r in self.utilbill.registers]
         utilbill_register_bindings = list(chain.from_iterable(
                 (r.register_binding for r in u.registers)
                 for u in self.utilbills))
-
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
@@ -246,7 +241,8 @@ class ReeBill(Base):
 
     def is_estimated(self):
         """Return True if this bill has one Reading corresponding to the
-        REG_TOTAL register, False otherwise.
+        "total" register, and its measure name is the one to be used for
+        estimated total energy, False otherwise.
         """
         return (len(self.readings) == 1
                 and self.readings[0].register_binding == Register.TOTAL
@@ -784,8 +780,7 @@ class Reading(Base):
         return Reading(register.register_binding, measure_name,
                        register.quantity, 0, agg_func_name, register.unit)
 
-    # this should probably not be called directly; use
-    # make_reading_from_register instead
+    # this should probably not be called directly; use create_from_register
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
