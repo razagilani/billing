@@ -89,6 +89,12 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         align: 'right',
         width: 120,
         renderer: Ext.util.Format.usMoney
+    },{
+        xtype: 'checkcolumn',
+        header: 'Estimated',
+        disabled: true,
+        dataIndex: 'estimated',
+        width: 60
     }],
 
     dockedItems: [{
@@ -101,6 +107,11 @@ Ext.define('ReeBill.view.reebills.Reebills', {
             xtype: 'button',
             text: 'Create Next',
             action: 'createNext',
+            iconCls: 'silk-add'
+        },{
+            xtype: 'button',
+            text: 'Create Estimated',
+            action: 'createEstimated',
             iconCls: 'silk-add'
         },{
             xtype: 'button',
