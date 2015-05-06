@@ -143,7 +143,7 @@ class ConsumeUtilbillFileHandler(MessageHandler):
                     cast(UtilityAccount.account, Integer).desc()).first()
                 next_account = str(last_account[0] + 1)
                 utility_account = UtilityAccount(
-                    '', next_account, utility, None, None, None, Address(),
+                    '', next_account, utility, None, None, Address(),
                     Address(street=message['service_address']),
                     message['utility_account_number'])
                 s.add(utility_account)

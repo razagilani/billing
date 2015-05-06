@@ -448,7 +448,7 @@ class ReebillProcessor(object):
             rate_class = last_utility_bill.rate_class
 
         new_utility_account = UtilityAccount(
-            name, account, utility, supplier, rate_class, None,
+            name, account, utility, supplier, rate_class,
             Address(**billing_address),
             Address(**service_address),
             account_number=utility_account_number)

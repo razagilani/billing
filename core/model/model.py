@@ -479,8 +479,8 @@ class UtilityAccount(Base):
     fb_utility = relationship('Utility')
 
     def __init__(self, name, account, fb_utility, fb_supplier,
-                fb_rate_class, fb_supply_group, fb_billing_address,
-                fb_service_address, account_number=''):
+                fb_rate_class, fb_billing_address, fb_service_address,
+                account_number='', fb_supply_group=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
