@@ -220,12 +220,8 @@ class SummaryFileGeneratorTest(TestCase):
     def test_generate_summary_file(self):
         self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
                                        self.output_file)
-        self.reebill_file_handler.render.assert_has_calls(
-            [call(self.reebill_1), call(self.reebill_2)])
-        self.reebill_file_handler.get_file.assert_has_calls(
-            [call(self.reebill_1), call(self.reebill_2)])
-        self.pdf_concatenator.append.assert_has_calls(
-            [call(self.file1), call(self.file2)])
-        self.pdf_concatenator.write_result.assert_called_once_with(
-            self.output_file)
+        self.assertEqual(
+            'cf45e7e317aecda562f7dc671c0659d91186bf10',
+            sha1(self.output_file.getvalue()).hexdigest()
+        )
 
