@@ -114,7 +114,7 @@ class ReebillTest(unittest.TestCase):
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
                                  service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
-                            washgas, supplier, c_rate_class, None,
+                            washgas, supplier, c_rate_class,
                             Address(), Address())
         reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
                                 late_charge_rate=0.1, service='thermal',

@@ -146,7 +146,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), None,
+                      service='gas'),
             Address(), Address())
         rate_class = RateClass(name='rate class', utility=self.utility,
                                service='gas')
@@ -369,7 +369,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
-                None, Address(), Address())
+                Address(), Address())
         utilbill = UtilBill(utility_account, utility,
                             RateClass(name='rate class', utility=utility,
                                       service='gas'), supplier=supplier,
@@ -403,7 +403,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
-                None, Address(), Address())
+                Address(), Address())
         utilbill = UtilBill(utility_account, utility,
                             RateClass(name='rate class', utility=utility,
                                       service='gas'), supplier=supplier,
@@ -444,7 +444,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount('someone', '99999',
                 utility, supplier,
                 RateClass(name='rate class', utility=utility, service='gas'),
-                None, Address(), Address())
+                Address(), Address())
         utilbill = UtilBill(utility_account, utility,
                             RateClass(name='rate class', utility=utility,
                                       service='gas'), supplier=self.supplier,

@@ -335,7 +335,6 @@ class ExporterDataBookTest(unittest.TestCase):
                 utility,
                 supplier,
                 rate_class,
-                None,
                 Address(),
                 Address(),
                 '1234567890'
