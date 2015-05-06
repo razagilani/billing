@@ -61,5 +61,6 @@ Ext.define('ReeBill.model.Reebill', {
             var diff = record.get('difference')
             return diff < threshold ? 'Reebills with matching Totals' : 'Reebills without matching Totals'
         }},
+        {name: 'estimated'}
     ]
 });
