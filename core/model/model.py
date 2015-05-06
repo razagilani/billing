@@ -784,7 +784,7 @@ class UtilBill(Base):
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
-            type=charge_kwargs.get('type', "supply"))
+            type=charge_kwargs.get('type', "distribution"))
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
