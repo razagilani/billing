@@ -175,14 +175,44 @@ class SummaryFileGeneratorTest(TestCase):
     """Unit test for SummaryFileGenerator.
     """
     def setUp(self):
-        self.reebill_1 =Mock(autospec=ReeBill)
-        self.reebill_2 = Mock(autospec=ReeBill)
-        self.file1, self.file2 = StringIO('1'), StringIO('2')
-        self.reebills = [Mock]
-        self.reebill_file_handler = Mock(autospec=ReebillFileHandler)
-        self.reebill_file_handler.get_file.side_effect = [self.file1,
-                                                          self.file2]
-        self.pdf_concatenator = Mock(autospec=PDFConcatenator)
+        from core import config
+
+        ba = Address(addressee='Billing Addressee', street='123 Example St.',
+                     city='Washington', state='DC', postal_code='01234')
+        sa = Address(addressee='Service Addressee', street='456 Test Ave.',
+                     city='Washington', state='DC', postal_code='12345')
+        utility_account = UtilityAccount('someaccount', '00001',
+                        'Test Utility', 'Test Supplier', 'Test Rate Class',
+                        ba, sa)
+        c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
+                            late_charge_rate=0.1,
+                            bill_email_recipient='test@example.com',
+                            service='thermal', utility_account=utility_account)
+        u = UtilBill(utility_account, None, None,
+             supplier='Test Supplier', billing_address=ba,
+             service_address=sa, period_start=date(2000, 1, 1),
+             period_end=date(2000, 2, 1))
+        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+                                identifier='REGID', meter_identifier='METERID',
+                                reg_type='total', description='All energy')]
+        self.reebill_1 = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
+            billing_address=ba, service_address=sa, utilbills=[u])
+        u2 = UtilBill(utility_account, None, None,
+             supplier='Test Supplier', billing_address=ba,
+             service_address=sa, period_start=date(2000, 2, 1),
+             period_end=date(2000, 3, 1))
+        u2.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+                                identifier='REGID', meter_identifier='METERID',
+                                reg_type='total', description='All energy')]
+        self.reebill_2 = ReeBill(c, 2, discount_rate=0.3, late_charge_rate=0.1,
+            billing_address=ba, service_address=sa, utilbills=[u])
+
+        self.temp_dir = TempDirectory()
+        self.reebill_file_handler = ReebillFileHandler(
+                self.temp_dir.path,
+                config.get('reebill', 'teva_accounts')
+        )
+        self.pdf_concatenator = PDFConcatenator()
         self.output_file = StringIO()
         self.sfg = SummaryFileGenerator(self.reebill_file_handler,
                                         self.pdf_concatenator)
