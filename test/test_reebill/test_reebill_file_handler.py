@@ -55,7 +55,7 @@ class ReebillFileHandlerTest(TestCase):
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
-                    billing_address=ba, service_address=sa, utilbills=[u])
+                    billing_address=ba, service_address=sa, utilbill=u)
         self.reebill.replace_readings_from_utility_bill_registers(u)
         self.reebill.charges = [
             ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply',
