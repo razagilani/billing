@@ -175,76 +175,56 @@ class ReebillProcessor(object):
         reebill.set_payments(payments, predecessor.balance_due)
         return reebill
 
-    def roll_reebill(self, account, start_date=None):
+    def roll_reebill(self, account, start_date=None, estimate=False):
         """ Create first or roll the next reebill for given account.
         After the bill is rolled, this function also binds renewable energy data
         and computes the bill by default. This behavior can be modified by
         adjusting the appropriate parameters.
-        'start_date': must be given for the first reebill.
+        :param 'start_date': datetime, must be given for the first reebill.
+        :param estimate: bool: whether to use real or estimated measurements
+        of renewable energy consumption.
         """
         session = Session()
+        customer = self.state_db.get_reebill_customer(account)
+        last_reebill = customer.get_last_bill()
 
-        reebill_customer = self.state_db.get_reebill_customer(account)
-        last_reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.reebill_customer == reebill_customer)\
-                .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
-
-        new_utilbills = []
-        if last_reebill_row is None:
+        if last_reebill is None:
             # No Reebills are associated with this account: Create the first one
             assert start_date is not None
-            utilbill = session.query(UtilBill)\
-                    .filter(UtilBill.utility_account ==
-                            reebill_customer.utility_account)\
-                    .filter(UtilBill.period_start >= start_date)\
-                    .order_by(UtilBill.period_start).first()
-            if utilbill is None:
-                raise ValueError("No utility bill found starting on/after %s" %
-                        start_date)
-            new_utilbills.append(utilbill)
             new_sequence = 1
         else:
-            # There are Reebills associated with this account: Create the next Reebill
-            # First, find the successor to every utility bill belonging to the reebill
-            # note that Hypothetical utility bills are excluded.
-            for utilbill in last_reebill_row.utilbills:
-                successor = session.query(UtilBill)\
-                    .filter(UtilBill.utility_account == reebill_customer.utility_account)\
-                    .filter(not_(UtilBill._utilbill_reebills.any()))\
-                    .filter(RateClass.service == utilbill.get_service())\
-                    .filter(UtilBill.utility == utilbill.utility)\
-                    .filter(UtilBill.period_start >= utilbill.period_end)\
-                    .order_by(UtilBill.period_end).first()
-                if successor is None:
-                    raise NoSuchBillException(("Couldn't find next "
-                            "utility bill following %s") % utilbill)
-                new_utilbills.append(successor)
-            new_sequence = last_reebill_row.sequence + 1
-
-        if not all(r.processed for r in new_utilbills):
+            start_date = last_reebill.get_period_end()
+            new_sequence = last_reebill.sequence + 1
+        new_utilbill = session.query(UtilBill).filter(
+            UtilBill.utility_account == customer.utility_account).filter(
+            not_(UtilBill._utilbill_reebills.any())).filter(
+            UtilBill.period_start >= start_date).order_by(
+            UtilBill.period_start).first()
+        if new_utilbill is None:
+            raise NoSuchBillException(
+                "No utility bill found starting on/after %s" % start_date)
+        if not new_utilbill.processed:
             raise BillingError('Utility bill must be processed')
-
-        # currently only one service is supported
-        assert len(new_utilbills) == 1
 
         # create reebill row in state database
         new_reebill = ReeBill(
-            reebill_customer, new_sequence, 0, utilbills=new_utilbills,
-            billing_address=new_utilbills[0].billing_address.clone(),
-            service_address=new_utilbills[0].service_address.clone())
+            customer, new_sequence, utilbill=new_utilbill,
+            billing_address=new_utilbill.billing_address.clone(),
+            service_address=new_utilbill.service_address.clone())
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
-        if last_reebill_row is None:
+        if last_reebill is None or estimate:
             # this is the first reebill: choose only total register, which is
             #  guaranteed to exist
-            reg_total_register = next(r for r in utilbill.registers if
+            reg_total_register = next(r for r in new_utilbill.registers if
                                       r.register_binding == Register.TOTAL)
-            new_reebill.readings = [Reading.make_reading_from_register(
-                reg_total_register)]
+            new_reebill.readings = [Reading.create_from_register(
+                reg_total_register, estimate=estimate)]
         else:
             # not the first reebill: copy readings from the previous one
-            new_reebill.update_readings_from_reebill(last_reebill_row.readings)
+            # TODO: this could be bad if the last bill was estimated
+            new_reebill.update_readings_from_reebill(last_reebill.readings)
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
