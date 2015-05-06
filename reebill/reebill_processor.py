@@ -510,8 +510,15 @@ class ReebillProcessor(object):
 
         self.merge_and_mail(template_filename, merge_fields, bill_file_contents, recipient_list)
 
-    # used to mail a summary, for a variety of business reasons
     def mail_summary(self, template_filename, subject, reebills, recipient_list):
+        """
+        Used to mail a summary, for a variety of business reasons denoted in subject
+        :param template_filename: String describing file name of the jinja2 template
+        :param subject: String which is a fragment placed into subject line
+        :param reebills: list of reebill instances
+        :param recipient_list: list of strings containing email addresses
+        :return:
+        """
 
         # create combined PDF file
         summary_file_contents = StringIO()
@@ -530,8 +537,6 @@ class ReebillProcessor(object):
         self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), recipient_list)
 
     def merge_and_mail(self, template_filename, fields, attachment, recipient_list):
-
-        print type(attachment)
 
         # Identify the jinja2 template by filename
         TEMPLATE_FILE_PATH = os.path.join(
