@@ -728,7 +728,6 @@ class UtilBill(Base):
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
         charge = Charge(
-            utilbill=self,
             rsi_binding=charge_kwargs.get('rsi_binding', "New Charge %s" % n),
             rate=charge_kwargs.get('rate', 0.0),
             quantity_formula=charge_kwargs.get('quantity_formula', ''),
@@ -736,6 +735,7 @@ class UtilBill(Base):
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', "supply"))
+        self.charges.append(charge)
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
@@ -1004,7 +1004,7 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, utilbill, rsi_binding, rate, quantity_formula,
+    def __init__(self, rsi_binding, rate, quantity_formula,
                  target_total=None, description='', unit='',
                  has_charge=True, shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
@@ -1019,7 +1019,6 @@ class Charge(Base):
         :param roundrule:
         """
         assert unit is not None
-        self.utilbill = utilbill
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
