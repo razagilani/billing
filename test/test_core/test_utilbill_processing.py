@@ -819,7 +819,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # and rate_class arguments to match those of the template
         self.utilbill_processor.upload_utility_bill('99999',
             StringIO('A Water Bill'), date(2013, 5, 6), date(2013, 7, 8), 'gas',
-            utility='washgas', rate_class='Test Rate Class Template')
+            utility='washgas', rate_class='Test Rate Class Template',
+            supplier='test_supplier', supply_group='test_supply')
         utilbill_data = self.views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
         self.assertDictContainsSubset({'account': '99999', 'computed_total': 0,
