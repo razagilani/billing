@@ -28,8 +28,7 @@ class ChargeUnitTests(testing_utils.TestCase):
                                  supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
-        self.charge_params = dict(utilbill=self.bill,
-                                  rsi_binding='SOME_RSI',
+        self.charge_params = dict(rsi_binding='SOME_RSI',
                                   rate=6,
                                   description='SOME_DESCRIPTION',
                                   unit='therms',
@@ -98,16 +97,16 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_blank(self):
         '''Test that empty quantity_formula is equivalent to 0.
         '''
-        c = Charge(self.bill, 'X', 3, '', '', '', 'kWh')
+        c = Charge('X', 3, '', '', '', 'kWh')
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
 
     def test_rounding(self):
-        c = Charge(self.bill, 'A', 1, quantity_formula='.005')
+        c = Charge('A', 1, quantity_formula='.005')
         self.assertEqual(.005, c.evaluate({}).quantity)
         self.assertEqual(.01, c.evaluate({}).total)
 
-        c = Charge(self.bill, 'A', 1, quantity_formula='-.005')
+        c = Charge('A', 1, quantity_formula='-.005')
         self.assertEqual(-.005, c.evaluate({}).quantity)
         self.assertEqual(-.01, c.evaluate({}).total)
 
