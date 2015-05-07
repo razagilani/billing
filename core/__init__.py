@@ -120,8 +120,6 @@ def init_model(uri=None, schema_revision=None):
 
     uri = uri if uri else config.get('db', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
-    Session.rollback()
-    Session.remove()
     engine = create_engine(uri, echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
@@ -130,6 +128,7 @@ def init_model(uri=None, schema_revision=None):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
+    Session.remove()
 
     log.debug('Initialized sqlalchemy model')
 

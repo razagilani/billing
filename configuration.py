@@ -114,7 +114,6 @@ class mailer(Schema):
     mail_from = String()
     bcc_list = String()
     password = String()
-    template_file_name = String()
     
 class amqp(Schema):
     # parameters for receiving utility bills via AMQP--should be named something
