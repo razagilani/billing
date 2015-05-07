@@ -101,6 +101,8 @@ class ReeBill(Base):
     @property
     def utilbill(self):
         # there should only be one, but some early bills had more than one
+        if self.utilbills == []:
+            return None
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
@@ -111,7 +113,7 @@ class ReeBill(Base):
 
     def __init__(self, reebill_customer, sequence, version=0,
                  discount_rate=None, late_charge_rate=None,
-                 billing_address=None, service_address=None, utilbills=[]):
+                 billing_address=None, service_address=None, utilbill=None):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
@@ -152,7 +154,10 @@ class ReeBill(Base):
         # can be fixed by setting 'utilbills' last, but there may be a better
         # solution. see related bug:
         # https://www.pivotaltracker.com/story/show/65502556
-        self.utilbills = utilbills
+        if utilbill is None:
+            self.utilbills = []
+        else:
+            self.utilbills = [utilbill]
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
@@ -214,7 +219,7 @@ class ReeBill(Base):
             # s.expunge(elf.readings[0]).
             del self.readings[0]
         for register in utility_bill.registers:
-            self.readings.append(Reading.make_reading_from_register(register))
+            self.readings.append(Reading.create_from_register(register))
 
     def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
@@ -226,18 +231,22 @@ class ReeBill(Base):
         for r in self.readings:
             session.delete(r)
 
-        # this works even when len(self.utilbills) == 0, which is currently
-        # happening in a test but should never actually happen in real life
-        # TODO replace with
-        # [r.register_binding for r in self.utilbill.registers]
         utilbill_register_bindings = list(chain.from_iterable(
                 (r.register_binding for r in u.registers)
                 for u in self.utilbills))
-
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
         session.flush()
+
+    def is_estimated(self):
+        """Return True if this bill has one Reading corresponding to the
+        "total" register, and its measure name is the one to be used for
+        estimated total energy, False otherwise.
+        """
+        return (len(self.readings) == 1
+                and self.readings[0].register_binding == Register.TOTAL
+                and self.readings[0].measure == Reading.ESTIMATED_MEASURE)
 
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
@@ -498,7 +507,7 @@ class ReeBill(Base):
             raise ValueError("Can't correct an unissued bill")
         new_reebill = ReeBill(self.reebill_customer, self.sequence,
             self.version + 1, discount_rate=self.discount_rate,
-            late_charge_rate=self.late_charge_rate, utilbills=self.utilbills)
+            late_charge_rate=self.late_charge_rate, utilbill=self.utilbill)
 
         # copy "sequential account info"
         new_reebill.billing_address = self.billing_address.clone()
@@ -595,7 +604,7 @@ class ReeBillCustomer(Base):
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
-    payee = Column(String(100), nullable=False)
+    payee = Column(String(100), nullable=True)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"
@@ -661,6 +670,13 @@ class ReeBillCustomer(Base):
         return '%(id)s %(nextility_num)s %(name)s' % dict(
             id=self.id, nextility_num=self.get_account(), name=self.name)
 
+    def get_last_bill(self):
+        try:
+            result = max(self.reebills, key=lambda r: (r.sequence, r.version))
+        except ValueError:
+            return None
+        return result
+
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
         version is 0 (i.e. is not a correction), or None if there are no bills.
@@ -723,6 +739,9 @@ class Reading(Base):
     '''
     __tablename__ = 'reading'
 
+    ENERGY_SOLD_MEASURE = 'Energy Sold'
+    ESTIMATED_MEASURE = 'Estimated Energy Sold'
+
     id = Column(Integer, primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
@@ -745,17 +764,24 @@ class Reading(Base):
 
     unit = Column(physical_unit_type, nullable=False)
 
-    @staticmethod
-    def make_reading_from_register(register):
-        '''Return a new 'Reading' instance based on the given utility bill
+    @classmethod
+    def create_from_register(cls, register, estimate=False):
+        """Return a new 'Reading' instance based on the given utility bill
         register  with default values for its measure name and aggregation
         function.
         :param register: Register on which this reading is based.
-        '''
-        return Reading(register.register_binding, "Energy Sold",
-                              register.quantity, 0, "SUM",
-                              register.unit)
+        :param estimate: use a different measure to get an estimated
+        renewable energy usage number instead of the actual value.
+        """
+        if estimate:
+            measure_name = cls.ESTIMATED_MEASURE
+        else:
+            measure_name = cls.ENERGY_SOLD_MEASURE
+        agg_func_name = 'SUM'
+        return Reading(register.register_binding, measure_name,
+                       register.quantity, 0, agg_func_name, register.unit)
 
+    # this should probably not be called directly; use create_from_register
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
