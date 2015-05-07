@@ -730,7 +730,7 @@ class UtilBill(Base):
         charge = Charge(
             rsi_binding=charge_kwargs.get('rsi_binding', "New Charge %s" % n),
             rate=charge_kwargs.get('rate', 0.0),
-            quantity_formula=charge_kwargs.get('quantity_formula', ''),
+            formula=charge_kwargs.get('quantity_formula', ''),
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
@@ -1004,9 +1004,9 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, rsi_binding, rate, quantity_formula,
-                 target_total=None, description='', unit='',
-                 has_charge=True, shared=False, roundrule="", type='supply'):
+    def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
+                 description='', unit='', has_charge=True, shared=False,
+                 roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -1022,7 +1022,7 @@ class Charge(Base):
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
-        self.quantity_formula = quantity_formula
+        self.quantity_formula = formula
         self.target_total = target_total
         self.has_charge = has_charge
         self.shared = shared

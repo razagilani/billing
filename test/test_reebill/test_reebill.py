@@ -167,9 +167,9 @@ class ReebillTest(unittest.TestCase):
         self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge('A', 2, Charge.get_simple_formula(Register.TOTAL),
+            Charge('A', Charge.get_simple_formula(Register.TOTAL), rate=2,
                    description='a', unit='therms'),
-            Charge('B', 1, '1', description='b', unit='therms',
+            Charge('B', '1', rate=1, description='b', unit='therms',
                    has_charge=False),
         ]
 
