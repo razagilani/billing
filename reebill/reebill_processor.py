@@ -514,7 +514,7 @@ class ReebillProcessor(object):
             'display_file_path': "summary.pdf"
         }
 
-        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), recipient_list)
+        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), [recipient_list])
 
     def merge_and_mail(self, template_filename, fields, attachment, recipient_list):
 
