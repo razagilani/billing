@@ -15,7 +15,7 @@ from reebill.reebill_dao import ReeBillDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount, Base
+from core.model import Supplier, RateClass, UtilityAccount, Base, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.reebill_model import Session, UtilBill, \
@@ -291,18 +291,24 @@ class TestCaseWithSetup(test_utils.TestCase):
                       city='Utilco City',
                       state='XX',
                       postal_code='12345')
-
-        uc = Utility(name='Test Utility Company Template', address=ca1)
         supplier = Supplier(name='Test Supplier', address=ca1)
+        supply_group = SupplyGroup(name='test', supplier=supplier,
+                                   service='gas')
+        uc = Utility(name='Test Utility Company Template', address=ca1,
+                     sos_supply_group=supply_group)
+
 
         ca2 = Address(addressee='Test Other Utilco Address',
                       street='123 Utilco Street',
                       city='Utilco City',
                       state='XX',
                       postal_code='12345')
-
-        other_uc = Utility(name='Other Utility', address=ca1)
         other_supplier = Supplier(name='Other Supplier', address=ca1)
+        other_supply_group = SupplyGroup(name='test', supplier=other_supplier,
+                                   service='gas')
+        other_uc = Utility(name='Other Utility', address=ca1,
+                           sos_supply_group=other_supply_group)
+
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,

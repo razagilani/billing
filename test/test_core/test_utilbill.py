@@ -139,7 +139,8 @@ class UtilBillTestWithDB(TestCase):
                       RateClass(name='rate class', utility=self.utility,
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
-                      period_end=date(2000, 2, 1))
+                      period_end=date(2000, 2, 1),
+                      supply_group='test')
         self.assertTrue(ub.processable())
 
     def test_add_charge(self):

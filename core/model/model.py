@@ -208,15 +208,20 @@ class Utility(Base):
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
+    sos_supply_group_id = Column(Integer, ForeignKey('supply_group.id'), nullable=False)
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
+    sos_supply_group = relationship("SupplyGroup")
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
     def __str__(self):
         return self.name
+
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
 
 
 class Supplier(Base):
@@ -500,7 +505,10 @@ class UtilityAccount(Base):
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
-        self.fb_supply_group = fb_supply_group
+        if fb_supply_group is None:
+            self.fb_supply_group = self.fb_utility.get_sos_supply_group()
+        else:
+            self.fb_supply_group = fb_supply_group
 
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
@@ -867,7 +875,7 @@ class UtilBill(Base):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
-                            self.period_start, self.period_end)
+                            self.period_start, self.period_end, self.supply_group)
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''

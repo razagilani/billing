@@ -246,7 +246,7 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility, new_utility = self.get_create_utility(utility)
+            utility, new_utility = self.get_create_utility(utility, supplier)
         if rate_class is not None:
             rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
         if supplier is not None:
@@ -489,12 +489,13 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def get_create_utility(self, name):
+    def get_create_utility(self, name, supply_group):
         session = Session()
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address())
+            result = Utility(name=name, address=Address(),
+                             sos_supply_group=supply_group)
             return result, True
         return result, False
 
@@ -521,7 +522,8 @@ class UtilbillProcessor(object):
         if name == 'Unknown Supply Group':
             return None
         try:
-            result = session.query(SupplyGroup).filter_by(name=name).one()
+            result = session.query(SupplyGroup).filter_by(name=name).\
+                filter_by(supplier=supplier).one()
         except NoResultFound:
             result = SupplyGroup(name=name, supplier=supplier)
         return result
