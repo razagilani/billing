@@ -202,18 +202,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.ub2.registers[0].quantity = 150
         self.ub2.registers[0].meter_identifier = "GHIJKL"
 
-        c1 = Charge('CONSTANT', 0.4, '100', unit='dollars',
+        c1 = Charge('CONSTANT', rate=0.4, formula='100', unit='dollars',
                     type='distribution', target_total=1)
-        c2 = Charge('LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
+        c2 = Charge('LINEAR', rate=0.1, formula='REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
         self.ub1.charges = [c1, c2]
-        c3 = Charge('LINEAR_PLUS_CONSTANT', 0.1,
-                    'REG_TOTAL.quantity * 2 + 10', unit='therms',
+        c3 = Charge('LINEAR_PLUS_CONSTANT', rate=0.1,
+                    formula='REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
-        c4 = Charge('BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
+        c4 = Charge('BLOCK_1', rate=0.3, formula='min(100, REG_TOTAL.quantity)',
                     unit='therms', type='distribution')
-        c5 = Charge('BLOCK_2', 0.4,
-                    'min(200, max(0, REG_TOTAL.quantity - 100))',
+        c5 = Charge('BLOCK_2',rate= 0.4,
+                    formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
         self.ub2.charges = [c3, c4, c5]
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5

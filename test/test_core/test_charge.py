@@ -32,7 +32,7 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   rate=6,
                                   description='SOME_DESCRIPTION',
                                   unit='therms',
-                                  quantity_formula="SOME_VAR.quantity * 2",
+                                  formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding",
@@ -97,16 +97,16 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_blank(self):
         '''Test that empty quantity_formula is equivalent to 0.
         '''
-        c = Charge('X', 3, '', '', '', 'kWh')
+        c = Charge('X', '', 3, '', '', 'kWh')
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
 
     def test_rounding(self):
-        c = Charge('A', 1, quantity_formula='.005')
+        c = Charge('A', formula='.005', rate=1)
         self.assertEqual(.005, c.evaluate({}).quantity)
         self.assertEqual(.01, c.evaluate({}).total)
 
-        c = Charge('A', 1, quantity_formula='-.005')
+        c = Charge('A', formula='-.005', rate=1)
         self.assertEqual(-.005, c.evaluate({}).quantity)
         self.assertEqual(-.01, c.evaluate({}).total)
 
