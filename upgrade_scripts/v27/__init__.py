@@ -31,9 +31,11 @@ def create_and_assign_supply_groups(s):
         if bill is None:
             continue
         supply_group = SupplyGroup(bill.utility.name + ' SOS', supplier, bill.get_service())
+        bill.utility.sos_supply_group = supply_group
         bills = s.query(UtilBill).filter_by(supplier=supplier).all()
         for bill in bills:
             bill.supply_group = supply_group
+            bill.utility_account.supply_group = supply_group
         s.add(supply_group)
 
 
