@@ -217,7 +217,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': "Nextility"
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -230,7 +230,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': "Someone Else!"
         }], data)
 
         # get only one account
@@ -501,11 +501,12 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'state': 'DC',
             'postal_code': '20009',
             }
-        self.reebill_processor.create_new_account('55555', 'Another New Account',
-                                        'thermal', 0.6, 0.2, billing_address,
-                                        service_address, '99999', '123', 'test')
-        self.assertRaises(ValueError, self.reebill_processor.roll_reebill,
-                          '55555', start_date=date(2013, 2, 1))
+        self.reebill_processor.create_new_account(
+            '55555', 'Another New Account', 'thermal', 0.6, 0.2,
+            billing_address, service_address, '99999', '123', 'test')
+        with self.assertRaises(NoSuchBillException):
+            self.reebill_processor.roll_reebill('55555',
+                                                start_date=date(2013, 2, 1))
 
     def test_correction_issuing(self):
         """Test creating corrections on reebills, and issuing them to create

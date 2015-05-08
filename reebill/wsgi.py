@@ -442,8 +442,9 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        reebill = self.reebill_processor.roll_reebill(account,
-                                                      start_date=start_date)
+        estimate = bool(params['estimated'])
+        reebill = self.reebill_processor.roll_reebill(
+            account, start_date=start_date, estimate=estimate)
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
@@ -455,7 +456,9 @@ class ReebillsResource(RESTResource):
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
-        return True, {'rows': reebill.column_dict(), 'results': 1}
+        rtn = reebill.column_dict()
+        rtn.update({'action': '', 'action_value': ''})
+        return True, {'rows': rtn, 'results': 1}
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
@@ -483,7 +486,9 @@ class ReebillsResource(RESTResource):
             recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.reebill_processor.mail_reebill(account, int(sequence), recipient_list)
+            # TODO: BILL-6288 place in config file
+            reebill = self.state_db.get_reebill(account, sequence)
+            self.reebill_processor.mail_reebill("email_template.html", "A copy of your bill", reebill, recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(
@@ -1030,7 +1035,6 @@ def create_webresource_args():
     bill_mailer = Mailer(mailer_opts['mail_from'],
             mailer_opts['originator'],
             mailer_opts['password'],
-            mailer_opts['template_file_name'],
             smtplib.SMTP(),
             mailer_opts['smtp_host'],
             mailer_opts['smtp_port'],
