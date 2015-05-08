@@ -4,7 +4,7 @@ code for that is still in other files it should be moved here.
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
-    Supplier, Utility, RateClass
+    Supplier, Utility, RateClass, SupplyGroup
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
@@ -31,9 +31,9 @@ def column_dict_utilbill(self):
                                  in self._utilbill_reebills]),
                    ('utility', (column_dict(self.utility)
                                 if self.utility else None)),
-                   ('supplier', (self.supplier.name if
-                                 self.supplier else None)),
+                   ('supplier', (column_dict(self.supplier))),
                    ('rate_class', self.get_rate_class_name()),
+                   ('supply_group', self.get_supply_group_name()),
                    ('state', state_name)])
     return result
 
@@ -109,6 +109,11 @@ class Views(object):
         return [dict(id=x.id, name=x.name,
                      utility_id=x.utility_id) for x in
                 Session().query(RateClass).order_by(RateClass.name).all()]
+
+    def get_all_supply_groups_json(self):
+        return [dict(id=x.id, name=x.name,
+                     supplier_id=x.supplier_id) for x in
+                Session().query(SupplyGroup).order_by(SupplyGroup.name).all()]
 
     def get_utility(self, name):
         session = Session()

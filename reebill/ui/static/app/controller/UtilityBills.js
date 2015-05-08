@@ -68,7 +68,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#rate_class_combo': {
                 expand: this.handleRateClassExpand
+            },
+            '#supplier_combo': {
+                select: this.handleSupplierComboChanged,
+                focus: this.handleSupplierComboFocus
+            },
+            '#supply_group_combo': {
+                expand: this.handleSupplyGroupComboExpand
             }
+
         });
 
         this.getUtilityBillsStore().on({
@@ -257,14 +265,23 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_class_store.filter({property:"utility_id", type: 'int',
                                     value: record[0].get('id'), exactMatch:true});
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var utility_store = this.getUtilityBillsStore();
         if (rate_class_store.getAt(0) !=null)
             selected.set('rate_class', rate_class_store.getAt(0).get('name'));
         else
             selected.set('rate_class', 'Unknown Rate Class')
     },
 
-
+    handleSupplierComboChanged: function(utility_combo, record){
+        var supply_group_store = Ext.getStore("SupplyGroups");
+        supply_group_store.clearFilter(true);
+        supply_group_store.filter({property:"supplier_id", type: 'int',
+                                    value: record[0].get('id'), exactMatch:true});
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        if (supply_group_store.getAt(0) !=null)
+            selected.set('supply_group', supply_group_store.getAt(0).get('name'));
+        else
+            selected.set('supply_group', 'Unknown Supply Group')
+    },
 
     handleRateClassExpand: function(combo, record, index){
         utility_grid = combo.findParentByType('grid');
@@ -274,13 +291,28 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_class_store.filter({property:"utility_id", type: 'int',
                                     value: selected.get('utility').id,
                                     exactMatch:true});
-        rate_class_store.filter('utility_id', selected.get('utility').id);
+    },
+
+    handleSupplyGroupComboExpand: function(combo, record, index){
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        supply_group_store = Ext.getStore('SupplyGroups');
+        supply_group_store.clearFilter(true);
+        supply_group_store.filter({property:"supplier_id", type: 'int',
+                                    value: selected.get('supplier').id,
+                                    exactMatch:true});
     },
 
     handleUtilityComboFocus: function(combo) {
         utility_grid = combo.findParentByType('grid');
         selected = utility_grid.getSelectionModel().getSelection()[0];
         combo.setValue(selected.get('utility').name);
+    },
+
+    handleSupplierComboFocus: function(combo) {
+        utility_grid = combo.findParentByType('grid');
+        selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supplier').name);
     }
 
 });

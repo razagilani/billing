@@ -634,7 +634,8 @@ class UtilBillResource(RESTResource):
                 processed=row.get('processed', None),
                 rate_class=row.get('rate_class', None),
                 utility=row.get('utility', None),
-                supplier=row.get('supplier', None))
+                supplier=row.get('supplier', None),
+                supply_group=row.get('supply_group', None))
 
         result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
@@ -732,6 +733,12 @@ class RateClassesResource(RESTResource):
         rate_classes = self.utilbill_views.get_all_rate_classes_json()
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
+
+class SupplyGroupsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        supply_groups = self.utilbill_views.get_all_supply_groups_json()
+        return True, {'rows': supply_groups, 'results': len(supply_groups)}
 
 class CustomerGroupsResource(RESTResource):
 
@@ -1065,6 +1072,7 @@ class ReebillWSGI(WebResource):
     suppliers = SuppliersResource(*create_webresource_args())
     utilities = UtilitiesResource(*create_webresource_args())
     rateclasses = RateClassesResource(*create_webresource_args())
+    supplygroups = SupplyGroupsResource(*create_webresource_args())
     customergroups = CustomerGroupsResource(*create_webresource_args())
 
     @cherrypy.expose

@@ -67,8 +67,8 @@ class ReeBillUnitTest(unittest.TestCase):
     def setUp(self):
         # unfortunately mocks will not work for any of the SQLAlchemy objects
         # because of relationships. replace with mocks if/when possible.
-        utility_account = UtilityAccount('', '', None, None, None, Address(),
-                                         Address())
+        utility_account = UtilityAccount('', '', None, None, None, None,
+                                         Address(), Address())
         self.customer = ReeBillCustomer(
             utility_account=utility_account,
             bill_email_recipient='test@example.com')

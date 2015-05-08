@@ -4,7 +4,7 @@ from datetime import datetime,date
 from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
-    Supplier, Utility, RateClass, UtilityAccount
+    Supplier, Utility, RateClass, UtilityAccount, SupplyGroup
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
@@ -33,7 +33,8 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
+            supply_group=None, processed=None, supply_choice_id=None,
+            meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -66,6 +67,10 @@ class UtilbillProcessor(object):
         if supplier is not None:
             utilbill.supplier = self.get_create_supplier(supplier)
 
+        if supply_group is not None:
+            utilbill.supply_group = self.get_create_supply_group(
+                supply_group, utilbill.supplier)
+
         if rate_class is not None:
             utilbill.rate_class = self.get_create_rate_class(
                 rate_class, utilbill.utility, utilbill.get_service() if
@@ -91,7 +96,8 @@ class UtilbillProcessor(object):
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
                                utility=None, rate_class=None, total=0,
-                               state=UtilBill.Complete, supplier=None):
+                               state=UtilBill.Complete, supplier=None,
+                               supply_group=None):
         '''
         Returns a UtilBill with related objects (Charges and Registers
         assigned to it). Does not add anything to the session, so callers can
@@ -171,13 +177,16 @@ class UtilbillProcessor(object):
             rate_class = getattr(predecessor, 'rate_class', None)
         if rate_class is None:
             rate_class = utility_account.fb_rate_class
+        if supply_group is None:
+            supply_group = utility_account.fb_supply_group
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
             billing_address=billing_address.clone(),
             service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow(), state=state)
+            date_received=datetime.utcnow(), state=state,
+            supply_group=supply_group)
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
@@ -212,7 +221,8 @@ class UtilbillProcessor(object):
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
                             service=None, utility=None, rate_class=None,
-                            total=0, state=UtilBill.Complete, supplier=None):
+                            total=0, state=UtilBill.Complete, supplier=None,
+                            supply_group=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -236,17 +246,19 @@ class UtilbillProcessor(object):
 
         # create in database
         if utility is not None:
-            utility, new_utility = self.get_create_utility(utility)
+            utility, new_utility = self.get_create_utility(utility, supplier)
         if rate_class is not None:
             rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
         if supplier is not None:
            supplier = self.get_create_supplier(supplier)
+        if supply_group is not None:
+            supply_group = self.get_create_supply_group(supply_group, supplier)
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
         new_utilbill = self._create_utilbill_in_db(utility_account, start=start,
             end=end, utility=utility, rate_class=rate_class, total=total,
-            state=state, supplier=supplier)
+            state=state, supplier=supplier, supply_group=supply_group)
 
         # upload the file
         if bill_file is not None:
@@ -477,18 +489,19 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def get_create_utility(self, name):
+    def get_create_utility(self, name, supply_group):
         session = Session()
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address())
+            result = Utility(name=name, address=Address(),
+                             sos_supply_group=supply_group)
             return result, True
         return result, False
 
     def get_create_supplier(self, name):
         session = Session()
-        # rate classes are identified in the client by name, rather than
+        # suppliers are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
@@ -498,6 +511,21 @@ class UtilbillProcessor(object):
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
             result = Supplier(name=name, address=Address())
+        return result
+
+    def get_create_supply_group(self, name, supplier):
+        session = Session()
+        # supply_groups are identified in the client by name, rather than
+        # their primary key. "Unknown Supply Group" is a name sent by the client
+        # to the server to identify a supply group that is identified by "null"
+        # when sent from the server to the client.
+        if name == 'Unknown Supply Group':
+            return None
+        try:
+            result = session.query(SupplyGroup).filter_by(name=name).\
+                filter_by(supplier=supplier).one()
+        except NoResultFound:
+            result = SupplyGroup(name=name, supplier=supplier)
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):
