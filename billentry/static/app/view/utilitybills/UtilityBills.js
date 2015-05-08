@@ -77,7 +77,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        minWidth: 125,
+        minWidth: 200,
         flex: 1
     },{
         header: 'Usage',
