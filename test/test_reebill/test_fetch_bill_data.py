@@ -69,7 +69,7 @@ class FetchTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(Register.TOTAL, 'therms')]
-        self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
+        self.reebill = ReeBill(reebill_customer, 1, utilbill=utilbill)
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         mock_install_1 = MockSkyInstall(name='example-1')
