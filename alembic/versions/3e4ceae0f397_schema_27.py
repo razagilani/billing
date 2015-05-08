@@ -30,7 +30,7 @@ def upgrade():
     op.create_table('supply_group',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('supplier_id', sa.Integer(), nullable=False),
-        sa.Column('service', sa.Enum('gas', 'electric'), nullable=False),
+        sa.Column('service', sa.Enum('gas', 'electric')),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.ForeignKeyConstraint(['supplier_id'], ['supplier.id'], ),
         sa.PrimaryKeyConstraint('id')
