@@ -382,7 +382,7 @@ class SupplyGroup(Base):
 
     id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
-    service = Column(Enum(*SERVICES), nullable=False)
+    service = Column(Enum(*SERVICES))
     name = Column(String(255), nullable=False)
 
     supplier = relationship('Supplier')
