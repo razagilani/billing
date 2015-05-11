@@ -18,6 +18,7 @@ def upgrade():
     op.create_table(
         'quote',
         sa.Column('quote_id', sa.Integer(), nullable=False),
+        sa.Column('supplier_id', sa.Integer(), nullable=False),
         sa.Column('start_from', sa.Integer(), nullable=False),
         sa.Column('start_until', sa.Integer(), nullable=False),
         sa.Column('term_months', sa.Integer(), nullable=False),
@@ -26,7 +27,8 @@ def upgrade():
         sa.Column('valid_until', sa.DateTime(), nullable=False),
         sa.Column('price', sa.Float(), nullable=False),
         sa.Column('discriminator', sa.String(length=50), nullable=False),
-        sa.PrimaryKeyConstraint('quote_id')
+        sa.PrimaryKeyConstraint('quote_id'),
+        sa.ForeignKeyConstraint(['supplier_id'], ['supplier.id']),
     )
     op.create_table(
         'matrix_quote',
