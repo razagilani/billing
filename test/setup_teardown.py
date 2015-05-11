@@ -107,7 +107,6 @@ def create_bill_mailer():
         mailer_opts['mail_from'],
         mailer_opts['originator'],
         mailer_opts['password'],
-        mailer_opts['template_file_name'],
         smtplib.SMTP(),
         mailer_opts['smtp_host'],
         mailer_opts['smtp_port'],
@@ -153,7 +152,7 @@ def create_reebill_objects():
     bill_mailer = Mock()
     reebill_file_handler = create_reebill_file_handler()
 
-    ree_getter = RenewableEnergyGetter(splinter, logger)
+    ree_getter = RenewableEnergyGetter(splinter, nexus_util, logger)
     journal_dao = journal.JournalDAO()
     payment_dao = PaymentDAO()
 
@@ -172,7 +171,7 @@ def create_reebill_resource_objects():
     bill_file_handler = create_bill_file_handler()
     utilbill_processor = create_utilbill_processor()
     reebill_processor, _ = create_reebill_objects()
-    user_dao = UserDAO('test')
+    user_dao = UserDAO()
     journal_dao = JournalDAO()
     payment_dao = PaymentDAO()
     reebill_dao = ReeBillDAO()
@@ -180,7 +179,7 @@ def create_reebill_resource_objects():
     reebill_file_handler = create_reebill_file_handler()
     utilbill_views = create_utility_bill_views()
     bill_mailer = create_bill_mailer()
-    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
     return (config, logger, nexus_util, user_dao, payment_dao, reebill_dao,
             bill_file_handler, journal_dao, splinter, reebill_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
@@ -329,7 +328,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                 discount_rate=.12, late_charge_rate=.34,
                                 service='thermal',
                                 bill_email_recipient='example2@example.com',
-                                utility_account=utility_account2)
+                                utility_account=utility_account2,
+                                payee="Someone Else!")
         session.add(utility_account2)
         session.add(reebill_customer2)
 
@@ -386,7 +386,8 @@ class TestCaseWithSetup(test_utils.TestCase):
             name='Test Customer 3 No Rate Strucutres', discount_rate=.12,
             late_charge_rate=.34, service='thermal',
             bill_email_recipient='example2@example.com',
-            utility_account=utility_account4)
+            utility_account=utility_account4,
+            payee="Nextility")
 
         session.add(utility_account4)
         session.add(reebill_customer4)
