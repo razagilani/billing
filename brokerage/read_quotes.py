@@ -17,7 +17,7 @@ from brokerage.brokerage_model import MatrixQuote
 # - make sure all spreadsheet format errors are ValidationErrors,
 # not IndexErrors, ValueErrors, etc (might want to use different exceptions
 # for validation and errors while extracting quotes)
-# - extract code for asserting sheet names and cell contents into superclass
+# - move code for asserting cell contents into superclass
 
 
 def _assert_true(p):
@@ -42,6 +42,9 @@ class QuoteParser(object):
         formats.xlsx.import_book(result, quote_file)
         return result
 
+    # subclasses can set this to use sheet titles to validate the file
+    expected_sheet_titles = None
+
     def __init__(self):
         self._databook = None
         self._sheet = None
@@ -64,6 +67,9 @@ class QuoteParser(object):
         problems the contents in advance.
         """
         assert self._databook is not None
+        if self.expected_sheet_titles is not None:
+            _assert_equal(self.expected_sheet_titles,
+                          [s.title for s in self._databook.sheets()])
         self._validate()
         self._validated = True
 
@@ -107,8 +113,8 @@ class QuoteParser(object):
         :param row: row index
         :param row: column index
         :param regex: regular expression string
-        :param types: expected type of each match, e.g. (int, float,
-        str). length must correspond to the number of matches.
+        :param types: expected type of each match, e.g. (int, float, str).
+        length must correspond to the number of matches.
         """
         text = self._get(row, col, basestring)
         m = re.match(regex, text)
@@ -136,19 +142,17 @@ class DirectEnergyMatrixParser(QuoteParser):
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
-    def _validate(self):
-        expected_sheet_titles = [
-            'Select',
-            'Output',
-            'PricingMatrixReport',
-            'Mappings',
-            'FormInput',
-            'LF',
-            'Restricted Use'
-        ]
-        _assert_equal(expected_sheet_titles,
-                      [s.title for s in self._databook.sheets()])
+    expected_sheet_titles = [
+        'Select',
+        'Output',
+        'PricingMatrixReport',
+        'Mappings',
+        'FormInput',
+        'LF',
+        'Restricted Use'
+    ]
 
+    def _validate(self):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
@@ -157,8 +161,6 @@ class DirectEnergyMatrixParser(QuoteParser):
         _assert_equal('***** For easier print view, use the filters '
                       'to narrow down the prices displayed ******',
                       self._get(6, 1, basestring))
-
-        # TODO: ...
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -196,18 +198,8 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._get(row, col, (int, float)) / 100.
-                yield MatrixQuote(start_from=start_from,
-                                  start_until=start_until,
-                                  term_months=term_months,
-                                  valid_from=the_date,
-                                  valid_until=the_date + timedelta(days=1),
-                                  min_volume=min_vol, limit_volume=max_vol,
-                                  price=price)
-
-
-class AEPMatrixParser(QuoteParser):
-    def _validate(self):
-        raise NotImplementedError
-    def _extract_quotes(self):
-        raise NotImplementedError
-
+                yield MatrixQuote(
+                    start_from=start_from, start_until=start_until,
+                    term_months=term_months, valid_from=the_date,
+                    valid_until=the_date + timedelta(days=1),
+                    min_volume=min_vol, limit_volume=max_vol, price=price)

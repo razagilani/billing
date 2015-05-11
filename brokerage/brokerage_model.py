@@ -30,6 +30,7 @@ class Quote(Base):
     __tablename__ = 'quote'
 
     quote_id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
