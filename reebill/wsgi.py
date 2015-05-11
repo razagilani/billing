@@ -1,17 +1,17 @@
-from os.path import dirname, realpath, join
 import smtplib
-from boto.s3.connection import S3Connection
-from core import init_config, init_model, init_logging, config
-import sys
 import json
-import cherrypy
 import os
 import ConfigParser
 from datetime import datetime
 import logging
 import functools
 from StringIO import StringIO
+
+from boto.s3.connection import S3Connection
+import cherrypy
 import mongoengine
+
+from core import config
 from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
 from util import json_util as ju
@@ -33,7 +33,7 @@ from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments, BillingError
-from reebill.excel_export import Exporter
+from reebill.reports.excel_export import Exporter
 from core.model import UtilBill
 from reebill.reebill_model import CustomerGroup
 
@@ -72,7 +72,8 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        # TODO: unbound local--this code never gets run?
+        # load users database
+        user_dao = UserDAO()
         user = user_dao.load_by_session_token(
             credentials) if credentials else None
         if user is None:
@@ -245,7 +246,7 @@ class AccountsResource(RESTResource):
                 row['account'], row['name'], row['service_type'],
                 float(row['discount_rate']), float(row['late_charge_rate']),
                 billing_address, service_address, row['template_account'],
-                row['utility_account_number'])
+                row['utility_account_number'], row['payee'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
@@ -265,6 +266,11 @@ class AccountsResource(RESTResource):
             tags = filter(None, (t.strip() for t in row['tags'].split(',')))
             self.reebill_processor.set_groups_for_utility_account(
                 row['utility_account_id'], tags)
+
+        if 'payee' in row:
+            self.reebill_processor.set_payee_for_utility_account(
+                row['utility_account_id'], row['payee']
+            )
 
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
@@ -436,8 +442,9 @@ class ReebillsResource(RESTResource):
         start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        reebill = self.reebill_processor.roll_reebill(account,
-                                                      start_date=start_date)
+        estimate = bool(params['estimated'])
+        reebill = self.reebill_processor.roll_reebill(
+            account, start_date=start_date, estimate=estimate)
 
         journal.ReeBillRolledEvent.save_instance(
             cherrypy.session['user'], account, reebill.sequence)
@@ -449,7 +456,9 @@ class ReebillsResource(RESTResource):
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
-        return True, {'rows': reebill.column_dict(), 'results': 1}
+        rtn = reebill.column_dict()
+        rtn.update({'action': '', 'action_value': ''})
+        return True, {'rows': rtn, 'results': 1}
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
@@ -477,7 +486,9 @@ class ReebillsResource(RESTResource):
             recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.reebill_processor.mail_reebill(account, int(sequence), recipient_list)
+            # TODO: BILL-6288 place in config file
+            reebill = self.state_db.get_reebill(account, sequence)
+            self.reebill_processor.mail_reebill("email_template.html", "A copy of your bill", reebill, recipient_list)
 
             # journal mailing of every bill
             journal.ReeBillMailedEvent.save_instance(
@@ -786,14 +797,12 @@ class PreferencesResource(RESTResource):
 
     def handle_put(self, *vpath, **params):
         row = cherrypy.request.json
-        cherrypy.session['user'].preferences[row['key']] = row['value']
-        self.user_dao.save_user(cherrypy.session['user'])
+        cherrypy.session['user'].set_preference(row['key'], row['value'])
         return True, {'rows': row,  'results': 1}
 
     def handle_post(self, *vpath, **params):
         row = cherrypy.request.json
-        cherrypy.session['user'].preferences[row['key']] = row['value']
-        self.user_dao.save_user(cherrypy.session['user'])
+        cherrypy.session['user'].set_preference(row['key'], row['value'])
         return True, {'rows': row,  'results': 1}
 
 class ReportsResource(WebResource):
@@ -929,7 +938,7 @@ def create_webresource_args():
     )
 
     # load users database
-    user_dao = UserDAO(**dict(config.items('mongodb')))
+    user_dao = UserDAO()
 
     # create an instance representing the database
     payment_dao = PaymentDAO()
@@ -1019,13 +1028,12 @@ def create_webresource_args():
     bill_mailer = Mailer(mailer_opts['mail_from'],
             mailer_opts['originator'],
             mailer_opts['password'],
-            mailer_opts['template_file_name'],
             smtplib.SMTP(),
             mailer_opts['smtp_host'],
             mailer_opts['smtp_port'],
             mailer_opts['bcc_list'])
 
-    ree_getter = fbd.RenewableEnergyGetter(splinter, logger)
+    ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
 
     utilbill_views = Views(state_db, bill_file_handler,
                            nexus_util, journal_dao)
@@ -1088,7 +1096,6 @@ class ReebillWSGI(WebResource):
             credentials = ''.join('%02x' % ord(x) for x in os.urandom(16))
 
             user.session_token = credentials
-            self.user_dao.save_user(user)
 
             # this cookie has no expiration,
             # so lasts as long as the browser is open
