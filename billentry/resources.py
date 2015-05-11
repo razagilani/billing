@@ -95,7 +95,7 @@ class BaseResource(Resource):
         # requires BillFileHandler, so not an attribute of UtilBill itself
         class PDFUrlField(Raw):
             def output(self, key, obj):
-                return bill_file_handler.get_s3_url(obj)
+                return bill_file_handler.get_url(obj)
 
         class WikiUrlField(Raw):
             def output(self, key, obj):

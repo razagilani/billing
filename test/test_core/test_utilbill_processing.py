@@ -69,7 +69,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         init_model()
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '100000', '12345')
+            service_address, '100000', '12345', 'test')
 
         # Disabled this test for now since it bypasses the process object
         # customer = self.state_db.get_customer(session, '88888')
@@ -141,16 +141,16 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # exists
         self.assertRaises(ValueError, self.reebill_processor.create_new_account,
             '88888', 'New Account', 'pv', 0.6, 0.2,
-            billing_address, service_address, '99999', '12345')
+            billing_address, service_address, '99999', '12345', 'test')
 
         # try creating another account when the template account has no
         # utility bills yet
         self.reebill_processor.create_new_account(
             '77777', 'New Account','thermal', 0.6, 0.2, billing_address,
-            service_address, '88888', '12345')
+            service_address, '88888', '12345', 'test')
         self.reebill_processor.create_new_account(
             '66666', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '77777', '12345')
+            service_address, '77777', '12345', 'test')
 
         # Try creating a reebill for a new account that has no utility bills
         # uploaded yet
@@ -545,7 +545,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -586,7 +586,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -643,13 +643,13 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         self.reebill_processor.create_new_account(
             acc_a, 'Customer A', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
         self.reebill_processor.create_new_account(
             acc_b, 'Customer B', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
         self.reebill_processor.create_new_account(
             acc_c, 'Customer C', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
 
         # new customers also need to be in nexus for
         # 'update_renewable_readings' to
@@ -778,23 +778,24 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.delete_charge(not_shared_id)
         Session().flush()
         self.utilbill_processor.add_charge(id_a_2)
-        self.utilbill_processor.update_charge({
-                                       'rsi_binding': 'RIGHT_OF_WAY',
-                                       'description': 'DC Rights-of-Way Fee',
-                                       'quantity_formula': '750.10197727',
-                                       'rate': 0.03059,
-                                       'shared': True
-                                   }, utilbill_id=id_a_2, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            {
+                'rsi_binding': 'RIGHT_OF_WAY',
+                'description': 'DC Rights-of-Way Fee',
+                'quantity_formula': '750.10197727',
+                'rate': 0.03059,
+                'shared': True
+            }, utilbill_id=id_a_2, rsi_binding='New Charge 1')
 
         # create B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
         # the latter are more numerous, but A-1 should outweigh them
         # because weight decreases quickly with distance.
-        self.utilbill_processor.upload_utility_bill(acc_b, StringIO('February 2000 B'),
-                                         date(2000, 2, 5), date(2000, 3, 5),
-                                         'gas', total=0,
-                                         state=UtilBill.Complete)
-        self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
-                                                    self.views.get_utilbill_charges_json(id_a_2)))
+        self.utilbill_processor.upload_utility_bill(
+            acc_b, StringIO('February 2000 B'), start=date(2000, 2, 5),
+            end=date(2000, 3, 5), service='gas')
+        self.assertEqual(set(['RIGHT_OF_WAY']),
+                         set(r['rsi_binding'] for r in
+                             self.views.get_utilbill_charges_json(id_a_2)))
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -904,9 +905,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         '''
         account = '99999'
         # create utility bill and reebill
-        self.utilbill_processor.upload_utility_bill(account, StringIO('January 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
+        self.utilbill_processor.upload_utility_bill(
+            account, StringIO('January 2012'), date(2012, 1, 1),
+            date(2012, 2, 1), 'gas')
         utilbill_id = self.views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
@@ -955,8 +956,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # first bill for a given rate structure.)
         for fields in example_charge_fields:
             self.utilbill_processor.add_charge(utilbill_id)
-            self.utilbill_processor.update_charge(fields, utilbill_id=utilbill_id,
-                                       rsi_binding="New Charge 1")
+            self.utilbill_processor.update_charge(fields,
+                                                  utilbill_id=utilbill_id,
+                                                  rsi_binding="New Charge 1")
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -1007,8 +1009,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
-        reebills_data = self.views.get_reebill_metadata_json(
-            account)
+        reebills_data = self.views.get_reebill_metadata_json(account)
         self.assertDictContainsSubset({
                                           'actual_total': 0,
                                           'balance_due': 0.0,

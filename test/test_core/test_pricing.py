@@ -25,38 +25,34 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # so it should be included in a new predicted rate structure. C is
         # never shared so it never gets included in any bill, except one
         # whose "predecessor" contains it.
-        self.charge_a_shared = Charge(utilbill=None,
-                                      rsi_binding='A',
+        self.charge_a_shared = Charge(rsi_binding='A',
                                       type='distribution',
                                       rate=1,
-                                      quantity_formula='',
+                                      formula='',
                                       description="",
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
-        self.charge_b_unshared = Charge(utilbill=None,
-                                        rsi_binding='B',
+        self.charge_b_unshared = Charge(rsi_binding='B',
                                         type='distribution',
                                         rate=2,
-                                        quantity_formula='',
+                                        formula='',
                                         description="",
                                         unit='therms',
                                         shared=False,
                                         has_charge=True)
-        self.charge_b_shared = Charge(utilbill=None,
-                                      rsi_binding='B',
+        self.charge_b_shared = Charge(rsi_binding='B',
                                       type='distribution',
                                       rate=2,
-                                      quantity_formula='',
+                                      formula='',
                                       description="",
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
-        self.charge_c_unshared = Charge(utilbill=None,
-                                        rsi_binding='C',
+        self.charge_c_unshared = Charge(rsi_binding='C',
                                         type='distribution',
                                         rate=3,
-                                        quantity_formula='',
+                                        formula='',
                                         description="",
                                         unit='therms',
                                         shared=False,
@@ -215,12 +211,12 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # even though utilbill_1 also has a supply charge.
         # TODO: would be good to share some of this test data with the other
         # test methods if possible.
-        d1 = Charge(None, 'd1', 0, '', type='distribution', shared=True)
-        d2 = Charge(None, 'd2', 0, '', type='distribution', shared=True)
-        d3 = Charge(None, 'd3', 0, '', type='distribution', shared=True)
-        s1 = Charge(None, 's1', 0, '', type='supply', shared=True)
-        s2 = Charge(None, 's2', 0, '', type='supply', shared=True)
-        s3 = Charge(None, 's3', 0, '', type='supply', shared=True)
+        d1 = Charge('d1', 0, '', type='distribution', shared=True)
+        d2 = Charge('d2', 0, '', type='distribution', shared=True)
+        d3 = Charge('d3', 0, '', type='distribution', shared=True)
+        s1 = Charge('s1', 0, '', type='supply', shared=True)
+        s2 = Charge('s2', 0, '', type='supply', shared=True)
+        s3 = Charge('s3', 0, '', type='supply', shared=True)
         self.utilbill_1.charges = [d1, s1]
         self.utilbill_2.charges = [d2, s2]
         self.utilbill_3.charges = [d3, s3]
