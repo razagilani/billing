@@ -1,6 +1,7 @@
 """All tests for the Bill Entry application.
 """
 from datetime import datetime, date
+from time import sleep
 import unittest
 from json import loads
 import json
@@ -24,7 +25,7 @@ import billentry
 from billentry import common
 from billentry.billentry_exchange import create_amqp_conn_params, \
     ConsumeUtilbillGuidsHandler
-from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
+from billentry.billentry_model import BillEntryUser, BEUtilBill, Role, BEUserSession
 from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
@@ -1019,6 +1020,57 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
         self.handler.handle(message_obj)
         self.billentry_common_module.replace_utilbill_with_beutilbill\
                 .assert_called_once_with(self.utilbill)
+
+
+class TestBillEntryUserSessions(unittest.TestCase):
+    URL_PREFIX = 'http://localhost'
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
+
+    def setUp(self):
+        init_test_config()
+        clear_db()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
+        s.commit()
+
+    def tearDown(self):
+        clear_db()
+
+    def test_session_duration(self):
+        current_timestamp = datetime.utcnow()
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # a BEUserSession object must exist for this user after a
+        # successfull login
+        user = Session().query(BillEntryUser).filter_by(email='user1@test.com').first()
+        be_user_session = Session().query(BEUserSession).filter_by(beuser=user).all()
+        self.assertEqual(len(be_user_session), 1)
+        self.assertNotEquals(0, be_user_session[0].session_start - current_timestamp)
+        self.assertNotEquals(0, be_user_session[0].last_request - current_timestamp)
+
+        last_request_timestamp = be_user_session[0].last_request
+        # make another request to update the last_request field
+        self.app.get('/')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+
+        last_request_timestamp =  be_user_session[0].last_request
+        self.app.get('/logout')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
