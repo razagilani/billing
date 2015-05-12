@@ -41,6 +41,15 @@ Ext.define('BillEntry.view.reports.UserUtilBillCount', {
             utils.makeNumericGridFilterTextField('total_count', '<')
         ],
         summaryType: 'sum'
-    },]
+    },{
+        header: 'Total duration of Bills Entry',
+        dataIndex: 'elapsed_time',
+        width: 120,
+        items: [
+            utils.makeNumericGridFilterTextField('elapsed_time', '>'),
+            utils.makeNumericGridFilterTextField('elapsed_time', '<')
+        ],
+        summaryType: 'sum'
+    }]
 
 });
