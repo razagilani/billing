@@ -98,6 +98,8 @@ class ValidationError(BillingError):
 
 
 class ExtractionError(BillingError):
+    """Error related to extracting data from bill files.
+    """
     pass
 
 class MatchError(ExtractionError):
