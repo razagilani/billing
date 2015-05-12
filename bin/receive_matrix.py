@@ -1,3 +1,6 @@
+"""Read and parse and email with a matrix quote spreadsheet attachment from
+stdin. Can be triggered by Postfix.
+"""
 from sys import stdin
 from cStringIO import StringIO
 from brokerage.read_quotes import DirectEnergyMatrixParser
