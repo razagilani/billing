@@ -70,6 +70,12 @@ class BillEntryUser(Base, UserMixin):
     def __repr__(self):
         return '<User %s>' % self.email
 
+    def get_beuser_billentry_duration(self):
+        if self.be_user_session is None:
+            return 0
+        return (self.be_user_session.last_request - self.be_user_session.session_start).total_seconds()
+
+
 class RoleBEUser(Base):
     '''Class corresponding to the "roles_user" table which represents the
     many-to-many relationship between "billentry_user" and "roles"'''
@@ -127,7 +133,7 @@ class BEUserSession(Base):
 
     # bidirectional attribute/collection of "billentry_user"/"role_beuser"
     beuser = relationship(BillEntryUser,
-                          backref=backref('be_user_session'))
+                          backref=backref('be_user_session', uselist=False))
 
 
 
