@@ -115,6 +115,22 @@ class Role(Base):
     def __repr__(self):
         return '<Role %s>' % self.name
 
+
+class BEUserSession(Base):
+    """ A class to keep track of the duration of a BillEntryUser's session
+    """
+    __tablename__ = 'be_user_session'
+    id = Column(Integer, primary_key=True)
+    session_start = Column(DateTime, nullable=False)
+    last_request = Column(DateTime)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
+
+    # bidirectional attribute/collection of "billentry_user"/"role_beuser"
+    beuser = relationship(BillEntryUser,
+                          backref=backref('be_user_session'))
+
+
+
 class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the
     Bill Entry application and by whom.
