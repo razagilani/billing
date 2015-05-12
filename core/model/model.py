@@ -756,12 +756,6 @@ class UtilBill(Base):
     # the utility (and which will be corrected later to become Complete).
     # 2. Estimated: a bill that is known to exist (and whose dates are
     # correct) but whose contents were estimated (not by the utility).
-    # 3. Hypothetical: it is believed that there is probably a bill during a
-    # certain time period and estimates what its contents would be if it
-    # existed. Such a bill may not really exist (since we can't even know how
-    # many bills there are in a given period of time), and if it does exist,
-    # its actual dates will probably be different than the guessed ones.
-    # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, Estimated = range(3)
 
     def __init__(self, utility_account, utility, rate_class, supplier=None,
