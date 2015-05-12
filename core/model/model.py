@@ -6,6 +6,12 @@ import ast
 from datetime import date, datetime
 from itertools import chain
 import json
+from StringIO import StringIO
+from pdfminer.converter import TextConverter
+from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFSyntaxError
+from pymongo import Connection
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
@@ -20,9 +26,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable
+    UnEditableBillError, NotProcessable, MissingFileError
 
 
 __all__ = [
@@ -695,12 +700,8 @@ class UtilBill(Base):
     # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Integer, nullable=False)
 
-    # date when a process was run to extract data from the bill file to fill in
-    # data automatically. (note this is different from data scraped from the
-    # utility web site, because that can only be done while the bill is being
-    # downloaded and can't take into account information from other sources.)
-    # TODO: not being used at all
-    date_scraped = Column(DateTime)
+    # which Extractor was used to get data out of the bill file, and when
+    date_extracted = Column('date_scraped', DateTime,)
 
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
@@ -1073,4 +1074,44 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
+
+    def get_text(self, bill_file_handler):
+        """Return text dump of the bill's PDF, currently cached in MongoDB.
+        :param bill_file_handler: used to get the PDF file (only if the text for
+        this bill is not already cached).
+        """
+        from core.model import Session
+        db = Connection()['skyline-dev']
+
+        if self.id is None:
+            Session().flush()
+            assert self.id is not None
+
+        doc = db.text.find_one({'_id': self.id})
+        if doc is None or doc.get('text', '') == '':
+            infile = StringIO()
+            try:
+                bill_file_handler.write_copy_to_file(self, infile)
+            except MissingFileError:
+                text = ''
+            else:
+                infile.seek(0)
+                rsrcmgr = PDFResourceManager()
+                outfile = StringIO()
+                device = TextConverter(rsrcmgr, outfile, codec='utf-8')
+                interpreter = PDFPageInterpreter(rsrcmgr, device)
+                try:
+                    for page in PDFPage.get_pages(infile, set(),
+                                                  check_extractable=True):
+                        interpreter.process_page(page)
+                except PDFSyntaxError:
+                    text = ''
+                else:
+                    outfile.seek(0)
+                    text = outfile.read()
+                device.close()
+            doc = {'_id': self.id, 'text': text}
+        if len(doc['text']) > 0:
+            db.text.save(doc)
+        return doc['text']
 
