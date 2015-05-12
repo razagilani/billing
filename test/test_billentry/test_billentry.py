@@ -1071,6 +1071,8 @@ class TestBillEntryUserSessions(unittest.TestCase):
         last_request_timestamp =  be_user_session[0].last_request
         self.app.get('/logout')
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+        self.assertEqual((be_user_session[0].last_request - be_user_session[0].session_start).total_seconds(), user.get_beuser_billentry_duration())
+
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
