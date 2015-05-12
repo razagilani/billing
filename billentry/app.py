@@ -245,6 +245,7 @@ def update_user_session_last_request_time(user):
     recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
         order_by(desc(BEUserSession.session_start)).first()
     recent_session.last_request = datetime.utcnow()
+    Session.commit()
 
 def make_session_permenant():
     """ This method makes a flask session permanent. Flask session's are
