@@ -14,6 +14,8 @@ import urllib
 import uuid
 from urllib2 import Request, urlopen, URLError
 import json
+from datetime import datetime, timedelta
+from sqlalchemy import desc
 
 import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
@@ -24,7 +26,7 @@ from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app, Response
 from flask_oauth import OAuth, OAuthException
 
-from billentry.billentry_model import BillEntryUser, Role
+from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
@@ -196,8 +198,12 @@ def create_user_in_db(access_token):
         s.commit()
     user.authenticated = True
     s.commit()
-    login_user(user)
     # Tell Flask-Principal the identity changed
+    login_user(user)
+    # make Flask session's permanent to make Flask timeout's work
+    make_session_permenant()
+    # start keeping track of user session
+    start_user_session(user)
     identity_changed.send(current_app._get_current_object(),
         identity=Identity(user.id))
     return userInfo['email']
@@ -232,6 +238,22 @@ def before_request():
             set_next_url()
             return redirect(url_for('login_page'))
         return Response('Could not verify your access level for that URL', 401)
+    if user.is_authenticated():
+        update_user_session_last_request_time(user)
+
+def update_user_session_last_request_time(user):
+    recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
+        order_by(desc(BEUserSession.session_start)).first()
+    recent_session.last_request = datetime.utcnow()
+
+def make_session_permenant():
+    """ This method makes a flask session permanent. Flask session's are
+    not permanent by default. They have to be made permanent to make flask
+    session timeout's work
+    """
+    session.permanent = True
+    session.permanent_session_lifetime = timedelta(minutes=
+                                        config.get('billentry', 'timeout'))
 
 def set_next_url():
     next_path = request.args.get('next') or request.path
@@ -351,6 +373,7 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(),
                           identity=Identity(user.id))
     session['user_name'] = str(user)
+    start_user_session(user)
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
@@ -358,6 +381,18 @@ def get_hashed_password(plain_text_password):
     # Hash a password for the first time
     #   (Using bcrypt, the salt is saved into the hash itself)
     return bcrypt.generate_password_hash(plain_text_password)
+
+def start_user_session(beuser):
+    """ This method should be called after user has logged in
+    to create a new BEUserSession object that keeps track of the
+    duration of user's session in billentry
+    """
+    s = Session()
+    be_user_session = BEUserSession(session_start=datetime.utcnow(),
+                                    last_request=datetime.utcnow(),
+                                    beuser=beuser)
+    s.add(be_user_session)
+    s.commit()
 
 def check_password(plain_text_password, hashed_password):
     # Check hased password. Using bcrypt, the salt is saved into the hash itself
