@@ -13,7 +13,7 @@ Create Date: 2015-03-12 15:02:51.153207
 from core.model import Register
 
 revision = '58383ed620d3'
-down_revision = '3e4ceae0f397'
+down_revision = 'a583e412020'
 
 from alembic import op
 import sqlalchemy as sa
