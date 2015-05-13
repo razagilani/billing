@@ -197,6 +197,11 @@ class Field(model.Base):
     # string determining which Applier applies the extracted value to a UtilBill
     applier_key = Column(Enum(*Applier.KEYS.keys()), unique=True)
 
+    # TODO: this column is supposed to belong to TextField but a bug in
+    # Flask-Admin causes Flask-Admin to fail if TextField is used as an
+    # "inline model". putting it here prevents the error.
+    regex = Column(String(1000), nullable=False)
+
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
         'polymorphic_on': discriminator,
@@ -334,7 +339,12 @@ class TextExtractor(Extractor):
         """Field that extracts data from text input using a regular expression.
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
-        regex = Column(String(1000), nullable=False)
+
+        # TODO: 'regex' column was moved up to the field class (even though it
+        # is only relevant to TextField) because otherwise Flask-Admin won't
+        # recognize it and will fail with "Exception: Cannot find forward
+        # relation for model <class 'core.extraction.TextField'>"
+        #regex = Column(String(1000), nullable=False)
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
