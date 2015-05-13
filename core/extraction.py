@@ -192,10 +192,11 @@ class Field(model.Base):
     discriminator = Column(String(1000), nullable=False)
     extractor_id = Column(Integer, ForeignKey('extractor.extractor_id'))
 
-    type = Column(Enum(*TYPES.keys()))
+    type = Column(Enum(*TYPES.keys(), name='field_type'))
 
     # string determining which Applier applies the extracted value to a UtilBill
-    applier_key = Column(Enum(*Applier.KEYS.keys()), unique=True)
+    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'),
+                         unique=True)
 
     # TODO: this column is supposed to belong to TextField but a bug in
     # Flask-Admin causes Flask-Admin to fail if TextField is used as an
