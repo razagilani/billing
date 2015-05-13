@@ -10,13 +10,21 @@ calling :func:`.core.init_model`.
 import json
 import logging
 
+from alembic.config import Config
 import pymongo
 
+from sqlalchemy import create_engine
+
+from upgrade_scripts import alembic_upgrade
 from core import init_model
 from core.model import Session
 from reebill.reebill_model import User, ReeBillCustomer
 from upgrade_scripts import alembic_upgrade
+from core.model import Register
+from upgrade_scripts.v27.postgres import migrate_to_postgres
 
+
+REVISION = '58383ed620d3'
 
 log = logging.getLogger(__name__)
 
@@ -47,11 +55,37 @@ def set_payee_for_reebill_customers(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 27')
-    alembic_upgrade('a583e412020')
-    init_model()
 
-    init_model()
+    from core import config
+    old_uri = config.get('db', 'old_uri')
+    new_uri = config.get('db', 'uri')
+    assert old_uri.startswith('mysql://')
+    assert new_uri.startswith('postgresql://')
+    old_db_config = Config('alembic.ini')
+    old_db_config.set_main_option("sqlalchemy.url", old_uri)
+    
+    alembic_upgrade('a583e412020')
+
+    log.info('Cleaning up reading.register_binding values')
+    # clean up reading.register_binding before changing the column type.
+    # this enables converting reading.register_binding to the same type as
+    # register.register_binding to enable comparisons.
+    mysql_engine = create_engine(old_uri)
+    mysql_engine.execute(
+        "update reading set register_binding = 'REG_TOTAL' where "
+        "register_binding is null or register_binding in ('None', '')"
+        "or register_binding not in %s" % str(
+            tuple(Register.REGISTER_BINDINGS)))
+
+    log.info('Upgrading schema to revision %s' % REVISION)
+    alembic_upgrade(REVISION, config=old_db_config)
+
+    init_model(uri=old_uri, schema_revision=REVISION)
+
     s = Session()
     migrate_users(s)
     set_payee_for_reebill_customers(s)
     s.commit()
+
+    log.info('Migrating to PostgreSQL')
+    migrate_to_postgres(old_db_config, old_uri, new_uri)
