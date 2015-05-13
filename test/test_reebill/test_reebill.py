@@ -166,12 +166,11 @@ class ReebillTest(unittest.TestCase):
                                  period_end=date(2000, 2, 1))
         self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
-        self.utilbill.charges = [Charge(self.utilbill, 'A', 2,
-                                        Charge.get_simple_formula(
-                                            Register.TOTAL),
+        self.utilbill.charges = [
+            Charge('A', Charge.get_simple_formula(Register.TOTAL), rate=2,
                    description='a', unit='therms'),
-            Charge(self.utilbill, 'B', 1, '1', description='b',
-                   unit='therms', has_charge=False),
+            Charge('B', '1', rate=1, description='b', unit='therms',
+                   has_charge=False),
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,

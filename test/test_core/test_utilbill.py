@@ -190,51 +190,51 @@ class UtilBillTestWithDB(TestCase):
         charges = [
             dict(
                 rsi_binding='CONSTANT',
-                quantity='100',
+                formula='100',
                 quantity_units='dollars',
                 rate=0.4,
             ),
             dict(
                 rsi_binding='LINEAR',
-                quantity='REG_TOTAL.quantity * 3',
+                formula='REG_TOTAL.quantity * 3',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='LINEAR_PLUS_CONSTANT',
-                quantity='REG_TOTAL.quantity * 2 + 10',
+                formula='REG_TOTAL.quantity * 2 + 10',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='BLOCK_1',
-                quantity='min(100, REG_TOTAL.quantity)',
+                formula='min(100, REG_TOTAL.quantity)',
                 quantity_units='therms',
                 rate=0.3,
             ),
             dict(
                 rsi_binding='BLOCK_2',
-                quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
+                formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                 quantity_units='therms',
                 rate=0.2,
             ),
             dict(
                 rsi_binding='BLOCK_3',
-                quantity='max(0, REG_TOTAL.quantity - 200)',
+                formula='max(0, REG_TOTAL.quantity - 200)',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='REFERENCES_ANOTHER',
                 # TODO also try "total" here
-                quantity='REFERENCED_BY_ANOTHER.quantity + '
+                formula='REFERENCED_BY_ANOTHER.quantity + '
                          'REFERENCED_BY_ANOTHER.rate',
                 quantity_units='therms',
                 rate=1,
             ),
             dict(
                 rsi_binding='NO_CHARGE_FOR_THIS_RSI',
-                quantity='1',
+                formula='1',
                 quantity_units='therms',
                 rate=1,
             ),
@@ -243,19 +243,19 @@ class UtilBillTestWithDB(TestCase):
             # RSI in 'uprs'
             dict(
                 rsi_binding='REFERENCED_BY_ANOTHER',
-                quantity='2',
+                formula='2',
                 quantity_units='therms',
                 rate=3,
             ),
             dict(
                 rsi_binding='SYNTAX_ERROR',
-                quantity='5 + ',
+                formula='5 + ',
                 quantity_units='therms',
                 rate=1,
             ),
             dict(
                 rsi_binding='DIV_BY_ZERO_ERROR',
-                quantity='1 / 0',
+                formula='1 / 0',
                 quantity_units='therms',
                 rate=1,
             ),
@@ -263,13 +263,13 @@ class UtilBillTestWithDB(TestCase):
             # formula error
             dict(
                 rsi_binding='UNKNOWN_IDENTIFIER',
-                quantity='x * 2',
+                formula='x * 2',
                 quantity_units='therms',
                 rate=1,
             ),
         ]
-        utilbill.charges = [Charge(utilbill, c['rsi_binding'], c['rate'],
-                c['quantity'], "Insert description here", "",
+        utilbill.charges = [Charge(c['rsi_binding'], rate=c['rate'],
+                formula=c['formula'], description="Insert description here",
                 unit=c['quantity_units']) for c in charges]
 
         get = utilbill.get_charge_by_rsi_binding
@@ -377,11 +377,10 @@ class UtilBillTestWithDB(TestCase):
                             period_end=date(2000, 2, 1))
         utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity',
-                   '', '', 'kWh'),
-            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
+            Charge('A', rate=1, formula='REG_TOTAL.quantity'),
+            Charge('B', rate=3, formula='2'),
             # this has an error
-            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
+            Charge('C', rate=0, formula='1/0'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
@@ -413,26 +412,26 @@ class UtilBillTestWithDB(TestCase):
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
             # theoretically both could be computed.
-            Charge(utilbill, 'A', 0, 'B.quantity', '', '', 'kWh'),
-            Charge(utilbill, 'B', 0, 'A.rate', '', '', 'kWh'),
+            Charge('A', formula='B.formula'),
+            Charge('B', formula='A.rate'),
             # C depends on itself
-            Charge(utilbill, 'C', 0, 'C.total', '', '', 'kWh'),
+            Charge('C', formula='C.total'),
             # D depends on A, which has a circular dependency with B. it should
             # not be computable because A is not computable.
-            Charge(utilbill, 'D', 0, 'A.total', '', '', 'kWh'),
-            Charge(utilbill, 'E', 3, '2', '', '', 'kWh'),
+            Charge('D', formula='A.total'),
+            Charge('E', rate=3, formula='2'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
 
         self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
-                "Error: name 'B' is not defined")
+                          "Error: name 'B' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
-                "Error: name 'A' is not defined")
+                          "Error: name 'A' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
-                "Error: name 'C' is not defined")
+                          "Error: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
-                "Error: name 'A' is not defined")
+                          "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
 
     def test_processed_utility_bills(self):
@@ -452,11 +451,10 @@ class UtilBillTestWithDB(TestCase):
                             period_end=date(2000, 2, 1))
         utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, Register.TOTAL + '.quantity', '', '',
-                   'kWh'),
-            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
+            Charge('A', rate=1, formula=Register.TOTAL + '.quantity'),
+            Charge('B', rate=3, formula='2'),
             # this has an error
-            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
+            Charge('C', rate=0, formula='1/0'),
         ]
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)
@@ -479,13 +477,13 @@ class UtilBillTestWithDB(TestCase):
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
         the_charges = [
-            Charge(utilbill, 'A', 1, '', target_total=1, type='distribution'),
-            Charge(utilbill, 'B', 1, '4', type='distribution'),
+            Charge('A', formula='', rate=1, target_total=1, type='distribution'),
+            Charge('B', formula='4', rate=1, type='distribution'),
             # a Charge does not count as a real charge if has_charge=False.
-            Charge(utilbill, 'C', 1, '3', type='supply', has_charge=False),
-            Charge(utilbill, 'D', 1, '5', target_total=5, type='supply'),
-            Charge(utilbill, 'E', 1, 'syntax error', type='supply'),
-            Charge(utilbill, 'F', 1, '7', type='distribution'),
+            Charge('C', formula='3', rate=1, type='supply', has_charge=False),
+            Charge('D', formula='5', rate=1, target_total=5, type='supply'),
+            Charge('E', formula='syntax error', rate=1, type='supply'),
+            Charge('F', formula='7', rate=1, type='distribution'),
         ]
         utilbill.charges = the_charges
         self.assertEqual(the_charges, utilbill.charges)
