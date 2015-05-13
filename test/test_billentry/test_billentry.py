@@ -1023,7 +1023,6 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
 
 
 class TestBillEntryUserSessions(unittest.TestCase):
-    URL_PREFIX = 'http://localhost'
 
     @classmethod
     def setUpClass(cls):
