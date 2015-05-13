@@ -143,7 +143,12 @@ def oauth2callback(resp):
     # any user who logs in through OAuth gets automatically created
     # (with a random password) if there is no existing user with
     # the same email address.
-    create_user_in_db(resp['access_token'])
+    user_email = create_user_in_db(resp['access_token'])
+    user = Session().query(BillEntryUser).filter_by(email=user_email).first()
+    # make Flask session's permanent to make Flask timeout's work
+    make_session_permenant()
+    # start keeping track of user session
+    start_user_session(user)
     return redirect(next_url)
 
 @app.route('/')
@@ -200,10 +205,6 @@ def create_user_in_db(access_token):
     s.commit()
     # Tell Flask-Principal the identity changed
     login_user(user)
-    # make Flask session's permanent to make Flask timeout's work
-    make_session_permenant()
-    # start keeping track of user session
-    start_user_session(user)
     identity_changed.send(current_app._get_current_object(),
         identity=Identity(user.id))
     return userInfo['email']
@@ -244,8 +245,9 @@ def before_request():
 def update_user_session_last_request_time(user):
     recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
         order_by(desc(BEUserSession.session_start)).first()
-    recent_session.last_request = datetime.utcnow()
-    Session.commit()
+    if recent_session:
+        recent_session.last_request = datetime.utcnow()
+        Session.commit()
 
 def make_session_permenant():
     """ This method makes a flask session permanent. Flask session's are
