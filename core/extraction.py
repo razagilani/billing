@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from core import model
-from core.model import Charge
+from core.model import Charge, Session, Utility
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
 
@@ -139,6 +139,13 @@ def convert_wg_charges(text):
     Washington Gas bill format into a list of Charges. There might eventually
     be many of these.
     """
+    # TODO: it's bad to do a query in here. also, when there are many of
+    # these functions, this creates duplicate code both for loading the name map
+    # and for using it to convert names into rsi_bindings. it probably should
+    # be an argument.
+    charge_name_map = Session().query(Utility).filter_by(
+        name='Washington Gas').one().charge_name_map
+
     groups = '.*DISTRIBUTION SERVICE(.*)NATURAL GAS SUPPLY SERVICE(.*)TAXES(.*)'
     num = r'[\d.]*'
     charge_total = r'\$\s*' + num
@@ -157,7 +164,9 @@ def convert_wg_charges(text):
         name = re.match(charge_name, charge_str).group(0).strip()
         # "*?" means non-greedy *
         total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
-        return Charge(name, target_total=float(total_str), type=charge_type)
+        rsi_binding = charge_name_map.get(name, name.replace(' ', '_'))
+        return Charge(rsi_binding, name=name, target_total=float(total_str),
+                      type=charge_type)
 
     charges = []
     for charge_type, charge_texts in [(Charge.DISTRIBUTION, d_charge_strs),

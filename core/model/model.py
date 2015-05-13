@@ -524,6 +524,9 @@ class Charge(Base):
     unit = Column(charge_unit_type, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
 
+    # optional human-readable name of the charge as displayed on the bill
+    name = Column(String(1000))
+
     quantity_formula = Column(String(1000), nullable=False)
     rate = Column(Float, nullable=False)
 
@@ -579,9 +582,9 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='', has_charge=True, shared=False,
-                 roundrule="", type='supply'):
+    def __init__(self, rsi_binding, name=None, formula='', rate=0,
+                 target_total=None, description='', unit='', has_charge=True,
+                 shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -597,6 +600,7 @@ class Charge(Base):
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
+        self.name = name
         self.quantity_formula = formula
         self.target_total = target_total
         self.has_charge = has_charge
