@@ -1084,6 +1084,8 @@ class TestBillEntryUserSessions(unittest.TestCase):
         user_sessions = Session().query(BEUserSession).filter_by(beuser=user).all()
         #count of sessione should be two
         self.assertEqual(2, len(user_sessions))
+        # the session duration for current session should be 0 as both
+        # session_start and last_request have the same values
         self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
 
 
