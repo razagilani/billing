@@ -758,16 +758,9 @@ class UtilBill(Base):
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
-    # 1. Utility estimated: actual utility bill whose contents were estimated by
-    # the utility (and which will be corrected later to become Complete).
-    # 2. Estimated: a bill that is known to exist (and whose dates are
-    # correct) but whose contents were estimated (not by the utility).
-    # 3. Hypothetical: it is believed that there is probably a bill during a
-    # certain time period and estimates what its contents would be if it
-    # existed. Such a bill may not really exist (since we can't even know how
-    # many bills there are in a given period of time), and if it does exist,
-    # its actual dates will probably be different than the guessed ones.
-    # TODO 38385969: not sure this strategy is a good idea
+    # 1. UtilityEstimated: actual utility bill whose contents were estimated by
+    # the utility, and will be corrected in a later bill.
+    # 2. Estimated: a bill that is estimated by us, not the utility.
     Complete, UtilityEstimated, Estimated = range(3)
 
     def __init__(self, utility_account, utility, rate_class, supplier=None,
@@ -775,8 +768,9 @@ class UtilBill(Base):
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
                  next_meter_read_date=None, state=Complete, tou=False):
-        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
-        UtilBill.Estimated, UtilBill.Hypothetical.'''
+        """
+        :param state: Complete, UtilityEstimated, or Estimated.
+        """
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
         self.utility_account = utility_account

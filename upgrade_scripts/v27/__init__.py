@@ -63,7 +63,8 @@ def upgrade():
     assert new_uri.startswith('postgresql://')
     old_db_config = Config('alembic.ini')
     old_db_config.set_main_option("sqlalchemy.url", old_uri)
-    alembic_upgrade('3e4ceae0f397')
+    
+    alembic_upgrade('a583e412020')
 
     log.info('Cleaning up reading.register_binding values')
     # clean up reading.register_binding before changing the column type.
