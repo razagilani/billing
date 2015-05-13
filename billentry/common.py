@@ -5,7 +5,7 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-st
 If it gets big, it should become a multi-file module as shown there.
 """
 from flask.ext.bcrypt import Bcrypt
-
+from sqlalchemy.orm import make_transient
 from billentry.billentry_model import BEUtilBill
 from core.model import UtilBill, Session
 

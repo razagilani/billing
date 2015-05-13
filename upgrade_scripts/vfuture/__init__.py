@@ -9,6 +9,7 @@ calling :func:`.core.init_model`.
 """
 import logging
 from core.extraction import TextExtractor, Field, Applier
+from core.model import Utility
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model, initialize
@@ -29,13 +30,33 @@ def create_extractors(s):
 
     s.add(e)
 
+def create_charge_name_maps(s):
+    wg = s.query(Utility).filter_by(name='washgas').one()
+    wg.charge_name_map= {
+        'Distribution Charge': 'DISTRIBUTION_CHARGE',
+        'Customer Charge': 'CUSTOMER_CHARGE',
+        'PGC': 'PGC',
+        'Peak Usage Charge': 'PEAK_USAGE_CHARGE',
+        'DC Rights-of-Way Fee': 'RIGHT_OF_WAY',
+        'Sustainable Energy Trust Fund': 'SETF',
+        'Energy Assistance Trust Fund': 'EATF',
+        'Delivery Tax': 'DELIVERY_TAX',
+        'Sales Tax': 'SALES_TAX',
+    }
+    pepco = s.query(Utility).filter_by(name='pepco').one()
+    # TODO: ...
+
 def upgrade():
     initialize()
     from core.model import Base, Session
+    Base.metadata.drop_all()
     Base.metadata.create_all()
     print '\n'.join(sorted(t for t in Base.metadata.tables))
 
     s = Session()
+    # hstore won't work unless it's specifically turned on
+    s.execute('create extension if not exists hstore')
+    s.commit()
     create_extractors(s)
     s.commit()
 
