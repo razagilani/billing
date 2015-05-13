@@ -50,10 +50,12 @@ Ext.define('BillEntry.view.reports.Reports', {
         },{
             xtype: 'userUtilBillCount',
             id: 'userUtilBillCountGrid',
+            flex: 1
         },{
             xtype: 'billDetails',
             store: 'UserUtilityBills',
             id: 'reportUtilityBillsGrid',
+            flex: 1,
             disabled: true,
             omitColumns: ['entered']
         }]

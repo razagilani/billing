@@ -11,7 +11,7 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-host::hosts_file {$env:}
+require host::hosts_file
 
 package { 'httpd':
     ensure  => installed
