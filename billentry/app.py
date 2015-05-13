@@ -21,7 +21,7 @@ from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app
+    render_template, current_app, Response
 from flask_oauth import OAuth, OAuthException
 
 from billentry.billentry_model import BillEntryUser, Role
@@ -29,6 +29,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
+from exc import UnEditableBillError
 
 LOG_NAME = 'billentry'
 
@@ -74,13 +75,22 @@ google = oauth.remote_app(
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry',
                                           'disable_authentication')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
+principals = Principal(app)
+
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
 
-# load the extension
-principals = Principal(app)
+
+@principals.identity_loader
+def load_identity_for_anonymous_user():
+    if config.get('billentry', 'disable_authentication'):
+        identity = AnonymousIdentity()
+        identity.provides.add(RoleNeed('admin'))
+        return identity
+
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
@@ -96,6 +106,7 @@ def on_identity_loaded(sender, identity):
     if hasattr(current_user, 'roles'):
         for role in current_user.roles:
             identity.provides.add(RoleNeed(role.name))
+
 
 @login_manager.user_loader
 def load_user(id):
@@ -172,10 +183,12 @@ def create_user_in_db(access_token):
     if user is None:
         # generate a random password
         wordfile = xp.locate_wordfile()
-        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6, max_length=8)
-        user = BillEntryUser(email=session['email'],
-                                 password=get_hashed_password(xp.generate_xkcdpassword(mywords,
-                                                        acrostic="face")))
+        mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6,
+                                       max_length=8)
+        user = BillEntryUser(
+            email=session['email'],
+            password=get_hashed_password(
+                xp.generate_xkcdpassword(mywords, acrostic="face")))
         # add user to the admin role
         admin_role = s.query(Role).filter_by(name='admin').first()
         user.roles = [admin_role]
@@ -185,13 +198,15 @@ def create_user_in_db(access_token):
     s.commit()
     login_user(user)
     # Tell Flask-Principal the identity changed
-    identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+    identity_changed.send(current_app._get_current_object(),
+        identity=Identity(user.id))
     return userInfo['email']
 
 @app.before_request
 def before_request():
     if app.config['LOGIN_DISABLED']:
         return
+
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
@@ -204,11 +219,36 @@ def before_request():
         # special endpoint name for all static files--not a URL
         'static'
     ]
+    NON_REST_ENDPOINTS = [
+        'admin',
+        'index'
+    ]
+
     if not user.is_authenticated():
-        if ('index.html' in request.path or request.endpoint == '/' or not
-                        request.endpoint in ALLOWED_ENDPOINTS):
+        if request.endpoint in ALLOWED_ENDPOINTS:
+            return
+        if (request.endpoint in NON_REST_ENDPOINTS or 'admin' in
+            request.path or 'index' in request.path):
             set_next_url()
             return redirect(url_for('login_page'))
+        return Response('Could not verify your access level for that URL', 401)
+
+def set_next_url():
+    next_path = request.args.get('next') or request.path
+    if next_path:
+        # Since passing along the "next" URL as a GET param requires
+        # a different callback for each page, and Google requires
+        # whitelisting each allowed callback page, therefore, it can't pass it
+        # as a GET param. Instead, the url is sanitized and put into the session.
+        path = urllib.unquote(next_path)
+        if path[0] == '/':
+            # This first slash is unnecessary since we force it in when we
+            # format next_url.
+            path = path[1:]
+
+        next_url = "{path}".format(
+            path=path,)
+        session['next_url'] = next_url
 
 @app.after_request
 def db_commit(response):
@@ -246,23 +286,6 @@ def oauth_login():
     result = google.authorize(callback=callback_url)
     return result
 
-def set_next_url():
-    next_path = request.args.get('next') or request.path
-    if next_path:
-        # Since passing along the "next" URL as a GET param requires
-        # a different callback for each page, and Google requires
-        # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
-        path = urllib.unquote(next_path)
-        if path[0] == '/':
-            # This first slash is unnecessary since we force it in when we
-            # format next_url.
-            path = path[1:]
-
-        next_url = "{path}".format(
-            path=path,)
-        session['next_url'] = next_url
-
 @app.route('/login-page')
 def login_page():
     return render_template('login_page.html')
@@ -272,18 +295,41 @@ def login_page():
 def page_not_found(e):
     return render_template('403.html'), 403
 
+@app.errorhandler(UnEditableBillError)
+def uneditable_bill_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('UnProcessedBillError', traceback)
+    return error_message, 400
+
 @app.errorhandler(Exception)
 def internal_server_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('Internal Server Error', traceback)
+
+    return error_message, 500
+
+def log_error(exception_name, traceback):
     from core import config
     # Generate a unique error token that can be used to uniquely identify the
     # errors stacktrace in a logfile
     token = str(uuid.uuid4())
     logger = logging.getLogger(LOG_NAME)
     logger.exception('Exception in BillEntry (Token: %s): ', token)
-    error_message = "Internal Server Error. Error Token <b>%s</b>" % token
+    error_message = "Internal Server Error: %s, Error Token: " \
+                    "<b>%s</b>" % (exception_name, token)
     if config.get('billentry', 'show_traceback_on_error'):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
-    return error_message, 500
+    return error_message
 
 @app.route('/userlogin', methods=['GET','POST'])
 def locallogin():
@@ -332,6 +378,8 @@ api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResource,
                  '/utilitybills/user_utilitybills')
+api.add_resource(resources.FlaggedUtilBillListResource,
+                 '/utilitybills/flagged_utilitybills')
 
 # apparently needed for Apache
 application = app

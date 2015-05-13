@@ -30,6 +30,8 @@ Ext.define('ReeBill.model.Account', {
         {name: 'sa_street', type: 'string'},
         {name: 'service_type', type: 'string'},
         {name: 'template_account'},
+        {name: 'payee', type:'string'}
 
-    ]
+    ],
+    idProperty: 'utility_account_id'
 });
