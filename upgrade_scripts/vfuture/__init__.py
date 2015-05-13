@@ -52,6 +52,9 @@ def upgrade():
     print '\n'.join(sorted(t for t in Base.metadata.tables))
 
     s = Session()
+    # hstore won't work unless it's specifically turned on
+    s.execute('create extension if not exists hstore')
+    s.commit()
     create_extractors(s)
     s.commit()
 
