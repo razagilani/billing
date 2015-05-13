@@ -1069,9 +1069,22 @@ class TestBillEntryUserSessions(unittest.TestCase):
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
 
         last_request_timestamp =  be_user_session[0].last_request
+        # logout closes the current session
         self.app.get('/logout')
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
-        self.assertEqual((be_user_session[0].last_request - be_user_session[0].session_start).total_seconds(), user.get_beuser_billentry_duration())
+        self.assertEqual((be_user_session[0].last_request -
+                          be_user_session[0].session_start).
+                         total_seconds(), user.get_beuser_billentry_duration
+                        (current_timestamp, datetime.utcnow()))
+
+        #start a new session by logging in
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        current_timestamp = datetime.utcnow()
+        user_sessions = Session().query(BEUserSession).filter_by(beuser=user).all()
+        #count of sessione should be two
+        self.assertEqual(2, len(user_sessions))
+        self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
 
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
