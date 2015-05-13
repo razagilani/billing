@@ -596,9 +596,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         self.response_all_counts_0 = {"results": 2, "rows": [
             {"id": 1, "email": '1@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0},
             {"id": 2, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]}
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]}
         self.response_no_flagged_bills = {"results": 0, "rows": []}
 
     def test_report_count_for_user(self):
@@ -634,9 +634,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 1},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]},
                         rv.data)
 
         self.ub3.enter(self.user2, datetime(2000,1,10))
@@ -647,9 +647,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 1},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
-             "gas_count": 0, "electric_count": 1}]},
+             "gas_count": 0, "electric_count": 1, "elapsed_time": 0}]},
                         rv.data)
 
 
@@ -1086,7 +1086,7 @@ class TestBillEntryUserSessions(unittest.TestCase):
                                  content_type='multipart/form-data', data=data)
         current_timestamp = datetime.utcnow()
         user_sessions = Session().query(BEUserSession).filter_by(beuser=user).all()
-        #count of sessione should be two
+        # count of sessione should be two now that another login request has been made
         self.assertEqual(2, len(user_sessions))
         # the session duration for current session should be 0 as both
         # session_start and last_request have the same values
