@@ -31,8 +31,8 @@ def create_extractors(s):
     s.add(e)
 
 def create_charge_name_maps(s):
-    pepco = s.query(Utility).filter_by(name='pepco').one()
-    pepco.charge_name_map = {
+    wg = s.query(Utility).filter_by(name='washgas').one()
+    wg.charge_name_map= {
         'Distribution Charge': 'DISTRIBUTION_CHARGE',
         'Customer Charge': 'CUSTOMER_CHARGE',
         'PGC': 'PGC',
@@ -43,6 +43,8 @@ def create_charge_name_maps(s):
         'Delivery Tax': 'DELIVERY_TAX',
         'Sales Tax': 'SALES_TAX',
     }
+    pepco = s.query(Utility).filter_by(name='pepco').one()
+    # TODO: ...
 
 def upgrade():
     initialize()
