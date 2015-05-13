@@ -8,8 +8,15 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             clicksToEdit: 2,
             listeners: {
                 beforeedit: function (e, editor) {
-                    if (editor.record.get('processed'))
+                    if (editor.record.get('processed') || editor.record.get('entered')) {
+                        Ext.MessageBox.show({
+                            title: 'Entered Record Cannot be edited',
+                            msg: 'Please clear the entered checkbox before editing this record',
+                            buttons: Ext.MessageBox.OK
+                        });
+
                         return false;
+                    }
                 }
             }
         })
@@ -25,6 +32,17 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },
     
     columns: [{
+        header: 'ID',
+        dataIndex: 'id',
+        width: 50,
+        disabled: true
+    },{
+        header: 'Flag',
+        dataIndex: 'flagged',
+        itemId: 'flagged',
+        xtype: 'checkcolumn',
+        width: 50
+    },{
         header: 'Total Due',
         dataIndex: 'target_total',
         editor: {
@@ -67,7 +85,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        minWidth: 125,
+        minWidth: 200,
         flex: 1
     },{
         header: 'Usage',
@@ -80,7 +98,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         width: 100
     },{
         header: 'Total Charges',
-        dataIndex: 'computed_total',
+        dataIndex: 'supply_total',
         width: 100,
         renderer: Ext.util.Format.usMoney
     },{
@@ -102,6 +120,25 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 100
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        emptyText: 'Unknown Supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 150
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -158,7 +195,8 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             xtype: 'textfield',
             selectOnFocus: true
         },
-        width: 100
+        width: 100,
+        hidden: true
     },{
         header: 'Due Date',
         dataIndex: 'due_date',
@@ -170,6 +208,7 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
     },{
         xtype: 'checkcolumn',
         text: 'Time Of Use',
+        itemId: 'tou',
         dataIndex: 'tou'
     },{
         xtype: 'checkcolumn',
