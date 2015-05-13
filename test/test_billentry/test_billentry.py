@@ -1059,11 +1059,16 @@ class TestBillEntryUserSessions(unittest.TestCase):
         user = Session().query(BillEntryUser).filter_by(email='user1@test.com').first()
         be_user_session = Session().query(BEUserSession).filter_by(beuser=user).all()
         self.assertEqual(len(be_user_session), 1)
+
+        # both session_start and last_request are updated at user login so
+        # the difference between their timestamps and current_timestamp
+        # must be greater than 0
         self.assertNotEquals(0, be_user_session[0].session_start - current_timestamp)
         self.assertNotEquals(0, be_user_session[0].last_request - current_timestamp)
 
         last_request_timestamp = be_user_session[0].last_request
-        # make another request to update the last_request field
+        # make another request to update the last_request field as the
+        # timestamp for last_request is updated on every request
         self.app.get('/')
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
 
