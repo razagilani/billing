@@ -15,12 +15,7 @@ from core import init_model, initialize
 
 log = logging.getLogger(__name__)
 
-def upgrade():
-    initialize()
-    from core.model import Base, Session
-    Base.metadata.create_all()
-    print '\n'.join(sorted(t for t in Base.metadata.tables))
-
+def create_extractors(s):
     date_format = r'[A-Za-z]+ [0-9]{1,2}, [0-9]{4}'
     start_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period (%s)' % date_format
     end_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period %s to (%s)' % (date_format, date_format)
@@ -32,7 +27,15 @@ def upgrade():
     e.fields.append(TextExtractor.TextField(regex=energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
     e.fields.append(TextExtractor.TextField(regex=next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
 
-    s = Session()
     s.add(e)
+
+def upgrade():
+    initialize()
+    from core.model import Base, Session
+    Base.metadata.create_all()
+    print '\n'.join(sorted(t for t in Base.metadata.tables))
+
+    s = Session()
+    create_extractors(s)
     s.commit()
 
