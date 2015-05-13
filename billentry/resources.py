@@ -392,7 +392,7 @@ class UtilBillCountForUserResource(BaseResource):
                     'total_count': int(total_count or 0),
                     'gas_count': int(gas_count or 0),
                     'electric_count': int(electric_count or 0),
-                    'elapsed_time': user.get_beuser_billentry_duration()
+                    'elapsed_time': user.get_beuser_billentry_duration(args['start'], args['end'])
                 } for (user, total_count, electric_count, gas_count) in q.all()]
 
             return {'rows': rows, 'results': len(rows)}
