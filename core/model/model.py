@@ -15,6 +15,7 @@ from pymongo import Connection
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -214,6 +215,12 @@ class Utility(Base):
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
+
+    # association of names of charges as displayed on bills with the
+    # standardized names used in Charge.rsi_binding. this might be better
+    # associated with each rate class (which defines the distribution charges)
+    # and/or bill layout (which determines the display names of charges)
+    charge_name_map = Column(HSTORE, nullable=False)
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
