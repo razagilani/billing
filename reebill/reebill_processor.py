@@ -478,12 +478,14 @@ class ReebillProcessor(object):
         bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
 
         # superset of all fields for all templates
-        bill_date = "%s" % reebill.get_period()[0]
+        bill_date = "%s" % reebill.get_period()[1]
         merge_fields = {
             'subject': subject,
             'street': reebill.service_address.street,
+            'balance_forward': round(reebill.balance_forward, 2),
             'balance_due': round(reebill.balance_due, 2),
-            'bill_dates': bill_date,
+            'bill_date': bill_date,
+            'ree_charge': reebill.ree_charge,
             'last_bill': "%.5d_%.4d.pdf" % (int(reebill.get_account()),int(reebill.sequence)),
             'display_file_path': self.reebill_file_handler.get_file_display_path(reebill)
         }
@@ -509,12 +511,12 @@ class ReebillProcessor(object):
         # Set up the fields to be shown in the email msg
         merge_fields = {
             'subject': subject,
-            'balance_due': sum(b.balance_due for b in reebills),
-            'bill_dates': max(b.get_period_end() for b in reebills),
+            'balance_due': round(sum(b.balance_due for b in reebills),2),
+            'bill_date': max(b.get_period_end() for b in reebills),
             'display_file_path': "summary.pdf"
         }
 
-        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), recipient_list)
+        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), [recipient_list])
 
     def merge_and_mail(self, template_filename, fields, attachment, recipient_list):
 
