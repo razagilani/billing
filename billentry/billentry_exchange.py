@@ -68,6 +68,7 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
             if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
                 self.billentry_common_module.\
                     replace_utilbill_with_beutilbill(utilbill)
+                Session().commit()
         except NoResultFound:
             logger.error('Utility Bill for guid %s not found' % guid)
             raise

@@ -11,7 +11,6 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-host::hosts_file {$env:}
 
 package { 'httpd':
     ensure  => installed
@@ -50,6 +49,11 @@ file { "/etc/httpd/conf.d/billentry-stage.conf":
 file { "/etc/init/billing-${env}-exchange.conf":
 ensure => file,
 content => template('conf/billing-exchange.conf.erb')
+}
+
+file { "/etc/init/billentry-${env}-exchange.conf":
+ensure => file,
+content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':

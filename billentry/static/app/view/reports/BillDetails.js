@@ -1,22 +1,31 @@
 Ext.define('BillEntry.view.reports.BillDetails', {
     extend: 'BillEntry.view.utilitybills.UtilityBills',
     alias: 'widget.billDetails',
-    store: 'UserUtilityBills',
 
     plugins: [],
 
+    // Omit columns by data_index
+    omitColumns: [],
+    disableColumns: true,
+
     initComponent: function() {
         var prependColumns = [{
-            header: 'Account ID',
-            dataIndex: 'utility_account_id'
+            header: 'Acc ID',
+            dataIndex: 'utility_account_id',
+            width: 50
         }];
 
-        // Omit columns by data_index
-        var omitColumns = ['entered'];
-
+        // Ommiting columns in this.omitColumns
         for(var i=0; i < this.columns.length; i++){
-            if(omitColumns.indexOf(this.columns[i].dataIndex) === -1){
+            if(this.omitColumns.indexOf(this.columns[i].dataIndex) === -1){
                 prependColumns.push(this.columns[i])
+            }
+        }
+
+        // disabling columns if this.disableColumns
+        if(this.disableColumns) {
+            for (var i = 0; i < prependColumns.length; i++) {
+                prependColumns[i].disabled = true;
             }
         }
 

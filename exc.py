@@ -45,7 +45,7 @@ class IssuedBillError(BillingError):
     attempt to save changes to an issued reebill document in mongo, not failure
     of a bill-processing operation due to a business rule."""
 
-class ProcessedBillError(BillingError):
+class UnEditableBillError(BillingError):
     """Exception for trying to modify a bill that has been processed."""
 
 
@@ -77,4 +77,23 @@ class ConfirmAdjustment(Exception):
         super(ConfirmAdjustment, self).__init__()
         self.correction_sequences = correction_sequences
         self.total_adjustment = total_adjustment
+
+
+class ConfirmMultipleAdjustments(ConfirmAdjustment):
+    def __init__(self, accounts):
+        self.accounts = accounts
+
+
+class BillingTestError(Exception):
+    """ Generic error class for Exceptions raised in testing utilities
+    """
+
+
+class TestClientRoutingError(BillingTestError):
+    """ The TestClient was unable to route a request
+    """
+
+class ValidationError(BillingError):
+    pass
+
 
