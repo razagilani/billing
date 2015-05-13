@@ -11,7 +11,6 @@ from pdfminer.converter import TextConverter
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFSyntaxError
-from pymongo import Connection
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
@@ -720,6 +719,9 @@ class UtilBill(Base):
     # which Extractor was used to get data out of the bill file, and when
     date_extracted = Column('date_scraped', DateTime,)
 
+    # cached text taken from a PDF for use with TextExtractor
+    _text = Column('text', String)
+
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
     # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
@@ -1096,19 +1098,11 @@ class UtilBill(Base):
         return None
 
     def get_text(self, bill_file_handler):
-        """Return text dump of the bill's PDF, currently cached in MongoDB.
+        """Return text dump of the bill's PDF.
         :param bill_file_handler: used to get the PDF file (only if the text for
         this bill is not already cached).
         """
-        from core.model import Session
-        db = Connection()['skyline-dev']
-
-        if self.id is None:
-            Session().flush()
-            assert self.id is not None
-
-        doc = db.text.find_one({'_id': self.id})
-        if doc is None or doc.get('text', '') == '':
+        if self._text in (None, ''):
             infile = StringIO()
             try:
                 bill_file_handler.write_copy_to_file(self, infile)
@@ -1130,7 +1124,6 @@ class UtilBill(Base):
                     outfile.seek(0)
                     text = outfile.read()
                 device.close()
-            doc = {'_id': self.id, 'text': text}
-        if len(doc['text']) > 0:
-            db.text.save(doc)
-        return doc['text']
+            self._text = text
+        print self._text[:100]
+        return self._text
