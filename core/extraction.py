@@ -190,6 +190,10 @@ class Field(model.Base):
     __tablename__ = 'field'
     field_id = Column(Integer, primary_key=True)
     discriminator = Column(String(1000), nullable=False)
+
+    # each Extractor subclass is associated with a Field subclass; in order
+    # to get Flask-Admin to work with these classes, the relationships must
+    # be defined in the subclasses (e.g. TextExtractor to TextField).
     extractor_id = Column(Integer, ForeignKey('extractor.extractor_id'))
 
     type = Column(Enum(*TYPES.keys(), name='field_type'))
@@ -197,11 +201,6 @@ class Field(model.Base):
     # string determining which Applier applies the extracted value to a UtilBill
     applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'),
                          unique=True)
-
-    # TODO: this column is supposed to belong to TextField but a bug in
-    # Flask-Admin causes Flask-Admin to fail if TextField is used as an
-    # "inline model". putting it here prevents the error.
-    regex = Column(String(1000), nullable=False)
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
@@ -262,7 +261,6 @@ class Extractor(model.Base):
     extractor_id = Column(Integer, primary_key=True)
     discriminator = Column(String(1000), nullable=False)
     name = Column(String(1000), nullable=False)
-    fields = relationship(Field, backref='extractor')
 
     __mapper_args__ = {
         'polymorphic_on': discriminator,
@@ -341,11 +339,7 @@ class TextExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
 
-        # TODO: 'regex' column was moved up to the field class (even though it
-        # is only relevant to TextField) because otherwise Flask-Admin won't
-        # recognize it and will fail with "Exception: Cannot find forward
-        # relation for model <class 'core.extraction.TextField'>"
-        #regex = Column(String(1000), nullable=False)
+        regex = Column(String(1000), nullable=False)
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
@@ -357,6 +351,8 @@ class TextExtractor(Extractor):
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
             return m.groups()[0]
+
+    fields = relationship(TextField, backref='extractor')
 
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.

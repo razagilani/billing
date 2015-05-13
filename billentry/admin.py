@@ -133,6 +133,6 @@ def make_admin(app):
     # it seems that flask-admin doesn't really work with inheritance
     from core.extraction import TextExtractor, Field, Extractor
     class TextExtractorModelView(ModelView):
-         inline_models = (Field,)
-    admin.add_view(TextExtractorModelView(Extractor, Session))
+         inline_models = (TextExtractor.TextField,)
+    admin.add_view(TextExtractorModelView(TextExtractor, Session))
     return admin
