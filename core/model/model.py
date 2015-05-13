@@ -15,6 +15,7 @@ from pymongo import Connection
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -62,6 +63,7 @@ PHYSICAL_UNITS = [
     'kWh',
     'therms',
 ]
+physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 
 
 class Base(object):
@@ -127,7 +129,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = 'a583e412020'
+_schema_revision = '58383ed620d3'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -215,6 +217,12 @@ class Utility(Base):
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
 
+    # association of names of charges as displayed on bills with the
+    # standardized names used in Charge.rsi_binding. this might be better
+    # associated with each rate class (which defines the distribution charges)
+    # and/or bill layout (which determines the display names of charges)
+    charge_name_map = Column(HSTORE, nullable=False)
+
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
@@ -282,19 +290,20 @@ class Register(Base):
         'END_INVENTORY',
         'CONTRACT_VOLUME',
     ]
+    register_binding_type = Enum(*REGISTER_BINDINGS, name='register_binding')
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False, default='')
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
     # "total", "tou", "demand", and "")
     reg_type = Column(String(255), nullable=False)
-    register_binding = Column(Enum(*REGISTER_BINDINGS), nullable=False)
+    register_binding = Column(register_binding_type, nullable=False)
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
@@ -362,8 +371,8 @@ class RegisterTemplate(Base):
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column(Enum(*Register.REGISTER_BINDINGS), nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    register_binding = Column( Register.register_binding_type, nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
@@ -388,7 +397,7 @@ class RateClass(Base):
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES), nullable=False)
+    service = Column(Enum(*SERVICES, name='services'), nullable=False)
     name = Column(String(255), nullable=False)
 
     utility = relationship('Utility')
@@ -491,6 +500,7 @@ class UtilityAccount(Base):
             return self.utilbills[0].service_address
         return self.fb_service_address
 
+
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
@@ -498,18 +508,24 @@ class Charge(Base):
 
     # allowed units for "quantity" field of charges
     CHARGE_UNITS = PHYSICAL_UNITS + ['dollars']
+    charge_unit_type = Enum(*CHARGE_UNITS, name='charge_unit')
 
     # allowed values for "type" field of charges
     SUPPLY, DISTRIBUTION = 'supply', 'distribution'
     CHARGE_TYPES = [SUPPLY, DISTRIBUTION]
+    charge_type_type = Enum(*CHARGE_TYPES, name='charge_type')
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float)
-    unit = Column(Enum(*CHARGE_UNITS), nullable=False)
+
+    unit = Column(charge_unit_type, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
+
+    # optional human-readable name of the charge as displayed on the bill
+    name = Column(String(1000))
 
     quantity_formula = Column(String(1000), nullable=False)
     rate = Column(Float, nullable=False)
@@ -528,7 +544,7 @@ class Charge(Base):
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
-    type = Column(Enum(*CHARGE_TYPES), nullable=False)
+    type = Column(charge_type_type, nullable=False)
 
     @staticmethod
     def is_builtin(var):
@@ -566,9 +582,9 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='', has_charge=True, shared=False,
-                 roundrule="", type='supply'):
+    def __init__(self, rsi_binding, name=None, formula='', rate=0,
+                 target_total=None, description='', unit='', has_charge=True,
+                 shared=False, roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -584,6 +600,7 @@ class Charge(Base):
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
+        self.name = name
         self.quantity_formula = formula
         self.target_total = target_total
         self.has_charge = has_charge
@@ -698,7 +715,7 @@ class UtilBill(Base):
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its charges and other data are supposed to be accurate.
-    processed = Column(Integer, nullable=False)
+    processed = Column(Boolean, nullable=False)
 
     # which Extractor was used to get data out of the bill file, and when
     date_extracted = Column('date_scraped', DateTime,)
@@ -850,6 +867,9 @@ class UtilBill(Base):
         if self.supplier is None:
             return None
         return self.supplier.name
+
+    def get_utility_account_number(self):
+        return self.utility_account.account_number
 
     def get_nextility_account_number(self):
         '''Return the "nextility account number" (e.g.  "10001") not to be
@@ -1114,4 +1134,3 @@ class UtilBill(Base):
         if len(doc['text']) > 0:
             db.text.save(doc)
         return doc['text']
-
