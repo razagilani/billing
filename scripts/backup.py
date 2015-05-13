@@ -42,7 +42,8 @@ MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
-ACCOUNTS_LIST = [100, 101, 102, 103, 104]
+#ACCOUNTS_LIST = [100, 101, 102, 103, 104]
+ACCOUNTS_LIST = [1737]
 
 # extract database connection parameters from URI in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
