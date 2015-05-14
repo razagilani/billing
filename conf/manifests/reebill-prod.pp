@@ -19,7 +19,7 @@ package { 'httpd':
 package { 'html2ps':
     ensure  => installed
 }
-package { 'libevent-dev':
+package { 'libevent-devel':
     ensure  => installed
 }
 file { "/var/local/${username}/www":
