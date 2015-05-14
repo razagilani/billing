@@ -32,6 +32,7 @@ def column_dict_utilbill(self):
                    ('utility', (column_dict(self.utility)
                                 if self.utility else None)),
                    ('supplier', (column_dict(self.supplier))),
+                   ('supplier_id', self.supplier_id),
                    ('rate_class', self.get_rate_class_name()),
                    ('rate_class_id', self.rate_class_id),
                    ('supply_group', self.get_supply_group_name()),

@@ -72,7 +72,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#supplier_combo': {
                 select: this.handleSupplierComboChanged,
-                focus: this.handleSupplierComboFocus
+                focus: this.handleSupplierComboFocus,
+                blur: this.handleSupplierBlur
             },
             '#supply_group_combo': {
                 expand: this.handleSupplyGroupComboExpand
@@ -334,6 +335,24 @@ Ext.define('ReeBill.controller.UtilityBills', {
             });
             rateClassStore.resumeAutoSync();
         }
+    },
+
+    handleSupplierBlur: function(combo, event, opts){
+        var supplierStore = this.getSuppliersStore();
+        if (supplierStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            supplierStore.suspendAutoSync();
+            supplierStore.add({name: combo.getRawValue()});
+            supplierStore.sync({
+                callback: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            supplierStore.resumeAutoSync();
+        }
     }
+
 
 });
