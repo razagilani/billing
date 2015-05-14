@@ -33,6 +33,7 @@ def column_dict_utilbill(self):
                                 if self.utility else None)),
                    ('supplier', (column_dict(self.supplier))),
                    ('rate_class', self.get_rate_class_name()),
+                   ('rate_class_id', self.rate_class_id),
                    ('supply_group', self.get_supply_group_name()),
                    ('state', state_name)])
     return result
@@ -107,7 +108,7 @@ class Views(object):
 
     def get_all_rate_classes_json(self):
         return [dict(id=x.id, name=x.name,
-                     utility_id=x.utility_id) for x in
+                     utility_id=x.utility_id, service=x.service) for x in
                 Session().query(RateClass).order_by(RateClass.name).all()]
 
     def get_all_supply_groups_json(self):
