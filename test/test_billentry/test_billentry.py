@@ -11,11 +11,14 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
+from exc import UnEditableBillError
 from test import init_test_config
+from util import FixMQ
+from util.dictutils import deep_map
+
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
-from mq import IncomingMessage
 
 import billentry
 from billentry import common
@@ -29,9 +32,15 @@ from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
-from mq.tests import create_mock_channel_method_props, \
+with FixMQ():
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from test.setup_teardown import clear_db
+
+
+def unicodify(x):
+    return unicode(x) if isinstance(x, basestring) else x
 
 
 class TestBEUtilBill(unittest.TestCase):
@@ -99,9 +108,9 @@ class BillEntryIntegrationTest(object):
         either string or dict/list form.
         '''
         if isinstance(expected, basestring):
-            expected = loads(expected)
+            expected = deep_map(unicodify, loads(expected))
         if isinstance(actual, basestring):
-            actual = loads(actual)
+            actual = deep_map(unicodify, loads(actual))
         self.assertEqual(expected, actual)
 
     @classmethod
@@ -109,12 +118,14 @@ class BillEntryIntegrationTest(object):
         init_test_config()
         init_model()
         billentry.app.config['TESTING'] = True
-        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login
+        # "login_required" decorator is used, but we
         # are using the before_request callback instead
         billentry.app.config['LOGIN_DISABLED'] = True
         # TODO: this should prevent the method decorated with
         # "app.errorhandler" from running, but doesn't
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['PROPAGATE_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -124,12 +135,14 @@ class BillEntryIntegrationTest(object):
         # causes a failure when the session is committed below.
         init_model()
 
-        self.project_mgr_role = Role('Project Manager', 'Role for accessing reports view of billentry app' )
+        self.project_mgr_role = Role(
+            'Project Manager',
+            'Role for accessing reports view of billentry app')
         self.admin_role = Role('admin', 'admin role for bill entry app')
-        self.utility = Utility('Example Utility', Address())
+        self.utility = Utility(name='Example Utility')
         self.utility.id = 1
-        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
-                                  Address(), Address(), '1')
+        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None,
+                                  None, Address(), Address(), '1')
         self.ua1.id = 1
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
@@ -138,14 +151,14 @@ class BillEntryIntegrationTest(object):
         self.ub1.registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
-        # UB2 does not have a rateclass so we must manually create a register
-        register2 = Register(self.ub2, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "MNOPQR",
-            quantity=250.0, register_binding='REG_TOTAL')
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
                                   None, Address(), Address(), '2')
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
+        self.ub2.set_rate_class(self.rate_class2)
+        self.ub2.registers[0].unit = 'therms'
+        self.ub2.registers[0].quantity = 250.0
+        self.ub2.registers[0].meter_identifier = 'MNOPQR'
         self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
@@ -155,7 +168,6 @@ class BillEntryIntegrationTest(object):
         s.add_all([
             self.utility, self.ua1, self.rate_class, self.ub1,
             self.ub2, self.project_mgr_role, self.admin_role,
-            register2
         ])
         s.commit()
         # TODO: add more database objects used in multiple subclass setUps
@@ -172,8 +184,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryMain, self).setUp()
 
         s = Session()
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility1 = Utility(name='Empty Utility')
+        utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
                              Address(), Address(), '2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
@@ -192,18 +204,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.ub2.registers[0].quantity = 150
         self.ub2.registers[0].meter_identifier = "GHIJKL"
 
-        c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
+        c1 = Charge('CONSTANT', rate=0.4, formula='100', unit='dollars',
                     type='distribution', target_total=1)
-        c2 = Charge(self.ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
+        c2 = Charge('LINEAR', rate=0.1, formula='REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        c3 = Charge(self.ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
-                    'REG_TOTAL.quantity * 2 + 10', unit='therms',
+        self.ub1.charges = [c1, c2]
+        c3 = Charge('LINEAR_PLUS_CONSTANT', rate=0.1,
+                    formula='REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
-        c4 = Charge(self.ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
+        c4 = Charge('BLOCK_1', rate=0.3, formula='min(100, REG_TOTAL.quantity)',
                     unit='therms', type='distribution')
-        c5 = Charge(self.ub2, 'BLOCK_2', 0.4,
-                    'min(200, max(0, REG_TOTAL.quantity - 100))',
+        c5 = Charge('BLOCK_2',rate= 0.4,
+                    formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
+        self.ub2.charges = [c3, c4, c5]
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         s.add_all([c1, c2, c3, c4, c5, ub3])
         user = BillEntryUser(email='user1@test.com', password='password')
@@ -253,8 +267,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': 'Some Electric Rate Class',
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
               'supply_total': 0.0,
@@ -377,17 +391,21 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
 
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
-            id=2,
-            next_meter_read_date=date(2000, 2, 5).isoformat()
-            ))
+        # catch ProcessedBillError because a 500 response is returned
+        # when the user tries to edit a bill that is not editable=
+        with self.assertRaises(UnEditableBillError):
+            rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+                id=2,
+                next_meter_read_date=date(2000, 2, 5).isoformat()
+                ))
+
         # this request is being made using a different content-type because
         # with the default content-type of form-urlencoded bool False
         # was interpreted as a string and it was evaluating to True on the
         # server. Also in out app, the content-type is application/json so
         # we should probably update all our test code to use application/json
-        self.assertEqual(500, rv.status_code)
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1',
+                          content_type='application/json',
             data=json.dumps(dict(
                 id=2,
                 entered=False
@@ -440,8 +458,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': 'Some Electric Rate Class',
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
               'supply_total': 0.0,
@@ -617,7 +635,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0}]},
                         rv.data)
@@ -630,7 +648,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
              "gas_count": 0, "electric_count": 1}]},
                         rv.data)
@@ -740,13 +758,13 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Unknown',
-                'service': 'Unknown',
+                'rate_class': 'Some Electric Rate Class',
+                'service': 'Electric',
                 'service_address': '2 Example St., ,  ',
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 250,
+                'total_energy': 250.0,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
@@ -771,7 +789,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'supplier': 'Unknown',
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 150,
+                'total_energy': 150.0,
                 'utility': 'Example Utility',
                 'utility_account_id': 1,
                 'utility_account_number': '1',
@@ -877,8 +895,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         s.flush() # set u.id
 
         self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
-        self.assertEqual(0,
-                         s.query(BEUtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0, s.query(BEUtilBill).filter_by(id=u.id).count())
 
         # replace_utilbill_with_beutilbill does not have to destroy
         # utilbill.id, but it may
@@ -925,7 +942,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
-        utility = Utility('Empty Utility', Address())
+        utility = Utility(name='Empty Utility')
         utility_account = UtilityAccount('Account 2', '22222', utility, None,
                                          None, Address(), Address(), '2')
 

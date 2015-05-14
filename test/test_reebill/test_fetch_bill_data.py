@@ -63,20 +63,22 @@ class FetchTest(unittest.TestCase):
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account)
-        utility = Utility('Washington Gas')
+        utility = Utility(name='Washington Gas')
         rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', '', 'therms', False,
-                'total', '', '', quantity=0, register_binding=Register.TOTAL)]
-        self.reebill = ReeBill(reebill_customer, 1, utilbills=[utilbill])
+        utilbill.registers = [Register(Register.TOTAL, 'therms')]
+        self.reebill = ReeBill(reebill_customer, 1, utilbill=utilbill)
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, None)
+        self.nexus_util = Mock()
+        self.nexus_util.olap_id.return_value = 'example-1'
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                                                    self.nexus_util, None)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
@@ -178,7 +180,7 @@ class FetchTest(unittest.TestCase):
         install = self.splinter.get_install_obj_for('example-1')
 
         # gather REE data into the reebill
-        self.ree_getter.update_renewable_readings(install.name, self.reebill)
+        self.ree_getter.update_renewable_readings(self.reebill)
 
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'
@@ -258,11 +260,10 @@ class ReeGetterTestPV(unittest.TestCase):
         splinter = Mock()
         splinter._guru = self.monguru
         splinter.get_install_obj_for.return_value = self.install
-        self.ree_getter = fbd.RenewableEnergyGetter(splinter, None)
+        self.ree_getter = fbd.RenewableEnergyGetter(splinter, Mock(), None)
 
     def test_set_renewable_energy_readings_pv(self):
-        self.ree_getter.update_renewable_readings(self.install.name,
-                                                  self.reebill)
+        self.ree_getter.update_renewable_readings(self.reebill)
         start, end = self.reebill.get_period()
         expected_total_energy_sold = 1 * (end - start).days * 24
         expected_max_demand = 2

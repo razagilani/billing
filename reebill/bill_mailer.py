@@ -8,19 +8,18 @@ from email.mime.text import MIMEText
 import mimetypes
 import os
 import smtplib
-from jinja2 import Template
 from util.email_util import send_email
 
-TEMPLATE_FILE_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    '..', 'reebill', 'reebill_templates', 'issue_email_template.html')
+#TEMPLATE_FILE_PATH = os.path.join(
+#    os.path.dirname(os.path.realpath(__file__)),
+#    '..', 'reebill', 'reebill_templates', 'issue_email_template.html')
 
 class Mailer(object):
     '''
     Class for sending out emails
     '''
 
-    def __init__(self, mail_from, originator, password, template_html,
+    def __init__(self, mail_from, originator, password,
                 server, host, port, bcc_list=None):
         '''
         :param mail_from: email address fdrom which emails are sent out
@@ -37,15 +36,10 @@ class Mailer(object):
         self.host = host
         self.port = port
         self._bcc_list = bcc_list
-        self.template_html = template_html
 
+    def mail(self, recipients, subject, html_body, attachment_contents, display_file_path,
+            boundary=None):
 
-    def mail(self, recipients, merge_fields, attachment_contents, attachment_name,
-             boundary=None):
-        subject = "Nextility: Your Monthly Bill for %s" % (
-            merge_fields["street"])
-        with open(TEMPLATE_FILE_PATH) as template_file:
-            template_html = template_file.read()
         if boundary:
             container = MIMEMultipart(boundary=boundary)
         else:
@@ -53,9 +47,8 @@ class Mailer(object):
         container['Subject'] = subject
         container['From'] = self._mail_from
         container['To'] = u', '.join(recipients)
-        html = Template(template_html).render(merge_fields)
 
-        ctype, encoding = mimetypes.guess_type(attachment_name)
+        ctype, encoding = mimetypes.guess_type(display_file_path)
         if ctype is None or encoding is not None:
             # No guess could be made, or the file is encoded (compressed), so
             # use a generic bag-of-bits type.
@@ -71,13 +64,13 @@ class Mailer(object):
             encoders.encode_base64(attachment)
         # Set the filename parameter
         attachment.add_header('Content-Disposition', 'attachment',
-                filename=attachment_name)
+                filename=display_file_path)
         container.attach(attachment)
 
         # Record the MIME types of both parts - text/plain and text/html.
         #part1 = MIMEText(text, 'plain')
         # grr... outlook seems to display the plain message first. wtf.
-        part2 = MIMEText(html, 'html')
+        part2 = MIMEText(html_body, 'html')
 
         # Attach parts into message container.
         # According to RFC 2046, the last part of a multipart message, in this case
