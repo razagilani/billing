@@ -136,14 +136,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         }
     },{
         header: 'Rate Class',
-        dataIndex: 'rate_class',
+        dataIndex: 'rate_class_id',
         emptyText: 'Unknown Rate Class',
         editor: {
             xtype: 'combo',
             store: 'RateClasses',
             itemId: 'rate_class_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
@@ -153,7 +153,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         minWidth: 250,
-        flex: 1
+        flex: 1,
+        renderer: function(val, metaDate, record){
+            return record.get('rate_class');
+        }
     },{
         header: 'Supplier',
         dataIndex: 'supplier',
