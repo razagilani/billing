@@ -1,7 +1,9 @@
-import unittest
-from mock import MagicMock
+from mock import MagicMock, Mock
+
 from core.model.model import RegisterTemplate
+from core.pricing import PricingModel
 from test import init_test_config
+
 init_test_config()
 from core import init_model
 
@@ -56,6 +58,20 @@ class UtilBillTest(TestCase):
         # when the register is present, set_total_energy should work
         # without requiring consumers to know about registers.
         # TODO...
+
+    def test_regenerate_charges(self):
+        a, b, c = Charge('a'), Charge('b'), Charge('c')
+
+        utilbill = UtilBill(MagicMock(), None, None)
+        utilbill.charges = [a]
+
+        pricing_model = Mock(autospec=PricingModel)
+        pricing_model.get_predicted_charges.return_value = [b, c]
+
+        utilbill.regenerate_charges(pricing_model)
+        self.assertEqual([b, c], utilbill.charges)
+        self.assertIsNone(a.utilbill)
+
 
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
