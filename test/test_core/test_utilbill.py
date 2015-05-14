@@ -115,8 +115,7 @@ class UtilBillTestWithDB(TestCase):
 
     def test_charge_relationship(self):
         utilbill = UtilBill(self.utility_account, self.utility, self.rate_class)
-        a = Charge(None, 'a', 0, '', unit='kWh')
-        b = Charge(None, 'b', 0, '', unit='kWh')
+        a, b = Charge('a', unit='kWh'), Charge('b', unit='kWh')
         s = Session()
         s.add(utilbill)
 
