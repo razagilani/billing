@@ -96,6 +96,58 @@ class UtilBillTest(TestCase):
         utilbill.set_processed(True)
         self.assertTrue(utilbill.processed)
 
+    def test_utility_rate_class(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        utility = Utility(name='utility')
+        rate_class = RateClass(utility=utility, name='rate class',
+                               service='electric')
+        other_utility = Utility(name='other')
+
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_utility(utility)
+        self.assertEqual(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_rate_class(rate_class)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual('electric', utilbill.get_service())
+
+        # when the same utility is set again, rate class is unchanged
+        utilbill.set_utility(utility)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual('electric', utilbill.get_service())
+
+        # when a different utility is chosen, rate class is unknown
+        utilbill.set_utility(other_utility)
+        self.assertEqual(other_utility, utilbill.get_utility())
+        self.assertEqual('other', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        # utility and rate class can be set to None
+        utilbill.set_utility(None)
+        utilbill.set_rate_class(None)
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
 
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
