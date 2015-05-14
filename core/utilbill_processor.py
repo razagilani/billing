@@ -68,7 +68,7 @@ class UtilbillProcessor(object):
             utilbill.supplier = self.get_supplier(supplier)
 
         if supply_group is not None:
-            utilbill.supply_group = self.get_create_supply_group(
+            utilbill.supply_group = self.get_supply_group(
                 supply_group, utilbill.supplier)
 
         if rate_class is not None:
@@ -508,6 +508,16 @@ class UtilbillProcessor(object):
         s.flush()
         return rate_class
 
+    def create_supply_group(self, name, supplier_id, service):
+        if name == 'Unknown Rate Class':
+            return None
+        s = Session()
+        supplier = s.query(Supplier).filter_by(id=supplier_id).first()
+        supply_group = SupplyGroup(name=name, supplier=supplier, service=service)
+        s.add(supply_group)
+        s.flush()
+        return supply_group
+
     def create_supplier(self, name):
         session = Session()
         # suppliers are identified in the client by name, rather than
@@ -531,19 +541,18 @@ class UtilbillProcessor(object):
             result = None
         return result
 
-    def get_create_supply_group(self, name, supplier):
+    def get_supply_group(self, id, supplier):
         session = Session()
         # supply_groups are identified in the client by name, rather than
         # their primary key. "Unknown Supply Group" is a name sent by the client
         # to the server to identify a supply group that is identified by "null"
         # when sent from the server to the client.
-        if name == 'Unknown Supply Group':
-            return None
+        session = Session()
         try:
-            result = session.query(SupplyGroup).filter_by(name=name).\
+            result = session.query(SupplyGroup).filter_by(id=id).\
                 filter_by(supplier=supplier).one()
         except NoResultFound:
-            result = SupplyGroup(name=name, supplier=supplier)
+            result = None
         return result
 
     def get_rate_class(self, rate_class_id):

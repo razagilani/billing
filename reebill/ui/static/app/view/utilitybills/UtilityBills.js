@@ -181,14 +181,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         }
     },{
         header: 'Supply Group',
-        dataIndex: 'supply_group',
+        dataIndex: 'supply_group_id',
         emptyText: 'Unknown Supply Group',
         editor: {
             xtype: 'combo',
             store: 'SupplyGroups',
             itemId: 'supply_group_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
@@ -196,6 +196,9 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             autoSelect: false,
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
+        },
+        renderer: function(val, metaDate, record){
+            return record.get('supply_group');
         },
         minWidth: 250,
         flex: 1
