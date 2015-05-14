@@ -632,7 +632,7 @@ class UtilBillResource(RESTResource):
                 service=row['service'].lower() if 'service' in row else None,
                 target_total=row.get('target_total', None),
                 processed=row.get('processed', None),
-                rate_class=row.get('rate_class', None),
+                rate_class=row.get('rate_class_id', None),
                 utility=row.get('utility', None),
                 supplier=row.get('supplier', None),
                 supply_group=row.get('supply_group', None))
@@ -732,6 +732,15 @@ class RateClassesResource(RESTResource):
     def handle_get(self, *vpath, **params):
         rate_classes = self.utilbill_views.get_all_rate_classes_json()
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
+
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        utility_id = params['utility_id']
+        service = params['service']
+        self.utilbill_processor.create_rate_class(name, utility_id, service)
+        return True, {'success': True }
+
 
 
 class SupplyGroupsResource(RESTResource):

@@ -72,9 +72,8 @@ class UtilbillProcessor(object):
                 supply_group, utilbill.supplier)
 
         if rate_class is not None:
-            utilbill.rate_class = self.get_create_rate_class(
-                rate_class, utilbill.utility, utilbill.get_service() if
-                utilbill.get_service() is not None else 'gas')
+            utilbill.rate_class = self.get_rate_class(
+                rate_class)
 
         if utility is not None and isinstance(utility, basestring):
             utilbill.utility, new_utility = self.get_create_utility(utility)
@@ -499,6 +498,14 @@ class UtilbillProcessor(object):
             return result, True
         return result, False
 
+    def create_rate_class(self, name, utility_id, service):
+        s = Session()
+        utility = s.query(Utility).filter_by(id=utility_id).first()
+        rate_class = RateClass(name=name, utility=utility, service=service)
+        s.add(rate_class)
+        s.flush()
+        return rate_class
+
     def get_create_supplier(self, name):
         session = Session()
         # suppliers are identified in the client by name, rather than
@@ -528,21 +535,17 @@ class UtilbillProcessor(object):
             result = SupplyGroup(name=name, supplier=supplier)
         return result
 
-    def get_create_rate_class(self, rate_class_name, utility, service):
-        assert isinstance(utility, Utility)
+    def get_rate_class(self, rate_class_id):
         session = Session()
         # rate classes are identified in the client by name, rather than
         # their primary key. "Unknown Rate Class" is a name sent by the client
         # to the server to identify the rate class that is identified by "null"
         # when sent from the server to the client.
-        if rate_class_name == 'Unknown Rate Class':
-            return None
         try:
             result = session.query(RateClass).filter_by(
-                name=rate_class_name).one()
+                id=rate_class_id).one()
         except NoResultFound:
-            result = RateClass(name=rate_class_name, utility=utility,
-                               service=service)
+            result = None
         return result
 
     def update_utility_account_number(self, utility_account_id,
