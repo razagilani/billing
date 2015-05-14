@@ -16,6 +16,7 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'rate_class_id', type: 'int'},
         {name: 'utility'},
         {name: 'supplier'},
+        {name: 'supplier_id', type: 'int'},
         {name: 'supply_group', 'type': 'string', mapping: function( data ) {
             if (data.supply_group==null)
                     return 'Unknown Supply Group';

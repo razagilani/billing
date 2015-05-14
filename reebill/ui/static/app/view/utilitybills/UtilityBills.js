@@ -159,14 +159,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         }
     },{
         header: 'Supplier',
-        dataIndex: 'supplier',
+        dataIndex: 'supplier_id',
         emptyText: 'Unknown Supplier',
         editor: {
             xtype: 'combo',
             store: 'Suppliers',
             itemId: 'supplier_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,

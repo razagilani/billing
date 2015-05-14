@@ -65,7 +65,7 @@ class UtilbillProcessor(object):
             utilbill.supply_choice_id = supply_choice_id
 
         if supplier is not None:
-            utilbill.supplier = self.get_create_supplier(supplier)
+            utilbill.supplier = self.get_supplier(supplier)
 
         if supply_group is not None:
             utilbill.supply_group = self.get_create_supply_group(
@@ -499,6 +499,8 @@ class UtilbillProcessor(object):
         return result, False
 
     def create_rate_class(self, name, utility_id, service):
+        if name == 'Unknown Rate Class':
+            return None
         s = Session()
         utility = s.query(Utility).filter_by(id=utility_id).first()
         rate_class = RateClass(name=name, utility=utility, service=service)
@@ -506,7 +508,7 @@ class UtilbillProcessor(object):
         s.flush()
         return rate_class
 
-    def get_create_supplier(self, name):
+    def create_supplier(self, name):
         session = Session()
         # suppliers are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
@@ -514,10 +516,19 @@ class UtilbillProcessor(object):
         # when sent from the server to the client.
         if name == 'Unknown Supplier':
             return None
+        s = Session()
+        supplier = Supplier(name=name, address=Address())
+        s.add(supplier)
+        s.flush()
+        return supplier
+
+    def get_supplier(self, supplier_id):
+        session = Session()
         try:
-            result = session.query(Supplier).filter_by(name=name).one()
+            result = session.query(Supplier).filter_by(
+                id=supplier_id).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address())
+            result = None
         return result
 
     def get_create_supply_group(self, name, supplier):
@@ -537,10 +548,6 @@ class UtilbillProcessor(object):
 
     def get_rate_class(self, rate_class_id):
         session = Session()
-        # rate classes are identified in the client by name, rather than
-        # their primary key. "Unknown Rate Class" is a name sent by the client
-        # to the server to identify the rate class that is identified by "null"
-        # when sent from the server to the client.
         try:
             result = session.query(RateClass).filter_by(
                 id=rate_class_id).one()
