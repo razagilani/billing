@@ -850,9 +850,11 @@ class UtilBill(Base):
         """Set the rate class and also update the set of registers to match
         the new rate class.
         """
-        self.rate_class = rate_class
-        if rate_class is not None:
+        if rate_class is None:
+            self.registers = []
+        else:
             self.registers = rate_class.get_register_list()
+        self.rate_class = rate_class
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is

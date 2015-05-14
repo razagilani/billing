@@ -116,12 +116,18 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
 
+        # with no rate class, there are no registers, so you can't set the
+        # energy
+        with self.assertRaises(StopIteration):
+            utilbill.set_total_energy(1)
+
         utilbill.set_rate_class(rate_class)
         self.assertIs(utility, utilbill.get_utility())
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
         self.assertEqual('electric', utilbill.get_service())
+        utilbill.set_total_energy(1)
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
@@ -147,6 +153,8 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class())
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
+        with self.assertRaises(StopIteration):
+            utilbill.set_total_energy(1)
 
 
 class UtilBillTestWithDB(TestCase):
