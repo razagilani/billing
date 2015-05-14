@@ -562,7 +562,7 @@ class Charge(Base):
         return register_binding + '.quantity'
 
     def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='', has_charge=True, shared=False,
+                 description='', unit='kWh', has_charge=True, shared=False,
                  roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
