@@ -23,6 +23,7 @@ Ext.define('ReeBill.model.UtilityBill', {
             else
                     return data.supply_group;  }
         },
+        {name: 'supply_group_id', type: 'int'},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_charges', type: 'float' },

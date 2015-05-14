@@ -635,7 +635,7 @@ class UtilBillResource(RESTResource):
                 rate_class=row.get('rate_class_id', None),
                 utility=row.get('utility', None),
                 supplier=row.get('supplier_id', None),
-                supply_group=row.get('supply_group', None))
+                supply_group=row.get('supply_group_id', None))
 
         result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
@@ -722,8 +722,9 @@ class SuppliersResource(RESTResource):
     def handle_post(self, *vpath, **params):
         params = cherrypy.request.json
         name = params['name']
-        self.utilbill_processor.create_supplier(name=name)
-        return True, {'success': True }
+        supplier = self.utilbill_processor.create_supplier(name=name)
+        return True, {'rows': self.utilbill_views.get_supplier_json(supplier)
+            , 'results': 1 }
 
 
 class UtilitiesResource(RESTResource):
@@ -744,8 +745,9 @@ class RateClassesResource(RESTResource):
         name = params['name']
         utility_id = params['utility_id']
         service = params['service']
-        self.utilbill_processor.create_rate_class(name, utility_id, service)
-        return True, {'success': True }
+        rate_class = self.utilbill_processor.create_rate_class(name, utility_id, service)
+        return True, {'rows': self.utilbill_views.
+            get_rate_class_json(rate_class), 'results': 1 }
 
 
 
@@ -754,6 +756,16 @@ class SupplyGroupsResource(RESTResource):
     def handle_get(self, *vpath, **params):
         supply_groups = self.utilbill_views.get_all_supply_groups_json()
         return True, {'rows': supply_groups, 'results': len(supply_groups)}
+
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        supplier_id = params['supplier_id']
+        service = params['service']
+        supply_group = self.utilbill_processor.create_supply_group(name,
+                                                    supplier_id, service)
+        return True, {'rows': self.utilbill_views.
+            get_supply_group_json(supply_group), 'results': 1 }
 
 class CustomerGroupsResource(RESTResource):
 
