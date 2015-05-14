@@ -72,6 +72,30 @@ class UtilBillTest(TestCase):
         self.assertEqual([b, c], utilbill.charges)
         self.assertIsNone(a.utilbill)
 
+    def test_processed(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        self.assertFalse(utilbill.processed)
+
+        # repeating the same value is OK
+        utilbill.set_processed(False)
+        self.assertFalse(utilbill.processed)
+
+        # required values are missing
+        self.assertFalse(utilbill.is_processable())
+        with self.assertRaises(NotProcessable):
+            utilbill.set_processed(True)
+
+        # fill in missing values
+        utilbill.period_start = date(2000,1,1)
+        utilbill.period_end = date(2000,2,1)
+        utilbill.utility = MagicMock()
+        utilbill.rate_class = MagicMock()
+        utilbill.supplier = MagicMock()
+        self.assertTrue(utilbill.is_processable())
+
+        utilbill.set_processed(True)
+        self.assertTrue(utilbill.processed)
+
 
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
@@ -173,7 +197,7 @@ class UtilBillTestWithDB(TestCase):
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
                       period_end=date(2000, 2, 1))
-        self.assertTrue(ub.processable())
+        self.assertTrue(ub.is_processable())
 
     def test_add_charge(self):
         utility_account = UtilityAccount(

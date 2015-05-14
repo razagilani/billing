@@ -960,7 +960,16 @@ class UtilBill(Base):
         self.charges = pricing_model.get_predicted_charges(self)
         self.compute_charges()
 
-    def processable(self):
+    def set_processed(self, value):
+        """Make this bill "processed" or not.
+        :param value: boolean
+        """
+        assert isinstance(value, bool)
+        if value:
+            self.check_processable()
+        self.processed = value
+
+    def is_processable(self):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
@@ -968,7 +977,7 @@ class UtilBill(Base):
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
-        if not self.processable():
+        if not self.is_processable():
             attrs = ['utility', 'rate_class', 'supplier',
                      'period_start', 'period_end']
             missing_attrs = ', '.join(
