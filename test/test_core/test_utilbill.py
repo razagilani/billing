@@ -2,6 +2,8 @@ import unittest
 from mock import MagicMock
 from core.model.model import RegisterTemplate
 from test import init_test_config
+from test.setup_teardown import clear_db
+
 init_test_config()
 from core import init_model
 
@@ -63,13 +65,7 @@ class UtilBillTestWithDB(TestCase):
 
     def setUp(self):
         init_model()
-        session = Session()
-        session.query(Register).delete()
-        session.query(UtilBill).delete()
-        session.query(Payment).delete()
-        session.query(ReeBillCustomer).delete()
-        session.query(UtilityAccount).delete()
-
+        clear_db()
         self.utility = Utility(name='utility', address=Address())
         self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
@@ -99,6 +95,27 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(rate, c.rate)
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
+
+    def test_charge_relationship(self):
+        utilbill = UtilBill(self.utility_account, self.utility, self.rate_class)
+        a = Charge(None, 'a', 0, '', unit='kWh')
+        b = Charge(None, 'b', 0, '', unit='kWh')
+        s = Session()
+        s.add(utilbill)
+
+        # any charge associated with 'utilbill' gets added to the session,
+        # and any charge not associated with it gets removed
+        utilbill.charges = [a]
+        utilbill.charges = [b]
+
+        # if the UtilBill-Charge relationship has the wrong cascade setting,
+        # this flush will fail with a constraint violation when it tries to
+        # save 'a'
+        s.flush()
+
+        # 'a' should have been deleted when it was removed from the list of
+        # charges, so 'b' is the only charge left in the database
+        self.assertEqual(1, s.query(Charge).count())
 
     def test_processed_editable(self):
         utility_account = UtilityAccount(
