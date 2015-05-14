@@ -36,6 +36,7 @@ def column_dict_utilbill(self):
                    ('rate_class', self.get_rate_class_name()),
                    ('rate_class_id', self.rate_class_id),
                    ('supply_group', self.get_supply_group_name()),
+                   ('supply_group_id', self.supply_group_id),
                    ('state', state_name)])
     return result
 
@@ -78,6 +79,14 @@ class Views(object):
     def get_charge_json(self, charge):
         return column_dict(charge)
 
+    def get_rate_class_json(self, rate_class):
+        return column_dict(rate_class)
+
+    def get_supplier_json(self, supplier):
+        return column_dict(supplier)
+
+    def get_supply_group_json(self, supply_group):
+        return column_dict(supply_group)
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
@@ -114,7 +123,8 @@ class Views(object):
 
     def get_all_supply_groups_json(self):
         return [dict(id=x.id, name=x.name,
-                     supplier_id=x.supplier_id) for x in
+                     supplier_id=x.supplier_id,
+                     service=x.service) for x in
                 Session().query(SupplyGroup).order_by(SupplyGroup.name).all()]
 
     def get_utility(self, name):
