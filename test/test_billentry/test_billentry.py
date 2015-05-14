@@ -13,12 +13,12 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" is imported.
 from exc import UnEditableBillError
 from test import init_test_config
+from util import FixMQ
 from util.dictutils import deep_map
 
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
-from mq import IncomingMessage
 
 import billentry
 from billentry import common
@@ -32,7 +32,9 @@ from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
-from mq.tests import create_mock_channel_method_props, \
+with FixMQ():
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from test.setup_teardown import clear_db
 
