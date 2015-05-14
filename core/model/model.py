@@ -379,7 +379,8 @@ class RateClass(Base):
     """
     __tablename__ = 'rate_class'
 
-    SERVICES = ('gas', 'electric')
+    GAS, ELECTRIC = 'gas', 'electric'
+    SERVICES = (GAS, ELECTRIC)
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
