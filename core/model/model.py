@@ -1001,7 +1001,8 @@ class Charge(Base):
     roundrule = Column(String(1000))
     type = Column(Enum(*CHARGE_TYPES), nullable=False)
 
-    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
+    utilbill = relationship("UtilBill", backref=backref(
+        'charges', order_by=id, cascade='all, delete, delete-orphan'))
 
     @staticmethod
     def is_builtin(var):
