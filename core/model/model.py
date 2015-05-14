@@ -840,7 +840,7 @@ class UtilBill(Base):
     def set_utility(self, utility):
         """Set the utility, and set the rate class to None if the utility is
         different from the current one.
-        :param utility: Utility
+        :param utility: Utility or None
         """
         if utility != self.utility:
             self.set_rate_class(None)
@@ -848,7 +848,8 @@ class UtilBill(Base):
 
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
-        the new rate class.
+        the new rate class (no registers of rate_class is None).
+        :param rate_class: RateClass or None
         """
         if rate_class is None:
             self.registers = []
