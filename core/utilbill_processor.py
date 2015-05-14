@@ -90,8 +90,8 @@ class UtilbillProcessor(object):
         return  utilbill
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
-                            service=None, utility=None, rate_class=None,
-                            total=0, state=UtilBill.Complete, supplier=None):
+                               utility=None, rate_class=None, total=0,
+                               state=UtilBill.Complete, supplier=None):
         '''
         Returns a UtilBill with related objects (Charges and Registers
         assigned to it). Does not add anything to the session, so callers can
@@ -100,7 +100,6 @@ class UtilbillProcessor(object):
         :param utility_account:
         :param start:
         :param end:
-        :param service:
         :param utility:
         :param rate_class:
         :param total:
@@ -156,13 +155,6 @@ class UtilbillProcessor(object):
             billing_address = utility_account.fb_billing_address
             service_address = utility_account.fb_service_address
 
-        # order of preference for picking value of "service" field: value
-        # passed as an argument, or 'electric' by default
-        if service is None and predecessor is not None:
-            service = predecessor.get_service()
-        if service is None:
-            service = 'electric'
-
         # order of preference for picking utility/supplier/rate_class: value
         # passed as an argument, same value as predecessor,
         # "fb" values from Customer
@@ -182,13 +174,14 @@ class UtilbillProcessor(object):
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
-            billing_address= Address.from_other(billing_address),
-            service_address= Address.from_other(service_address),
+            billing_address=billing_address.clone(),
+            service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
+        new_utilbill.compute_charges()
 
         # a register called "REG_TOTAL" should always exist because it's in
         # the rate class' register list. however, since rate classes don't yet
@@ -209,12 +202,12 @@ class UtilbillProcessor(object):
                     r.identifier = register.identifier
                     r.meter_identifier = register.meter_identifier
                 continue
-            # no need to append this Register to new_utilbill.registers because
-            # SQLAlchemy does it automatically
-            Register(new_utilbill, register.description, register.identifier,
-                     register.unit, False, register.reg_type,
-                     register.active_periods, register.meter_identifier,
-                     quantity=0, register_binding=register.register_binding)
+            new_utilbill.registers.append(
+                Register(register.register_binding, unit=register.unit,
+                         quantity=0, identifier=register.identifier,
+                         reg_type=register.reg_type,
+                         active_periods=register.active_periods,
+                         meter_identifier=register.meter_identifier))
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -251,21 +244,19 @@ class UtilbillProcessor(object):
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
-        new_utilbill = self._create_utilbill_in_db(
-            utility_account, start=start, end=end, service=service,
-            utility=utility, rate_class=rate_class, total=total, state=state,
-            supplier=supplier)
+        new_utilbill = self._create_utilbill_in_db(utility_account, start=start,
+            end=end, utility=utility, rate_class=rate_class, total=total,
+            state=state, supplier=supplier)
 
         # upload the file
         if bill_file is not None:
-            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill,
+            self.bill_file_handler.upload_file_for_utilbill(new_utilbill,
                                                              bill_file)
 
         # adding UtilBill should also add Charges and Registers due to cascade
         session.add(new_utilbill)
         session.flush()
 
-        self.compute_utility_bill(new_utilbill.id)
         return new_utilbill
 
     def create_utility_bill_with_existing_file(self, utility_account, utility,
@@ -302,8 +293,6 @@ class UtilbillProcessor(object):
         session.add(new_utilbill)
         session.flush()
 
-        self.compute_utility_bill(new_utilbill.id)
-
         # set hexdigest of the file (this would normally be done by
         # BillFileHandler.upload_utilbill_pdf_to_s3)
         new_utilbill.sha256_hexdigest = sha256_hexdigest
@@ -338,7 +327,7 @@ class UtilbillProcessor(object):
         # of ReeBill)
         utility_bill.check_editable()
 
-        self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
+        self.bill_file_handler.delete_file(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -347,7 +336,7 @@ class UtilbillProcessor(object):
             session.delete(register)
         session.delete(utility_bill)
 
-        pdf_url = self.bill_file_handler.get_s3_url(utility_bill)
+        pdf_url = self.bill_file_handler.get_url(utility_bill)
         return utility_bill, pdf_url
 
     def regenerate_charges(self, utilbill_id):
@@ -394,20 +383,18 @@ class UtilbillProcessor(object):
             raise BillingError("No more registers can be added")
 
         r = Register(
-            utility_bill,
+            register_kwargs.get('register_binding', new_reg_binding),
+            register_kwargs.get('unit', 'therms'),
             description=register_kwargs.get(
                 'description',"Insert description"),
             identifier=register_kwargs.get(
                 'identifier', "Insert register ID here"),
-            unit=register_kwargs.get('unit', 'therms'),
             estimated=register_kwargs.get('estimated', False),
             reg_type=register_kwargs.get('reg_type', "total"),
             active_periods=register_kwargs.get('active_periods', None),
             meter_identifier=register_kwargs.get('meter_identifier', ""),
-            quantity=register_kwargs.get('quantity', 0),
-            register_binding=register_kwargs.get('register_binding',
-                                                 new_reg_binding)
-        )
+            quantity=register_kwargs.get('quantity', 0))
+        r.utilbill = utility_bill
         session.add(r)
         session.flush()
         return r
@@ -495,7 +482,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address('', '', '', '', ''))
+            result = Utility(name=name, address=Address())
             return result, True
         return result, False
 
@@ -510,7 +497,7 @@ class UtilbillProcessor(object):
         try:
             result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = Supplier(name=name, address=Address('', '', '', '', ''))
+            result = Supplier(name=name, address=Address())
         return result
 
     def get_create_rate_class(self, rate_class_name, utility, service):
