@@ -1,11 +1,9 @@
 from mock import MagicMock, Mock
+from core import init_model
 
 from core.model.model import RegisterTemplate
 from core.pricing import PricingModel
 from test import init_test_config
-
-init_test_config()
-from core import init_model
 
 from datetime import date
 from unittest import TestCase
@@ -76,9 +74,12 @@ class UtilBillTest(TestCase):
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
     """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
 
     def setUp(self):
-        init_model()
         session = Session()
         session.query(Register).delete()
         session.query(UtilBill).delete()
