@@ -100,7 +100,7 @@ class UtilBillTest(TestCase):
         utilbill = UtilBill(MagicMock(), None, None)
         utility = Utility(name='utility')
         rate_class = RateClass(utility=utility, name='rate class',
-                               service='electric')
+                               service=RateClass.ELECTRIC)
         other_utility = Utility(name='other')
 
         self.assertIsNone(utilbill.get_utility())
@@ -121,7 +121,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual('electric', utilbill.get_service())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
         utilbill.set_total_energy(1)
 
         # when the same utility is set again, rate class is unchanged
@@ -130,7 +130,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual('electric', utilbill.get_service())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
 
         # when a different utility is chosen, rate class is unknown
         utilbill.set_utility(other_utility)
