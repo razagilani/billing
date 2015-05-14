@@ -167,7 +167,7 @@ Ext.define('ReeBill.view.charges.Charges', {
                     sum += record.get('total');
                 }
             });
-            return sum;
+            return Ext.util.Format.usMoney(sum);
         },
         align: 'right',
         renderer: Ext.util.Format.usMoney

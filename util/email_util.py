@@ -3,7 +3,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import mimetypes
-from email import encoders
+from email import encoders, email
 from email.message import Message
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
@@ -86,3 +86,21 @@ def send_email(from_user, recipients, subject, originator, password, smtp_host,
 
     server.close()
 
+def get_attachments(email_body):
+    """Get attachments from a MIME email body.
+    :param email_body: MIME email string
+    :return: list of (name, contents) tuples containing the name and contents
+    of each attachment as strings.
+    """
+    result = []
+    for part in email.message_from_string(email_body).walk():
+        if part.get_content_maintype() == 'multipart':
+            continue
+        if part.get('Content-Disposition') is None:
+            continue
+        file_name = part.get_filename()
+        if file_name == '':
+            continue
+        file_content = part.get_payload(decode=True)
+        result.append((file_name, file_content))
+    return result
