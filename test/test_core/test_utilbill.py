@@ -122,7 +122,10 @@ class UtilBillTest(TestCase):
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
         self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+
+        # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
+        self.assertEqual(1, utilbill.get_total_energy())
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
