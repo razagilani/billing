@@ -1203,7 +1203,6 @@ class ReebillWSGI(object):
         self.config = config
         self.user_dao = user_dao
         self.logger = logger
-    supplygroups = SupplyGroupsResource(*create_webresource_args())
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
