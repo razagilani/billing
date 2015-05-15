@@ -36,6 +36,10 @@
       "Default" : "",
       "Description" : "(Required) Security group for Mongo database host"
     },
+    "PostgresSecurityGroup" : {
+      "Type" : "String",
+      "Description" : "(Required) Security group for Postgres database host"
+    },
     "NexusWebSecurityGroup" : {
       "Type" : "String",
       "Default" : "",
@@ -141,6 +145,16 @@
         "GroupId" : {"Ref" : "MongoSecurityGroup"},
         "FromPort" : 27017,
         "ToPort" : 27017,
+        "IpProtocol" : "tcp",
+        "SourceSecurityGroupId" : {"Ref" : "ApplicationSecurityGroup"}
+      }
+    },
+    "PostgresInstanceIngressRule" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "GroupId" : {"Ref" : "PostgresSecurityGroup"},
+        "FromPort" : 5432,
+        "ToPort" : 5432,
         "IpProtocol" : "tcp",
         "SourceSecurityGroupId" : {"Ref" : "ApplicationSecurityGroup"}
       }
