@@ -49,7 +49,7 @@ ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 old_db_uri = config.get('db', 'old_uri')
 cur_db_uri = config.get('db', 'uri')
 MYSQL_FORMAT = r'^\w+://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$'
-PG_FORMAT = r'^\w+://([\w-]+)@([\w\d.]+)/([\w-]+)$'
+PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
 m = re.match(MYSQL_FORMAT, old_db_uri)
 old_db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 m = re.match(PG_FORMAT, cur_db_uri)
@@ -221,8 +221,8 @@ def _recreate_main_db(root_password):
     command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
                                           password='root')
     stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database if exists %s;' % cur_db_params['db'])
-    stdin.write('create database %s;' % cur_db_params['db'])
+    stdin.write('drop database if exists %s;' % old_db_params['db'])
+    stdin.write('create database %s;' % old_db_params['db'])
     stdin.close()
     check_exit_status()
 
