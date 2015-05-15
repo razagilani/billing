@@ -42,14 +42,11 @@ class UtilbillProcessor(object):
         utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         assert utilbill.utility is not None
 
-        if processed is True:
-            utilbill.check_processable()
-            utilbill.processed = processed
+        if processed is not None:
+            utilbill.set_processed(processed)
             # since the bill has become processed no other changes to the bill
             # can be made so return the util bill without raising an error
             return utilbill
-        elif processed is False:
-            utilbill.processed = processed
 
         utilbill.check_editable()
         if tou is not None:
