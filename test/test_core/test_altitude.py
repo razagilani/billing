@@ -62,7 +62,7 @@ class TestWithDB(TestCase):
         s = Session()
         s.add_all([self.u, self.au])
         s.add(AltitudeUtility(self.u, 'def'))
-        supplier = Supplier(name='test_supplier', address=Address())
+        supplier = Supplier(name='testsupplier', address=Address())
         supply_group = SupplyGroup(name='test', supplier=supplier,
                                    service='gas')
         v = Utility(name='Other', address=Address(),
