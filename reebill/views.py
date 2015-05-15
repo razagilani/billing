@@ -4,7 +4,7 @@ code for that is still in other files it should be moved here.
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from core.model import Session, UtilBill, Register, UtilityAccount, \
-    Supplier, Utility, RateClass
+    Supplier, Utility, RateClass, SupplyGroup
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
@@ -31,9 +31,13 @@ def column_dict_utilbill(self):
                                  in self._utilbill_reebills]),
                    ('utility', (column_dict(self.utility)
                                 if self.utility else None)),
-                   ('supplier', (self.supplier.name if
-                                 self.supplier else None)),
+                   ('utility_id', self.utility_id),
+                   ('supplier', (column_dict(self.supplier))),
+                   ('supplier_id', self.supplier_id),
                    ('rate_class', self.get_rate_class_name()),
+                   ('rate_class_id', self.rate_class_id),
+                   ('supply_group', self.get_supply_group_name()),
+                   ('supply_group_id', self.supply_group_id),
                    ('state', state_name)])
     return result
 
@@ -76,6 +80,17 @@ class Views(object):
     def get_charge_json(self, charge):
         return column_dict(charge)
 
+    def get_rate_class_json(self, rate_class):
+        return column_dict(rate_class)
+
+    def get_supplier_json(self, supplier):
+        return column_dict(supplier)
+
+    def get_utility_json(self, utility):
+        return column_dict(utility)
+
+    def get_supply_group_json(self, supply_group):
+        return column_dict(supply_group)
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
@@ -103,12 +118,20 @@ class Views(object):
         return  self._serialize_id_name(CustomerGroup)
 
     def get_all_utilities_json(self):
-        return self._serialize_id_name(Utility)
+        return [dict(id=x.id, name=x.name,
+                     supply_group_id=x.sos_supply_group_id) for x in
+                Session().query(Utility).order_by(Utility.name).all()]
 
     def get_all_rate_classes_json(self):
         return [dict(id=x.id, name=x.name,
-                     utility_id=x.utility_id) for x in
+                     utility_id=x.utility_id, service=x.service) for x in
                 Session().query(RateClass).order_by(RateClass.name).all()]
+
+    def get_all_supply_groups_json(self):
+        return [dict(id=x.id, name=x.name,
+                     supplier_id=x.supplier_id,
+                     service=x.service) for x in
+                Session().query(SupplyGroup).order_by(SupplyGroup.name).all()]
 
     def get_utility(self, name):
         session = Session()

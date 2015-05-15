@@ -9,7 +9,7 @@ init_test_config()
 init_model()
 
 from core.model import Utility, Supplier, Address, Session, \
-    UtilityAccount, RateClass, UtilBill
+    UtilityAccount, RateClass, UtilBill, SupplyGroup
 from core.altitude import AltitudeUtility, AltitudeSupplier,\
     get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, AltitudeBill
 
@@ -41,8 +41,11 @@ class TestWithDB(TestCase):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
         clear_db()
-
-        self.u = Utility(name='A Utility', address=Address())
+        supplier = Supplier(name='test_supplier', address=Address())
+        supply_group = SupplyGroup(name='test', supplier=supplier,
+                                   service='gas')
+        self.u = Utility(name='A Utility', address=Address(),
+                         sos_supply_group=supply_group)
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
@@ -59,7 +62,11 @@ class TestWithDB(TestCase):
         s = Session()
         s.add_all([self.u, self.au])
         s.add(AltitudeUtility(self.u, 'def'))
-        v = Utility(name='Other', address=Address())
+        supplier = Supplier(name='testsupplier', address=Address())
+        supply_group = SupplyGroup(name='test', supplier=supplier,
+                                   service='gas')
+        v = Utility(name='Other', address=Address(),
+                    sos_supply_group=supply_group)
         s.add(AltitudeUtility(v, 'abc'))
         s.flush()
 
@@ -119,10 +126,15 @@ class TestWithDB(TestCase):
 class TestAltitudeBillWithDB(TestCase):
     def setUp(self):
         clear_db()
-
-        self.u = Utility(name='A Utility', address=Address())
-        utility = Utility(name='example', address=None)
-        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        supplier = Supplier(name='test_supplier', address=Address())
+        supply_group = SupplyGroup(name='test', supplier=supplier,
+                                   service='gas')
+        self.u = Utility(name='A Utility', address=Address(),
+                         sos_supply_group=supply_group)
+        utility = Utility(name='example', address=None,
+                          sos_supply_group=supply_group)
+        ua = UtilityAccount('', '', utility, None, None, Address(),
+                            Address())
         self.utilbill = UtilBill(ua, utility, None)
 
     def test_create_delete(self):

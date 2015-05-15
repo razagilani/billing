@@ -9,6 +9,7 @@ calling :func:`.core.init_model`.
 """
 import json
 import logging
+from core.model import Session, UtilBill, SupplyGroup, Supplier
 
 import pymongo
 
@@ -19,6 +20,24 @@ from upgrade_scripts import alembic_upgrade
 
 
 log = logging.getLogger(__name__)
+
+def create_and_assign_supply_groups(s):
+    suppliers = s.query(Supplier).all()
+    for supplier in suppliers:
+        bill = s.query(UtilBill).filter_by(supplier=supplier).first()
+        # if there is a bill for a supplier then create a supply group by
+        # naming it as bill.utility.name + ' SOS' otherwise don't create
+        # a supply group
+        if bill is None:
+            continue
+        supply_group = SupplyGroup(bill.utility.name + ' SOS', supplier, bill.get_service())
+        bill.utility.sos_supply_group = supply_group
+        bills = s.query(UtilBill).filter_by(supplier=supplier).all()
+        for bill in bills:
+            bill.supply_group = supply_group
+            bill.utility_account.supply_group = supply_group
+        s.add(supply_group)
+
 
 
 def migrate_users(s):
@@ -54,4 +73,5 @@ def upgrade():
     s = Session()
     migrate_users(s)
     set_payee_for_reebill_customers(s)
+    create_and_assign_supply_groups(s)
     s.commit()

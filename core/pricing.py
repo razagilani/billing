@@ -165,7 +165,7 @@ class FuzzyPricingModel(PricingModel):
     def _load_relevant_bills_supply(self, utilbill, ignore_func):
         """Return an iterable of UtilBills relevant for determining the
         supply charges of 'utilbill' (currently defined as having the
-        same supplier).
+        same supply_group).
         :param utilbill: UtilBill whose charges are being generated
         :param ignore_func: exclude bills for which this returns true
         """
@@ -173,7 +173,7 @@ class FuzzyPricingModel(PricingModel):
             return []
         return [utilbill for utilbill in
                 self._utilbill_loader.load_real_utilbills(
-                    supplier=utilbill.supplier, processed=True
+                    supply_group=utilbill.supply_group, processed=True
                 ) if not ignore_func(utilbill)]
 
     def get_predicted_charges(self, utilbill):

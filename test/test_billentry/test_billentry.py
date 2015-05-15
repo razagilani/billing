@@ -142,7 +142,7 @@ class BillEntryIntegrationTest(object):
         self.utility = Utility(name='Example Utility')
         self.utility.id = 1
         self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None,
-                                  None, Address(), Address(), '1')
+                                  None, Address(), Address(), account_number='1')
         self.ua1.id = 1
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
@@ -152,7 +152,7 @@ class BillEntryIntegrationTest(object):
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
-                                  None, Address(), Address(), '2')
+                                  None, Address(), Address(), account_number='2')
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
         self.ub2.set_rate_class(self.rate_class2)
@@ -187,9 +187,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         utility1 = Utility(name='Empty Utility')
         utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
-                             Address(), Address(), '2')
+                             Address(), Address(), account_number='2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
-                             Address(), Address(), '3')
+                             Address(), Address(), account_number='3')
         rate_class1 = RateClass('Other Rate Class', self.utility, 'electric')
         s.add_all([self.rate_class, rate_class1])
         ua2.id, ua3.id = 2, 3
@@ -505,10 +505,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
 
         # TODO reuse 'expected' in later assertions instead of repeating the
         # giant dictionary over and over
+        utility = Utility(name="Empty Utility")
+        Session().add(utility)
+        Session().commit()
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
-                utility = "Empty Utility"
+                utility = utility.id
         ))
         self.assertJson({
             "results": 1,
@@ -539,10 +542,12 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'tou': False
             }}, rv.data
         )
-
+        utility = Utility(name="Some Other Utility")
+        Session().add(utility)
+        Session().commit()
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 10,
-                utility = "Some Other Utility"
+                utility = utility.id
         ))
 
         self.assertJson(
