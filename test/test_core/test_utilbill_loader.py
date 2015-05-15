@@ -5,7 +5,7 @@ from test import init_test_config
 from test.setup_teardown import clear_db
 from core import init_model
 from core.model import UtilBill, Session, \
-    Address, Utility, Supplier, RateClass, UtilityAccount
+    Address, Utility, Supplier, RateClass, UtilityAccount, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
 from exc import NoSuchBillException
 
@@ -22,13 +22,16 @@ class UtilbillLoaderTest(unittest.TestCase):
 
         self.session = Session()
         blank_address = Address()
-        utility =  Utility(name='Test Utility', address=Address())
+        supplier = Supplier(name='Test Supplier', address=Address())
+        supply_group = SupplyGroup('supply_group', supplier, 'gas')
+        utility =  Utility(name='Test Utility', address=Address(),
+                           sos_supply_group=supply_group )
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
-                            Supplier(name='Test Supplier', address=Address()),
+                            supplier,
                             RateClass(name='FB Test Rate Class',
                                       utility=utility, service='gas'),
-                            blank_address, blank_address)
+                            blank_address, blank_address, supply_group)
         self.session.add(self.utility_account)
         self.session.commit()
 

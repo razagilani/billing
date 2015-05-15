@@ -505,10 +505,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
 
         # TODO reuse 'expected' in later assertions instead of repeating the
         # giant dictionary over and over
+        utility = Utility(name="Empty Utility")
+        Session().add(utility)
+        Session().commit()
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
-                utility = "Empty Utility"
+                utility = utility.id
         ))
         self.assertJson({
             "results": 1,
@@ -539,10 +542,12 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'tou': False
             }}, rv.data
         )
-
+        utility = Utility(name="Some Other Utility")
+        Session().add(utility)
+        Session().commit()
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 10,
-                utility = "Some Other Utility"
+                utility = utility.id
         ))
 
         self.assertJson(
