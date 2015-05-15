@@ -1078,8 +1078,11 @@ class UtilBill(Base):
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
-        register = next(r for r in self.registers if r.register_binding
-                                                     == Register.TOTAL)
+        try:
+            register = next(r for r in self.registers if r.register_binding
+                                                         == Register.TOTAL)
+        except StopIteration:
+            return None
         return register.meter_identifier
 
     def get_total_energy_consumption(self):
