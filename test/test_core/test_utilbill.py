@@ -1,9 +1,11 @@
-import unittest
-from mock import MagicMock
-from core.model.model import RegisterTemplate
-from test import init_test_config
-init_test_config()
+from mock import MagicMock, Mock
 from core import init_model
+
+from core.model.model import RegisterTemplate
+from core.pricing import PricingModel
+from test import init_test_config
+from test.setup_teardown import clear_db
+
 
 from datetime import date
 from unittest import TestCase
@@ -57,19 +59,54 @@ class UtilBillTest(TestCase):
         # without requiring consumers to know about registers.
         # TODO...
 
+    def test_regenerate_charges(self):
+        a, b, c = Charge('a'), Charge('b'), Charge('c')
+
+        utilbill = UtilBill(MagicMock(), None, None)
+        utilbill.charges = [a]
+
+        pricing_model = Mock(autospec=PricingModel)
+        pricing_model.get_predicted_charges.return_value = [b, c]
+
+        utilbill.regenerate_charges(pricing_model)
+        self.assertEqual([b, c], utilbill.charges)
+        self.assertIsNone(a.utilbill)
+
+    def test_processed(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        self.assertFalse(utilbill.processed)
+
+        # repeating the same value is OK
+        utilbill.set_processed(False)
+        self.assertFalse(utilbill.processed)
+
+        # required values are missing
+        self.assertFalse(utilbill.is_processable())
+        with self.assertRaises(NotProcessable):
+            utilbill.set_processed(True)
+
+        # fill in missing values
+        utilbill.period_start = date(2000,1,1)
+        utilbill.period_end = date(2000,2,1)
+        utilbill.utility = MagicMock()
+        utilbill.rate_class = MagicMock()
+        utilbill.supplier = MagicMock()
+        self.assertTrue(utilbill.is_processable())
+
+        utilbill.set_processed(True)
+        self.assertTrue(utilbill.processed)
+
+
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
     """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
 
     def setUp(self):
-        init_model()
-        session = Session()
-        session.query(Register).delete()
-        session.query(UtilBill).delete()
-        session.query(Payment).delete()
-        session.query(ReeBillCustomer).delete()
-        session.query(UtilityAccount).delete()
-
+        clear_db()
         self.utility = Utility(name='utility', address=Address())
         self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
@@ -99,6 +136,26 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(rate, c.rate)
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
+
+    def test_charge_relationship(self):
+        utilbill = UtilBill(self.utility_account, self.utility, self.rate_class)
+        a, b = Charge('a', unit='kWh'), Charge('b', unit='kWh')
+        s = Session()
+        s.add(utilbill)
+
+        # any charge associated with 'utilbill' gets added to the session,
+        # and any charge not associated with it gets removed
+        utilbill.charges = [a]
+        utilbill.charges = [b]
+
+        # if the UtilBill-Charge relationship has the wrong cascade setting,
+        # this flush will fail with a constraint violation when it tries to
+        # save 'a'
+        s.flush()
+
+        # 'a' should have been deleted when it was removed from the list of
+        # charges, so 'b' is the only charge left in the database
+        self.assertEqual(1, s.query(Charge).count())
 
     def test_processed_editable(self):
         utility_account = UtilityAccount(
@@ -140,7 +197,7 @@ class UtilBillTestWithDB(TestCase):
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
                       period_end=date(2000, 2, 1))
-        self.assertTrue(ub.processable())
+        self.assertTrue(ub.is_processable())
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
