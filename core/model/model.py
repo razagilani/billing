@@ -379,7 +379,8 @@ class RateClass(Base):
     """
     __tablename__ = 'rate_class'
 
-    SERVICES = ('gas', 'electric')
+    GAS, ELECTRIC = 'gas', 'electric'
+    SERVICES = (GAS, ELECTRIC)
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
@@ -562,7 +563,7 @@ class Charge(Base):
         return register_binding + '.quantity'
 
     def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='', has_charge=True, shared=False,
+                 description='', unit='kWh', has_charge=True, shared=False,
                  roundrule="", type='supply'):
         """Construct a new :class:`.Charge`.
 
@@ -735,7 +736,8 @@ class UtilBill(Base):
     # make more sense for it to be.
     utility = relationship('Utility')
 
-    charges = relationship("Charge", backref='utilbill', order_by='Charge.id')
+    charges = relationship("Charge", backref='utilbill', order_by='Charge.id',
+                           cascade='all, delete, delete-orphan')
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -959,7 +961,16 @@ class UtilBill(Base):
         self.charges = pricing_model.get_predicted_charges(self)
         self.compute_charges()
 
-    def processable(self):
+    def set_processed(self, value):
+        """Make this bill "processed" or not.
+        :param value: boolean
+        """
+        assert isinstance(value, bool)
+        if value:
+            self.check_processable()
+        self.processed = value
+
+    def is_processable(self):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
@@ -967,7 +978,7 @@ class UtilBill(Base):
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
-        if not self.processable():
+        if not self.is_processable():
             attrs = ['utility', 'rate_class', 'supplier',
                      'period_start', 'period_end']
             missing_attrs = ', '.join(
