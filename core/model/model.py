@@ -806,6 +806,7 @@ class UtilBill(Base):
                  processed=False, sha256_hexdigest='', due_date=None,
                  next_meter_read_date=None, state=Complete, tou=False,
                  supply_group=None):
+        """
         :param state: Complete, UtilityEstimated, or Estimated.
         """
         # utility bill objects also have an 'id' property that SQLAlchemy
