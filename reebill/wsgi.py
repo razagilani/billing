@@ -633,7 +633,7 @@ class UtilBillResource(RESTResource):
                 target_total=row.get('target_total', None),
                 processed=row.get('processed', None),
                 rate_class=row.get('rate_class_id', None),
-                utility=row.get('utility', None),
+                utility=row.get('utility_id', None),
                 supplier=row.get('supplier_id', None),
                 supply_group=row.get('supply_group_id', None))
 
@@ -732,6 +732,15 @@ class UtilitiesResource(RESTResource):
     def handle_get(self, *vpath, **params):
         utilities = self.utilbill_views.get_all_utilities_json()
         return True, {'rows': utilities, 'results': len(utilities)}
+
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        supply_group_id = params['supply_group_id']
+        utility = self.utilbill_processor.create_utility(name,
+                                                    supply_group_id)
+        return True, {'rows': self.utilbill_views.get_utility_json(utility)
+            , 'results': 1 }
 
 
 class RateClassesResource(RESTResource):

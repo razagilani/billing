@@ -5,11 +5,6 @@ Ext.define('ReeBill.model.SupplyGroup', {
         {name: 'id', type: 'int', useNull: true},
         {name: 'supplier_id', type: 'int'},
         {name: 'service', type: 'string'}
-    ],
-    belongsTo: [{
-            name: 'supplygroups',
-            model: 'Supplier',
-            associationKey: 'supplygroups'
-        }]
+    ]
 });
 

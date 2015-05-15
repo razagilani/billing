@@ -75,10 +75,8 @@ class UtilbillProcessor(object):
             utilbill.rate_class = self.get_rate_class(
                 rate_class)
 
-        if utility is not None and isinstance(utility, basestring):
-            utilbill.utility, new_utility = self.get_create_utility(utility)
-            if new_utility:
-                utilbill.rate_class = None
+        if utility is not None:
+            utilbill.utility = self.get_utility(utility)
 
         if meter_identifier is not None:
             utilbill.set_total_meter_identifier(meter_identifier)
@@ -488,15 +486,25 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def get_create_utility(self, name, supply_group):
+    def create_utility(self, name, supply_group_id):
+        session = Session()
+        supply_group = session.query(SupplyGroup).filter_by(
+            id=supply_group_id).one()
+        utility = Utility(name=name, sos_supply_group=supply_group,
+                          address=Address())
+        utility.rate_class = None
+        session.add(utility)
+        session.flush()
+        return utility
+
+    def get_utility(self, utility_id):
         session = Session()
         try:
-            result = session.query(Utility).filter_by(name=name).one()
+            result = session.query(Utility).filter_by(
+                id=utility_id).one()
         except NoResultFound:
-            result = Utility(name=name, address=Address(),
-                             sos_supply_group=supply_group)
-            return result, True
-        return result, False
+            result = None
+        return result
 
     def create_rate_class(self, name, utility_id, service):
         if name == 'Unknown Rate Class':
