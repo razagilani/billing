@@ -15,6 +15,7 @@ Ext.define('ReeBill.model.UtilityBill', {
         },
         {name: 'rate_class_id', type: 'int'},
         {name: 'utility'},
+        {name: 'utility_id', type: 'int'},
         {name: 'supplier'},
         {name: 'supplier_id', type: 'int'},
         {name: 'supply_group', 'type': 'string', mapping: function( data ) {

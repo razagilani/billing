@@ -65,7 +65,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#utility_combo':{
                 select: this.handleUtilityComboChanged,
-                focus: this.handleUtilityComboFocus
+                focus: this.handleUtilityComboFocus,
+                blur: this.handleUtilityBlur
             },
             '#rate_class_combo': {
                 expand: this.handleRateClassExpand,
@@ -386,6 +387,30 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 scope: this
             });
             supplyGroupStore.resumeAutoSync();
+        }
+    },
+
+    handleUtilityBlur: function(combo, event, opts){
+        var utilityStore = this.getUtilitiesStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (utilityStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            utilityStore.suspendAutoSync();
+            var supply_group_id = utilBillsStore.findRecord('id', selected.get('id')).get('supply_group_id');
+            utilityStore.add({name: combo.getRawValue(),
+                                 supply_group_id: supply_group_id});
+            utilityStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('utility_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            utilityStore.resumeAutoSync();
         }
     }
 

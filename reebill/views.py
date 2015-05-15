@@ -31,6 +31,7 @@ def column_dict_utilbill(self):
                                  in self._utilbill_reebills]),
                    ('utility', (column_dict(self.utility)
                                 if self.utility else None)),
+                   ('utility_id', self.utility_id),
                    ('supplier', (column_dict(self.supplier))),
                    ('supplier_id', self.supplier_id),
                    ('rate_class', self.get_rate_class_name()),
@@ -85,6 +86,9 @@ class Views(object):
     def get_supplier_json(self, supplier):
         return column_dict(supplier)
 
+    def get_utility_json(self, utility):
+        return column_dict(utility)
+
     def get_supply_group_json(self, supply_group):
         return column_dict(supply_group)
 
@@ -114,7 +118,9 @@ class Views(object):
         return  self._serialize_id_name(CustomerGroup)
 
     def get_all_utilities_json(self):
-        return self._serialize_id_name(Utility)
+        return [dict(id=x.id, name=x.name,
+                     supply_group_id=x.sos_supply_group_id) for x in
+                Session().query(Utility).order_by(Utility.name).all()]
 
     def get_all_rate_classes_json(self):
         return [dict(id=x.id, name=x.name,
