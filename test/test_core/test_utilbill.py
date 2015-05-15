@@ -112,7 +112,7 @@ class UtilBillTestWithDB(TestCase):
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), Address(), Address())
+                      service='gas'), None, Address(), Address())
         self.rate_class = RateClass(name='rate class', utility=self.utility,
                                     service='gas')
 
@@ -161,7 +161,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), Address(), Address())
+                      service='gas'), None, Address(), Address())
         utilbill = UtilBill(utility_account, self.utility,
                             RateClass(name='rate class', utility=self.utility,
                                       service='gas'),
@@ -180,7 +180,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), Address(), Address())
+                      service='gas'), None, Address(), Address())
         for attr in ('period_start', 'period_end', 'rate_class', 'utility',
                      'supplier'):
             ub = UtilBill(
@@ -196,8 +196,8 @@ class UtilBillTestWithDB(TestCase):
                       RateClass(name='rate class', utility=self.utility,
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
-                      period_end=date(2000, 2, 1))
-        self.assertTrue(ub.is_processable())
+                      period_end=date(2000, 2, 1),
+                      supply_group='test')
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
@@ -238,7 +238,7 @@ class UtilBillTestWithDB(TestCase):
             UtilityAccount('someone', '98989', fb_utility, 'FB Test Supplier',
                            RateClass(name='FB Test Rate Class',
                                      utility=fb_utility, service='gas'),
-                           Address(), Address()), utility,
+                           None, Address(), Address()), utility,
             RateClass(name='rate class', utility=utility, service='gas'),
             supplier=Supplier(name='supplier', address=Address()),
             period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
@@ -414,7 +414,7 @@ class UtilBillTestWithDB(TestCase):
         '''
         utility_account = UtilityAccount('someone', '99999',
                 'utility', 'supplier',
-                'rate class', Address(), Address())
+                'rate class', None, Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)

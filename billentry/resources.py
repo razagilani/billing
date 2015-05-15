@@ -248,7 +248,7 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supplier=row['supplier'],
+            supplier=row['supplier_id'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
             meter_identifier=row['meter_identifier']

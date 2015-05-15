@@ -35,6 +35,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'SupplyGroup',
     'RateClass',
     'Utility',
     'UtilBill',
@@ -58,6 +59,7 @@ PHYSICAL_UNITS = [
     'therms',
 ]
 
+SERVICES = ('gas', 'electric')
 
 class Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
@@ -206,15 +208,20 @@ class Utility(Base):
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
+    sos_supply_group_id = Column(Integer, ForeignKey('supply_group.id'), nullable=False)
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
+    sos_supply_group = relationship("SupplyGroup")
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
     def __str__(self):
         return self.name
+
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
 
 
 class Supplier(Base):
@@ -366,6 +373,32 @@ class RegisterTemplate(Base):
     def get_total_register_template(cls, unit):
         return cls(register_binding=Register.TOTAL, unit=unit)
 
+
+class SupplyGroup(Base):
+    """This class determines what supply contracts may be available to
+    a customer.
+    """
+    __tablename__ = 'supply_group'
+
+    id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    service = Column(Enum(*SERVICES))
+    name = Column(String(255), nullable=False)
+
+    supplier = relationship('Supplier')
+
+    def __init__(self, name='', supplier=None, service='gas'):
+        self.name = name
+        self.supplier = supplier
+        self.service = service
+
+    def __repr__(self):
+        return '<SupplyGroup(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
+
+
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
     and the same pricing for distribution.
@@ -373,15 +406,11 @@ class RateClass(Base):
     Every bill in a rate class gets billed according to the same kinds of
     meter values (like total energy, demand, etc.) so the rate class also
     determines which registers exist in each bill.
-
-    The rate class also determines what supply contracts may be available to
-    a customer.
     """
     __tablename__ = 'rate_class'
 
     GAS, ELECTRIC = 'gas', 'electric'
     SERVICES = (GAS, ELECTRIC)
-
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     service = Column(Enum(*SERVICES), nullable=False)
@@ -441,9 +470,13 @@ class UtilityAccount(Base):
         nullable=False)
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
+    fb_supply_group = relationship('SupplyGroup', uselist=False,
+        primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
@@ -454,7 +487,7 @@ class UtilityAccount(Base):
 
     def __init__(self, name, account, fb_utility, fb_supplier,
                 fb_rate_class, fb_billing_address, fb_service_address,
-                account_number=''):
+                account_number='', fb_supply_group=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -474,6 +507,10 @@ class UtilityAccount(Base):
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
+        if fb_supply_group is None:
+            self.fb_supply_group = self.fb_utility.get_sos_supply_group()
+        else:
+            self.fb_supply_group = fb_supply_group
 
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' \
@@ -667,6 +704,8 @@ class UtilBill(Base):
         nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     period_start = Column(Date)
@@ -727,6 +766,8 @@ class UtilBill(Base):
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilBill.rate_class_id==RateClass.id')
+    supply_group = relationship('SupplyGroup', uselist=False,
+        primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
@@ -763,8 +804,8 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete, tou=False):
-        """
+                 next_meter_read_date=None, state=Complete, tou=False,
+                 supply_group=None):
         :param state: Complete, UtilityEstimated, or Estimated.
         """
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -774,6 +815,7 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        self.supply_group = supply_group
         if billing_address is None:
             billing_address = Address()
         self.billing_address = billing_address
@@ -832,6 +874,23 @@ class UtilBill(Base):
         if self.rate_class is None:
             return None
         return self.rate_class.name
+
+    def get_supply_group_name(self):
+        '''Return name of this bill's supply_group or None if the supply"_group is
+        None (unknown).
+        '''
+        if self.supply_group is None:
+            return None
+        return self.supply_group.name
+
+    def get_supply_group(self):
+        return self.supply_group
+
+    def set_supply_group(self, supply_group):
+        """Set the supply_group
+        """
+        self.supply_group = supply_group
+
 
     def get_rate_class(self):
         return self.rate_class
@@ -974,7 +1033,7 @@ class UtilBill(Base):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
-                            self.period_start, self.period_end)
+                            self.period_start, self.period_end, self.supply_group)
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''

@@ -34,7 +34,7 @@ class ReebillFileHandlerTest(TestCase):
                      city='Washington', state='DC', postal_code='12345')
         utility_account = UtilityAccount('someaccount', '00001',
                         'Test Utility', 'Test Supplier', 'Test Rate Class',
-                        ba, sa)
+                        None, ba, sa)
         c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
                             late_charge_rate=0.1,
                             bill_email_recipient='test@example.com',
