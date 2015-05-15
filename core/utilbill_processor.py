@@ -239,14 +239,16 @@ class UtilbillProcessor(object):
             raise ValueError("Estimated utility bills can't have a file")
 
         # create in database
-        if utility is not None:
-            utility, new_utility = self.get_create_utility(utility, supplier)
-        if rate_class is not None:
-            rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
         if supplier is not None:
-           supplier = self.get_create_supplier(supplier)
+           supplier = self.create_supplier(supplier)
         if supply_group is not None:
-            supply_group = self.get_create_supply_group(supply_group, supplier)
+            supply_group = self.create_supply_group(supply_group, supplier.id, 'gas')
+        if utility is not None:
+            utility = self.create_utility(utility, supply_group.id) \
+                if supply_group else self.create_utility(utility)
+        if rate_class is not None:
+            rate_class = self.create_rate_class(rate_class, utility.id, 'gas')
+
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
@@ -483,10 +485,13 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def create_utility(self, name, supply_group_id):
+    def create_utility(self, name, supply_group_id=None):
         session = Session()
-        supply_group = session.query(SupplyGroup).filter_by(
-            id=supply_group_id).one()
+        if supply_group_id:
+            supply_group = session.query(SupplyGroup).filter_by(
+                id=supply_group_id).one()
+        else:
+            supply_group = None
         utility = Utility(name=name, sos_supply_group=supply_group,
                           address=Address())
         utility.rate_class = None

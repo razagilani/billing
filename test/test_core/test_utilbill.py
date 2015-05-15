@@ -1,7 +1,7 @@
 from mock import MagicMock, Mock
 from core import init_model
 
-from core.model.model import RegisterTemplate
+from core.model.model import RegisterTemplate, SupplyGroup
 from core.pricing import PricingModel
 from test import init_test_config
 from test.setup_teardown import clear_db
@@ -91,6 +91,7 @@ class UtilBillTest(TestCase):
         utilbill.utility = MagicMock()
         utilbill.rate_class = MagicMock()
         utilbill.supplier = MagicMock()
+        utilbill.supply_group = MagicMock()
         self.assertTrue(utilbill.is_processable())
 
         utilbill.set_processed(True)
@@ -107,12 +108,13 @@ class UtilBillTestWithDB(TestCase):
 
     def setUp(self):
         clear_db()
-        self.utility = Utility(name='utility', address=Address())
         self.supplier = Supplier(name='supplier', address=Address())
+        self.utility = Utility(name='utility', address=Address())
+
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), None, Address(), Address())
+                      service='gas'), Address(), Address())
         self.rate_class = RateClass(name='rate class', utility=self.utility,
                                     service='gas')
 
@@ -413,7 +415,7 @@ class UtilBillTestWithDB(TestCase):
         '''Compute utility bill with no charges.
         '''
         utility_account = UtilityAccount('someone', '99999',
-                'utility', 'supplier',
+                Utility(name='utility'), 'supplier',
                 'rate class', None, Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
