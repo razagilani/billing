@@ -66,8 +66,8 @@ def set_payee_for_reebill_customers(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 27')
-
-    alembic_upgrade('3e4ceae0f397')
+    alembic_upgrade('a583e412020')
+    init_model()
 
     init_model()
     s = Session()

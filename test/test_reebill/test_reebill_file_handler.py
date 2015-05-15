@@ -221,7 +221,7 @@ class SummaryFileGeneratorTest(TestCase):
         self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
                                        self.output_file)
         self.assertEqual(
-            'cf45e7e317aecda562f7dc671c0659d91186bf10',
+            '821a2674bd23b203cc1b0c42b93891221ec386ed',
             sha1(self.output_file.getvalue()).hexdigest()
         )
 
