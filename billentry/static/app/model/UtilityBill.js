@@ -18,6 +18,13 @@ Ext.define('BillEntry.model.UtilityBill', {
                 return 'Unknown Supplier' ;
             else
                 return data.supplier;}},
+        {name: 'supply_group', 'type': 'string', mapping: function( data ) {
+            if (data.supply_group==null)
+                    return 'Unknown Supply Group';
+             else
+                    return data.supply_group;  }
+        },
+        {name: 'supply_group_id', type: 'int'},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_energy', type: 'float'},
