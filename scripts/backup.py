@@ -35,7 +35,7 @@ MYSQLDUMP_COMMAND = 'mysqldump -u%(user)s -p%(password)s %(db)s'
 MYSQL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
-                        '--collection %(collection)s %(filepath)s')
+                        '--collection %(collection)s --host %(host)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
 ACCOUNTS_LIST = [100, 101, 102, 103, 104]
@@ -274,6 +274,7 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
 
     command = MONGORESTORE_COMMAND % dict(
             db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
             collection=collection_name,
             filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
@@ -292,7 +293,7 @@ def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_pa
         with open(dump_file_path, 'r') as dump_file:
             ungzip_file.write(dump_file.read())
     command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, filepath=shell_quote(bson_file_path))
+            collection=collection_name, host=config.get('mongodb', 'host'), filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
