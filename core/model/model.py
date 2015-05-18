@@ -19,6 +19,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
+from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
@@ -564,7 +565,7 @@ class UtilBill(Base):
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
-    target_total = Column(Float)
+    target_total = Column(DOUBLE(10, 2, asdecimal=False))
 
     # date when this bill was added to the database
     date_received = Column(DateTime)
