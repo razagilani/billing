@@ -564,7 +564,7 @@ class Charge(Base):
 
     def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
                  description='', unit='kWh', has_charge=True, shared=False,
-                 roundrule="", type='supply'):
+                 roundrule="", type=DISTRIBUTION):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -897,7 +897,7 @@ class UtilBill(Base):
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
-            type=charge_kwargs.get('type', "supply"))
+            type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
         registers = self.registers
