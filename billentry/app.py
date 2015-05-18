@@ -81,6 +81,7 @@ app.config['LOGIN_DISABLED'] = config.get('billentry',
 login_manager = LoginManager()
 login_manager.init_app(app)
 principals = Principal(app)
+app.permanent_session_lifetime = timedelta(seconds=config.get('billentry', 'timeout'))
 
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
@@ -145,8 +146,6 @@ def oauth2callback(resp):
     # the same email address.
     user_email = create_user_in_db(resp['access_token'])
     user = Session().query(BillEntryUser).filter_by(email=user_email).first()
-    # make Flask session's permanent to make Flask timeout's work
-    make_session_permenant()
     # start keeping track of user session
     start_user_session(user)
     return redirect(next_url)
@@ -251,15 +250,6 @@ def update_user_session_last_request_time(user):
     if recent_session:
         recent_session.last_request = datetime.utcnow()
         Session.commit()
-
-def make_session_permenant():
-    """ This method makes a flask session permanent. Flask session's are
-    not permanent by default. They have to be made permanent to make flask
-    session timeout's work
-    """
-    session.permanent = True
-    session.permanent_session_lifetime = timedelta(seconds=
-                                        config.get('billentry', 'timeout'))
 
 def set_next_url():
     next_path = request.args.get('next') or request.path
