@@ -96,6 +96,68 @@ class UtilBillTest(TestCase):
         utilbill.set_processed(True)
         self.assertTrue(utilbill.processed)
 
+    def test_utility_rate_class(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        utility = Utility(name='utility')
+        rate_class = RateClass(utility=utility, name='rate class',
+                               service=RateClass.ELECTRIC)
+        other_utility = Utility(name='other')
+
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_utility(utility)
+        self.assertEqual(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_rate_class(rate_class)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+
+        # when there's a rate class, you can get/set total energy
+        utilbill.set_total_energy(1)
+        self.assertEqual(1, utilbill.get_total_energy())
+
+        # when the same utility is set again, rate class is unchanged
+        utilbill.set_utility(utility)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+
+        # when a different utility is chosen, rate class is unknown
+        utilbill.set_utility(other_utility)
+        self.assertEqual(other_utility, utilbill.get_utility())
+        self.assertEqual('other', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        # with no rate class, there are no registers, so you can't set the
+        # energy, but you can get it (it will always be 0)
+        with self.assertRaises(StopIteration):
+            utilbill.set_total_energy(1)
+        self.assertEqual(0, utilbill.get_total_energy())
+
+        # utility and rate class can be set to None
+        utilbill.set_utility(None)
+        utilbill.set_rate_class(None)
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
 
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
@@ -451,9 +513,9 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(150 + 6, utilbill.get_total_charges())
 
     def test_compute_charges_with_cycle(self):
-        '''Test computing charges whose dependencies form a cycle.
+        """Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
-        '''
+        """
         utility = Utility(name='utility', address=Address())
         supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
@@ -490,6 +552,17 @@ class UtilBillTestWithDB(TestCase):
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                           "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
+
+    def test_ordered_charges_cycle_tsort_keyerror(self):
+        """This causes a KeyError to be raised in tsort.topological_sort
+        instead of the expected GraphError, covering the "except KeyError"
+        block in UtilBill.ordered_charges.
+        """
+        utilbill = UtilBill(MagicMock(), None, None)
+        utilbill.charges = [Charge('a', formula='b'), Charge('b', formula='b')]
+        ordered_charges = utilbill.ordered_charges()
+        # in this case any order is OK as long as all the charges are there
+        self.assertEqual(set(utilbill.charges), set(ordered_charges))
 
     def test_processed_utility_bills(self):
         '''

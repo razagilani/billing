@@ -570,7 +570,7 @@ class Charge(Base):
 
     def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
                  description='', unit='kWh', has_charge=True, shared=False,
-                 roundrule="", type='supply'):
+                 roundrule="", type=DISTRIBUTION):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -818,6 +818,8 @@ class UtilBill(Base):
     def get_utility_name(self):
         '''Return name of this bill's utility.
         '''
+        if self.utility is None:
+            return None
         return self.utility.name
 
     def get_next_meter_read_date(self):
@@ -842,13 +844,25 @@ class UtilBill(Base):
     def get_rate_class(self):
         return self.rate_class
 
+    def set_utility(self, utility):
+        """Set the utility, and set the rate class to None if the utility is
+        different from the current one.
+        :param utility: Utility or None
+        """
+        if utility != self.utility:
+            self.set_rate_class(None)
+        self.utility = utility
+
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
-        the new rate class.
+        the new rate class (no registers of rate_class is None).
+        :param rate_class: RateClass or None
         """
-        self.rate_class = rate_class
-        if rate_class is not None:
+        if rate_class is None:
+            self.registers = []
+        else:
             self.registers = rate_class.get_register_list()
+        self.rate_class = rate_class
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
@@ -892,7 +906,7 @@ class UtilBill(Base):
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
-            type=charge_kwargs.get('type', "supply"))
+            type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
         registers = self.registers
@@ -932,6 +946,14 @@ class UtilBill(Base):
                 independent_bindings.update(circular_bindings)
                 dependency_graph = [(a, b) for a, b in dependency_graph
                                     if b not in circular_bindings]
+            except KeyError as e:
+                # tsort sometimes gets a KeyError when generating its error
+                # message about a cycle. in that case there's only one
+                # binding to move into 'independent bindings'
+                binding = e.args[0]
+                independent_bindings.add(binding)
+                dependency_graph = [(a, b) for a, b in dependency_graph
+                                    if b != binding]
             else:
                 break
         order = list(independent_bindings) + [x for x in sortresult
@@ -1073,8 +1095,11 @@ class UtilBill(Base):
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
-        register = next(r for r in self.registers if r.register_binding
-                                                     == Register.TOTAL)
+        try:
+            register = next(r for r in self.registers if r.register_binding
+                                                         == Register.TOTAL)
+        except StopIteration:
+            return None
         return register.meter_identifier
 
     def get_total_energy_consumption(self):

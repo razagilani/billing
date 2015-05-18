@@ -424,6 +424,7 @@ class ReeBill(Base):
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
+            'estimated': self.is_estimated(),
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
                          self.readings],
             'groups': [{c: getattr(r, c) for c in r.column_names()} for r in

@@ -16,6 +16,12 @@ require host::hosts_file
 package { 'httpd':
     ensure  => installed
 }
+package { 'postgresql93':
+    ensure  => installed
+}
+package { 'postgresql93-devel':
+    ensure  => installed
+}
 package { 'html2ps':
     ensure  => installed
 }
