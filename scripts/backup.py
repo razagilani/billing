@@ -293,7 +293,8 @@ def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_pa
         with open(dump_file_path, 'r') as dump_file:
             ungzip_file.write(dump_file.read())
     command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, host=config.get('mongodb', 'host'), filepath=shell_quote(bson_file_path))
+            collection=collection_name, filepath=shell_quote(bson_file_path),
+            host=config.get('mongodb', 'host'))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
