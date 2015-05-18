@@ -69,9 +69,8 @@ class UtilbillProcessor(object):
                 utilbill.get_service() is not None else 'gas')
 
         if utility is not None and isinstance(utility, basestring):
-            utilbill.utility, new_utility = self.get_create_utility(utility)
-            if new_utility:
-                utilbill.rate_class = None
+            utility, _ = self.get_create_utility(utility)
+            utilbill.set_utility(utility)
 
         if meter_identifier is not None:
             utilbill.set_total_meter_identifier(meter_identifier)
