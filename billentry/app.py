@@ -243,6 +243,9 @@ def before_request():
         update_user_session_last_request_time(user)
 
 def update_user_session_last_request_time(user):
+    """ This is called to update the last_request field of BEUserSession
+    every time user makes a request for a resource
+    """
     recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
         order_by(desc(BEUserSession.session_start)).first()
     if recent_session:
@@ -255,7 +258,7 @@ def make_session_permenant():
     session timeout's work
     """
     session.permanent = True
-    session.permanent_session_lifetime = timedelta(minutes=
+    session.permanent_session_lifetime = timedelta(seconds=
                                         config.get('billentry', 'timeout'))
 
 def set_next_url():

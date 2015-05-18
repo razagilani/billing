@@ -71,6 +71,8 @@ class BillEntryUser(Base, UserMixin):
         return '<User %s>' % self.email
 
     def get_beuser_billentry_duration(self, start, end):
+        """ Method to calculate the duration of user session between start and end times
+        """
         duration = 0.0
         start = datetime(start.year, start.month, start.day)
         end = datetime(end.year, end.month, end.day)
