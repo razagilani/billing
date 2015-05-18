@@ -1,4 +1,6 @@
 from tablib import Dataset
+from exc import BillingError
+
 
 class ReconciliationReport(object):
     """Produces a report on how much energy was billed for in each bill vs.
@@ -19,7 +21,10 @@ class ReconciliationReport(object):
                                    'current_energy'])
         for reebill in self.reebill_dao.get_all_reebills():
             original_energy = reebill.get_total_renewable_energy()
-            self.ree_getter.update_renewable_readings(reebill)
+            try:
+                self.ree_getter.update_renewable_readings(reebill)
+            except BillingError:
+                continue
             current_energy = reebill.get_total_renewable_energy()
             dataset.append(
                 [reebill.get_customer_id(), reebill.sequence, original_energy,
