@@ -35,10 +35,10 @@ def upgrade():
         sa.ForeignKeyConstraint(['supplier_id'], ['supplier.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
-    op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), nullable=True))
+    op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
     op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=True))
-    op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), nullable=True))
-    op.add_column('utility', sa.Column('sos_supply_group_id', sa.Integer(), nullable=True))
+    op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'),nullable=True))
+    op.add_column('utility', sa.Column('sos_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
 
     op.alter_column('reebill_customer', 'payee',
                existing_type=mysql.VARCHAR(length=100),
