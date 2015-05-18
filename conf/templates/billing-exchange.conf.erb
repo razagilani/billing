@@ -1,0 +1,8 @@
+description "billing <%= @env%> exchange"
+start on started rabbitmq-server
+script
+su --login  <%= @username%> --session-command "cd /var/local/<%= @username%>/billing/;python bin/run_utilbill_amqp_consumer.py &> /home/<%= @username%>/logs/billing-exchange.log"
+end script
+console output
+respawn
+respawn limit 2 10
