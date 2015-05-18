@@ -73,7 +73,8 @@ class UtilbillProcessor(object):
                 rate_class)
 
         if utility is not None:
-            utilbill.utility = self.get_utility(utility)
+            utility = self.get_utility(utility)
+            utilbill.set_utility(utility)
 
         if meter_identifier is not None:
             utilbill.set_total_meter_identifier(meter_identifier)

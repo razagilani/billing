@@ -516,7 +516,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson({
             "results": 1,
             "rows": {
-         	    'computed_total': 85.0,
+         	    'computed_total': 40.0,
                 'due_date': None,
                 'entered': False,
                 'id': 1,
@@ -525,20 +525,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
-                'service': 'Gas',
+                'rate_class': 'Unknown',
+                'service': 'Unknown',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
                 'supply_choice_id': None,
                 'supply_total': 2.0,
                 'target_total': 0.0,
-                'total_energy': 150.0,
+                'total_energy': 0,
                 'utility': 'Empty Utility',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
                 'flagged': False,
-                'meter_identifier': 'GHIJKL',
+                'meter_identifier': None,
                 'tou': False
             }}, rv.data
         )
@@ -554,7 +554,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             {
             "results": 1,
             "rows": {
-                  'computed_total': 85.0,
+                  'computed_total': 40.0,
                   'id': 1,
                   'due_date': None,
                   'next_meter_read_date': None,
@@ -562,13 +562,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
+                  'rate_class': 'Unknown',
+                  'service': 'Unknown',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
                   'supply_total': 2.0,
                   'target_total': 0.0,
-                  'total_energy': 150.0,
+                  'total_energy': 0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
                   'utility_account_id': 1,
@@ -576,7 +576,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
                   'flagged': False,
-                  'meter_identifier': 'GHIJKL',
+                  'meter_identifier': None,
                   'tou': False
             },
             }, rv.data
