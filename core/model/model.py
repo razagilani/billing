@@ -808,6 +808,14 @@ class UtilBill(Base):
                 independent_bindings.update(circular_bindings)
                 dependency_graph = [(a, b) for a, b in dependency_graph
                                     if b not in circular_bindings]
+            except KeyError as e:
+                # tsort sometimes gets a KeyError when generating its error
+                # message about a cycle. in that case there's only one
+                # binding to move into 'independent bindings'
+                binding = e.args[0]
+                independent_bindings.add(binding)
+                dependency_graph = [(a, b) for a, b in dependency_graph
+                                    if b != binding]
             else:
                 break
         order = list(independent_bindings) + [x for x in sortresult
