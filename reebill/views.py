@@ -163,11 +163,8 @@ class Views(object):
                 UtilityAccount.account == account)
 
         rows_dict = {}
-        name_dicts = {}
         for ua, reebill_customer in utility_accounts:
-            name_dicts[ua.account] = self._nexus_util.fast_all(
-                'billing', ua.account
-            )
+            name_dict = self._nexus_util.fast_all('billing', ua.account)
             if reebill_customer is None:
                 group_names = []
             else:
@@ -179,9 +176,9 @@ class Views(object):
                 'fb_rate_class': ua.fb_rate_class.name \
                     if ua.fb_rate_class else '',
                 'utility_account_number': ua.account_number,
-                'codename': name_dicts[ua.account].get('codename', ''),
-                'casualname': name_dicts[ua.account].get('casualname', ''),
-                'primusname': name_dicts[ua.account].get('primus', ''),
+                'codename': name_dict.get('codename', ''),
+                'casualname': name_dict.get('casualname', ''),
+                'primusname': name_dict.get('primus', ''),
                 'utilityserviceaddress': str(ua.get_service_address()),
                 'tags': group_names,
                 'lastevent': '',
