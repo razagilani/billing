@@ -42,7 +42,7 @@ Ext.define('BillEntry.view.reports.UserUtilBillCount', {
         ],
         summaryType: 'sum'
     },{
-        header: 'Total duration of Bills Entry',
+        header: 'Second spent in BillEntry',
         dataIndex: 'elapsed_time',
         width: 120,
         items: [
