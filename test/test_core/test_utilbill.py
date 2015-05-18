@@ -513,9 +513,9 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(150 + 6, utilbill.get_total_charges())
 
     def test_compute_charges_with_cycle(self):
-        '''Test computing charges whose dependencies form a cycle.
+        """Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
-        '''
+        """
         utility = Utility(name='utility', address=Address())
         supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
@@ -552,6 +552,17 @@ class UtilBillTestWithDB(TestCase):
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                           "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
+
+    def test_ordered_charges_cycle_tsort_keyerror(self):
+        """This causes a KeyError to be raised in tsort.topological_sort
+        instead of the expected GraphError, covering the "except KeyError"
+        block in UtilBill.ordered_charges.
+        """
+        utilbill = UtilBill(MagicMock(), None, None)
+        utilbill.charges = [Charge('a', formula='b'), Charge('b', formula='b')]
+        ordered_charges = utilbill.ordered_charges()
+        # in this case any order is OK as long as all the charges are there
+        self.assertEqual(set(utilbill.charges), set(ordered_charges))
 
     def test_processed_utility_bills(self):
         '''
