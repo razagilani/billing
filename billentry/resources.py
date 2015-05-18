@@ -10,6 +10,7 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case
+from sqlalchemy.orm import joinedload
 
 from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
@@ -167,7 +168,8 @@ parse_date = lambda _s: dateutil_parser.parse(_s).date()
 class AccountListResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
-            BrokerageAccount).order_by(UtilityAccount.account).all()
+            BrokerageAccount).options(joinedload('utilbills')).options(
+            joinedload('fb_utility')).order_by(UtilityAccount.account).all()
         return [dict(marshal(account, {
             'id': Integer,
             'account': String,
