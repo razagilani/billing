@@ -274,8 +274,8 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
 
     command = MONGORESTORE_COMMAND % dict(
             db=config.get('mongodb', 'database'),
-            collection=collection_name,
             host=config.get('mongodb', 'host'),
+            collection=collection_name,
             filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
 
