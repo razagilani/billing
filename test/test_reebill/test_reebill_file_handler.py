@@ -55,7 +55,7 @@ class ReebillFileHandlerTest(TestCase):
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
-                    billing_address=ba, service_address=sa, utilbills=[u])
+                    billing_address=ba, service_address=sa, utilbill=u)
         self.reebill.replace_readings_from_utility_bill_registers(u)
         self.reebill.charges = [
             ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply',
@@ -196,7 +196,7 @@ class SummaryFileGeneratorTest(TestCase):
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_1 = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
-            billing_address=ba, service_address=sa, utilbills=[u])
+            billing_address=ba, service_address=sa, utilbill=u)
         u2 = UtilBill(utility_account, None, None,
              supplier='Test Supplier', billing_address=ba,
              service_address=sa, period_start=date(2000, 2, 1),
@@ -205,7 +205,7 @@ class SummaryFileGeneratorTest(TestCase):
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_2 = ReeBill(c, 2, discount_rate=0.3, late_charge_rate=0.1,
-            billing_address=ba, service_address=sa, utilbills=[u])
+            billing_address=ba, service_address=sa, utilbill=u)
 
         self.temp_dir = TempDirectory()
         self.reebill_file_handler = ReebillFileHandler(
@@ -221,7 +221,7 @@ class SummaryFileGeneratorTest(TestCase):
         self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
                                        self.output_file)
         self.assertEqual(
-            'cf45e7e317aecda562f7dc671c0659d91186bf10',
+            '821a2674bd23b203cc1b0c42b93891221ec386ed',
             sha1(self.output_file.getvalue()).hexdigest()
         )
 

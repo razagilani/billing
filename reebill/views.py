@@ -131,7 +131,7 @@ class Views(object):
         """
         session = Session()
         unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == 0,
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == True,
                                                           ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
@@ -141,7 +141,7 @@ class Views(object):
         reebills = session.query(ReeBill) \
             .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
             .filter(ReeBill.sequence==min_sequence.c.sequence)\
-            .filter(ReeBill.processed == 1)
+            .filter(ReeBill.processed == True)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
@@ -257,7 +257,9 @@ class Views(object):
         ).outerjoin(ReeBillCharge) \
             .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        return [dict(rb.column_dict().items() +
-                     [('total_error', _get_total_error(account, rb.sequence))])
-                for rb in q]
+        return [
+            dict(rb.column_dict().items(),
+                total_error=_get_total_error(account, rb.sequence),
+                estimated=rb.is_estimated())
+        for rb in q]
 
