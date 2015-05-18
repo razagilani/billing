@@ -10,6 +10,8 @@ from fabric.api import env
 env.roledefs.update({
     'skyline-internal-prod': ['skyline-internal-prod'],
     'skyline-internal-stage': ['skyline-internal-stage'],
+    'billing-stage': ['billing-stage'],
+    'billing-prod': ['billing-prod'],
 })
 
 #
