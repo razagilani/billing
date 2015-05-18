@@ -317,7 +317,8 @@ class ChargeResource(BaseResource):
         parser.add_argument('rsi_binding', type=str, required=True)
         args = parser.parse_args()
         charge = self.utilbill_processor.add_charge(
-            args['utilbill_id'], rsi_binding=args['rsi_binding'])
+            args['utilbill_id'], rsi_binding=args['rsi_binding'],
+            type=Charge.SUPPLY)
         Session().commit()
         return {'rows': marshal(charge, self.charge_fields), 'results': 1}
 
