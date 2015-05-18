@@ -1,0 +1,1 @@
+This file forces Mercurial to track the "logs" directory so there is always a place to put log files.
