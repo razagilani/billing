@@ -39,50 +39,6 @@ class ReeBillDAO(object):
         # SQLAlchemy returns a "long" here for some reason, so convert to int
         return int(max_version)
 
-    def increment_version(self, account, sequence):
-        '''Creates a new reebill with version number 1 greater than the highest
-        existing version for the given account and sequence.
-
-        The utility bill(s) of the new version are the same as those of its
-        predecessor, but utility bill, UPRS, and document_ids are cleared
-        from the utilbill_reebill table, meaning that the new reebill's
-        utilbill/UPRS documents are the current ones.
-
-        Returns the new state.ReeBill object.'''
-        # highest existing version must be issued
-        session = Session()
-        current_max_version_reebill = self.get_reebill(account, sequence)
-        if current_max_version_reebill.issued != 1:
-            raise ValueError(("Can't increment version of reebill %s-%s "
-                    "because version %s is not issued yet") % (account,
-                    sequence, current_max_version_reebill.version))
-
-        new_reebill = ReeBill(current_max_version_reebill.reebill_customer, sequence,
-            current_max_version_reebill.version + 1,
-            discount_rate=current_max_version_reebill.discount_rate,
-            late_charge_rate=current_max_version_reebill.late_charge_rate,
-            utilbills=current_max_version_reebill.utilbills)
-
-        # copy "sequential account info"
-        new_reebill.billing_address = Address.from_other(
-                current_max_version_reebill.billing_address)
-        new_reebill.service_address = Address.from_other(
-                current_max_version_reebill.service_address)
-        new_reebill.discount_rate = current_max_version_reebill.discount_rate
-        new_reebill.late_charge_rate = \
-                current_max_version_reebill.late_charge_rate
-
-        # copy readings (rather than creating one for every utility bill
-        # register, which may not be correct)
-        new_reebill.update_readings_from_reebill(
-                current_max_version_reebill.readings)
-
-        for ur in new_reebill._utilbill_reebills:
-            ur.document_id, ur.uprs_id, = None, None
-
-        session.add(new_reebill)
-        return new_reebill
-
     def get_original_version(self, reebill):
         """Return a ReeBill object that is "the same bill" as the given one,
         but has version 0, meaning it is not a corrected version.
