@@ -17,7 +17,7 @@ from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
+from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -222,6 +222,8 @@ class UtilBillResource(BaseResource):
         parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('supplier_id', type=int)
+        parser.add_argument('supply_group', type=str)
+        parser.add_argument('supply_group_id', type=int)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
         parser.add_argument('flagged', type=bool)
@@ -252,7 +254,8 @@ class UtilBillResource(BaseResource):
             supplier=row['supplier_id'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
-            meter_identifier=row['meter_identifier']
+            meter_identifier=row['meter_identifier'],
+            supply_group=row['supply_group']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
@@ -334,6 +337,23 @@ class SuppliersResource(BaseResource):
         suppliers = Session().query(Supplier).all()
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
+
+class SupplyGroupsResource(BaseResource):
+    def get(self):
+        supply_groups = Session().query(SupplyGroup).all()
+        rows = marshal(supply_groups, {'id': Integer, 'name': String})
+        return {'rows': rows, 'results': len(rows)}
+
+    def handle_post(self, *vpath, **params):
+        parser = id_parser.copy()
+        parser.add_argument('supplier_id', type=int, required=True)
+        parser.add_argument('service', type=str, required=True)
+        parser.add_argument('name', type=str, required=True)
+        args=parser.parse_args()
+        supply_group = self.utilbill_processor.create_supply_group(args['name'],
+                                                    args['supplier_id'], args['service'])
+        return True, {'rows': self.utilbill_views.
+            get_supply_group_json(supply_group), 'results': 1 }
 
 
 class UtilitiesResource(BaseResource):
