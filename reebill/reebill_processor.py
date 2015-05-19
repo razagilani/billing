@@ -623,7 +623,7 @@ class ReebillProcessor(object):
 
     # TODO: get rid of this method. load for the processed bills, then call
     # the issue_and_mail method above to issue them.
-    def issue_processed_and_mail(self, apply_corrections):
+    def issue_processed_and_mail(self):
         '''This function issues all processed reebills'''
         bills = self._get_issuable_reebills().filter_by(processed=True).all()
         for bill in bills:
@@ -633,17 +633,9 @@ class ReebillProcessor(object):
             # a confirmation message
             unissued_corrections = self.get_unissued_corrections(
                 bill.reebill_customer.utility_account.account)
-            if len(unissued_corrections) > 0 and not apply_corrections:
-                # The user has confirmed to issue unissued corrections.
-                sequences = [sequence for sequence, _, _
-                            in unissued_corrections]
-                total_adjustment = sum(adjustment
-                            for _, _, adjustment in unissued_corrections)
-                raise ConfirmAdjustment(sequences, total_adjustment)
             # Let's issue
             issue_date = datetime.utcnow()
             if len(unissued_corrections) > 0:
-                assert apply_corrections is True
                 try:
                     self.issue_corrections(bill.get_account(), bill.sequence,
                         issue_date)
@@ -672,9 +664,7 @@ class ReebillProcessor(object):
             # TODO: BILL-6288 place in config file.
             # TODO: one email per bill? That is bad.
             self.mail_reebill("issue_email_template.html", 
-                "Energy Bill Due",
-                bill,
-                recipient_list)
+                "Energy Bill Due", bill, recipient_list)
 
         bills_dict = [bill.column_dict() for bill in bills]
         return bills_dict

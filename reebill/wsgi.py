@@ -406,7 +406,7 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        bills = self.reebill_processor.issue_processed_and_mail(apply_corrections=True)
+        bills = self.reebill_processor.issue_processed_and_mail()
         for bill in bills:
             version = self.state_db.max_version(bill['account'], bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(
