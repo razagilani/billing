@@ -545,32 +545,6 @@ class ReebillProcessor(object):
                 if "display_file_path" in fields and fields["display_file_path"] is not None 
                 else "attachment.pdf")
 
-    def _get_issuable_reebills(self):
-        '''Return a Query of "issuable" reebills (lowest-sequence bill for
-        each account that is unissued and is not a correction).
-        '''
-        session = Session()
-        unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(
-            ReeBill.issued == 0, ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-            unissued_v0_reebills.c.reebill_customer_id.label(
-                'reebill_customer_id'),
-            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
-            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
-        return session.query(ReeBill).filter(
-            ReeBill.reebill_customer_id == min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence == min_sequence.c.sequence)
-
-    def get_issuable_reebills_dict(self):
-        """ Returns a list of issuable reebill dictionaries
-            of the earliest unissued version-0 reebill account. If
-            proccessed == True, only processed Reebills are returned
-            account can be used to get issuable bill for an account
-        """
-        return [r.column_dict() for r in self.get_issuable_reebills().all()]
-
     # TODO: what does this do?
     # TODO: no test coverage
     def check_confirm_adjustment(self, accounts_list):
@@ -614,7 +588,7 @@ class ReebillProcessor(object):
 
     def issue_processed_and_mail(self):
         '''This function issues all processed reebills'''
-        bills = self._get_issuable_reebills().filter_by(processed=True).all()
+        bills = self.state_db.get_issuable_reebills().all()
         self._issue_bills(bills)
         return [bill.column_dict() for bill in bills]
 
