@@ -559,7 +559,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         # it is OK to call issue_corrections() when no corrections
         # exist: nothing should happen
-        rp.issue_corrections(acc, 4)
+        rp.issue_corrections(acc, 4, datetime.utcnow())
 
         reebill_data = lambda seq: next(
             d for d in self.views.get_reebill_metadata_json(acc)
@@ -594,9 +594,10 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual(50, rp.get_total_adjustment(acc))
 
         # try to apply corrections to an issued bill
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 2)
+        issue_date = datetime.utcnow()
+        self.assertRaises(ValueError, rp.issue_corrections, acc, 2, issue_date)
         # try to apply corrections to a correction
-        self.assertRaises(ValueError, rp.issue_corrections, acc, 3)
+        self.assertRaises(ValueError, rp.issue_corrections, acc, 3, issue_date)
 
         self.assertFalse(reebill_data(1)['issued'])
         self.assertFalse(reebill_data(3)['issued'])
@@ -611,7 +612,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
 
         # apply corrections to un-issued reebill 4. reebill 4 should be
         # updated, and the corrections (1 & 3) should be issued
-        rp.issue_corrections(acc, 4)
+        rp.issue_corrections(acc, 4, issue_date)
         rp.compute_reebill(acc, 4)
         # for some reason, adjustment is part of "balance forward"
         # https://www.pivotaltracker.com/story/show/32754231
@@ -1151,6 +1152,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
 
         self.assertTrue(two.issued)
         self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
+        self.assertTrue(two_1.issued)
+        self.assertEqual(two_1.issue_date, two.issue_date)
 
         temp_dir.cleanup()
 
