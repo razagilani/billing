@@ -1134,7 +1134,6 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEqual(True, self.state_db.is_issued(acc, 2))
         self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
         self.assertEqual(True, one_1.issued)
-        self.assertEqual(two.issue_date, one_1.issue_date)
         self.assertEqual(one.due_date, one_1.due_date)
 
         temp_dir.cleanup()
