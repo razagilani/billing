@@ -14,12 +14,12 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" is imported.
 from exc import UnEditableBillError
 from test import init_test_config
+from util import FixMQ
 from util.dictutils import deep_map
 
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
-from mq import IncomingMessage
 
 import billentry
 from billentry import common
@@ -33,7 +33,9 @@ from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
-from mq.tests import create_mock_channel_method_props, \
+with FixMQ():
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from test.setup_teardown import clear_db
 
@@ -512,7 +514,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson({
             "results": 1,
             "rows": {
-         	    'computed_total': 85.0,
+         	    'computed_total': 40.0,
                 'due_date': None,
                 'entered': False,
                 'id': 1,
@@ -521,20 +523,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
-                'service': 'Gas',
+                'rate_class': 'Unknown',
+                'service': 'Unknown',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
                 'supply_choice_id': None,
                 'supply_total': 2.0,
                 'target_total': 0.0,
-                'total_energy': 150.0,
+                'total_energy': 0,
                 'utility': 'Empty Utility',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
                 'flagged': False,
-                'meter_identifier': 'GHIJKL',
+                'meter_identifier': None,
                 'tou': False
             }}, rv.data
         )
@@ -548,7 +550,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             {
             "results": 1,
             "rows": {
-                  'computed_total': 85.0,
+                  'computed_total': 40.0,
                   'id': 1,
                   'due_date': None,
                   'next_meter_read_date': None,
@@ -556,13 +558,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
+                  'rate_class': 'Unknown',
+                  'service': 'Unknown',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
                   'supply_total': 2.0,
                   'target_total': 0.0,
-                  'total_energy': 150.0,
+                  'total_energy': 0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
                   'utility_account_id': 1,
@@ -570,7 +572,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
                   'flagged': False,
-                  'meter_identifier': 'GHIJKL',
+                  'meter_identifier': None,
                   'tou': False
             },
             }, rv.data
