@@ -121,25 +121,6 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         },
         width: 100
     },{
-        header: 'Supplier',
-        dataIndex: 'supplier',
-        emptyText: 'Unknown Supplier',
-        editor: {
-            xtype: 'combo',
-            store: 'Suppliers',
-            itemId: 'supplier_combo',
-            displayField: 'name',
-            valueField: 'name',
-            triggerAction: 'all',
-            forceSelection: false,
-            typeAhead: true,
-            typeAheadDelay : 1,
-            autoSelect: false,
-            regex: /[a-zA-Z0-9]+/,
-            minChars: 1
-        },
-        width: 150
-    },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         emptyText: 'Unknown Rate Class',
@@ -159,6 +140,48 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             selectOnFocus: true
         },
         width: 200
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        emptyText: 'Unknown Supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            itemId: 'supplier_combo',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        width: 150
+    },{
+        header: 'Supply Group',
+        dataIndex: 'supply_group_id',
+        emptyText: 'Unknown Supply Group',
+        editor: {
+            xtype: 'combo',
+            store: 'SupplyGroups',
+            itemId: 'supply_group_combo',
+            displayField: 'name',
+            valueField: 'id',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay: 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        renderer: function(val, metaDate, record){
+            return record.get('supply_group');
+        },
+        minWidth: 250,
+        flex: 1
     },{
         header: 'Service',
         dataIndex: 'service',
