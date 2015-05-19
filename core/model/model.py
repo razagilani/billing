@@ -853,7 +853,7 @@ class UtilBill(Base):
         return self.supplier
 
     def get_supplier_id(self):
-        return self.supplier.id
+        return self.supplier_id
 
     def get_utility_name(self):
         '''Return name of this bill's utility.
