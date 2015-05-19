@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
-from core.model.model import PHYSICAL_UNITS
+from core.model.model import physical_unit_type
 
 from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
@@ -33,7 +33,7 @@ class ReeBill(Base):
 
     id = Column(Integer, primary_key=True)
     sequence = Column(Integer, nullable=False)
-    issued = Column(Integer, nullable=False)
+    issued = Column(Boolean, nullable=False)
     version = Column(Integer, nullable=False)
     issue_date = Column(DateTime)
     ree_charge = Column(Float, nullable=False)
@@ -117,7 +117,7 @@ class ReeBill(Base):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
-        self.issued = 0
+        self.issued = False
         if discount_rate:
             self.discount_rate = discount_rate
         else:
@@ -437,8 +437,7 @@ class ReeBill(Base):
             else:
                 the_dict['corrections'] = '#%s not issued' % self.version
         else:
-            the_dict['corrections'] = '-' if self.issued else '(never ' \
-                                                                 'issued)'
+            the_dict['corrections'] = '-' if self.issued else '(never issued)'
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
@@ -605,8 +604,8 @@ class ReeBillCustomer(Base):
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
-    service = Column(Enum(*SERVICE_TYPES), nullable=False)
-    payee = Column(String(100), nullable=False)
+    service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
+    payee = Column(String(100), nullable=True)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"
@@ -717,7 +716,7 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
+    unit = Column(Charge.charge_unit_type, nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -748,7 +747,9 @@ class Reading(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
     # identifies which utility bill register this corresponds to
-    register_binding = Column(String(1000), nullable=False)
+    # TODO: may have to be changed to same type as register.register_binding
+    # for comparison to work
+    register_binding = Column(Register.register_binding_type, nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
     # quantity
@@ -762,7 +763,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
 
     @classmethod
     def create_from_register(cls, register, estimate=False):

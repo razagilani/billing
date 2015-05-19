@@ -22,7 +22,11 @@ def run_upgrade(version):
     module = importlib.import_module('upgrade_scripts.v%s' % version)
     module.upgrade()
 
-def alembic_upgrade(revision_to):
-    config = Config("alembic.ini")
+def alembic_upgrade(revision_to, config=None):
+    """Upgrade to the given Alembic revision number.
+    'config': optional Config object to override the normal one.
+    """
+    if config is None:
+        config = Config("alembic.ini")
     upgrade(config, revision_to)
 
