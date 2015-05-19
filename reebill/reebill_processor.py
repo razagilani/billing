@@ -285,6 +285,7 @@ class ReebillProcessor(object):
             result.append((seq, max_version, adjustment))
         return result
 
+    # deprecated--do not use
     def issue_corrections(self, account, target_sequence, issue_date):
         '''Applies adjustments from all unissued corrections for 'account' to
         the reebill given by 'target_sequence', and marks the corrections as
@@ -591,23 +592,11 @@ class ReebillProcessor(object):
         """this function issues a single reebill and sends out a confirmation
         email.
         """
-        # If there are unissued corrections and the user has not confirmed
-        # to issue them, we will return a list of those corrections and the
-        # sum of adjustments that have to be made so the client can create
-        # a confirmation message
-        unissued_corrections = self.get_unissued_corrections(account)
-
-        # Let's issue
         issue_date = datetime.utcnow()
-        try:
-            if len(unissued_corrections) > 0:
-                self.issue_corrections(account, sequence, issue_date)
-            reebill = self.state_db.get_reebill(account, sequence)
-            reebill.issue(issue_date, self)
-        except Exception as e:
-            self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                    account, sequence, e.__class__.__name__),) + e.args)
-            raise
+        reebill = self.state_db.get_reebill(account, sequence, version=0)
+        # not version 0
+        reebill.issue(issue_date, self,
+            corrections=reebill.reebill_customer.get_unissued_corrections())
 
         # Recepients can be a comma seperated list of email addresses
         if recipients is None:
@@ -627,18 +616,10 @@ class ReebillProcessor(object):
         '''This function issues all processed reebills'''
         bills = self._get_issuable_reebills().filter_by(processed=True).all()
         for bill in bills:
-            # If there are unissued corrections and the user has not confirmed
-            # to issue them, we will return a list of those corrections and the
-            # sum of adjustments that have to be made so the client can create
-            # a confirmation message
-            unissued_corrections = self.get_unissued_corrections(
-                bill.reebill_customer.utility_account.account)
-            # Let's issue
             issue_date = datetime.utcnow()
-            if len(unissued_corrections) > 0:
-                self.issue_corrections(bill.get_account(), bill.sequence,
-                    issue_date)
-            bill.issue(issue_date, self)
+            bill.issue(
+                issue_date, self,
+                corrections=bill.reebill_customer.get_unissued_corrections())
 
             # email_recipient can be a comma-separated list of email addresses
             if bill.email_recipient is None:
@@ -681,8 +662,8 @@ class ReebillProcessor(object):
         # sweep up corrections and issue bills
         for b in reebills:
             issue_date = datetime.utcnow()
-            self.issue_corrections(b.get_account(), b.sequence, issue_date)
-            b.issue(issue_date, self)
+            b.issue(issue_date, self,
+                    corrections=self.get_unissued_corrections(b.get_account()))
 
         # Summary depends on data of first ReeBill of those summarized 
         self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)

@@ -1132,7 +1132,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler.render_max_version\
             .return_value = 2
         # ValueError is Raised if an issued Bill is issued again
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.reebill_processor.issue_and_mail(
                 account=acc, sequence=1, recipients=two.email_recipient)
         self.reebill_processor.toggle_reebill_processed(acc, 2, True)
