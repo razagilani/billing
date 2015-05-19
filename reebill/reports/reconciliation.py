@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from tablib import Dataset
 from exc import BillingError
 
@@ -19,7 +20,8 @@ class ReconciliationReport(object):
         """
         dataset = Dataset(headers=['customer_id', 'sequence', 'energy',
                                    'current_energy'])
-        for reebill in self.reebill_dao.get_all_reebills():
+        start = datetime.utcnow() - timedelta(days=365)
+        for reebill in self.reebill_dao.get_all_reebills(start_date=start):
             original_energy = reebill.get_total_renewable_energy()
             try:
                 self.ree_getter.update_renewable_readings(reebill)
