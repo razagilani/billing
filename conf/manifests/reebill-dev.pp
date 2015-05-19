@@ -11,9 +11,15 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-host::hosts_file {$env:}
+require host::hosts_file
 
 package { 'httpd':
+    ensure  => installed
+}
+package { 'postgresql93':
+    ensure  => installed
+}
+package { 'postgresql93-devel':
     ensure  => installed
 }
 package { 'html2ps':

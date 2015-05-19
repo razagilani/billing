@@ -96,7 +96,7 @@ class BaseResource(Resource):
         # requires BillFileHandler, so not an attribute of UtilBill itself
         class PDFUrlField(Raw):
             def output(self, key, obj):
-                return bill_file_handler.get_s3_url(obj)
+                return bill_file_handler.get_url(obj)
 
         class WikiUrlField(Raw):
             def output(self, key, obj):
@@ -319,7 +319,8 @@ class ChargeResource(BaseResource):
         parser.add_argument('rsi_binding', type=str, required=True)
         args = parser.parse_args()
         charge = self.utilbill_processor.add_charge(
-            args['utilbill_id'], rsi_binding=args['rsi_binding'])
+            args['utilbill_id'], rsi_binding=args['rsi_binding'],
+            type=Charge.SUPPLY)
         Session().commit()
         return {'rows': marshal(charge, self.charge_fields), 'results': 1}
 
