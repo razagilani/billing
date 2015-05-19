@@ -88,6 +88,7 @@ class billentry(Schema):
     show_traceback_on_error = StringBool()
     secret_key = String()
     wiki_url = String()
+    timeout = Int()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()

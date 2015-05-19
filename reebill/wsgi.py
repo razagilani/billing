@@ -302,9 +302,8 @@ class IssuableReebills(RESTResource):
         for bill in bills:
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
-            self.reebill_processor.issue_and_mail(
-                True, account=account, sequence=sequence,
-                recipients=recipient_list)
+            self.reebill_processor.issue_and_mail(account=account,
+                sequence=sequence, recipients=recipient_list)
             version = self.state_db.max_version(bill['account'],
                                                 bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(

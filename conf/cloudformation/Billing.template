@@ -11,7 +11,7 @@
       "Description" : "EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
-      "AllowedValues" : ["t2.micro", "t2.small", "t2.medium", "c4.xlarge", "c4.4xlarge"],
+      "AllowedValues" : ["t2.micro", "t2.small", "t2.medium", "m3.large", "c4.xlarge", "c4.4xlarge"],
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
     "VpcId" : {
@@ -74,6 +74,7 @@
       "t2.micro"    : { "Arch" : "HVM64"  },
       "t2.small"    : { "Arch" : "HVM64"  },
       "t2.medium"   : { "Arch" : "HVM64"  },
+      "m3.large"   : { "Arch" : "HVM64"  },
       "c4.xlarge"   : { "Arch" : "HVM64"  },
       "c4.4xlarge"   : { "Arch" : "HVM64"  }
     },
