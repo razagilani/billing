@@ -155,6 +155,13 @@ class BaseResource(Resource):
             'target_total': Float,
         }
 
+        self.supply_group_fields = {
+            'id': Integer,
+            'name': String,
+            'supplier_id': Integer,
+            'service': String
+        }
+
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
 id_parser = RequestParser()
@@ -344,22 +351,23 @@ class SuppliersResource(BaseResource):
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
+
 class SupplyGroupsResource(BaseResource):
     def get(self):
         supply_groups = Session().query(SupplyGroup).all()
-        rows = marshal(supply_groups, {'id': Integer, 'name': String})
+        rows = marshal(supply_groups, self.supply_group_fields)
         return {'rows': rows, 'results': len(rows)}
 
-    def handle_post(self, *vpath, **params):
-        parser = id_parser.copy()
+    def post(self):
+        parser = RequestParser()
         parser.add_argument('supplier_id', type=int, required=True)
         parser.add_argument('service', type=str, required=True)
         parser.add_argument('name', type=str, required=True)
         args=parser.parse_args()
         supply_group = self.utilbill_processor.create_supply_group(args['name'],
                                                     args['supplier_id'], args['service'])
-        return True, {'rows': self.utilbill_views.
-            get_supply_group_json(supply_group), 'results': 1 }
+        Session.commit()
+        return {'rows': marshal(supply_group, self.supply_group_fields), 'results': 1 }
 
 
 class UtilitiesResource(BaseResource):
