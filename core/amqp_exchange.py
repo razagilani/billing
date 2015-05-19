@@ -37,14 +37,19 @@ LOG_NAME = 'amqp_utilbill_file'
 def TotalValidator():
     '''Validator for the odd format of the "total" field in utility bill
     messages: dollars and cents as a string preceded by "$", or empty.
+    Negative values are in accounting notation, eg. "($1,234.56)"
     '''
     def validate(value):
         if value == '':
             return None
+        sign = '+'
+        if value.startswith('(') and value.endswith(')'):
+            sign = '-'
+            value = value[1:-1]
         match = re.match('^\$[\d,]*\.?\d{1,2}$', value)
         if match is None:
             raise Invalid('Invalid "total" string: "%s"' % value)
-        return float(match.group(0)[1:].replace(',', ''))
+        return float(sign + match.group(0)[1:].replace(',', ''))
     return validate
 
 def DueDateValidator():
