@@ -121,12 +121,14 @@ class BaseResource(Resource):
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
             'utility': CallableField(String(), attribute='get_utility_name'),
+            'utility_id': CallableField(Integer(), attribute='get_utility_id'),
             'supplier': CallableField(String(), attribute='get_supplier',
                                       default='Unknown'),
             'supplier_id': CallableField(Integer(), attribute='get_supplier_id',
                                          default=None),
             'rate_class': CallableField(
                 String(), attribute='get_rate_class_name', default='Unknown'),
+            'rate_class_id': CallableField(Integer(), attribute='get_rate_class_id'),
             'supply_group': CallableField(
                 String(), attribute='get_supply_group_name', default='Unknown'),
             'supply_group_id': CallableField(
@@ -161,6 +163,12 @@ class BaseResource(Resource):
             'name': String,
             'supplier_id': Integer,
             'service': String
+        }
+
+        self.utility_fields = {
+            'id': Integer,
+            'name': String,
+            'sos_supply_group_id': String
         }
 
 # basic RequestParser to be extended with more arguments by each
@@ -353,6 +361,15 @@ class SuppliersResource(BaseResource):
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        args = parser.parse_args()
+        supplier = self.utilbill_processor.create_supplier(args['name'])
+        Session().commit()
+        return {'rows': marshal(supplier, {'id': Integer, 'name': String}),
+                'results': 1}
+
 
 class SupplyGroupsResource(BaseResource):
     def get(self):
@@ -375,8 +392,18 @@ class SupplyGroupsResource(BaseResource):
 class UtilitiesResource(BaseResource):
     def get(self):
         utilities = Session().query(Utility).all()
-        rows = marshal(utilities, {'id': Integer, 'name': String})
+        rows = marshal(utilities, self.utility_fields)
         return {'rows': rows, 'results': len(rows)}
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        parser.add_argument('sos_supply_group_id', type=int, required=True)
+        args=parser.parse_args()
+        utility = self.utilbill_processor.create_utility(args['name'],
+                                                    args['sos_supply_group_id'])
+        Session.commit()
+        return {'rows': marshal(utility, self.supply_group_fields), 'results': 1 }
 
 
 class RateClassesResource(BaseResource):
@@ -385,8 +412,26 @@ class RateClassesResource(BaseResource):
         rows = marshal(rate_classes, {
             'id': Integer,
             'name': String,
-            'utility_id': Integer})
+            'utility_id': Integer,
+            'service': String})
         return {'rows': rows, 'results': len(rows)}
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        parser.add_argument('utility_id', type=int, required=True)
+        parser.add_argument('service', type=str, required=True)
+        args = parser.parse_args()
+        rate_class = self.utilbill_processor.create_rate_class(args['name'],
+                                                               args['utility_id'],
+                                                               args['service'])
+        Session().commit()
+        return {'rows': marshal(rate_class,{
+            'id': Integer,
+            'name': String,
+            'utility_id': Integer,
+            'service': String
+        }), 'results': 1}
 
 
 class UtilBillCountForUserResource(BaseResource):

@@ -849,6 +849,9 @@ class UtilBill(Base):
     def get_utility(self):
         return self.utility
 
+    def get_utility_id(self):
+        return self.utility_id
+
     def get_supplier(self):
         return self.supplier
 
@@ -903,6 +906,9 @@ class UtilBill(Base):
 
     def get_rate_class(self):
         return self.rate_class
+
+    def get_rate_class_id(self):
+        return self.rate_class_id
 
     def set_utility(self, utility):
         """Set the utility, and set the rate class to None if the utility is
