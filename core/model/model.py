@@ -886,6 +886,11 @@ class UtilBill(Base):
             return None
         return self.supply_group.name
 
+    def get_supply_group_id(self):
+        if self.supply_group is None:
+            return None
+        return self.supply_group_id
+
     def get_supply_group(self):
         return self.supply_group
 
