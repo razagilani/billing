@@ -7,9 +7,12 @@ from nexusapi.nexus_util import NexusUtil
 from reebill.fetch_bill_data import RenewableEnergyGetter
 from reebill.reebill_dao import ReeBillDAO
 from reebill.reports.reconciliation import ReconciliationReport
+from skyliner.mock_skyliner import MockSplinter
 from skyliner.splinter import Splinter
 
 def make_splinter():
+    if config.get('reebill', 'mock_skyliner'):
+        return MockSplinter()
     return Splinter(
         config.get('reebill', 'oltp_url'),
         skykit_host=config.get('reebill', 'olap_host'),
