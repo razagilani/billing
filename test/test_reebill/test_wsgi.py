@@ -1,21 +1,14 @@
-from test.setup_teardown import TestCaseWithSetup, clear_db
-from test.testing_utils import TestCase, ReebillRestTestClient
+import pymongo
+import mongoengine
+from unittest import TestCase
+from test.setup_teardown import clear_db, TestCaseWithSetup
+from test.testing_utils import ReebillRestTestClient
 from test.setup_teardown import create_reebill_resource_objects
 from test import init_test_config
 from core import init_model
 from core.model import Session, UtilityAccount
 from reebill.reebill_model import ReeBillCustomer
 from reebill.wsgi import AccountsResource
-from reebill.reebill_dao import ReeBillDAO
-from reebill.payment_dao import PaymentDAO
-from reebill.users import UserDAO
-from reebill.bill_mailer import Mailer
-from reebill.journal import JournalDAO
-from skyliner.mock_skyliner import MockSplinter
-from reebill import fetch_bill_data as fbd
-import pymongo
-import mongoengine
-import logging
 
 
 def setUpModule():
@@ -27,7 +20,6 @@ def setUpModule():
 class AccountsResourceTest(TestCase):
 
     def setUp(self):
-        from core import config
         self.database = 'test'
         # Clear out mongo database
         mongo_connection = pymongo.Connection()
@@ -72,6 +64,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
+            'payee': None
         }]})
         self.assertEqual(utility_account.account_number, '987654321')
 
@@ -97,6 +90,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some tag,some other tag',
+            'payee': None
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some tag', 'some other tag'])
@@ -121,6 +115,7 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some other tag,one more tag',
+            'payee': None
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some other tag', 'one more tag'])
