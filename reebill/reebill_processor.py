@@ -597,19 +597,8 @@ class ReebillProcessor(object):
             reebill.issue(
                 issue_date, self,
                 corrections=reebill.reebill_customer.get_unissued_corrections())
-
-            # TODO: 'recipient_list' is passed into many function calls as a
-            # list but when used it is converted back into a comma-separated
-            # string. so just use reebill.email_recipient
-            if reebill.email_recipient is None:
-                # this is not supposed to be allowed but somehow it happens
-                # in a test
-                recipient_list = ['']
-            else:
-                recipient_list = [rec.strip() for rec in
-                                  reebill.email_recipient.split(',')]
             self.mail_reebill("issue_email_template.html", "Energy Bill Due",
-                              reebill, recipient_list)
+                              reebill, reebill.email_recipient)
 
     def issue_and_mail(self, account, sequence, recipients=None):
         """this function issues a single reebill and sends out a confirmation
