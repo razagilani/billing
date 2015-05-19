@@ -588,50 +588,41 @@ class ReebillProcessor(object):
         if accounts_to_be_confirmed:
             raise ConfirmMultipleAdjustments(accounts_to_be_confirmed)
 
-    def issue_and_mail(self, account, sequence, recipients=None):
-        """this function issues a single reebill and sends out a confirmation
-        email.
+    def _issue_bills(self, reebills):
+        """
+        :param reebills: list of ReeBills
         """
         issue_date = datetime.utcnow()
-        reebill = self.state_db.get_reebill(account, sequence, version=0)
-        # not version 0
-        reebill.issue(issue_date, self,
-            corrections=reebill.reebill_customer.get_unissued_corrections())
-
-        # Recepients can be a comma seperated list of email addresses
-        if recipients is None:
-            # this is not supposed to be allowed but somehow it happens
-            # in a test
-            recipient_list = ['']
-        else:
-            recipient_list = [rec.strip() for rec in recipients.split(',')]
-
-        # TODO: BILL-6288 place in config file
-        self.mail_reebill("issue_email_template.html", "Energy Bill Due",
-                          reebill, recipient_list)
-
-    # TODO: get rid of this method. load for the processed bills, then call
-    # the issue_and_mail method above to issue them.
-    def issue_processed_and_mail(self):
-        '''This function issues all processed reebills'''
-        bills = self._get_issuable_reebills().filter_by(processed=True).all()
-        for bill in bills:
-            issue_date = datetime.utcnow()
-            bill.issue(
+        for reebill in reebills:
+            reebill.issue(
                 issue_date, self,
-                corrections=bill.reebill_customer.get_unissued_corrections())
+                corrections=reebill.reebill_customer.get_unissued_corrections())
 
-            # email_recipient can be a comma-separated list of email addresses
-            if bill.email_recipient is None:
+            # TODO: 'recipient_list' is passed into many function calls as a
+            # list but when used it is converted back into a comma-separated
+            # string. so just use reebill.email_recipient
+            if reebill.email_recipient is None:
                 # this is not supposed to be allowed but somehow it happens
                 # in a test
                 recipient_list = ['']
             else:
                 recipient_list = [rec.strip() for rec in
-                                  bill.email_recipient.split(',')]
-            self.mail_reebill("issue_email_template.html",
-                "Energy Bill Due", bill, recipient_list)
+                                  reebill.email_recipient.split(',')]
+            self.mail_reebill("issue_email_template.html", "Energy Bill Due",
+                              reebill, recipient_list)
 
+    def issue_and_mail(self, account, sequence, recipients=None):
+        """this function issues a single reebill and sends out a confirmation
+        email.
+        """
+        reebill = self.state_db.get_reebill(account, sequence, version=0)
+        self._issue_bills([reebill])
+        return [reebill.column_dict()]
+
+    def issue_processed_and_mail(self):
+        '''This function issues all processed reebills'''
+        bills = self._get_issuable_reebills().filter_by(processed=True).all()
+        self._issue_bills(bills)
         return [bill.column_dict() for bill in bills]
 
     # TODO this method has no test coverage. maybe combine it into
