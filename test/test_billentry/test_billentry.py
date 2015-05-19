@@ -1079,10 +1079,10 @@ class TestBillEntryUserSessions(unittest.TestCase):
         # logout closes the current session
         self.app.get('/logout')
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
-        self.assertEqual((be_user_session[0].last_request -
+        self.assertAlmostEqual((be_user_session[0].last_request -
                           be_user_session[0].session_start).
                          total_seconds(), user.get_beuser_billentry_duration
-                        (current_timestamp, datetime.utcnow()))
+                        (current_timestamp, datetime.utcnow()), places=0)
 
         #start a new session by logging in
         self.app.post('/userlogin',
