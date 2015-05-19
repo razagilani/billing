@@ -74,8 +74,10 @@ class BillEntryUser(Base, UserMixin):
         """ Method to calculate the duration of user session between start and end times
         """
         duration = 0.0
-        start = datetime(start.year, start.month, start.day)
-        end = datetime(end.year, end.month, end.day)
+        if not isinstance(start, datetime):
+            start = datetime(start.year, start.month, start.day)
+        if not isinstance(end, datetime):
+            end = datetime(end.year, end.month, end.day)
         for user_session in self.be_user_session:
             if user_session.session_start >= start and user_session.last_request <= end:
                 duration += (user_session.last_request - user_session.session_start).total_seconds()
