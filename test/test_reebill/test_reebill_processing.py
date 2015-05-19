@@ -1066,7 +1066,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # (the second is the equivalent of "Issue All Processed Reebills" in
         # the UI)
         self.reebill_processor.issue_and_mail(account=acc, sequence=2)
-        self.reebill_processor.issue_processed_and_mail(True)
+        self.reebill_processor.issue_processed_and_mail()
 
         # #2 is still correct, and #3 should be too because it was
         # automatically recomputed before issuing
@@ -1187,7 +1187,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.reebill_processor.issue_processed_and_mail(False)
+        self.reebill_processor.issue_processed_and_mail()
 
         self.assertEquals(True, one.issued)
         self.assertEquals(True, one.processed)
@@ -1200,7 +1200,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # issue and email two
         self.reebill_processor.reebill_file_handler.render_max_version.\
             return_value = 2
-        self.reebill_processor.issue_processed_and_mail(False)
+        self.reebill_processor.issue_processed_and_mail()
 
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
