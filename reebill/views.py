@@ -3,6 +3,7 @@ code for that is still in other files it should be moved here.
 """
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
+from sqlalchemy.orm import joinedload
 from core.model import Session, UtilBill, Register, UtilityAccount, \
     Supplier, Utility, RateClass
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
@@ -131,7 +132,7 @@ class Views(object):
         """
         session = Session()
         unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == 0,
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == True,
                                                           ReeBill.version == 0)
         unissued_v0_reebills = unissued_v0_reebills.subquery()
         min_sequence = session.query(
@@ -141,7 +142,7 @@ class Views(object):
         reebills = session.query(ReeBill) \
             .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
             .filter(ReeBill.sequence==min_sequence.c.sequence)\
-            .filter(ReeBill.processed == 1)
+            .filter(ReeBill.processed == True)
         issuable_reebills = [r.column_dict() for r in reebills.all()]
         return issuable_reebills
 
@@ -152,18 +153,18 @@ class Views(object):
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
         session = Session()
-        utility_accounts = session.query(UtilityAccount)
+        utility_accounts = session.query(
+            UtilityAccount, ReeBillCustomer).outerjoin(
+            ReeBillCustomer).options(joinedload('utilbills')).options(
+            joinedload('fb_utility')).options(joinedload('fb_rate_class'))
+
         if account is not None:
             utility_accounts = utility_accounts.filter(
                 UtilityAccount.account == account)
 
-        name_dicts = self._nexus_util.all_names_for_accounts(
-             ua.account for ua in utility_accounts)
-
         rows_dict = {}
-        for ua in utility_accounts:
-            reebill_customer = Session.query(ReeBillCustomer).filter(
-                ReeBillCustomer.utility_account == ua).first()
+        for ua, reebill_customer in utility_accounts:
+            name_dict = self._nexus_util.fast_all('billing', ua.account)
             if reebill_customer is None:
                 group_names = []
                 payee = ''
@@ -177,9 +178,9 @@ class Views(object):
                 'fb_rate_class': ua.fb_rate_class.name \
                     if ua.fb_rate_class else '',
                 'utility_account_number': ua.account_number,
-                'codename': name_dicts[ua.account].get('codename', ''),
-                'casualname': name_dicts[ua.account].get('casualname', ''),
-                'primusname': name_dicts[ua.account].get('primus', ''),
+                'codename': name_dict.get('codename', ''),
+                'casualname': name_dict.get('casualname', ''),
+                'primusname': name_dict.get('primus', ''),
                 'utilityserviceaddress': str(ua.get_service_address()),
                 'tags': group_names,
                 'lastevent': '',
