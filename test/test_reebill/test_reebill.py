@@ -102,6 +102,9 @@ class ReeBillUnitTest(unittest.TestCase):
         self.reebill.issue(datetime(2000,3,1), Mock())
         correction = self.reebill.make_correction()
 
+        self.assertEqual(False, correction.issued)
+        self.assertEqual(None, correction.issue_date)
+        self.assertEqual(None, correction.due_date)
         self.assertEqual(1, correction.sequence)
         self.assertEqual(1, correction.version)
         self.assertEqual(self.reebill.discount_rate, correction.discount_rate)
