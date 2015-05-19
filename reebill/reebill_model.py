@@ -452,7 +452,7 @@ class ReeBill(Base):
 
         return the_dict
 
-    def issue(self, issue_date, reebill_processor):
+    def issue(self, issue_date, reebill_processor, corrections=None):
         """Set the values of all fields for an issued bill. Does not actually
         generate a file or send an email.
 
@@ -468,12 +468,20 @@ class ReeBill(Base):
         assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
         assert self.issue_date is None or self.version > 0
         assert self.due_date is None or self.version > 0
+        if corrections is None:
+            corrections = []
+        else:
+            # only a non-correction bill can be issued with corrections
+            assert self.version == 0
 
         # for a non-correction, all earlier bills must be issued first.
         # (ReeBillCustomer is used to avoid doing a direct database query here)
         if self.version == 0 and self is not \
                     self.reebill_customer.get_first_unissued_bill():
             raise NotIssuable("Predecessor must be issued before this one")
+
+        for correction_bill in corrections:
+            correction_bill.issue(issue_date, reebill_processor)
 
         if not self.processed:
             # a ton of attributes of this object get set in this method
@@ -690,6 +698,12 @@ class ReeBillCustomer(Base):
         except ValueError:
             return None
         return result
+
+    def get_unissued_corrections(self):
+        """:return: list of ReeBills belonging to this customer that are not
+        issued whose version > 0.
+        """
+        return [r for r in self.reebills if r.version > 0 and not r.issued]
 
     def get_groups(self):
         """Return a list of CustomerGroups that this ReeBillCustomer belongs
