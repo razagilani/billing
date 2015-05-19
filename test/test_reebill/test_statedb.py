@@ -5,7 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from reebill.reebill_model import ReeBillCustomer, ReeBill
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
-    UtilityAccount
+    UtilityAccount, UtilBill
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
@@ -21,13 +21,13 @@ class StateDBTest(TestCase):
         init_model()
         clear_db()
         blank_address = Address()
-        test_utility = Utility(name='FB Test Utility Name',
+        self.utility = Utility(name='FB Test Utility Name',
                                address=blank_address)
         test_supplier = Supplier(name='FB Test Suplier', address=blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
-                            test_utility, test_supplier,
+                            self.utility, test_supplier,
                             RateClass(name='FB Test Rate Class',
-                                      utility=test_utility, service='gas'),
+                                      utility=self.utility, service='gas'),
                             blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer(name='Test Customer',
                                     discount_rate=.12, late_charge_rate=.34,
@@ -48,6 +48,8 @@ class StateDBTest(TestCase):
         # two different customers, one bill has multiple versions.
         customer2 = ReeBillCustomer()
         customer2.id = self.reebill_customer.id + 1
+        customer3 = ReeBillCustomer()
+        customer3.id = self.reebill_customer.id + 2
         one_1 = ReeBill(self.reebill_customer, 1)
         one_2_0 = ReeBill(self.reebill_customer, 2)
         one_2_1 = ReeBill(self.reebill_customer, 2, version=1)
@@ -63,6 +65,20 @@ class StateDBTest(TestCase):
         self.assertEqual(len(expected), len(actual))
         for a, b in zip(expected, actual):
             self.assertIs(a, b)
+
+    def test_get_all_reebills_with_date(self):
+        utilbill1 = UtilBill(self.utility_account, self.utility, None,
+                             period_start=date(2000, 1, 1),
+                             period_end=date(2000, 2, 1))
+        utilbill2 = UtilBill(self.utility_account, self.utility, None,
+                             period_start=date(2000, 2, 1),
+                             period_end=date(2000, 3, 1))
+        reebill1 = ReeBill(self.reebill_customer, 1, utilbill=utilbill1)
+        reebill2 = ReeBill(self.reebill_customer, 2, utilbill=utilbill2)
+        Session().add_all([utilbill1, utilbill2, reebill1, reebill2])
+
+        actual = self.state_db.get_all_reebills(start_date=date(2000, 2, 1))
+        self.assertEqual(actual, [reebill2])
 
     def test_get_all_reebills_for_account(self):
         session = Session()
