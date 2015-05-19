@@ -462,7 +462,9 @@ class UtilBillTestWithDB(TestCase):
         block in UtilBill.ordered_charges.
         """
         utilbill = UtilBill(MagicMock(), None, None)
-        utilbill.charges = [Charge('a', formula='b'), Charge('b', formula='b')]
+        charges = [Charge(None, 'a', 0, quantity_formula='b'),
+                   Charge(None, 'b', 0, quantity_formula='b')]
+        utilbill.charges = charges
         ordered_charges = utilbill.ordered_charges()
         # in this case any order is OK as long as all the charges are there
         self.assertEqual(set(utilbill.charges), set(ordered_charges))
