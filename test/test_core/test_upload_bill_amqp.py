@@ -40,6 +40,17 @@ class TestValidators(TestCase):
         self.assertEqual(1234, validator('$1,234'))
         # commas in the wrong place are allowed
         self.assertEqual(1234, validator('$12,34'))
+
+        # Negative dollar values are in accounting notation "($1,234.56)"
+        self.assertEqual(validator('($123.45)'), -123.45)
+        self.assertEqual(-123, validator('($123)'))
+        self.assertEqual(-.4, validator('($.4)'))
+        self.assertEqual(-.45, validator('($.45)'))
+        self.assertEqual(-1234.56, validator('($1,234.56)'))
+        self.assertEqual(-1234, validator('($1,234)'))
+        # commas in the wrong place are allowed
+        self.assertEqual(-1234, validator('($12,34)'))
+
         with self.assertRaises(Invalid):
             validator("nonsense")
         with self.assertRaises(Invalid):
