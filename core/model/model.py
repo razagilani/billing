@@ -852,6 +852,9 @@ class UtilBill(Base):
     def get_supplier(self):
         return self.supplier
 
+    def get_supplier_id(self):
+        return self.supplier.id
+
     def get_utility_name(self):
         '''Return name of this bill's utility.
         '''
@@ -887,8 +890,6 @@ class UtilBill(Base):
         return self.supply_group.name
 
     def get_supply_group_id(self):
-        if self.supply_group is None:
-            return None
         return self.supply_group_id
 
     def get_supply_group(self):
