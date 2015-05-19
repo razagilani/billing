@@ -636,23 +636,11 @@ class ReebillProcessor(object):
             # Let's issue
             issue_date = datetime.utcnow()
             if len(unissued_corrections) > 0:
-                try:
-                    self.issue_corrections(bill.get_account(), bill.sequence,
-                        issue_date)
-                except Exception as e:
-                    self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.get_account(), bill.sequence,
-                        e.__class__.__name__),) + e.args)
-                    raise
-            try:
-                bill.issue(issue_date, self)
-            except Exception, e:
-                self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.get_account(), bill.sequence,
-                        e.__class__.__name__),) + e.args)
-                raise
-            # Let's mail!
-            # Recepients can be a comma seperated list of email addresses
+                self.issue_corrections(bill.get_account(), bill.sequence,
+                    issue_date)
+            bill.issue(issue_date, self)
+
+            # email_recipient can be a comma-separated list of email addresses
             if bill.email_recipient is None:
                 # this is not supposed to be allowed but somehow it happens
                 # in a test
@@ -660,14 +648,10 @@ class ReebillProcessor(object):
             else:
                 recipient_list = [rec.strip() for rec in
                                   bill.email_recipient.split(',')]
-
-            # TODO: BILL-6288 place in config file.
-            # TODO: one email per bill? That is bad.
-            self.mail_reebill("issue_email_template.html", 
+            self.mail_reebill("issue_email_template.html",
                 "Energy Bill Due", bill, recipient_list)
 
-        bills_dict = [bill.column_dict() for bill in bills]
-        return bills_dict
+        return [bill.column_dict() for bill in bills]
 
     # TODO this method has no test coverage. maybe combine it into
     # update_sequential_account_info and add to the test for that
