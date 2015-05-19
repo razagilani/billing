@@ -381,6 +381,8 @@ class UtilBillCountForUserResource(BaseResource):
 
             q = s.query(
                 BillEntryUser,
+                BillEntryUser.id,
+                BillEntryUser.email,
                 func.max(count_sq.c.total_count),
                 func.max(count_sq.c.electric_count),
                 func.max(count_sq.c.gas_count),
@@ -389,13 +391,14 @@ class UtilBillCountForUserResource(BaseResource):
                 BillEntryUser.id)
 
             rows = [{
-                'id': user.id,
-                'email': user.email,
+                'id': user_id,
+                'email': email,
                     'total_count': int(total_count or 0),
                     'gas_count': int(gas_count or 0),
                     'electric_count': int(electric_count or 0),
                     'elapsed_time': user.get_beuser_billentry_duration(args['start'], args['end'])
-                } for (user, total_count, electric_count, gas_count) in q.all()]
+                } for (user, user_id, email, total_count, electric_count, gas_count)
+                    in q.all()]
 
             return {'rows': rows, 'results': len(rows)}
 
