@@ -1130,11 +1130,12 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertEqual(True, two.processed)
         self.reebill_processor.issue_and_mail(True, two.get_account(),
                                               two.sequence)
-        self.assertEquals(True, two.issued)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
-        self.assertEquals(True, one_1.issued)
-        self.assertEquals(one.due_date, one_1.due_date)
+        self.assertEqual(True, two.issued)
+        self.assertEqual(True, self.state_db.is_issued(acc, 2))
+        self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
+        self.assertEqual(True, one_1.issued)
+        self.assertEqual(two.issue_date, one_1.issue_date)
+        self.assertEqual(one.due_date, one_1.due_date)
 
         temp_dir.cleanup()
 
