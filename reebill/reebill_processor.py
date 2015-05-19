@@ -590,10 +590,14 @@ class ReebillProcessor(object):
 
     def _issue_bills(self, reebills):
         """
+        Mark the given bills as issued, including applying corrections,
+        and send an email to the customer for each one.
         :param reebills: list of ReeBills
         """
         issue_date = datetime.utcnow()
         for reebill in reebills:
+            # a correction bill cannot be issued by itself
+            assert reebill.version == 0
             reebill.issue(
                 issue_date, self,
                 corrections=reebill.reebill_customer.get_unissued_corrections())
