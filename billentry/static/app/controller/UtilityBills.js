@@ -334,7 +334,7 @@ Ext.define('BillEntry.controller.UtilityBills', {
             utilBillsStore.suspendAutoSync();
             supplyGroupStore.suspendAutoSync();
             supplyGroupStore.add({name: combo.getRawValue(),
-                                 supplier_id: selected.get('supplier').id,
+                                 supplier_id: selected.get('supplier_id'),
                                  service: selected.get('service')});
             supplyGroupStore.sync({
                 success: function(batch, options){
@@ -349,4 +349,5 @@ Ext.define('BillEntry.controller.UtilityBills', {
             supplyGroupStore.resumeAutoSync();
         }
     }
+
 });
