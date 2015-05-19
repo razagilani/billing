@@ -14,6 +14,8 @@ import urllib
 import uuid
 from urllib2 import Request, urlopen, URLError
 import json
+from datetime import datetime, timedelta
+from sqlalchemy import desc
 
 import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
@@ -24,7 +26,7 @@ from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app, Response
 from flask_oauth import OAuth, OAuthException
 
-from billentry.billentry_model import BillEntryUser, Role
+from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
@@ -79,6 +81,7 @@ app.config['LOGIN_DISABLED'] = config.get('billentry',
 login_manager = LoginManager()
 login_manager.init_app(app)
 principals = Principal(app)
+app.permanent_session_lifetime = timedelta(seconds=config.get('billentry', 'timeout'))
 
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
@@ -141,7 +144,10 @@ def oauth2callback(resp):
     # any user who logs in through OAuth gets automatically created
     # (with a random password) if there is no existing user with
     # the same email address.
-    create_user_in_db(resp['access_token'])
+    user_email = create_user_in_db(resp['access_token'])
+    user = Session().query(BillEntryUser).filter_by(email=user_email).first()
+    # start keeping track of user session
+    start_user_session(user)
     return redirect(next_url)
 
 @app.route('/')
@@ -196,8 +202,8 @@ def create_user_in_db(access_token):
         s.commit()
     user.authenticated = True
     s.commit()
-    login_user(user)
     # Tell Flask-Principal the identity changed
+    login_user(user)
     identity_changed.send(current_app._get_current_object(),
         identity=Identity(user.id))
     return userInfo['email']
@@ -232,6 +238,18 @@ def before_request():
             set_next_url()
             return redirect(url_for('login_page'))
         return Response('Could not verify your access level for that URL', 401)
+    if user.is_authenticated():
+        update_user_session_last_request_time(user)
+
+def update_user_session_last_request_time(user):
+    """ This is called to update the last_request field of BEUserSession
+    every time user makes a request for a resource
+    """
+    recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
+        order_by(desc(BEUserSession.session_start)).first()
+    if recent_session:
+        recent_session.last_request = datetime.utcnow()
+        Session.commit()
 
 def set_next_url():
     next_path = request.args.get('next') or request.path
@@ -351,6 +369,7 @@ def locallogin():
     identity_changed.send(current_app._get_current_object(),
                           identity=Identity(user.id))
     session['user_name'] = str(user)
+    start_user_session(user)
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
@@ -358,6 +377,18 @@ def get_hashed_password(plain_text_password):
     # Hash a password for the first time
     #   (Using bcrypt, the salt is saved into the hash itself)
     return bcrypt.generate_password_hash(plain_text_password)
+
+def start_user_session(beuser):
+    """ This method should be called after user has logged in
+    to create a new BEUserSession object that keeps track of the
+    duration of user's session in billentry
+    """
+    s = Session()
+    be_user_session = BEUserSession(session_start=datetime.utcnow(),
+                                    last_request=datetime.utcnow(),
+                                    beuser=beuser)
+    s.add(be_user_session)
+    s.commit()
 
 def check_password(plain_text_password, hashed_password):
     # Check hased password. Using bcrypt, the salt is saved into the hash itself
