@@ -1128,29 +1128,29 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # make a correction on reebill #1. this time 20 therms of renewable
         # energy instead of 10 were consumed.
         self.reebill_processor.ree_getter.quantity = 20
-        self.reebill_processor.new_version(acc, 1)
+        two_1 = self.reebill_processor.new_version(acc, 1)
 
         customer = self.state_db.get_reebill_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
-        self.reebill_processor.reebill_file_handler.render_max_version.return_value = 2
-        # issuing a reebill that has corrections with apply_corrections False raises ConfirmAdjustment Exception
+        self.reebill_processor.reebill_file_handler.render_max_version\
+            .return_value = 2
+        # issuing a reebill that has corrections with apply_corrections False
+        #  raises ConfirmAdjustment Exception
         with self.assertRaises(ConfirmAdjustment):
             self.reebill_processor.issue_and_mail(
                 False, account=acc, sequence=2, recipients=two.email_recipient)
-        #ValueError is Raised if an issued Bill is issued again
+        # ValueError is Raised if an issued Bill is issued again
         with  self.assertRaises(ValueError):
             self.reebill_processor.issue_and_mail(
                 True, account=acc, sequence=1, recipients=two.email_recipient)
         self.reebill_processor.toggle_reebill_processed(acc, 2, True)
         self.assertEqual(True, two.processed)
         self.reebill_processor.issue_processed_and_mail(True)
-        # re-load from mongo to see updated issue date and due date
-        self.assertEquals(True, two.issued)
-        self.assertEquals(True, two.processed)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+
+        self.assertTrue(two.issued)
+        self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
 
         temp_dir.cleanup()
 
