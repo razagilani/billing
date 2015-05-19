@@ -12,7 +12,7 @@ from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case
 from sqlalchemy.orm import joinedload
 
-from billentry.billentry_model import BEUtilBill
+from billentry.billentry_model import BEUtilBill, BEUserSession
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
@@ -372,14 +372,15 @@ class UtilBillCountForUserResource(BaseResource):
                 ).label('electric_count'),
                 func.sum(
                     case(((RateClass.service == 'gas', 1),), else_=0)
-                ).label('gas_count'),
-            ).group_by(BEUtilBill.billentry_user_id).outerjoin(
-                RateClass).filter(and_(
+                ).label('gas_count')
+            ).group_by(BEUtilBill.billentry_user_id).outerjoin(RateClass).filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                     BEUtilBill.billentry_date < args['end'])
             ).subquery()
 
+
             q = s.query(
+                BillEntryUser,
                 BillEntryUser.id,
                 BillEntryUser.email,
                 func.max(count_sq.c.total_count),
@@ -395,7 +396,8 @@ class UtilBillCountForUserResource(BaseResource):
                     'total_count': int(total_count or 0),
                     'gas_count': int(gas_count or 0),
                     'electric_count': int(electric_count or 0),
-                } for (user_id, email, total_count, electric_count, gas_count)
+                    'elapsed_time': user.get_beuser_billentry_duration(args['start'], args['end'])
+                } for (user, user_id, email, total_count, electric_count, gas_count)
                     in q.all()]
 
             return {'rows': rows, 'results': len(rows)}
