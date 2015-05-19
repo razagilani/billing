@@ -11,7 +11,6 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-require host::hosts_file
 
 include mongo::mongo_tools
 package { 'httpd':
@@ -71,7 +70,7 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@ip-10-0-1-220'
+    cluster => 'rabbit@portal-stage.nextility.net'
 }
 
 rabbit_mq::user_permission {'guest':

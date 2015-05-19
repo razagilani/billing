@@ -11,15 +11,18 @@ from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
 from voluptuous import Invalid
 from core import init_model
+from util import FixMQ
 
-from core.amqp_exchange import create_dependencies, \
-    ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+with FixMQ():
+    from core.amqp_exchange import create_dependencies, \
+        ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
+        create_channel_message_body
+
 from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from core.utilbill_loader import UtilBillLoader
-from mq import IncomingMessage
-from mq.tests import create_mock_channel_method_props, \
-    create_channel_message_body
 from exc import DuplicateFileError
 from test import init_test_config
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
