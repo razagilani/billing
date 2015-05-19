@@ -12,7 +12,9 @@ Ext.define('BillEntry.model.UtilityBill', {
                     return 'Unknown Rate Class';
               else
                     return data.rate_class;  }},
-        {name: 'utility'},
+        {name: 'rate_class_id', type: 'int'},
+        {name: 'utility', type:'string'},
+        {name: 'utility_id', type: 'int'},
         {name: 'supplier', type:'string', mapping: function( data ) {
             if (data.supplier==null)
                 return 'Unknown Supplier' ;
