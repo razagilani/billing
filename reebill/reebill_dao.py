@@ -214,3 +214,21 @@ class ReeBillDAO(object):
                                                      last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
+    def get_issuable_reebills(self):
+        '''Return a Query of "issuable" reebills (lowest-sequence bill for
+        each account that is unissued and is not a correction).
+        '''
+        session = Session()
+        unissued_v0_reebills = session.query(
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(
+            ReeBill.issued == False, ReeBill.version == 0)
+        unissued_v0_reebills = unissued_v0_reebills.subquery()
+        min_sequence = session.query(
+            unissued_v0_reebills.c.reebill_customer_id.label(
+                'reebill_customer_id'),
+            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
+            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
+        return session.query(ReeBill).filter(
+            ReeBill.reebill_customer_id == min_sequence.c.reebill_customer_id) \
+            .filter(ReeBill.sequence == min_sequence.c.sequence).filter_by(
+            processed=True)
