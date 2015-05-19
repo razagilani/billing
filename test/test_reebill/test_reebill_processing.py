@@ -1129,7 +1129,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # make a correction on reebill #1. this time 20 therms of renewable
         # energy instead of 10 were consumed.
         self.reebill_processor.ree_getter.quantity = 20
-        two_1 = self.reebill_processor.new_version(acc, 1)
+        one_1 = self.reebill_processor.new_version(acc, 1)
 
         customer = self.state_db.get_reebill_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
@@ -1152,8 +1152,10 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
 
         self.assertTrue(two.issued)
         self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
-        self.assertTrue(two_1.issued)
-        self.assertEqual(two_1.issue_date, two.issue_date)
+        self.assertTrue(one_1.issued)
+        self.assertTrue(one_1.processed)
+        self.assertEqual(two.issue_date, one_1.issue_date)
+        self.assertEqual(two.due_date, one_1.due_date)
 
         temp_dir.cleanup()
 
