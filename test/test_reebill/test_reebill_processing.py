@@ -1111,7 +1111,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # make a correction on reebill #1. this time 20 therms of renewable
         # energy instead of 10 were consumed.
         self.reebill_processor.ree_getter.quantity = 20
-        self.reebill_processor.new_version(acc, 1)
+        one_1 = self.reebill_processor.new_version(acc, 1)
 
         customer = self.state_db.get_reebill_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
@@ -1128,12 +1128,13 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                 True, account=acc, sequence=1, recipients=two.email_recipient)
         self.reebill_processor.toggle_reebill_processed(acc, 2, True)
         self.assertEqual(True, two.processed)
-        self.reebill_processor.issue_processed_and_mail(True)
-        # re-load from mongo to see updated issue date and due date
+        self.reebill_processor.issue_and_mail(True, two.get_account(),
+                                              two.sequence)
         self.assertEquals(True, two.issued)
-        self.assertEquals(True, two.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+        self.assertEquals(True, one_1.issued)
+        self.assertEquals(one.due_date, one_1.due_date)
 
         temp_dir.cleanup()
 

@@ -586,9 +586,8 @@ class ReebillProcessor(object):
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
                 self.issue_corrections(account, sequence)
-            else:
-                reebill = self.state_db.get_reebill(account, sequence)
-                reebill.issue(datetime.utcnow(), self)
+            reebill = self.state_db.get_reebill(account, sequence)
+            reebill.issue(datetime.utcnow(), self)
         except Exception as e:
             self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                     account, sequence, e.__class__.__name__),) + e.args)
