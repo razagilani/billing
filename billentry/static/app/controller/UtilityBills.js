@@ -6,7 +6,8 @@ Ext.define('BillEntry.controller.UtilityBills', {
         'RateClasses',
         'Utilities',
         'Services',
-        'Accounts'
+        'Accounts',
+        'SupplyGroups'
     ],
 
     views: [
@@ -316,9 +317,12 @@ Ext.define('BillEntry.controller.UtilityBills', {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
         var supply_group_store = Ext.getStore('SupplyGroups');
+        var utilbill_store = Ext.getStore('UtilityBills');
+        utilbill_store.clearFilter(true);
+        var record = utilbill_store.findRecord('id', selected.get('id'));
         supply_group_store.clearFilter(true);
         supply_group_store.filter({property:"supplier_id", type: 'int',
-                                    value: selected.get('supplier').id,
+                                    value: record.get('supplier_id'),
                                     exactMatch:true});
     },
 

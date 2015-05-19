@@ -18,6 +18,7 @@ Ext.define('BillEntry.model.UtilityBill', {
                 return 'Unknown Supplier' ;
             else
                 return data.supplier;}},
+        {name: 'supplier_id', type: 'int'},
         {name: 'supply_group', 'type': 'string', mapping: function( data ) {
             if (data.supply_group==null)
                     return 'Unknown Supply Group';

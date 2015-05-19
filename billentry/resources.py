@@ -120,10 +120,16 @@ class BaseResource(Resource):
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
             'utility': CallableField(String(), attribute='get_utility_name'),
-            'supplier': CallableField(String(), attribute='get_supplier_name',
+            'supplier': CallableField(String(), attribute='get_supplier',
                                       default='Unknown'),
+            'supplier_id': CallableField(Integer(), attribute='get_supplier_id',
+                                         default=None),
             'rate_class': CallableField(
                 String(), attribute='get_rate_class_name', default='Unknown'),
+            'supply_group': CallableField(
+                String(), attribute='get_supply_group_name', default='Unknown'),
+            'supply_group_id': CallableField(
+                Integer(), attribute='get_supply_group_id', default=None),
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
