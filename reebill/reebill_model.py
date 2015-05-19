@@ -472,7 +472,7 @@ class ReeBill(Base):
         if corrections is None:
             corrections = []
         else:
-            # only a a non-correction bill can be issued with corrections
+            # only a non-correction bill can be issued with corrections
             assert self.version == 0
 
         # for a non-correction, all earlier bills must be issued first.
