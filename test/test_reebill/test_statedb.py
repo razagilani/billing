@@ -33,7 +33,8 @@ class StateDBTest(TestCase):
                                     discount_rate=.12, late_charge_rate=.34,
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
-                                    utility_account=self.utility_account)
+                                    utility_account=self.utility_account,
+                                    payee='payee')
         self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)

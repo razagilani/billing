@@ -6,7 +6,8 @@ Ext.define('BillEntry.controller.UtilityBills', {
         'RateClasses',
         'Utilities',
         'Services',
-        'Accounts'
+        'Accounts',
+        'SupplyGroups'
     ],
 
     views: [
@@ -72,6 +73,10 @@ Ext.define('BillEntry.controller.UtilityBills', {
             },
             '#service_combo': {
                 blur: this.handleServiceComboBlur
+            },
+            '#supply_group_combo': {
+                expand: this.handleSupplyGroupComboExpand,
+                blur: this.handleSupplyGroupBlur
             },
             '#flagged': {
                 beforecheckchange: this.handleCheckChange
@@ -306,5 +311,43 @@ Ext.define('BillEntry.controller.UtilityBills', {
         });
         win.show();
         win.setPosition(Ext.getBody().getViewSize().width - width - margin, margin);
+    },
+
+    handleSupplyGroupComboExpand: function(combo, record, index){
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        var supply_group_store = Ext.getStore('SupplyGroups');
+        var utilbill_store = Ext.getStore('UtilityBills');
+        utilbill_store.clearFilter(true);
+        var record = utilbill_store.findRecord('id', selected.get('id'));
+        supply_group_store.clearFilter(true);
+        supply_group_store.filter({property:"supplier_id", type: 'int',
+                                    value: record.get('supplier_id'),
+                                    exactMatch:true});
+    },
+
+    handleSupplyGroupBlur: function(combo, event, opts){
+        var supplyGroupStore = this.getSupplyGroupsStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (supplyGroupStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            supplyGroupStore.suspendAutoSync();
+            supplyGroupStore.add({name: combo.getRawValue(),
+                                 supplier_id: selected.get('supplier_id'),
+                                 service: selected.get('service')});
+            supplyGroupStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('supply_group_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            supplyGroupStore.resumeAutoSync();
+        }
     }
+
 });

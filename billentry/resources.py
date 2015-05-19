@@ -18,7 +18,7 @@ from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
+from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -121,10 +121,16 @@ class BaseResource(Resource):
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
             'utility': CallableField(String(), attribute='get_utility_name'),
-            'supplier': CallableField(String(), attribute='get_supplier_name',
+            'supplier': CallableField(String(), attribute='get_supplier',
                                       default='Unknown'),
+            'supplier_id': CallableField(Integer(), attribute='get_supplier_id',
+                                         default=None),
             'rate_class': CallableField(
                 String(), attribute='get_rate_class_name', default='Unknown'),
+            'supply_group': CallableField(
+                String(), attribute='get_supply_group_name', default='Unknown'),
+            'supply_group_id': CallableField(
+                Integer(), attribute='get_supply_group_id', default=None),
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
@@ -148,6 +154,13 @@ class BaseResource(Resource):
             'id': Integer,
             'rsi_binding': String,
             'target_total': Float,
+        }
+
+        self.supply_group_fields = {
+            'id': Integer,
+            'name': String,
+            'supplier_id': Integer,
+            'service': String
         }
 
 # basic RequestParser to be extended with more arguments by each
@@ -223,6 +236,9 @@ class UtilBillResource(BaseResource):
         parser.add_argument('utility', type=str)
         parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
+        parser.add_argument('supplier_id', type=int)
+        parser.add_argument('supply_group', type=str)
+        parser.add_argument('supply_group_id', type=int)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
         parser.add_argument('flagged', type=bool)
@@ -250,10 +266,11 @@ class UtilBillResource(BaseResource):
             processed=row['processed'],
             rate_class=row['rate_class'],
             utility=row['utility'],
-            supplier=row['supplier'],
+            supplier=row['supplier_id'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
-            meter_identifier=row['meter_identifier']
+            meter_identifier=row['meter_identifier'],
+            supply_group=row['supply_group_id']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
@@ -335,6 +352,24 @@ class SuppliersResource(BaseResource):
         suppliers = Session().query(Supplier).all()
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
+
+
+class SupplyGroupsResource(BaseResource):
+    def get(self):
+        supply_groups = Session().query(SupplyGroup).all()
+        rows = marshal(supply_groups, self.supply_group_fields)
+        return {'rows': rows, 'results': len(rows)}
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('supplier_id', type=int, required=True)
+        parser.add_argument('service', type=str, required=True)
+        parser.add_argument('name', type=str, required=True)
+        args=parser.parse_args()
+        supply_group = self.utilbill_processor.create_supply_group(args['name'],
+                                                    args['supplier_id'], args['service'])
+        Session.commit()
+        return {'rows': marshal(supply_group, self.supply_group_fields), 'results': 1 }
 
 
 class UtilitiesResource(BaseResource):

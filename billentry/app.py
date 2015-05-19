@@ -405,6 +405,7 @@ api.add_resource(resources.UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(resources.RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(resources.SupplyGroupsResource, '/utilitybills/supplygroups')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResource,
