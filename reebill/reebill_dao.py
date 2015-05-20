@@ -70,7 +70,7 @@ class ReeBillDAO(object):
             .join(UtilityAccount) \
             .filter(UtilityAccount.account == account) \
             .filter(ReeBill.version > 0) \
-            .filter(ReeBill.issued == 0).all()
+            .filter(ReeBill.issued == False).order_by(ReeBill.sequence).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
@@ -96,11 +96,11 @@ class ReeBillDAO(object):
         reebill = self.get_reebill(account, sequence)
         if issue_date is None:
             issue_date = datetime.utcnow()
-        if reebill.issued == 1:
+        if reebill.issued == True:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
-        reebill.issued = 1
-        reebill.processed = 1
+        reebill.issued = True
+        reebill.processed = True
         reebill.issue_date = issue_date
 
     def is_issued(self, account, sequence, version='max'):
@@ -122,7 +122,7 @@ class ReeBillDAO(object):
         # NOTE: reebill.issued is an int, and it converts the entire
         # expression to an int unless explicitly cast! see
         # https://www.pivotaltracker.com/story/show/35965271
-        return bool(reebill.issued == 1)
+        return bool(reebill.issued == True)
 
     def account_exists(self, account):
         session = Session()
@@ -235,3 +235,21 @@ class ReeBillDAO(object):
                                                      last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
+    def get_issuable_reebills(self):
+        '''Return a Query of "issuable" reebills (lowest-sequence bill for
+        each account that is unissued and is not a correction).
+        '''
+        session = Session()
+        unissued_v0_reebills = session.query(
+            ReeBill.sequence, ReeBill.reebill_customer_id).filter(
+            ReeBill.issued == False, ReeBill.version == 0)
+        unissued_v0_reebills = unissued_v0_reebills.subquery()
+        min_sequence = session.query(
+            unissued_v0_reebills.c.reebill_customer_id.label(
+                'reebill_customer_id'),
+            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
+            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
+        return session.query(ReeBill).filter(
+            ReeBill.reebill_customer_id == min_sequence.c.reebill_customer_id) \
+            .filter(ReeBill.sequence == min_sequence.c.sequence).filter_by(
+            processed=True)

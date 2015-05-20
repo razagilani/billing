@@ -86,14 +86,18 @@ class billentry(Schema):
     show_traceback_on_error = StringBool()
     secret_key = String()
     wiki_url = String()
+    timeout = Int()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
 class db(Schema):
-    # MySQL database
+    # database connection URI
     uri = String()
+    # URI to be used for restoring from a backup of an old database--this will
+    # differ from "uri" only when migrating to a different database.
+    old_uri = String()
     echo = StringBool()
 
 class mongodb(Schema):

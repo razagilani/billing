@@ -23,6 +23,7 @@ git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebed
 ordereddict==1.1
 paramiko==1.12.0
 pika==0.9.14
+psycopg2==2.6
 py-bcrypt==0.4
 pyPdf==1.13            # requires --allow-external with pip 1.4.1
 pycrypto==2.6.1

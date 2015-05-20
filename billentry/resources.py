@@ -10,8 +10,9 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case
+from sqlalchemy.orm import joinedload
 
-from billentry.billentry_model import BEUtilBill
+from billentry.billentry_model import BEUtilBill, BEUserSession
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
@@ -167,7 +168,8 @@ parse_date = lambda _s: dateutil_parser.parse(_s).date()
 class AccountListResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
-            BrokerageAccount).order_by(UtilityAccount.account).all()
+            BrokerageAccount).options(joinedload('utilbills')).options(
+            joinedload('fb_utility')).order_by(UtilityAccount.account).all()
         return [dict(marshal(account, {
             'id': Integer,
             'account': String,
@@ -363,7 +365,6 @@ class UtilBillCountForUserResource(BaseResource):
 
             s = Session()
             count_sq = s.query(
-                BEUtilBill.id,
                 BEUtilBill.billentry_user_id,
                 func.count(BEUtilBill.id).label('total_count'),
                 func.sum(
@@ -371,20 +372,20 @@ class UtilBillCountForUserResource(BaseResource):
                 ).label('electric_count'),
                 func.sum(
                     case(((RateClass.service == 'gas', 1),), else_=0)
-                ).label('gas_count'),
-            ).group_by(BEUtilBill.billentry_user_id).outerjoin(
-                RateClass).filter(and_(
+                ).label('gas_count')
+            ).group_by(BEUtilBill.billentry_user_id).outerjoin(RateClass).filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                     BEUtilBill.billentry_date < args['end'])
             ).subquery()
 
+
             q = s.query(
                 BillEntryUser,
-                count_sq.c.total_count,
-                count_sq.c.electric_count,
-                count_sq.c.gas_count,
+                func.max(count_sq.c.total_count),
+                func.max(count_sq.c.electric_count),
+                func.max(count_sq.c.gas_count),
             ).outerjoin(count_sq).group_by(
-                BillEntryUser.id).order_by(
+                BillEntryUser.id, BillEntryUser.email).order_by(
                 BillEntryUser.id)
 
             rows = [{
@@ -393,6 +394,7 @@ class UtilBillCountForUserResource(BaseResource):
                     'total_count': int(total_count or 0),
                     'gas_count': int(gas_count or 0),
                     'electric_count': int(electric_count or 0),
+                    'elapsed_time': user.get_beuser_billentry_duration(args['start'], args['end'])
                 } for (user, total_count, electric_count, gas_count) in q.all()]
 
             return {'rows': rows, 'results': len(rows)}
