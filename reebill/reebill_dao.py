@@ -145,7 +145,8 @@ class ReeBillDAO(object):
             ReeBill.sequence).subquery()
         q =  s.query(ReeBill).join(
             max_versions, and_(
-                ReeBill.reebill_customer_id, max_versions.c.reebill_customer_id,
+                ReeBill.reebill_customer_id ==
+                max_versions.c.reebill_customer_id,
                 ReeBill.sequence == max_versions.c.sequence,
                 ReeBill.version == max_versions.c.version))
         if start_date is not None:
