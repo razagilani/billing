@@ -17,12 +17,15 @@ class ReconciliationReport(object):
         self.reebill_dao = reebill_dao
         self.ree_getter = ree_getter
 
-    def get_dataset(self):
-        """Return a tablib.Dataset containing the report data.
+    def get_dataset(self, start=None):
+        """Return a tablib.Dataset containing the report data for bills
+        before the given date, or 365 days ago by default.
+        :param start: datetime
         """
+        if start is None:
+            start = (datetime.utcnow() - timedelta(days=365)).date()
         dataset = Dataset(headers=['customer_id', 'sequence', 'energy',
                                    'current_energy'])
-        start = (datetime.utcnow() - timedelta(days=365)).date()
         log = logging.getLogger(LOG_NAME)
         for reebill in self.reebill_dao.get_all_reebills():
             if reebill.get_period_start() < start:
