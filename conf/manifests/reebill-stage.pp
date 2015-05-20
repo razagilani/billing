@@ -13,9 +13,8 @@ host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
 
 include mongo::mongo_tools
-package { 'httpd':
-    ensure  => installed
-}
+include httpd::httpd_server 
+
 package { 'postgresql93':
     ensure  => installed
 }
