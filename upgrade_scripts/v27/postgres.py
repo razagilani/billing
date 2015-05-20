@@ -74,8 +74,22 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
         pg_engine.execute(table.insert(), data)
 
         # verify row count
-        assert mysql_engine.execute(count_query).fetchall() \
-               == pg_engine.execute(count_query).fetchall()
+        pg_count = pg_engine.execute(count_query).fetchone()[0]
+        assert mysql_engine.execute(count_query).fetchone()[0] == pg_count
+
+        # manually update value of primary key sequence: prevents constraint
+        # violation errors when new rows are inserted after the migration
+        pk_col_names = table.primary_key.columns.keys()
+        pk_cols = table.primary_key.columns.values()
+        if any(len(c.foreign_keys) > 0 for c in pk_cols):
+            # some tables (especially many-many mapping tables) have foreign
+            # keys as primary keys; these don't have their own sequences
+            log.info('Assuming table %s has no primary key sequence for %s' % (
+                table.name, pk_col_names))
+            continue
+        sequence_name = '_'.join([table.name, pk_col_names[0], 'seq'])
+        print pg_engine.execute("select setval('%s', %s)" % (sequence_name, pg_count)).fetchall()
+        #print pg_engine.execute("select lastval('%s')" % sequence_name)
 
     # "stamp" the new database with the current revision as described here:
     # http://alembic.readthedocs.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
