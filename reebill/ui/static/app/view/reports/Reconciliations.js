@@ -1,5 +1,4 @@
 var the_renderer = function(value, metaData, record){
-    console.log(value, metaData, record);
     if (record.raw.energy == null)
         return 'not included';
     return value;
