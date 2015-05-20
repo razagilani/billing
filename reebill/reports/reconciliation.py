@@ -24,28 +24,32 @@ class ReconciliationReport(object):
         """
         if start is None:
             start = (datetime.utcnow() - timedelta(days=365)).date()
-        dataset = Dataset(headers=['customer_id', 'sequence', 'energy',
-                                   'current_energy'])
+        dataset = Dataset(headers=['customer_id', 'nextility_account_number',
+                                   'sequence', 'energy', 'current_energy'])
         log = logging.getLogger(LOG_NAME)
         for reebill in self.reebill_dao.get_all_reebills():
             if reebill.get_period_start() < start:
-                log.info('%s excluded from reconcilation report because it '
-                         'started on %s, before %s' % (
-                             reebill, reebill.get_period_start(), start))
+                log.info('%s with account number "%s" excluded from '
+                         'reconciliation report because it started on %s, '
+                         'before %s' % (
+                             reebill, reebill.get_account(),
+                             reebill.get_period_start(), start))
                 original_energy = current_energy = None
             else:
                 try:
                     self.ree_getter.update_renewable_readings(reebill)
                 except BillingError:
-                    log.info('%s excluded from reconcilation report because its '
-                             'utility bill lacks required registers' % reebill)
+                    log.info('%s with account number "%s" excluded from '
+                             'reconciliation report because its utility bill '
+                             'lacks required registers' % (
+                        reebill, reebill.get_account()))
                     original_energy = current_energy = None
                 else:
                     original_energy = reebill.get_total_renewable_energy()
                     current_energy = reebill.get_total_renewable_energy()
             dataset.append(
-                [reebill.get_customer_id(), reebill.sequence, original_energy,
-                 current_energy])
+                [reebill.get_customer_id(), reebill.get_account(),
+                 reebill.sequence, original_energy, current_energy])
         return dataset
 
     def write_json(self, output_file):
