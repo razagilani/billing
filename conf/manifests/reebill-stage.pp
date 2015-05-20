@@ -103,3 +103,9 @@ cron { destage_bills_from_production:
     hour => 1,
     minute => 0
 }
+cron { run_reports:
+    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
+    user => $username,
+    hour => 3,
+    minute => 0
+}
