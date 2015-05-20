@@ -15,7 +15,7 @@ from os import path
 from billentry.billentry_model import Role
 from core.altitude import AltitudeSupplier
 from core.model.model import RegisterTemplate
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model, ROOT_PATH
@@ -89,12 +89,16 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
         if any(len(c.foreign_keys) > 0 for c in pk_cols):
             # some tables (especially many-many mapping tables) have foreign
             # keys as primary keys; these don't have their own sequences
-            log.info('Assuming table %s has no primary key sequence for %s' % (
+            log.debug('Assuming table %s has no primary key sequence for %s' % (
                 table.name, pk_col_names))
             continue
+        sequence_max_value = pg_engine.execute(
+            select([func.max(pk_cols[0])])).fetchone()[0]
         sequence_name = '_'.join([table.name, pk_col_names[0], 'seq'])
-        print pg_engine.execute("select setval('%s', %s)" % (sequence_name, pg_count)).fetchall()
-        #print pg_engine.execute("select lastval('%s')" % sequence_name)
+        setval_result = pg_engine.execute("select setval('%s', %s)" % (
+            sequence_name, sequence_max_value)).fetchone()[0]
+        assert setval_result == sequence_max_value
+        log.debug('%s updated to %s'% (sequence_name, sequence_max_value))
 
     # "stamp" the new database with the current revision as described here:
     # http://alembic.readthedocs.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
