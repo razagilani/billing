@@ -80,8 +80,7 @@ class RenewableEnergyGetter(object):
         database
         :param verbose: print log messages
         """
-        #olap_id = self._nexus_util.olap_id(reebill.get_account())
-        olap_id = ''
+        olap_id = self._nexus_util.olap_id(reebill.get_account())
         install_obj = self._splinter.get_install_obj_for(olap_id)
         utilbill = reebill.utilbill
         start, end = reebill.get_period()
