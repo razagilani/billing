@@ -36,6 +36,7 @@ class ReconciliationReport(object):
                              reebill.get_period_start(), start))
                 original_energy = current_energy = None
             else:
+                original_energy = reebill.get_total_renewable_energy()
                 try:
                     self.ree_getter.update_renewable_readings(reebill)
                 except BillingError:
@@ -45,7 +46,6 @@ class ReconciliationReport(object):
                         reebill, reebill.get_account()))
                     original_energy = current_energy = None
                 else:
-                    original_energy = reebill.get_total_renewable_energy()
                     current_energy = reebill.get_total_renewable_energy()
             dataset.append(
                 [reebill.get_customer_id(), reebill.get_account(),
