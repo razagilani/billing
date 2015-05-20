@@ -1,11 +1,9 @@
 Ext.define('ReeBill.model.Reconciliation', {
     extend: 'Ext.data.Model',
     fields: [
-        {name: 'account'},
+        {name: 'customer_id'},
         {name: 'sequence'},
-        {name: 'bill_therms'},
-        {name: 'olap_therms'},
-        {name: 'oltp_therms'},
-        {name: 'errors'}
+        {name: 'energy', type: 'float'},
+        {name: 'current_energy', type: 'float'},
     ]
 });
