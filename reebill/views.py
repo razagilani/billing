@@ -146,29 +146,6 @@ class Views(object):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
 
-    # TODO: no test coverage
-    def get_issuable_reebills_dict(self):
-        """ Returns a list of issuable reebill dictionaries
-            of the earliest unissued version-0 reebill account. If
-            proccessed == True, only processed Reebills are returned
-            account can be used to get issuable bill for an account
-        """
-        session = Session()
-        unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(ReeBill.issued == True,
-                                                          ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-            unissued_v0_reebills.c.reebill_customer_id.label('reebill_customer_id'),
-            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
-            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
-        reebills = session.query(ReeBill) \
-            .filter(ReeBill.reebill_customer_id==min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence==min_sequence.c.sequence)\
-            .filter(ReeBill.processed == True)
-        issuable_reebills = [r.column_dict() for r in reebills.all()]
-        return issuable_reebills
-
     def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
           Casual name, Primus Name, Utility Service Address, payee, Date of last
@@ -268,6 +245,7 @@ class Views(object):
             .filter(UtilityAccount.account == account) \
             .order_by(ReeBill.reebill_customer_id,
                       ReeBill.sequence).group_by(
+            ReeBill.reebill_customer_id,
             ReeBill.reebill_customer, ReeBill.sequence).subquery()
 
         # query ReeBill joined to the above subquery to get only
@@ -287,3 +265,11 @@ class Views(object):
                 estimated=rb.is_estimated())
         for rb in q]
 
+    def get_issuable_reebills_dict(self):
+        """ Returns a list of issuable reebill dictionaries
+            of the earliest unissued version-0 reebill account. If
+            proccessed == True, only processed Reebills are returned
+            account can be used to get issuable bill for an account
+        """
+        return [r.column_dict() for r in
+                self._reebill_dao.get_issuable_reebills().all()]

@@ -366,7 +366,6 @@ class UtilBillCountForUserResource(BaseResource):
 
             s = Session()
             count_sq = s.query(
-                BEUtilBill.id,
                 BEUtilBill.billentry_user_id,
                 func.count(BEUtilBill.id).label('total_count'),
                 func.sum(
@@ -383,11 +382,11 @@ class UtilBillCountForUserResource(BaseResource):
 
             q = s.query(
                 BillEntryUser,
-                count_sq.c.total_count,
-                count_sq.c.electric_count,
-                count_sq.c.gas_count,
+                func.max(count_sq.c.total_count),
+                func.max(count_sq.c.electric_count),
+                func.max(count_sq.c.gas_count),
             ).outerjoin(count_sq).group_by(
-                BillEntryUser.id).order_by(
+                BillEntryUser.id, BillEntryUser.email).order_by(
                 BillEntryUser.id)
 
             rows = [{
