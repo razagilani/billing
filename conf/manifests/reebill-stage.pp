@@ -11,12 +11,10 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-require host::hosts_file
 
 include mongo::mongo_tools
-package { 'httpd':
-    ensure  => installed
-}
+include httpd::httpd_server 
+
 package { 'postgresql93':
     ensure  => installed
 }
@@ -71,7 +69,7 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@ip-10-0-1-220'
+    cluster => 'rabbit@portal-stage.nextility.net'
 }
 
 rabbit_mq::user_permission {'guest':
@@ -103,5 +101,11 @@ cron { destage_bills_from_production:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python backup.py restore-files-s3 d6b434b4ac de5cd1b859 --access-key AKIAJH4OHWNBRJVKFIWQ --secret-key 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 > /home/reebill-stage/destage_bills_stdout.log 2> /home/reebill-stage/destage_bills_stderr.log",
     user => $username,
     hour => 1,
+    minute => 0
+}
+cron { run_reports:
+    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
+    user => $username,
+    hour => 3,
     minute => 0
 }
