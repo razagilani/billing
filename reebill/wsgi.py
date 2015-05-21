@@ -131,8 +131,8 @@ class WebResource(object):
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('reebill', 'authenticate')
         
-        self.reconciliation_report_dir = self.config.get(
-            'reebillreconciliation', 'report_directory')
+        self.reconciliation_report_path = self.config.get(
+            'reebill', 'reconciliation_report_path')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
 
@@ -897,14 +897,12 @@ class ReportsResource(WebResource):
     @cherrypy.tools.authenticate()
     def reconciliation(self, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        with open(os.path.join(
-                self.reconciliation_report_dir,
-                'reconciliation_report.json')) as json_file:
-            items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
-            return self.dumps({
-                'rows': items[start:start+limit],
-                'results': len(items)
-            })
+        with open(self.reconciliation_report_path) as json_file:
+            items = json.load(json_file)
+        return self.dumps({
+            'rows': items[start:start+limit],
+            'results': len(items)
+        })
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
