@@ -34,9 +34,13 @@ class TestCase(unittest.TestCase):
                 self.assertEquals(v, v2)
 
     def assertDocumentsEqualExceptKeys(self, d1, d2, *keys_to_exclude):
-        '''Asserts that two Mongo documents (dictionaries) are the same except
-        for keys in 'keys_to_exclude' (which don't necessarily have to be
-        present in the documents.'''
+        """Assert that two dictionaries of lists of dictionaries are the same
+        except for certain dictionary keys.
+        :param d1: dict or list of dicts
+        :param d2: dict or list of dicts
+        :param keys_to_exclude: keys to exclude from comparison (they don't
+        necessarily have to be present in either d1 or d2).
+        """
         # compare lists elementwise
         if isinstance(d1, list) and isinstance(d2, list) \
                 and len(d1) == len(d2):

@@ -41,14 +41,11 @@ class UtilbillProcessor(object):
         utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         assert utilbill.utility is not None
 
-        if processed is True:
-            utilbill.check_processable()
-            utilbill.processed = processed
+        if processed is not None:
+            utilbill.set_processed(processed)
             # since the bill has become processed no other changes to the bill
             # can be made so return the util bill without raising an error
             return utilbill
-        elif processed is False:
-            utilbill.processed = processed
 
         utilbill.check_editable()
         if tou is not None:
@@ -72,9 +69,8 @@ class UtilbillProcessor(object):
                 utilbill.get_service() is not None else 'gas')
 
         if utility is not None and isinstance(utility, basestring):
-            utilbill.utility, new_utility = self.get_create_utility(utility)
-            if new_utility:
-                utilbill.rate_class = None
+            utility, _ = self.get_create_utility(utility)
+            utilbill.set_utility(utility)
 
         if meter_identifier is not None:
             utilbill.set_total_meter_identifier(meter_identifier)

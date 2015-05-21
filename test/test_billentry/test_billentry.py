@@ -1,6 +1,7 @@
 """All tests for the Bill Entry application.
 """
 from datetime import datetime, date
+from time import sleep
 import unittest
 from json import loads
 import json
@@ -13,18 +14,18 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" is imported.
 from exc import UnEditableBillError
 from test import init_test_config
+from util import FixMQ
 from util.dictutils import deep_map
 
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
-from mq import IncomingMessage
 
 import billentry
 from billentry import common
 from billentry.billentry_exchange import create_amqp_conn_params, \
     ConsumeUtilbillGuidsHandler
-from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
+from billentry.billentry_model import BillEntryUser, BEUtilBill, Role, BEUserSession
 from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
@@ -32,7 +33,9 @@ from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
-from mq.tests import create_mock_channel_method_props, \
+with FixMQ():
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
 from test.setup_teardown import clear_db
 
@@ -206,7 +209,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                     type='distribution', target_total=1)
         c2 = Charge('LINEAR', rate=0.1, formula='REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        self.ub1.charges = [c1, c2]
         c3 = Charge('LINEAR_PLUS_CONSTANT', rate=0.1,
                     formula='REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
@@ -215,9 +217,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         c5 = Charge('BLOCK_2',rate= 0.4,
                     formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
-        self.ub2.charges = [c3, c4, c5]
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
-        s.add_all([c1, c2, c3, c4, c5, ub3])
+        self.ub1.charges = [c1, c2]
+        self.ub2.charges = [c3, c4, c5]
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
         s.commit()
@@ -511,7 +514,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson({
             "results": 1,
             "rows": {
-         	    'computed_total': 85.0,
+         	    'computed_total': 40.0,
                 'due_date': None,
                 'entered': False,
                 'id': 1,
@@ -520,20 +523,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
-                'service': 'Gas',
+                'rate_class': 'Unknown',
+                'service': 'Unknown',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
                 'supply_choice_id': None,
                 'supply_total': 2.0,
                 'target_total': 0.0,
-                'total_energy': 150.0,
+                'total_energy': 0,
                 'utility': 'Empty Utility',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Empty Utility',
                 'flagged': False,
-                'meter_identifier': 'GHIJKL',
+                'meter_identifier': None,
                 'tou': False
             }}, rv.data
         )
@@ -547,7 +550,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             {
             "results": 1,
             "rows": {
-                  'computed_total': 85.0,
+                  'computed_total': 40.0,
                   'id': 1,
                   'due_date': None,
                   'next_meter_read_date': None,
@@ -555,13 +558,13 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
-                  'service': 'Gas',
+                  'rate_class': 'Unknown',
+                  'service': 'Unknown',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
                   'supply_total': 2.0,
                   'target_total': 0.0,
-                  'total_energy': 150.0,
+                  'total_energy': 0,
                   'utility': 'Some Other Utility',
                   'utility_account_number': '1',
                   'utility_account_id': 1,
@@ -569,7 +572,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'wiki_url': 'http://example.com/utility:Some Other Utility',
                   'entered': False,
                   'flagged': False,
-                  'meter_identifier': 'GHIJKL',
+                  'meter_identifier': None,
                   'tou': False
             },
             }, rv.data
@@ -595,9 +598,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         self.response_all_counts_0 = {"results": 2, "rows": [
             {"id": 1, "email": '1@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0},
             {"id": 2, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]}
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]}
         self.response_no_flagged_bills = {"results": 0, "rows": []}
 
     def test_report_count_for_user(self):
@@ -633,9 +636,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 1},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]},
                         rv.data)
 
         self.ub3.enter(self.user2, datetime(2000,1,10))
@@ -646,9 +649,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 1},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
-             "gas_count": 0, "electric_count": 1}]},
+             "gas_count": 0, "electric_count": 1, "elapsed_time": 0}]},
                         rv.data)
 
 
@@ -941,6 +944,7 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
         utility = Utility(name='Empty Utility')
+
         utility_account = UtilityAccount('Account 2', '22222', utility, None,
                                          None, Address(), Address(), '2')
 
@@ -1019,6 +1023,78 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
         self.handler.handle(message_obj)
         self.billentry_common_module.replace_utilbill_with_beutilbill\
                 .assert_called_once_with(self.utilbill)
+
+
+class TestBillEntryUserSessions(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
+
+    def setUp(self):
+        init_test_config()
+        clear_db()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
+        s.commit()
+
+    def tearDown(self):
+        clear_db()
+
+    def test_session_duration(self):
+        current_timestamp = datetime.utcnow()
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # a BEUserSession object must exist for this user after a
+        # successfull login
+        user = Session().query(BillEntryUser).filter_by(email='user1@test.com').first()
+        be_user_session = Session().query(BEUserSession).filter_by(beuser=user).all()
+        self.assertEqual(len(be_user_session), 1)
+
+        # both session_start and last_request are updated at user login so
+        # the difference between their timestamps and current_timestamp
+        # must be greater than 0
+        self.assertNotEquals(0, be_user_session[0].session_start - current_timestamp)
+        self.assertNotEquals(0, be_user_session[0].last_request - current_timestamp)
+
+        last_request_timestamp = be_user_session[0].last_request
+        # make another request to update the last_request field as the
+        # timestamp for last_request is updated on every request
+        self.app.get('/')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+
+        last_request_timestamp =  be_user_session[0].last_request
+        # logout closes the current session
+        self.app.get('/logout')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+        self.assertAlmostEqual((be_user_session[0].last_request -
+                          be_user_session[0].session_start).
+                         total_seconds(), user.get_beuser_billentry_duration
+                        (current_timestamp, datetime.utcnow()), places=0)
+
+        #start a new session by logging in
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        current_timestamp = datetime.utcnow()
+        user_sessions = Session().query(BEUserSession).filter_by(beuser=user).all()
+        # count of sessione should be two now that another login request has been made
+        self.assertEqual(2, len(user_sessions))
+        # the session duration for current session should be 0 as both
+        # session_start and last_request have the same values
+        self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
+
 
 class TestBillEnrtyAuthentication(unittest.TestCase):
     URL_PREFIX = 'http://localhost'
