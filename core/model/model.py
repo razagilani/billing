@@ -22,7 +22,7 @@ from alembic.migration import MigrationContext
 
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable
+    UnEditableBillError, NotProcessable, BillingError
 
 
 __all__ = [
@@ -1073,6 +1073,21 @@ class UtilBill(Base):
         total_register = next(r for r in self.registers if
                               r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
+
+    def get_register_by_binding(self, register_binding):
+        """Return the register whose register_binding is 'register_binding'.
+        This should only be called by consumers that need to know about
+        registers--not to get total energy, demand, etc. (Maybe there
+        shouldn't be any consumers that know about registers, but currently
+        reebill.fetch_bill_data.RenewableEnergyGetter does.)
+        :param register_binding: register binding string
+        """
+        try:
+            register = next(r for r in self.registers if
+                              r.register_binding == register_binding)
+        except StopIteration:
+            raise BillingError('No register "%s"' % register_binding)
+        return register
 
     def get_supply_target_total(self):
         '''Return the sum of the 'target_total' of all supply
