@@ -22,7 +22,8 @@ Ext.define('ReeBill.view.reports.Reconciliations', {
     columns: [{
         header: 'Customer ID',
         dataIndex: 'customer_id',
-        width: 120
+        width: 120,
+        hidden: true,
     },{
         header: 'Nextility Account Number',
         dataIndex: 'nextility_account_number',
