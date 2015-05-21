@@ -977,21 +977,16 @@ class ReebillWSGI(object):
         )
 
         # create a FuzzyPricingModel
-        fuzzy_pricing_model = FuzzyPricingModel(
-            utilbill_loader,
-            logger=logger
-        )
+        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader,logger=logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
         # journal.Event subclasses (in journal.py) can associate themselves by
         # setting meta = {'db_alias': 'journal'}.
-        journal_config = dict(config.items('mongodb'))
         mongoengine.connect(
-            journal_config['database'],
-            host=journal_config['host'],
-            port=int(journal_config['port']),
-            alias='journal')
+            config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
+            port=config.getint('mongodb', 'port'), alias='journal')
         journal_dao = journal.JournalDAO()
 
         # create a Splinter
@@ -1006,25 +1001,20 @@ class ReebillWSGI(object):
                 olap_cache_db=config.get('reebill', 'olap_database'),
                 monguru_options={
                     'olap_cache_host': config.get('reebill', 'olap_host'),
-                    'olap_cache_db': config.get('reebill',
-                                                     'olap_database'),
+                    'olap_cache_db': config.get('reebill', 'olap_database'),
                     'cartographer_options': {
-                        'olap_cache_host': config.get('reebill',
-                                                           'olap_host'),
-                        'olap_cache_db': config.get('reebill',
-                                                         'olap_database'),
+                        'olap_cache_host': config.get('reebill', 'olap_host'),
+                        'olap_cache_db': config.get('reebill', 'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        'nexus_host': config.get('reebill',
-                                                      'nexus_db_host'),
+                        'nexus_host': config.get('reebill', 'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
                 },
                 cartographer_options={
                     'olap_cache_host': config.get('reebill', 'olap_host'),
-                    'olap_cache_db': config.get('reebill',
-                                                     'olap_database'),
+                    'olap_cache_db': config.get('reebill', 'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
                     'nexus_host': config.get('reebill', 'nexus_db_host'),
@@ -1035,16 +1025,13 @@ class ReebillWSGI(object):
 
         # create a ReebillRenderer
         rb_file_handler = reebill_file_handler.ReebillFileHandler(
-                config.get('reebill', 'reebill_file_path'),
-                config.get('reebill', 'teva_accounts'))
+            config.get('reebill', 'reebill_file_path'),
+            config.get('reebill', 'teva_accounts'))
         mailer_opts = dict(config.items("mailer"))
         bill_mailer = Mailer(mailer_opts['mail_from'],
-                mailer_opts['originator'],
-                mailer_opts['password'],
-                smtplib.SMTP(),
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
-                mailer_opts['bcc_list'])
+                             mailer_opts['originator'], mailer_opts['password'],
+                             smtplib.SMTP(), mailer_opts['smtp_host'],
+                             mailer_opts['smtp_port'], mailer_opts['bcc_list'])
 
         ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
         utilbill_views = Views(state_db, bill_file_handler,
