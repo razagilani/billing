@@ -133,12 +133,15 @@ class ProcessTest(testing_utils.TestCase):
         self.assertEqual(group2.bill_email_recipient, '')
         self.assertFalse(created)
         self.assertEqual(group2, group)
+
     def test_set_groups_for_utility_account(self):
-        utility_account = Session().query(UtilityAccount).filter_by(
+        s = Session()
+        utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
-        reebill_customer = Session().query(ReeBillCustomer).filter_by(
+        reebill_customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=utility_account.id).one()
         self.assertEqual(reebill_customer.get_groups(), [])
+
         # Add some groups
         self.reebill_processor.set_groups_for_utility_account(
             utility_account.id, ['group1', 'another group', 'unit test'])
@@ -146,14 +149,17 @@ class ProcessTest(testing_utils.TestCase):
         self.assertEqual([g.name for g in customer_groups],
                          ['group1', 'another group', 'unit test'])
         another_group_id = customer_groups[1].id
+
         # Add and remove some groups
         self.reebill_processor.set_groups_for_utility_account(
             utility_account.id, ['another group', 'something else'])
         customer_groups = reebill_customer.get_groups()
         self.assertEqual([g.name for g in customer_groups],
                          ['another group', 'something else'])
+
         # Assert 'another group' remained the same object
         self.assertEqual(another_group_id, customer_groups[0].id)
+
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
