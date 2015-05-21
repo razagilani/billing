@@ -44,15 +44,15 @@ class ChargeUnitTests(testing_utils.TestCase):
 
     def test_is_builtin(self):
         for builtin_function_name in builtins:
-            self.assertTrue(self.charge.is_builtin(builtin_function_name))
+            self.assertTrue(self.charge._is_builtin(builtin_function_name))
         for function_name in ["No", "built-ins", "here"]:
-            self.assertFalse(self.charge.is_builtin(function_name))
+            self.assertFalse(self.charge._is_builtin(function_name))
 
     def test_get_variable_names(self):
         for formula, expected in [('sum(x) if y else 5', ['y', 'x']),
                                   ('5*usage + 15 - spent', ['spent', 'usage']),
                                   ('range(20) + somevar', ['somevar'])]:
-            self.assertEqual(expected, Charge.get_variable_names(formula))
+            self.assertEqual(expected, Charge._get_variable_names(formula))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
