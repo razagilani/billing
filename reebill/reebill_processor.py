@@ -532,7 +532,8 @@ class ReebillProcessor(object):
         
         # Render the jinja2 template with template fields
         html_body = Template(template_html).render(fields)
-
+        if isinstance(recipient_list, list):
+            recipient_list = ', '.join(recipient_list)
         # Hand this content off to the mailer
         self.bill_mailer.mail(
             recipient_list,
