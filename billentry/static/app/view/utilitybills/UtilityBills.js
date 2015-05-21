@@ -168,29 +168,6 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
             return record.get('supplier');
         }
     },{
-        header: 'Supply Group',
-        dataIndex: 'supply_group_id',
-        emptyText: 'Unknown Supply Group',
-        editor: {
-            xtype: 'combo',
-            store: 'SupplyGroups',
-            itemId: 'supply_group_combo',
-            displayField: 'name',
-            valueField: 'id',
-            triggerAction: 'all',
-            forceSelection: false,
-            typeAhead: true,
-            typeAheadDelay: 1,
-            autoSelect: false,
-            regex: /[a-zA-Z0-9]+/,
-            minChars: 1
-        },
-        renderer: function(val, metaDate, record){
-            return record.get('supply_group');
-        },
-        minWidth: 250,
-        flex: 1
-    },{
         header: 'Service',
         dataIndex: 'service',
         editor: {
