@@ -1,6 +1,9 @@
 import logging
 from core.altitude import AltitudeGUID
-from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
+from util import FixMQ
+
+with FixMQ():
+    from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
 from pika import URLParameters
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match

@@ -280,8 +280,7 @@ class RenewableEnergyGetter(object):
                                 [aggregate_value, float(energy_today)])
             return aggregate_value
 
-        register = next(r for r in utilbill.registers if r.register_binding
-                        == reading.register_binding)
+        register = utilbill.get_register_by_binding(reading.register_binding)
         return get_renewable_energy_for_register(
                 register, utilbill.period_start, utilbill.period_end)
 
