@@ -107,6 +107,15 @@
     "ApplicationInstance" : {
       "Type" : "AWS::EC2::Instance",
       "Properties" : {
+        "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
+          "#cloud-config",
+          {"Fn::Join" : ["", ["local-hostname: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          "manage_etc_hosts: true",
+          "preserve_hostname: false",
+          "packages:",
+          " - puppet"
+        ]]}},
         "SubnetId" : {"Ref" : "InstanceSubnet"},
         "InstanceType" : { "Ref" : "InstanceType" },
         "SecurityGroupIds" : [{"Ref" : "ApplicationSecurityGroup"}, {"Ref": "SshSecurityGroup"}, {"Ref" : "RabbitMqSecurityGroup"}],

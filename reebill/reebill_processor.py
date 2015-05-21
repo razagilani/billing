@@ -713,7 +713,8 @@ class ReebillProcessor(object):
         customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=account_id).one()
 
-        # Remove the customer from groups that are not in 'group_name_array'
+        # Remove the customer from groups whose names are not in
+        # 'group_name_array'
         customer_groups = customer.get_groups()
         for g in customer_groups:
             if g.name not in group_name_array:
