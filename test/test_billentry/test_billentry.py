@@ -209,7 +209,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                     type='distribution', target_total=1)
         c2 = Charge('LINEAR', rate=0.1, formula='REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        self.ub1.charges = [c1, c2]
         c3 = Charge('LINEAR_PLUS_CONSTANT', rate=0.1,
                     formula='REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
@@ -218,9 +217,10 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         c5 = Charge('BLOCK_2',rate= 0.4,
                     formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
-        self.ub2.charges = [c3, c4, c5]
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
-        s.add_all([c1, c2, c3, c4, c5, ub3])
+        self.ub1.charges = [c1, c2]
+        self.ub2.charges = [c3, c4, c5]
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
         s.commit()
@@ -949,6 +949,7 @@ class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
         utility = Utility(name='Empty Utility')
+
         utility_account = UtilityAccount('Account 2', '22222', utility, None,
                                          None, Address(), Address(), '2')
 
@@ -1083,10 +1084,10 @@ class TestBillEntryUserSessions(unittest.TestCase):
         # logout closes the current session
         self.app.get('/logout')
         self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
-        self.assertEqual((be_user_session[0].last_request -
+        self.assertAlmostEqual((be_user_session[0].last_request -
                           be_user_session[0].session_start).
                          total_seconds(), user.get_beuser_billentry_duration
-                        (current_timestamp, datetime.utcnow()))
+                        (current_timestamp, datetime.utcnow()), places=0)
 
         #start a new session by logging in
         self.app.post('/userlogin',

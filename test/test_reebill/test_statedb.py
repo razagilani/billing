@@ -35,6 +35,8 @@ class StateDBTest(TestCase):
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account,
                                     payee='payee')
+        self.reebill_customer2 = self.reebill_customer.clone()
+
         self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
@@ -116,3 +118,22 @@ class StateDBTest(TestCase):
         self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
+    def test_get_issuable_reebills(self):
+        session = Session()
+
+        rb1 = ReeBill(self.reebill_customer, 1)
+        rb1.issued = True
+        rb1.processed = True
+        rb1_1 = ReeBill(self.reebill_customer, 1, version=1)
+        rb1_1.processed = True
+        rb2 = ReeBill(self.reebill_customer, 2)
+        rb2.processed = True
+        rb3 = ReeBill(self.reebill_customer2, 1)
+        rb3.processed = True
+
+        session.add_all([rb1, rb1_1, rb2, rb3])
+
+        self.assertEqual(
+            self.state_db.get_issuable_reebills().all(),
+            [rb2, rb3]
+        )
