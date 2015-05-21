@@ -9,17 +9,19 @@ from core.model import Session, Address, Utility, Supplier, RateClass, \
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test.setup_teardown import clear_db
+from test import init_test_config
+from test.setup_teardown import clear_db, create_tables
 from test.testing_utils import TestCase
 
+def setUpModule():
+    init_test_config()
+    create_tables()
 
 class StateDBTest(TestCase):
 
     def setUp(self):
-        # clear out database
-        init_config('test/tstsettings.cfg')
-        init_model()
         clear_db()
+
         blank_address = Address()
         self.utility = Utility(name='FB Test Utility Name',
                                address=blank_address)

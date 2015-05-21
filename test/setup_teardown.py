@@ -5,16 +5,19 @@ import os
 from subprocess import CalledProcessError, Popen
 from time import sleep
 import subprocess
+from alembic import command
+from alembic.config import Config
 
 from mock import Mock
 from boto.s3.connection import S3Connection
+from sqlalchemy import create_engine
 from testfixtures import TempDirectory
 
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
-from core import pricing
+from core import pricing, ROOT_PATH, import_all_model_modules
 from core.model import Supplier, RateClass, UtilityAccount, Base
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
@@ -36,6 +39,38 @@ from reebill.reebill_file_handler import ReebillFileHandler
 from reebill.views import Views
 from reebill.bill_mailer import Mailer
 import smtplib
+
+
+def create_tables():
+    """Drop and (re-)create tables in the test database according to the
+    SQLAlchemy schema.
+
+    Call this after init_test_config() and before init_model(). Call this
+    only once before running all tests; it doesn't need to be re-run before
+    each test.
+    """
+    from core import config
+    uri = config.get('db', 'uri')
+    engine = create_engine(uri, echo=config.get('db', 'echo'))
+
+    import_all_model_modules()
+    Base.metadata.bind = engine
+    Base.metadata.drop_all()
+    Base.metadata.create_all(checkfirst=True)
+    print os.path.join(ROOT_PATH, 'alembic.ini')
+
+    cur_dir = os.getcwd()
+    os.chdir(ROOT_PATH)
+    alembic_cfg = Config(os.path.join(ROOT_PATH, 'alembic.ini'))
+
+    # use current database URI (Postgres) instead of alembic upgrade URI (MySQL)
+    # TODO: remove this after Postgres is in production because these two
+    # will be the same
+    alembic_cfg.set_main_option('sqlalchemy.url', config.get('db', 'uri'))
+
+    command.stamp(alembic_cfg, 'head')
+    os.chdir(cur_dir)
+    Session().commit()
 
 
 def clear_db():

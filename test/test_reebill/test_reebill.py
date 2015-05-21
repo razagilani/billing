@@ -159,10 +159,9 @@ class ReeBillUnitTest(unittest.TestCase):
         corrected_bill.issue(now, reebill_processor)
 
 
-class ReebillTest(unittest.TestCase):
+class ReebillTestWithDB(unittest.TestCase):
 
     def setUp(self):
-        clear_db()
         washgas = Utility(name='washgas', address=Address())
         supplier = Supplier(name='supplier')
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
@@ -196,7 +195,7 @@ class ReebillTest(unittest.TestCase):
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
     def tearDown(self):
-        clear_db()
+        pass
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))

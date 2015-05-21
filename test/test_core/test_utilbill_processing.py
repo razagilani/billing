@@ -1,27 +1,27 @@
-import requests
-from sqlalchemy import desc
-from reebill.views import column_dict
-
-from test import init_test_config
-from exc import DuplicateFileError, UnEditableBillError, BillingError
-
-init_test_config()
-from core import init_model
-init_model()
-
 from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
+
+import requests
+from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
+from core import init_model
+
+from reebill.views import column_dict
+from test import init_test_config
+from exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
 from core.model import Session
 from test import testing_utils
 from test.setup_teardown import create_utilbill_processor, clear_db, \
-    TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
+    TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util, \
+    create_tables
+
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     FakeS3Manager.start()
 

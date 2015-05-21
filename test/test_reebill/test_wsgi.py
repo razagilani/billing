@@ -2,7 +2,7 @@ import pymongo
 import mongoengine
 from datetime import date
 from unittest import TestCase
-from test.setup_teardown import clear_db, TestCaseWithSetup
+from test.setup_teardown import clear_db, TestCaseWithSetup, create_tables
 from test.testing_utils import ReebillRestTestClient
 from test.setup_teardown import create_reebill_resource_objects
 from test import init_test_config
@@ -15,6 +15,7 @@ from reebill.wsgi import AccountsResource, IssuableReebills
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     mongoengine.connect('test', host='localhost', port=27017, alias='journal')
 

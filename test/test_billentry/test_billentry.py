@@ -37,12 +37,17 @@ with FixMQ():
     from mq import IncomingMessage
     from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import clear_db
+from test.setup_teardown import clear_db, create_tables
 
 
 def unicodify(x):
     return unicode(x) if isinstance(x, basestring) else x
 
+
+def setUpModule():
+    init_test_config()
+    create_tables()
+    init_model()
 
 class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
@@ -116,8 +121,6 @@ class BillEntryIntegrationTest(object):
 
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
         billentry.app.config['TESTING'] = True
         # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login
         # "login_required" decorator is used, but we
@@ -1030,7 +1033,6 @@ class TestBillEntryUserSessions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         billentry.app.config['TESTING'] = True
@@ -1101,8 +1103,6 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         billentry.app.config['TESTING'] = True
