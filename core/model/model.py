@@ -533,7 +533,7 @@ class Charge(Base):
     type = Column(charge_type_type, nullable=False)
 
     @staticmethod
-    def is_builtin(var):
+    def _is_builtin(var):
         """Checks whether the string `var` is a builtin variable or method
         :param var: the string to check being a builtin.
         """
@@ -544,7 +544,7 @@ class Charge(Base):
             return False
 
     @staticmethod
-    def get_variable_names(formula, filter_builtins=True):
+    def _get_variable_names(formula, filter_builtins=True):
         """Yields Python language variable names contained within the
         specified formula.
         :param formula: the Python formula parse
@@ -553,7 +553,7 @@ class Charge(Base):
         t = ast.parse(formula)
         var_names = (n.id for n in ast.walk(t) if isinstance(n, ast.Name))
         if filter_builtins:
-            return [var for var in var_names if not Charge.is_builtin(var)]
+            return [var for var in var_names if not Charge._is_builtin(var)]
         return list(var_names)
 
     @staticmethod
@@ -622,7 +622,7 @@ class Charge(Base):
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
          in `quantity_formula` as parsed by Python"""
-        return set(Charge.get_variable_names(self.quantity_formula))
+        return set(Charge._get_variable_names(self.quantity_formula))
 
     def evaluate(self, context, update=False):
         """Evaluates the quantity and rate formulas and returns a
