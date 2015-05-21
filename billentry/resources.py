@@ -240,8 +240,8 @@ class UtilBillResource(BaseResource):
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
         parser.add_argument('processed', type=bool)
-        parser.add_argument('rate_class', type=str)
-        parser.add_argument('utility', type=str)
+        parser.add_argument('rate_class_id', type=int)
+        parser.add_argument('utility_id', type=int)
         parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
         parser.add_argument('supplier_id', type=int)
@@ -272,8 +272,8 @@ class UtilBillResource(BaseResource):
             service=row['service'],
             target_total=row['target_total'],
             processed=row['processed'],
-            rate_class=row['rate_class'],
-            utility=row['utility'],
+            rate_class=row['rate_class_id'],
+            utility=row['utility_id'],
             supplier=row['supplier_id'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
@@ -369,24 +369,6 @@ class SuppliersResource(BaseResource):
         Session().commit()
         return {'rows': marshal(supplier, {'id': Integer, 'name': String}),
                 'results': 1}
-
-
-class SupplyGroupsResource(BaseResource):
-    def get(self):
-        supply_groups = Session().query(SupplyGroup).all()
-        rows = marshal(supply_groups, self.supply_group_fields)
-        return {'rows': rows, 'results': len(rows)}
-
-    def post(self):
-        parser = RequestParser()
-        parser.add_argument('supplier_id', type=int, required=True)
-        parser.add_argument('service', type=str, required=True)
-        parser.add_argument('name', type=str, required=True)
-        args=parser.parse_args()
-        supply_group = self.utilbill_processor.create_supply_group(args['name'],
-                                                    args['supplier_id'], args['service'])
-        Session.commit()
-        return {'rows': marshal(supply_group, self.supply_group_fields), 'results': 1 }
 
 
 class UtilitiesResource(BaseResource):
