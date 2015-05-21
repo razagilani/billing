@@ -31,7 +31,7 @@ class UtilbillLoaderTest(unittest.TestCase):
                             supplier,
                             RateClass(name='FB Test Rate Class',
                                       utility=utility, service='gas'),
-                            blank_address, blank_address, supply_group)
+                            blank_address, blank_address, fb_supply_group=supply_group)
         self.session.add(self.utility_account)
         self.session.commit()
 

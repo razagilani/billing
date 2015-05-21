@@ -133,12 +133,15 @@ class ProcessTest(testing_utils.TestCase):
         self.assertEqual(group2.bill_email_recipient, '')
         self.assertFalse(created)
         self.assertEqual(group2, group)
+
     def test_set_groups_for_utility_account(self):
-        utility_account = Session().query(UtilityAccount).filter_by(
+        s = Session()
+        utility_account = s.query(UtilityAccount).filter_by(
             account='99999').one()
-        reebill_customer = Session().query(ReeBillCustomer).filter_by(
+        reebill_customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=utility_account.id).one()
         self.assertEqual(reebill_customer.get_groups(), [])
+
         # Add some groups
         self.reebill_processor.set_groups_for_utility_account(
             utility_account.id, ['group1', 'another group', 'unit test'])
@@ -146,14 +149,17 @@ class ProcessTest(testing_utils.TestCase):
         self.assertEqual([g.name for g in customer_groups],
                          ['group1', 'another group', 'unit test'])
         another_group_id = customer_groups[1].id
+
         # Add and remove some groups
         self.reebill_processor.set_groups_for_utility_account(
             utility_account.id, ['another group', 'something else'])
         customer_groups = reebill_customer.get_groups()
         self.assertEqual([g.name for g in customer_groups],
                          ['another group', 'something else'])
+
         # Assert 'another group' remained the same object
         self.assertEqual(another_group_id, customer_groups[0].id)
+
 class ReebillProcessingTest(testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
@@ -378,10 +384,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
         # all "sequential account info" gets copied from one version to the next
         account_info_v1 = self.reebill_processor.get_sequential_account_info('99999', 1)
         self.assertEqual(account_info_v0, account_info_v1)
-
-        # when you issue a bill and it has corrections applying to it, and you don't specify apply_corrections=True,
-        # it raises an exception ConfirmAdjustment
-        self.assertRaises(ConfirmAdjustment ,self.reebill_processor.issue_and_mail, False, account=acc, sequence=2)
 
         # when you make a bill processed and it has corrections applying to it, and you don't specify apply_corrections=True,
         # it raises an exception ConfirmAdjustment
@@ -1069,8 +1071,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # issue #2 and #3, using two different methods
         # (the second is the equivalent of "Issue All Processed Reebills" in
         # the UI)
-        self.reebill_processor.issue_and_mail(True, account=acc, sequence=2)
-        self.reebill_processor.issue_processed_and_mail(True)
+        self.reebill_processor.issue_and_mail(account=acc, sequence=2)
+        self.reebill_processor.issue_processed_and_mail()
 
         # #2 is still correct, and #3 should be too because it was
         # automatically recomputed before issuing
@@ -1114,12 +1116,10 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
 
         # two should not be issuable until one is issued
         self.assertRaises(BillStateError, self.reebill_processor.issue, acc, 2)
-        self.assertRaises(NotIssuable, self.reebill_processor.issue_and_mail,
-                          False, acc, 2)
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.reebill_processor.issue_and_mail(False, account=acc, sequence=1,
+        self.reebill_processor.issue_and_mail(account=acc, sequence=1,
                                               recipients=one.email_recipient)
 
         self.assertEquals(True, one.issued)
@@ -1137,19 +1137,13 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # issue and email two
         self.reebill_processor.reebill_file_handler.render_max_version\
             .return_value = 2
-        # issuing a reebill that has corrections with apply_corrections False
-        #  raises ConfirmAdjustment Exception
-        with self.assertRaises(ConfirmAdjustment):
-            self.reebill_processor.issue_and_mail(
-                False, account=acc, sequence=2, recipients=two.email_recipient)
         # ValueError is Raised if an issued Bill is issued again
-        with  self.assertRaises(ValueError):
+        with self.assertRaises(ValueError):
             self.reebill_processor.issue_and_mail(
-                True, account=acc, sequence=1, recipients=two.email_recipient)
+                account=acc, sequence=1, recipients=two.email_recipient)
         self.reebill_processor.toggle_reebill_processed(acc, 2, True)
         self.assertEqual(True, two.processed)
-        self.reebill_processor.issue_and_mail(True, two.get_account(),
-                                              two.sequence)
+        self.reebill_processor.issue_and_mail(two.get_account(),two.sequence)
         self.assertTrue(two.issued)
         self.assertEqual((two.issue_date + timedelta(30)).date(), two.due_date)
         self.assertTrue(one_1.issued)
@@ -1180,9 +1174,9 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
         one = self.reebill_processor.roll_reebill(acc,
                                                   start_date=date(2000, 1, 1))
-        one.processed = 1
+        one.processed = True
         two = self.reebill_processor.roll_reebill(acc)
-        two.processed = 1
+        two.processed = True
 
         # neither reebill should be issued yet
         self.assertEquals(False, self.state_db.is_issued(acc, 1))
@@ -1199,7 +1193,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.reebill_processor.issue_processed_and_mail(False)
+        self.reebill_processor.issue_processed_and_mail()
 
         self.assertEquals(True, one.issued)
         self.assertEquals(True, one.processed)
@@ -1212,7 +1206,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # issue and email two
         self.reebill_processor.reebill_file_handler.render_max_version.\
             return_value = 2
-        self.reebill_processor.issue_processed_and_mail(False)
+        self.reebill_processor.issue_processed_and_mail()
 
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
@@ -2054,7 +2048,7 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill_processor.update_register(r.id, {
             'description': 'time-of-use register',
             'quantity': 0,
-            'unit': 'btu',
+            'unit': 'BTU',
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
@@ -2087,7 +2081,7 @@ class TestTouMetering(unittest.TestCase):
         self.assertAlmostEqual('therms', total_reading.unit)
         self.assertAlmostEqual(total_renewable_therms,
                                total_reading.renewable_quantity)
-        self.assertEqual('btu', tou_reading.unit)
+        self.assertEqual('BTU', tou_reading.unit)
         self.assertAlmostEqual(tou_renewable_btu,
                                tou_reading.renewable_quantity)
 
