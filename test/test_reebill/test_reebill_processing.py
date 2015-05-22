@@ -14,16 +14,16 @@ from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
     CustomerGroup
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    clear_db, create_utilbill_processor, create_reebill_objects, \
-    create_nexus_util
+    create_utilbill_processor, create_reebill_objects, create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, UnEditableBillError, IssuedBillError, NotIssuable, \
     BillingError
-from test import testing_utils, init_test_config
+from test import testing_utils, init_test_config, create_tables, clear_db
 
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     mongoengine.connect('test', host='localhost', port=27017, alias='journal')
     FakeS3Manager.start()
@@ -608,7 +608,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
         #four = self.state_db.get_reebill(session, acc, 4)
         # we sometimes see this error message being printed at some point in
         # this call:
-        # /Users/dan/.virtualenvs/b/lib/python2.7/site-packages/sqlalchemy/orm/persistence.py:116: SAWarning: DELETE statement on table 'reebill_charge' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the mapper configuration to prevent this warning.
+        # /Users/dan/.virtualenvs/b/lib/python2.7/site-packages/sqlalchemy/orm/persistence.py:116: SAWarning: DELETE statement on table 'reebill_charge' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the applier configuration to prevent this warning.
         # it doesn't always happen and doesn't always happen in the same place.
         rp.compute_reebill(acc, 4)
 

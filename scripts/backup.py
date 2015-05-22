@@ -42,7 +42,8 @@ MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s --host %(host)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
-ACCOUNTS_LIST = [100, 101, 102, 103, 104]
+#ACCOUNTS_LIST = [100, 101, 102, 103, 104]
+ACCOUNTS_LIST = [1737]
 
 # extract database connection parameters from URI in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
@@ -460,7 +461,7 @@ def backup_local(args):
 
 def restore_local(args):
     restore_main_db_local(os.path.join(args.local_dir,
-            OLD_BACKUP_FILE_NAME), args.root_password)
+            CUR_BACKUP_FILE_NAME), args.root_password)
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)

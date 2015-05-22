@@ -6,9 +6,15 @@ import ast
 from datetime import date, datetime
 from itertools import chain
 import json
+from StringIO import StringIO
+from pdfminer.converter import TextConverter
+from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFSyntaxError
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -20,9 +26,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError
+    UnEditableBillError, NotProcessable, BillingError, MissingFileError
 
 
 __all__ = [
@@ -210,6 +215,12 @@ class Utility(Base):
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
+
+    # association of names of charges as displayed on bills with the
+    # standardized names used in Charge.rsi_binding. this might be better
+    # associated with each rate class (which defines the distribution charges)
+    # and/or bill layout (which determines the display names of charges)
+    charge_name_map = Column(HSTORE, nullable=False)
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
@@ -513,6 +524,9 @@ class Charge(Base):
     unit = Column(charge_unit_type, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
 
+    # optional human-readable name of the charge as displayed on the bill
+    name = Column(String(1000))
+
     quantity_formula = Column(String(1000), nullable=False)
     rate = Column(Float, nullable=False)
 
@@ -568,9 +582,9 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='kWh', has_charge=True, shared=False,
-                 roundrule="", type=DISTRIBUTION):
+    def __init__(self, rsi_binding, name=None, formula='', rate=0,
+                 target_total=None, description='', unit='', has_charge=True,
+                 shared=False, roundrule="", type=DISTRIBUTION):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -586,6 +600,7 @@ class Charge(Base):
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
+        self.name = name
         self.quantity_formula = formula
         self.target_total = target_total
         self.has_charge = has_charge
@@ -702,12 +717,11 @@ class UtilBill(Base):
     # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Boolean, nullable=False)
 
-    # date when a process was run to extract data from the bill file to fill in
-    # data automatically. (note this is different from data scraped from the
-    # utility web site, because that can only be done while the bill is being
-    # downloaded and can't take into account information from other sources.)
-    # TODO: not being used at all
-    date_scraped = Column(DateTime)
+    # which Extractor was used to get data out of the bill file, and when
+    date_extracted = Column('date_scraped', DateTime,)
+
+    # cached text taken from a PDF for use with TextExtractor
+    _text = Column('text', String)
 
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
@@ -1133,3 +1147,34 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
+
+    def get_text(self, bill_file_handler):
+        """Return text dump of the bill's PDF.
+        :param bill_file_handler: used to get the PDF file (only if the text for
+        this bill is not already cached).
+        """
+        if self._text in (None, ''):
+            infile = StringIO()
+            try:
+                bill_file_handler.write_copy_to_file(self, infile)
+            except MissingFileError:
+                text = ''
+            else:
+                infile.seek(0)
+                rsrcmgr = PDFResourceManager()
+                outfile = StringIO()
+                device = TextConverter(rsrcmgr, outfile, codec='utf-8')
+                interpreter = PDFPageInterpreter(rsrcmgr, device)
+                try:
+                    for page in PDFPage.get_pages(infile, set(),
+                                                  check_extractable=True):
+                        interpreter.process_page(page)
+                except PDFSyntaxError:
+                    text = ''
+                else:
+                    outfile.seek(0)
+                    text = outfile.read()
+                device.close()
+            self._text = text
+        print self._text[:100]
+        return self._text

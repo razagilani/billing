@@ -74,6 +74,7 @@ def import_all_model_modules():
     """
     import core.model
     import core.altitude
+    import core.extraction
     import reebill.reebill_model
     import brokerage.brokerage_model
     import billentry.billentry_model
@@ -125,7 +126,11 @@ def init_model(uri=None, schema_revision=None):
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
                            pool_recycle=3600)
+
     Session.configure(bind=engine)
+    # TODO: unclear why the above does not work and Session.bind must be
+    # directly assigned
+    Session.bind = engine
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
     Session.remove()
