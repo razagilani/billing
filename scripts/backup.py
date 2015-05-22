@@ -461,7 +461,7 @@ def backup_local(args):
 
 def restore_local(args):
     restore_main_db_local(os.path.join(args.local_dir,
-            OLD_BACKUP_FILE_NAME), args.root_password)
+            CUR_BACKUP_FILE_NAME), args.root_password)
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
