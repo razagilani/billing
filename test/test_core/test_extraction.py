@@ -11,8 +11,8 @@ from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
-from test import init_test_config
-from test.setup_teardown import FakeS3Manager, clear_db
+from test import init_test_config, clear_db
+from test.setup_teardown import FakeS3Manager
 
 
 class FieldTest(TestCase):
