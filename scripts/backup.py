@@ -36,6 +36,8 @@ MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 # entered through the subprocess stdin
 DUMP_COMMAND = 'pg_dump %(db)s -U %(user)s -w'
 OLD_DB_SHELL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
+DROP_COMMAND = 'dropdb --if-exists %(db)s'
+CREATE_COMMAND = 'createdb %(db)s'
 DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
@@ -219,12 +221,9 @@ def _recreate_main_db(root_password):
     '''Drop and re-create the main database because mysqldump only includes drop
     commands for tables that already exist in the backup.
     '''
-    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
-                                          password='root')
-    stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database if exists %s;' % old_db_params['db'])
-    stdin.write('create database %s;' % old_db_params['db'])
-    stdin.close()
+    _, _, check_exit_status = run_command(DROP_COMMAND % cur_db_params)
+    check_exit_status()
+    _, _, check_exit_status = run_command(CREATE_COMMAND % cur_db_params)
     check_exit_status()
 
 def restore_main_db_s3(bucket, root_password):
