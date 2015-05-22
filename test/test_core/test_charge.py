@@ -97,7 +97,7 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_blank(self):
         '''Test that empty quantity_formula is equivalent to 0.
         '''
-        c = Charge('X', '', 3, '', '', 'kWh')
+        c = Charge('X', formula='', rate=3)
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
 

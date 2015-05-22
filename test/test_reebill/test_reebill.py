@@ -4,6 +4,7 @@ reebill.reebill_model.
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock
+from core import init_model
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
@@ -11,8 +12,10 @@ from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test import clear_db
+from test import init_test_config, clear_db
 
+def setUpModule():
+    init_test_config()
 
 class ReeBillCustomerTest(unittest.TestCase):
     """Unit tests for the ReeBillCustomer class.
@@ -161,6 +164,10 @@ class ReeBillUnitTest(unittest.TestCase):
 
 class ReebillTestWithDB(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        init_model()
+
     def setUp(self):
         washgas = Utility(name='washgas', address=Address())
         supplier = Supplier(name='supplier')
@@ -183,9 +190,9 @@ class ReebillTestWithDB(unittest.TestCase):
         self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge('A', Charge.get_simple_formula(Register.TOTAL), rate=2,
-                   description='a', unit='therms'),
-            Charge('B', '1', rate=1, description='b', unit='therms',
+            Charge('A', formula=Charge.get_simple_formula(Register.TOTAL),
+                   rate=2, description='a', unit='therms'),
+            Charge('B', formula='1', rate=1, description='b', unit='therms',
                    has_charge=False),
         ]
 
