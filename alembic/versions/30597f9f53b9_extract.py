@@ -36,9 +36,7 @@ def upgrade():
                     )
     op.add_column(u'charge', sa.Column('name', sa.String(length=1000), nullable=True))
     op.add_column(u'utilbill', sa.Column('text', sa.String(), nullable=True))
-    op.add_column(u'utility', sa.Column('charge_name_map', postgresql.HSTORE(), nullable=False))
-    op.drop_constraint(u'name', 'utility')
-    op.drop_constraint(u'account', 'utility_account')
+    op.add_column(u'utility', sa.Column('charge_name_map', postgresql.HSTORE(), nullable=False, server_default=''))
 
 
 def downgrade():
