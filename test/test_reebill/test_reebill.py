@@ -165,6 +165,7 @@ class ReeBillUnitTest(unittest.TestCase):
 
 class ReebillTest(unittest.TestCase):
 
+    @classmethod
     def setUpClass(cls):
         init_model()
 
