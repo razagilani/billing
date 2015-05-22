@@ -74,6 +74,7 @@ def import_all_model_modules():
     """
     import core.model
     import core.altitude
+    import core.extraction
     import reebill.reebill_model
     import brokerage.brokerage_model
     import billentry.billentry_model
