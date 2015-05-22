@@ -3,15 +3,19 @@ from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
 from core import init_model
-from test.setup_teardown import clear_db
-from test import init_test_config
-init_test_config()
-init_model()
+from test import init_test_config, create_tables, clear_db
+
+
+def setUpModule():
+    init_test_config()
+    # only necessary for tests that use the db, but most of these do
+    create_tables()
 
 from core.model import Utility, Supplier, Address, Session, \
     UtilityAccount, RateClass, UtilBill
-from core.altitude import AltitudeUtility, AltitudeSupplier,\
-    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, AltitudeBill
+from core.altitude import AltitudeUtility, AltitudeSupplier, \
+    get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, \
+    AltitudeBill
 
 
 class TestAltitudeModelClasses(TestCase):
@@ -40,6 +44,8 @@ class TestWithDB(TestCase):
     def setUp(self):
         # don't use everything in TestCaseWithSetup because it needs to be
         # broken into smaller parts
+        create_tables()
+        init_model()
         clear_db()
 
         self.u = Utility(name='A Utility', address=Address())
@@ -118,12 +124,16 @@ class TestWithDB(TestCase):
 
 class TestAltitudeBillWithDB(TestCase):
     def setUp(self):
+        init_model()
         clear_db()
 
         self.u = Utility(name='A Utility', address=Address())
         utility = Utility(name='example', address=None)
         ua = UtilityAccount('', '', utility, None, None, Address(), Address())
         self.utilbill = UtilBill(ua, utility, None)
+
+    def tearDown(self):
+        clear_db()
 
     def test_create_delete(self):
         """Create an AltitudeBill and check that it gets deleted along with
@@ -140,6 +150,3 @@ class TestAltitudeBillWithDB(TestCase):
 
         s.delete(self.utilbill)
         self.assertEqual(0, s.query(AltitudeBill).count())
-
-    def tearDown(self):
-        clear_db()

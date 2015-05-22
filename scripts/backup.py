@@ -28,24 +28,35 @@ from core import config
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
 # whenever the key is accessed without specifying a version.
-MYSQL_BACKUP_FILE_NAME = 'reebill_mysql.gz'
+OLD_BACKUP_FILE_NAME = 'reebill_mysql.gz'
+CUR_BACKUP_FILE_NAME = 'billing_db.gz'
 MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 
-MYSQLDUMP_COMMAND = 'mysqldump -u%(user)s -p%(password)s %(db)s'
-MYSQL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
+# force no password prompt because it shouldn't be necessary and isn't
+# entered through the subprocess stdin
+DUMP_COMMAND = 'pg_dump %(db)s -U %(user)s -w'
+OLD_DB_SHELL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
+DROP_COMMAND = 'dropdb --if-exists %(db)s'
+CREATE_COMMAND = 'createdb %(db)s'
+DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
-                        '--collection %(collection)s %(filepath)s')
+                        '--collection %(collection)s --host %(host)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
 #ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 ACCOUNTS_LIST = [1737]
 
-# extract MySQL connection parameters from connection string in config file
+# extract database connection parameters from URI in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
-db_uri = config.get('db', 'uri')
-m = re.match(r'^mysql://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
-db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
+old_db_uri = config.get('db', 'old_uri')
+cur_db_uri = config.get('db', 'uri')
+MYSQL_FORMAT = r'^\w+://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$'
+PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
+m = re.match(MYSQL_FORMAT, old_db_uri)
+old_db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
+m = re.match(PG_FORMAT, cur_db_uri)
+cur_db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
 
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
@@ -174,8 +185,8 @@ def _refresh_s3_key(key):
     '''
     return key.bucket.get_key(key.name)
 
-def backup_mysql(s3_key):
-    command = MYSQLDUMP_COMMAND % db_params
+def backup_main_db(s3_key):
+    command = DUMP_COMMAND % cur_db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
     s3_key = _refresh_s3_key(s3_key)
@@ -183,8 +194,8 @@ def backup_mysql(s3_key):
             s3_key.bucket.name, s3_key.name, s3_key.version_id,
             s3_key.last_modified)
 
-def backup_mysql_local(file_path):
-    command = MYSQLDUMP_COMMAND % db_params
+def backup_main_db_local(file_path):
+    command = DUMP_COMMAND % cur_db_params
     _, stdout, check_exit_status = run_command(command)
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
@@ -206,30 +217,26 @@ def backup_mongo_collection_local(collection_name, file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
-def _recreate_mysql_db(root_password):
-    '''Drop and re-create MySQL database because mysqldump only includes drop
+def _recreate_main_db(root_password):
+    '''Drop and re-create the main database because mysqldump only includes drop
     commands for tables that already exist in the backup.
     '''
-    command = MYSQL_COMMAND % dict(db_params, user='root',
-            password=root_password)
-    stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database %s;' % db_params['db'])
-    stdin.write('create database %s;' % db_params['db'])
-    stdin.close()
+    _, _, check_exit_status = run_command(DROP_COMMAND % cur_db_params)
+    check_exit_status()
+    _, _, check_exit_status = run_command(CREATE_COMMAND % cur_db_params)
     check_exit_status()
 
-def restore_mysql_s3(bucket, root_password):
-    _recreate_mysql_db(root_password)
-    command = MYSQL_COMMAND % dict(db_params, user='root',
-            password=root_password)
+def restore_main_db_s3(bucket, root_password):
+    _recreate_main_db(root_password)
+    command = OLD_DB_SHELL_COMMAND % dict(old_db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
-    key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
+    key = bucket.get_key(OLD_BACKUP_FILE_NAME)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                MYSQL_BACKUP_FILE_NAME, bucket.name))
-    print 'restoring MySQL from %s/%s version %s (modified %s)' % (
+                OLD_BACKUP_FILE_NAME, bucket.name))
+    print 'restoring main database from %s/%s version %s (modified %s)' % (
             bucket.name, key.name, key.version_id, key.last_modified)
     key.get_contents_to_file(ungzip_file)
 
@@ -237,14 +244,13 @@ def restore_mysql_s3(bucket, root_password):
     stdin.close()
     check_exit_status()
 
-def restore_mysql_local(dump_file_path, root_password):
-    _recreate_mysql_db(root_password)
-    command = MYSQL_COMMAND % dict(db_params, user='root',
-            password=root_password)
+def restore_main_db_local(dump_file_path, root_password):
+    _recreate_main_db(root_password)
+    command = DB_SHELL_COMMAND % dict(cur_db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
-    print 'restoring MySQL from local file %s' % dump_file_path
+    print 'restoring main database from local file %s' % dump_file_path
     # TODO: maybe bad to read whole file at once
     with open(dump_file_path) as dump_file:
         ungzip_file.write(dump_file.read())
@@ -275,6 +281,7 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
 
     command = MONGORESTORE_COMMAND % dict(
             db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
             collection=collection_name,
             filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
@@ -293,7 +300,8 @@ def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_pa
         with open(dump_file_path, 'r') as dump_file:
             ungzip_file.write(dump_file.read())
     command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, filepath=shell_quote(bson_file_path))
+            collection=collection_name, filepath=shell_quote(bson_file_path),
+            host=config.get('mongodb', 'host'))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
@@ -307,7 +315,7 @@ def scrub_dev_data():
     TODO: the right way to do this is to scrub the data before it even gets
     into a development environment, just in case.
     '''
-    command = MYSQL_COMMAND % db_params
+    command = OLD_DB_SHELL_COMMAND % old_db_params
     stdin, _, check_exit_status = run_command(command)
     sql = get_scrub_sql()
     print 'scrub commands:\n%s' % sql
@@ -332,7 +340,7 @@ def get_bucket(bucket_name, connection, enforce_versioning=True):
 def backup(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
-    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME, validate=False))
+    backup_main_db(bucket.get_key(CUR_BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
@@ -340,7 +348,7 @@ def backup(args):
 def restore(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
-    restore_mysql_s3(bucket, args.root_password)
+    restore_main_db_s3(bucket, args.root_password)
     for collection in MONGO_COLLECTIONS:
         # NOTE mongorestore cannot restore from a file unless its name
         # ends with ".bson".
@@ -362,13 +370,13 @@ def download(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
 
-    # download MySQL dump
-    key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
+    # download main database dump
+    key = bucket.get_key(OLD_BACKUP_FILE_NAME)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
                 key.name, bucket.name))
     key.get_contents_to_filename(os.path.join(
-            local_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
+            local_dir_absolute_path, OLD_BACKUP_FILE_NAME))
 
     # download Mongo dump
     for collection in MONGO_COLLECTIONS:
@@ -443,15 +451,15 @@ def restore_files(args):
             print 'Destination already has key {0}, not copying'.format(key_name)
 
 def backup_local(args):
-    backup_mysql_local(os.path.join(args.local_dir, MYSQL_BACKUP_FILE_NAME))
+    backup_main_db_local(os.path.join(args.local_dir, CUR_BACKUP_FILE_NAME))
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
         backup_mongo_collection_local(collection, backup_file_path)
 
 def restore_local(args):
-    restore_mysql_local(os.path.join(args.local_dir,
-            MYSQL_BACKUP_FILE_NAME), args.root_password)
+    restore_main_db_local(os.path.join(args.local_dir,
+            CUR_BACKUP_FILE_NAME), args.root_password)
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
@@ -525,8 +533,10 @@ if __name__ == '__main__':
                 'defaults to value in settings.cfg ({0})'.format(config.get('aws_s3', 'bucket'))))
 
     # arguments for local backup files
-    all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
-            (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
+    all_file_names = ['%s or %s' % (
+    OLD_BACKUP_FILE_NAME, CUR_BACKUP_FILE_NAME)] + [
+                         (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in
+                         MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser,
         backup_local_parser):
         parser.add_argument(dest='local_dir', type=str,
