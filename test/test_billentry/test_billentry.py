@@ -895,6 +895,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
     def test_replace_utilbill_with_beutilbill(self):
         s = Session()
         u = UtilBill(self.ua1, self.utility, self.rate_class)
+        u.id = 3
         s.add(u)
         s.flush() # set u.id
 
