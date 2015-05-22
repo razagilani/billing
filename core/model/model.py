@@ -1174,6 +1174,7 @@ class UtilBill(Base):
                 else:
                     outfile.seek(0)
                     text = outfile.read()
+                    text = unicode(text, errors='ignore')
                 device.close()
             self._text = text
         return self._text
