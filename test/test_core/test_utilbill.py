@@ -3,8 +3,7 @@ from core import init_model
 
 from core.model.model import RegisterTemplate
 from core.pricing import PricingModel
-from test import init_test_config
-from test.setup_teardown import clear_db, create_tables
+from test import init_test_config, create_tables, clear_db
 
 from datetime import date
 from unittest import TestCase
@@ -12,7 +11,7 @@ from unittest import TestCase
 from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from reebill.reebill_model import Payment, ReeBillCustomer
+
 
 class UtilBillTest(TestCase):
     """Unit tests for UtilBill.

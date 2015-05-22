@@ -11,7 +11,7 @@ from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import clear_db
+from test import clear_db
 
 
 class ReeBillCustomerTest(unittest.TestCase):

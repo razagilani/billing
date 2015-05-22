@@ -2,8 +2,7 @@ from unittest import TestCase
 from core import init_model, get_scrub_sql, get_scrub_columns
 from core.model import Session
 from reebill.reebill_model import ReeBillCustomer, ReeBill
-from test import init_test_config
-from test.setup_teardown import create_tables
+from test import init_test_config, create_tables
 
 
 def setUpModule():
