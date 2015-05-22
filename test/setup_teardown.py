@@ -49,6 +49,9 @@ def create_tables():
     only once before running all tests; it doesn't need to be re-run before
     each test.
     """
+    # there must be no open transactions in order to drop tables
+    Session.remove()
+
     from core import config
     uri = config.get('db', 'uri')
     engine = create_engine(uri, echo=config.get('db', 'echo'))
@@ -57,7 +60,6 @@ def create_tables():
     Base.metadata.bind = engine
     Base.metadata.drop_all()
     Base.metadata.create_all(checkfirst=True)
-    print os.path.join(ROOT_PATH, 'alembic.ini')
 
     cur_dir = os.getcwd()
     os.chdir(ROOT_PATH)
