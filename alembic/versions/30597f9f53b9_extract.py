@@ -31,7 +31,6 @@ def upgrade():
                     sa.Column('regex', sa.String(length=1000), nullable=False),
                     sa.ForeignKeyConstraint(['extractor_id'], ['extractor.extractor_id'], ),
                     sa.PrimaryKeyConstraint('field_id'),
-                    sa.UniqueConstraint('applier_key'),
                     sa.UniqueConstraint('extractor_id', 'applier_key')
                     )
     op.add_column(u'charge', sa.Column('name', sa.String(length=1000), nullable=True))
