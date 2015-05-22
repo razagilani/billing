@@ -49,8 +49,9 @@ def create_charge_name_maps(s):
 def upgrade():
     initialize()
     from core.model import Base, Session
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
+    # Base.metadata.drop_all()
+    # Base.metadata.create_all()
+    alembic_upgrade('30597f9f53b9')
     print '\n'.join(sorted(t for t in Base.metadata.tables))
 
     s = Session()
