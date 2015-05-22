@@ -11,8 +11,8 @@ from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
-from test import init_test_config
-from test.setup_teardown import FakeS3Manager, clear_db
+from test import init_test_config, clear_db
+from test.setup_teardown import FakeS3Manager
 
 
 class FieldTest(TestCase):
@@ -165,11 +165,24 @@ class TestIntegration(TestCase):
         self.bfh = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                               UtilBillLoader(), url_format)
 
-        # create bill with file
+        # create utility and rate class
         utility = Utility(name='Washington Gas')
+        utility.charge_name_map = {
+            'Distribution Charge': 'DISTRIBUTION_CHARGE',
+            'Customer Charge': 'CUSTOMER_CHARGE',
+            'PGC': 'PGC',
+            'Peak Usage Charge': 'PEAK_USAGE_CHARGE',
+            'DC Rights-of-Way Fee': 'RIGHT_OF_WAY',
+            'Sustainable Energy Trust Fund': 'SETF',
+            'Energy Assistance Trust Fund': 'EATF',
+            'Delivery Tax': 'DELIVERY_TAX',
+            'Sales Tax': 'SALES_TAX',
+        }
         rate_class = RateClass(utility=utility)
         account = UtilityAccount('', '123', None, None, None, Address(),
                                  Address())
+
+        # create bill with file
         self.bill = UtilBill(account, utility, rate_class)
         with open(self.EXAMPLE_FILE_PATH, 'rb') as bill_file:
             self.bfh.upload_file_for_utilbill(self.bill, bill_file)
@@ -209,14 +222,21 @@ class TestIntegration(TestCase):
                          self.bill.get_next_meter_read_date())
         D, S = Charge.DISTRIBUTION, Charge.SUPPLY
         self.assertEqual([
-            Charge('Distribution Charge', target_total=158.7, type=D),
-            Charge('Customer Charge', target_total=14.0, type=D),
-            Charge('PGC', target_total=417.91, type=S),
-            Charge('Peak Usage Charge', target_total=15.79, type=D),
-            Charge('DC Rights-of-Way Fee', target_total=13.42, type=D),
-            Charge('Sustainable Energy Trust Fund', target_total=7.06, type=D),
-            Charge('Energy Assistance Trust Fund', target_total=3.03, type=D),
-            Charge('Delivery Tax', target_total=39.24, type=D),
-            Charge('Sales Tax', target_total=38.48, type=D),
+            Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
+                   target_total=158.7, type=D),
+            Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
+                   type=D),
+            Charge('PGC', name='PGC', target_total=417.91, type=S),
+            Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
+                   target_total=15.79, type=D),
+            Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
+                   target_total=13.42, type=D),
+            Charge('SETF', name='Sustainable Energy Trust Fund',
+                   target_total=7.06, type=D),
+            Charge('EATF', name='Energy Assistance Trust Fund',
+                   target_total=3.03, type=D),
+            Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
+                   type=D),
+            Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D),
         ], self.bill.charges)
         self.assertIsInstance(self.bill.date_extracted, datetime)

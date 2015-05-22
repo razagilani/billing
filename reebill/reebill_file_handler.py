@@ -225,8 +225,7 @@ class ReebillFileHandler(object):
 
         SummaryBillDoc().render(bill_data, dir_path, 
             file_name, self._template_dir_path,
-            self._get_skin_directory_name_for_account(
-            reebill.get_account()))
+            "summary")
 
         return dir_path, file_name
 

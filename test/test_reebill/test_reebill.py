@@ -4,6 +4,7 @@ reebill.reebill_model.
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock
+from core import init_model
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
@@ -11,8 +12,10 @@ from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import clear_db
+from test import init_test_config, clear_db
 
+def setUpModule():
+    init_test_config()
 
 class ReeBillCustomerTest(unittest.TestCase):
     """Unit tests for the ReeBillCustomer class.
@@ -102,6 +105,9 @@ class ReeBillUnitTest(unittest.TestCase):
         self.reebill.issue(datetime(2000,3,1), Mock())
         correction = self.reebill.make_correction()
 
+        self.assertEqual(False, correction.issued)
+        self.assertEqual(None, correction.issue_date)
+        self.assertEqual(None, correction.due_date)
         self.assertEqual(1, correction.sequence)
         self.assertEqual(1, correction.version)
         self.assertEqual(self.reebill.discount_rate, correction.discount_rate)
@@ -142,10 +148,27 @@ class ReeBillUnitTest(unittest.TestCase):
         # after the first bill is issued, the 2nd one can be issued
         self.reebill_2.issue(now, reebill_processor)
 
-class ReebillTest(unittest.TestCase):
+    def test_issue_correction(self):
+        now = datetime(2000, 2, 15)
+        reebill_processor = Mock(autospec=ReebillProcessor)
+        self.reebill.issue(now, reebill_processor)
+        corrected_bill = self.reebill.make_correction()
+
+        # corrected bills have None as their due_date and issue_date,
+        # but even if they have these dates, that should not prevent issuing
+        # them (this was reported to have happened in production)
+        corrected_bill.issue_date = now
+        corrected_bill.due_date = datetime(2000, 3, 15)
+        corrected_bill.issue(now, reebill_processor)
+
+
+class ReebillTestWithDB(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        init_model()
 
     def setUp(self):
-        clear_db()
         washgas = Utility(name='washgas', address=Address())
         supplier = Supplier(name='supplier')
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
@@ -167,9 +190,9 @@ class ReebillTest(unittest.TestCase):
         self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge('A', Charge.get_simple_formula(Register.TOTAL), rate=2,
-                   description='a', unit='therms'),
-            Charge('B', '1', rate=1, description='b', unit='therms',
+            Charge('A', formula=Charge.get_simple_formula(Register.TOTAL),
+                   rate=2, description='a', unit='therms'),
+            Charge('B', formula='1', rate=1, description='b', unit='therms',
                    has_charge=False),
         ]
 
@@ -179,7 +202,7 @@ class ReebillTest(unittest.TestCase):
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
     def tearDown(self):
-        clear_db()
+        pass
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
