@@ -37,7 +37,7 @@ def migrate_to_postgres(old_db_config, old_uri, new_uri):
     mysql_engine = create_engine(old_uri)
     pg_engine = create_engine(new_uri)
     sorted_tables = Base.metadata.sorted_tables
-    assert len(sorted_tables) == 28 # alembic_version not included
+    assert len(sorted_tables) == 31, 'expected 31 tables, got %s' % len(sorted_tables) # alembic_version not included
 
     log.info('Dropping/creating PostgreSQL tables')
     for table in reversed(sorted_tables):

@@ -48,6 +48,13 @@ Ext.define('ReeBill.view.reebills.Reebills', {
             return Ext.util.Format.date(value, 'Y-m-d');
         }
     },{
+        header: 'Est.',
+        dataIndex: 'estimated',
+        width: 60,
+        renderer: function(value) {
+            return value ? 'Yes' : 'No';
+        }
+    },{
         header: 'Processed',
         dataIndex: 'processed',
         width: 100,
@@ -89,12 +96,6 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         align: 'right',
         width: 120,
         renderer: Ext.util.Format.usMoney
-    },{
-        xtype: 'checkcolumn',
-        header: 'Estimated',
-        disabled: true,
-        dataIndex: 'estimated',
-        width: 60
     }],
 
     dockedItems: [{

@@ -160,9 +160,9 @@ class ReeBill(Base):
             self.utilbills = [utilbill]
 
     def __repr__(self):
-        return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
-            self.get_account(), self.sequence, self.version, 'issued' if
-            self.issued else 'unissued', len(self.utilbills))
+        return '<ReeBill %s-%s-%s, %s>' % (
+            self.reebill_customer_id, self.sequence, self.version, 'issued' if
+            self.issued else 'unissued')
 
     def get_customer_id(self):
         return self.reebill_customer.id
@@ -424,6 +424,7 @@ class ReeBill(Base):
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
+            'estimated': self.is_estimated(),
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
                          self.readings],
             'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
@@ -465,8 +466,8 @@ class ReeBill(Base):
         many of which should be moved into this method.
         """
         assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
-        assert self.issue_date is None
-        assert self.due_date is None
+        assert self.issue_date is None or self.version > 0
+        assert self.due_date is None or self.version > 0
 
         # for a non-correction, all earlier bills must be issued first.
         # (ReeBillCustomer is used to avoid doing a direct database query here)

@@ -66,9 +66,7 @@ class reebill(Schema):
     # account numbers for bills whose PDFs are rendered using the "teva" format
     teva_accounts = String()
 
-class reebillreconciliation(Schema):
-    log_directory = Directory()
-    report_directory = Directory()
+    reconciliation_report_path = String()
 
 class billentry(Schema):
     google_client_id = String()
@@ -88,6 +86,7 @@ class billentry(Schema):
     show_traceback_on_error = StringBool()
     secret_key = String()
     wiki_url = String()
+    timeout = Int()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()

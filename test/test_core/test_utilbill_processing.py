@@ -1005,7 +1005,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             account, 0, 30)
         self.assertEqual(1, count)
 
-        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
+        u.set_processed(True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)

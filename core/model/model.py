@@ -27,7 +27,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, MissingFileError
+    UnEditableBillError, NotProcessable, BillingError, MissingFileError
 
 
 __all__ = [
@@ -392,7 +392,8 @@ class RateClass(Base):
     """
     __tablename__ = 'rate_class'
 
-    SERVICES = ('gas', 'electric')
+    GAS, ELECTRIC = 'gas', 'electric'
+    SERVICES = (GAS, ELECTRIC)
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
@@ -546,7 +547,7 @@ class Charge(Base):
     type = Column(charge_type_type, nullable=False)
 
     @staticmethod
-    def is_builtin(var):
+    def _is_builtin(var):
         """Checks whether the string `var` is a builtin variable or method
         :param var: the string to check being a builtin.
         """
@@ -557,7 +558,7 @@ class Charge(Base):
             return False
 
     @staticmethod
-    def get_variable_names(formula, filter_builtins=True):
+    def _get_variable_names(formula, filter_builtins=True):
         """Yields Python language variable names contained within the
         specified formula.
         :param formula: the Python formula parse
@@ -566,7 +567,7 @@ class Charge(Base):
         t = ast.parse(formula)
         var_names = (n.id for n in ast.walk(t) if isinstance(n, ast.Name))
         if filter_builtins:
-            return [var for var in var_names if not Charge.is_builtin(var)]
+            return [var for var in var_names if not Charge._is_builtin(var)]
         return list(var_names)
 
     @staticmethod
@@ -583,7 +584,7 @@ class Charge(Base):
 
     def __init__(self, rsi_binding, name=None, formula='', rate=0,
                  target_total=None, description='', unit='', has_charge=True,
-                 shared=False, roundrule="", type='supply'):
+                 shared=False, roundrule="", type=DISTRIBUTION):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -636,7 +637,7 @@ class Charge(Base):
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
          in `quantity_formula` as parsed by Python"""
-        return set(Charge.get_variable_names(self.quantity_formula))
+        return set(Charge._get_variable_names(self.quantity_formula))
 
     def evaluate(self, context, update=False):
         """Evaluates the quantity and rate formulas and returns a
@@ -755,7 +756,8 @@ class UtilBill(Base):
     # make more sense for it to be.
     utility = relationship('Utility')
 
-    charges = relationship("Charge", backref='utilbill', order_by='Charge.id')
+    charges = relationship("Charge", backref='utilbill', order_by='Charge.id',
+                           cascade='all, delete, delete-orphan')
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -830,6 +832,8 @@ class UtilBill(Base):
     def get_utility_name(self):
         '''Return name of this bill's utility.
         '''
+        if self.utility is None:
+            return None
         return self.utility.name
 
     def get_next_meter_read_date(self):
@@ -854,13 +858,25 @@ class UtilBill(Base):
     def get_rate_class(self):
         return self.rate_class
 
+    def set_utility(self, utility):
+        """Set the utility, and set the rate class to None if the utility is
+        different from the current one.
+        :param utility: Utility or None
+        """
+        if utility != self.utility:
+            self.set_rate_class(None)
+        self.utility = utility
+
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
-        the new rate class.
+        the new rate class (no registers of rate_class is None).
+        :param rate_class: RateClass or None
         """
-        self.rate_class = rate_class
-        if rate_class is not None:
+        if rate_class is None:
+            self.registers = []
+        else:
             self.registers = rate_class.get_register_list()
+        self.rate_class = rate_class
 
     def get_supplier_name(self):
         '''Return name of this bill's supplier or None if the supplier is
@@ -904,7 +920,7 @@ class UtilBill(Base):
             description=charge_kwargs.get(
                 'description', "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
-            type=charge_kwargs.get('type', "supply"))
+            type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
         registers = self.registers
@@ -944,6 +960,14 @@ class UtilBill(Base):
                 independent_bindings.update(circular_bindings)
                 dependency_graph = [(a, b) for a, b in dependency_graph
                                     if b not in circular_bindings]
+            except KeyError as e:
+                # tsort sometimes gets a KeyError when generating its error
+                # message about a cycle. in that case there's only one
+                # binding to move into 'independent bindings'
+                binding = e.args[0]
+                independent_bindings.add(binding)
+                dependency_graph = [(a, b) for a, b in dependency_graph
+                                    if b != binding]
             else:
                 break
         order = list(independent_bindings) + [x for x in sortresult
@@ -982,7 +1006,16 @@ class UtilBill(Base):
         self.charges = pricing_model.get_predicted_charges(self)
         self.compute_charges()
 
-    def processable(self):
+    def set_processed(self, value):
+        """Make this bill "processed" or not.
+        :param value: boolean
+        """
+        assert isinstance(value, bool)
+        if value:
+            self.check_processable()
+        self.processed = value
+
+    def is_processable(self):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
@@ -990,7 +1023,7 @@ class UtilBill(Base):
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
-        if not self.processable():
+        if not self.is_processable():
             attrs = ['utility', 'rate_class', 'supplier',
                      'period_start', 'period_end']
             missing_attrs = ', '.join(
@@ -1055,6 +1088,21 @@ class UtilBill(Base):
                               r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
+    def get_register_by_binding(self, register_binding):
+        """Return the register whose register_binding is 'register_binding'.
+        This should only be called by consumers that need to know about
+        registers--not to get total energy, demand, etc. (Maybe there
+        shouldn't be any consumers that know about registers, but currently
+        reebill.fetch_bill_data.RenewableEnergyGetter does.)
+        :param register_binding: register binding string
+        """
+        try:
+            register = next(r for r in self.registers if
+                              r.register_binding == register_binding)
+        except StopIteration:
+            raise BillingError('No register "%s"' % register_binding)
+        return register
+
     def get_supply_target_total(self):
         '''Return the sum of the 'target_total' of all supply
         charges (excluding any charge with has_charge == False).
@@ -1076,8 +1124,11 @@ class UtilBill(Base):
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
-        register = next(r for r in self.registers if r.register_binding
-                                                     == Register.TOTAL)
+        try:
+            register = next(r for r in self.registers if r.register_binding
+                                                         == Register.TOTAL)
+        except StopIteration:
+            return None
         return register.meter_identifier
 
     def get_total_energy_consumption(self):

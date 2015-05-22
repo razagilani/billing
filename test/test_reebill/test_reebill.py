@@ -102,6 +102,9 @@ class ReeBillUnitTest(unittest.TestCase):
         self.reebill.issue(datetime(2000,3,1), Mock())
         correction = self.reebill.make_correction()
 
+        self.assertEqual(False, correction.issued)
+        self.assertEqual(None, correction.issue_date)
+        self.assertEqual(None, correction.due_date)
         self.assertEqual(1, correction.sequence)
         self.assertEqual(1, correction.version)
         self.assertEqual(self.reebill.discount_rate, correction.discount_rate)
@@ -141,6 +144,20 @@ class ReeBillUnitTest(unittest.TestCase):
 
         # after the first bill is issued, the 2nd one can be issued
         self.reebill_2.issue(now, reebill_processor)
+
+    def test_issue_correction(self):
+        now = datetime(2000, 2, 15)
+        reebill_processor = Mock(autospec=ReebillProcessor)
+        self.reebill.issue(now, reebill_processor)
+        corrected_bill = self.reebill.make_correction()
+
+        # corrected bills have None as their due_date and issue_date,
+        # but even if they have these dates, that should not prevent issuing
+        # them (this was reported to have happened in production)
+        corrected_bill.issue_date = now
+        corrected_bill.due_date = datetime(2000, 3, 15)
+        corrected_bill.issue(now, reebill_processor)
+
 
 class ReebillTest(unittest.TestCase):
 
