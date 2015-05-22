@@ -12,8 +12,7 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier, Register
 from brokerage.export_altitude import PGAltitudeExporter
-from test import init_test_config
-from test.setup_teardown import clear_db, create_tables
+from test import init_test_config, clear_db, create_tables
 from util.dateutils import ISO_8601_DATETIME
 
 

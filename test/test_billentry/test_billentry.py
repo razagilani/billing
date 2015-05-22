@@ -13,7 +13,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
 from exc import UnEditableBillError
-from test import init_test_config
+from test import init_test_config, create_tables, clear_db
 from util import FixMQ
 from util.dictutils import deep_map
 
@@ -37,7 +37,7 @@ with FixMQ():
     from mq import IncomingMessage
     from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import clear_db, create_tables
+from test import clear_db, create_tables
 
 
 def unicodify(x):
