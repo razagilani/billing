@@ -1176,5 +1176,4 @@ class UtilBill(Base):
                     text = outfile.read()
                 device.close()
             self._text = text
-        print self._text[:100]
         return self._text

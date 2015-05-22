@@ -1,17 +1,18 @@
 from datetime import date, datetime
+import os
 from unittest import TestCase
 
 from boto.s3.connection import S3Connection
 from mock import Mock, NonCallableMock
 
-from core import init_model
+from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction import TextExtractor, Field, Applier, Extractor, Main
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
-from test import init_test_config, clear_db
+from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
 
 
@@ -137,11 +138,13 @@ class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
     database.
     """
-    EXAMPLE_FILE_PATH = 'test/test_core/data/utility_bill.pdf'
+    EXAMPLE_FILE_PATH = os.path.join(ROOT_PATH,
+                                     'test/test_core/data/utility_bill.pdf')
 
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
         init_model()
         FakeS3Manager.start()
 
