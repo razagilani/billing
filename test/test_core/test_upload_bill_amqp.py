@@ -11,20 +11,22 @@ from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
 from voluptuous import Invalid
 from core import init_model
+from util import FixMQ
 
-from core.amqp_exchange import create_dependencies, \
-    ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+with FixMQ():
+    from core.amqp_exchange import create_dependencies, \
+        ConsumeUtilbillFileHandler, TotalValidator, DueDateValidator
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
+        create_channel_message_body
+
 from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from core.utilbill_loader import UtilBillLoader
-from mq import IncomingMessage
-from mq.tests import create_mock_channel_method_props, \
-    create_channel_message_body
 from exc import DuplicateFileError
-from test import init_test_config
+from test import init_test_config, clear_db
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    create_utilbill_processor, create_reebill_objects, create_nexus_util, \
-    clear_db
+    create_utilbill_processor, create_reebill_objects, create_nexus_util
 
 
 class TestValidators(TestCase):
@@ -40,6 +42,17 @@ class TestValidators(TestCase):
         self.assertEqual(1234, validator('$1,234'))
         # commas in the wrong place are allowed
         self.assertEqual(1234, validator('$12,34'))
+
+        # Negative dollar values are in accounting notation "($1,234.56)"
+        self.assertEqual(validator('($123.45)'), -123.45)
+        self.assertEqual(-123, validator('($123)'))
+        self.assertEqual(-.4, validator('($.4)'))
+        self.assertEqual(-.45, validator('($.45)'))
+        self.assertEqual(-1234.56, validator('($1,234.56)'))
+        self.assertEqual(-1234, validator('($1,234)'))
+        # commas in the wrong place are allowed
+        self.assertEqual(-1234, validator('($12,34)'))
+
         with self.assertRaises(Invalid):
             validator("nonsense")
         with self.assertRaises(Invalid):

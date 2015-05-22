@@ -126,7 +126,11 @@ def init_model(uri=None, schema_revision=None):
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
                            pool_recycle=3600)
+
     Session.configure(bind=engine)
+    # TODO: unclear why the above does not work and Session.bind must be
+    # directly assigned
+    Session.bind = engine
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
     Session.remove()
@@ -137,5 +141,3 @@ def initialize():
     init_logging()
     init_config()
     init_model()
-
-ROOT_PATH = dirname(dirname(realpath(__file__)))

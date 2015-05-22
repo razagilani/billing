@@ -1,27 +1,26 @@
-import requests
-from sqlalchemy import desc
-from reebill.views import column_dict
-
-from test import init_test_config
-from exc import DuplicateFileError, UnEditableBillError, BillingError
-
-init_test_config()
-from core import init_model
-init_model()
-
 from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
+
+import requests
+from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
+from core import init_model
+
+from reebill.views import column_dict
+from test import init_test_config, create_tables, clear_db
+from exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
 from core.model import Session
 from test import testing_utils
-from test.setup_teardown import create_utilbill_processor, clear_db, \
+from test.setup_teardown import create_utilbill_processor, \
     TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
+
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     FakeS3Manager.start()
 
@@ -1005,7 +1004,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             account, 0, 30)
         self.assertEqual(1, count)
 
-        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
+        u.set_processed(True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
