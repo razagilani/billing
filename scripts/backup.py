@@ -39,7 +39,7 @@ OLD_DB_SHELL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
 DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
-                        '--collection %(collection)s %(filepath)s')
+                        '--collection %(collection)s --host %(host)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
 
 #ACCOUNTS_LIST = [100, 101, 102, 103, 104]
@@ -50,7 +50,7 @@ ACCOUNTS_LIST = [1737]
 old_db_uri = config.get('db', 'old_uri')
 cur_db_uri = config.get('db', 'uri')
 MYSQL_FORMAT = r'^\w+://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$'
-PG_FORMAT = r'^\w+://([\w-]+)@([\w\d.]+)/([\w-]+)$'
+PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
 m = re.match(MYSQL_FORMAT, old_db_uri)
 old_db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 m = re.match(PG_FORMAT, cur_db_uri)
@@ -222,8 +222,8 @@ def _recreate_main_db(root_password):
     command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
                                           password='root')
     stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database if exists %s;' % cur_db_params['db'])
-    stdin.write('create database %s;' % cur_db_params['db'])
+    stdin.write('drop database if exists %s;' % old_db_params['db'])
+    stdin.write('create database %s;' % old_db_params['db'])
     stdin.close()
     check_exit_status()
 
@@ -283,6 +283,7 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
 
     command = MONGORESTORE_COMMAND % dict(
             db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
             collection=collection_name,
             filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
@@ -301,7 +302,8 @@ def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_pa
         with open(dump_file_path, 'r') as dump_file:
             ungzip_file.write(dump_file.read())
     command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, filepath=shell_quote(bson_file_path))
+            collection=collection_name, filepath=shell_quote(bson_file_path),
+            host=config.get('mongodb', 'host'))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
