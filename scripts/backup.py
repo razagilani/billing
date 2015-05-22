@@ -247,8 +247,7 @@ def restore_main_db_s3(bucket, root_password):
 
 def restore_main_db_local(dump_file_path, root_password):
     _recreate_main_db(root_password)
-    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
-            password=root_password)
+    command = DB_SHELL_COMMAND % dict(cur_db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
