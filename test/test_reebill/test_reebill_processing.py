@@ -608,7 +608,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
         #four = self.state_db.get_reebill(session, acc, 4)
         # we sometimes see this error message being printed at some point in
         # this call:
-        # /Users/dan/.virtualenvs/b/lib/python2.7/site-packages/sqlalchemy/orm/persistence.py:116: SAWarning: DELETE statement on table 'reebill_charge' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the mapper configuration to prevent this warning.
+        # /Users/dan/.virtualenvs/b/lib/python2.7/site-packages/sqlalchemy/orm/persistence.py:116: SAWarning: DELETE statement on table 'reebill_charge' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the applier configuration to prevent this warning.
         # it doesn't always happen and doesn't always happen in the same place.
         rp.compute_reebill(acc, 4)
 

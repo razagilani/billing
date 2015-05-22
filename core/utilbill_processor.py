@@ -2,6 +2,7 @@ import json
 from datetime import datetime,date
 
 from sqlalchemy.orm.exc import NoResultFound
+from core.extraction import Main
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount
@@ -174,6 +175,9 @@ class UtilbillProcessor(object):
             service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
+
+        # update the bill with some data extracted from its PDF file
+        Main(self.bill_file_handler).extract(new_utilbill)
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)

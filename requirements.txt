@@ -22,6 +22,7 @@ greenlet==0.4.0
 git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f
 ordereddict==1.1
 paramiko==1.12.0
+pdfminer==20140328
 pika==0.9.14
 psycopg2==2.6
 py-bcrypt==0.4
