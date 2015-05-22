@@ -2,9 +2,8 @@
 """
 from unittest import TestCase
 
-from test import init_test_config
+from test import init_test_config, create_tables, clear_db
 from core import init_model
-from test.setup_teardown import clear_db, create_tables
 from core.model import UtilBill, Session, Address, Utility, Supplier, \
     RateClass, UtilityAccount
 from exc import RSIError, UnEditableBillError, NotProcessable

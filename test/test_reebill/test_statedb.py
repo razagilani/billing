@@ -9,8 +9,7 @@ from core.model import Session, Address, Utility, Supplier, RateClass, \
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test import init_test_config
-from test.setup_teardown import clear_db, create_tables
+from test import init_test_config, create_tables, clear_db
 from test.testing_utils import TestCase
 
 def setUpModule():

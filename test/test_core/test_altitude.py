@@ -3,8 +3,8 @@ from mock import Mock
 from sqlalchemy.orm.exc import FlushError
 
 from core import init_model
-from test.setup_teardown import clear_db, create_tables
-from test import init_test_config
+from test import init_test_config, create_tables, clear_db
+
 
 def setUpModule():
     init_test_config()

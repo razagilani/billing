@@ -14,12 +14,11 @@ from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
     CustomerGroup
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    clear_db, create_utilbill_processor, create_reebill_objects, \
-    create_nexus_util, create_tables
+    create_utilbill_processor, create_reebill_objects, create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, UnEditableBillError, IssuedBillError, NotIssuable, \
     BillingError
-from test import testing_utils, init_test_config
+from test import testing_utils, init_test_config, create_tables, clear_db
 
 
 def setUpModule():
