@@ -220,7 +220,7 @@ class Utility(Base):
     # standardized names used in Charge.rsi_binding. this might be better
     # associated with each rate class (which defines the distribution charges)
     # and/or bill layout (which determines the display names of charges)
-    charge_name_map = Column(HSTORE, nullable=False)
+    charge_name_map = Column(HSTORE, nullable=False, server_default='')
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
