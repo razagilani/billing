@@ -12,7 +12,7 @@ from core.extraction import TextExtractor, Field, Applier
 from core.model import Utility
 
 from upgrade_scripts import alembic_upgrade
-from core import init_model, initialize
+from core import init_model, initialize, init_config
 
 log = logging.getLogger(__name__)
 
@@ -47,13 +47,14 @@ def create_charge_name_maps(s):
     # TODO: ...
 
 def upgrade():
-    initialize()
-    from core.model import Base, Session
+    init_config()
+    from core.model import Session
     # Base.metadata.drop_all()
     # Base.metadata.create_all()
     alembic_upgrade('30597f9f53b9')
-    print '\n'.join(sorted(t for t in Base.metadata.tables))
+    # print '\n'.join(sorted(t for t in Base.metadata.tables))
 
+    init_model()
     s = Session()
     # hstore won't work unless it's specifically turned on
     s.execute('create extension if not exists hstore')
