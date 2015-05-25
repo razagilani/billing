@@ -10,7 +10,7 @@ from test.setup_teardown import clear_db
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from reebill.reebill_model import Payment, ReeBillCustomer
@@ -58,6 +58,15 @@ class UtilBillTest(TestCase):
         # when the register is present, set_total_energy should work
         # without requiring consumers to know about registers.
         # TODO...
+
+    def test_get_register_by_binding(self):
+        utility = Utility()
+        rate_class = RateClass(utility=utility)
+        bill = UtilBill(MagicMock(), utility, rate_class)
+        self.assertIsInstance(bill.get_register_by_binding(Register.TOTAL),
+                              Register)
+        with self.assertRaises(BillingError):
+            bill.get_register_by_binding('xyz')
 
     def test_regenerate_charges(self):
         a, b, c = Charge('a'), Charge('b'), Charge('c')
