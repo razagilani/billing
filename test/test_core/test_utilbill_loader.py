@@ -24,8 +24,7 @@ class UtilbillLoaderTest(unittest.TestCase):
         blank_address = Address()
         supplier = Supplier(name='Test Supplier', address=Address())
         supply_group = SupplyGroup('supply_group', supplier, 'gas')
-        utility =  Utility(name='Test Utility', address=Address(),
-                           sos_supply_group=supply_group )
+        utility =  Utility(name='Test Utility', address=Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
                             supplier,

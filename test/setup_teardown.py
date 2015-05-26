@@ -278,9 +278,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         supplier = Supplier(name='Test Supplier', address=ca1)
         supply_group = SupplyGroup(name='test', supplier=supplier,
                                    service='gas')
-        uc = Utility(name='Test Utility Company Template', address=ca1,
-                     sos_supply_group=supply_group)
-
+        uc = Utility(name='Test Utility Company Template', address=ca1)
 
         ca2 = Address(addressee='Test Other Utilco Address',
                       street='123 Utilco Street',
@@ -290,8 +288,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         other_supplier = Supplier(name='Other Supplier', address=ca1)
         other_supply_group = SupplyGroup(name='test', supplier=other_supplier,
                                    service='gas')
-        other_uc = Utility(name='Other Utility', address=ca1,
-                           sos_supply_group=other_supply_group)
+        other_uc = Utility(name='Other Utility', address=ca1)
 
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
@@ -299,7 +296,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                         other_supplier])
         session.flush()
         rate_class = RateClass(name='Test Rate Class Template', utility=uc,
-                               service='gas')
+                               service='gas', sos_supply_group=supply_group)
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
@@ -370,7 +367,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                      state='XX',
                      postal_code='12345')
         other_rate_class = RateClass(name='Other Rate Class',
-                                     utility=other_uc, service='gas')
+                                     utility=other_uc, service='gas',
+                                     sos_supply_group=other_supply_group)
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)

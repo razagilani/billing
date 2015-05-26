@@ -201,22 +201,15 @@ class Utility(Base):
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
-    sos_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
-                                 nullable=True)
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
-    sos_supply_group = relationship("SupplyGroup")
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
     def __str__(self):
         return self.name
-
-    def get_sos_supply_group(self):
-        return self.sos_supply_group
-
 
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
@@ -405,14 +398,19 @@ class RateClass(Base):
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     service = Column(Enum(*SERVICES, name='services'), nullable=False)
     name = Column(String(255), nullable=False)
+    sos_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+                                 nullable=True)
 
     utility = relationship('Utility')
+    sos_supply_group = relationship("SupplyGroup")
     register_templates = relationship('RegisterTemplate')
 
-    def __init__(self, name='', utility=None, service='gas'):
+    def __init__(self, name='', utility=None, service='gas',
+                 sos_supply_group=None):
         self.name = name
         self.utility = utility
         self.service = service
+        self.sos_supply_group = sos_supply_group
 
         # TODO: a newly-created rate class should have one "REG_TOTAL"
         # register by default (the unit can be picked according to
@@ -433,6 +431,9 @@ class RateClass(Base):
         """
         return [Register.create_from_template(tr) for tr in
                 self.register_templates]
+
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
 
 
 class UtilityAccount(Base):
@@ -499,8 +500,8 @@ class UtilityAccount(Base):
         self.fb_service_address = fb_service_address
         # if the utility is known but the supply group is not known, assume it's
         # the utility's SOS supply group
-        if fb_supply_group is None and fb_utility is not None:
-            self.fb_supply_group = self.fb_utility.get_sos_supply_group()
+        if fb_supply_group is None and fb_rate_class is not None:
+            self.fb_supply_group = self.fb_rate_class.get_sos_supply_group()
         else:
             self.fb_supply_group = fb_supply_group
 

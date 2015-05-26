@@ -23,7 +23,7 @@ class ChargeUnitTests(testing_utils.TestCase):
         # TOOD: how can this work with strings as utility, rate class, supplier?
         self.bill = UtilBill(UtilityAccount('someone', '98989',
                                  Utility(name='FB Test Utility'),
-                                 'FB Test Supplier', 'FB Test Rate Class', None,
+                                 None, None, None,
                                  Address(), Address()),
                                  Utility(name='utility'), None,
                                  supplier='supplier',
