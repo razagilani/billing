@@ -485,8 +485,8 @@ class UtilBillTestWithDB(TestCase):
         '''Compute utility bill with no charges.
         '''
         utility_account = UtilityAccount('someone', '99999',
-                Utility(name='utility'), 'supplier',
-                'rate class', None, Address(), Address())
+                Utility(name='utility'), None,
+                None, None, Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)

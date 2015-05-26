@@ -47,11 +47,7 @@ class TestWithDB(TestCase):
         create_tables()
         init_model()
         clear_db()
-        supplier = Supplier(name='test_supplier', address=Address())
-        supply_group = SupplyGroup(name='test', supplier=supplier,
-                                   service='gas')
-        self.u = Utility(name='A Utility', address=Address(),
-                         sos_supply_group=supply_group)
+        self.u = Utility(name='A Utility', address=Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
     def tearDown(self):
@@ -71,8 +67,7 @@ class TestWithDB(TestCase):
         supplier = Supplier(name='testsupplier', address=Address())
         supply_group = SupplyGroup(name='test', supplier=supplier,
                                    service='gas')
-        v = Utility(name='Other', address=Address(),
-                    sos_supply_group=supply_group)
+        v = Utility(name='Other', address=Address())
         s.add(AltitudeUtility(v, 'abc'))
         s.flush()
 
@@ -136,12 +131,9 @@ class TestAltitudeBillWithDB(TestCase):
         supplier = Supplier(name='test_supplier', address=Address())
         supply_group = SupplyGroup(name='test', supplier=supplier,
                                    service='gas')
-        self.u = Utility(name='A Utility', address=Address(),
-                         sos_supply_group=supply_group)
-        utility = Utility(name='example', address=None,
-                          sos_supply_group=supply_group)
-        ua = UtilityAccount('', '', utility, None, None, Address(),
-                            Address())
+        self.u = Utility(name='A Utility', address=Address())
+        utility = Utility(name='example', address=None)
+        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
         self.utilbill = UtilBill(ua, utility, None)
 
     def tearDown(self):

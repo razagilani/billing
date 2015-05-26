@@ -246,8 +246,7 @@ class UtilbillProcessor(object):
         if supply_group is not None:
             supply_group = self.create_supply_group(supply_group, supplier.id, 'gas')
         if utility is not None:
-            utility = self.create_utility(utility, supply_group.id) \
-                if supply_group else self.create_utility(utility)
+            utility = self.create_utility(utility)
         if rate_class is not None:
             rate_class = self.create_rate_class(rate_class, utility.id, 'gas')
 
@@ -487,15 +486,9 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def create_utility(self, name, supply_group_id=None):
+    def create_utility(self, name):
         session = Session()
-        if supply_group_id:
-            supply_group = session.query(SupplyGroup).filter_by(
-                id=supply_group_id).one()
-        else:
-            supply_group = None
-        utility = Utility(name=name, sos_supply_group=supply_group,
-                          address=Address())
+        utility = Utility(name=name, address=Address())
         utility.rate_class = None
         session.add(utility)
         session.flush()
@@ -531,7 +524,6 @@ class UtilbillProcessor(object):
         return supply_group
 
     def create_supplier(self, name):
-        session = Session()
         # suppliers are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
