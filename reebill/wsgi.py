@@ -467,15 +467,15 @@ class ReebillsResource(RESTResource):
         action_value = row.pop('action_value')
         rtn = None
 
+        reebill = self.state_db.get_reebill(account, sequence)
         if action == 'bindree':
             self.reebill_processor.bind_renewable_energy(account, sequence)
-            reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            self.reebill_processor.render_reebill(int(account), int(sequence))
+            self.reebill_file_handler.render(reebill)
             rtn = row
 
         elif action == 'mail':
