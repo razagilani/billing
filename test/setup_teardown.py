@@ -5,17 +5,17 @@ import os
 from subprocess import CalledProcessError, Popen
 from time import sleep
 import subprocess
+import smtplib
 
 from mock import Mock
 from boto.s3.connection import S3Connection
 from testfixtures import TempDirectory
 
 from reebill.payment_dao import PaymentDAO
-from reebill.reebill_dao import ReeBillDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount, Base
+from core.model import Supplier, RateClass, UtilityAccount
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.reebill_model import Session, UtilBill, \
@@ -25,7 +25,6 @@ from core.bill_file_handler import BillFileHandler
 from reebill.fetch_bill_data import RenewableEnergyGetter
 from reebill.reebill_processor import ReebillProcessor
 from core.utilbill_processor import UtilbillProcessor
-from reebill.views import Views
 from reebill.users import UserDAO
 from reebill.reebill_dao import ReeBillDAO
 from reebill import fetch_bill_data as fbd
@@ -35,18 +34,6 @@ from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from reebill.reebill_file_handler import ReebillFileHandler
 from reebill.views import Views
 from reebill.bill_mailer import Mailer
-import smtplib
-
-
-def clear_db():
-    """Remove all data from the test database. This should be called before and
-    after running any test that inserts data.
-    """
-    session = Session()
-    Session.rollback()
-    for t in reversed(Base.metadata.sorted_tables):
-        session.execute(t.delete())
-    session.commit()
 
 
 def create_nexus_util():
@@ -136,8 +123,6 @@ def create_reebill_file_handler():
 
 
 def create_reebill_objects():
-    from core import config
-
     logger = logging.getLogger('test')
 
     # TODO most or all of these dependencies do not need to be instance
