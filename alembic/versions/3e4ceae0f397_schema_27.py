@@ -30,7 +30,7 @@ def upgrade():
     op.create_table('supply_group',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('supplier_id', sa.Integer(), nullable=False),
-        sa.Column('service', sa.Enum('gas', 'electric')),
+        sa.Column('service', sa.Enum('gas', 'electric'), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.ForeignKeyConstraint(['supplier_id'], ['supplier.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -39,15 +39,6 @@ def upgrade():
     op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=False, default='Nextility'))
     op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'),nullable=True))
     op.add_column('utility', sa.Column('sos_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
-
-    op.drop_constraint(u'identifier', 'reebill_user', type_='unique')
-    op.alter_column('register', 'register_binding',
-               existing_type=mysql.ENUM(u'REG_TOTAL', u'REG_TOTAL_SECONDARY', u'REG_TOTAL_TERTIARY', u'REG_PEAK', u'REG_INTERMEDIATE', u'REG_OFFPEAK', u'REG_DEMAND', u'REG_POWERFACTOR', u'REG_PEAK_RATE_INCREASE', u'REG_INTERMEDIATE_RATE_INCREASE', u'REG_OFFPEAK_RATE_INCREASE', u'FIRST_MONTH_THERMS', u'SECOND_MONTH_THERMS', u'BEGIN_INVENTORY', u'END_INVENTORY', u'CONTRACT_VOLUME'),
-               nullable=False)
-    op.drop_constraint(u'name', 'supplier', type_='unique')
-    op.drop_constraint(u'name', 'utility', type_='unique')
-    op.drop_constraint(u'account', 'utility_account', type_='unique')
-    ### end Alembic commands ###
 
     op.create_table('be_user_session',
     sa.Column('id', sa.Integer(), nullable=False),
