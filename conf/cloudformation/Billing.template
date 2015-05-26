@@ -22,6 +22,10 @@
       "Type" : "String",
       "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
     },
+    "ExternalNatSecurityGroup" : {
+      "Type" : "String",
+      "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
+    },
     "SshSecurityGroup" : {
       "Type" : "String",
       "Description" : "Security group containing ssh access rules"
@@ -147,6 +151,16 @@
         "ToPort" : 80,
         "IpProtocol" : "tcp",
         "SourceSecurityGroupId" : {"Ref" : "NatSecurityGroup"}
+      }
+    },
+    "ExternalNatIngressRule" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "GroupId" : {"Ref" : "ApplicationSecurityGroup"},
+        "FromPort" : 80,
+        "ToPort" : 80,
+        "IpProtocol" : "tcp",
+        "SourceSecurityGroupId" : {"Ref" : "ExternalNatSecurityGroup"}
       }
     },
     "MongoIngressRule" : {
