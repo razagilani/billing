@@ -22,7 +22,7 @@ from alembic.migration import MigrationContext
 
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable
+    UnEditableBillError, NotProcessable, BillingError
 
 
 __all__ = [
@@ -572,7 +572,7 @@ class Charge(Base):
     type = Column(charge_type_type, nullable=False)
 
     @staticmethod
-    def is_builtin(var):
+    def _is_builtin(var):
         """Checks whether the string `var` is a builtin variable or method
         :param var: the string to check being a builtin.
         """
@@ -583,7 +583,7 @@ class Charge(Base):
             return False
 
     @staticmethod
-    def get_variable_names(formula, filter_builtins=True):
+    def _get_variable_names(formula, filter_builtins=True):
         """Yields Python language variable names contained within the
         specified formula.
         :param formula: the Python formula parse
@@ -592,7 +592,7 @@ class Charge(Base):
         t = ast.parse(formula)
         var_names = (n.id for n in ast.walk(t) if isinstance(n, ast.Name))
         if filter_builtins:
-            return [var for var in var_names if not Charge.is_builtin(var)]
+            return [var for var in var_names if not Charge._is_builtin(var)]
         return list(var_names)
 
     @staticmethod
@@ -661,7 +661,7 @@ class Charge(Base):
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
          in `quantity_formula` as parsed by Python"""
-        return set(Charge.get_variable_names(self.quantity_formula))
+        return set(Charge._get_variable_names(self.quantity_formula))
 
     def evaluate(self, context, update=False):
         """Evaluates the quantity and rate formulas and returns a
@@ -1135,6 +1135,21 @@ class UtilBill(Base):
         total_register = next(r for r in self.registers if
                               r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
+
+    def get_register_by_binding(self, register_binding):
+        """Return the register whose register_binding is 'register_binding'.
+        This should only be called by consumers that need to know about
+        registers--not to get total energy, demand, etc. (Maybe there
+        shouldn't be any consumers that know about registers, but currently
+        reebill.fetch_bill_data.RenewableEnergyGetter does.)
+        :param register_binding: register binding string
+        """
+        try:
+            register = next(r for r in self.registers if
+                              r.register_binding == register_binding)
+        except StopIteration:
+            raise BillingError('No register "%s"' % register_binding)
+        return register
 
     def get_supply_target_total(self):
         '''Return the sum of the 'target_total' of all supply
