@@ -38,7 +38,7 @@ def upgrade():
     op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
     op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=False, default='Nextility'))
     op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'),nullable=True))
-    op.add_column('utility', sa.Column('sos_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
+    op.add_column('rate_class', sa.Column('sos_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
 
     op.create_table('be_user_session',
     sa.Column('id', sa.Integer(), nullable=False),
