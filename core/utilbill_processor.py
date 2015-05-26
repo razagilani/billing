@@ -33,7 +33,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            supply_group=None, processed=None, supply_choice_id=None,
+            supply_group_id=None, processed=None, supply_choice_id=None,
             meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
@@ -64,9 +64,10 @@ class UtilbillProcessor(object):
         if supplier is not None:
             utilbill.supplier = self.get_supplier(supplier)
 
-        if supply_group is not None:
-            utilbill.supply_group = self.get_supply_group(
-                supply_group, utilbill.supplier)
+        if supply_group_id is not None:
+            supply_group = Session().query(SupplyGroup).filter_by(
+                supplier_id=utilbill.supplier_id, id=supply_group_id).one()
+            utilbill.supply_group = supply_group
 
         if rate_class is not None:
             utilbill.rate_class = self.get_rate_class(
