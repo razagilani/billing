@@ -36,13 +36,10 @@ def upgrade():
         sa.PrimaryKeyConstraint('id')
     )
     op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
-    op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=True))
+    op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=False, default='Nextility'))
     op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'),nullable=True))
     op.add_column('utility', sa.Column('sos_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
 
-    op.alter_column('reebill_customer', 'payee',
-               existing_type=mysql.VARCHAR(length=100),
-               nullable=False)
     op.drop_constraint(u'identifier', 'reebill_user', type_='unique')
     op.alter_column('register', 'register_binding',
                existing_type=mysql.ENUM(u'REG_TOTAL', u'REG_TOTAL_SECONDARY', u'REG_TOTAL_TERTIARY', u'REG_PEAK', u'REG_INTERMEDIATE', u'REG_OFFPEAK', u'REG_DEMAND', u'REG_POWERFACTOR', u'REG_PEAK_RATE_INCREASE', u'REG_INTERMEDIATE_RATE_INCREASE', u'REG_OFFPEAK_RATE_INCREASE', u'FIRST_MONTH_THERMS', u'SECOND_MONTH_THERMS', u'BEGIN_INVENTORY', u'END_INVENTORY', u'CONTRACT_VOLUME'),
