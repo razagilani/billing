@@ -8,7 +8,8 @@ from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
-from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
+from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill, \
+    SupplyGroup
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.reebill_model import ReeBillCustomer, ReeBill, CustomerGroup
 from billentry.common import get_bcrypt_object
@@ -119,6 +120,7 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Session))
     admin.add_view(SupplierModelView(Session))
+    admin.add_view(LoginModelView(SupplyGroup, Session))
     admin.add_view(LoginModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
     admin.add_view(LoginModelView(Role, Session, name= 'BillEntry Role'))
