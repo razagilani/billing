@@ -43,8 +43,9 @@ def create_and_assign_supply_groups(s):
             log.info('Rate class %s for %s has unknown supplier' % (
             rate_class.name, rate_class.utility.name))
             continue
-        supply_group = SupplyGroup(rate_class.name + ' SOS', supplier,
-                                   rate_class.service)
+        supply_group = SupplyGroup(
+            '%s %s SOS' % (rate_class.utility.name, rate_class.name), supplier,
+            rate_class.service)
         rate_class.sos_supply_group = supply_group
         s.add(supply_group)
 
