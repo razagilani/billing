@@ -32,20 +32,23 @@ REVISION = '58383ed620d3'
 log = logging.getLogger(__name__)
 
 def create_and_assign_supply_groups(s):
-    for rate_class, supplier in s.query(RateClass, Supplier).join(
-            Utility).outerjoin(Supplier, Utility.name == Supplier.name).all():
-        if rate_class.utility.name == 'washington gas':
+    for utility, supplier in s.query(Utility, Supplier).outerjoin(
+            Supplier, Utility.name == Supplier.name).all():
+        if utility.name == 'washington gas':
             supplier = s.query(Supplier).filter_by(name='WGL').one()
-        elif rate_class.utility.name == 'dominion':
+        elif utility.name == 'dominion':
             supplier = s.query(Supplier).filter_by(
                 name='Dominion Energy Solutions').one()
         elif supplier is None:
-            log.info('Rate class %s for %s has unknown supplier' % (
-            rate_class.name, rate_class.utility.name))
-            continue
+            supplier = Supplier(name=utility.name + ' SOS')
+            log.info('Created new supplier for %s: %s' % (
+                utility.name, supplier.name))
+        utility.sos_supplier = supplier
+
+    for rate_class in s.query(RateClass).all():
         supply_group = SupplyGroup(
-            '%s %s SOS' % (rate_class.utility.name, rate_class.name), supplier,
-            rate_class.service)
+            '%s %s SOS' % (rate_class.utility.name, rate_class.name),
+            rate_class.utility.sos_supplier, rate_class.service)
         rate_class.sos_supply_group = supply_group
         s.add(supply_group)
 

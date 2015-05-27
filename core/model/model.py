@@ -201,9 +201,23 @@ class Utility(Base):
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
+    sos_supplier_id = Column(
+        Integer, ForeignKey('supplier.id', ondelete='CASCADE'), unique=True, )
 
     name = Column(String(1000), nullable=False)
     address = relationship("Address")
+    sos_supplier = relationship('Supplier', single_parent=True,
+                                cascade='all, delete-orphan')
+
+    def __init__(self, name='', sos_supplier=None, **kwargs):
+        super(Utility, self).__init__(**kwargs)
+        self.name = name
+        if sos_supplier is None:
+            sos_supplier = Supplier(name=name + ' SOS')
+        self.sos_supplier = sos_supplier
+
+    def get_sos_supplier(self):
+        return self.sos_supplier
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
@@ -398,11 +412,13 @@ class RateClass(Base):
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     service = Column(Enum(*SERVICES, name='services'), nullable=False)
     name = Column(String(255), nullable=False)
-    sos_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
-                                 nullable=True)
+    sos_supply_group_id = Column(
+        Integer, ForeignKey('supply_group.id', ondelete='CASCADE'),
+        nullable=True)
 
     utility = relationship('Utility')
-    sos_supply_group = relationship("SupplyGroup")
+    sos_supply_group = relationship("SupplyGroup", single_parent=True,
+                                    cascade='all, delete-orphan')
     register_templates = relationship('RegisterTemplate')
 
     def __init__(self, name='', utility=None, service='gas',
@@ -410,6 +426,16 @@ class RateClass(Base):
         self.name = name
         self.utility = utility
         self.service = service
+        if sos_supply_group is None:
+            if utility is None:
+                # the database requires utility_id to be non-null, but in tests,
+                # we create RateClass instances that have no utility
+                sos_supply_group = SupplyGroup(name='%s %s SOS' % ('?', name),
+                    service=service)
+            else:
+                sos_supply_group = SupplyGroup(
+                    name='%s %s SOS' % (utility.name, name),
+                    supplier=utility.get_sos_supplier(), service=service)
         self.sos_supply_group = sos_supply_group
 
         # TODO: a newly-created rate class should have one "REG_TOTAL"
@@ -434,6 +460,7 @@ class RateClass(Base):
 
     def get_sos_supply_group(self):
         return self.sos_supply_group
+
 
 
 class UtilityAccount(Base):
