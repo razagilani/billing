@@ -58,7 +58,7 @@ class UtilBillTest(TestCase):
         # TODO...
 
     def test_get_register_by_binding(self):
-        utility = Utility()
+        utility = Utility(name='utility')
         rate_class = RateClass(utility=utility)
         bill = UtilBill(MagicMock(), utility, rate_class)
         self.assertIsInstance(bill.get_register_by_binding(Register.TOTAL),
