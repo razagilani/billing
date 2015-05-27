@@ -7,9 +7,11 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
+from itertools import groupby
 import json
 import logging
-from core.model import Session, UtilBill, SupplyGroup, Supplier
+from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
+    RateClass
 
 from alembic.config import Config
 import pymongo
@@ -30,22 +32,24 @@ REVISION = '58383ed620d3'
 log = logging.getLogger(__name__)
 
 def create_and_assign_supply_groups(s):
-    suppliers = s.query(Supplier).all()
-    for supplier in suppliers:
-        bill = s.query(UtilBill).filter_by(supplier=supplier).first()
-        # if there is a bill for a supplier then create a supply group by
-        # naming it as bill.utility.name + ' SOS' otherwise don't create
-        # a supply group
-        if bill is None:
+    for rate_class, supplier in s.query(RateClass, Supplier).join(
+            Utility).outerjoin(Supplier, Utility.name == Supplier.name).all():
+        if rate_class.utility.name == 'washington gas':
+            supplier = s.query(Supplier).filter_by(name='WGL').one()
+        elif rate_class.utility.name == 'dominion':
+            supplier = s.query(Supplier).filter_by(
+                name='Dominion Energy Solutions').one()
+        elif supplier is None:
+            log.info('Rate class %s for %s has unknown supplier' % (
+            rate_class.name, rate_class.utility.name))
             continue
-        supply_group = SupplyGroup(bill.utility.name + ' SOS', supplier, bill.get_service())
-        bill.utility.sos_supply_group = supply_group
-        bills = s.query(UtilBill).filter_by(supplier=supplier).all()
-        for bill in bills:
-            bill.supply_group = supply_group
-            bill.utility_account.supply_group = supply_group
+        supply_group = SupplyGroup(rate_class.name + ' SOS', supplier,
+                                   rate_class.service)
+        rate_class.sos_supply_group = supply_group
         s.add(supply_group)
 
+        for bill in s.query(UtilBill).filter_by(rate_class=rate_class).all():
+            bill.supply_group = supply_group
 
 
 def migrate_users(s):
