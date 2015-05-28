@@ -736,11 +736,9 @@ class UtilitiesResource(RESTResource):
     def handle_post(self, *vpath, **params):
         params = cherrypy.request.json
         name = params['name']
-        supply_group_id = params['supply_group_id']
-        utility = self.utilbill_processor.create_utility(name,
-                                                    supply_group_id)
-        return True, {'rows': self.utilbill_views.get_utility_json(utility)
-            , 'results': 1 }
+        utility = self.utilbill_processor.create_utility(name)
+        return True, {'rows': self.utilbill_views.get_utility_json(utility),
+                      'results': 1}
 
 
 class RateClassesResource(RESTResource):
@@ -770,7 +768,7 @@ class SupplyGroupsResource(RESTResource):
         params = cherrypy.request.json
         name = params['name']
         supplier_id = params['supplier_id']
-        service = params['service']
+        service = params['service'].lower()
         supply_group = self.utilbill_processor.create_supply_group(name,
                                                     supplier_id, service)
         return True, {'rows': self.utilbill_views.
