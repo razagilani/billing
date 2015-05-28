@@ -635,7 +635,7 @@ class UtilBillResource(RESTResource):
                 rate_class=row.get('rate_class_id', None),
                 utility=row.get('utility_id', None),
                 supplier=row.get('supplier_id', None),
-                supply_group=row.get('supply_group_id', None))
+                supply_group_id=row.get('supply_group_id', None))
 
         result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
