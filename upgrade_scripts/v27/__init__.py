@@ -7,9 +7,11 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
+from itertools import groupby
 import json
 import logging
-from core.model import Session, UtilBill, SupplyGroup, Supplier
+from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
+    RateClass
 
 from alembic.config import Config
 import pymongo
@@ -30,22 +32,28 @@ REVISION = '58383ed620d3'
 log = logging.getLogger(__name__)
 
 def create_and_assign_supply_groups(s):
-    suppliers = s.query(Supplier).all()
-    for supplier in suppliers:
-        bill = s.query(UtilBill).filter_by(supplier=supplier).first()
-        # if there is a bill for a supplier then create a supply group by
-        # naming it as bill.utility.name + ' SOS' otherwise don't create
-        # a supply group
-        if bill is None:
-            continue
-        supply_group = SupplyGroup(bill.utility.name + ' SOS', supplier, bill.get_service())
-        bill.utility.sos_supply_group = supply_group
-        bills = s.query(UtilBill).filter_by(supplier=supplier).all()
-        for bill in bills:
-            bill.supply_group = supply_group
-            bill.utility_account.supply_group = supply_group
+    for utility, supplier in s.query(Utility, Supplier).outerjoin(
+            Supplier, Utility.name == Supplier.name).all():
+        if utility.name == 'washington gas':
+            supplier = s.query(Supplier).filter_by(name='WGL').one()
+        elif utility.name == 'dominion':
+            supplier = s.query(Supplier).filter_by(
+                name='Dominion Energy Solutions').one()
+        elif supplier is None:
+            supplier = Supplier(name=utility.name + ' SOS')
+            log.info('Created new supplier for %s: %s' % (
+                utility.name, supplier.name))
+        utility.sos_supplier = supplier
+
+    for rate_class in s.query(RateClass).all():
+        supply_group = SupplyGroup(
+            '%s %s SOS' % (rate_class.utility.name, rate_class.name),
+            rate_class.utility.sos_supplier, rate_class.service)
+        rate_class.sos_supply_group = supply_group
         s.add(supply_group)
 
+        for bill in s.query(UtilBill).filter_by(rate_class=rate_class).all():
+            bill.supply_group = supply_group
 
 
 def migrate_users(s):

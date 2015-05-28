@@ -53,7 +53,7 @@ PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
 m = re.match(MYSQL_FORMAT, old_db_uri)
 old_db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 m = re.match(PG_FORMAT, cur_db_uri)
-cur_db_params = dict(zip(['user', 'host', 'db'], m.groups()))
+cur_db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
 
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2

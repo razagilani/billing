@@ -14,11 +14,19 @@
       "AllowedValues" : ["t2.micro", "t2.small", "t2.medium", "m3.large", "c4.xlarge", "c4.4xlarge"],
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
+    "HostedZone": {
+      "Description" : "Domain to add internal dns entries to, must already exist in Route53",
+      "Type" : "String"
+    },
     "VpcId" : {
       "Type" : "String",
       "Description" : "VpcId of your existing Virtual Private Cloud (VPC)"
     },
     "NatSecurityGroup" : {
+      "Type" : "String",
+      "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
+    },
+    "ExternalNatSecurityGroup" : {
       "Type" : "String",
       "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
     },
@@ -149,6 +157,16 @@
         "SourceSecurityGroupId" : {"Ref" : "NatSecurityGroup"}
       }
     },
+    "ExternalNatIngressRule" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "GroupId" : {"Ref" : "ApplicationSecurityGroup"},
+        "FromPort" : 80,
+        "ToPort" : 80,
+        "IpProtocol" : "tcp",
+        "SourceSecurityGroupId" : {"Ref" : "ExternalNatSecurityGroup"}
+      }
+    },
     "MongoIngressRule" : {
       "Type" : "AWS::EC2::SecurityGroupIngress",
       "Properties" : {
@@ -188,7 +206,28 @@
         "IpProtocol" : "tcp",
         "SourceSecurityGroupId" : {"Ref" : "ApplicationSecurityGroup"}
       }
-    }
+    },
+    "InternalNatDns" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+         "HostedZoneName" : {
+            "Fn::Join" : [ "", [
+               { "Ref" : "HostedZone" }, "."
+            ] ]
+         },
+         "Name" : {
+            "Fn::Join" : [ "", [
+               {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, ".",
+               {"Ref" : "HostedZone"} ,"."
+            ] ]
+         },
+         "Type" : "A",
+         "TTL" : "60",
+         "ResourceRecords" : [
+            { "Fn::GetAtt" : [ "ApplicationInstance", "PrivateIp" ] }
+         ]
+      }
+   }
   },
   "Outputs" : {
     "InstanceId" : {

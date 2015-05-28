@@ -8,7 +8,8 @@ from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
-from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill
+from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill, \
+    SupplyGroup
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.reebill_model import ReeBillCustomer, ReeBill, CustomerGroup
 from billentry.common import get_bcrypt_object
@@ -75,10 +76,23 @@ class SupplierModelView(LoginModelView):
 
 
 class UtilityModelView(LoginModelView):
+    # sos_supplier_id must be excluded from the fields shown in the admin UI
+    # because otherwise Flask-Admin will overwrite the sos_supplier created
+    # automatically in Utility.__init__ with a null value from the emtpy field
     form_columns = ('name',)
 
-    def __init__(self, session, **kwargs):
-        super(UtilityModelView, self).__init__(Utility, session, **kwargs)
+    def instantiate_model(self, form):
+        return self.model(name=form.name.data)
+
+class RateClassModelView(LoginModelView):
+    # sos_supply_group_id must be excluded from the fields shown in the admin UI
+    # because otherwise Flask-Admin will overwrite the sos_supplier created
+    # automatically in RateClas.__init__ with a null value from the emtpy field
+    form_columns = ('name', 'utility', 'service')
+
+    def instantiate_model(self, form):
+        return self.model(name=form.name.data, utility=form.utility.data,
+                          service=form.service.data)
 
 
 class ReeBillCustomerModelView(LoginModelView):
@@ -117,9 +131,10 @@ def make_admin(app):
     admin = Admin(app, index_view=MyAdminIndexView())
     admin.add_view(CustomModelView(UtilityAccount, Session))
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
-    admin.add_view(UtilityModelView(Session))
+    admin.add_view(UtilityModelView(Utility, Session))
     admin.add_view(SupplierModelView(Session))
-    admin.add_view(LoginModelView(RateClass, Session))
+    admin.add_view(LoginModelView(SupplyGroup, Session))
+    admin.add_view(RateClassModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
     admin.add_view(LoginModelView(Role, Session, name= 'BillEntry Role'))
     admin.add_view(LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))

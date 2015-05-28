@@ -1,7 +1,13 @@
+var the_renderer = function(value, metaData, record){
+    if (record.raw.energy == null)
+        return 'not included';
+    return value;
+};
+
 Ext.define('ReeBill.view.reports.Reconciliations', {
     extend: 'Ext.grid.Panel',
 
-    title:'Reconcilation Report: reebills with >0.1% difference from OLTP or errors',
+    title:'Reconcilation Report',
     alias: 'widget.reconciliations',    
     store: 'Reconciliations',
     
@@ -14,28 +20,27 @@ Ext.define('ReeBill.view.reports.Reconciliations', {
     },
     
     columns: [{
-        header: 'Account',
-        dataIndex: 'account',
+        header: 'Customer ID',
+        dataIndex: 'customer_id',
+        width: 120,
+        hidden: true,
+    },{
+        header: 'Nextility Account Number',
+        dataIndex: 'nextility_account_number',
         width: 120
     },{
         header: 'Sequence',
         dataIndex: 'sequence',
         width: 120
     },{
-        header: 'Bill Energy (therms)',
-        dataIndex: 'bill_therms',
+        header: 'Bill Energy',
+        dataIndex: 'energy',
+        renderer: the_renderer,
         width: 200
     },{
-        header: 'OLAP Energy (therms)',
-        dataIndex: 'olap_therms',
-        width: 200
-    },{
-        header: 'OLTP Energy (therms)',
-        dataIndex: 'oltp_therms',
-        width: 200
-    },{
-        header: 'Errors (see reconcilation log for details)',
-        dataIndex: 'errors',
+        header: 'Current Energy',
+        dataIndex: 'current_energy',
+        renderer: the_renderer,
         width: 200,
         flex: 1
     }],
