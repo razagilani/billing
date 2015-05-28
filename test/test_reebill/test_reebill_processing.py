@@ -210,7 +210,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': 'payee'
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -254,7 +254,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': 'payee'
         }], data)
 
     def test_set_payee_for_utility_account(self):
@@ -2093,7 +2093,7 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
                              Address(), Address())
-        customer2 = ReeBillCustomer(utility_account=ua2, name='')
+        customer2 = ReeBillCustomer(utility_account=ua2, name='', payee='payee')
         utilbill2 = self.utilbill.clone()
         utilbill2.utility = self.utilbill.utility
         utilbill2.registers = [self.utilbill.registers[0].clone()]

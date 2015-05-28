@@ -4,7 +4,7 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
-from core.model import Utility, Session
+from core.model import Utility, Session, SupplyGroup
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
@@ -58,7 +58,8 @@ class FetchTest(unittest.TestCase):
     def setUp(self):
         utility_account = UtilityAccount('someone', '12345',
             Mock(autospec=Utility), Mock(autospec=Supplier),
-            Mock(autospec=RateClass), Address(), Address())
+            Mock(autospec=RateClass), Mock(autospec=SupplyGroup),
+            Address(), Address())
         reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
