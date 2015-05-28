@@ -14,7 +14,7 @@ import os.path
 from testfixtures import TempDirectory
 
 from core.model import Address, UtilBill, \
-    Register, UtilityAccount
+    Register, UtilityAccount, Utility, Supplier, RateClass
 from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
 from reebill.reebill_file_handler import ReebillFileHandler, \
     SummaryFileGenerator
@@ -32,9 +32,12 @@ class ReebillFileHandlerTest(TestCase):
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
+        utility = Utility(name='Test Utility')
+        supplier = Supplier(name='Test Supplier')
+        rate_class = RateClass(name='Test Rate Class', utility=utility)
         utility_account = UtilityAccount('someaccount', '00001',
-                        'Test Utility', 'Test Supplier', 'Test Rate Class',
-                        ba, sa)
+                        utility, supplier, rate_class,
+                        None, ba, sa)
         c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
                             late_charge_rate=0.1,
                             bill_email_recipient='test@example.com',
@@ -181,8 +184,11 @@ class SummaryFileGeneratorTest(TestCase):
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
+        utility = Utility(name='Test Utility')
+        supplier = Supplier(name='Test Supplier')
+        rate_class = RateClass(name='Test Rate Class', utility=utility)
         utility_account = UtilityAccount('someaccount', '00001',
-                        'Test Utility', 'Test Supplier', 'Test Rate Class',
+                        utility, supplier, rate_class,
                         ba, sa)
         c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
                             late_charge_rate=0.1,
