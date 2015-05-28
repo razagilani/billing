@@ -207,7 +207,7 @@ class Field(model.Base):
 
     __tablename__ = 'field'
     field_id = Column(Integer, primary_key=True)
-    discriminator = Column(String(1000), nullable=False)
+    discriminator = Column(String, nullable=False)
 
     # each Extractor subclass is associated with a Field subclass; in order
     # to get Flask-Admin to work with these classes, the relationships must
@@ -277,8 +277,8 @@ class Extractor(model.Base):
     """
     __tablename__ = 'extractor'
     extractor_id = Column(Integer, primary_key=True)
-    discriminator = Column(String(1000), nullable=False)
-    name = Column(String(1000), nullable=False)
+    discriminator = Column(String, nullable=False)
+    name = Column(String, nullable=False)
 
     __mapper_args__ = {
         'polymorphic_on': discriminator,
@@ -357,7 +357,7 @@ class TextExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
 
-        regex = Column(String(1000), nullable=False)
+        regex = Column(String, nullable=False)
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
