@@ -120,7 +120,7 @@ class Views(object):
 
     def get_all_utilities_json(self):
         return [dict(id=x.id, name=x.name,
-                     supply_group_id=x.sos_supply_group_id) for x in
+                     sos_supplier_id_=x.sos_supplier_id) for x in
                 Session().query(Utility).order_by(Utility.name).all()]
 
     def get_all_rate_classes_json(self):
