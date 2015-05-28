@@ -514,11 +514,16 @@ class UtilbillProcessor(object):
         return rate_class
 
     def create_supply_group(self, name, supplier_id, service):
-        if name == 'Unknown Rate Class':
-            return None
+        """
+        :param name: name of the supply group (string)
+        :param supplier_id: primary key of the Supplier
+        :param service: one of model.SERVICES ("gas" or "electric")
+        :return: newly-created SupplyGroup
+        """
         s = Session()
         supplier = s.query(Supplier).filter_by(id=supplier_id).first()
-        supply_group = SupplyGroup(name=name, supplier=supplier, service=service)
+        supply_group = SupplyGroup(name=name, supplier=supplier,
+                                   service=service)
         s.add(supply_group)
         s.flush()
         return supply_group
