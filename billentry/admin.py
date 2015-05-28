@@ -67,13 +67,6 @@ class LoginModelView(ModelView):
     def __init__(self, model, session, **kwargs):
         super(LoginModelView, self).__init__(model, session, **kwargs)
 
-    def instantiate_model(self, form):
-        """Called in flask_admin.contrib.sqla.view instead of model class
-        constructor with no arguments. This allows Flask-Admin to actually
-        call the constructor with values from the "create" form.
-        """
-        return self.model()
-
 
 class SupplierModelView(LoginModelView):
     form_columns = ('name',)
