@@ -506,8 +506,7 @@ class UtilbillProcessor(object):
 
     def create_rate_class(self, name, utility_id, service):
         assert name != ''
-        if name == 'Unknown Rate Class':
-            return None
+        assert name != 'Unknown Rate Class' # client shows null as this name
         s = Session()
         utility = s.query(Utility).filter_by(id=utility_id).first()
         rate_class = RateClass(name=name, utility=utility, service=service)
@@ -523,8 +522,7 @@ class UtilbillProcessor(object):
         :return: newly-created SupplyGroup
         """
         assert name != ''
-        if name == 'Unknown Supply Group':
-            return None
+        assert name != 'Unknown Supply Group' # client shows null as this name
         s = Session()
         supplier = s.query(Supplier).filter_by(id=supplier_id).first()
         supply_group = SupplyGroup(name=name, supplier=supplier,
@@ -539,8 +537,7 @@ class UtilbillProcessor(object):
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
         assert name != ''
-        if name == 'Unknown Supplier':
-            return None
+        assert name != 'Unknown Supplier' # client shows null as this name
         s = Session()
         supplier = Supplier(name=name, address=Address())
         s.add(supplier)
