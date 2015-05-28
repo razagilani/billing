@@ -751,7 +751,7 @@ class RateClassesResource(RESTResource):
         params = cherrypy.request.json
         name = params['name']
         utility_id = params['utility_id']
-        service = params['service']
+        service = params['service'].lower()
         rate_class = self.utilbill_processor.create_rate_class(name, utility_id, service)
         return True, {'rows': self.utilbill_views.
             get_rate_class_json(rate_class), 'results': 1 }
