@@ -33,7 +33,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            supply_group=None, processed=None, supply_choice_id=None,
+            supply_group_id=None, processed=None, supply_choice_id=None,
             meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
@@ -64,9 +64,10 @@ class UtilbillProcessor(object):
         if supplier is not None:
             utilbill.supplier = self.get_supplier(supplier)
 
-        if supply_group is not None:
-            utilbill.supply_group = self.get_supply_group(
-                supply_group, utilbill.supplier)
+        if supply_group_id is not None:
+            supply_group = Session().query(SupplyGroup).filter_by(
+                supplier_id=utilbill.supplier_id, id=supply_group_id).one()
+            utilbill.supply_group = supply_group
 
         if rate_class is not None:
             utilbill.rate_class = self.get_rate_class(
@@ -245,8 +246,7 @@ class UtilbillProcessor(object):
         if supply_group is not None:
             supply_group = self.create_supply_group(supply_group, supplier.id, 'gas')
         if utility is not None:
-            utility = self.create_utility(utility, supply_group.id) \
-                if supply_group else self.create_utility(utility)
+            utility = self.create_utility(utility)
         if rate_class is not None:
             rate_class = self.create_rate_class(rate_class, utility.id, 'gas')
 
@@ -486,15 +486,15 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def create_utility(self, name, supply_group_id=None):
+    def create_utility(self, name):
         session = Session()
-        if supply_group_id:
-            supply_group = session.query(SupplyGroup).filter_by(
-                id=supply_group_id).one()
-        else:
-            supply_group = None
-        utility = Utility(name=name, sos_supply_group=supply_group,
-                          address=Address())
+        utility = Utility(name=name, address=Address())
+        utility.rate_class = None
+        session.add(utility)
+        session.flush()
+        return utility
+
+    def get_utility(self, utility_id):
         utility.rate_class = None
         session.add(utility)
         session.flush()
@@ -530,7 +530,6 @@ class UtilbillProcessor(object):
         return supply_group
 
     def create_supplier(self, name):
-        session = Session()
         # suppliers are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"

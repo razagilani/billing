@@ -3,17 +3,15 @@ from core import init_model
 
 from core.model.model import RegisterTemplate, SupplyGroup
 from core.pricing import PricingModel
-from test import init_test_config
-from test.setup_teardown import clear_db
-
+from test import init_test_config, create_tables, clear_db
 
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from reebill.reebill_model import Payment, ReeBillCustomer
+
 
 class UtilBillTest(TestCase):
     """Unit tests for UtilBill.
@@ -58,6 +56,15 @@ class UtilBillTest(TestCase):
         # when the register is present, set_total_energy should work
         # without requiring consumers to know about registers.
         # TODO...
+
+    def test_get_register_by_binding(self):
+        utility = Utility(name='utility')
+        rate_class = RateClass(utility=utility)
+        bill = UtilBill(MagicMock(), utility, rate_class)
+        self.assertIsInstance(bill.get_register_by_binding(Register.TOTAL),
+                              Register)
+        with self.assertRaises(BillingError):
+            bill.get_register_by_binding('xyz')
 
     def test_regenerate_charges(self):
         a, b, c = Charge('a'), Charge('b'), Charge('c')
@@ -166,6 +173,7 @@ class UtilBillTestWithDB(TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
         init_model()
 
     def setUp(self):
@@ -477,8 +485,8 @@ class UtilBillTestWithDB(TestCase):
         '''Compute utility bill with no charges.
         '''
         utility_account = UtilityAccount('someone', '99999',
-                Utility(name='utility'), 'supplier',
-                'rate class', None, Address(), Address())
+                Utility(name='utility'), None,
+                None, None, Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)

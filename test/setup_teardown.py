@@ -5,13 +5,13 @@ import os
 from subprocess import CalledProcessError, Popen
 from time import sleep
 import subprocess
+import smtplib
 
 from mock import Mock
 from boto.s3.connection import S3Connection
 from testfixtures import TempDirectory
 
 from reebill.payment_dao import PaymentDAO
-from reebill.reebill_dao import ReeBillDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
 from core import pricing
@@ -25,7 +25,6 @@ from core.bill_file_handler import BillFileHandler
 from reebill.fetch_bill_data import RenewableEnergyGetter
 from reebill.reebill_processor import ReebillProcessor
 from core.utilbill_processor import UtilbillProcessor
-from reebill.views import Views
 from reebill.users import UserDAO
 from reebill.reebill_dao import ReeBillDAO
 from reebill import fetch_bill_data as fbd
@@ -35,18 +34,6 @@ from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from reebill.reebill_file_handler import ReebillFileHandler
 from reebill.views import Views
 from reebill.bill_mailer import Mailer
-import smtplib
-
-
-def clear_db():
-    """Remove all data from the test database. This should be called before and
-    after running any test that inserts data.
-    """
-    session = Session()
-    Session.rollback()
-    for t in reversed(Base.metadata.sorted_tables):
-        session.execute(t.delete())
-    session.commit()
 
 
 def create_nexus_util():
@@ -136,8 +123,6 @@ def create_reebill_file_handler():
 
 
 def create_reebill_objects():
-    from core import config
-
     logger = logging.getLogger('test')
 
     # TODO most or all of these dependencies do not need to be instance
@@ -293,8 +278,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         supplier = Supplier(name='Test Supplier', address=ca1)
         supply_group = SupplyGroup(name='test', supplier=supplier,
                                    service='gas')
-        uc = Utility(name='Test Utility Company Template', address=ca1,
-                     sos_supply_group=supply_group)
+        uc = Utility(name='Test Utility Company Template', address=ca1)
 
 
         ca2 = Address(addressee='Test Other Utilco Address',
@@ -305,8 +289,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         other_supplier = Supplier(name='Other Supplier', address=ca1)
         other_supply_group = SupplyGroup(name='test', supplier=other_supplier,
                                    service='gas')
-        other_uc = Utility(name='Other Utility', address=ca1,
-                           sos_supply_group=other_supply_group)
+        other_uc = Utility(name='Other Utility', address=ca1)
+
 
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
@@ -314,7 +298,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                         other_supplier])
         session.flush()
         rate_class = RateClass(name='Test Rate Class Template', utility=uc,
-                               service='gas')
+                               service='gas', sos_supply_group=supply_group)
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
@@ -385,7 +369,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                      state='XX',
                      postal_code='12345')
         other_rate_class = RateClass(name='Other Rate Class',
-                                     utility=other_uc, service='gas')
+                                     utility=other_uc, service='gas',
+                                     sos_supply_group=other_supply_group)
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)

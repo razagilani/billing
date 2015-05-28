@@ -13,7 +13,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
 from exc import UnEditableBillError
-from test import init_test_config
+from test import init_test_config, create_tables, clear_db
 from util import FixMQ
 from util.dictutils import deep_map
 
@@ -37,12 +37,17 @@ with FixMQ():
     from mq import IncomingMessage
     from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import clear_db
+from test import clear_db, create_tables
 
 
 def unicodify(x):
     return unicode(x) if isinstance(x, basestring) else x
 
+
+def setUpModule():
+    init_test_config()
+    create_tables()
+    init_model()
 
 class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
@@ -116,8 +121,6 @@ class BillEntryIntegrationTest(object):
 
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
         billentry.app.config['TESTING'] = True
         # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login
         # "login_required" decorator is used, but we
@@ -155,14 +158,15 @@ class BillEntryIntegrationTest(object):
                               service_address=Address(street='2 Example St.'))
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
                                   None, Address(), Address(), account_number='2')
-        self.some_electric_rate_class = RateClass('Some Electric Rate Class', self.utility,
+        self.ua2.id = 2
+        self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
-        self.some_electric_rate_class.id = 2
-        self.ub2.set_rate_class(self.some_electric_rate_class)
+        self.rate_class2.id = 2
+        self.ub2.set_rate_class(self.rate_class2)
         self.ub2.registers[0].unit = 'therms'
         self.ub2.registers[0].quantity = 250.0
         self.ub2.registers[0].meter_identifier = 'MNOPQR'
-        self.ub3 = BEUtilBill(self.ua2, self.utility, self.some_electric_rate_class,
+        self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
         self.ub2.id = 2
@@ -172,7 +176,6 @@ class BillEntryIntegrationTest(object):
             self.utility, self.ua1, self.some_rate_class, self.ub1,
             self.ub2, self.project_mgr_role, self.admin_role,
         ])
-        s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
     def tearDown(self):
@@ -226,7 +229,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
-        s.commit()
 
     def test_accounts_get(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
@@ -271,8 +273,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': self.some_electric_rate_class.name,
-              'rate_class_id': self.some_electric_rate_class.id,
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
               'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
@@ -477,8 +479,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': self.some_electric_rate_class.name,
-              'rate_class_id': self.some_electric_rate_class.id,
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
               'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
@@ -532,9 +534,8 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
-        # TODO reuse 'expected' in later assertions instead of repeating the
-        # giant dictionary over and over
         utility = Utility(name="Empty Utility")
+        utility.id = 3
         Session().add(utility)
         Session().commit()
 
@@ -577,6 +578,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             }}, rv.data
         )
         utility = Utility(name="Some Other Utility")
+        utility.id = 4
         Session().add(utility)
         Session().commit()
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
@@ -628,6 +630,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
     def setUp(self):
         super(TestBillEntryReport, self).setUp()
         s = Session()
+        s.flush()
         self.user1 = BillEntryUser(email='1@example.com', password='password')
         self.user1.id = 1
         self.user2 = BillEntryUser(email='2@example.com', password='password')
@@ -637,7 +640,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.add_all([self.ub1, self.ub2, self.ub3, self.user1, self.user2])
         self.user1.roles = [self.project_mgr_role]
         self.user3.roles = [self.admin_role]
-        s.commit()
 
         self.response_all_counts_0 = {"results": 2, "rows": [
             {"id": 1, "email": '1@example.com', "total_count": 0,
@@ -645,6 +647,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
             {"id": 2, 'email': '2@example.com', "total_count": 0,
              "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]}
         self.response_no_flagged_bills = {"results": 0, "rows": []}
+        s.flush()
 
     def test_report_count_for_user(self):
 
@@ -802,8 +805,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': self.some_electric_rate_class.name,
-                'rate_class_id': self.some_electric_rate_class.id,
+                'rate_class': self.rate_class2.name,
+                'rate_class_id': self.rate_class2.id,
                 'service': 'Electric',
                 'service_address': '2 Example St., ,  ',
                 'supplier': 'Unknown',
@@ -955,6 +958,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
     def test_replace_utilbill_with_beutilbill(self):
         s = Session()
         u = UtilBill(self.ua1, self.utility, self.some_rate_class)
+        u.id = 3
         s.add(u)
         s.flush() # set u.id
 
@@ -1093,7 +1097,6 @@ class TestBillEntryUserSessions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         billentry.app.config['TESTING'] = True
@@ -1108,7 +1111,7 @@ class TestBillEntryUserSessions(unittest.TestCase):
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
-        s.commit()
+        s.flush()
 
     def tearDown(self):
         clear_db()
@@ -1164,8 +1167,6 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         billentry.app.config['TESTING'] = True
@@ -1180,7 +1181,6 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
-        s.commit()
 
     def tearDown(self):
         clear_db()

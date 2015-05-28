@@ -278,7 +278,7 @@ class UtilBillResource(BaseResource):
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
             meter_identifier=row['meter_identifier'],
-            supply_group=row['supply_group_id']
+            supply_group_id=row['supply_group_id']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
