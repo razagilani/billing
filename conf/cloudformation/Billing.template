@@ -210,11 +210,7 @@
     "InternalNatDns" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
-         "HostedZoneName" : {
-            "Fn::Join" : [ "", [
-               { "Ref" : "HostedZone" }, "."
-            ] ]
-         },
+         "HostedZoneId" : { "Ref" : "HostedZone" },
          "Name" : {
             "Fn::Join" : [ "", [
                {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, ".",
