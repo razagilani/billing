@@ -34,7 +34,8 @@ class StateDBTest(TestCase):
                                     discount_rate=.12, late_charge_rate=.34,
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
-                                    utility_account=self.utility_account)
+                                    utility_account=self.utility_account,
+                                    payee='payee')
         self.reebill_customer2 = self.reebill_customer.clone()
 
         self.session = Session()
