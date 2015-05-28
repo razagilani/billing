@@ -41,10 +41,10 @@ class Main(object):
     def test_extractor(self, extractor, utilbills):
         """Check performance of the given Extractor on the given set of bills.
         :param extractor: Extractor to test
-        :param utilbills: list of UtilBills. inefficient but apparently there
-        is no easy to way to avoid buffering the entire result set in memory?
+        :param utilbills: iterator of UtilBills.
+        (too possibly avoid buffering the entire result set in memory, see
         https://stackoverflow.com/questions/7389759/memory-efficient-built-in
-        -sqlalchemy-iterator-generator
+        -sqlalchemy-iterator-generator)
         :return: 3 ints: number of bills from which all fields could be
         extracted, number from which at least one field could be extracted,
         total number of bills
@@ -63,7 +63,12 @@ class Main(object):
 
 
 class Applier(object):
-    """Applies extracted values to attributes of UtilBill.
+    """Applies extracted values to attributes of UtilBill. There's no
+    instance-specific state so only one instance is needed.
+
+    To apply values to something other than a UtilBill, a superclass could be
+    created that includes the non-UtilBill specific parts, and other subclasses
+    of it would have different 'KEYS' and a different implementation of 'apply'.
     """
     CHARGES = 'charges'
     END = 'end'
@@ -91,13 +96,12 @@ class Applier(object):
             cls._instance = cls(cls.KEYS)
         return cls._instance
 
-    # TODO: maybe there is no need for any Applier instances other than the
-    # "normal" one returned by get_instance.
     def __init__(self, keys):
         self.keys = keys
 
     def apply(self, key, value, utilbill):
-        """Set the value of a UtilBill attribute.
+        """Set the value of a UtilBill attribute. Raise ApplicationError if
+        anything goes wrong.
         :param key: one of KEYS (determines which UtilBill attribute gets
         the value)
         :param value: extracted value to be applied
@@ -106,16 +110,20 @@ class Applier(object):
         attr = self.keys.get(key)
         if attr is None:
             raise ApplicationError('Unknown key "%s"' % key)
+
+        # figure out how to apply the value based on the type of the attribute
         if callable(attr):
             # method
             method_name = attr.__name__
             method = getattr(utilbill, method_name)
             apply = lambda: method(value)
         else:
-            # column
+            # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
+                # relationship attribute
                 attr_name = attr.property.key
             elif isinstance(attr, InstrumentedAttribute):
+                # regular column atttribute
                 attr_name = attr.property.columns[0].name
                 # catch type error before the value gets saved in db
                 the_type = attr.property.columns[0].type.python_type
@@ -123,11 +131,12 @@ class Applier(object):
                     raise ApplicationError('Expected type %s, got %s %s' % (
                         the_type, type(value), value))
             else:
-                raise ValueError
+                raise ApplicationError(
+                    "Can't apply %s to %s: unknown attribute type %s" % (
+                    value, attr, type(attr)))
             apply = lambda: setattr(utilbill, attr_name, value)
-        # TODO: values could get applied in ways other than these, especially
-        # in the case of non-scalar attributes like a group of charges
 
+        # do it
         try:
             apply()
         except Exception as e:
