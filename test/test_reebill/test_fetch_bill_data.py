@@ -221,7 +221,8 @@ class ReeGetterTestPV(unittest.TestCase):
         demand_register.register_binding = Register.DEMAND
         demand_register.get_active_periods.return_value = \
                 energy_register.get_active_periods.return_value
-        utilbill.registers = [energy_register, demand_register]
+        utilbill.get_register_by_binding.side_effect = [energy_register,
+                                                        demand_register]
 
         self.reebill = Mock()
         self.reebill.utilbill = utilbill
