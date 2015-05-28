@@ -487,6 +487,7 @@ class UtilbillProcessor(object):
     ############################################################################
 
     def create_utility(self, name):
+        assert name != ''
         session = Session()
         utility = Utility(name=name, address=Address())
         utility.rate_class = None
@@ -504,6 +505,7 @@ class UtilbillProcessor(object):
         return result
 
     def create_rate_class(self, name, utility_id, service):
+        assert name != ''
         if name == 'Unknown Rate Class':
             return None
         s = Session()
@@ -520,6 +522,9 @@ class UtilbillProcessor(object):
         :param service: one of model.SERVICES ("gas" or "electric")
         :return: newly-created SupplyGroup
         """
+        assert name != ''
+        if name == 'Unknown Supply Group':
+            return None
         s = Session()
         supplier = s.query(Supplier).filter_by(id=supplier_id).first()
         supply_group = SupplyGroup(name=name, supplier=supplier,
@@ -533,6 +538,7 @@ class UtilbillProcessor(object):
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
+        assert name != ''
         if name == 'Unknown Supplier':
             return None
         s = Session()
