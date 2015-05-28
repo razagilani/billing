@@ -1127,6 +1127,12 @@ class ReebillWSGI(object):
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
+        wsgi.supplygroups = SupplyGroupsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        )
         wsgi.reebillversions = ReebillVersionsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
