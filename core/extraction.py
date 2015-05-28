@@ -216,7 +216,7 @@ class Field(model.Base):
 
     type = Column(Enum(*TYPES.keys(), name='field_type'))
 
-    # string determining which Applier applies the extracted value to a UtilBill
+    # string determining how the extracted value gets applied to a UtilBill
     applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'),
                          unique=True)
 
