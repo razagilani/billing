@@ -6,7 +6,7 @@ Ext.define('ReeBill.model.Utility', {
         {name: 'address_id', type: 'int'},
         {name: 'guid', type: 'string'},
         {name: 'discriminator', type: 'string'},
-        {name: 'supply_group_id', type: 'int'}
+        {name: 'sos_supplier_id', type: 'int'}
     ],
     hasMany: {
             model: 'RateClass',
