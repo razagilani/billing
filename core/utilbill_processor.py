@@ -321,7 +321,7 @@ class UtilbillProcessor(object):
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
             session.delete(charge)
-        for register in utility_bill.registers:
+        for register in utility_bill._registers:
             session.delete(register)
         session.delete(utility_bill)
 
