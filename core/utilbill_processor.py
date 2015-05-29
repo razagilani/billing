@@ -523,8 +523,6 @@ class UtilbillProcessor(object):
         :return: newly-created SupplyGroup
         """
         assert name != ''
-        if name == 'Unknown Supply Group':
-            return None
         s = Session()
         supplier = s.query(Supplier).filter_by(id=supplier_id).first()
         supply_group = SupplyGroup(name=name, supplier=supplier,
