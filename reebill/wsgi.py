@@ -635,7 +635,7 @@ class UtilBillResource(RESTResource):
                 rate_class=row.get('rate_class_id', None),
                 utility=row.get('utility_id', None),
                 supplier=row.get('supplier_id', None),
-                supply_group=row.get('supply_group_id', None))
+                supply_group_id=row.get('supply_group_id', None))
 
         result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
@@ -736,11 +736,9 @@ class UtilitiesResource(RESTResource):
     def handle_post(self, *vpath, **params):
         params = cherrypy.request.json
         name = params['name']
-        supply_group_id = params['supply_group_id']
-        utility = self.utilbill_processor.create_utility(name,
-                                                    supply_group_id)
-        return True, {'rows': self.utilbill_views.get_utility_json(utility)
-            , 'results': 1 }
+        utility = self.utilbill_processor.create_utility(name)
+        return True, {'rows': self.utilbill_views.get_utility_json(utility),
+                      'results': 1}
 
 
 class RateClassesResource(RESTResource):
@@ -753,7 +751,7 @@ class RateClassesResource(RESTResource):
         params = cherrypy.request.json
         name = params['name']
         utility_id = params['utility_id']
-        service = params['service']
+        service = params['service'].lower()
         rate_class = self.utilbill_processor.create_rate_class(name, utility_id, service)
         return True, {'rows': self.utilbill_views.
             get_rate_class_json(rate_class), 'results': 1 }
@@ -770,7 +768,7 @@ class SupplyGroupsResource(RESTResource):
         params = cherrypy.request.json
         name = params['name']
         supplier_id = params['supplier_id']
-        service = params['service']
+        service = params['service'].lower()
         supply_group = self.utilbill_processor.create_supply_group(name,
                                                     supplier_id, service)
         return True, {'rows': self.utilbill_views.
@@ -1122,6 +1120,12 @@ class ReebillWSGI(object):
             reebill_processor
         )
         wsgi.reebillcharges = ReebillChargesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        )
+        wsgi.supplygroups = SupplyGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,

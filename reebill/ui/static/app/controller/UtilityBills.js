@@ -70,6 +70,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#rate_class_combo': {
                 expand: this.handleRateClassExpand,
+                focus: this.handleRateClassComboFocus,
                 blur: this.handleRateClassBlur
             },
             '#supplier_combo': {
@@ -79,6 +80,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#supply_group_combo': {
                 expand: this.handleSupplyGroupComboExpand,
+                focus: this.handleSupplyGroupComboFocus,
                 blur: this.handleSupplyGroupBlur
             }
 
@@ -297,10 +299,22 @@ Ext.define('ReeBill.controller.UtilityBills', {
         combo.setValue(selected.get('utility').name);
     },
 
+    handleRateClassComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('rate_class').name);
+    },
+
     handleSupplierComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
         combo.setValue(selected.get('supplier').name);
+    },
+
+    handleSupplyGroupComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supply_group').name);
     },
 
     handleRateClassBlur: function(combo, event, opts){
@@ -356,9 +370,16 @@ Ext.define('ReeBill.controller.UtilityBills', {
             var utilBillsStore = this.getUtilityBillsStore();
             utilBillsStore.suspendAutoSync();
             supplyGroupStore.suspendAutoSync();
+            var service = selected.get('service');
+            if (service == 'Unknown') {
+                Ext.Msg.alert('Status', 'supply_group cannot be created if service is not known');
+                this.getUtilityBillsStore().resumeAutoSync();
+                supplyGroupStore.resumeAutoSync();
+                return;
+            }
             supplyGroupStore.add({name: combo.getRawValue(),
                                  supplier_id: selected.get('supplier').id,
-                                 service: selected.get('service')});
+                                 service: service});
             supplyGroupStore.sync({
                 success: function(batch, options){
                     this.getUtilityBillsStore().resumeAutoSync();

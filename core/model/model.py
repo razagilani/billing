@@ -387,6 +387,7 @@ class SupplyGroup(Base):
     supplier = relationship('Supplier')
 
     def __init__(self, name='', supplier=None, service='gas'):
+        assert service in SERVICES
         self.name = name
         self.supplier = supplier
         self.service = service
