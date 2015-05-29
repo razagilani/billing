@@ -217,7 +217,7 @@ class ReebillProcessor(object):
         if last_reebill is None or estimate:
             # this is the first reebill: choose only total register, which is
             #  guaranteed to exist
-            reg_total_register = next(r for r in new_utilbill.registers if
+            reg_total_register = next(r for r in new_utilbill._registers if
                                       r.register_binding == Register.TOTAL)
             new_reebill.readings = [Reading.create_from_register(
                 reg_total_register, estimate=estimate)]
