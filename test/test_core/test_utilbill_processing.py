@@ -281,9 +281,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         for start, end in bad_dates:
             with self.assertRaises(ValueError):
                 self.utilbill_processor.upload_utility_bill(account, StringIO(), start,
-                                                 end, 'electric',
-                    utility=utility_account.fb_utility.name, supplier=utility_account.fb_supplier.name,
-                    rate_class='Residential-R')
+                                                 end, 'electric')
 
         # one utility bill
         # service, utility, rate_class are different from the template
@@ -295,16 +293,14 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             # store args for this utilbill to be re-used below
             args = [account, file1, date(2012, 1, 1), date(2012, 2, 1),
                     'electric']
-            kwargs = dict(utility='pepco', rate_class='Residential-R',
-                          supplier='supplier')
 
-            utilbill1 = self.utilbill_processor.upload_utility_bill(*args, **kwargs)
+            utilbill1 = self.utilbill_processor.upload_utility_bill(*args)
 
             # exception should be raised if the same file is re-uploaded
             # (regardless of other parameters)
             file1.seek(0)
             with self.assertRaises(DuplicateFileError):
-                self.utilbill_processor.upload_utility_bill(*args, **kwargs)
+                self.utilbill_processor.upload_utility_bill(*args)
             file1.seek(0)
             with self.assertRaises(DuplicateFileError):
                 self.utilbill_processor.upload_utility_bill(
@@ -351,9 +347,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # extension is used
         file2 = StringIO('Another bill file')
         utilbill2 = self.utilbill_processor.upload_utility_bill(account, file2, date(2012, 2, 1),
-                                         date(2012, 3, 1), 'electric',
-                                         utility='pepco',
-                                         supplier='supplier')
+                                         date(2012, 3, 1), 'electric')
         utilbills_data, _ = self.views.get_all_utilbills_json(account, 0, 30)
         dictionaries = [{
                             'state': 'Final',
@@ -387,10 +381,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # 3rd bill "estimated", without a file
         utilbill3 = self.utilbill_processor.upload_utility_bill(account, None, date(2012, 3, 1),
                                          date(2012, 4, 1), 'gas',
-                                         utility='washgas',
-                                         rate_class='DC Non Residential Non Heat',
-                                         state=UtilBill.Estimated,
-                                         supplier='supplier3')
+                                         state=UtilBill.Estimated)
         utilbills_data, _ = self.views.get_all_utilbills_json(account, 0,
                                                                 30)
         dictionaries = [{
