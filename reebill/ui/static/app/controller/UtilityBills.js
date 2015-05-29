@@ -7,7 +7,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         'RateClasses',
         'Suppliers',
         'Utilities',
-        'Services'
+        'Services',
+        'SupplyGroups'
     ],
 
     views: [
@@ -64,11 +65,25 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '#utility_combo':{
                 select: this.handleUtilityComboChanged,
-                focus: this.handleUtilityComboFocus
+                focus: this.handleUtilityComboFocus,
+                blur: this.handleUtilityBlur
             },
             '#rate_class_combo': {
-                expand: this.handleRateClassExpand
+                expand: this.handleRateClassExpand,
+                focus: this.handleRateClassComboFocus,
+                blur: this.handleRateClassBlur
+            },
+            '#supplier_combo': {
+                select: this.handleSupplierComboChanged,
+                focus: this.handleSupplierComboFocus,
+                blur: this.handleSupplierBlur
+            },
+            '#supply_group_combo': {
+                expand: this.handleSupplyGroupComboExpand,
+                focus: this.handleSupplyGroupComboFocus,
+                blur: this.handleSupplyGroupBlur
             }
+
         });
 
         this.getUtilityBillsStore().on({
@@ -240,30 +255,177 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rate_class_store.filter({property:"utility_id", type: 'int',
                                     value: record[0].get('id'), exactMatch:true});
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var utility_store = this.getUtilityBillsStore();
         if (rate_class_store.getAt(0) !=null)
             selected.set('rate_class', rate_class_store.getAt(0).get('name'));
         else
             selected.set('rate_class', 'Unknown Rate Class')
     },
 
-
+    handleSupplierComboChanged: function(utility_combo, record){
+        var supply_group_store = Ext.getStore("SupplyGroups");
+        supply_group_store.clearFilter(true);
+        supply_group_store.filter({property:"supplier_id", type: 'int',
+                                    value: record[0].get('id'), exactMatch:true});
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        if (supply_group_store.getAt(0) !=null)
+            selected.set('supply_group', supply_group_store.getAt(0).get('name'));
+        else
+            selected.set('supply_group', 'Unknown Supply Group')
+    },
 
     handleRateClassExpand: function(combo, record, index){
-        utility_grid = combo.findParentByType('grid');
-        selected = utility_grid.getSelectionModel().getSelection()[0];
-        rate_class_store = Ext.getStore('RateClasses');
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        var rate_class_store = Ext.getStore('RateClasses');
         rate_class_store.clearFilter(true);
         rate_class_store.filter({property:"utility_id", type: 'int',
                                     value: selected.get('utility').id,
                                     exactMatch:true});
-        rate_class_store.filter('utility_id', selected.get('utility').id);
+    },
+
+    handleSupplyGroupComboExpand: function(combo, record, index){
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        var supply_group_store = Ext.getStore('SupplyGroups');
+        supply_group_store.clearFilter(true);
+        supply_group_store.filter({property:"supplier_id", type: 'int',
+                                    value: selected.get('supplier').id,
+                                    exactMatch:true});
     },
 
     handleUtilityComboFocus: function(combo) {
-        utility_grid = combo.findParentByType('grid');
-        selected = utility_grid.getSelectionModel().getSelection()[0];
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
         combo.setValue(selected.get('utility').name);
+    },
+
+    handleRateClassComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('rate_class').name);
+    },
+
+    handleSupplierComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supplier').name);
+    },
+
+    handleSupplyGroupComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supply_group').name);
+    },
+
+    handleRateClassBlur: function(combo, event, opts){
+        var rateClassStore = this.getRateClassesStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (rateClassStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            rateClassStore.suspendAutoSync();
+            rateClassStore.add({name: combo.getRawValue(),
+                               utility_id: selected.get('utility').id,
+                               service: selected.get('service')});
+            rateClassStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('rate_class_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            rateClassStore.resumeAutoSync();
+        }
+    },
+
+    handleSupplierBlur: function(combo, event, opts){
+        var supplierStore = this.getSuppliersStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (supplierStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            supplierStore.suspendAutoSync();
+            supplierStore.clearFilter(true);
+            var supplier = supplierStore.findRecord('name', combo.getRawValue());
+            if (supplier !== null)
+            {
+                this.getUtilityBillsStore().resumeAutoSync();
+                supplierStore.resumeAutoSync();
+                return;
+            }
+            supplierStore.add({name: combo.getRawValue()});
+            supplierStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('supplier_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            supplierStore.resumeAutoSync();
+        }
+    },
+
+    handleSupplyGroupBlur: function(combo, event, opts){
+        var supplyGroupStore = this.getSupplyGroupsStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (supplyGroupStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            supplyGroupStore.suspendAutoSync();
+            var service = selected.get('service');
+            if (service == 'Unknown') {
+                Ext.Msg.alert('Status', 'supply_group cannot be created if service is not known');
+                this.getUtilityBillsStore().resumeAutoSync();
+                supplyGroupStore.resumeAutoSync();
+                return;
+            }
+            supplyGroupStore.add({name: combo.getRawValue(),
+                                 supplier_id: selected.get('supplier').id,
+                                 service: service});
+            supplyGroupStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('supply_group_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            supplyGroupStore.resumeAutoSync();
+        }
+    },
+
+    handleUtilityBlur: function(combo, event, opts){
+        var utilityStore = this.getUtilitiesStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (utilityStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            utilityStore.suspendAutoSync();
+            var supply_group_id = utilBillsStore.findRecord('id', selected.get('id')).get('supply_group_id');
+            utilityStore.add({name: combo.getRawValue(),
+                                 supply_group_id: supply_group_id});
+            utilityStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('utility_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            utilityStore.resumeAutoSync();
+        }
     }
+
+
 
 });

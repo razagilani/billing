@@ -64,26 +64,10 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@ip-10-0-0-158'
+    cluster => 'rabbit@portal-prod.nextility.net'
 }
-
-rabbit_mq::user_permission {'guest':
-    vhost => $env,
-    conf  => '.*',
-    write  => '.*',
-    read  => '.*',
-    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]],
-}
-
-rabbit_mq::vhost {$env:
-    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
-}
-
-rabbit_mq::policy {'HA':
-    pattern => '.*',
-    vhost => $env,
-    policy => '{"ha-sync-mode":"automatic", "ha-mode":"all", "federation-upstream-set":"all"}',
-    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]]
+rabbit_mq::base_resource_configuration {$env:
+    env => $env
 }
 cron { run_reports:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
@@ -95,11 +79,5 @@ cron { export_pg_data:
     command => "source /var/local/reebill-prod/bin/activate && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
     user => $username,
     hour => 0,
-    minute => 0
-}
-cron { run_reports:
-    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
-    user => $username,
-    hour => 3,
     minute => 0
 }
