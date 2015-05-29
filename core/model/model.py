@@ -205,7 +205,7 @@ class Utility(Base):
     sos_supplier_id = Column(
         Integer, ForeignKey('supplier.id', ondelete='CASCADE'), unique=True, )
 
-    name = Column(String(1000), nullable=False)
+    name = Column(String(1000), nullable=False, unique=True)
     address = relationship("Address")
     sos_supplier = relationship('Supplier', single_parent=True,
                                 cascade='all, delete-orphan')
