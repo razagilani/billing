@@ -68,7 +68,7 @@ class FetchTest(unittest.TestCase):
         rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
-        utilbill.registers = [Register(Register.TOTAL, 'therms')]
+        utilbill._registers = [Register(Register.TOTAL, 'therms')]
         self.reebill = ReeBill(reebill_customer, 1, utilbill=utilbill)
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -199,7 +199,7 @@ class FetchTest(unittest.TestCase):
 
 class ReeGetterTestPV(unittest.TestCase):
     '''Test for ReeGetter involving a PV bill with both energy and demand
-    registers.
+    _registers.
     Unlike the above, this has proper mocking and doesn't depend on
     SQLAlchemy objects.
     '''

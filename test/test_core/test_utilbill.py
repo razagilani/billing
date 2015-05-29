@@ -54,7 +54,7 @@ class UtilBillTest(TestCase):
             utilbill.set_total_energy(10)
 
         # when the register is present, set_total_energy should work
-        # without requiring consumers to know about registers.
+        # without requiring consumers to know about _registers.
         # TODO...
 
     def test_get_register_by_binding(self):
@@ -151,7 +151,7 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
 
-        # with no rate class, there are no registers, so you can't set the
+        # with no rate class, there are no _registers, so you can't set the
         # energy, but you can get it (it will always be 0)
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
@@ -286,7 +286,7 @@ class UtilBillTestWithDB(TestCase):
                             rate_class, supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        assert len(utilbill.registers) == 2
+        assert len(utilbill._registers) == 2
 
         session = Session()
         session.add(utilbill)
@@ -315,7 +315,7 @@ class UtilBillTestWithDB(TestCase):
             supplier=Supplier(name='supplier', address=Address()),
             period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
         register = Register(Register.TOTAL, 'therms', quantity=150)
-        utilbill.registers = [register]
+        utilbill._registers = [register]
         charges = [
             dict(
                 rsi_binding='CONSTANT',
@@ -504,7 +504,7 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
+        utilbill._registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
             Charge('A', rate=1, formula='REG_TOTAL.quantity'),
             Charge('B', rate=3, formula='2'),
@@ -589,7 +589,7 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
+        utilbill._registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
             Charge('A', rate=1, formula=Register.TOTAL + '.quantity'),
             Charge('B', rate=3, formula='2'),
@@ -607,7 +607,7 @@ class UtilBillTestWithDB(TestCase):
                             supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register('X', 'kWh', quantity=1),
+        utilbill._registers = [Register('X', 'kWh', quantity=1),
                               Register(Register.TOTAL, 'kWh', quantity=2)]
         self.assertEqual(2, utilbill.get_total_energy_consumption())
 

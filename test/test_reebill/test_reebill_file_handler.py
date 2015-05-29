@@ -54,7 +54,7 @@ class ReebillFileHandlerTest(TestCase):
                      supplier='Test Supplier', billing_address=ba3,
                      service_address=sa3, period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1))
-        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u._registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
@@ -198,7 +198,7 @@ class SummaryFileGeneratorTest(TestCase):
              supplier='Test Supplier', billing_address=ba,
              service_address=sa, period_start=date(2000, 1, 1),
              period_end=date(2000, 2, 1))
-        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u._registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_1 = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
@@ -207,7 +207,7 @@ class SummaryFileGeneratorTest(TestCase):
              supplier='Test Supplier', billing_address=ba,
              service_address=sa, period_start=date(2000, 2, 1),
              period_end=date(2000, 3, 1))
-        u2.registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u2._registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_2 = ReeBill(c, 2, discount_rate=0.3, late_charge_rate=0.1,
