@@ -131,8 +131,8 @@ class WebResource(object):
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('reebill', 'authenticate')
         
-        self.reconciliation_report_dir = self.config.get(
-            'reebillreconciliation', 'report_directory')
+        self.reconciliation_report_path = self.config.get(
+            'reebill', 'reconciliation_report_path')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
 
@@ -467,15 +467,15 @@ class ReebillsResource(RESTResource):
         action_value = row.pop('action_value')
         rtn = None
 
+        reebill = self.state_db.get_reebill(account, sequence)
         if action == 'bindree':
             self.reebill_processor.bind_renewable_energy(account, sequence)
-            reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            self.reebill_processor.render_reebill(int(account), int(sequence))
+            self.reebill_file_handler.render(reebill)
             rtn = row
 
         elif action == 'mail':
@@ -632,9 +632,10 @@ class UtilBillResource(RESTResource):
                 service=row['service'].lower() if 'service' in row else None,
                 target_total=row.get('target_total', None),
                 processed=row.get('processed', None),
-                rate_class=row.get('rate_class', None),
-                utility=row.get('utility', None),
-                supplier=row.get('supplier', None))
+                rate_class=row.get('rate_class_id', None),
+                utility=row.get('utility_id', None),
+                supplier=row.get('supplier_id', None),
+                supply_group_id=row.get('supply_group_id', None))
 
         result = self.utilbill_views.get_utilbill_json(ub)
         # Reset the action parameters, so the client can coviniently submit
@@ -718,12 +719,26 @@ class SuppliersResource(RESTResource):
         suppliers = self.utilbill_views.get_all_suppliers_json()
         return True, {'rows': suppliers, 'results': len(suppliers)}
 
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        supplier = self.utilbill_processor.create_supplier(name=name)
+        return True, {'rows': self.utilbill_views.get_supplier_json(supplier)
+            , 'results': 1 }
+
 
 class UtilitiesResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
         utilities = self.utilbill_views.get_all_utilities_json()
         return True, {'rows': utilities, 'results': len(utilities)}
+
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        utility = self.utilbill_processor.create_utility(name)
+        return True, {'rows': self.utilbill_views.get_utility_json(utility),
+                      'results': 1}
 
 
 class RateClassesResource(RESTResource):
@@ -732,6 +747,32 @@ class RateClassesResource(RESTResource):
         rate_classes = self.utilbill_views.get_all_rate_classes_json()
         return True, {'rows': rate_classes, 'results': len(rate_classes)}
 
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        utility_id = params['utility_id']
+        service = params['service'].lower()
+        rate_class = self.utilbill_processor.create_rate_class(name, utility_id, service)
+        return True, {'rows': self.utilbill_views.
+            get_rate_class_json(rate_class), 'results': 1 }
+
+
+
+class SupplyGroupsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        supply_groups = self.utilbill_views.get_all_supply_groups_json()
+        return True, {'rows': supply_groups, 'results': len(supply_groups)}
+
+    def handle_post(self, *vpath, **params):
+        params = cherrypy.request.json
+        name = params['name']
+        supplier_id = params['supplier_id']
+        service = params['service'].lower()
+        supply_group = self.utilbill_processor.create_supply_group(name,
+                                                    supplier_id, service)
+        return True, {'rows': self.utilbill_views.
+            get_supply_group_json(supply_group), 'results': 1 }
 
 class CustomerGroupsResource(RESTResource):
 
@@ -897,14 +938,12 @@ class ReportsResource(WebResource):
     @cherrypy.tools.authenticate()
     def reconciliation(self, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        with open(os.path.join(
-                self.reconciliation_report_dir,
-                'reconciliation_report.json')) as json_file:
-            items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
-            return self.dumps({
-                'rows': items[start:start+limit],
-                'results': len(items)
-            })
+        with open(self.reconciliation_report_path) as json_file:
+            items = json.load(json_file)
+        return self.dumps({
+            'rows': items[start:start+limit],
+            'results': len(items)
+        })
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
@@ -977,21 +1016,16 @@ class ReebillWSGI(object):
         )
 
         # create a FuzzyPricingModel
-        fuzzy_pricing_model = FuzzyPricingModel(
-            utilbill_loader,
-            logger=logger
-        )
+        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader,logger=logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
         # journal.Event subclasses (in journal.py) can associate themselves by
         # setting meta = {'db_alias': 'journal'}.
-        journal_config = dict(config.items('mongodb'))
         mongoengine.connect(
-            journal_config['database'],
-            host=journal_config['host'],
-            port=int(journal_config['port']),
-            alias='journal')
+            config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
+            port=config.getint('mongodb', 'port'), alias='journal')
         journal_dao = journal.JournalDAO()
 
         # create a Splinter
@@ -1006,25 +1040,20 @@ class ReebillWSGI(object):
                 olap_cache_db=config.get('reebill', 'olap_database'),
                 monguru_options={
                     'olap_cache_host': config.get('reebill', 'olap_host'),
-                    'olap_cache_db': config.get('reebill',
-                                                     'olap_database'),
+                    'olap_cache_db': config.get('reebill', 'olap_database'),
                     'cartographer_options': {
-                        'olap_cache_host': config.get('reebill',
-                                                           'olap_host'),
-                        'olap_cache_db': config.get('reebill',
-                                                         'olap_database'),
+                        'olap_cache_host': config.get('reebill', 'olap_host'),
+                        'olap_cache_db': config.get('reebill', 'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        'nexus_host': config.get('reebill',
-                                                      'nexus_db_host'),
+                        'nexus_host': config.get('reebill', 'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
                 },
                 cartographer_options={
                     'olap_cache_host': config.get('reebill', 'olap_host'),
-                    'olap_cache_db': config.get('reebill',
-                                                     'olap_database'),
+                    'olap_cache_db': config.get('reebill', 'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
                     'nexus_host': config.get('reebill', 'nexus_db_host'),
@@ -1035,16 +1064,13 @@ class ReebillWSGI(object):
 
         # create a ReebillRenderer
         rb_file_handler = reebill_file_handler.ReebillFileHandler(
-                config.get('reebill', 'reebill_file_path'),
-                config.get('reebill', 'teva_accounts'))
+            config.get('reebill', 'reebill_file_path'),
+            config.get('reebill', 'teva_accounts'))
         mailer_opts = dict(config.items("mailer"))
         bill_mailer = Mailer(mailer_opts['mail_from'],
-                mailer_opts['originator'],
-                mailer_opts['password'],
-                smtplib.SMTP(),
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
-                mailer_opts['bcc_list'])
+                             mailer_opts['originator'], mailer_opts['password'],
+                             smtplib.SMTP(), mailer_opts['smtp_host'],
+                             mailer_opts['smtp_port'], mailer_opts['bcc_list'])
 
         ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
         utilbill_views = Views(state_db, bill_file_handler,
@@ -1094,6 +1120,12 @@ class ReebillWSGI(object):
             reebill_processor
         )
         wsgi.reebillcharges = ReebillChargesResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        )
+        wsgi.supplygroups = SupplyGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
