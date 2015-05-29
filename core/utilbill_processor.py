@@ -190,7 +190,7 @@ class UtilbillProcessor(object):
 
         # do not re-add any code that directly accesses registers inside a
         # UtilBill object!
-        if predecessor:
+        if predecessor is not None:
             new_utilbill.set_total_meter_identifier(
                 predecessor.get_total_meter_identifier())
         return new_utilbill
