@@ -496,15 +496,15 @@ class UtilityAccount(Base):
                                 nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
-                               primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
+        primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
     fb_supply_group = relationship('SupplyGroup', uselist=False,
-                                   primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
+        primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
-                                 primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
+        primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
-                                      primaryjoin='UtilityAccount.fb_billing_address_id==Address.id')
+        primaryjoin='UtilityAccount.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
-                                      primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
+        primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
     fb_utility = relationship('Utility')
 
     def __init__(self, name, account, fb_utility, fb_supplier, fb_rate_class,
