@@ -1,6 +1,7 @@
 from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
+import unittest
 
 import requests
 from sqlalchemy import desc
@@ -480,6 +481,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         _, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
+    @unittest.skip(
+        "It's not possible for a utility bill not to have a total register "
+        "anymore")
     def test_upload_uility_bill_without_reg_total(self):
         '''Check that a total register is added to new bills
         even though some old bills don't have it.
