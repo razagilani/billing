@@ -8,7 +8,8 @@ from itertools import chain
 import json
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
+    UniqueConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -204,7 +205,7 @@ class Utility(Base):
     sos_supplier_id = Column(
         Integer, ForeignKey('supplier.id', ondelete='CASCADE'), unique=True, )
 
-    name = Column(String(1000), nullable=False)
+    name = Column(String(1000), nullable=False, unique=True)
     address = relationship("Address")
     sos_supplier = relationship('Supplier', single_parent=True,
                                 cascade='all, delete-orphan')
@@ -232,7 +233,7 @@ class Supplier(Base):
     '''
     __tablename__ = 'supplier'
     id = Column(Integer, primary_key=True)
-    name = Column(String(1000), nullable=False)
+    name = Column(String(1000), nullable=False, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
@@ -376,6 +377,7 @@ class SupplyGroup(Base):
     find out when switching the customer to a new supply contract.
     """
     __tablename__ = 'supply_group'
+    __table_args__ = (UniqueConstraint('supplier_id', 'name'),)
 
     id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
@@ -406,6 +408,7 @@ class RateClass(Base):
     determines which registers exist in each bill.
     """
     __tablename__ = 'rate_class'
+    __table_args__ = (UniqueConstraint('utility_id', 'name'),)
 
     GAS, ELECTRIC = 'gas', 'electric'
     SERVICES = (GAS, ELECTRIC)
