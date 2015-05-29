@@ -24,10 +24,9 @@ from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
 from core.utilbill_loader import UtilBillLoader
 from exc import DuplicateFileError
-from test import init_test_config
+from test import init_test_config, clear_db
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    create_utilbill_processor, create_reebill_objects, create_nexus_util, \
-    clear_db
+    create_utilbill_processor, create_reebill_objects, create_nexus_util
 
 
 class TestValidators(TestCase):

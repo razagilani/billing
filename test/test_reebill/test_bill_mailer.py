@@ -4,8 +4,8 @@ from mock import Mock, call
 
 from test import init_test_config
 
-init_test_config()
-from core import config
+def setUpModule():
+    init_test_config()
 
 from unittest import TestCase
 from reebill.bill_mailer import Mailer
@@ -15,7 +15,7 @@ class BillMailerTest(TestCase):
         pass
 
     def test_send_mail(self):
-        import os
+        from core import config
         server = Mock()
         mailer_opts = dict(config.items("mailer"))
         bill_mailer = Mailer(
