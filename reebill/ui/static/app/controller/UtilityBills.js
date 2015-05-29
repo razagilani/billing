@@ -348,6 +348,14 @@ Ext.define('ReeBill.controller.UtilityBills', {
             var utilBillsStore = this.getUtilityBillsStore();
             utilBillsStore.suspendAutoSync();
             supplierStore.suspendAutoSync();
+            supplierStore.clearFilter(true);
+            var supplier = supplierStore.findRecord('name', combo.getRawValue());
+            if (supplier !== null)
+            {
+                this.getUtilityBillsStore().resumeAutoSync();
+                supplierStore.resumeAutoSync();
+                return;
+            }
             supplierStore.add({name: combo.getRawValue()});
             supplierStore.sync({
                 success: function(batch, options){
