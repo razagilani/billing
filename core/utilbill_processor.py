@@ -17,7 +17,7 @@ class UtilbillProcessor(object):
     - Operations on utility bills: upload, delete, compute, regenerate charges,
     etc.
     - CRUD on child objects of UtilBill that are closely associated
-    with UtilBills, like charges and registers.
+    with UtilBills, like charges and _registers.
     - CRUD on utilities, suppliers, rate classes.
     '''
     def __init__(self, pricing_model, bill_file_handler, logger=None):
@@ -188,31 +188,11 @@ class UtilbillProcessor(object):
             get_predicted_charges(new_utilbill)
         new_utilbill.compute_charges()
 
-        # a register called "REG_TOTAL" should always exist because it's in
-        # the rate class' register list. however, since rate classes don't yet
-        # contain all the registers they should, copy any registers from the
-        # predecessor to the current bill that the current bill does not already
-        # have (as determined by "register_binding").
-        # TODO: in the future, registers should be determined entirely by the
-        # rate class, not by copying from other bills.
-        for register in predecessor.registers if predecessor else []:
-            if register.register_binding in (r.register_binding for r in
-                                             new_utilbill.registers):
-                # Since these registers were created from rate_class
-                # template, and because rate_class template cannot fill in the
-                # correct values for identifier and meter_identifier
-                # so we need to copy these two values from corresponding
-                # predecessor registers
-                for r in new_utilbill.registers:
-                    r.identifier = register.identifier
-                    r.meter_identifier = register.meter_identifier
-                continue
-            new_utilbill.registers.append(
-                Register(register.register_binding, unit=register.unit,
-                         quantity=0, identifier=register.identifier,
-                         reg_type=register.reg_type,
-                         active_periods=register.active_periods,
-                         meter_identifier=register.meter_identifier))
+        # do not re-add any code that directly accesses registers inside a
+        # UtilBill object!
+        if predecessor is not None:
+            new_utilbill.set_total_meter_identifier(
+                predecessor.get_total_meter_identifier())
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -341,7 +321,7 @@ class UtilbillProcessor(object):
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
             session.delete(charge)
-        for register in utility_bill.registers:
+        for register in utility_bill._registers:
             session.delete(register)
         session.delete(utility_bill)
 
@@ -385,11 +365,11 @@ class UtilbillProcessor(object):
         while i < Register.REGISTER_BINDINGS:
             new_reg_binding = Register.REGISTER_BINDINGS[i]
             if new_reg_binding not in (r.register_binding for r in
-                                   utility_bill.registers):
+                                   utility_bill._registers):
                 break
             i += 1
         if i == len(Register.REGISTER_BINDINGS):
-            raise BillingError("No more registers can be added")
+            raise BillingError("No more _registers can be added")
 
         r = Register(
             register_kwargs.get('register_binding', new_reg_binding),
