@@ -257,7 +257,12 @@ class ReeGetterTestPV(unittest.TestCase):
         mock_facts_doc = Mock(autospec=CubeDocument)
         mock_facts_doc.energy_sold = 1
         mock_facts_doc.demand = 2
-        self.monguru.get_data_for_hour.return_value = mock_facts_doc
+        def get_measure_value_for_hour(install, day, hour, measure_name):
+            if measure_name == 'Energy Sold':
+                return 1
+            assert measure_name == 'Demand'
+            return 2
+        self.monguru.get_measure_value_for_hour = get_measure_value_for_hour
 
         splinter = Mock()
         splinter._guru = self.monguru
