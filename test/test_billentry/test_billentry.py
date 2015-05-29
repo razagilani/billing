@@ -151,8 +151,8 @@ class BillEntryIntegrationTest(object):
         self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
         self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
                               service_address=Address(street='1 Example St.'))
-        self.ub1.registers[0].quantity = 150
-        self.ub1.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub1._registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
@@ -161,9 +161,9 @@ class BillEntryIntegrationTest(object):
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
         self.ub2.set_rate_class(self.rate_class2)
-        self.ub2.registers[0].unit = 'therms'
-        self.ub2.registers[0].quantity = 250.0
-        self.ub2.registers[0].meter_identifier = 'MNOPQR'
+        self.ub2._registers[0].unit = 'therms'
+        self.ub2._registers[0].quantity = 250.0
+        self.ub2._registers[0].meter_identifier = 'MNOPQR'
         self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
@@ -204,9 +204,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
-        self.ub1.registers[0].quantity = 150
-        self.ub2.registers[0].quantity = 150
-        self.ub2.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub2._registers[0].quantity = 150
+        self.ub2._registers[0].meter_identifier = "GHIJKL"
 
         c1 = Charge('CONSTANT', rate=0.4, formula='100', unit='dollars',
                     type='distribution', target_total=1)
@@ -506,7 +506,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
-        utility = Utility(name="Empty Utility")
+        utility = Utility(name="Empty Utility1")
         utility.id = 3
         Session().add(utility)
         Session().commit()
@@ -535,16 +535,16 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'supply_total': 2.0,
                 'target_total': 0.0,
                 'total_energy': 0,
-                'utility': 'Empty Utility',
+                'utility': 'Empty Utility1',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
-                'wiki_url': 'http://example.com/utility:Empty Utility',
+                'wiki_url': 'http://example.com/utility:Empty Utility1',
                 'flagged': False,
                 'meter_identifier': None,
                 'tou': False
             }}, rv.data
         )
-        utility = Utility(name="Some Other Utility")
+        utility = Utility(name="Some Other Utility1")
         utility.id = 4
         Session().add(utility)
         Session().commit()
@@ -572,11 +572,11 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_total': 2.0,
                   'target_total': 0.0,
                   'total_energy': 0,
-                  'utility': 'Some Other Utility',
+                  'utility': 'Some Other Utility1',
                   'utility_account_number': '1',
                   'utility_account_id': 1,
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'wiki_url': 'http://example.com/utility:Some Other Utility1',
                   'entered': False,
                   'flagged': False,
                   'meter_identifier': None,
@@ -911,9 +911,9 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         # utilbill.id, but it may
         original_id = u.id
 
-        # load charges and registers while 'utilbill' is still valid, so they
+        # load charges and _registers while 'utilbill' is still valid, so they
         # can be compared below
-        u.charges, u.registers
+        u.charges, u._registers
 
         new_beutilbill = replace_utilbill_with_beutilbill(u)
         self.assertEqual(original_id, new_beutilbill.id)
@@ -940,8 +940,8 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(u.charges, new_beutilbill.charges)
         self.assertEqual([c.id for c in u.charges],
                          [c.id for c in new_beutilbill.charges])
-        self.assertEqual([r.id for r in u.registers],
-                         [r.id for r in new_beutilbill.registers])
+        self.assertEqual([r.id for r in u._registers],
+                         [r.id for r in new_beutilbill._registers])
 
         # also the child objects should really exist in the database
         self.assertEqual(1, s.query(Address).filter_by(

@@ -339,14 +339,14 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 3, 3),
                              processed=True)
 
-        # replaced registers that were automatically created by the rate class
+        # replaced _registers that were automatically created by the rate class
         # because old tests rely on these specific values
-        u1.registers = []
+        u1._registers = []
         u1r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
         u1r1.utilbill = u1
-        u2.registers = []
+        u2._registers = []
         u2r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
