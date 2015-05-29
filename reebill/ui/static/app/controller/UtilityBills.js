@@ -370,9 +370,16 @@ Ext.define('ReeBill.controller.UtilityBills', {
             var utilBillsStore = this.getUtilityBillsStore();
             utilBillsStore.suspendAutoSync();
             supplyGroupStore.suspendAutoSync();
+            var service = selected.get('service');
+            if (service == 'Unknown') {
+                Ext.Msg.alert('Status', 'supply_group cannot be created if service is not known');
+                this.getUtilityBillsStore().resumeAutoSync();
+                supplyGroupStore.resumeAutoSync();
+                return;
+            }
             supplyGroupStore.add({name: combo.getRawValue(),
                                  supplier_id: selected.get('supplier').id,
-                                 service: selected.get('service')});
+                                 service: service});
             supplyGroupStore.sync({
                 success: function(batch, options){
                     this.getUtilityBillsStore().resumeAutoSync();
