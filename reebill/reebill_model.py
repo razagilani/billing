@@ -466,6 +466,8 @@ class ReeBill(Base):
         many of which should be moved into this method.
         """
         assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
+        # correction reebills may have issue_date and due_date matching their
+        #  original version rather than None
         assert self.issue_date is None or self.version > 0
         assert self.due_date is None or self.version > 0
         if corrections is None:
