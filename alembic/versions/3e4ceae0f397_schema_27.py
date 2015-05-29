@@ -57,7 +57,7 @@ def upgrade():
 
     # mysql chooses a name that conflicts with existing foreign key constraint name
     op.create_unique_constraint('uq_sos_suplier_id', 'utility', ['sos_supplier_id'])
-    
+
     op.create_unique_constraint(None, 'utility', ['name'])
     op.create_unique_constraint(None, 'rate_class', ['utility_id', 'name'])
     op.create_unique_constraint(None, 'supplier', ['name'])
