@@ -280,6 +280,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                    service='gas')
         uc = Utility(name='Test Utility Company Template', address=ca1)
 
+
         ca2 = Address(addressee='Test Other Utilco Address',
                       street='123 Utilco Street',
                       city='Utilco City',
@@ -289,6 +290,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         other_supply_group = SupplyGroup(name='test', supplier=other_supplier,
                                    service='gas')
         other_uc = Utility(name='Other Utility', address=ca1)
+
 
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
