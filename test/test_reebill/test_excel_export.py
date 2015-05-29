@@ -9,7 +9,7 @@ import mock
 from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
-from reebill.excel_export import Exporter
+from reebill.reports.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
@@ -369,7 +369,9 @@ class ExporterDataBookTest(unittest.TestCase):
 
         # export_energy_usage
         self.exp.export_energy_usage(string_io)
-        self.exp.export_energy_usage(string_io, '20001')
+        the_account = Session().query(UtilityAccount).filter_by(
+            account='20001').one()
+        self.exp.export_energy_usage(string_io, the_account)
 
         # export_reebill_details
         self.exp.export_reebill_details(string_io)

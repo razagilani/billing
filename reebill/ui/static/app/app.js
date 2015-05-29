@@ -1,3 +1,4 @@
+Ext.override(Ext.data.proxy.Ajax, { timeout: 120000 });
 Ext.Ajax.on('requestexception', function (conn, response, options) {
     if (response.status === 401) {
         Ext.Msg.alert('Error', 'Please log in!');
@@ -55,6 +56,7 @@ Ext.Ajax.request({
                 'Services',
                 'Utilities',
                 'RateClasses',
+                'SupplyGroups',
                 'Accounts',
                 'AccountsFilter',
                 'AccountsMemory',

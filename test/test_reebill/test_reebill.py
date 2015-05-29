@@ -4,14 +4,18 @@ reebill.reebill_model.
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock
+from core import init_model
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
+from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
-from reebill.reebill_model import ReeBill, ReeBillCustomer
+from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import clear_db
+from test import init_test_config, clear_db
 
+def setUpModule():
+    init_test_config()
 
 class ReeBillCustomerTest(unittest.TestCase):
     """Unit tests for the ReeBillCustomer class.
@@ -37,13 +41,37 @@ class ReeBillCustomerTest(unittest.TestCase):
             self.customer.reebills = bill_set
             self.assertIs(one, self.customer.get_first_unissued_bill())
 
+class ReadingTest(unittest.TestCase):
+    """Unit tests for the Reading class.
+    """
+    def test_create_from_register(self):
+        register = Mock(autospec=Register)
+        register.register_binding = Register.DEMAND
+        register.quantity = 123
+        register.unit = 'kW'
+
+        reading = Reading.create_from_register(register)
+        self.assertEqual(register.register_binding, reading.register_binding)
+        self.assertEqual(123, reading.conventional_quantity)
+        self.assertEqual(0, reading.renewable_quantity)
+        self.assertEqual(123, reading.hypothetical_quantity)
+        self.assertEqual(Reading.ENERGY_SOLD_MEASURE, reading.measure)
+        self.assertEqual('SUM', reading.aggregate_function)
+
+        reading = Reading.create_from_register(register, estimate=True)
+        self.assertEqual(register.register_binding, reading.register_binding)
+        self.assertEqual(123, reading.conventional_quantity)
+        self.assertEqual(0, reading.renewable_quantity)
+        self.assertEqual(123, reading.hypothetical_quantity)
+        self.assertEqual(Reading.ESTIMATED_MEASURE, reading.measure)
+        self.assertEqual('SUM', reading.aggregate_function)
 
 class ReeBillUnitTest(unittest.TestCase):
     def setUp(self):
         # unfortunately mocks will not work for any of the SQLAlchemy objects
         # because of relationships. replace with mocks if/when possible.
-        utility_account = UtilityAccount('', '', None, None, None, Address(),
-                                         Address())
+        utility_account = UtilityAccount('', '', None, None, None, None,
+                                         Address(), Address())
         self.customer = ReeBillCustomer(
             utility_account=utility_account,
             bill_email_recipient='test@example.com')
@@ -51,11 +79,45 @@ class ReeBillUnitTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, None, None,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        self.reebill = ReeBill(self.customer, 1, utilbills=[utilbill])
+        utilbill.registers = [Register(Register.TOTAL, 'kWh')]
+        self.reebill = ReeBill(self.customer, 1, utilbill=utilbill)
+        self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         # currently it doesn't matter if the 2nd bill has the same utilbill
         # as the first, but might need to change
-        self.reebill_2 = ReeBill(self.customer, 2, utilbills=[utilbill])
+        self.reebill_2 = ReeBill(self.customer, 2, utilbill=utilbill)
+
+    def test_is_estimated(self):
+        self.assertFalse(self.reebill.is_estimated())
+
+        self.reebill.readings[0].measure = Reading.ESTIMATED_MEASURE
+        self.assertTrue(self.reebill.is_estimated())
+
+        self.reebill.readings.append(
+            Reading(Register.DEMAND, 'Demand', 0, 0, 'MAX', 'kW'))
+        self.assertFalse(self.reebill.is_estimated())
+
+    def test_make_correction(self):
+        # can't make a correction when the bill is not issued
+        with self.assertRaises(ValueError):
+            self.reebill.make_correction()
+
+        self.reebill.issue(datetime(2000,3,1), Mock())
+        correction = self.reebill.make_correction()
+
+        self.assertEqual(False, correction.issued)
+        self.assertEqual(None, correction.issue_date)
+        self.assertEqual(None, correction.due_date)
+        self.assertEqual(1, correction.sequence)
+        self.assertEqual(1, correction.version)
+        self.assertEqual(self.reebill.discount_rate, correction.discount_rate)
+        self.assertEqual(self.reebill.late_charge_rate,
+                         correction.late_charge_rate)
+        self.assertEqual(self.reebill.utilbill, correction.utilbill)
+        self.assertEqual(self.reebill.billing_address,
+                         correction.billing_address)
+        self.assertEqual(self.reebill.service_address,
+                         correction.service_address)
 
     def test_issue(self):
         self.assertEqual(None, self.reebill.email_recipient)
@@ -86,13 +148,29 @@ class ReeBillUnitTest(unittest.TestCase):
         # after the first bill is issued, the 2nd one can be issued
         self.reebill_2.issue(now, reebill_processor)
 
-class ReebillTest(unittest.TestCase):
+    def test_issue_correction(self):
+        now = datetime(2000, 2, 15)
+        reebill_processor = Mock(autospec=ReebillProcessor)
+        self.reebill.issue(now, reebill_processor)
+        corrected_bill = self.reebill.make_correction()
+
+        # corrected bills have None as their due_date and issue_date,
+        # but even if they have these dates, that should not prevent issuing
+        # them (this was reported to have happened in production)
+        corrected_bill.issue_date = now
+        corrected_bill.due_date = datetime(2000, 3, 15)
+        corrected_bill.issue(now, reebill_processor)
+
+
+class ReebillTestWithDB(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        init_model()
 
     def setUp(self):
-        clear_db()
-        washgas = Utility(name='washgas', address=Address('', '', '', '',
-                                                          ''))
-        supplier = Supplier('supplier', Address())
+        washgas = Utility(name='washgas', address=Address())
+        supplier = Supplier(name='supplier')
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
                                  service='gas')
         utility_account = UtilityAccount('someaccount', '11111',
@@ -109,27 +187,22 @@ class ReebillTest(unittest.TestCase):
                                  supplier=supplier,
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
-        self.register = Register(self.utilbill, '', '', 'therms', False,
-                                 'total', None, '', quantity=100,
-                                register_binding=Register.TOTAL)
+        self.register = Register(Register.TOTAL, 'therms', quantity=100)
         self.utilbill.registers = [self.register]
-        self.utilbill.charges = [Charge(self.utilbill, 'A', 2,
-                                        Charge.get_simple_formula(
-                                            Register.TOTAL),
-                   description='a', unit='therms'),
-            Charge(self.utilbill, 'B', 1, '1', description='b',
-                   unit='therms', has_charge=False),
+        self.utilbill.charges = [
+            Charge('A', formula=Charge.get_simple_formula(Register.TOTAL),
+                   rate=2, description='a', unit='therms'),
+            Charge('B', formula='1', rate=1, description='b', unit='therms',
+                   has_charge=False),
         ]
 
         self.reebill = ReeBill(reebill_customer, 1, discount_rate=0.5,
-                               late_charge_rate=0.1,
-                               utilbills=[self.utilbill])
+                               late_charge_rate=0.1, utilbill=self.utilbill)
         Session().add_all([self.utilbill, self.reebill])
-        self.reebill.replace_readings_from_utility_bill_registers(
-                self.utilbill)
+        self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
     def tearDown(self):
-        clear_db()
+        pass
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
@@ -206,9 +279,8 @@ class ReebillTest(unittest.TestCase):
 
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
-        new_register = Register(self.utilbill, '', '',
-                 'kWh', False, 'total', [], '',quantity=200,
-                 register_binding=Register.DEMAND)
+        new_register = Register(Register.DEMAND, 'kWh', quantity=200)
+        self.utilbill.registers.append(new_register)
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings

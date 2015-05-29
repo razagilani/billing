@@ -1,17 +1,17 @@
-import unittest
-from mock import MagicMock
-from core.model.model import RegisterTemplate
-from test import init_test_config
-init_test_config()
+from mock import MagicMock, Mock
 from core import init_model
+
+from core.model.model import RegisterTemplate, SupplyGroup
+from core.pricing import PricingModel
+from test import init_test_config, create_tables, clear_db
 
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, ProcessedBillError, NotProcessable
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
-from reebill.reebill_model import Payment, ReeBillCustomer
+
 
 class UtilBillTest(TestCase):
     """Unit tests for UtilBill.
@@ -57,21 +57,130 @@ class UtilBillTest(TestCase):
         # without requiring consumers to know about registers.
         # TODO...
 
+    def test_get_register_by_binding(self):
+        utility = Utility(name='utility')
+        rate_class = RateClass(utility=utility)
+        bill = UtilBill(MagicMock(), utility, rate_class)
+        self.assertIsInstance(bill.get_register_by_binding(Register.TOTAL),
+                              Register)
+        with self.assertRaises(BillingError):
+            bill.get_register_by_binding('xyz')
+
+    def test_regenerate_charges(self):
+        a, b, c = Charge('a'), Charge('b'), Charge('c')
+
+        utilbill = UtilBill(MagicMock(), None, None)
+        utilbill.charges = [a]
+
+        pricing_model = Mock(autospec=PricingModel)
+        pricing_model.get_predicted_charges.return_value = [b, c]
+
+        utilbill.regenerate_charges(pricing_model)
+        self.assertEqual([b, c], utilbill.charges)
+        self.assertIsNone(a.utilbill)
+
+    def test_processed(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        self.assertFalse(utilbill.processed)
+
+        # repeating the same value is OK
+        utilbill.set_processed(False)
+        self.assertFalse(utilbill.processed)
+
+        # required values are missing
+        self.assertFalse(utilbill.is_processable())
+        with self.assertRaises(NotProcessable):
+            utilbill.set_processed(True)
+
+        # fill in missing values
+        utilbill.period_start = date(2000,1,1)
+        utilbill.period_end = date(2000,2,1)
+        utilbill.utility = MagicMock()
+        utilbill.rate_class = MagicMock()
+        utilbill.supplier = MagicMock()
+        utilbill.supply_group = MagicMock()
+        self.assertTrue(utilbill.is_processable())
+
+        utilbill.set_processed(True)
+        self.assertTrue(utilbill.processed)
+
+    def test_utility_rate_class(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        utility = Utility(name='utility')
+        rate_class = RateClass(utility=utility, name='rate class',
+                               service=RateClass.ELECTRIC)
+        other_utility = Utility(name='other')
+
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_utility(utility)
+        self.assertEqual(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        utilbill.set_rate_class(rate_class)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+
+        # when there's a rate class, you can get/set total energy
+        utilbill.set_total_energy(1)
+        self.assertEqual(1, utilbill.get_total_energy())
+
+        # when the same utility is set again, rate class is unchanged
+        utilbill.set_utility(utility)
+        self.assertIs(utility, utilbill.get_utility())
+        self.assertEqual('utility', utilbill.get_utility_name())
+        self.assertIs(rate_class, utilbill.get_rate_class())
+        self.assertEqual('rate class', utilbill.get_rate_class_name())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+
+        # when a different utility is chosen, rate class is unknown
+        utilbill.set_utility(other_utility)
+        self.assertEqual(other_utility, utilbill.get_utility())
+        self.assertEqual('other', utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+        # with no rate class, there are no registers, so you can't set the
+        # energy, but you can get it (it will always be 0)
+        with self.assertRaises(StopIteration):
+            utilbill.set_total_energy(1)
+        self.assertEqual(0, utilbill.get_total_energy())
+
+        # utility and rate class can be set to None
+        utilbill.set_utility(None)
+        utilbill.set_rate_class(None)
+        self.assertIsNone(utilbill.get_utility())
+        self.assertIsNone(utilbill.get_utility_name())
+        self.assertIsNone(utilbill.get_rate_class())
+        self.assertIsNone(utilbill.get_rate_class_name())
+        self.assertIsNone(utilbill.get_service())
+
+
 class UtilBillTestWithDB(TestCase):
     """Tests for UtilBill that require the database.
     """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
 
     def setUp(self):
-        init_model()
-        session = Session()
-        session.query(Register).delete()
-        session.query(UtilBill).delete()
-        session.query(Payment).delete()
-        session.query(ReeBillCustomer).delete()
-        session.query(UtilityAccount).delete()
-
-        self.utility = Utility(name='utility', address=Address())
+        clear_db()
         self.supplier = Supplier(name='supplier', address=Address())
+        self.utility = Utility(name='utility', address=Address())
+
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
@@ -100,11 +209,31 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
 
+    def test_charge_relationship(self):
+        utilbill = UtilBill(self.utility_account, self.utility, self.rate_class)
+        a, b = Charge('a', unit='kWh'), Charge('b', unit='kWh')
+        s = Session()
+        s.add(utilbill)
+
+        # any charge associated with 'utilbill' gets added to the session,
+        # and any charge not associated with it gets removed
+        utilbill.charges = [a]
+        utilbill.charges = [b]
+
+        # if the UtilBill-Charge relationship has the wrong cascade setting,
+        # this flush will fail with a constraint violation when it tries to
+        # save 'a'
+        s.flush()
+
+        # 'a' should have been deleted when it was removed from the list of
+        # charges, so 'b' is the only charge left in the database
+        self.assertEqual(1, s.query(Charge).count())
+
     def test_processed_editable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), Address(), Address())
+                      service='gas'), None, Address(), Address())
         utilbill = UtilBill(utility_account, self.utility,
                             RateClass(name='rate class', utility=self.utility,
                                       service='gas'),
@@ -117,13 +246,13 @@ class UtilBillTestWithDB(TestCase):
 
         utilbill.processed = True
         self.assertTrue(utilbill.processed)
-        self.assertRaises(ProcessedBillError, utilbill.check_editable)
+        self.assertRaises(UnEditableBillError, utilbill.check_editable)
 
     def test_processable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), Address(), Address())
+                      service='gas'), None, Address(), Address())
         for attr in ('period_start', 'period_end', 'rate_class', 'utility',
                      'supplier'):
             ub = UtilBill(
@@ -139,8 +268,8 @@ class UtilBillTestWithDB(TestCase):
                       RateClass(name='rate class', utility=self.utility,
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
-                      period_end=date(2000, 2, 1))
-        self.assertTrue(ub.processable())
+                      period_end=date(2000, 2, 1),
+                      supply_group='test')
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
@@ -170,7 +299,8 @@ class UtilBillTestWithDB(TestCase):
         session.delete(charge)
 
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, Register.TOTAL + '.quantity')
+        self.assertEqual(charge.quantity_formula,
+                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
 
     def test_compute(self):
@@ -180,63 +310,60 @@ class UtilBillTestWithDB(TestCase):
             UtilityAccount('someone', '98989', fb_utility, 'FB Test Supplier',
                            RateClass(name='FB Test Rate Class',
                                      utility=fb_utility, service='gas'),
-                           Address(), Address()), utility,
+                           None, Address(), Address()), utility,
             RateClass(name='rate class', utility=utility, service='gas'),
             supplier=Supplier(name='supplier', address=Address()),
             period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
-        register = Register(utilbill, "ABCDEF description",
-                "ABCDEF", 'therms', False, "total", None, "GHIJKL",
-                quantity=150,
-                register_binding=Register.TOTAL)
+        register = Register(Register.TOTAL, 'therms', quantity=150)
         utilbill.registers = [register]
         charges = [
             dict(
                 rsi_binding='CONSTANT',
-                quantity='100',
+                formula='100',
                 quantity_units='dollars',
                 rate=0.4,
             ),
             dict(
                 rsi_binding='LINEAR',
-                quantity='REG_TOTAL.quantity * 3',
+                formula='REG_TOTAL.quantity * 3',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='LINEAR_PLUS_CONSTANT',
-                quantity='REG_TOTAL.quantity * 2 + 10',
+                formula='REG_TOTAL.quantity * 2 + 10',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='BLOCK_1',
-                quantity='min(100, REG_TOTAL.quantity)',
+                formula='min(100, REG_TOTAL.quantity)',
                 quantity_units='therms',
                 rate=0.3,
             ),
             dict(
                 rsi_binding='BLOCK_2',
-                quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
+                formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                 quantity_units='therms',
                 rate=0.2,
             ),
             dict(
                 rsi_binding='BLOCK_3',
-                quantity='max(0, REG_TOTAL.quantity - 200)',
+                formula='max(0, REG_TOTAL.quantity - 200)',
                 quantity_units='therms',
                 rate=0.1,
             ),
             dict(
                 rsi_binding='REFERENCES_ANOTHER',
                 # TODO also try "total" here
-                quantity='REFERENCED_BY_ANOTHER.quantity + '
+                formula='REFERENCED_BY_ANOTHER.quantity + '
                          'REFERENCED_BY_ANOTHER.rate',
                 quantity_units='therms',
                 rate=1,
             ),
             dict(
                 rsi_binding='NO_CHARGE_FOR_THIS_RSI',
-                quantity='1',
+                formula='1',
                 quantity_units='therms',
                 rate=1,
             ),
@@ -245,19 +372,19 @@ class UtilBillTestWithDB(TestCase):
             # RSI in 'uprs'
             dict(
                 rsi_binding='REFERENCED_BY_ANOTHER',
-                quantity='2',
+                formula='2',
                 quantity_units='therms',
                 rate=3,
             ),
             dict(
                 rsi_binding='SYNTAX_ERROR',
-                quantity='5 + ',
+                formula='5 + ',
                 quantity_units='therms',
                 rate=1,
             ),
             dict(
                 rsi_binding='DIV_BY_ZERO_ERROR',
-                quantity='1 / 0',
+                formula='1 / 0',
                 quantity_units='therms',
                 rate=1,
             ),
@@ -265,13 +392,13 @@ class UtilBillTestWithDB(TestCase):
             # formula error
             dict(
                 rsi_binding='UNKNOWN_IDENTIFIER',
-                quantity='x * 2',
+                formula='x * 2',
                 quantity_units='therms',
                 rate=1,
             ),
         ]
-        utilbill.charges = [Charge(utilbill, c['rsi_binding'], c['rate'],
-                c['quantity'], "Insert description here", "",
+        utilbill.charges = [Charge(c['rsi_binding'], rate=c['rate'],
+                formula=c['formula'], description="Insert description here",
                 unit=c['quantity_units']) for c in charges]
 
         get = utilbill.get_charge_by_rsi_binding
@@ -358,8 +485,8 @@ class UtilBillTestWithDB(TestCase):
         '''Compute utility bill with no charges.
         '''
         utility_account = UtilityAccount('someone', '99999',
-                'utility', 'supplier',
-                'rate class', Address(), Address())
+                Utility(name='utility'), None,
+                None, None, Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
@@ -377,15 +504,12 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [
-            Register(utilbill, '', '', 'kWh', False, "total", '', '',
-                     quantity=150, register_binding=Register.TOTAL)]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity',
-                   '', '', 'kWh'),
-            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
+            Charge('A', rate=1, formula='REG_TOTAL.quantity'),
+            Charge('B', rate=3, formula='2'),
             # this has an error
-            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
+            Charge('C', rate=0, formula='1/0'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
@@ -399,9 +523,9 @@ class UtilBillTestWithDB(TestCase):
         self.assertEqual(150 + 6, utilbill.get_total_charges())
 
     def test_compute_charges_with_cycle(self):
-        '''Test computing charges whose dependencies form a cycle.
+        """Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
-        '''
+        """
         utility = Utility(name='utility', address=Address())
         supplier = Supplier(name='supplier', address=Address())
         utility_account = UtilityAccount('someone', '99999',
@@ -417,27 +541,40 @@ class UtilBillTestWithDB(TestCase):
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
             # theoretically both could be computed.
-            Charge(utilbill, 'A', 0, 'B.quantity', '', '', 'kWh'),
-            Charge(utilbill, 'B', 0, 'A.rate', '', '', 'kWh'),
+            Charge('A', formula='B.formula'),
+            Charge('B', formula='A.rate'),
             # C depends on itself
-            Charge(utilbill, 'C', 0, 'C.total', '', '', 'kWh'),
+            Charge('C', formula='C.total'),
             # D depends on A, which has a circular dependency with B. it should
             # not be computable because A is not computable.
-            Charge(utilbill, 'D', 0, 'A.total', '', '', 'kWh'),
-            Charge(utilbill, 'E', 3, '2', '', '', 'kWh'),
+            Charge('D', formula='A.total'),
+            Charge('E', rate=3, formula='2'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
 
         self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
-                "Error: name 'B' is not defined")
+                          "Error: name 'B' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
-                "Error: name 'A' is not defined")
+                          "Error: name 'A' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
-                "Error: name 'C' is not defined")
+                          "Error: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
-                "Error: name 'A' is not defined")
+                          "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
+
+    def test_ordered_charges_cycle_tsort_keyerror(self):
+        """This causes a KeyError to be raised in tsort.topological_sort
+        instead of the expected GraphError, covering the "except KeyError"
+        block in UtilBill.ordered_charges.
+        """
+        utilbill = UtilBill(MagicMock(), None, None)
+        charges = [Charge('a', rate=0, formula='b'),
+                   Charge('b', rate=0, formula='b')]
+        utilbill.charges = charges
+        ordered_charges = utilbill.ordered_charges()
+        # in this case any order is OK as long as all the charges are there
+        self.assertEqual(set(utilbill.charges), set(ordered_charges))
 
     def test_processed_utility_bills(self):
         '''
@@ -454,21 +591,17 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(utilbill, '',
-                '', 'kWh', False, "total", '', '',
-                quantity=150,
-                register_binding=Register.TOTAL)]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, Register.TOTAL + '.quantity', '', '',
-                   'kWh'),
-            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
+            Charge('A', rate=1, formula=Register.TOTAL + '.quantity'),
+            Charge('B', rate=3, formula='2'),
             # this has an error
-            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
+            Charge('C', rate=0, formula='1/0'),
         ]
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)
         utilbill.processed = True
-        self.assertRaises(ProcessedBillError, utilbill.compute_charges)
+        self.assertRaises(UnEditableBillError, utilbill.compute_charges)
         self.assertFalse(utilbill.editable())
 
     def test_get_total_energy_consumption(self):
@@ -476,12 +609,8 @@ class UtilBillTestWithDB(TestCase):
                             supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [
-            Register(utilbill, '', '', 'therms', False, '', '', '',
-                     register_binding='X', quantity=1),
-            Register(utilbill, '', '', 'kWh', False, '', '', '',
-                     register_binding=Register.TOTAL, quantity=2),
-        ]
+        utilbill.registers = [Register('X', 'kWh', quantity=1),
+                              Register(Register.TOTAL, 'kWh', quantity=2)]
         self.assertEqual(2, utilbill.get_total_energy_consumption())
 
     def test_charge_types(self):
@@ -490,13 +619,13 @@ class UtilBillTestWithDB(TestCase):
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
         the_charges = [
-            Charge(utilbill, 'A', 1, '', target_total=1, type='distribution'),
-            Charge(utilbill, 'B', 1, '4', type='distribution'),
+            Charge('A', formula='', rate=1, target_total=1, type='distribution'),
+            Charge('B', formula='4', rate=1, type='distribution'),
             # a Charge does not count as a real charge if has_charge=False.
-            Charge(utilbill, 'C', 1, '3', type='supply', has_charge=False),
-            Charge(utilbill, 'D', 1, '5', target_total=5, type='supply'),
-            Charge(utilbill, 'E', 1, 'syntax error', type='supply'),
-            Charge(utilbill, 'F', 1, '7', type='distribution'),
+            Charge('C', formula='3', rate=1, type='supply', has_charge=False),
+            Charge('D', formula='5', rate=1, target_total=5, type='supply'),
+            Charge('E', formula='syntax error', rate=1, type='supply'),
+            Charge('F', formula='7', rate=1, type='distribution'),
         ]
         utilbill.charges = the_charges
         self.assertEqual(the_charges, utilbill.charges)
