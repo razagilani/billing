@@ -218,7 +218,7 @@ class ReeBill(Base):
             # its parent. otherwise it would be necessary to call
             # s.expunge(elf.readings[0]).
             del self.readings[0]
-        for register in utility_bill.registers:
+        for register in utility_bill._registers:
             self.readings.append(Reading.create_from_register(register))
 
     def update_readings_from_reebill(self, reebill_readings):
@@ -232,7 +232,7 @@ class ReeBill(Base):
             session.delete(r)
 
         utilbill_register_bindings = list(chain.from_iterable(
-                (r.register_binding for r in u.registers)
+                (r.register_binding for r in u._registers)
                 for u in self.utilbills))
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
@@ -322,7 +322,7 @@ class ReeBill(Base):
         # corresponding Reading may still be necessary for calculating the
         # charges, so the actual quantity of that register is used.
         context = {r.register_binding: Evaluation(r.quantity)
-                   for r in self.utilbill.registers}
+                   for r in self.utilbill._registers}
         context.update({r.register_binding: Evaluation(r.hypothetical_quantity)
                         for r in self.readings})
 
