@@ -15,6 +15,10 @@
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
     "HostedZone": {
+      "Description" : "Hosted Zone ID to add internal dns entries to, must already exist in Route53",
+      "Type" : "String"
+    },
+    "HostedZoneId": {
       "Description" : "Domain to add internal dns entries to, must already exist in Route53",
       "Type" : "String"
     },
@@ -210,11 +214,7 @@
     "InternalNatDns" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
-         "HostedZoneName" : {
-            "Fn::Join" : [ "", [
-               { "Ref" : "HostedZone" }, "."
-            ] ]
-         },
+         "HostedZoneId" : { "Ref" : "HostedZoneId" },
          "Name" : {
             "Fn::Join" : [ "", [
                {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, ".",
