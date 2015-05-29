@@ -15,12 +15,13 @@ from exc import MissingDataError, RegisterError
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, logger):
+    def __init__(self, splinter, nexus_util, logger):
         self._splinter = splinter
+        self._nexus_util = nexus_util
         self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
-            measure, ignore_missing=True, verbose=False, ):
+            measure, verbose=False, ):
         '''Returns a list of hourly billable-energy values from OLAP during the
         datetime range [start, end) (endpoints must whole hours). Values during
         unbillable annotations are removed. If 'skip_missing' is True, missing OLAP
@@ -41,42 +42,36 @@ class RenewableEnergyGetter(object):
                 hour_number = hour.hour
                 try:
                     try:
-                        cube_doc = monguru.get_data_for_hour(install, day, hour_number)
+                        measure_value = monguru.get_measure_value_for_hour(
+                            install, day, hour_number, measure)
                     except ValueError:
-                        raise MissingDataError(("Couldn't get renewable energy data "
+                        raise MissingDataError(
+                            ("Couldn't get renewable energy data "
                                 "for %s: OLAP document missing at %s") % (
-                                install.name, hour))
-                    try:
-                        attr_name = measure.lower().replace(' ', '_')
-                        data = getattr(cube_doc, attr_name)
-                        # NOTE CubeDocument returns None if the measure doesn't
-                        # exist, but this should be changed:
-                        # https://www.pivotaltracker.com/story/show/35857625
-                        if data == None:
-                            raise AttributeError('%s' %measure)
-                    except AttributeError:
-                        raise MissingDataError(("Couldn't get %s "
-                            "data for %s: OLAP document lacks energy_sold "
-                            "measure at %s") % (measure, install.name, hour))
+                            install.name, hour))
+                    if measure_value is None:
+                        raise MissingDataError(
+                            "OLAP document for %s lacks %s measure at %s" % (
+                            install.name, measure, hour))
                 except MissingDataError as e:
-                    if ignore_missing:
-                        print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
-                        result.append(0)
-                    else:
-                        raise
+                    print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
+                    result.append(0)
                 else:
                     if verbose:
                         print >> sys.stderr, "%s's OLAP %s for %s: %s" % (
-                                install.name, measure, hour, data)
-                    result.append(data)
+                                install.name, measure, hour, measure_value)
+                    result.append(measure_value)
         return result
 
-    def update_renewable_readings(self, olap_id, reebill, use_olap=True,
-                verbose=False):
-        '''Update hypothetical register quantities in 'reebill' with
-        renewable energy. The OLAP database is the default source of
-        energy-sold values; use use_olap=False to get them directly from OLTP.
-        '''
+    def update_renewable_readings(self, reebill, use_olap=True, verbose=False):
+        """Update hypothetical register quantities in 'reebill' with
+        renewable energy.
+        :param reebill: ReeBill to update
+        :param use_olap: get data from OLAP database; if False, use OLTP
+        database
+        :param verbose: print log messages
+        """
+        olap_id = self._nexus_util.olap_id(reebill.get_account())
         install_obj = self._splinter.get_install_obj_for(olap_id)
         utilbill = reebill.utilbill
         start, end = reebill.get_period()
@@ -276,8 +271,7 @@ class RenewableEnergyGetter(object):
                                 [aggregate_value, float(energy_today)])
             return aggregate_value
 
-        register = next(r for r in utilbill.registers if r.register_binding
-                        == reading.register_binding)
+        register = utilbill.get_register_by_binding(reading.register_binding)
         return get_renewable_energy_for_register(
                 register, utilbill.period_start, utilbill.period_end)
 

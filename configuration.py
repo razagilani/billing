@@ -66,9 +66,7 @@ class reebill(Schema):
     # account numbers for bills whose PDFs are rendered using the "teva" format
     teva_accounts = String()
 
-class reebillreconciliation(Schema):
-    log_directory = Directory()
-    report_directory = Directory()
+    reconciliation_report_path = String()
 
 class billentry(Schema):
     google_client_id = String()
@@ -88,14 +86,18 @@ class billentry(Schema):
     show_traceback_on_error = StringBool()
     secret_key = String()
     wiki_url = String()
+    timeout = Int()
 
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
 class db(Schema):
-    # MySQL database
+    # database connection URI
     uri = String()
+    # URI to be used for restoring from a backup of an old database--this will
+    # differ from "uri" only when migrating to a different database.
+    old_uri = String()
     echo = StringBool()
 
 class mongodb(Schema):
@@ -111,7 +113,6 @@ class mailer(Schema):
     mail_from = String()
     bcc_list = String()
     password = String()
-    template_file_name = String()
     
 class amqp(Schema):
     # parameters for receiving utility bills via AMQP--should be named something

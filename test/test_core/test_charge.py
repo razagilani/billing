@@ -2,7 +2,7 @@ from datetime import date
 from mock import Mock
 
 from core.model import Charge, UtilBill, Address, \
-    ChargeEvaluation, UtilityAccount
+    ChargeEvaluation, UtilityAccount, Utility
 from exc import FormulaError
 from test import testing_utils
 
@@ -21,19 +21,19 @@ class ChargeUnitTests(testing_utils.TestCase):
 
     def setUp(self):
         # TOOD: how can this work with strings as utility, rate class, supplier?
-        self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
-                                 'FB Test Supplier', 'FB Test Rate Class',
+        self.bill = UtilBill(UtilityAccount('someone', '98989',
+                                 Utility(name='FB Test Utility'),
+                                 None, None, None,
                                  Address(), Address()),
-                                 'utility', None,
+                                 Utility(name='utility'), None,
                                  supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
-        self.charge_params = dict(utilbill=self.bill,
-                                  rsi_binding='SOME_RSI',
+        self.charge_params = dict(rsi_binding='SOME_RSI',
                                   rate=6,
                                   description='SOME_DESCRIPTION',
                                   unit='therms',
-                                  quantity_formula="SOME_VAR.quantity * 2",
+                                  formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding",
@@ -45,15 +45,15 @@ class ChargeUnitTests(testing_utils.TestCase):
 
     def test_is_builtin(self):
         for builtin_function_name in builtins:
-            self.assertTrue(self.charge.is_builtin(builtin_function_name))
+            self.assertTrue(self.charge._is_builtin(builtin_function_name))
         for function_name in ["No", "built-ins", "here"]:
-            self.assertFalse(self.charge.is_builtin(function_name))
+            self.assertFalse(self.charge._is_builtin(function_name))
 
     def test_get_variable_names(self):
         for formula, expected in [('sum(x) if y else 5', ['y', 'x']),
                                   ('5*usage + 15 - spent', ['spent', 'usage']),
                                   ('range(20) + somevar', ['somevar'])]:
-            self.assertEqual(expected, Charge.get_variable_names(formula))
+            self.assertEqual(expected, Charge._get_variable_names(formula))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
@@ -98,16 +98,16 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_blank(self):
         '''Test that empty quantity_formula is equivalent to 0.
         '''
-        c = Charge(self.bill, 'X', 3, '', '', '', 'kWh')
+        c = Charge('X', formula='', rate=3)
         self.assertEqual(0, c.evaluate({}).quantity)
         self.assertEqual(0, c.evaluate({}).total)
 
     def test_rounding(self):
-        c = Charge(self.bill, 'A', 1, quantity_formula='.005')
+        c = Charge('A', formula='.005', rate=1)
         self.assertEqual(.005, c.evaluate({}).quantity)
         self.assertEqual(.01, c.evaluate({}).total)
 
-        c = Charge(self.bill, 'A', 1, quantity_formula='-.005')
+        c = Charge('A', formula='-.005', rate=1)
         self.assertEqual(-.005, c.evaluate({}).quantity)
         self.assertEqual(-.01, c.evaluate({}).total)
 

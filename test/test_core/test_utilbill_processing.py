@@ -1,27 +1,26 @@
-import requests
-from sqlalchemy import desc
-from reebill.views import column_dict
-
-from test import init_test_config
-from exc import DuplicateFileError, ProcessedBillError, BillingError
-
-init_test_config()
-from core import init_model
-init_model()
-
 from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
+
+import requests
+from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
+from core import init_model
+
+from reebill.views import column_dict
+from test import init_test_config, create_tables, clear_db
+from exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
 from core.model import Session
 from test import testing_utils
-from test.setup_teardown import create_utilbill_processor, clear_db, \
+from test.setup_teardown import create_utilbill_processor, \
     TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
+
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     FakeS3Manager.start()
 
@@ -69,7 +68,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         init_model()
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '100000', '12345')
+            service_address, '100000', '12345', 'test')
 
         # Disabled this test for now since it bypasses the process object
         # customer = self.state_db.get_customer(session, '88888')
@@ -141,16 +140,16 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # exists
         self.assertRaises(ValueError, self.reebill_processor.create_new_account,
             '88888', 'New Account', 'pv', 0.6, 0.2,
-            billing_address, service_address, '99999', '12345')
+            billing_address, service_address, '99999', '12345', 'test')
 
         # try creating another account when the template account has no
         # utility bills yet
         self.reebill_processor.create_new_account(
             '77777', 'New Account','thermal', 0.6, 0.2, billing_address,
-            service_address, '88888', '12345')
+            service_address, '88888', '12345', 'test')
         self.reebill_processor.create_new_account(
             '66666', 'New Account', 'thermal', 0.6, 0.2, billing_address,
-            service_address, '77777', '12345')
+            service_address, '77777', '12345', 'test')
 
         # Try creating a reebill for a new account that has no utility bills
         # uploaded yet
@@ -238,19 +237,10 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.assertEqual(200, utilbill.target_total)
         # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
-        # change utility name
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              utility='BGE')
-        self.assertEqual('BGE', utilbill.utility.name)
-
-        # change rate class
-        self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              rate_class='something else')
-        self.assertEqual('something else', utilbill.rate_class.name)
-
         # change supplier
+        supplier = self.utilbill_processor.create_supplier('some supplier')
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              supplier='some supplier')
+                                              supplier=supplier.id)
         self.assertEqual('some supplier', utilbill.supplier.name)
 
         # change processed state
@@ -258,7 +248,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                                          processed=False)
         self.assertEqual(False, utilbill.processed)
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
-                                              processed=True)
+                                                         processed=True)
         self.assertEqual(True, utilbill.processed)
 
     def test_update_account_number(self):
@@ -292,9 +282,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         for start, end in bad_dates:
             with self.assertRaises(ValueError):
                 self.utilbill_processor.upload_utility_bill(account, StringIO(), start,
-                                                 end, 'electric',
-                    utility=utility_account.fb_utility.name, supplier=utility_account.fb_supplier.name,
-                    rate_class='Residential-R')
+                                                 end, 'electric')
 
         # one utility bill
         # service, utility, rate_class are different from the template
@@ -306,16 +294,14 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             # store args for this utilbill to be re-used below
             args = [account, file1, date(2012, 1, 1), date(2012, 2, 1),
                     'electric']
-            kwargs = dict(utility='pepco', rate_class='Residential-R',
-                          supplier='supplier')
 
-            self.utilbill_processor.upload_utility_bill(*args, **kwargs)
+            utilbill1 = self.utilbill_processor.upload_utility_bill(*args)
 
             # exception should be raised if the same file is re-uploaded
             # (regardless of other parameters)
             file1.seek(0)
             with self.assertRaises(DuplicateFileError):
-                self.utilbill_processor.upload_utility_bill(*args, **kwargs)
+                self.utilbill_processor.upload_utility_bill(*args)
             file1.seek(0)
             with self.assertRaises(DuplicateFileError):
                 self.utilbill_processor.upload_utility_bill(
@@ -330,23 +316,18 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                                                     0, 30)
         self.assertEqual(1, count)
         self.assertDictContainsSubset({
-                                          'state': 'Final',
-                                          'service': 'Gas',
-                                          'utility':
-                                            column_dict(self.views.get_utility('pepco')),
-                                          'supplier': self.views.
-                                            get_supplier('supplier').name,
-                                          'rate_class': self.views.
-                                            get_rate_class('Residential-R').
-                                            name,
-                                          'period_start': date(2012, 1, 1),
-                                          'period_end': date(2012, 2, 1),
-                                          'total_charges': 0,
-                                          'computed_total': 0,
-                                          'processed': 0,
-                                          'account': '99999',
-                                          'reebills': []
-                                      }, utilbills_data[0])
+            'state': 'Final',
+            'service': 'Gas',
+            'utility': column_dict(utilbill1.utility),
+            'supplier': column_dict(utilbill1.supplier),
+            'period_start': date(2012, 1, 1),
+            'period_end': date(2012, 2, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
 
         # TODO check "meters and registers" data here
         # TODO check "charges" data here
@@ -366,20 +347,15 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # when those arguments are not given, and non-standard file
         # extension is used
         file2 = StringIO('Another bill file')
-        self.utilbill_processor.upload_utility_bill(account, file2, date(2012, 2, 1),
-                                         date(2012, 3, 1), 'electric',
-                                         utility='pepco',
-                                         supplier='supplier')
+        utilbill2 = self.utilbill_processor.upload_utility_bill(account, file2, date(2012, 2, 1),
+                                         date(2012, 3, 1), 'electric')
         utilbills_data, _ = self.views.get_all_utilbills_json(account, 0, 30)
         dictionaries = [{
                             'state': 'Final',
                             'service': 'Gas',
                             'utility':
-                                column_dict(self.views.get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').name,
+                                column_dict(utilbill2.utility),
+                            'supplier': column_dict(utilbill2.supplier),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -390,13 +366,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': column_dict(self.views.
-                                get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
+                            'utility': column_dict(utilbill1.utility),
+                            'supplier': column_dict(utilbill1.supplier),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -409,24 +380,16 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             self.assertDictContainsSubset(x, y)
 
         # 3rd bill "estimated", without a file
-        self.utilbill_processor.upload_utility_bill(account, None, date(2012, 3, 1),
+        utilbill3 = self.utilbill_processor.upload_utility_bill(account, None, date(2012, 3, 1),
                                          date(2012, 4, 1), 'gas',
-                                         utility='washgas',
-                                         rate_class='DC Non Residential Non Heat',
-                                         state=UtilBill.Estimated,
-                                         supplier='supplier')
+                                         state=UtilBill.Estimated)
         utilbills_data, _ = self.views.get_all_utilbills_json(account, 0,
                                                                 30)
         dictionaries = [{
                             'state': 'Estimated',
                             'service': 'Gas',
-                            'utility': column_dict(self.views.
-                                get_utility('washgas')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('DC Non Residential Non Heat').
-                                name,
+                            'utility': column_dict(utilbill3.utility),
+                            'supplier': column_dict(utilbill3.supplier),
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
                                                1),
@@ -438,13 +401,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': column_dict(self.views.
-                                get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
+                            'utility': column_dict(utilbill2.utility),
+                            'supplier': column_dict(utilbill2.supplier),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -455,13 +413,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Gas',
-                            'utility': column_dict(self.views.
-                                get_utility('pepco')),
-                            'supplier': self.views.
-                                get_supplier('supplier').name,
-                            'rate_class': self.views.
-                                get_rate_class('Residential-R').
-                                name,
+                            'utility': column_dict(utilbill1.utility),
+                            'supplier': column_dict(utilbill1.supplier),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -488,10 +441,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             {
                 'state': 'Final',
                 'service': 'Gas',
-                'utility': column_dict(self.views.get_utility('washgas')),
-                'supplier': self.views.get_supplier('supplier').name,
-                'rate_class': self.views.get_rate_class(
-                    'DC Non Residential Non Heat').name,
+                'utility': column_dict(utilbill3.utility),
+                'supplier': column_dict(utilbill3.supplier),
                 'period_start': date(2012, 4, 1),
                 'period_end': date(2012, 5, 1),
                 'total_charges': 0,
@@ -543,13 +494,11 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # next one. this will have only a demand register called so
         # the total register is missing
         self.utilbill_processor.upload_utility_bill(
-            account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric',
-            utility='pepco', rate_class='Residential-R', supplier='supplier')
+            account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric')
         u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
         while len(u.registers) > 0:
             del u.registers[0]
-        u.registers = [Register(u, '', '', 'MMBTU', False, 'total', None, '', 0,
-                 register_binding=Register.DEMAND)]
+        u.registers = [Register(Register.DEMAND, 'MMBTU')]
         self.assertEqual({Register.DEMAND},
                          {r.register_binding for r in u.registers})
 
@@ -557,8 +506,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             # the next utility bill will still have the total register (in addition to demand),
             # and its unit will be 'energy_unit'
             self.utilbill_processor.upload_utility_bill(
-                account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service,
-                utility='pepco', rate_class='Residential-R', supplier='supplier')
+                account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service)
             u = s.query(UtilBill).join(UtilityAccount).filter(
                 UtilityAccount.account == account).order_by(
                 desc(UtilBill.period_start)).first()
@@ -577,7 +525,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -593,7 +541,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             'state': 'Final',
             'service': 'Gas',
             'utility': column_dict(customer.fb_utility),
-            'supplier': customer.fb_supplier.name,
+            'supplier': column_dict(customer.fb_supplier),
             'rate_class': customer.fb_rate_class.name,
             'period_start': None,
             'period_end': None,
@@ -618,7 +566,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -639,7 +587,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                           'state': 'Final',
                                           'service': 'Gas',
                                           'utility': column_dict(customer.fb_utility),
-                                          'supplier': customer.fb_supplier.name,
+                                          'supplier': column_dict(customer.fb_supplier),
                                           'rate_class': customer.fb_rate_class.name,
                                           'period_start': None,
                                           'period_end': None,
@@ -675,13 +623,13 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         self.reebill_processor.create_new_account(
             acc_a, 'Customer A', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
         self.reebill_processor.create_new_account(
             acc_b, 'Customer B', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
         self.reebill_processor.create_new_account(
             acc_c, 'Customer C', 'thermal', .12, .34, billing_address,
-            service_address, '100001', '12345')
+            service_address, '100001', '12345', 'test')
 
         # new customers also need to be in nexus for
         # 'update_renewable_readings' to
@@ -810,23 +758,24 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.delete_charge(not_shared_id)
         Session().flush()
         self.utilbill_processor.add_charge(id_a_2)
-        self.utilbill_processor.update_charge({
-                                       'rsi_binding': 'RIGHT_OF_WAY',
-                                       'description': 'DC Rights-of-Way Fee',
-                                       'quantity_formula': '750.10197727',
-                                       'rate': 0.03059,
-                                       'shared': True
-                                   }, utilbill_id=id_a_2, rsi_binding='New Charge 1')
+        self.utilbill_processor.update_charge(
+            {
+                'rsi_binding': 'RIGHT_OF_WAY',
+                'description': 'DC Rights-of-Way Fee',
+                'quantity_formula': '750.10197727',
+                'rate': 0.03059,
+                'shared': True
+            }, utilbill_id=id_a_2, rsi_binding='New Charge 1')
 
         # create B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
         # the latter are more numerous, but A-1 should outweigh them
         # because weight decreases quickly with distance.
-        self.utilbill_processor.upload_utility_bill(acc_b, StringIO('February 2000 B'),
-                                         date(2000, 2, 5), date(2000, 3, 5),
-                                         'gas', total=0,
-                                         state=UtilBill.Complete)
-        self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
-                                                    self.views.get_utilbill_charges_json(id_a_2)))
+        self.utilbill_processor.upload_utility_bill(
+            acc_b, StringIO('February 2000 B'), start=date(2000, 2, 5),
+            end=date(2000, 3, 5), service='gas')
+        self.assertEqual(set(['RIGHT_OF_WAY']),
+                         set(r['rsi_binding'] for r in
+                             self.views.get_utilbill_charges_json(id_a_2)))
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -840,67 +789,30 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # create reebill and utility bill
         # NOTE Process._generate_docs_for_new_utility_bill requires utility
         # and rate_class arguments to match those of the template
-        self.utilbill_processor.upload_utility_bill('99999', StringIO('A Water Bill'),
-                                         date(2013, 5, 6), date(2013, 7, 8),
-                                         'gas', utility='washgas',
-                                         rate_class='some rate structure')
+        self.utilbill_processor.upload_utility_bill('99999',
+            StringIO('A Water Bill'), date(2013, 5, 6), date(2013, 7, 8), 'gas')
         utilbill_data = self.views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]
-        self.assertDictContainsSubset({
-                                          'account': '99999',
-                                          'computed_total': 0,
+        self.assertDictContainsSubset({'account': '99999', 'computed_total': 0,
                                           'period_end': date(2013, 7, 8),
                                           'period_start': date(2013, 5, 6),
                                           'processed': 0,
-                                          'rate_class': self.views.
-                                      get_rate_class('some rate structure').name,
-                                          'reebills': [],
-                                          'service': 'Gas',
-                                          'state': 'Final',
-                                          'total_charges': 0.0,
-                                          'utility': column_dict(
-                                          self.views.get_utility('washgas')),
-                                          }, utilbill_data)
-
-        # doc = self.utilbill_processor.get_utilbill_doc(session, utilbill_data['id'])
-        # TODO enable these assertions when upload_utility_bill stops
-        # ignoring them; currently they are set to match the template's
-        # values regardless of the arguments to upload_utility_bill, and
-        # Process._generate_docs_for_new_utility_bill requires them to
-        # match the template.
-        #self.assertEquals('water', doc['service'])
-        #self.assertEquals('pepco', doc['utility'])
-        #self.assertEquals('pepco', doc['rate_class'])
-
-        # modify the MySQL utility bill
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                              period_start=date(2013, 6, 6),
-                                              period_end=date(2013, 8, 8),
-                                              service='electric',
-                                              utility='BGE',
-                                              rate_class='General Service - Schedule C')
-
-        # add some RSIs to the UPRS, and charges to match
+                                          'reebills': [], 'service': 'Gas',
+                                          'state': 'Final', 'total_charges': 0.0,
+                                      }, utilbill_data)
 
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Some Supplier',
-                                                         rate_class='rate class')
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Other Supplier',
                                                          processed=True)
         # no other attributes of a utilbill can be changed if
         # update_utilbill_metadata is called with processed = True
         s = Session()
         utilbill = s.query(UtilBill).filter_by(id=utilbill_data['id']).one()
-        self.assertEqual('Some Supplier', utilbill.supplier.name)
-        self.assertRaises(ProcessedBillError,
+        self.assertRaises(UnEditableBillError,
                           self.utilbill_processor.add_charge,
                           utilbill_data['id'])
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='Other Supplier',
                                                          processed=False)
 
-        self.assertEqual('Other Supplier', utilbill.supplier.name)
         self.utilbill_processor.add_charge(utilbill_data['id'])
         self.utilbill_processor.update_charge({
                                        'rsi_binding': 'A',
@@ -919,8 +831,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                        'quantity_formula': '6',
                                        'rate': 7,
                                        'unit':'therms',
-                                       'shared': False
-                                   }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
+                                       'shared': False},
+            utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
         # compute_utility_bill should update the document to match
         self.utilbill_processor.compute_utility_bill(utilbill_data['id'])
@@ -949,20 +861,17 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                 },
                             ], charges):
             self.assertDictContainsSubset(x, y)
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         rate_class='some rate class')
-        self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
-                                                         supplier='some supplier')
+        supplier = self.utilbill_processor.create_supplier('some supplier')
+        self.utilbill_processor.update_utilbill_metadata(
+            utilbill_data['id'], supplier=supplier.id)
         self.utilbill_processor.update_utilbill_metadata(utilbill_data['id'],
                                                          processed=True)
-        self.assertRaises(ProcessedBillError, self.utilbill_processor.update_charge, {
-                                       'rsi_binding': 'C',
-                                       'description':'not shared',
-                                       'quantity_formula': '6',
-                                       'rate': 7,
-                                       'unit':'therms',
-                                       'shared': False
-                                   }, utilbill_id=utilbill_data['id'], rsi_binding='B')
+        self.assertRaises(UnEditableBillError,
+                          self.utilbill_processor.update_charge,
+                          {'rsi_binding': 'C', 'description': 'not shared',
+                           'quantity_formula': '6', 'rate': 7, 'unit': 'therms',
+                           'shared': False}, utilbill_id=utilbill_data['id'],
+                          rsi_binding='B')
 
     def test_compute_realistic_charges(self):
         '''Tests computing utility bill charges and reebill charge for a
@@ -971,9 +880,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         '''
         account = '99999'
         # create utility bill and reebill
-        self.utilbill_processor.upload_utility_bill(account, StringIO('January 2012'),
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         'gas')
+        self.utilbill_processor.upload_utility_bill(
+            account, StringIO('January 2012'), date(2012, 1, 1),
+            date(2012, 2, 1), 'gas')
         utilbill_id = self.views.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
@@ -1022,8 +931,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # first bill for a given rate structure.)
         for fields in example_charge_fields:
             self.utilbill_processor.add_charge(utilbill_id)
-            self.utilbill_processor.update_charge(fields, utilbill_id=utilbill_id,
-                                       rsi_binding="New Charge 1")
+            self.utilbill_processor.update_charge(fields,
+                                                  utilbill_id=utilbill_id,
+                                                  rsi_binding="New Charge 1")
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -1070,12 +980,11 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             account, 0, 30)
         self.assertEqual(1, count)
 
-        self.utilbill_processor.update_utilbill_metadata(u.id, processed=True)
+        u.set_processed(True)
 
         # when utilbill is attached to reebill, deletion should fail
         self.reebill_processor.roll_reebill(account, start_date=start)
-        reebills_data = self.views.get_reebill_metadata_json(
-            account)
+        reebills_data = self.views.get_reebill_metadata_json(account)
         self.assertDictContainsSubset({
                                           'actual_total': 0,
                                           'balance_due': 0.0,

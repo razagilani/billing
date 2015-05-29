@@ -12,7 +12,8 @@ ecdsa==0.10
 formencode==1.3.0a1
 Flask==0.10.1
 Flask-RESTful==0.3.1
-Flask-Admin==1.0.9
+# Our forked repo of Flask-Admin
+git+https://github.com/nextilityinc/flask-admin.git@3ba9b936410d97839c99604dab25ba388e19cf1d
 Flask-Login==0.2.11
 Flask-Bcrypt==0.6.2
 Flask-OAuth==0.12
@@ -23,6 +24,7 @@ git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebed
 ordereddict==1.1
 paramiko==1.12.0
 pika==0.9.14
+psycopg2==2.6
 py-bcrypt==0.4
 pyPdf==1.13            # requires --allow-external with pip 1.4.1
 pycrypto==2.6.1

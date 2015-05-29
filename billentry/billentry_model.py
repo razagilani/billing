@@ -1,6 +1,6 @@
 """SQLAlchemy model classes used by the Bill Entry application.
 """
-import datetime
+from datetime import datetime
 import bcrypt
 from flask.ext.login import UserMixin
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
@@ -45,7 +45,7 @@ class BillEntryUser(Base, UserMixin):
     def __init__(self, email='', password=''):
         self.email = email
         self.password = self.get_hashed_password(password)
-        self.registered_on = datetime.datetime.utcnow()
+        self.registered_on = datetime.utcnow()
 
     def get_hashed_password(self, plain_text_password):
         # Hash a password for the first time
@@ -70,13 +70,27 @@ class BillEntryUser(Base, UserMixin):
     def __repr__(self):
         return '<User %s>' % self.email
 
+    def get_beuser_billentry_duration(self, start, end):
+        """ Method to calculate the duration of user session between start and end times
+        """
+        duration = 0.0
+        start = datetime(start.year, start.month, start.day)
+        end = datetime(end.year, end.month, end.day)
+        for user_session in self.be_user_session:
+            if user_session.session_start >= start and user_session.last_request <= end:
+                duration += (user_session.last_request - user_session.session_start).total_seconds()
+        return duration
+
+
 class RoleBEUser(Base):
     '''Class corresponding to the "roles_user" table which represents the
     many-to-many relationship between "billentry_user" and "roles"'''
     __tablename__ = 'billentry_role_user'
 
-    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'), primary_key=True)
-    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'), primary_key=True)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'),
+                               primary_key=True)
+    billentry_role_id = Column(Integer, ForeignKey('billentry_role.id'),
+                               primary_key=True)
 
     # bidirectional attribute/collection of "billentry_user"/"role_beuser"
     beuser = relationship(BillEntryUser,
@@ -112,6 +126,27 @@ class Role(Base):
 
     def __repr__(self):
         return '<Role %s>' % self.name
+
+
+class BEUserSession(Base):
+    """ A class to keep track of the duration of a BillEntryUser's session
+    """
+    __tablename__ = 'be_user_session'
+    id = Column(Integer, primary_key=True)
+    session_start = Column(DateTime, nullable=False)
+    last_request = Column(DateTime)
+    billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
+
+    beuser = relationship(BillEntryUser,
+                          backref=backref('be_user_session'))
+
+    def __init__(self, session_start=datetime.utcnow(),
+            last_request=datetime.utcnow(), beuser=None):
+        self.session_start = session_start
+        self.last_request = last_request
+        self.beuser = beuser
+
+
 
 class BEUtilBill(UtilBill):
     """UtilBill subclass that tracks when a bill became "entered" in the
