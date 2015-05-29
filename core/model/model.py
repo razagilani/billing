@@ -226,6 +226,9 @@ class Utility(Base):
     def __str__(self):
         return self.name
 
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
+
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
     charges on utility bills. This may be the same as the utility in the
@@ -494,6 +497,8 @@ class UtilityAccount(Base):
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=True)
     fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                                 nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -730,6 +735,8 @@ class UtilBill(Base):
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=True)
     supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                              nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     period_start = Column(Date)
@@ -790,8 +797,7 @@ class UtilBill(Base):
     supplier = relationship('Supplier', uselist=False,
                             primaryjoin='UtilBill.supplier_id==Supplier.id')
     rate_class = relationship('RateClass', uselist=False,
-                              primaryjoin='UtilBill.rate_class_id==RateClass'
-                                          '.id')
+        primaryjoin='UtilBill.rate_class_id==RateClass.id')
     supply_group = relationship('SupplyGroup', uselist=False,
                                 primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
@@ -875,8 +881,14 @@ class UtilBill(Base):
     def get_utility(self):
         return self.utility
 
+    def get_utility_id(self):
+        return self.utility_id
+
     def get_supplier(self):
         return self.supplier
+
+    def get_supplier_id(self):
+        return self.supplier_id
 
     def get_utility_name(self):
         '''Return name of this bill's utility.
@@ -922,6 +934,9 @@ class UtilBill(Base):
 
     def get_rate_class(self):
         return self.rate_class
+
+    def get_rate_class_id(self):
+        return self.rate_class_id
 
     def set_utility(self, utility):
         """Set the utility, and set the rate class to None if the utility is
