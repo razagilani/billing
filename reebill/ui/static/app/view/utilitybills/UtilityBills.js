@@ -39,6 +39,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Service',
         dataIndex: 'service',
+        emptyText: 'Unknown',
         width: 100
     },{
         header: 'Start Date',
@@ -182,7 +183,6 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Supply Group',
         dataIndex: 'supply_group_id',
-        emptyText: 'Unknown Supply Group',
         editor: {
             xtype: 'combo',
             store: 'SupplyGroups',
