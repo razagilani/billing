@@ -506,7 +506,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
-        utility = Utility(name="Empty Utility")
+        utility = Utility(name="Empty Utility1")
         utility.id = 3
         Session().add(utility)
         Session().commit()
@@ -535,16 +535,16 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'supply_total': 2.0,
                 'target_total': 0.0,
                 'total_energy': 0,
-                'utility': 'Empty Utility',
+                'utility': 'Empty Utility1',
                 'utility_account_number': '1',
                 'utility_account_id': 1,
-                'wiki_url': 'http://example.com/utility:Empty Utility',
+                'wiki_url': 'http://example.com/utility:Empty Utility1',
                 'flagged': False,
                 'meter_identifier': None,
                 'tou': False
             }}, rv.data
         )
-        utility = Utility(name="Some Other Utility")
+        utility = Utility(name="Some Other Utility1")
         utility.id = 4
         Session().add(utility)
         Session().commit()
@@ -572,11 +572,11 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'supply_total': 2.0,
                   'target_total': 0.0,
                   'total_energy': 0,
-                  'utility': 'Some Other Utility',
+                  'utility': 'Some Other Utility1',
                   'utility_account_number': '1',
                   'utility_account_id': 1,
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'wiki_url': 'http://example.com/utility:Some Other Utility1',
                   'entered': False,
                   'flagged': False,
                   'meter_identifier': None,

@@ -241,16 +241,16 @@ class UtilbillProcessor(object):
             raise ValueError("Estimated utility bills can't have a file")
 
         # create in database
+        session = Session()
         if supplier is not None:
-           supplier = self.create_supplier(supplier)
+            supplier = session.query(Supplier).filter_by(name=supplier).one()
         if supply_group is not None:
             supply_group = self.create_supply_group(supply_group, supplier.id, 'gas')
         if utility is not None:
-            utility = self.create_utility(utility)
+            utility = session.query(Utility).filter_by(name=utility).one()
         if rate_class is not None:
-            rate_class = self.create_rate_class(rate_class, utility.id, 'gas')
+            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
 
-        session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
         new_utilbill = self._create_utilbill_in_db(utility_account, start=start,

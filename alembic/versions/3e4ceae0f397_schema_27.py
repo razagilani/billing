@@ -37,8 +37,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id')
     )
     op.add_column('utility', sa.Column('sos_supplier_id', sa.Integer(),
-        sa.ForeignKey('supplier.id', ondelete='CASCADE'), nullable=True,
-        unique=True))
+        sa.ForeignKey('supplier.id', ondelete='CASCADE'), nullable=True))
     op.add_column('utilbill', sa.Column('supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'), nullable=True))
     op.add_column('reebill_customer', sa.Column('payee', sa.String(length=100), nullable=False, default='Nextility'))
     op.add_column('utility_account', sa.Column('fb_supply_group_id', sa.Integer(), sa.ForeignKey('supply_group.id'),nullable=True))
@@ -55,6 +54,9 @@ def upgrade():
     sa.ForeignKeyConstraint(['billentry_user_id'], ['billentry_user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+
+    # mysql chooses a name that conflicts with existing foreign key constraint name
+    op.create_unique_constraint('uq_sos_suplier_id', 'utility', ['sos_supplier_id'])
 
     op.create_unique_constraint(None, 'utility', ['name'])
     op.create_unique_constraint(None, 'rate_class', ['utility_id', 'name'])
