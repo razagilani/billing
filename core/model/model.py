@@ -788,15 +788,18 @@ class UtilBill(Base):
     # it can change from one bill to the next.
     supplier = relationship('Supplier', uselist=False,
                             primaryjoin='UtilBill.supplier_id==Supplier.id')
-    rate_class = relationship('RateClass', uselist=False,
-                              primaryjoin='UtilBill.rate_class_id==RateClass'
-                                          '.id')
-    supply_group = relationship('SupplyGroup', uselist=False,
-                                primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
-    billing_address = relationship('Address', uselist=False, cascade='all',
-                                   primaryjoin='UtilBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False, cascade='all',
-                                   primaryjoin='UtilBill.service_address_id==Address.id')
+    rate_class = relationship(
+        'RateClass', uselist=False,
+        primaryjoin='UtilBill.rate_class_id==RateClass.id')
+    supply_group = relationship(
+        'SupplyGroup', uselist=False,
+        primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
+    billing_address = relationship(
+        'Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.billing_address_id==Address.id')
+    service_address = relationship(
+        'Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.service_address_id==Address.id')
 
     # the 'utility' attribute may move to UtilityAccount where it would
     # make more sense for it to be.
