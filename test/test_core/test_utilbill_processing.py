@@ -264,7 +264,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
         self.assertEqual(utility_account.account_number, 12345)
 
-
     def test_upload_utility_bill(self):
         '''Tests saving of utility bills in database (which also belongs partly
         to ReeBillDAO); does not test saving of utility bill files (which belongs
@@ -333,7 +332,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             'reebills': []
         }, utilbills_data[0])
 
-        # TODO check "meters and registers" data here
+        # TODO check "meters and _registers" data here
         # TODO check "charges" data here
 
         # check charges
@@ -505,8 +504,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.utilbill_processor.upload_utility_bill(
             account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric')
         u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
-        while len(u.registers) > 0:
-            del u.registers[0]
+        while len(u._registers) > 0:
+            del u._registers[0]
         u.registers = [Register(Register.DEMAND, 'MMBTU')]
         self.assertEqual({Register.DEMAND},
                          {r.register_binding for r in u.registers})
