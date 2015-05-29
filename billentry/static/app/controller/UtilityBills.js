@@ -6,7 +6,8 @@ Ext.define('BillEntry.controller.UtilityBills', {
         'RateClasses',
         'Utilities',
         'Services',
-        'Accounts'
+        'Accounts',
+        'Suppliers'
     ],
 
     views: [
@@ -65,13 +66,26 @@ Ext.define('BillEntry.controller.UtilityBills', {
                 click: this.handleUtilbillHelp
             },
             '#utility_combo':{
-                select: this.handleUtilityComboChanged
+                select: this.handleUtilityComboChanged,
+                focus: this.handleUtilityComboFocus,
+                blur: this.handleUtilityBlur
             },
            '#rate_class_combo': {
-                focus: this.handleRateClassComboFocus
+                focus: this.handleRateClassComboFocus,
+                blur: this.handleRateClassBlur
+            },
+            '#supplier_combo': {
+                focus: this.handleSupplierComboFocus,
+                blur: this.handleSupplierBlur
             },
             '#service_combo': {
                 blur: this.handleServiceComboBlur
+            },
+            '#flagged': {
+                beforecheckchange: this.handleCheckChange
+            },
+            '#tou': {
+                beforecheckchange: this.handleCheckChange
             }
         });
 
@@ -163,6 +177,11 @@ Ext.define('BillEntry.controller.UtilityBills', {
         this.updateCurrentAccountId(records[0]);
     },
 
+
+    /**
+     * Handle filtering rate_class combo on the utility of currently selected row
+     * When rate_class combo is selected in the UI
+     */
     handleRateClassComboFocus: function(combo) {
         var utility_bill_grid = combo.findParentByType('grid');
         var selected = utility_bill_grid.getSelectionModel().getSelection()[0];
@@ -174,12 +193,69 @@ Ext.define('BillEntry.controller.UtilityBills', {
                                     value: utility.get('id'), exactMatch:true});
     },
 
+    /*
+     * creates a new rate_class when the rate_class combo box loses focus
+     */
+    handleRateClassBlur: function(combo, event, opts){
+        var rateClassStore = this.getRateClassesStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (rateClassStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            rateClassStore.suspendAutoSync();
+            rateClassStore.add({name: combo.getRawValue(),
+                               utility_id: selected.get('utility_id'),
+                               service: selected.get('service')});
+            rateClassStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('rate_class_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            rateClassStore.resumeAutoSync();
+        }
+    },
+
+    /**
+     * Handle reloading utility bills tore when service combo loses focus
+     */
     handleServiceComboBlur: function(combo){
         var utility_bill_grid = combo.findParentByType('grid');
         utility_bill_grid.getStore().reload();
         utility_bill_grid.getView().refresh();
     },
 
+    /**
+     * Handle updating flagged and tou checkboxes in the UI
+     * Disables editing these two check boxes if the currently
+     * selected row is marked as entered
+     */
+    handleCheckChange: function(checkbox, rowIndex, checked, eOpts ){
+        var utility_bills_grid = this.getUtilityBillsGrid();
+        if (checkbox.itemId == 'flagged' || checkbox.itemId=='tou')
+        {
+            row = utility_bills_grid.getStore().getAt(rowIndex);
+            if (row.get('processed') || row.get('entered'))
+            {
+                Ext.MessageBox.show({
+                            title: 'Entered Record Cannot be edited',
+                            msg: 'Please clear the entered checkbox before editing this record',
+                            buttons: Ext.MessageBox.OK
+                                    });
+                return false;
+            }
+        }
+    },
+
+    /**
+     * Update the rate_class combo to display either the first rate_class
+     * for the currently selected utility or Unknown if the currently
+     * selected utility has no rate_classes
+     */
     handleUtilityComboChanged: function(utility_combo, record){
         var rate_class_store = Ext.getStore("RateClasses");
         rate_class_store.clearFilter(true);
@@ -190,9 +266,80 @@ Ext.define('BillEntry.controller.UtilityBills', {
         if (rate_class_store.count() > 0)
             selected.set('rate_class', rate_class_store.getAt(0).get('name'));
         else
-            selected.set('rate_class', null)
+            selected.set('rate_class', 'Unknown Rate Class')
     },
 
+    /*
+     * creates a new utility when the utility combo box loses focus
+     */
+    handleUtilityBlur: function(combo, event, opts){
+        var utilityStore = this.getUtilitiesStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (utilityStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            utilityStore.suspendAutoSync();
+            var supply_group_id = utilBillsStore.findRecord('id', selected.get('id')).get('supply_group_id');
+            utilityStore.add({name: combo.getRawValue(),
+                                 sos_supply_group_id: supply_group_id});
+            utilityStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('utility_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            utilityStore.resumeAutoSync();
+        }
+    },
+
+    /**
+     * displays the name from utility store for the currently selected
+     * utility as utility is an object containing name and Id's.
+     */
+    handleUtilityComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('utility'));
+    },
+
+    /**
+     * displays the name from supplier store for the currently selected
+     * supplier as supplier is an object containing name and Id's.
+     */
+    handleSupplierComboFocus: function(combo) {
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setValue(selected.get('supplier'));
+    },
+
+    /*
+     * creates a new supplier when the supplier combo box loses focus
+     */
+    handleSupplierBlur: function(combo, event, opts){
+        var supplierStore = this.getSuppliersStore();
+        var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
+        if (supplierStore.findRecord('id', combo.getValue()) === null){
+            var utilBillsStore = this.getUtilityBillsStore();
+            utilBillsStore.suspendAutoSync();
+            supplierStore.suspendAutoSync();
+            supplierStore.add({name: combo.getRawValue()});
+            supplierStore.sync({
+                success: function(batch, options){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                    selected.set('supplier_id', batch.operations[0].records[0].get('id'));
+                },
+                failure: function(){
+                    this.getUtilityBillsStore().resumeAutoSync();
+                },
+                scope: this
+            });
+            supplierStore.resumeAutoSync();
+        }
+    },
 
     /**
      * Finds the store index of the record that is offset by 'offset' from
@@ -207,7 +354,7 @@ Ext.define('BillEntry.controller.UtilityBills', {
     },
 
     /* Update disabled/enabled state of "Previous" and "Next" buttons according
-     to the index of the currently selected record.
+     * to the index of the currently selected record.
      */
     setButtonsDisabled: function(newRecordIndex) {
         this.getUtilbillPrevious().setDisabled(newRecordIndex === 0);
@@ -267,4 +414,6 @@ Ext.define('BillEntry.controller.UtilityBills', {
         win.show();
         win.setPosition(Ext.getBody().getViewSize().width - width - margin, margin);
     }
+
+
 });

@@ -19,6 +19,7 @@ from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
                  ConfirmMultipleAdjustments)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 from util.pdf import PDFConcatenator
+from jinja2 import Template
 
 
 class ReebillProcessor(object):
@@ -174,84 +175,61 @@ class ReebillProcessor(object):
         reebill.set_payments(payments, predecessor.balance_due)
         return reebill
 
-    def roll_reebill(self, account, start_date=None):
+    def roll_reebill(self, account, start_date=None, estimate=False):
         """ Create first or roll the next reebill for given account.
         After the bill is rolled, this function also binds renewable energy data
         and computes the bill by default. This behavior can be modified by
         adjusting the appropriate parameters.
-        'start_date': must be given for the first reebill.
+        :param 'start_date': datetime, must be given for the first reebill.
+        :param estimate: bool: whether to use real or estimated measurements
+        of renewable energy consumption.
         """
         session = Session()
+        customer = self.state_db.get_reebill_customer(account)
+        last_reebill = customer.get_last_bill()
 
-        reebill_customer = self.state_db.get_reebill_customer(account)
-        last_reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.reebill_customer == reebill_customer)\
-                .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
-
-        new_utilbills = []
-        if last_reebill_row is None:
+        if last_reebill is None:
             # No Reebills are associated with this account: Create the first one
             assert start_date is not None
-            utilbill = session.query(UtilBill)\
-                    .filter(UtilBill.utility_account ==
-                            reebill_customer.utility_account)\
-                    .filter(UtilBill.period_start >= start_date)\
-                    .order_by(UtilBill.period_start).first()
-            if utilbill is None:
-                raise ValueError("No utility bill found starting on/after %s" %
-                        start_date)
-            new_utilbills.append(utilbill)
             new_sequence = 1
         else:
-            # There are Reebills associated with this account: Create the next Reebill
-            # First, find the successor to every utility bill belonging to the reebill
-            # note that Hypothetical utility bills are excluded.
-            for utilbill in last_reebill_row.utilbills:
-                successor = session.query(UtilBill)\
-                    .filter(UtilBill.utility_account == reebill_customer.utility_account)\
-                    .filter(not_(UtilBill._utilbill_reebills.any()))\
-                    .filter(RateClass.service == utilbill.get_service())\
-                    .filter(UtilBill.utility == utilbill.utility)\
-                    .filter(UtilBill.period_start >= utilbill.period_end)\
-                    .order_by(UtilBill.period_end).first()
-                if successor is None:
-                    raise NoSuchBillException(("Couldn't find next "
-                            "utility bill following %s") % utilbill)
-                new_utilbills.append(successor)
-            new_sequence = last_reebill_row.sequence + 1
-
-        if not all(r.processed for r in new_utilbills):
+            start_date = last_reebill.get_period_end()
+            new_sequence = last_reebill.sequence + 1
+        new_utilbill = session.query(UtilBill).filter(
+            UtilBill.utility_account == customer.utility_account).filter(
+            not_(UtilBill._utilbill_reebills.any())).filter(
+            UtilBill.period_start >= start_date).order_by(
+            UtilBill.period_start).first()
+        if new_utilbill is None:
+            raise NoSuchBillException(
+                "No utility bill found starting on/after %s" % start_date)
+        if not new_utilbill.processed:
             raise BillingError('Utility bill must be processed')
 
-        # currently only one service is supported
-        assert len(new_utilbills) == 1
-
         # create reebill row in state database
-        new_reebill = ReeBill(reebill_customer, new_sequence, 0,
-                              utilbills=new_utilbills,
-                              billing_address=Address.from_other(
-                                new_utilbills[0].billing_address),
-                              service_address=Address.from_other(
-                                new_utilbills[0].service_address))
+        new_reebill = ReeBill(
+            customer, new_sequence, utilbill=new_utilbill,
+            billing_address=new_utilbill.billing_address.clone(),
+            service_address=new_utilbill.service_address.clone())
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
-        if last_reebill_row is None:
+        if last_reebill is None or estimate:
             # this is the first reebill: choose only total register, which is
             #  guaranteed to exist
-            reg_total_register = next(r for r in utilbill.registers if
+            reg_total_register = next(r for r in new_utilbill.registers if
                                       r.register_binding == Register.TOTAL)
-            new_reebill.readings = [Reading.make_reading_from_register(
-                reg_total_register)]
+            new_reebill.readings = [Reading.create_from_register(
+                reg_total_register, estimate=estimate)]
         else:
             # not the first reebill: copy readings from the previous one
-            new_reebill.update_readings_from_reebill(last_reebill_row.readings)
+            # TODO: this could be bad if the last bill was estimated
+            new_reebill.update_readings_from_reebill(last_reebill.readings)
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(new_reebill)
 
         try:
             self.compute_reebill(account, new_sequence)
@@ -270,15 +248,14 @@ class ReebillProcessor(object):
         if not self.state_db.is_issued(account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        max_version = self.state_db.max_version(account, sequence)
-        reebill = self.state_db.increment_version(account, sequence)
+        old_reebill = self.state_db.get_reebill(account, sequence)
+        reebill = old_reebill.make_correction()
 
         assert len(reebill.utilbills) == 1
 
-        self.ree_getter.\
-            update_renewable_readings(self.nexus_util.olap_id(account), reebill)
+        self.ree_getter.update_renewable_readings(reebill)
         try:
-            self.compute_reebill(account, sequence, version=max_version+1)
+            self.compute_reebill(account, sequence, reebill.version)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -290,7 +267,6 @@ class ReebillProcessor(object):
                     "version %s of reebill %s-%s: %s\n%s") % (
                     reebill.version, reebill.get_account(),
                     reebill.sequence, e, traceback.format_exc()))
-
         return reebill
 
     def get_unissued_corrections(self, account):
@@ -309,7 +285,8 @@ class ReebillProcessor(object):
             result.append((seq, max_version, adjustment))
         return result
 
-    def issue_corrections(self, account, target_sequence):
+    # deprecated--do not use
+    def issue_corrections(self, account, target_sequence, issue_date):
         '''Applies adjustments from all unissued corrections for 'account' to
         the reebill given by 'target_sequence', and marks the corrections as
         issued.'''
@@ -339,7 +316,7 @@ class ReebillProcessor(object):
             correction_sequence, _, _ = correction
             correction_reebill = self.state_db.get_reebill(account,
                                                            correction_sequence)
-            correction_reebill.issue(datetime.utcnow(), self)
+            correction_reebill.issue(issue_date, self)
 
     def get_total_adjustment(self, account):
         '''Returns total adjustment that should be applied to the next issued
@@ -413,7 +390,7 @@ class ReebillProcessor(object):
 
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
-            template_account, utility_account_number):
+            template_account, utility_account_number, payee):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
@@ -454,17 +431,9 @@ class ReebillProcessor(object):
 
         new_utility_account = UtilityAccount(
             name, account, utility, supplier, rate_class,
-            Address(billing_address['addressee'],
-                    billing_address['street'],
-                    billing_address['city'],
-                    billing_address['state'],
-                    billing_address['postal_code']),
-            Address(service_address['addressee'],
-                    service_address['street'],
-                    service_address['city'],
-                    service_address['state'],
-                    service_address['postal_code']),
-                    account_number=utility_account_number)
+            Address(**billing_address),
+            Address(**service_address),
+            account_number=utility_account_number)
 
         session.add(new_utility_account)
 
@@ -473,7 +442,8 @@ class ReebillProcessor(object):
                 name=name, discount_rate=discount_rate,
                 late_charge_rate=late_charge_rate, service=service_type,
                 bill_email_recipient='example@example.com',
-                utility_account=new_utility_account)
+                utility_account=new_utility_account,
+                payee=payee)
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer
@@ -497,56 +467,84 @@ class ReebillProcessor(object):
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         reebill.check_editable()
-        self.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(reebill, use_olap=True)
 
-    def mail_reebill(self, account, sequence, recipient_list):
-        reebill = self.state_db.get_reebill(account, sequence)
+    # used to email a reebill for a variety of business reasons
+    def mail_reebill(self, template_filename, subject, reebill, recipient_list):
 
-        # render the bills
+        # render the bill to ensure pdf file exists
         self.reebill_file_handler.render(reebill)
 
-        # "the last element" (???)
-        bill_file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-        bill_date = "%s" % reebill.get_period()[0]
-        merge_fields = {
-            'street': reebill.service_address.street,
-            'balance_due': round(reebill.balance_due, 2),
-            'bill_dates': bill_date,
-            'last_bill': bill_file_name,
-        }
+        # read the pdf file data in
         bill_file_contents = self.reebill_file_handler.get_file_contents(reebill)
+
+        # superset of all fields for all templates
+        bill_date = "%s" % reebill.get_period()[1]
+        merge_fields = {
+            'subject': subject,
+            'street': reebill.service_address.street,
+            'balance_forward': round(reebill.balance_forward, 2),
+            'balance_due': round(reebill.balance_due, 2),
+            'bill_date': bill_date,
+            'ree_charge': reebill.ree_charge,
+            'last_bill': "%.5d_%.4d.pdf" % (int(reebill.get_account()),int(reebill.sequence)),
+            'display_file_path': self.reebill_file_handler.get_file_display_path(reebill)
+        }
+
+        self.merge_and_mail(template_filename, merge_fields, bill_file_contents, recipient_list)
+
+    def mail_summary(self, template_filename, subject, reebills, recipient_list):
+        """
+        Used to mail a summary, for a variety of business reasons denoted in subject
+        :param template_filename: String describing file name of the jinja2 template
+        :param subject: String which is a fragment placed into subject line
+        :param reebills: list of reebill instances
+        :param recipient_list: list of strings containing email addresses
+        :return:
+        """
+
+        # create combined PDF file
+        summary_file_contents = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(reebills, summary_file_contents)
+        summary_file_contents.seek(0)
+
+        # Set up the fields to be shown in the email msg
+        merge_fields = {
+            'subject': subject,
+            'balance_due': round(sum(b.balance_due for b in reebills),2),
+            'bill_date': max(b.get_period_end() for b in reebills),
+            'display_file_path': "summary.pdf"
+        }
+
+        self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), [recipient_list])
+
+    def merge_and_mail(self, template_filename, fields, attachment, recipient_list):
+
+        # Identify the jinja2 template by filename
+        TEMPLATE_FILE_PATH = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            '..', 'reebill', 'reebill_templates', template_filename)
+
+        # Load the jinja2 template 
+        with open(TEMPLATE_FILE_PATH) as template_file:
+            template_html = template_file.read()
+        
+        # Render the jinja2 template with template fields
+        html_body = Template(template_html).render(fields)
+        if isinstance(recipient_list, list):
+            recipient_list = ', '.join(recipient_list)
+        # Hand this content off to the mailer
         self.bill_mailer.mail(
             recipient_list,
-            merge_fields,
-            bill_file_contents,
-            bill_file_name)
-
-    def _get_issuable_reebills(self):
-        '''Return a Query of "issuable" reebills (lowest-sequence bill for
-        each account that is unissued and is not a correction).
-        '''
-        session = Session()
-        unissued_v0_reebills = session.query(
-            ReeBill.sequence, ReeBill.reebill_customer_id).filter(
-            ReeBill.issued == 0, ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-            unissued_v0_reebills.c.reebill_customer_id.label(
-                'reebill_customer_id'),
-            func.min(unissued_v0_reebills.c.sequence).label('sequence')) \
-            .group_by(unissued_v0_reebills.c.reebill_customer_id).subquery()
-        return session.query(ReeBill).filter(
-            ReeBill.reebill_customer_id == min_sequence.c.reebill_customer_id) \
-            .filter(ReeBill.sequence == min_sequence.c.sequence)
-
-    def get_issuable_reebills_dict(self):
-        """ Returns a list of issuable reebill dictionaries
-            of the earliest unissued version-0 reebill account. If
-            proccessed == True, only processed Reebills are returned
-            account can be used to get issuable bill for an account
-        """
-        return [r.column_dict() for r in self.get_issuable_reebills().all()]
+            "Nextility: %s" % fields["subject"] 
+                if "subject" in fields and fields["subject"] is not None 
+                else "Your Renewable Energy Bill(s)",
+            html_body,
+            attachment,
+            fields["display_file_path"] 
+                if "display_file_path" in fields and fields["display_file_path"] is not None 
+                else "attachment.pdf")
 
     # TODO: what does this do?
     # TODO: no test coverage
@@ -565,91 +563,35 @@ class ReebillProcessor(object):
         if accounts_to_be_confirmed:
             raise ConfirmMultipleAdjustments(accounts_to_be_confirmed)
 
-    def issue_and_mail(self, apply_corrections, account, sequence,
-                       recipients=None):
+    def _issue_bills(self, reebills):
+        """
+        Mark the given bills as issued, including applying corrections,
+        and send an email to the customer for each one.
+        :param reebills: list of ReeBills
+        """
+        issue_date = datetime.utcnow()
+        for reebill in reebills:
+            # a correction bill cannot be issued by itself
+            assert reebill.version == 0
+            reebill.issue(
+                issue_date, self,
+                corrections=reebill.reebill_customer.get_unissued_corrections())
+            self.mail_reebill("issue_email_template.html", "Energy Bill Due",
+                              reebill, reebill.email_recipient)
+
+    def issue_and_mail(self, account, sequence, recipients=None):
         """this function issues a single reebill and sends out a confirmation
         email.
         """
-        # If there are unissued corrections and the user has not confirmed
-        # to issue them, we will return a list of those corrections and the
-        # sum of adjustments that have to be made so the client can create
-        # a confirmation message
-        unissued_corrections = self.get_unissued_corrections(account)
-        if len(unissued_corrections) > 0 and not apply_corrections:
-            # The user has to confirm to issue unissued corrections.
-            sequences = [sequence for sequence, _, _ in unissued_corrections]
-            total_adjustment = sum(adjustment
-                        for _, _, adjustment in unissued_corrections)
-            raise ConfirmAdjustment(sequences, total_adjustment)
-        # Let's issue
-        try:
-            if len(unissued_corrections) > 0:
-                assert apply_corrections is True
-                self.issue_corrections(account, sequence)
-            else:
-                reebill = self.state_db.get_reebill(account, sequence)
-                reebill.issue(datetime.utcnow(), self)
-        except Exception as e:
-            self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                    account, sequence, e.__class__.__name__),) + e.args)
-            raise
-        # Let's mail!
-        # Recepients can be a comma seperated list of email addresses
-        if recipients is None:
-            # this is not supposed to be allowed but somehow it happens
-            # in a test
-            recipient_list = ['']
-        else:
-            recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.mail_reebill(account, sequence, recipient_list)
+        reebill = self.state_db.get_reebill(account, sequence, version=0)
+        self._issue_bills([reebill])
+        return [reebill.column_dict()]
 
-    def issue_processed_and_mail(self, apply_corrections):
+    def issue_processed_and_mail(self):
         '''This function issues all processed reebills'''
-        bills = self._get_issuable_reebills().filter_by(processed=True).all()
-        for bill in bills:
-            # If there are unissued corrections and the user has not confirmed
-            # to issue them, we will return a list of those corrections and the
-            # sum of adjustments that have to be made so the client can create
-            # a confirmation message
-            unissued_corrections = self.get_unissued_corrections(
-                bill.reebill_customer.utility_account.account)
-            if len(unissued_corrections) > 0 and not apply_corrections:
-                # The user has confirmed to issue unissued corrections.
-                sequences = [sequence for sequence, _, _
-                            in unissued_corrections]
-                total_adjustment = sum(adjustment
-                            for _, _, adjustment in unissued_corrections)
-                raise ConfirmAdjustment(sequences, total_adjustment)
-            # Let's issue
-            if len(unissued_corrections) > 0:
-                assert apply_corrections is True
-                try:
-                    self.issue_corrections(bill.get_account(), bill.sequence)
-                except Exception as e:
-                    self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.get_account(), bill.sequence,
-                        e.__class__.__name__),) + e.args)
-                    raise
-            try:
-                bill.issue(datetime.utcnow(), self)
-            except Exception, e:
-                self.logger.error(('Error when issuing reebill %s-%s: %s' %(
-                        bill.get_account(), bill.sequence,
-                        e.__class__.__name__),) + e.args)
-                raise
-            # Let's mail!
-            # Recepients can be a comma seperated list of email addresses
-            if bill.email_recipient is None:
-                # this is not supposed to be allowed but somehow it happens
-                # in a test
-                recipient_list = ['']
-            else:
-                recipient_list = [rec.strip() for rec in
-                                  bill.email_recipient.split(',')]
-            self.mail_reebill(bill.get_account(), bill.sequence,
-                              recipient_list)
-        bills_dict = [bill.column_dict() for bill in bills]
-        return bills_dict
+        bills = self.state_db.get_issuable_reebills().all()
+        self._issue_bills(bills)
+        return [bill.column_dict() for bill in bills]
 
     # TODO this method has no test coverage. maybe combine it into
     # update_sequential_account_info and add to the test for that
@@ -666,26 +608,26 @@ class ReebillProcessor(object):
         reebill = self.state_db.get_reebill(account, sequence)
         self.reebill_file_handler.render(reebill)
 
-    # TODO: what does this do?
-    def issue_summary_for_bills(self, bills, summary_recipient):
-        for b in bills:
-            self.issue_corrections(b.get_account(), b.sequence)
-            b.issue(datetime.utcnow(), self)
 
-        # create and email combined PDF file
-        summary_file = StringIO()
-        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
-        sfg.generate_summary_file(bills, summary_file)
-        summary_file.seek(0)
-        merge_fields = {
-            'street': '',
-            'balance_due': sum(b.balance_due for b in bills),
-            'bill_dates': max(b.get_period_end() for b in bills),
-            'last_bill': '',
-        }
-        self.bill_mailer.mail(summary_recipient, merge_fields,
-                              summary_file.read(), 'summary.pdf')
-        return bills
+    def issue_summary_for_bills(self, reebills, summary_recipient):
+        """ For a set of ReeBills, make a summary and conctatenate
+            all ReeBills to it.
+            When a summary is issued, the summary has to consider
+            a bill that is the primary one, so the first bill
+            is in that list is used.  The reason is that bills in
+            a summary can be mixed and for multiple properties.
+        """
+
+        # sweep up corrections and issue bills
+        for b in reebills:
+            issue_date = datetime.utcnow()
+            b.issue(issue_date, self,
+                    corrections=self.get_unissued_corrections(b.get_account()))
+
+        # Summary depends on data of first ReeBill of those summarized 
+        self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)
+
+        return reebills
 
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
@@ -753,12 +695,26 @@ class ReebillProcessor(object):
             return result, True
         return result, False
 
+    def set_payee_for_utility_account(self, account_id, payee):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+        customer.payee = payee
+
+    def get_payee_for_utility_account(self, account_id):
+        s = Session()
+        customer = s.query(ReeBillCustomer).filter_by(
+            utility_account_id=account_id).one()
+        return customer.get_payee()
+
+
     def set_groups_for_utility_account(self, account_id, group_name_array):
         s = Session()
         customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=account_id).one()
 
-        # Remove the customer from groups that are not in 'group_name_array'
+        # Remove the customer from groups whose names are not in
+        # 'group_name_array'
         customer_groups = customer.get_groups()
         for g in customer_groups:
             if g.name not in group_name_array:

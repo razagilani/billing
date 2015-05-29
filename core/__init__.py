@@ -120,16 +120,19 @@ def init_model(uri=None, schema_revision=None):
 
     uri = uri if uri else config.get('db', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
-    Session.rollback()
-    Session.remove()
     engine = create_engine(uri, echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
                            pool_recycle=3600)
+
     Session.configure(bind=engine)
+    # TODO: unclear why the above does not work and Session.bind must be
+    # directly assigned
+    Session.bind = engine
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
+    Session.remove()
 
     log.debug('Initialized sqlalchemy model')
 
@@ -137,5 +140,3 @@ def initialize():
     init_logging()
     init_config()
     init_model()
-
-ROOT_PATH = dirname(dirname(realpath(__file__)))

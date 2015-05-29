@@ -10,14 +10,15 @@ from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case
+from sqlalchemy.orm import joinedload
 
-from billentry.billentry_model import BEUtilBill
+from billentry.billentry_model import BEUtilBill, BEUserSession
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge
+from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -95,7 +96,7 @@ class BaseResource(Resource):
         # requires BillFileHandler, so not an attribute of UtilBill itself
         class PDFUrlField(Raw):
             def output(self, key, obj):
-                return bill_file_handler.get_s3_url(obj)
+                return bill_file_handler.get_url(obj)
 
         class WikiUrlField(Raw):
             def output(self, key, obj):
@@ -120,10 +121,18 @@ class BaseResource(Resource):
                                             attribute='get_total_charges'),
             # TODO: should these be names or ids or objects?
             'utility': CallableField(String(), attribute='get_utility_name'),
-            'supplier': CallableField(String(), attribute='get_supplier_name',
+            'utility_id': CallableField(Integer(), attribute='get_utility_id'),
+            'supplier': CallableField(String(), attribute='get_supplier',
                                       default='Unknown'),
+            'supplier_id': CallableField(Integer(), attribute='get_supplier_id',
+                                         default=None),
             'rate_class': CallableField(
                 String(), attribute='get_rate_class_name', default='Unknown'),
+            'rate_class_id': CallableField(Integer(), attribute='get_rate_class_id'),
+            'supply_group': CallableField(
+                String(), attribute='get_supply_group_name', default='Unknown'),
+            'supply_group_id': CallableField(
+                Integer(), attribute='get_supply_group_id', default=None),
             'pdf_url': PDFUrlField,
             'service_address': String,
             'next_meter_read_date': CallableField(
@@ -149,6 +158,19 @@ class BaseResource(Resource):
             'target_total': Float,
         }
 
+        self.supply_group_fields = {
+            'id': Integer,
+            'name': String,
+            'supplier_id': Integer,
+            'service': String
+        }
+
+        self.utility_fields = {
+            'id': Integer,
+            'name': String,
+            'sos_supply_group_id': String
+        }
+
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
 id_parser = RequestParser()
@@ -167,7 +189,8 @@ parse_date = lambda _s: dateutil_parser.parse(_s).date()
 class AccountListResource(BaseResource):
     def get(self):
         accounts = Session().query(UtilityAccount).join(
-            BrokerageAccount).order_by(UtilityAccount.account).all()
+            BrokerageAccount).options(joinedload('utilbills')).options(
+            joinedload('fb_utility')).order_by(UtilityAccount.account).all()
         return [dict(marshal(account, {
             'id': Integer,
             'account': String,
@@ -217,10 +240,13 @@ class UtilBillResource(BaseResource):
         parser.add_argument('period_end', type=parse_date)
         parser.add_argument('target_total', type=float)
         parser.add_argument('processed', type=bool)
-        parser.add_argument('rate_class', type=str)
-        parser.add_argument('utility', type=str)
+        parser.add_argument('rate_class_id', type=int)
+        parser.add_argument('utility_id', type=int)
         parser.add_argument('supplier', type=str)
         parser.add_argument('supply_choice_id', type=str)
+        parser.add_argument('supplier_id', type=int)
+        parser.add_argument('supply_group', type=str)
+        parser.add_argument('supply_group_id', type=int)
         parser.add_argument('total_energy', type=float)
         parser.add_argument('entered', type=bool)
         parser.add_argument('flagged', type=bool)
@@ -246,12 +272,13 @@ class UtilBillResource(BaseResource):
             service=row['service'],
             target_total=row['target_total'],
             processed=row['processed'],
-            rate_class=row['rate_class'],
-            utility=row['utility'],
-            supplier=row['supplier'],
+            rate_class=row['rate_class_id'],
+            utility=row['utility_id'],
+            supplier=row['supplier_id'],
             supply_choice_id=row['supply_choice_id'],
             tou=row['tou'],
-            meter_identifier=row['meter_identifier']
+            meter_identifier=row['meter_identifier'],
+            supply_group_id=row['supply_group_id']
         )
         if row.get('total_energy') is not None:
             ub.set_total_energy(row['total_energy'])
@@ -317,7 +344,8 @@ class ChargeResource(BaseResource):
         parser.add_argument('rsi_binding', type=str, required=True)
         args = parser.parse_args()
         charge = self.utilbill_processor.add_charge(
-            args['utilbill_id'], rsi_binding=args['rsi_binding'])
+            args['utilbill_id'], rsi_binding=args['rsi_binding'],
+            type=Charge.SUPPLY)
         Session().commit()
         return {'rows': marshal(charge, self.charge_fields), 'results': 1}
 
@@ -333,12 +361,31 @@ class SuppliersResource(BaseResource):
         rows = marshal(suppliers, {'id': Integer, 'name': String})
         return {'rows': rows, 'results': len(rows)}
 
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        args = parser.parse_args()
+        supplier = self.utilbill_processor.create_supplier(args['name'])
+        Session().commit()
+        return {'rows': marshal(supplier, {'id': Integer, 'name': String}),
+                'results': 1}
+
 
 class UtilitiesResource(BaseResource):
     def get(self):
         utilities = Session().query(Utility).all()
-        rows = marshal(utilities, {'id': Integer, 'name': String})
+        rows = marshal(utilities, self.utility_fields)
         return {'rows': rows, 'results': len(rows)}
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        parser.add_argument('sos_supply_group_id', type=int, required=True)
+        args=parser.parse_args()
+        utility = self.utilbill_processor.create_utility(args['name'],
+                                                    args['sos_supply_group_id'])
+        Session.commit()
+        return {'rows': marshal(utility, self.supply_group_fields), 'results': 1 }
 
 
 class RateClassesResource(BaseResource):
@@ -347,8 +394,26 @@ class RateClassesResource(BaseResource):
         rows = marshal(rate_classes, {
             'id': Integer,
             'name': String,
-            'utility_id': Integer})
+            'utility_id': Integer,
+            'service': String})
         return {'rows': rows, 'results': len(rows)}
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('name', type=str, required=True)
+        parser.add_argument('utility_id', type=int, required=True)
+        parser.add_argument('service', type=str, required=True)
+        args = parser.parse_args()
+        rate_class = self.utilbill_processor.create_rate_class(args['name'],
+                                                               args['utility_id'],
+                                                               args['service'])
+        Session().commit()
+        return {'rows': marshal(rate_class,{
+            'id': Integer,
+            'name': String,
+            'utility_id': Integer,
+            'service': String
+        }), 'results': 1}
 
 
 class UtilBillCountForUserResource(BaseResource):
@@ -362,7 +427,6 @@ class UtilBillCountForUserResource(BaseResource):
 
             s = Session()
             count_sq = s.query(
-                BEUtilBill.id,
                 BEUtilBill.billentry_user_id,
                 func.count(BEUtilBill.id).label('total_count'),
                 func.sum(
@@ -370,20 +434,20 @@ class UtilBillCountForUserResource(BaseResource):
                 ).label('electric_count'),
                 func.sum(
                     case(((RateClass.service == 'gas', 1),), else_=0)
-                ).label('gas_count'),
-            ).group_by(BEUtilBill.billentry_user_id).outerjoin(
-                RateClass).filter(and_(
+                ).label('gas_count')
+            ).group_by(BEUtilBill.billentry_user_id).outerjoin(RateClass).filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                     BEUtilBill.billentry_date < args['end'])
             ).subquery()
 
+
             q = s.query(
                 BillEntryUser,
-                count_sq.c.total_count,
-                count_sq.c.electric_count,
-                count_sq.c.gas_count,
+                func.max(count_sq.c.total_count),
+                func.max(count_sq.c.electric_count),
+                func.max(count_sq.c.gas_count),
             ).outerjoin(count_sq).group_by(
-                BillEntryUser.id).order_by(
+                BillEntryUser.id, BillEntryUser.email).order_by(
                 BillEntryUser.id)
 
             rows = [{
@@ -392,6 +456,7 @@ class UtilBillCountForUserResource(BaseResource):
                     'total_count': int(total_count or 0),
                     'gas_count': int(gas_count or 0),
                     'electric_count': int(electric_count or 0),
+                    'elapsed_time': user.get_beuser_billentry_duration(args['start'], args['end'])
                 } for (user, total_count, electric_count, gas_count) in q.all()]
 
             return {'rows': rows, 'results': len(rows)}

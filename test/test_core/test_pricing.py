@@ -5,7 +5,7 @@ import unittest
 from mock import Mock, call
 
 from core.pricing import FuzzyPricingModel, PricingModel
-from core.model import Charge, UtilBill, RateClass, Utility, Address, Supplier
+from core.model import Charge, UtilBill, RateClass, Utility, Address, Supplier, SupplyGroup
 from exc import NoSuchBillException
 
 class PricingModelTest(unittest.TestCase):
@@ -25,38 +25,34 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # so it should be included in a new predicted rate structure. C is
         # never shared so it never gets included in any bill, except one
         # whose "predecessor" contains it.
-        self.charge_a_shared = Charge(utilbill=None,
-                                      rsi_binding='A',
+        self.charge_a_shared = Charge(rsi_binding='A',
                                       type='distribution',
                                       rate=1,
-                                      quantity_formula='',
+                                      formula='',
                                       description="",
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
-        self.charge_b_unshared = Charge(utilbill=None,
-                                        rsi_binding='B',
+        self.charge_b_unshared = Charge(rsi_binding='B',
                                         type='distribution',
                                         rate=2,
-                                        quantity_formula='',
+                                        formula='',
                                         description="",
                                         unit='therms',
                                         shared=False,
                                         has_charge=True)
-        self.charge_b_shared = Charge(utilbill=None,
-                                      rsi_binding='B',
+        self.charge_b_shared = Charge(rsi_binding='B',
                                       type='distribution',
                                       rate=2,
-                                      quantity_formula='',
+                                      formula='',
                                       description="",
                                       unit='therms',
                                       shared=True,
                                       has_charge=True)
-        self.charge_c_unshared = Charge(utilbill=None,
-                                        rsi_binding='C',
+        self.charge_c_unshared = Charge(rsi_binding='C',
                                         type='distribution',
                                         rate=3,
-                                        quantity_formula='',
+                                        formula='',
                                         description="",
                                         unit='therms',
                                         shared=False,
@@ -66,6 +62,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.supplier = Supplier(name='Utility')
         self.rate_class = RateClass(name='Rate Class', utility=self.utility,
                                     service='gas')
+        self.supply_group = SupplyGroup(name='Supply Group',
+                                        supplier=self.supplier)
 
         def make_mock_utilbill(account):
             u = Mock()
@@ -101,6 +99,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.u.utility = self.utility
         self.u.supplier = self.supplier
         self.u.rate_class = self.rate_class
+        self.u.supply_group = self.supply_group
         self.u.charges = []
 
     def test_get_predicted_charges(self):
@@ -118,7 +117,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
             processed=True)
         load_calls = [
             call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True), call(supplier=self.supplier, processed=True)]
+                 processed=True), call(supply_group=self.supply_group,
+                                       processed=True)]
         self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         self.assertEqual([], charges)
 
@@ -159,8 +159,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         charges = self.fpm.get_predicted_charges(self.u)
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True),
-            call(supplier=self.u.supplier, processed=True)])
+                 processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # however, when u belongs to the same account as an existing bill,
@@ -177,7 +176,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
                  processed=True),
-            call(supplier=self.supplier, processed=True)])
+            call(supply_group=self.supply_group, processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], charges)
 
@@ -215,12 +214,12 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # even though utilbill_1 also has a supply charge.
         # TODO: would be good to share some of this test data with the other
         # test methods if possible.
-        d1 = Charge(None, 'd1', 0, '', type='distribution', shared=True)
-        d2 = Charge(None, 'd2', 0, '', type='distribution', shared=True)
-        d3 = Charge(None, 'd3', 0, '', type='distribution', shared=True)
-        s1 = Charge(None, 's1', 0, '', type='supply', shared=True)
-        s2 = Charge(None, 's2', 0, '', type='supply', shared=True)
-        s3 = Charge(None, 's3', 0, '', type='supply', shared=True)
+        d1 = Charge('d1', 0, '', type='distribution', shared=True)
+        d2 = Charge('d2', 0, '', type='distribution', shared=True)
+        d3 = Charge('d3', 0, '', type='distribution', shared=True)
+        s1 = Charge('s1', 0, '', type='supply', shared=True)
+        s2 = Charge('s2', 0, '', type='supply', shared=True)
+        s3 = Charge('s3', 0, '', type='supply', shared=True)
         self.utilbill_1.charges = [d1, s1]
         self.utilbill_2.charges = [d2, s2]
         self.utilbill_3.charges = [d3, s3]
@@ -242,7 +241,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
                  processed=True),
-            call(supplier=self.u.supplier, processed=True),
+            call(supply_group=self.u.supply_group, processed=True)
         ])
 
         d_charges = {c for c in charges if c.type == Charge.DISTRIBUTION}
