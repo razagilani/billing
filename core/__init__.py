@@ -150,14 +150,15 @@ def init_celery():
     # config keys are needed. for a different back end, these would have to
     # be added to the config file.
     uri = config.get('db', 'uri')
-    celery_broker_url = 'sqla+' + uri
-    celery_result_backend = 'sqla+' + uri
+    # TODO: if using MongoDB, assemble the URL using keys from the config file
+    celery_broker_url = 'mongodb://localhost:27017/skyline-dev'
+    celery_result_backend = 'mongodb://localhost:27017/skyline-dev'
     global celery
-    #celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
-    celery = Celery('tasks', backend='amqp', broker='amqp://')
-    # # if you're using a Python dictionary for configuration (as is usual with
-    # # Flask), you can set celery's "conf" directly from the application's
-    # # config dictionary with "celery.conf.update(app.config)".
+    celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
+    #celery = Celery('tasks', backend='amqp', broker='amqp://')
+    # if you're using a Python dictionary for configuration (as is usual with
+    # Flask), you can set celery's "conf" directly from the application's
+    # config dictionary with "celery.conf.update(app.config)".
     # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
     # celery.conf['BROKER_URL'] = celery_broker_url
 
