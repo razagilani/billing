@@ -143,7 +143,7 @@ class Applier(object):
             raise ApplicationError('%s: %s' % (e.__class__, e.message))
 
 
-def convert_wg_charges(text):
+def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
     Washington Gas bill format into a list of Charges. There might eventually
     be many of these.
@@ -153,18 +153,16 @@ def convert_wg_charges(text):
     # and for using it to convert names into rsi_bindings. it probably should
     # be an argument.
     charge_name_map = Session().query(Utility).filter_by(
-        name='Washington Gas').one().charge_name_map
+    name='washington gas').one().charge_name_map
 
-    groups = '.*DISTRIBUTION SERVICE(.*)NATURAL GAS SUPPLY SERVICE(.*)TAXES(.*)'
+    groups = '.*DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*)'
     num = r'[\d.]*'
     charge_total = r'\$\s*' + num
     charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
                     + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
     charge_name = r'[A-Za-z- -]+'
     charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
-
-    d_charges, s_charges, tax_charges = re.match(groups, text).groups()
-
+    d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
     d_charge_strs = re.findall(charge, d_charges)
     s_charge_strs = re.findall(charge, s_charges)
     tax_charge_strs = re.findall(charge, tax_charges)
@@ -173,7 +171,8 @@ def convert_wg_charges(text):
         name = re.match(charge_name, charge_str).group(0).strip()
         # "*?" means non-greedy *
         total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
-        rsi_binding = charge_name_map.get(name, name.replace(' ', '_'))
+
+        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
         return Charge(rsi_binding, name=name, target_total=float(total_str),
                       type=charge_type)
 
@@ -182,6 +181,136 @@ def convert_wg_charges(text):
                                       (Charge.SUPPLY, s_charge_strs),
                                       (Charge.DISTRIBUTION, tax_charge_strs)]:
         charges.extend([extract_charge(t, charge_type) for t in charge_texts])
+    return charges
+
+def convert_wg_charges_wgl(text):
+    """Function to convert a string containing charges from a particular
+    Washington Gas bill format into a list of Charges. There might eventually
+    be many of these.
+    """
+    # TODO: it's bad to do a query in here. also, when there are many of
+    # these functions, this creates duplicate code both for loading the name map
+    # and for using it to convert names into rsi_bindings. it probably should
+    # be an argument.
+    charge_name_map = Session().query(Utility).filter_by(
+        name='washington gas').one().charge_name_map
+    groups = '.*DISTRIBUTION SERVICE(.*?)TAXES(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*)'
+    num = r'[\d.]*'
+    charge_total = r'\$\s*' + num
+    charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
+                    + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
+    charge_name = r'[A-Za-z- -]+'
+    charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
+    d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
+    d_charge_strs = re.findall(charge, d_charges)
+    s_charge_strs = re.findall(charge, s_charges)
+    tax_charge_strs = re.findall(charge, tax_charges)
+
+    def extract_charge(charge_str, charge_type):
+        name = re.match(charge_name, charge_str).group(0).strip()
+        # "*?" means non-greedy *
+        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
+
+        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        return Charge(rsi_binding, name=name, target_total=float(total_str),
+                      type=charge_type)
+
+    charges = []
+    for charge_type, charge_texts in [(Charge.DISTRIBUTION, d_charge_strs),
+                                      (Charge.SUPPLY, s_charge_strs),
+                                      (Charge.DISTRIBUTION, tax_charge_strs)]:
+        charges.extend([extract_charge(t, charge_type) for t in charge_texts])
+    return charges
+
+def pep_old_convert_charges(text):
+    """
+    Given text output from a pepco utility bill PDF that contains supply/distribution/etc charges, parses the individual charges
+    and returns a list of Charge objects.
+    :param text - the text containing both distribution and supply charges.
+    :returns A list of Charge objects representing the charges from the bill
+    """
+    #TODO find a better method for categorizing charge names
+    charge_name_map = Session().query(Utility).filter_by(
+        name='pepco').one().charge_name_map
+
+    #in pepco bills, supply and distribution charges are separate
+    distribution_charges_exp = r'Distribution Services\:(.*?)CURRENT CHARGES'
+    supply_charges_exp = r'Generation and Transmission.*?\d{4}\:(.*?)Charges This Period'
+    text = re.sub(r'at (\d)', r' \1', text) #remove the "at"s at the end of charge name, ie "Trust Fundat 0.0020500 per..."
+    dist_text = re.search(distribution_charges_exp, text).group(1)
+    supply_text = re.search(supply_charges_exp, text).group(1)
+
+    def process_charge(p, ct):
+        name = p[0]
+        value = float(p[1])
+        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
+
+    #matches a price (ie a number that end in ".##"), or a capitalized word that is not 'KWH'
+    price_exp = r'\d+\.\d{2}'
+    name_exp = r'[A-Z][A-Za-z ]+'
+    tokenizer_exp = r'(' + price_exp + '(?=[^\d]|' + price_exp + '))|(?:KWH(?: x )?)|(' + name_exp + ')'
+    charges = []
+    #looks at tokens one by one, and matches up names and numbers.
+    #Reasoning is that a pair of corresponding name and number can be in reversed order, but still adjacent to each other.
+    for section, type in [(dist_text, Charge.DISTRIBUTION), (supply_text, Charge.SUPPLY)]:
+        charge_data_pairs = []
+        tokens = re.findall(tokenizer_exp, section)
+        name_tmp=''
+        value_tmp=''
+        for t in tokens:
+            #if token is a number:
+            if t[0]:
+                if name_tmp:
+                    charge_data_pairs.append((name_tmp, t[0]))
+                    name_tmp = ''
+                else:
+                    value_tmp = t[0]
+            #if token is a name:
+            elif t[1]:
+                if value_tmp:
+                    charge_data_pairs.append((t[1], value_tmp))
+                    value_tmp = ''
+                else:
+                    name_tmp = t[1]
+        for cdp in charge_data_pairs:
+            charges.append(process_charge(cdp, type))
+
+    return charges
+
+def pep_new_convert_charges(text):
+    """
+    Given text output from a pepco utility bill PDF that contains supply/distribution/etc charges, parses the individual charges
+    and returns a list of Charge objects.
+    :param text - the text containing both distribution and supply charges.
+    :returns A list of Charge objects representing the charges from the bill
+    """
+
+    charge_name_map = Session().query(Utility).filter_by(name='pepco').one().charge_name_map
+
+    #in pepco bills, supply and distribution charges are separate
+    distribution_charges_exp = r'Distribution Services:(.*?)(Status of your Deferred|Page)'
+    supply_charges_exp = r'Transmission Services\:(.*?)Energy Usage History'
+    dist_text = re.search(distribution_charges_exp, text).group(1)
+    supply_text = re.search(supply_charges_exp, text).group(1)
+
+    #regexes for individual charges
+    exp_name = r'([A-Z][A-Za-z \(\)]+?)' #Letters, spaces, and parens (but starts with capital letter)
+    exp_stuff = r'(?:(?:Includes|at\b|\d).*?)?' #stuff in between the name and value, like the per-unit rate
+    exp_value = r'(\d[\d\.]*)' # The actual number we want
+    exp_lookahead = r'(?=[A-Z]|$)' # The next charge name will begin with a capital letter.
+    charge_exp = re.compile(exp_name + exp_stuff + exp_value + exp_lookahead)
+
+    def process_charge(p, ct):
+        name = p[0]
+        value = float(p[1])
+        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
+
+    charges = []
+    for charge_text, charge_type in [(dist_text, Charge.DISTRIBUTION), (supply_text, Charge.SUPPLY)]:
+        charges.extend([process_charge(c, charge_type) for c in charge_exp.findall(charge_text)])
+
     return charges
 
 class Field(model.Base):
@@ -198,11 +327,17 @@ class Field(model.Base):
     FLOAT = 'float'
     STRING = 'string'
     WG_CHARGES = 'wg charges'
+    WG_CHARGES_WGL = 'wg charges wgl'
+    PEPCO_OLD_CHARGES = 'pepco old charges'
+    PEPCO_NEW_CHARGES = 'pepco new charges'
     TYPES = {
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: float,
         STRING: unicode,
-        WG_CHARGES: convert_wg_charges,
+        WG_CHARGES: convert_wg_charges_std,
+        WG_CHARGES_WGL: convert_wg_charges_wgl,
+        PEPCO_OLD_CHARGES: pep_old_convert_charges,
+        PEPCO_NEW_CHARGES: pep_new_convert_charges,
     }
 
     __tablename__ = 'field'
@@ -217,8 +352,7 @@ class Field(model.Base):
     type = Column(Enum(*TYPES.keys(), name='field_type'))
 
     # string determining how the extracted value gets applied to a UtilBill
-    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'),
-                         unique=True)
+    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
@@ -265,6 +399,7 @@ class Field(model.Base):
                         value_str, self._type_convert_func, e))
             self._value = value
         return self._value
+
 
 
 class Extractor(model.Base):
@@ -363,7 +498,7 @@ class TextExtractor(Extractor):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
-            m = re.match(self.regex, text)
+            m = re.search(self.regex, text)
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
@@ -375,5 +510,6 @@ class TextExtractor(Extractor):
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
         """
-        return utilbill.get_text(bill_file_handler)
-
+        result = utilbill.get_text(bill_file_handler)
+        print result
+        return result
