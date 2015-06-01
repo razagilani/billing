@@ -134,7 +134,47 @@ class Applier(object):
             raise ApplicationError('%s: %s' % (e.__class__, e.message))
 
 
-def convert_wg_charges(text):
+def convert_wg_charges_std(text):
+    """Function to convert a string containing charges from a particular
+    Washington Gas bill format into a list of Charges. There might eventually
+    be many of these.
+    """
+    # TODO: it's bad to do a query in here. also, when there are many of
+    # these functions, this creates duplicate code both for loading the name map
+    # and for using it to convert names into rsi_bindings. it probably should
+    # be an argument.
+    charge_name_map = Session().query(Utility).filter_by(
+    name='washington gas').one().charge_name_map
+
+    groups = '.*DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*)'
+    num = r'[\d.]*'
+    charge_total = r'\$\s*' + num
+    charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
+                    + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
+    charge_name = r'[A-Za-z- -]+'
+    charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
+    d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
+    d_charge_strs = re.findall(charge, d_charges)
+    s_charge_strs = re.findall(charge, s_charges)
+    tax_charge_strs = re.findall(charge, tax_charges)
+
+    def extract_charge(charge_str, charge_type):
+        name = re.match(charge_name, charge_str).group(0).strip()
+        # "*?" means non-greedy *
+        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
+
+        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        return Charge(rsi_binding, name=name, target_total=float(total_str),
+                      type=charge_type)
+
+    charges = []
+    for charge_type, charge_texts in [(Charge.DISTRIBUTION, d_charge_strs),
+                                      (Charge.SUPPLY, s_charge_strs),
+                                      (Charge.DISTRIBUTION, tax_charge_strs)]:
+        charges.extend([extract_charge(t, charge_type) for t in charge_texts])
+    return charges
+
+def convert_wg_charges_wgl(text):
     """Function to convert a string containing charges from a particular
     Washington Gas bill format into a list of Charges. There might eventually
     be many of these.
@@ -278,13 +318,15 @@ class Field(model.Base):
     FLOAT = 'float'
     STRING = 'string'
     WG_CHARGES = 'wg charges'
+    WG_CHARGES_WGL = 'wg charges wgl'
     PEPCO_OLD_CHARGES = 'pepco old charges'
     PEPCO_NEW_CHARGES = 'pepco new charges'
     TYPES = {
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: float,
         STRING: unicode,
-        WG_CHARGES: convert_wg_charges,
+        WG_CHARGES: convert_wg_charges_std,
+        WG_CHARGES_WGL: convert_wg_charges_wgl,
         PEPCO_OLD_CHARGES: pep_old_convert_charges,
         PEPCO_NEW_CHARGES: pep_new_convert_charges,
     }
