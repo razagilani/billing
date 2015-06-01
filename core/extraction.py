@@ -145,7 +145,6 @@ def convert_wg_charges(text):
     # be an argument.
     charge_name_map = Session().query(Utility).filter_by(
         name='washington gas').one().charge_name_map
-
     groups = '.*DISTRIBUTION SERVICE(.*?)TAXES(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*)'
     num = r'[\d.]*'
     charge_total = r'\$\s*' + num
@@ -153,9 +152,7 @@ def convert_wg_charges(text):
                     + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
     charge_name = r'[A-Za-z- -]+'
     charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
-
     d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
-
     d_charge_strs = re.findall(charge, d_charges)
     s_charge_strs = re.findall(charge, s_charges)
     tax_charge_strs = re.findall(charge, tax_charges)
@@ -462,5 +459,6 @@ class TextExtractor(Extractor):
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
         """
-        return utilbill.get_text(bill_file_handler)
-
+        result = utilbill.get_text(bill_file_handler)
+        print result
+        return result
