@@ -1,0 +1,59 @@
+<html>
+<head>
+	<title>Extractor Testing UI</title>
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='extractor-ui/style.css') }}">
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script src="{{ url_for('static', filename='extractor-ui/extractor-ui.js') }}"> </script>
+</head>
+
+<body>
+	<h1> PDF Extractor UI</h1>
+	<h3> Current Extractors in Database:</h3>
+	<form>
+
+	<div id="tablepane">
+		<table id="extractors">
+			<thead>
+				<tr>
+					<td class="check"></td>
+					<td class="id">ID</td>
+					<td>Name</td>
+				</tr>
+			</thead>
+			<tbody>
+				{% for exc in extractors %}
+				<tr>
+					<td class="check"><input type="checkbox" name="extractors" value=" {{ exc.extractor_id }} " /></td>
+					<td class="id"><b>{{ exc.extractor_id }}</b></td>
+					<td class="name">{{ exc.name }}</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<br>
+	<button type="button" onclick="selectall()">Select All</button>
+	<span style="padding-left:10px">
+		Report: 
+		<select>
+			<option value="each">each</option>
+			<option value="best">best</option>
+			<option value="worst">worst</option>
+		</select>
+	</span>
+	</form>
+
+	There are {{ nbills }} total bills.<br> 
+	Filter by utility: 
+	<select>
+		<option value="">-- no filter --</option>
+		{% for u in utilities %}
+		<option value="{{ u.name }}">{{ u.name }}</option>
+		{% endfor %}
+	</select>
+	<br>
+	Subsmaple: <input type="number"><br>
+
+</body>
+
+</html>
