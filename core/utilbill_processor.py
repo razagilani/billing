@@ -2,7 +2,7 @@ import json
 from datetime import datetime,date
 
 from sqlalchemy.orm.exc import NoResultFound
-from core.extraction import Main
+from core.extraction.extraction import Main
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
     Supplier, Utility, RateClass, UtilityAccount

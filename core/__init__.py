@@ -1,5 +1,6 @@
 import os.path as path
 from os.path import dirname, realpath
+from celery import Celery
 from pint import UnitRegistry
 
 import configuration as config_file_schema
@@ -12,7 +13,13 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 
 ROOT_PATH = dirname(dirname(realpath(__file__)))
 
+# import this object after calling 'init_config' to get values from the
+# config file
 config = None
+
+# import this object after calling 'init_celery' to use Celery.
+# (dont confuse this object with the 'celery' module itself.)
+celery = None
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -137,7 +144,22 @@ def init_model(uri=None, schema_revision=None):
 
     log.debug('Initialized sqlalchemy model')
 
+def init_celery():
+    from core import config
+    # since celery is using the database as its back end, no additional
+    # config keys are needed. for a different back end, these would have to
+    # be added to the config file.
+    uri = config.get('db', 'uri')
+    celery_broker_url = 'sqla+' + uri
+    celery_result_backend = 'sqla' + uri
+    celery = Celery(broker=celery_broker_url)
+    # if you're using a Python dictionary for configuration (as is usual with
+    # Flask), you can set celery's "conf" directly from the application's
+    # config dictionary with "celery.conf.update(app.config)".
+    celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
+
 def initialize():
     init_logging()
     init_config()
     init_model()
+    init_celery()

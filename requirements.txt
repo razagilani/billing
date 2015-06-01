@@ -6,6 +6,7 @@ PyYAML==3.10
 SQLAlchemy==0.9.4
 alembic==0.6.5
 argparse==1.2.1
+celery==3.1.18
 certifi==0.0.8
 chardet==1.1
 ecdsa==0.10

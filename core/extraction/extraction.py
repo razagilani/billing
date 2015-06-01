@@ -61,7 +61,6 @@ class Main(object):
             total_count += 1
         return all_count, any_count, total_count
 
-
 class Applier(object):
     """Applies extracted values to attributes of UtilBill. There's no
     instance-specific state so only one instance is needed.

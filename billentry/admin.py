@@ -6,7 +6,8 @@ only application that uses Flask.
 # TODO: this import causes weird problems, in part because
 # import_all_model_modules() imports billentry which causes this file to get
 # imported (unnecessarily)
-from core.extraction import TextExtractor
+#:
+# from core.extraction import TextExtractor
 from flask import session, url_for, redirect, request
 from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
