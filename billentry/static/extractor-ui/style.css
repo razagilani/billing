@@ -1,0 +1,6 @@
+body {margin:50px;}
+thead {
+	font-weight:bold;
+}
+td.check, td.id {width:30px;}
+/*#tablepane {max-height:50%; overflow-y:scroll;}*/
