@@ -2,6 +2,7 @@
 '''
 from datetime import datetime, date, timedelta
 from itertools import chain
+import json
 from operator import attrgetter
 import traceback
 
@@ -10,9 +11,9 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 from sqlalchemy.ext.associationproxy import association_proxy
-from core.model.model import PHYSICAL_UNITS
+from core.model.model import physical_unit_type
 
-from exc import IssuedBillError, RegisterError, ProcessedBillError, NotIssuable, \
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
@@ -32,7 +33,7 @@ class ReeBill(Base):
 
     id = Column(Integer, primary_key=True)
     sequence = Column(Integer, nullable=False)
-    issued = Column(Integer, nullable=False)
+    issued = Column(Boolean, nullable=False)
     version = Column(Integer, nullable=False)
     issue_date = Column(DateTime)
     ree_charge = Column(Float, nullable=False)
@@ -100,6 +101,8 @@ class ReeBill(Base):
     @property
     def utilbill(self):
         # there should only be one, but some early bills had more than one
+        if self.utilbills == []:
+            return None
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
@@ -110,11 +113,11 @@ class ReeBill(Base):
 
     def __init__(self, reebill_customer, sequence, version=0,
                  discount_rate=None, late_charge_rate=None,
-                 billing_address=None, service_address=None, utilbills=[]):
+                 billing_address=None, service_address=None, utilbill=None):
         self.reebill_customer = reebill_customer
         self.sequence = sequence
         self.version = version
-        self.issued = 0
+        self.issued = False
         if discount_rate:
             self.discount_rate = discount_rate
         else:
@@ -151,16 +154,24 @@ class ReeBill(Base):
         # can be fixed by setting 'utilbills' last, but there may be a better
         # solution. see related bug:
         # https://www.pivotaltracker.com/story/show/65502556
-        self.utilbills = utilbills
+        if utilbill is None:
+            self.utilbills = []
+        else:
+            self.utilbills = [utilbill]
 
     def __repr__(self):
-        return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
-            self.get_account(), self.sequence, self.version, 'issued' if
-            self.issued else 'unissued', len(self.utilbills))
+        return '<ReeBill %s-%s-%s, %s>' % (
+            self.reebill_customer_id, self.sequence, self.version, 'issued' if
+            self.issued else 'unissued')
+
+    def get_customer_id(self):
+        return self.reebill_customer.id
 
     def get_account(self):
         return self.reebill_customer.get_account()
 
+    def get_payee(self):
+        return self.reebill_customer.get_payee()
 
     def check_editable(self):
         '''Raise a ProcessedBillError or IssuedBillError to prevent editing a
@@ -169,7 +180,7 @@ class ReeBill(Base):
         if self.issued:
             raise IssuedBillError("Can't modify an issued reebill")
         if self.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+            raise UnEditableBillError("Can't modify a processed reebill")
 
     def get_period_start(self):
         """Return start of the utility bill's period (date).
@@ -207,8 +218,8 @@ class ReeBill(Base):
             # its parent. otherwise it would be necessary to call
             # s.expunge(elf.readings[0]).
             del self.readings[0]
-        for register in utility_bill.registers:
-            self.readings.append(Reading.make_reading_from_register(register))
+        for register in utility_bill._registers:
+            self.readings.append(Reading.create_from_register(register))
 
     def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
@@ -220,18 +231,22 @@ class ReeBill(Base):
         for r in self.readings:
             session.delete(r)
 
-        # this works even when len(self.utilbills) == 0, which is currently
-        # happening in a test but should never actually happen in real life
-        # TODO replace with
-        # [r.register_binding for r in self.utilbill.registers]
         utilbill_register_bindings = list(chain.from_iterable(
-                (r.register_binding for r in u.registers)
+                (r.register_binding for r in u._registers)
                 for u in self.utilbills))
-
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
         session.flush()
+
+    def is_estimated(self):
+        """Return True if this bill has one Reading corresponding to the
+        "total" register, and its measure name is the one to be used for
+        estimated total energy, False otherwise.
+        """
+        return (len(self.readings) == 1
+                and self.readings[0].register_binding == Register.TOTAL
+                and self.readings[0].measure == Reading.ESTIMATED_MEASURE)
 
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
@@ -307,7 +322,7 @@ class ReeBill(Base):
         # corresponding Reading may still be necessary for calculating the
         # charges, so the actual quantity of that register is used.
         context = {r.register_binding: Evaluation(r.quantity)
-                   for r in self.utilbill.registers}
+                   for r in self.utilbill._registers}
         context.update({r.register_binding: Evaluation(r.hypothetical_quantity)
                         for r in self.readings})
 
@@ -409,6 +424,7 @@ class ReeBill(Base):
             'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
+            'estimated': self.is_estimated(),
             'readings': [{c: getattr(r, c) for c in r.column_names()} for r in
                          self.readings],
             'groups': [{c: getattr(r, c) for c in r.column_names()} for r in
@@ -421,8 +437,7 @@ class ReeBill(Base):
             else:
                 the_dict['corrections'] = '#%s not issued' % self.version
         else:
-            the_dict['corrections'] = '-' if self.issued else '(never ' \
-                                                                 'issued)'
+            the_dict['corrections'] = '-' if self.issued else '(never issued)'
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
@@ -437,7 +452,7 @@ class ReeBill(Base):
 
         return the_dict
 
-    def issue(self, issue_date, reebill_processor):
+    def issue(self, issue_date, reebill_processor, corrections=None):
         """Set the values of all fields for an issued bill. Does not actually
         generate a file or send an email.
 
@@ -455,12 +470,20 @@ class ReeBill(Base):
         #  original version rather than None
         assert self.issue_date is None or self.version > 0
         assert self.due_date is None or self.version > 0
+        if corrections is None:
+            corrections = []
+        else:
+            # only a non-correction bill can be issued with corrections
+            assert self.version == 0
 
         # for a non-correction, all earlier bills must be issued first.
         # (ReeBillCustomer is used to avoid doing a direct database query here)
         if self.version == 0 and self is not \
                     self.reebill_customer.get_first_unissued_bill():
             raise NotIssuable("Predecessor must be issued before this one")
+
+        for correction_bill in corrections:
+            correction_bill.issue(issue_date, reebill_processor)
 
         if not self.processed:
             # a ton of attributes of this object get set in this method
@@ -486,6 +509,27 @@ class ReeBill(Base):
         self.due_date = (issue_date + timedelta(days=30)).date()
         self.issued = True
 
+    def make_correction(self):
+        """Return a new ReeBill that is a correction of this one (with
+        version number equal to the current version number + 1). This bill
+        should be issued and should be the highest version for its sequence.
+        """
+        if not self.issued:
+            raise ValueError("Can't correct an unissued bill")
+        new_reebill = ReeBill(self.reebill_customer, self.sequence,
+            self.version + 1, discount_rate=self.discount_rate,
+            late_charge_rate=self.late_charge_rate, utilbill=self.utilbill)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = self.billing_address.clone()
+        new_reebill.service_address = self.service_address.clone()
+        new_reebill.discount_rate = self.discount_rate
+        new_reebill.late_charge_rate = self.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.readings = [r.clone() for r in self.readings]
+        return new_reebill
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -499,7 +543,7 @@ class UtilbillReebill(Base):
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
-    def __init__(self, utilbill, document_id=None):
+    def __init__(self, utilbill):
         # UtilbillReebill has only 'utilbill' in its __init__ because the
         # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
         # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
@@ -508,13 +552,6 @@ class UtilbillReebill(Base):
         assert isinstance(utilbill, UtilBill)
 
         self.utilbill = utilbill
-        self.document_id = document_id
-
-    def __repr__(self):
-        return (('UtilbillReebill(utilbill_id=%s, reebill_id=%s, '
-                 'document_id=...%s, uprs_document_id=...%s, ') % (
-                    self.utilbill_id, self.reebill_id, self.document_id[-4:],
-                    self.uprs_document_id[-4:]))
 
 # intermediate table for many-to-many relationship. should not be used
 # outside this file.
@@ -577,7 +614,8 @@ class ReeBillCustomer(Base):
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String(1000), nullable=False)
-    service = Column(Enum(*SERVICE_TYPES), nullable=False)
+    service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
+    payee = Column(String(100), nullable=True)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"
@@ -590,7 +628,7 @@ class ReeBillCustomer(Base):
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
-                utility_account=None):
+                utility_account=None, payee=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -612,6 +650,7 @@ class ReeBillCustomer(Base):
         self.bill_email_recipient = bill_email_recipient
         self.service = service
         self.utility_account = utility_account
+        self.payee = payee
 
     def get_discount_rate(self):
         return self.discountrate
@@ -621,6 +660,12 @@ class ReeBillCustomer(Base):
 
     def set_discountrate(self, value):
         self.discountrate = value
+
+    def get_payee(self):
+        return self.payee
+
+    def set_payee(self, value):
+        self.payee = value
 
     def get_late_charge_rate(self):
         return self.latechargerate
@@ -636,6 +681,13 @@ class ReeBillCustomer(Base):
         return '%(id)s %(nextility_num)s %(name)s' % dict(
             id=self.id, nextility_num=self.get_account(), name=self.name)
 
+    def get_last_bill(self):
+        try:
+            result = max(self.reebills, key=lambda r: (r.sequence, r.version))
+        except ValueError:
+            return None
+        return result
+
     def get_first_unissued_bill(self):
         """Return the reebill with lowest sequence for this customer whose
         version is 0 (i.e. is not a correction), or None if there are no bills.
@@ -649,6 +701,12 @@ class ReeBillCustomer(Base):
             return None
         return result
 
+    def get_unissued_corrections(self):
+        """:return: list of ReeBills belonging to this customer that are not
+        issued whose version > 0.
+        """
+        return [r for r in self.reebills if r.version > 0 and not r.issued]
+
     def get_groups(self):
         """Return a list of CustomerGroups that this ReeBillCustomer belongs
         to (normally only one).
@@ -657,14 +715,9 @@ class ReeBillCustomer(Base):
 
 
 class ReeBillCharge(Base):
-    '''Table representing "hypothetical" versions of charges in reebills (so
-    named because these may not have the same schema as utility bill charges).
-    Note that, in the past, a set of "hypothetical charges" was associated
-    with each utility bill subdocument of a reebill Mongo document, of which
-    there was always 1 in practice. Now these charges are associated directly
-    with a reebill, so there would be no way to distinguish between charges
-    from different utility bills, if there mere multiple utility bills.
-    '''
+    """Table representing "hypothetical" versions of utility bill charges in
+    reebills.
+    """
     __tablename__ = 'reebill_charge'
 
     id = Column(Integer, primary_key=True)
@@ -679,7 +732,7 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
+    unit = Column(Charge.charge_unit_type, nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -703,11 +756,16 @@ class Reading(Base):
     '''
     __tablename__ = 'reading'
 
+    ENERGY_SOLD_MEASURE = 'Energy Sold'
+    ESTIMATED_MEASURE = 'Estimated Energy Sold'
+
     id = Column(Integer, primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
     # identifies which utility bill register this corresponds to
-    register_binding = Column(String(1000), nullable=False)
+    # TODO: may have to be changed to same type as register.register_binding
+    # for comparison to work
+    register_binding = Column(Register.register_binding_type, nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
     # quantity
@@ -721,19 +779,26 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
 
-    @staticmethod
-    def make_reading_from_register(register):
-        '''Return a new 'Reading' instance based on the given utility bill
+    @classmethod
+    def create_from_register(cls, register, estimate=False):
+        """Return a new 'Reading' instance based on the given utility bill
         register  with default values for its measure name and aggregation
         function.
         :param register: Register on which this reading is based.
-        '''
-        return Reading(register.register_binding, "Energy Sold",
-                              register.quantity, 0, "SUM",
-                              register.unit)
+        :param estimate: use a different measure to get an estimated
+        renewable energy usage number instead of the actual value.
+        """
+        if estimate:
+            measure_name = cls.ESTIMATED_MEASURE
+        else:
+            measure_name = cls.ENERGY_SOLD_MEASURE
+        agg_func_name = 'SUM'
+        return Reading(register.register_binding, measure_name,
+                       register.quantity, 0, agg_func_name, register.unit)
 
+    # this should probably not be called directly; use create_from_register
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
@@ -776,9 +841,8 @@ class Reading(Base):
             return sum
         if self.aggregate_function == 'MAX':
             return max
-        else:
-            raise ValueError('Unknown aggregation function "%s"' %
-                             self.aggregate_function)
+        raise ValueError('Unknown aggregation function "%s"' %
+                         self.aggregate_function)
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -818,7 +882,6 @@ class Payment(Base):
         editable. Payments should be editable as long as it is not applied to
         a reebill
         """
-        today = datetime.utcnow()
         if self.reebill_id is None:
             return True
         return False
@@ -834,4 +897,35 @@ class Payment(Base):
         return the_dict
 
 
+class User(Base):
+    """User account (not to be confused with customer account).
+    """
+    __tablename__ = 'reebill_user'
+
+    reebill_user_id = Column(Integer, primary_key=True)
+    identifier = Column(String(1000), nullable=False)
+    username = Column(String(1000), nullable=False, default='')
+    password_hash = Column(String(1000), nullable=False)
+    salt = Column(String(1000), nullable=False)
+    # JSON, seems not used very often
+    _preferences = Column('preferences', String(1000), default='')
+    session_token = Column(String(1000))
+
+    def __repr__(self):
+        return '<User %s %s %s>' % (self.id, self.identifier, self.username)
+
+    def get_preferences(self):
+        pref_str = self._preferences
+        if pref_str is None:
+            return {}
+        try:
+            return json.loads(pref_str)
+        except ValueError:
+            return {}
+    preferences = property(get_preferences)
+
+    def set_preference(self, key, value):
+        pref_dict = self.get_preferences()
+        pref_dict[key] = value
+        self._preferences = json.dumps(pref_dict)
 

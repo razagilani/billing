@@ -1,6 +1,7 @@
 """All tests for the Bill Entry application.
 """
 from datetime import datetime, date
+from time import sleep
 import unittest
 from json import loads
 import json
@@ -11,17 +12,20 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from test import init_test_config
+from exc import UnEditableBillError
+from test import init_test_config, create_tables, clear_db
+from util import FixMQ
+from util.dictutils import deep_map
+
 init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid
-from mq import IncomingMessage
 
 import billentry
 from billentry import common
 from billentry.billentry_exchange import create_amqp_conn_params, \
     ConsumeUtilbillGuidsHandler
-from billentry.billentry_model import BillEntryUser, BEUtilBill, Role
+from billentry.billentry_model import BillEntryUser, BEUtilBill, Role, BEUserSession
 from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
@@ -29,10 +33,21 @@ from core import init_model, altitude
 from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
     Charge, Register, RateClass
 from brokerage.brokerage_model import BrokerageAccount
-from mq.tests import create_mock_channel_method_props, \
+with FixMQ():
+    from mq import IncomingMessage
+    from mq.tests import create_mock_channel_method_props, \
     create_channel_message_body
-from test.setup_teardown import clear_db
+from test import clear_db, create_tables
 
+
+def unicodify(x):
+    return unicode(x) if isinstance(x, basestring) else x
+
+
+def setUpModule():
+    init_test_config()
+    create_tables()
+    init_model()
 
 class TestBEUtilBill(unittest.TestCase):
     """Unit test for BEUtilBill.
@@ -99,22 +114,22 @@ class BillEntryIntegrationTest(object):
         either string or dict/list form.
         '''
         if isinstance(expected, basestring):
-            expected = loads(expected)
+            expected = deep_map(unicodify, loads(expected))
         if isinstance(actual, basestring):
-            actual = loads(actual)
+            actual = deep_map(unicodify, loads(actual))
         self.assertEqual(expected, actual)
 
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
         billentry.app.config['TESTING'] = True
-        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login "login_required" decorator is used, but we
+        # TESTING is supposed to imply LOGIN_DISABLED if the Flask-Login
+        # "login_required" decorator is used, but we
         # are using the before_request callback instead
         billentry.app.config['LOGIN_DISABLED'] = True
         # TODO: this should prevent the method decorated with
         # "app.errorhandler" from running, but doesn't
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['PROPAGATE_EXCEPTIONS'] = True
         cls.app = billentry.app.test_client()
 
     def setUp(self):
@@ -124,28 +139,33 @@ class BillEntryIntegrationTest(object):
         # causes a failure when the session is committed below.
         init_model()
 
-        self.project_mgr_role = Role('Project Manager', 'Role for accessing reports view of billentry app' )
+        self.project_mgr_role = Role(
+            'Project Manager',
+            'Role for accessing reports view of billentry app')
         self.admin_role = Role('admin', 'admin role for bill entry app')
-        self.utility = Utility('Example Utility', Address())
+        self.utility = Utility(name='Example Utility')
         self.utility.id = 1
-        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None, None,
-                                  Address(), Address(), '1')
+        self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None,
+                                  None, Address(), Address(), account_number='1')
         self.ua1.id = 1
-        self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
-        self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
+        self.some_rate_class = RateClass('Some Rate Class', self.utility, 'gas')
+        self.some_rate_class.id= 1
+        self.ub1 = BEUtilBill(self.ua1, self.utility, self.some_rate_class,
                               service_address=Address(street='1 Example St.'))
-        self.ub1.registers[0].quantity = 150
-        self.ub1.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub1._registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
-        # UB2 does not have a rateclass so we must manually create a register
-        register2 = Register(self.ub2, "ABCDEF description",
-            "ABCDEF", 'therms', False, "total", None, "MNOPQR",
-            quantity=250.0, register_binding='REG_TOTAL')
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
-                                  None, Address(), Address(), '2')
+                                  None, Address(), Address(), account_number='2')
+        self.ua2.id = 2
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
+        self.rate_class2.id = 2
+        self.ub2.set_rate_class(self.rate_class2)
+        self.ub2._registers[0].unit = 'therms'
+        self.ub2._registers[0].quantity = 250.0
+        self.ub2._registers[0].meter_identifier = 'MNOPQR'
         self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
@@ -153,11 +173,9 @@ class BillEntryIntegrationTest(object):
         self.ub3.id = 3
         s = Session()
         s.add_all([
-            self.utility, self.ua1, self.rate_class, self.ub1,
+            self.utility, self.ua1, self.some_rate_class, self.ub1,
             self.ub2, self.project_mgr_role, self.admin_role,
-            register2
         ])
-        s.commit()
         # TODO: add more database objects used in multiple subclass setUps
 
     def tearDown(self):
@@ -172,14 +190,15 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         super(TestBillEntryMain, self).setUp()
 
         s = Session()
-        utility1 = Utility('Empty Utility', Address())
-        utility2 = Utility('Some Other Utility',  Address())
+        utility1 = Utility(name='Empty Utility')
+        utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
-                             Address(), Address(), '2')
+                             Address(), Address(), account_number='2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
-                             Address(), Address(), '3')
-        rate_class1 = RateClass('Other Rate Class', self.utility, 'electric')
-        s.add_all([self.rate_class, rate_class1])
+                             Address(), Address(), account_number='3')
+        self.other_rate_class = RateClass('Other Rate Class', self.utility, 'electric')
+        self.other_rate_class.id = 3
+        s.add_all([self.some_rate_class, self.other_rate_class])
         ua2.id, ua3.id = 2, 3
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
@@ -188,27 +207,28 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
-        self.ub1.registers[0].quantity = 150
-        self.ub2.registers[0].quantity = 150
-        self.ub2.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub2._registers[0].quantity = 150
+        self.ub2._registers[0].meter_identifier = "GHIJKL"
 
-        c1 = Charge(self.ub1, 'CONSTANT', 0.4, '100', unit='dollars',
+        c1 = Charge('CONSTANT', rate=0.4, formula='100', unit='dollars',
                     type='distribution', target_total=1)
-        c2 = Charge(self.ub1, 'LINEAR', 0.1, 'REG_TOTAL.quantity * 3',
+        c2 = Charge('LINEAR', rate=0.1, formula='REG_TOTAL.quantity * 3',
                     unit='therms', type='supply', target_total=2)
-        c3 = Charge(self.ub2, 'LINEAR_PLUS_CONSTANT', 0.1,
-                    'REG_TOTAL.quantity * 2 + 10', unit='therms',
+        c3 = Charge('LINEAR_PLUS_CONSTANT', rate=0.1,
+                    formula='REG_TOTAL.quantity * 2 + 10', unit='therms',
                     type='supply')
-        c4 = Charge(self.ub2, 'BLOCK_1', 0.3, 'min(100, REG_TOTAL.quantity)',
+        c4 = Charge('BLOCK_1', rate=0.3, formula='min(100, REG_TOTAL.quantity)',
                     unit='therms', type='distribution')
-        c5 = Charge(self.ub2, 'BLOCK_2', 0.4,
-                    'min(200, max(0, REG_TOTAL.quantity - 100))',
+        c5 = Charge('BLOCK_2',rate= 0.4,
+                    formula='min(200, max(0, REG_TOTAL.quantity - 100))',
                     unit='dollars', type='supply')
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
-        s.add_all([c1, c2, c3, c4, c5, ub3])
+        self.ub1.charges = [c1, c2]
+        self.ub2.charges = [c3, c4, c5]
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
-        s.commit()
 
     def test_accounts_get(self):
         rv = self.app.get(self.URL_PREFIX + 'accounts')
@@ -253,14 +273,19 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_total': 0.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'supply_choice_id': None,
@@ -279,15 +304,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -350,15 +380,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': '2000-01-01',
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_id': 1,
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -377,17 +412,21 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
 
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
-            id=2,
-            next_meter_read_date=date(2000, 2, 5).isoformat()
-            ))
+        # catch ProcessedBillError because a 500 response is returned
+        # when the user tries to edit a bill that is not editable=
+        with self.assertRaises(UnEditableBillError):
+            rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+                id=2,
+                next_meter_read_date=date(2000, 2, 5).isoformat()
+                ))
+
         # this request is being made using a different content-type because
         # with the default content-type of form-urlencoded bool False
         # was interpreted as a string and it was evaluating to True on the
         # server. Also in out app, the content-type is application/json so
         # we should probably update all our test code to use application/json
-        self.assertEqual(500, rv.status_code)
-        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', content_type = 'application/json',
+        rv = self.app.put(self.URL_PREFIX + 'utilitybills/1',
+                          content_type='application/json',
             data=json.dumps(dict(
                 id=2,
                 entered=False
@@ -440,15 +479,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Unknown',
-              'service': 'Unknown',
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
+              'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_total': 0.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_id': 1,
+              'utility_id': 1,
               'utility_account_number': '1',
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -466,15 +510,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -485,12 +534,14 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
-        # TODO reuse 'expected' in later assertions instead of repeating the
-        # giant dictionary over and over
+        utility = Utility(name="Empty Utility1")
+        utility.id = 3
+        Session().add(utility)
+        Session().commit()
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
-                utility = "Empty Utility"
+                utility = utility.id
         ))
         self.assertJson({
             "results": 1,
@@ -504,27 +555,35 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
                 'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_choice_id': None,
                 'supply_total': 2.0,
                 'target_total': 0.0,
                 'total_energy': 150.0,
-                'utility': 'Empty Utility',
+                'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_number': '1',
                 'utility_account_id': 1,
-                'wiki_url': 'http://example.com/utility:Empty Utility',
+                'wiki_url': 'http://example.com/utility:Example Utility',
                 'flagged': False,
                 'meter_identifier': 'GHIJKL',
                 'tou': False
             }}, rv.data
         )
-
+        utility = Utility(name="Some Other Utility1")
+        utility.id = 4
+        Session().add(utility)
+        Session().commit()
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 10,
-                utility = "Some Other Utility"
+                utility = utility.id
         ))
 
         self.assertJson(
@@ -539,18 +598,23 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
+                  'rate_class': self.some_rate_class.name,
+                  'rate_class_id': self.some_rate_class.id,
                   'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
+                  'supplier_id': None,
+                  'supply_group': 'Unknown',
+                  'supply_group_id': None,
                   'supply_total': 2.0,
                   'target_total': 0.0,
                   'total_energy': 150.0,
-                  'utility': 'Some Other Utility',
+                  'utility': 'Example Utility',
+                  'utility_id': 1,
                   'utility_account_number': '1',
                   'utility_account_id': 1,
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': False,
                   'flagged': False,
                   'meter_identifier': 'GHIJKL',
@@ -566,6 +630,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
     def setUp(self):
         super(TestBillEntryReport, self).setUp()
         s = Session()
+        s.flush()
         self.user1 = BillEntryUser(email='1@example.com', password='password')
         self.user1.id = 1
         self.user2 = BillEntryUser(email='2@example.com', password='password')
@@ -575,14 +640,14 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.add_all([self.ub1, self.ub2, self.ub3, self.user1, self.user2])
         self.user1.roles = [self.project_mgr_role]
         self.user3.roles = [self.admin_role]
-        s.commit()
 
         self.response_all_counts_0 = {"results": 2, "rows": [
             {"id": 1, "email": '1@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0},
             {"id": 2, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]}
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]}
         self.response_no_flagged_bills = {"results": 0, "rows": []}
+        s.flush()
 
     def test_report_count_for_user(self):
 
@@ -617,9 +682,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 0,
-             "gas_count": 0, "electric_count": 0}]},
+             "gas_count": 0, "electric_count": 0, "elapsed_time": 0}]},
                         rv.data)
 
         self.ub3.enter(self.user2, datetime(2000,1,10))
@@ -630,9 +695,9 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                                         datetime(2000,1,21).isoformat()))
         self.assertJson({"results": 2, "rows": [
             {"id": self.user1.id, "email": '1@example.com', "total_count": 2,
-             "gas_count": 1, "electric_count": 0},
+             "gas_count": 1, "electric_count": 1, "elapsed_time": 0},
             {"id": self.user2.id, 'email': '2@example.com', "total_count": 1,
-             "gas_count": 0, "electric_count": 1}]},
+             "gas_count": 0, "electric_count": 1, "elapsed_time": 0}]},
                         rv.data)
 
 
@@ -740,14 +805,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Unknown',
-                'service': 'Unknown',
+                'rate_class': self.rate_class2.name,
+                'rate_class_id': self.rate_class2.id,
+                'service': 'Electric',
                 'service_address': '2 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 250,
+                'total_energy': 250.0,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -765,14 +835,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
                 'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
-                'total_energy': 150,
+                'total_energy': 150.0,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -797,14 +872,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
                 'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
                 'total_energy': 150,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -841,14 +921,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
+                  'rate_class': self.some_rate_class.name,
+                  'rate_class_id': self.some_rate_class.id,
                   'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
+                  'supplier_id': None,
+                  'supply_group': 'Unknown',
+                  'supply_group_id': None,
                   'supply_total': 0,
                   'target_total': 0,
                   'total_energy': 150.0,
                   'utility': 'Example Utility',
+                  'utility_id': 1,
                   'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
@@ -872,21 +957,21 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 
     def test_replace_utilbill_with_beutilbill(self):
         s = Session()
-        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        u = UtilBill(self.ua1, self.utility, self.some_rate_class)
+        u.id = 3
         s.add(u)
         s.flush() # set u.id
 
         self.assertEqual(1, s.query(UtilBill).filter_by(id=u.id).count())
-        self.assertEqual(0,
-                         s.query(BEUtilBill).filter_by(id=u.id).count())
+        self.assertEqual(0, s.query(BEUtilBill).filter_by(id=u.id).count())
 
         # replace_utilbill_with_beutilbill does not have to destroy
         # utilbill.id, but it may
         original_id = u.id
 
-        # load charges and registers while 'utilbill' is still valid, so they
+        # load charges and _registers while 'utilbill' is still valid, so they
         # can be compared below
-        u.charges, u.registers
+        u.charges, u._registers
 
         new_beutilbill = replace_utilbill_with_beutilbill(u)
         self.assertEqual(original_id, new_beutilbill.id)
@@ -913,8 +998,8 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(u.charges, new_beutilbill.charges)
         self.assertEqual([c.id for c in u.charges],
                          [c.id for c in new_beutilbill.charges])
-        self.assertEqual([r.id for r in u.registers],
-                         [r.id for r in new_beutilbill.registers])
+        self.assertEqual([r.id for r in u._registers],
+                         [r.id for r in new_beutilbill._registers])
 
         # also the child objects should really exist in the database
         self.assertEqual(1, s.query(Address).filter_by(
@@ -925,7 +1010,8 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 class TestAccountHasBillsForDataEntry(unittest.TestCase):
 
     def test_account_has_bills_for_data_entry(self):
-        utility = Utility('Empty Utility', Address())
+        utility = Utility(name='Empty Utility')
+
         utility_account = UtilityAccount('Account 2', '22222', utility, None,
                                          None, Address(), Address(), '2')
 
@@ -1005,13 +1091,12 @@ class TestUtilBillGUIDAMQP(unittest.TestCase):
         self.billentry_common_module.replace_utilbill_with_beutilbill\
                 .assert_called_once_with(self.utilbill)
 
-class TestBillEnrtyAuthentication(unittest.TestCase):
-    URL_PREFIX = 'http://localhost'
+
+class TestBillEntryUserSessions(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         init_test_config()
-        init_model()
         billentry.app.config['LOGIN_DISABLED'] = False
         billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
         billentry.app.config['TESTING'] = True
@@ -1026,7 +1111,76 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         s = Session()
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
-        s.commit()
+        s.flush()
+
+    def tearDown(self):
+        clear_db()
+
+    def test_session_duration(self):
+        current_timestamp = datetime.utcnow()
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        # a BEUserSession object must exist for this user after a
+        # successfull login
+        user = Session().query(BillEntryUser).filter_by(email='user1@test.com').first()
+        be_user_session = Session().query(BEUserSession).filter_by(beuser=user).all()
+        self.assertEqual(len(be_user_session), 1)
+
+        # both session_start and last_request are updated at user login so
+        # the difference between their timestamps and current_timestamp
+        # must be greater than 0
+        self.assertNotEquals(0, be_user_session[0].session_start - current_timestamp)
+        self.assertNotEquals(0, be_user_session[0].last_request - current_timestamp)
+
+        last_request_timestamp = be_user_session[0].last_request
+        # make another request to update the last_request field as the
+        # timestamp for last_request is updated on every request
+        self.app.get('/')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+
+        last_request_timestamp =  be_user_session[0].last_request
+        # logout closes the current session
+        self.app.get('/logout')
+        self.assertNotEquals(0, be_user_session[0].last_request - last_request_timestamp)
+        self.assertAlmostEqual((be_user_session[0].last_request -
+                          be_user_session[0].session_start).
+                         total_seconds(), user.get_beuser_billentry_duration
+                        (current_timestamp, datetime.utcnow()), places=0)
+
+        #start a new session by logging in
+        self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+        current_timestamp = datetime.utcnow()
+        user_sessions = Session().query(BEUserSession).filter_by(beuser=user).all()
+        # count of sessione should be two now that another login request has been made
+        self.assertEqual(2, len(user_sessions))
+        # the session duration for current session should be 0 as both
+        # session_start and last_request have the same values
+        self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
+
+
+class TestBillEnrtyAuthentication(unittest.TestCase):
+    URL_PREFIX = 'http://localhost'
+
+    @classmethod
+    def setUpClass(cls):
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+        from core import config
+        cls.authorize_url = config.get('billentry', 'authorize_url')
+
+    def setUp(self):
+        init_test_config()
+        clear_db()
+        s = Session()
+        user = BillEntryUser(email='user1@test.com', password='password')
+        s.add(user)
 
     def tearDown(self):
         clear_db()

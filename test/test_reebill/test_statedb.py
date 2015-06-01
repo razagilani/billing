@@ -5,35 +5,39 @@ from sqlalchemy.orm.exc import NoResultFound
 from reebill.reebill_model import ReeBillCustomer, ReeBill
 from core import init_config, init_model
 from core.model import Session, Address, Utility, Supplier, RateClass, \
-    UtilityAccount
+    UtilityAccount, UtilBill
 from reebill.reebill_model import ReeBill, ReeBillCustomer
 from reebill.payment_dao import PaymentDAO
 from reebill.reebill_dao import ReeBillDAO
-from test.setup_teardown import clear_db
+from test import init_test_config, create_tables, clear_db
 from test.testing_utils import TestCase
 
+def setUpModule():
+    init_test_config()
+    create_tables()
 
 class StateDBTest(TestCase):
 
     def setUp(self):
-        # clear out database
-        init_config('test/tstsettings.cfg')
-        init_model()
         clear_db()
+
         blank_address = Address()
-        test_utility = Utility(name='FB Test Utility Name',
+        self.utility = Utility(name='FB Test Utility Name',
                                address=blank_address)
         test_supplier = Supplier(name='FB Test Suplier', address=blank_address)
         self.utility_account = UtilityAccount('someaccount', 99999,
-                            test_utility, test_supplier,
+                            self.utility, test_supplier,
                             RateClass(name='FB Test Rate Class',
-                                      utility=test_utility, service='gas'),
+                                      utility=self.utility, service='gas'),
                             blank_address, blank_address)
         self.reebill_customer = ReeBillCustomer(name='Test Customer',
                                     discount_rate=.12, late_charge_rate=.34,
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
-                                    utility_account=self.utility_account)
+                                    utility_account=self.utility_account,
+                                    payee='payee')
+        self.reebill_customer2 = self.reebill_customer.clone()
+
         self.session = Session()
         self.session.add(self.utility_account)
         self.session.add(self.reebill_customer)
@@ -44,147 +48,41 @@ class StateDBTest(TestCase):
     def tearDown(self):
         clear_db()
 
-    def test_versions(self):
-        '''Tests max_version(), increment_version(), and
-        the behavior of is_issued() with multiple versions.'''
-        def max_issued_version(account, sequence):
-            '''Returns the greatest version of the given reebill that has been
-            issued. (This should differ by at most 1 from the maximum version
-            overall, since a new version can't be created if the last one hasn't
-            been issued.) If no version has ever been issued, returns None.'''
-            # weird filtering on other table without a join
-            session = Session()
-            reebill_customer = Session.query(ReeBillCustomer).join(
-                UtilityAccount).filter(UtilityAccount.account == account).one()
-            from sqlalchemy import func
-            result = session.query(func.max(ReeBill.version)) \
-                .filter(ReeBill.reebill_customer == reebill_customer) \
-                .filter(ReeBill.issued == 1).one()[0]
-            # SQLAlchemy returns None if no reebills with that customer are issued
-            if result is None:
-                return None
-            # version number is a long, so convert to int
-            return int(result)
+    def test_get_all_reebills(self):
+        # two different customers, one bill has multiple versions.
+        customer2 = ReeBillCustomer()
+        customer2.id = self.reebill_customer.id + 1
+        customer3 = ReeBillCustomer()
+        customer3.id = self.reebill_customer.id + 2
+        one_1 = ReeBill(self.reebill_customer, 1)
+        one_2_0 = ReeBill(self.reebill_customer, 2)
+        one_2_1 = ReeBill(self.reebill_customer, 2, version=1)
+        two_1 = ReeBill(customer2, 1)
 
-        s = Session()
-        acc, seq = '99999', 1
-        # initially max_version is 0, max_issued_version is None, and issued
-        # is false
-        b = ReeBill(self.reebill_customer, seq)
-        s.add(b)
-        self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, max_issued_version(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq,
-                version=0))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=1)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
+        # mixed-up order
+        Session().add_all([two_1, one_2_1, one_1, one_2_0])
 
-        # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility(name='FB Test Utility', address=Address())
-        fb_test_supplier = Supplier(name='FB Test Supplier', address=Address())
-        rate_class = s.query(RateClass).one()
-        utility_account1 = UtilityAccount('some_account', '11111',
-                fb_test_utility, fb_test_supplier, rate_class,
-                Address(), Address())
-        utility_account2 = UtilityAccount('another_account', '22222',
-                fb_test_utility, fb_test_supplier, rate_class,
-                Address(), Address())
-        self.session.add(utility_account1)
-        self.session.add(ReeBillCustomer(name='someone', discount_rate=0.5,
-                            late_charge_rate=0.1, service='thermal',
-                            bill_email_recipient='customer1@example.com',
-                            utility_account=utility_account1))
-        self.session.add(ReeBillCustomer(name='someone', discount_rate=0.5,
-                            late_charge_rate=0.1, service='thermal',
-                            bill_email_recipient='customer2@example.com',
-                            utility_account=utility_account2))
-        s.add(ReeBill(self.state_db.get_reebill_customer('11111'), 1))
-        s.add(ReeBill(self.state_db.get_reebill_customer('11111'), 2))
-        s.add(ReeBill(self.state_db.get_reebill_customer('22222'), 1))
-        self.state_db.issue('11111', 1)
-        self.state_db.issue('22222', 1)
-        self.state_db.increment_version('11111', 1)
-        self.state_db.increment_version('22222', 1)
-        self.state_db.issue('22222', 1)
-        self.state_db.increment_version('22222', 1)
-        self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, max_issued_version(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq, version=0))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=1)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
+        # result should be ordered by customer, sequence and not include
+        # 'one_2_0'
+        actual = self.state_db.get_all_reebills()
+        expected = [one_1, one_2_1, two_1]
+        self.assertEqual(len(expected), len(actual))
+        for a, b in zip(expected, actual):
+            self.assertIs(a, b)
 
-        # incrementing version to 1 should fail when the bill is not issued
-        self.assertRaises(Exception, self.state_db.increment_version,
-                acc, seq)
-        self.assertEqual(0, self.state_db.max_version(acc, seq))
-        self.assertEqual(None, max_issued_version(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq,
-                version=0))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=1)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
+    def test_get_all_reebills_with_date(self):
+        utilbill1 = UtilBill(self.utility_account, self.utility, None,
+                             period_start=date(2000, 1, 1),
+                             period_end=date(2000, 2, 1))
+        utilbill2 = UtilBill(self.utility_account, self.utility, None,
+                             period_start=date(2000, 2, 1),
+                             period_end=date(2000, 3, 1))
+        reebill1 = ReeBill(self.reebill_customer, 1, utilbill=utilbill1)
+        reebill2 = ReeBill(self.reebill_customer, 2, utilbill=utilbill2)
+        Session().add_all([utilbill1, utilbill2, reebill1, reebill2])
 
-        # issue & increment version to 1
-        self.state_db.issue(acc, seq)
-        self.assertEqual(True, self.state_db.is_issued(acc, seq)) # default version for is_issued is highest, i.e. 1
-        self.assertEqual(True, self.state_db.is_issued(acc, seq, version=0))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=1)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
-        self.state_db.increment_version(acc, seq)
-        self.assertEqual(1, self.state_db.max_version(acc, seq))
-        self.assertEqual(0, max_issued_version(acc, seq))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq, version=0))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq,
-                version=1))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
-
-        # issue version 1 & create version 2
-        self.state_db.issue(acc, seq)
-        self.assertEqual(1, max_issued_version(acc, seq))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq,
-                version=0))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq, version=1))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=2)
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
-        self.state_db.increment_version(acc, seq)
-        self.assertEqual(False, self.state_db.is_issued(acc, seq))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq, version=0))
-        self.assertEqual(True, self.state_db.is_issued(acc, seq, version=1))
-        self.assertEqual(False, self.state_db.is_issued(acc, seq,
-                version=2))
-        self.assertRaises(NoResultFound, self.state_db.is_issued,
-                acc, seq, version=10)
-        self.assertEqual(2, self.state_db.max_version(acc, seq))
-        self.assertEqual(1, max_issued_version(acc, seq))
-
-        # issue version 2
-        self.state_db.issue(acc, seq)
-        self.assertEqual(2, max_issued_version(acc, seq))
+        actual = self.state_db.get_all_reebills(start_date=date(2000, 2, 1))
+        self.assertEqual(actual, [reebill2])
 
     def test_get_all_reebills_for_account(self):
         session = Session()
@@ -257,3 +155,22 @@ class StateDBTest(TestCase):
         self.assertEqual([q], self.payment_dao.find_payment(acc,
                 datetime(2012,1,1), datetime(2012,4,1)))
 
+    def test_get_issuable_reebills(self):
+        session = Session()
+
+        rb1 = ReeBill(self.reebill_customer, 1)
+        rb1.issued = True
+        rb1.processed = True
+        rb1_1 = ReeBill(self.reebill_customer, 1, version=1)
+        rb1_1.processed = True
+        rb2 = ReeBill(self.reebill_customer, 2)
+        rb2.processed = True
+        rb3 = ReeBill(self.reebill_customer2, 1)
+        rb3.processed = True
+
+        session.add_all([rb1, rb1_1, rb2, rb3])
+
+        self.assertEqual(
+            self.state_db.get_issuable_reebills().all(),
+            [rb2, rb3]
+        )

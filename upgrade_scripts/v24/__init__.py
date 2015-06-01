@@ -96,8 +96,8 @@ def add_reg_total(session):
     for u in session.query(UtilBill).join(UtilityAccount).join(BrokerageAccount).all():
         if 'REG_TOTAL' in (r.register_binding for r in u.registers):
             continue
-        reg_total = Register(u, '', '', 'kWh', False, '', None, '',
-                             register_binding='REG_TOTAL')
+        reg_total = Register(REG_TOTAL, 'kWh'),
+        reg_total.utilbill = u
         # TODO will have to be changed to u.get_service()
         # when branch to move service column is merged in
         if u.rate_class is None or u.service == 'electric':

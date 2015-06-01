@@ -9,7 +9,7 @@ import mock
 from core import init_config, init_model
 from core.model import UtilBill, Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
-from reebill.excel_export import Exporter
+from reebill.reports.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
@@ -291,11 +291,11 @@ class ExporterSheetTest(unittest.TestCase):
         register1.reg_type = 'total'
         register1.register_binding = Register.TOTAL
         register1.active_periods = None
-        u1.registers = [register1]
+        u1._registers = [register1]
         u2 = deepcopy(u1)
         u2.period_start = date(2011,12,15)
         u2.period_end = date(2012,01,14)
-        u2.registers = [deepcopy(register1)]
+        u2._registers = [deepcopy(register1)]
 
         dataset = self.exp.get_energy_usage_sheet([u1, u2])
         correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
@@ -369,7 +369,9 @@ class ExporterDataBookTest(unittest.TestCase):
 
         # export_energy_usage
         self.exp.export_energy_usage(string_io)
-        self.exp.export_energy_usage(string_io, '20001')
+        the_account = Session().query(UtilityAccount).filter_by(
+            account='20001').one()
+        self.exp.export_energy_usage(string_io, the_account)
 
         # export_reebill_details
         self.exp.export_reebill_details(string_io)
