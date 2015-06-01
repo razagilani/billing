@@ -932,6 +932,15 @@ class UtilBill(Base):
             self.set_rate_class(None)
         self.utility = utility
 
+    def set_supplier(self, supplier):
+        """Set the supplier, and set the supply group to None if the supplier is
+        different from the current one.
+        :param Supplier: Utility or None
+        """
+        if supplier != self.supplier:
+            self.set_supply_group(None)
+        self.supplier = supplier
+
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of registers to match
         the new rate class (no registers of rate_class is None).

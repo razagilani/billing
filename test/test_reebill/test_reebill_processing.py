@@ -444,9 +444,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                           'state': 'Final',
                                           'total_charges': 0.0,
                                           'utility':
-                                          column_dict(
-                                              self.views.get_utility(
-                                                  'Test Utility Company Template')),
+                                          self.views.get_utility(
+                                                  'Test Utility Company Template').name,
                                           }, utilbill_data)
 
         # create a reebill
@@ -468,9 +467,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
                     'Test Rate Class Template').name,
                 'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
-                'utility': column_dict(
-                    self.views.get_utility(
-                    'Test Utility Company Template')),
+                'utility': self.views.get_utility(
+                    'Test Utility Company Template').name,
             }, utilbill_data)
 
 
