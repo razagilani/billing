@@ -71,18 +71,18 @@ def create_extractors(s):
     s.add_all([e, pepco_2015, pepco_old, washington_gas])
 
 def create_charge_name_maps(s):
-    wg = s.query(Utility).filter_by(name='washgas').one()
-    wg.charge_name_map= {
-        'Distribution Charge': 'DISTRIBUTION_CHARGE',
-        'Customer Charge': 'CUSTOMER_CHARGE',
-        'PGC': 'PGC',
-        'Peak Usage Charge': 'PEAK_USAGE_CHARGE',
-        'DC Rights-of-Way Fee': 'RIGHT_OF_WAY',
-        'Sustainable Energy Trust Fund': 'SETF',
-        'Energy Assistance Trust Fund': 'EATF',
-        'Delivery Tax': 'DELIVERY_TAX',
-        'Sales Tax': 'SALES_TAX',
-    }
+    wg = s.query(Utility).filter_by(name='washington gas').one()
+    wg.charge_name_map = {
+            'Distribution Charge': 'DISTRIBUTION_CHARGE',
+            'Customer Charge': 'CUSTOMER_CHARGE',
+            'PGC': 'PGC',
+            'Peak Usage Charge': 'PEAK_USAGE_CHARGE',
+            'DC Rights-of-Way Fee': 'RIGHT_OF_WAY',
+            'Sustainable Energy Trust Fund': 'SETF',
+            'Energy Assistance Trust Fund': 'EATF',
+            'Delivery Tax': 'DELIVERY_TAX',
+            'Sales Tax': 'SALES_TAX',
+        }
 
     pepco = s.query(Utility).filter_by(name='pepco').one()
     pepco.charge_name_map = {
@@ -121,5 +121,6 @@ def upgrade():
     s.execute('create extension if not exists hstore')
     s.commit()
     create_extractors(s)
+    create_charge_name_maps(s)
     s.commit()
 
