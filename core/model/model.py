@@ -398,6 +398,9 @@ class SupplyGroup(Base):
     def __str__(self):
         return self.name
 
+    def get_service(self):
+        return self.service
+
 
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
