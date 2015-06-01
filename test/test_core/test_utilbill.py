@@ -1,7 +1,7 @@
 from mock import MagicMock, Mock
 from core import init_model
 
-from core.model.model import RegisterTemplate, SupplyGroup
+from core.model.model import RegisterTemplate, ELECTRIC
 from core.pricing import PricingModel
 from test import init_test_config, create_tables, clear_db
 
@@ -108,7 +108,7 @@ class UtilBillTest(TestCase):
         utilbill = UtilBill(MagicMock(), None, None)
         utility = Utility(name='utility')
         rate_class = RateClass(utility=utility, name='rate class',
-                               service=RateClass.ELECTRIC)
+                               service=ELECTRIC)
         other_utility = Utility(name='other')
 
         self.assertIsNone(utilbill.get_utility())
@@ -129,7 +129,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+        self.assertEqual(ELECTRIC, utilbill.get_service())
 
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
@@ -141,7 +141,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
+        self.assertEqual(ELECTRIC, utilbill.get_service())
 
         # when a different utility is chosen, rate class is unknown
         utilbill.set_utility(other_utility)
