@@ -40,9 +40,13 @@ Session = scoped_session(sessionmaker())
 PHYSICAL_UNITS = ['BTU', 'MMBTU', 'kWD', 'kWh', 'therms', ]
 physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 
+# types of utility service
+GAS, ELECTRIC = 'gas', 'electric'
 SERVICES = ('gas', 'electric')
 
-services = Enum(*SERVICES, name='services')
+# this type should be used for all database columns whose values are one of
+# the SERVICES above
+SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
 class Base(object):
@@ -384,7 +388,7 @@ class SupplyGroup(Base):
 
     id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
-    service = Column(Enum(*SERVICES, name='services'))
+    service = Column(SERVICES_TYPE)
     name = Column(String(255), nullable=False)
 
     supplier = relationship('Supplier')
@@ -413,11 +417,9 @@ class RateClass(Base):
     __tablename__ = 'rate_class'
     __table_args__ = (UniqueConstraint('utility_id', 'name'),)
 
-    GAS, ELECTRIC = 'gas', 'electric'
-    SERVICES = (GAS, ELECTRIC)
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES, name='services'), nullable=False)
+    service = Column(SERVICES_TYPE, nullable=False)
     name = Column(String(255), nullable=False)
     sos_supply_group_id = Column(
         Integer, ForeignKey('supply_group.id', ondelete='CASCADE'),
