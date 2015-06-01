@@ -94,22 +94,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 grid.setLoading(false);
                 this.initalizeUploadForm();
             },
-            beforesync: function(options, eOpts){
-                console.log('utilitybills before sync', options, eOpts)
-            },
             scope: this
         });
-
-        this.getRateClassesStore().on({
-            beforesync: function(options, eOpts){
-                console.log('rateclasses before sync', options, eOpts)
-            }
-                                      })
-        this.getUtilitiesStore().on({
-            beforesync: function(options, eOpts){
-                console.log('utilities before sync', options, eOpts)
-            }
-                                      })
     },
 
     /**
@@ -121,7 +107,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         if (selected != null)
         {
             var processed = selected.get('processed')
-            //console.log(selected[0].get('processed'));
             this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
             this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
@@ -282,7 +267,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleSupplyGroupComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('supply_group').name);
+        supply_group = selected.get('supply_group');
+        if (supply_group !== null)
+            combo.setValue(selected.get('supply_group').name);
     },
 
     handleRateClassExpand: function(combo, record, index){
@@ -341,20 +328,11 @@ Ext.define('ReeBill.controller.UtilityBills', {
             this.getUtilityBillsStore().rejectChanges();
             return;
         }
-        console.log('supplier blur')
         var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
         if (supplierStore.findRecord('id', combo.getValue()) === null){
             var utilBillsStore = this.getUtilityBillsStore();
             utilBillsStore.suspendAutoSync();
             supplierStore.suspendAutoSync();
-            //supplierStore.clearFilter(true);
-            //var supplier = supplierStore.findRecord('name', combo.getRawValue());
-            //if (supplier !== null)
-            //{
-            //    this.getUtilityBillsStore().resumeAutoSync();
-            //    supplierStore.resumeAutoSync();
-            //    return;
-            //}
             supplierStore.add({name: combo.getRawValue()});
             supplierStore.sync({
                 success: function(batch, options){
@@ -436,7 +414,5 @@ Ext.define('ReeBill.controller.UtilityBills', {
             utilityStore.resumeAutoSync();
         }
     }
-
-
 
 });
