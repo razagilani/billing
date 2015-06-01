@@ -7,7 +7,8 @@ from mock import Mock, NonCallableMock
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
-from core.extraction import TextExtractor, Field, Applier, Extractor, Main
+from core.extraction.extraction import TextExtractor, Field, Applier, \
+    Extractor, Main
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader

@@ -29,7 +29,8 @@ from flask_oauth import OAuth, OAuthException
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
-from core.model import Session
+from core.extraction.extraction import Extractor
+from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError
 
@@ -162,6 +163,21 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+@app.route('/test-extractors')
+def test_extractors():
+    '''
+    Displays a user interface for testing different bill data extractors on the database.
+    Loads a list of all extractors in the database and sends this to the client.
+    '''
+    s = Session();
+    extractors = s.query(Extractor).all()
+    nbills = s.query(UtilBill).count()
+    #TODO actually get all utility id's (which we know are unique), then get names
+    utilities = s.query(Utility.name).distinct(Utility.name).all()
+    print utilities
+    response = render_template('test-extractors.html', extractors=extractors, nbills = nbills, utilities=utilities)
     return response
 
 def create_user_in_db(access_token):
