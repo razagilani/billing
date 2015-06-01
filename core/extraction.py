@@ -510,6 +510,4 @@ class TextExtractor(Extractor):
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
         """
-        result = utilbill.get_text(bill_file_handler)
-        print result
-        return result
+        return utilbill.get_text(bill_file_handler)
