@@ -276,14 +276,27 @@ class ReeBill(Base):
             reading.renewable_quantity = converted_quantity.magnitude
 
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
+        """Return sum of all readings' values in therms, regardless of their
+        meaning or whether they measure total energy. Readings whose unit is
+        not an energy unit are treated as 0. (Tests are depending on this
+        behavior, but should change.)
+        """
         return sum(convert_to_therms(
             r.renewable_quantity, r.unit,
             ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def get_total_conventional_energy(self, ccf_conversion_factor=None):
-        return sum(convert_to_therms(
-            r.conventional_quantity, r.unit,
-            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
+        """Return total energy of the utility bill in therms (from the stored
+        value in ReeBill.readings, not the current value in the UtilBill).
+        """
+        try:
+            reading = self.get_reading_by_register_binding(Register.TOTAL)
+        except RegisterError:
+            return 0
+        else:
+            return convert_to_therms(
+                reading.conventional_quantity, reading.unit,
+                ccf_conversion_factor=ccf_conversion_factor)
 
     def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
