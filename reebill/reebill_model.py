@@ -454,15 +454,11 @@ class ReeBill(Base):
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
+        # TODO: we can probably get rid of this
         try:
             the_dict['ree_quantity'] = self.get_total_renewable_energy()
         except (ValueError, StopIteration) as e:
-            log.error(
-                "Error when getting renewable energy "
-                "quantity for reebill %s:\n%s" % (
-                self.id, traceback.format_exc()))
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-
         return the_dict
 
     def issue(self, issue_date, reebill_processor, corrections=None):
