@@ -151,12 +151,15 @@ def init_celery():
     # be added to the config file.
     uri = config.get('db', 'uri')
     celery_broker_url = 'sqla+' + uri
-    celery_result_backend = 'sqla' + uri
-    celery = Celery(broker=celery_broker_url)
-    # if you're using a Python dictionary for configuration (as is usual with
-    # Flask), you can set celery's "conf" directly from the application's
-    # config dictionary with "celery.conf.update(app.config)".
-    celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
+    celery_result_backend = 'sqla+' + uri
+    global celery
+    #celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
+    celery = Celery('tasks', backend='amqp', broker='amqp://')
+    # # if you're using a Python dictionary for configuration (as is usual with
+    # # Flask), you can set celery's "conf" directly from the application's
+    # # config dictionary with "celery.conf.update(app.config)".
+    # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
+    # celery.conf['BROKER_URL'] = celery_broker_url
 
 def initialize():
     init_logging()

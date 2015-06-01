@@ -3,7 +3,7 @@ CherryPy==3.2.4
 Jinja2==2.6
 MySQL-python==1.2.3
 PyYAML==3.10
-SQLAlchemy==0.9.4
+SQLAlchemy==1.0.4
 alembic==0.6.5
 argparse==1.2.1
 celery==3.1.18
@@ -21,6 +21,7 @@ Flask-Principal==0.4.0
 greenlet==0.4.0
 # this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4)
 git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f
+kombu-sqlalchemy==1.1.0
 ordereddict==1.1
 paramiko==1.12.0
 pdfminer==20140328

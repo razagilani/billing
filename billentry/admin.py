@@ -132,8 +132,8 @@ def make_admin(app):
     admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     admin.add_view(customer_group_model_view)
     # it seems that flask-admin doesn't really work with inheritance
-    from core.extraction import TextExtractor, Field, Extractor
-    class TextExtractorModelView(ModelView):
-         inline_models = (TextExtractor.TextField,)
-    admin.add_view(TextExtractorModelView(TextExtractor, Session))
+    # from core.extraction import TextExtractor, Field, Extractor
+    # class TextExtractorModelView(ModelView):
+    #      inline_models = (TextExtractor.TextField,)
+    # admin.add_view(TextExtractorModelView(TextExtractor, Session))
     return admin
