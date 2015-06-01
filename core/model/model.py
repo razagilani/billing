@@ -1157,8 +1157,9 @@ class UtilBill(Base):
             infile = StringIO()
             try:
                 bill_file_handler.write_copy_to_file(self, infile)
-            except MissingFileError:
+            except MissingFileError as e:
                 text = ''
+                print e
             else:
                 infile.seek(0)
                 rsrcmgr = PDFResourceManager()

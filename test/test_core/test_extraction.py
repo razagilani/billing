@@ -169,7 +169,7 @@ class TestIntegration(TestCase):
                               UtilBillLoader(), url_format)
 
         # create utility and rate class
-        utility = Utility(name='Washington Gas')
+        utility = Utility(name='washington gas')
         utility.charge_name_map = {
             'Distribution Charge': 'DISTRIBUTION_CHARGE',
             'Customer Charge': 'CUSTOMER_CHARGE',
