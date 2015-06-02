@@ -133,7 +133,8 @@ class TestAltitudeBillWithDB(TestCase):
                                    service='gas')
         self.u = Utility(name='A Utility', address=Address())
         utility = Utility(name='example', address=None)
-        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
+        ua = UtilityAccount('', '', utility, None, None, Address(),
+                            Address())
         self.utilbill = UtilBill(ua, utility, None)
 
     def tearDown(self):
