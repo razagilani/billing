@@ -9,6 +9,7 @@ from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import TextExtractor, Field, Applier, \
     Extractor, Main
+from core.extraction.task import test_extractor
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
@@ -210,8 +211,8 @@ class TestIntegration(TestCase):
                            type=Field.WG_CHARGES, applier_key='charges')
         ]
         e2 = TextExtractor(name='Another')
-
         Session().add_all([self.bill, e1, e2])
+        self.e1, self.e2 = e1, e2
 
     def tearDown(self):
         clear_db()
@@ -244,3 +245,22 @@ class TestIntegration(TestCase):
             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D),
         ], self.bill.charges)
         self.assertIsInstance(self.bill.date_extracted, datetime)
+
+    def test_test_extractor(self):
+        # TODO: it might be possible to write this as a unit test, without the
+        # database. database queries in tasks would be moved to a DAO like
+        # UtilbillLoader, which could be mocked.
+
+        # do everything in memory without requiring real celery server
+        from core import celery
+        celery.conf.update(
+            dict(BROKER_BACKEND='memory', CELERY_ALWAYS_EAGER=True))
+
+        # set primary keys so they can be queried
+        Session().flush()
+
+        result = test_extractor.delay(self.e1.extractor_id)
+        self.assertEqual((1, 1, 1), result.get())
+
+        result = test_extractor.delay(self.e2.extractor_id)
+        self.assertEqual((0, 0, 1), result.get())

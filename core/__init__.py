@@ -149,10 +149,11 @@ def init_celery():
     # since celery is using the database as its back end, no additional
     # config keys are needed. for a different back end, these would have to
     # be added to the config file.
-    uri = config.get('db', 'uri')
-    # TODO: if using MongoDB, assemble the URL using keys from the config file
-    celery_broker_url = 'mongodb://localhost:27017/skyline-dev'
-    celery_result_backend = 'mongodb://localhost:27017/skyline-dev'
+    #uri = config.get('db', 'uri')
+    uri = 'mongodb://%(host)s:%(port)s/%(database)s' % dict(
+        host=config.get('mongodb', 'host'), port=config.get('mongodb', 'port'),
+        database=config.get('mongodb', 'database'))
+    celery_broker_url = celery_result_backend = uri
     global celery
     celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
     #celery = Celery('tasks', backend='amqp', broker='amqp://')
