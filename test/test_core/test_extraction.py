@@ -3,6 +3,7 @@ import os
 from unittest import TestCase
 
 from boto.s3.connection import S3Connection
+from celery.result import AsyncResult
 from mock import Mock, NonCallableMock
 
 from core import init_model, ROOT_PATH
@@ -260,7 +261,13 @@ class TestIntegration(TestCase):
         Session().flush()
 
         result = test_extractor.delay(self.e1.extractor_id)
+        metadata = AsyncResult(result.task_id).info
         self.assertEqual((1, 1, 1), result.get())
+        self.assertEqual({'all_count': 1, 'any_count': 1, 'total_count': 1},
+            metadata)
 
         result = test_extractor.delay(self.e2.extractor_id)
+        metadata = AsyncResult(result.task_id).info
         self.assertEqual((0, 0, 1), result.get())
+        self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
+                         metadata)
