@@ -11,13 +11,14 @@
 	<h3>Current Extractors in Database:</h3>
 	<form>
 
-	<div id="tablepane">
+	<div id="extractorpane">
 		<table id="extractors">
 			<thead>
 				<tr>
 					<td class="check"></td>
 					<td class="id">ID</td>
 					<td>Name</td>
+					<td>Filter</td>
 				</tr>
 			</thead>
 			<tbody>
@@ -26,6 +27,17 @@
 					<td class="check"><input type="checkbox" name="extractors" value=" {{ exc.extractor_id }} " /></td>
 					<td class="id"><b>{{ exc.extractor_id }}</b></td>
 					<td class="name">{{ exc.name }}</td>
+					<td class="filter">
+						<select name="{{ exc.extractor_id }}">
+							<option value="">-- no filter --</option>
+							{% for u in utilities %}
+							<option value="{{ u.id }}">{{ u.name }}</option>
+							{% endfor %}
+						</select>
+					</td>
+					<td class="run">
+						<button class="runbtn" name="{{ exc.extractor_id }}" type="button">Run</button>
+					</td>
 				</tr>
 				{% endfor %}
 			</tbody>
@@ -33,26 +45,24 @@
 	</div>
 	<br>
 	<button type="button" onclick="selectall()">Select All</button>
-	<span style="padding-left:10px">
-		Report: 
-		<select>
-			<option value="each">each</option>
-			<option value="best">best</option>
-			<option value="worst">worst</option>
-		</select>
-	</span>
+	<button type="button" onclick="runSelected()">Run Selected</button>
 	</form>
 
-	There are {{ nbills }} total bills.<br> 
-	Filter by utility: 
-	<select>
-		<option value="">-- no filter --</option>
-		{% for u in utilities %}
-		<option value="{{ u.name }}">{{ u.name }}</option>
-		{% endfor %}
-	</select>
+	<h3>There are {{ nbills }} total bills.</h3>
+	<h3>Results:</h3>
+	<!-- Subsmaple: (%) <input type="number"> -->
 	<br>
-	Subsmaple: <input type="number"><br>
+	<div id="resultpane">
+		<table id="results">
+			<thead>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	<div>
+	<br>
+
+
 
 </body>
 
