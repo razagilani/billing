@@ -7,11 +7,5 @@ Ext.define('ReeBill.model.Utility', {
         {name: 'guid', type: 'string'},
         {name: 'discriminator', type: 'string'},
         {name: 'sos_supplier_id', type: 'int'}
-    ],
-    hasMany: {
-            model: 'RateClass',
-            name: 'rateclasses',
-            foreignKey: 'utility_id',
-            accosiationKey: 'rateclasses'
-        }
+    ]
 });
