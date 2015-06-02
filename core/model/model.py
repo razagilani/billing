@@ -23,6 +23,7 @@ from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError
+from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
     'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'Supplier', 'SupplyGroup',
@@ -36,9 +37,21 @@ MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
 
-# allowed units for register quantities
-PHYSICAL_UNITS = ['BTU', 'MMBTU', 'kWD', 'kWh', 'therms', ]
-physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
+# allowed units for register quantities.
+# UnitRegistry attributes are used in the values to ensure that there's an
+# entry for every one of the allowed units (otherwise unit conversion would
+# fail, as it has in past bugs.)
+PHYSICAL_UNITS = {
+    'BTU': unit_registry.BTU,
+    'MMBTU': unit_registry.MMBTU,
+    'kWD': unit_registry.kWD,
+    'kWh': unit_registry.kWh,
+    'therms': unit_registry.therms,
+}
+
+# this type should be used for database columns whose values can be the unit
+# names above
+physical_unit_type = Enum(*PHYSICAL_UNITS.keys(), name='physical_unit')
 
 GAS, ELECTRIC = 'gas', 'electric'
 SERVICES = (GAS, ELECTRIC)
@@ -362,7 +375,7 @@ class RegisterTemplate(Base):
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
     register_binding = Column(Register.register_binding_type, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
@@ -564,7 +577,7 @@ class Charge(Base):
     __tablename__ = 'charge'
 
     # allowed units for "quantity" field of charges
-    CHARGE_UNITS = PHYSICAL_UNITS + ['dollars']
+    CHARGE_UNITS = PHYSICAL_UNITS.keys() + ['dollars']
     charge_unit_type = Enum(*CHARGE_UNITS, name='charge_unit')
 
     # allowed values for "type" field of charges
