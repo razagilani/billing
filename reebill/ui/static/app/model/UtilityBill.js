@@ -7,24 +7,14 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'id'},
         {name: 'name'},
         {name: 'account'},
-        {name: 'rate_class', type:'string', mapping: function( data ) {
-            if (data.rate_class==null)
-                    return 'Unknown Rate Class';
-            else
-                    return data.rate_class;  }
-        },
-        {name: 'rate_class_id', type: 'int'},
-        {name: 'utility'},
-        {name: 'utility_id', type: 'int'},
-        {name: 'supplier'},
-        {name: 'supplier_id', type: 'int'},
-        {name: 'supply_group', 'type': 'string', mapping: function( data ) {
-            if (data.supply_group==null)
-                    return 'Unknown Supply Group';
-            else
-                    return data.supply_group;  }
-        },
-        {name: 'supply_group_id', type: 'int'},
+        {name: 'rate_class', type:'string'},
+        {name: 'rate_class_id', type: 'int', useNull:true},
+        {name: 'utility', type:'string'},
+        {name: 'utility_id', type: 'int', useNull:true},
+        {name: 'supplier', type:'string'},
+        {name: 'supplier_id', type: 'int', useNull:true},
+        {name: 'supply_group'},
+        {name: 'supply_group_id', type: 'int', useNull:true},
         {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
         {name: 'total_charges', type: 'float' },

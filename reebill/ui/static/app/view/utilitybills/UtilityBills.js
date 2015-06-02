@@ -117,6 +117,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Utility',
         dataIndex: 'utility_id',
+        emptyText: 'Unknown Utility',
         editor: {
             xtype: 'combo',
             store: 'Utilities',
@@ -132,8 +133,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         width: 150,
-        renderer: function(value, metaData, record) {
-            return record.get('utility').name;
+        renderer: function(val, metaDate, record){
+            return record.get('utility');
         }
     },{
         header: 'Rate Class',
@@ -156,7 +157,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         minWidth: 250,
         flex: 1,
         renderer: function(val, metaDate, record){
-            return record.get('rate_class');
+            var rate_class = record.get('rate_class');
+            return rate_class ? rate_class : 'Unknown';
         }
     },{
         header: 'Supplier',
@@ -177,12 +179,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         width: 150,
-        renderer: function(value, metaData, record) {
-            return record.get('supplier').name;
+        renderer: function(val, metaDate, record){
+            var supplier = record.get('supplier');
+            return supplier ? supplier : 'Unknown';
         }
     },{
         header: 'Supply Group',
         dataIndex: 'supply_group_id',
+        emptyText: 'Unknown Supply Group',
         editor: {
             xtype: 'combo',
             store: 'SupplyGroups',
@@ -198,7 +202,8 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         renderer: function(val, metaDate, record){
-            return record.get('supply_group');
+            var supply_group = record.get('supply_group');
+            return supply_group ? supply_group : 'Unknown';
         },
         minWidth: 250,
         flex: 1
