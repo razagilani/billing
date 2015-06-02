@@ -7,10 +7,11 @@ from core.extraction.extraction import Main, Extractor
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 
-from core import init_config, init_model, init_celery
+from core import init_config, init_celery
 
+# init_model can't be called here because it will cause a circular import
+# with billentry
 init_config()
-init_model()
 init_celery()
 from core import celery
 
