@@ -93,8 +93,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         utilbill_data = utilbills_data[0]
         self.assertDictContainsSubset({'state': 'Final',
                                        'service': 'Gas',
-                                       'utility':
-                                            self.views.get_utility('Test Utility Company Template').name,
+                                       'utility': 'Test Utility Company Template',
                                        'rate_class': self.views.
                                             get_rate_class('Test Rate Class Template').
                                             name,
@@ -126,8 +125,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility':
-                                            self.views.get_utility('Test Utility Company Template').name,
+                                          'utility': 'Test Utility Company Template',
                                           }, ubdata)
 
         # nothing should exist for account 99999
