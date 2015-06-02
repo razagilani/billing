@@ -40,7 +40,8 @@ Session = scoped_session(sessionmaker())
 PHYSICAL_UNITS = ['BTU', 'MMBTU', 'kWD', 'kWh', 'therms', ]
 physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 
-SERVICES = ('gas', 'electric')
+GAS, ELECTRIC = 'gas', 'electric'
+SERVICES = (GAS, ELECTRIC)
 
 services = Enum(*SERVICES, name='services')
 
