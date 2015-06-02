@@ -443,9 +443,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility':
-                                          self.views.get_utility(
-                                                  'Test Utility Company Template').name,
+                                          'utility': 'Test Utility Company Template',
                                           }, utilbill_data)
 
         # create a reebill
@@ -467,8 +465,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                     'Test Rate Class Template').name,
                 'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
-                'utility': self.views.get_utility(
-                    'Test Utility Company Template').name,
+                'utility': 'Test Utility Company Template',
             }, utilbill_data)
 
 
