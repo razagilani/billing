@@ -30,10 +30,9 @@ def column_dict_utilbill(self):
                    ('computed_total', self.get_total_charges()),
                    ('reebills', [ur.reebill.column_dict() for ur
                                  in self._utilbill_reebills]),
-                   ('utility', (column_dict(self.utility)
-                                if self.utility else None)),
+                   ('utility', self.utility.name),
                    ('utility_id', self.utility_id),
-                   ('supplier', (column_dict(self.supplier))),
+                   ('supplier', self.supplier.name),
                    ('supplier_id', self.supplier_id),
                    ('rate_class', self.get_rate_class_name()),
                    ('rate_class_id', self.rate_class_id),

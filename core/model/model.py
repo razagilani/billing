@@ -40,9 +40,8 @@ Session = scoped_session(sessionmaker())
 PHYSICAL_UNITS = ['BTU', 'MMBTU', 'kWD', 'kWh', 'therms', ]
 physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 
-# types of utility service
 GAS, ELECTRIC = 'gas', 'electric'
-SERVICES = ('gas', 'electric')
+SERVICES = (GAS, ELECTRIC)
 
 # this type should be used for all database columns whose values are one of
 # the SERVICES above
@@ -404,6 +403,9 @@ class SupplyGroup(Base):
 
     def __str__(self):
         return self.name
+
+    def get_service(self):
+        return self.service
 
 
 class RateClass(Base):
@@ -952,6 +954,15 @@ class UtilBill(Base):
         if utility != self.utility:
             self.set_rate_class(None)
         self.utility = utility
+
+    def set_supplier(self, supplier):
+        """Set the supplier, and set the supply group to None if the supplier is
+        different from the current one.
+        :param Supplier: Utility or None
+        """
+        if supplier != self.supplier:
+            self.set_supply_group(None)
+        self.supplier = supplier
 
     def set_rate_class(self, rate_class):
         """Set the rate class and also update the set of _registers to match

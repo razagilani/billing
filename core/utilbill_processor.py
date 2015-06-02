@@ -62,7 +62,8 @@ class UtilbillProcessor(object):
             utilbill.supply_choice_id = supply_choice_id
 
         if supplier is not None:
-            utilbill.supplier = self.get_supplier(supplier)
+            supplier = self.get_supplier(supplier)
+            utilbill.set_supplier(supplier)
 
         if supply_group_id is not None:
             supply_group = Session().query(SupplyGroup).filter_by(
@@ -492,8 +493,6 @@ class UtilbillProcessor(object):
 
     def create_rate_class(self, name, utility_id, service):
         assert name != ''
-        if name == 'Unknown Rate Class':
-            return None
         s = Session()
         utility = s.query(Utility).filter_by(id=utility_id).first()
         rate_class = RateClass(name=name, utility=utility, service=service)
