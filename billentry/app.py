@@ -23,8 +23,9 @@ from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app, Response
+    render_template, current_app, Response, jsonify
 from flask_oauth import OAuth, OAuthException
+from celery import Celery
 
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
@@ -175,11 +176,56 @@ def test_extractors():
     s = Session();
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
-    #TODO actually get all utility id's (which we know are unique), then get names
-    utilities = s.query(Utility.name).distinct(Utility.name).all()
-    print utilities
+    utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
     response = render_template('test-extractors.html', extractors=extractors, nbills = nbills, utilities=utilities)
     return response
+
+@app.route('/run-test', methods=['POST'])
+def run_test():
+    '''
+    Runs a test of bill data extractors as an asynchronous Celery task
+    :return 202, and JSON data containing the URL which will provide status updates
+    '''
+    extractor_id = request.form.get('extractor_id')
+    utility_id=request.form.get('utility_id')
+    if utility_id == "":
+        utility_id=None
+    #run test_extractor with the given id's
+    task = test_extractor.apply_async(args=[extractor_id, utility_id])
+    #return a url from which to get status data for this task
+    return jsonify({}), 202, {'Location': url_for('test_status',
+                                                  task_id=task.id)}
+
+@app.route('/test-status/<task_id>', methods=['POST'])
+def test_status(task_id):
+    task = test_extractor.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        # job did not start yet
+        response = {
+            'state': task.state,
+            'current': 0,
+            'total': 1,
+            'status': 'Pending...'
+        }
+    elif task.state != 'FAILURE':
+        response = {
+            'state': task.state,
+            'current': task.info.get('current', 0),
+            'total': task.info.get('total', 1),
+            'status': task.info.get('status', '')
+        }
+        if 'result' in task.info:
+            response['result'] = task.info['result']
+    else:
+        # something went wrong in the background job
+        response = {
+            'state': task.state,
+            'current': 1,
+            'total': 1,
+            'status': str(task.info),  # this is the exception raised
+        }
+    print task
+    return jsonify(response)
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth '+access_token}
