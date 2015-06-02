@@ -43,7 +43,9 @@ physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
 GAS, ELECTRIC = 'gas', 'electric'
 SERVICES = (GAS, ELECTRIC)
 
-services = Enum(*SERVICES, name='services')
+# this type should be used for all database columns whose values are one of
+# the SERVICES above
+SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
 class Base(object):
@@ -227,6 +229,9 @@ class Utility(Base):
     def __str__(self):
         return self.name
 
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
+
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
     charges on utility bills. This may be the same as the utility in the
@@ -293,7 +298,7 @@ class Register(Base):
     meter_identifier = Column(String(255), nullable=False)
 
     utilbill = relationship("UtilBill",
-        backref=backref('registers', cascade='all, delete-orphan'))
+        backref=backref('_registers', cascade='all, delete-orphan'))
 
     @classmethod
     def create_from_template(cls, register_template):
@@ -382,7 +387,7 @@ class SupplyGroup(Base):
 
     id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
-    service = Column(Enum(*SERVICES, name='services'))
+    service = Column(SERVICES_TYPE)
     name = Column(String(255), nullable=False)
 
     supplier = relationship('Supplier')
@@ -409,16 +414,14 @@ class RateClass(Base):
 
     Every bill in a rate class gets billed according to the same kinds of
     meter values (like total energy, demand, etc.) so the rate class also
-    determines which registers exist in each bill.
+    determines which _registers exist in each bill.
     """
     __tablename__ = 'rate_class'
     __table_args__ = (UniqueConstraint('utility_id', 'name'),)
 
-    GAS, ELECTRIC = 'gas', 'electric'
-    SERVICES = (GAS, ELECTRIC)
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES, name='services'), nullable=False)
+    service = Column(SERVICES_TYPE, nullable=False)
     name = Column(String(255), nullable=False)
     sos_supply_group_id = Column(
         Integer, ForeignKey('supply_group.id', ondelete='CASCADE'),
@@ -448,7 +451,7 @@ class RateClass(Base):
 
         # TODO: a newly-created rate class should have one "REG_TOTAL"
         # register by default (the unit can be picked according to
-        # "service"). but for now, all UtilBills initially have no registers
+        # "service"). but for now, all UtilBills initially have no _registers
         # when they are created.
         unit = 'therms' if service == 'gas' else 'kWh'
         self.register_templates = [
@@ -498,6 +501,8 @@ class UtilityAccount(Base):
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=True)
     fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                                 nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -734,6 +739,8 @@ class UtilBill(Base):
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=True)
     supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                              nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+        nullable=True)
 
     state = Column(Integer, nullable=False)
     period_start = Column(Date)
@@ -742,7 +749,7 @@ class UtilBill(Base):
 
     # this is created for letting bill entry user's marking/un marking a
     # bill for Time Of Use. The value of the column has nothing to do with
-    # whether there are time-of-use registers or whether the energy is
+    # whether there are time-of-use _registers or whether the energy is
     # actually priced according to time of use
     tou = Column(Boolean, nullable=False)
 
@@ -793,15 +800,18 @@ class UtilBill(Base):
     # it can change from one bill to the next.
     supplier = relationship('Supplier', uselist=False,
                             primaryjoin='UtilBill.supplier_id==Supplier.id')
-    rate_class = relationship('RateClass', uselist=False,
-                              primaryjoin='UtilBill.rate_class_id==RateClass'
-                                          '.id')
-    supply_group = relationship('SupplyGroup', uselist=False,
-                                primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
-    billing_address = relationship('Address', uselist=False, cascade='all',
-                                   primaryjoin='UtilBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False, cascade='all',
-                                   primaryjoin='UtilBill.service_address_id==Address.id')
+    rate_class = relationship(
+        'RateClass', uselist=False,
+        primaryjoin='UtilBill.rate_class_id==RateClass.id')
+    supply_group = relationship(
+        'SupplyGroup', uselist=False,
+        primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
+    billing_address = relationship(
+        'Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.billing_address_id==Address.id')
+    service_address = relationship(
+        'Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.service_address_id==Address.id')
 
     # the 'utility' attribute may move to UtilityAccount where it would
     # make more sense for it to be.
@@ -869,9 +879,9 @@ class UtilBill(Base):
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
 
-        # set registers according to the rate class
+        # set _registers according to the rate class
         if rate_class is not None:
-            self.registers = rate_class.get_register_list()
+            self._registers = rate_class.get_register_list()
 
         self.charges = []
         self.date_modified = datetime.utcnow()
@@ -879,8 +889,14 @@ class UtilBill(Base):
     def get_utility(self):
         return self.utility
 
+    def get_utility_id(self):
+        return self.utility_id
+
     def get_supplier(self):
         return self.supplier
+
+    def get_supplier_id(self):
+        return self.supplier_id
 
     def get_utility_name(self):
         '''Return name of this bill's utility.
@@ -927,6 +943,9 @@ class UtilBill(Base):
     def get_rate_class(self):
         return self.rate_class
 
+    def get_rate_class_id(self):
+        return self.rate_class_id
+
     def set_utility(self, utility):
         """Set the utility, and set the rate class to None if the utility is
         different from the current one.
@@ -946,14 +965,14 @@ class UtilBill(Base):
         self.supplier = supplier
 
     def set_rate_class(self, rate_class):
-        """Set the rate class and also update the set of registers to match
-        the new rate class (no registers of rate_class is None).
+        """Set the rate class and also update the set of _registers to match
+        the new rate class (no _registers of rate_class is None).
         :param rate_class: RateClass or None
         """
         if rate_class is None:
-            self.registers = []
+            self._registers = []
         else:
-            self.registers = rate_class.get_register_list()
+            self._registers = rate_class.get_register_list()
         self.rate_class = rate_class
 
     def get_supplier_name(self):
@@ -1001,7 +1020,7 @@ class UtilBill(Base):
             type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
-        registers = self.registers
+        registers = self._registers
         charge.quantity_formula = '' if len(registers) == 0 else \
             '%s.quantity' % Register.TOTAL if any(
                 [register.register_binding == Register.TOTAL for register in
@@ -1062,7 +1081,7 @@ class UtilBill(Base):
         """
         self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
-                   self.registers}
+                   self._registers}
         sorted_charges = self.ordered_charges()
         exception = None
         for charge in sorted_charges:
@@ -1156,7 +1175,7 @@ class UtilBill(Base):
         # NOTE: this may have been implemented already on another branch;
         # remove duplicate when merged
         try:
-            total_register = next(r for r in self.registers if
+            total_register = next(r for r in self._registers if
                                   r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
@@ -1165,19 +1184,19 @@ class UtilBill(Base):
     def set_total_energy(self, quantity):
         self.check_editable()
         total_register = next(
-            r for r in self.registers if r.register_binding == Register.TOTAL)
+            r for r in self._registers if r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
     def get_register_by_binding(self, register_binding):
         """Return the register whose register_binding is 'register_binding'.
         This should only be called by consumers that need to know about
-        registers--not to get total energy, demand, etc. (Maybe there
-        shouldn't be any consumers that know about registers, but currently
+        _registers--not to get total energy, demand, etc. (Maybe there
+        shouldn't be any consumers that know about _registers, but currently
         reebill.fetch_bill_data.RenewableEnergyGetter does.)
         :param register_binding: register binding string
         """
         try:
-            register = next(r for r in self.registers if
+            register = next(r for r in self._registers if
                             r.register_binding == register_binding)
         except StopIteration:
             raise BillingError('No register "%s"' % register_binding)
@@ -1198,14 +1217,14 @@ class UtilBill(Base):
         # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
         register = next(
-            r for r in self.registers if r.register_binding == Register.TOTAL)
+            r for r in self._registers if r.register_binding == Register.TOTAL)
         register.meter_identifier = meter_identifier
 
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
         try:
-            register = next(r for r in self.registers if
+            register = next(r for r in self._registers if
                             r.register_binding == Register.TOTAL)
         except StopIteration:
             return None
@@ -1217,7 +1236,7 @@ class UtilBill(Base):
         total register (which is not supposed to happen).
         '''
         try:
-            total_register = next(r for r in self.registers if
+            total_register = next(r for r in self._registers if
                                   r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
