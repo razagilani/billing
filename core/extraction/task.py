@@ -7,7 +7,7 @@ from core.extraction.extraction import Main, Extractor
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 
-from core import init_config, init_celery
+from core import init_config, init_celery, init_model
 
 # init_model can't be called here because it will cause a circular import
 # with billentry
@@ -46,10 +46,11 @@ def extract_bill(utilbill_id):
 def test_extractor(self, extractor_id, utility_id=None):
     """Test an extractor on all bills.
     """
+    init_model()
     bill_file_handler = _create_bill_file_handler()
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
-    q = s.query(UtilBill).order_by(desc(UtilBill.date_received))
+    q = s.query(UtilBill).filter(UtilBill.date_received != None).order_by(desc(UtilBill.date_received))
     if utility_id is not None:
         q = q.filter(UtilBill.utility_id==utility_id)
 
@@ -70,4 +71,5 @@ def test_extractor(self, extractor_id, utility_id=None):
             'any_count': any_count,
             'total_count': total_count
         })
+        print '***** "%s"' % bill.sha256_hexdigest, all_count, any_count, total_count
     return all_count, any_count, total_count
