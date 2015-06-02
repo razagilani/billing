@@ -23,17 +23,22 @@ class FieldTest(TestCase):
     def setUp(self):
         self.field = Field()
         self.field._extract = Mock(return_value='value string')
-        self.field._type_convert_func = Mock(return_value=1)
         self.input = 'input string'
+
+        # mock the type conversion function by putting a mock into the TYPES
+        # dictionary. maybe there's a way to do this without modifying the
+        # class.
+        self.type_convert_func = Mock(return_value=1)
+        self.field.TYPES[Field.STRING] = self.type_convert_func
 
     def test_get_value(self):
         value = self.field.get_value(self.input)
         self.field._extract.assert_called_once_with(self.input)
-        self.field._type_convert_func.assert_called_once_with('value string')
+        self.type_convert_func.assert_called_once_with('value string')
         self.assertEqual(1, value)
 
     def test_convert_error(self):
-        self.field._type_convert_func.side_effect = Exception
+        self.type_convert_func.side_effect = Exception
         with self.assertRaises(ConversionError):
             self.field.get_value(self.input)
 
@@ -257,8 +262,13 @@ class TestIntegration(TestCase):
         celery.conf.update(
             dict(BROKER_BACKEND='memory', CELERY_ALWAYS_EAGER=True))
 
-        # set primary keys so they can be queried
-        Session().flush()
+        # primary keys need to be set so they can be queried. also,
+        # the transaction needs to be committed because the task is a
+        # separate thread so it has a different transaction
+        Session().commit()
+        # TODO: session is gone after committing here, so we would have to
+        # create a new session and re-load all the objects that are used in
+        # the assertions below.
 
         result = test_extractor.delay(self.e1.extractor_id)
         metadata = AsyncResult(result.task_id).info

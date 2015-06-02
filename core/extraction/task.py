@@ -2,6 +2,7 @@ from boto.s3.connection import S3Connection
 from celery.bin import celery
 from celery.result import AsyncResult
 from sqlalchemy import desc
+from sqlalchemy.sql.expression import nullslast
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main, Extractor
 from core.model import Session, UtilBill
@@ -50,7 +51,7 @@ def test_extractor(self, extractor_id, utility_id=None):
     bill_file_handler = _create_bill_file_handler()
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
-    q = s.query(UtilBill).filter(UtilBill.date_received != None).order_by(desc(UtilBill.date_received))
+    q = s.query(UtilBill).order_by(nullslast(desc(UtilBill.date_received)))
     if utility_id is not None:
         q = q.filter(UtilBill.utility_id==utility_id)
 
