@@ -1,7 +1,9 @@
 from boto.s3.connection import S3Connection
 from celery.bin import celery
+from sqlalchemy import desc
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Main
+from core.extraction.extraction import Main, Extractor
+from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 
 from core import initialize
@@ -31,3 +33,30 @@ def extract_bill(utilbill_id):
     # TODO: the same Main object could be shared by all tasks
     main = _create_main()
     main.extract(utilbill_id)
+
+@celery.task(bind=True)
+def test_extractor(self, extractor_id, utility_id=None):
+    """Test an extractor on all bills.
+    """
+    s = Session()
+    extractor = s.query(Extractor).filter_by(id=extractor_id)
+    q = s.query(UtilBill).order_by(desc(UtilBill.date_received))
+    if utility_id is not None:
+        q = q.filter(UtilBill.utility_id==utility_id)
+
+    for bill in q:
+        c = extractor.get_success_count(bill, self._bill_file_handler)
+
+        all_count = self.state.meta.get('all_count', 0)
+        any_count = self.state.meta.get('all_count', 0)
+        if c > 0:
+            any_count += 1
+        if c == len(extractor.fields):
+            all_count += 1
+
+        # set custom state with process so far
+        self.update_state(state='PROGRESS', meta={
+            'all_count': all_count,
+            'any_count': any_count,
+            'total_count': self.state.meta.get('all_count', 0) + 1,
+        })
