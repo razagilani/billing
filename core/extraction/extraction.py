@@ -370,7 +370,6 @@ class Field(model.Base):
         convert the extracted string value to the appropriate type.
         """
         super(Field, self).__init__(type=type, *args, **kwargs)
-        self._type_convert_func = self.TYPES[type]
 
     def _extract(self, input):
         """Extract a string from "input".
@@ -387,15 +386,17 @@ class Field(model.Base):
         :return: final value ready to be applied to a UtilBill.
         """
         assert input is not None
+        type_convert_func = self.TYPES[self.type]
         if self._value is None or input != self._input:
             self._input = input
             value_str = self._extract(input)
             try:
-                value = self._type_convert_func(value_str)
+                value = type_convert_func(value_str)
             except Exception as e:
                 raise ConversionError(
-                    "Couldn't convert \"%s\" using function %s: %s" % (
-                        value_str, self._type_convert_func, e))
+                    "Couldn't convert \"%s\" using function %s for type "
+                    "\"%s\": %s" % (
+                        value_str, type_convert_func, self.type, e))
             self._value = value
         return self._value
 
