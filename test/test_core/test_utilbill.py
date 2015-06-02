@@ -1,7 +1,7 @@
 from mock import MagicMock, Mock
 from core import init_model
 
-from core.model.model import RegisterTemplate, SupplyGroup
+from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
 from core.pricing import PricingModel
 from test import init_test_config, create_tables, clear_db
 
@@ -108,7 +108,7 @@ class UtilBillTest(TestCase):
         utilbill = UtilBill(MagicMock(), None, None)
         supplier = Supplier(name='supplier')
         supply_group = SupplyGroup(supplier=supplier, name='supply group',
-                               service=RateClass.ELECTRIC)
+                               service=ELECTRIC)
         other_supplier = Supplier(name='other')
 
         self.assertIsNone(utilbill.get_supplier())
@@ -127,7 +127,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('supplier', utilbill.get_supplier_name())
         self.assertIs(supply_group, utilbill.get_supply_group())
         self.assertEqual('supply group', utilbill.get_supply_group_name())
-        self.assertEqual(RateClass.ELECTRIC, supply_group.get_service())
+        self.assertEqual(ELECTRIC, supply_group.get_service())
 
         # when the same supplier is set again, supply group is unchanged
         utilbill.set_supplier(supplier)
@@ -135,7 +135,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('supplier', utilbill.get_supplier_name())
         self.assertIs(supply_group, utilbill.get_supply_group())
         self.assertEqual('supply group', utilbill.get_supply_group_name())
-        self.assertEqual(RateClass.ELECTRIC, supply_group.get_service())
+        self.assertEqual(ELECTRIC, supply_group.get_service())
 
         # when a different supplier is chosen, supply group is unknown
         utilbill.set_supplier(other_supplier)
