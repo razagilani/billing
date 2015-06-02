@@ -477,12 +477,6 @@ class UtilbillProcessor(object):
         return utility
 
     def get_utility(self, utility_id):
-        utility.rate_class = None
-        session.add(utility)
-        session.flush()
-        return utility
-
-    def get_utility(self, utility_id):
         session = Session()
         try:
             result = session.query(Utility).filter_by(
