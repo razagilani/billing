@@ -17,7 +17,7 @@ from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
-from util.units import ureg, convert_to_therms
+from util.units import unit_registry, convert_to_therms
 
 
 __all__ = [
@@ -270,8 +270,8 @@ class ReeBill(Base):
         else:
             # in all other cases, 'new_quantity' will be in BTU: convert to unit
             # of the reading
-            new_quantity_with_unit = new_quantity * ureg.btu
-            unit = ureg.parse_expression(unit_string)
+            new_quantity_with_unit = new_quantity * unit_registry.btu
+            unit = unit_registry.parse_expression(unit_string)
             converted_quantity = new_quantity_with_unit.to(unit)
             reading.renewable_quantity = converted_quantity.magnitude
 

@@ -380,10 +380,8 @@ class UtilitiesResource(BaseResource):
     def post(self):
         parser = RequestParser()
         parser.add_argument('name', type=str, required=True)
-        parser.add_argument('sos_supply_group_id', type=int, required=True)
         args=parser.parse_args()
-        utility = self.utilbill_processor.create_utility(args['name'],
-                                                    args['sos_supply_group_id'])
+        utility = self.utilbill_processor.create_utility(args['name'])
         Session.commit()
         return {'rows': marshal(utility, self.supply_group_fields), 'results': 1 }
 
