@@ -47,7 +47,17 @@ def extract_bill(utilbill_id):
 def test_extractor(self, extractor_id, utility_id=None):
     """Test an extractor on all bills.
     """
-    init_model()
+    # init_model() can't be called in global scope because it causes a
+    # circular import with Bill Entry. but if init_model is called after it
+    # has already been called and data have been inserted (e.g. in a test),
+    # the transaction is rolled back and inserted data will be lost. so,
+    # only call init_model if it hasn't been called yet.
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+
     bill_file_handler = _create_bill_file_handler()
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
