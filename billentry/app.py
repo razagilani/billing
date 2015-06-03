@@ -15,7 +15,7 @@ import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 import xkcdpass.xkcd_password  as xp
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
@@ -25,13 +25,14 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
 from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app, Response, jsonify
 from flask_oauth import OAuth, OAuthException
-from celery import Celery
+from celery import Celery, chord
+from celery.task.control import inspect
 
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
 from core.extraction.extraction import Extractor
-from core.extraction.task import test_extractor
+from core.extraction.task import test_extractor, test_bill, reduce_bill_results, test_bills_batch
 from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError
@@ -186,18 +187,41 @@ def run_test():
     Runs a test of bill data extractors as an asynchronous Celery task
     :return 202, and JSON data containing the URL which will provide status updates
     '''
+
+    # run test_extractor with the given id's
+    # task = test_extractor.apply_async(args=[extractor_id, utility_id])
+
     extractor_id = request.form.get('extractor_id')
     utility_id=request.form.get('utility_id')
-    if utility_id == "":
-        utility_id=None
-    #run test_extractor with the given id's
-    task = test_extractor.apply_async(args=[extractor_id, utility_id])
-    #return a url from which to get status data for this task
-    return jsonify({'task_id':task.id}), 202
+
+    s = Session();
+    q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
+        UtilBill.sha256_hexdigest != ''
+    ).order_by(func.random())
+    if utility_id != "":
+        q = q.filter(UtilBill.utility_id == utility_id)
+    bills = q.all()
+    bill_ids = [b.id for b in bills]
+    billchunks = [bill_ids[x:x+100] for x in range(0, len(bill_ids), 100)]
+
+    tasks = [test_bills_batch.delay(extractor_id, blist) for blist in billchunks]
+
+    return jsonify({'task_ids':[t.id for t in tasks]}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
-    task = test_extractor.AsyncResult(task_id)
+    # from core import config
+    # uri = 'mongodb://%(host)s:%(port)s/%(database)s' % dict(
+    #     host=config.get('mongodb', 'host'), port=config.get('mongodb', 'port'),
+    #     database=config.get('mongodb', 'database'))
+    # celery_broker_url = celery_result_backend = uri
+    # celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
+    # i = celery.control.inspect(timeout=10)
+    # print i
+    # print i.scheduled()
+    # print i.active()
+
+    task = reduce_bill_results.AsyncResult(task_id)
     if task.state == 'PENDING':
         # job did not start yet
         response = {
