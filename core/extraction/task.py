@@ -91,3 +91,90 @@ def test_extractor(self, extractor_id, utility_id=None):
         print '***** "%s"' % bill.sha256_hexdigest, all_count, any_count, total_count
     s.commit()
     return all_count, any_count, total_count
+
+@celery.task(bind=True)
+def test_bill(self, extractor_id, bill_id):
+    '''
+    Tests an extractor on a single bill, and returns whether or not it succeeded.
+
+    TODO This function calls init_model() and _create_bill_file_handler().
+    I'm not sure if this is a performance issue, or if we can do this once for a whole set of bills.
+    I'm not sure how celery handles data sharing between tasks.
+
+    :param extractor: The extractor to apply to the bill
+    :param bill: The bill to test
+    :return: A dict containing {
+                all_count: 1 if all fields were extracted, 0 otherwise
+                any_count: 1 if any fields were extracted, 0 otherwise
+                total_count: 1
+            }
+    '''
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+
+    bill_file_handler = _create_bill_file_handler()
+    s = Session()
+    extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
+    bill = s.query(UtilBill).filter_by(id=bill_id).one()
+    c = extractor.get_success_count(bill, bill_file_handler)
+    all_count, any_count, total_count = 0, 0, 0
+    if c > 0:
+        any_count = 1
+    if c == len(extractor.fields) and len(extractor.fields) > 0:
+        all_count = 1
+    total_count = 1
+    return {
+        'all_count': all_count,
+        'any_count': any_count,
+        'total_count': total_count
+    }
+
+@celery.task(bind=True)
+def reduce_bill_results(self, results):
+    '''
+    Combines a bunch of results from individual bill tests into one summary.
+    This is done the summing up the all_count, any_count, and total_count fields.
+    :param results: The set of results to reduce
+    :return: The sum of the fields of the given results.
+    '''
+    return reduce(lambda r1, r2: {
+        'all_count': r1['all_count'] + r2['all_count'],
+        'any_count': r1['any_count'] + r2['any_count'],
+        'total_count': r1['total_count'] + r2['total_count'],
+    }, results)
+
+@celery.task(bind=True)
+def test_bills_batch(self, extractor_id, bill_ids):
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+    bill_file_handler = _create_bill_file_handler()
+    s = Session()
+    extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
+    bills = s.query(UtilBill).filter(UtilBill.id.in_(bill_ids)).all()
+
+    all_count, any_count, total_count = 0, 0, 0
+    for bill in bills:
+        c = extractor.get_success_count(bill, bill_file_handler)
+
+        if c > 0:
+            any_count += 1
+        if c == len(extractor.fields) and len(extractor.fields) > 0:
+            all_count += 1
+        total_count += 1
+        self.update_state(state='PROGRESS', meta={
+            'all_count': all_count,
+            'any_count': any_count,
+            'total_count': total_count
+        })
+
+    return {
+        'all_count': all_count,
+        'any_count': any_count,
+        'total_count': total_count
+    }
