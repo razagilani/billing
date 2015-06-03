@@ -44,24 +44,32 @@
 		</table>
 	</div>
 	<br>
-	<button type="button" onclick="selectall()">Select All</button>
+	<button type="button" onclick="selectAll()">Select All</button>
 	<button type="button" onclick="runSelected()">Run Selected</button>
 	</form>
 
 	<h3>There are {{ nbills }} total bills.</h3>
 	<h3>Results:</h3>
 	<!-- Subsmaple: (%) <input type="number"> -->
-	<br>
 	<div id="resultpane">
 		<table id="results">
 			<thead>
+				<tr>
+					<td id="job_id">Job ID</td>
+					<td id="extractor_id">Extractor</td>
+					<td id="utility_name">Utility</td>
+					<td id="status">Status</td>
+					<td id="total_count">Total Bills</td>
+					<td id="all_count">Bills with <i>all</i> fields read</td>
+					<td id="any_count">Bills with <i>any</i> fields read</td>
+				</tr>
 			</thead>
 			<tbody>
 			</tbody>
 		</table>
 	<div>
 	<br>
-
+	<button type="button" onclick="updateStatus()">Refresh</button>
 
 
 </body>
