@@ -21,8 +21,8 @@ def create_extractors(s):
     num_format = r'[0-9\.]+'
     start_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period (%s)' % date_format
     end_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period %s to (%s)' % (date_format, date_format)
-    energy_regex = r'.*([0-9]{4})Your next meter'
-    next_meter_read_regex = r'.*Your next meter reading is scheduled for (%s)' % date_format
+    energy_regex = r'([0-9]{4})Your next meter'
+    next_meter_read_regex = r'Your next meter reading is scheduled for (%s)' % date_format
     e =  TextExtractor(name='Original Pepco Extractor')
     e.fields.append(TextExtractor.TextField(regex=start_regex, type=Field.DATE, applier_key=Applier.START))
     e.fields.append(TextExtractor.TextField(regex=end_regex, type=Field.DATE, applier_key=Applier.END))
@@ -60,7 +60,7 @@ def create_extractors(s):
     wg_end_regex = r'%s-(%s) \(\d+ Days\)' % (date_format, date_format)
     wg_energy_regex = r'Total Therms \(TH\) used(%s)' % num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
-    wg_charges_regex = r'.*(DISTRIBUTION SERVICE.*)Account number'
+    wg_charges_regex = r'(DISTRIBUTION SERVICE.*)Account number'
     washington_gas = TextExtractor(name='Extractor for Washington Gas bills with green and yellow and chart id 15311')
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE, applier_key=Applier.START))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE, applier_key=Applier.END))

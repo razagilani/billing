@@ -100,7 +100,8 @@ class ValidationError(BillingError):
 class ExtractionError(BillingError):
     """Error related to extracting data from bill files.
     """
-    pass
+    def __str__(self):
+        return '%s: %s' % (self.__class__.__name__, self.message)
 
 class MatchError(ExtractionError):
     """Failed to find exactly one match for a regular expression when
