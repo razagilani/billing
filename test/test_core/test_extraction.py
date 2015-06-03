@@ -270,13 +270,13 @@ class TestIntegration(TestCase):
         # create a new session and re-load all the objects that are used in
         # the assertions below.
 
-        result = test_extractor.delay(self.e1.extractor_id)
+        result = test_extractor.apply(args=[self.e1.extractor_id])
         metadata = AsyncResult(result.task_id).info
         self.assertEqual((1, 1, 1), result.get())
         self.assertEqual({'all_count': 1, 'any_count': 1, 'total_count': 1},
             metadata)
 
-        result = test_extractor.delay(self.e2.extractor_id)
+        result = test_extractor.apply(args=[self.e2.extractor_id])
         metadata = AsyncResult(result.task_id).info
         self.assertEqual((0, 0, 1), result.get())
         self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
