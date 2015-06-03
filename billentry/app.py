@@ -171,7 +171,7 @@ def index():
 def test_extractors():
     '''
     Displays a user interface for testing different bill data extractors on the database.
-    Loads a list of all extractors in the database and sends this to the client.
+    Sends a list of all extractors, as well as all utilities, to the client.
     '''
     s = Session();
     extractors = s.query(Extractor).all()
@@ -193,8 +193,7 @@ def run_test():
     #run test_extractor with the given id's
     task = test_extractor.apply_async(args=[extractor_id, utility_id])
     #return a url from which to get status data for this task
-    return jsonify({}), 202, {'Location': url_for('test_status',
-                                                  task_id=task.id)}
+    return jsonify({'task_id':task.id}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
@@ -203,16 +202,16 @@ def test_status(task_id):
         # job did not start yet
         response = {
             'state': task.state,
-            'current': 0,
-            'total': 1,
-            'status': 'Pending...'
+            'all_count': 0,
+            'any_count': 0,
+            'total_count': 0
         }
     elif task.state != 'FAILURE':
         response = {
             'state': task.state,
-            'current': task.info.get('current', 0),
-            'total': task.info.get('total', 1),
-            'status': task.info.get('status', '')
+            'all_count': task.info.get('all_count'),
+            'any_count': task.info.get('any_count'),
+            'total_count': task.info.get('total_count'),
         }
         if 'result' in task.info:
             response['result'] = task.info['result']
@@ -220,11 +219,11 @@ def test_status(task_id):
         # something went wrong in the background job
         response = {
             'state': task.state,
-            'current': 1,
-            'total': 1,
+            'all_count': task.info.get('all_count'),
+            'any_count': task.info.get('any_count'),
+            'total_count': task.info.get('total_count'),
             'status': str(task.info),  # this is the exception raised
         }
-    print task
     return jsonify(response)
 
 def create_user_in_db(access_token):
