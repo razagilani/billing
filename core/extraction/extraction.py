@@ -2,6 +2,7 @@ from datetime import datetime
 import re
 
 from dateutil import parser as dateutil_parser
+import regex
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
     UniqueConstraint
 from sqlalchemy.orm import relationship, RelationshipProperty
@@ -445,8 +446,10 @@ class Extractor(model.Base):
         for field in self.fields:
             try:
                 value = field.get_value(self._input)
+                print 'SUCCESS:', field.applier_key, value
             except ExtractionError as error:
                 errors.append(error)
+                print 'FAILURE:', field.applier_key, error
             else:
                 good.append((field, value))
         return good, errors
@@ -498,11 +501,18 @@ class TextExtractor(Extractor):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
-            m = re.search(self.regex, text)
+            #m = re.search(self.regex, text)
+            # (?: means non-capturing parentheses
+            r = regex.compile('(?:%s){e}' % self.regex)
+            m = regex.search(r, text)
+            # TODO: this is failing on every field except end date, due to
+            # excessively long match strings. probably because end date is
+            # the first one and its regex  doesn't start with '.*'
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
+            result = m.groups()[0]
             return m.groups()[0]
 
     fields = relationship(TextField, backref='extractor')
