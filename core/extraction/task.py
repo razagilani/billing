@@ -89,4 +89,5 @@ def test_extractor(self, extractor_id, utility_id=None):
             'total_count': total_count
         })
         print '***** "%s"' % bill.sha256_hexdigest, all_count, any_count, total_count
+    s.commit()
     return all_count, any_count, total_count
