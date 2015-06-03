@@ -1,7 +1,7 @@
 from boto.s3.connection import S3Connection
 from celery.bin import celery
 from celery.result import AsyncResult
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.sql.expression import nullslast
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main, Extractor
@@ -61,7 +61,13 @@ def test_extractor(self, extractor_id, utility_id=None):
     bill_file_handler = _create_bill_file_handler()
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
-    q = s.query(UtilBill).order_by(nullslast(desc(UtilBill.date_received)))
+
+    # sort bills in random order so partial results show success rates more
+    # similar to the final result. bills without file names are excluded
+    # because there is no file to extract from.
+    q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
+                                 UtilBill.sha256_hexdigest != ''
+                                 ).order_by(func.random())
     if utility_id is not None:
         q = q.filter(UtilBill.utility_id==utility_id)
 
