@@ -322,6 +322,21 @@ class Field(model.Base):
 
     This is an abstract class.
     """
+    class FieldExtension(MapperExtension):
+        """Handles automatically updating Extractor.modified when a Field
+        belonging to the extractor has been added, changed, or removed.
+        """
+        def before_insert(self, mapper, connection, instance):
+            instance.extractor.modified = func.now()
+
+        def before_update(self, mapper, connection, instance):
+            if object_session(instance).is_modified(instance,
+                    include_collections=False):
+                instance.modified = func.now()
+
+        def before_delete(self, mapper, connection, instance):
+            instance.extractor.modified = func.now()
+
     # various functions can be used to convert strings into other types. each
     #  one has a name so it can be stored in the database.
     DATE = 'date'
@@ -357,8 +372,9 @@ class Field(model.Base):
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
+        'extension': FieldExtension(),
         'polymorphic_on': discriminator,
-        'polymorphic_identity': 'field'
+        'polymorphic_identity': 'field',
     }
 
     # cached input data and extracted value (only meant to be used as
@@ -419,6 +435,7 @@ class Extractor(model.Base):
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(),
                       onupdate=func.now())
+    fields = relationship(Field, backref='extractor')
 
     __mapper_args__ = {
         'polymorphic_on': discriminator,
@@ -510,7 +527,7 @@ class TextExtractor(Extractor):
                         self.regex, text[:20]))
             return m.groups()[0]
 
-    fields = relationship(TextField, backref='extractor')
+    #fields = relationship(TextField, backref='extractor')
 
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
