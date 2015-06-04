@@ -1,5 +1,6 @@
 from mock import MagicMock, Mock
 from core import init_model
+from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
 from core.pricing import PricingModel
@@ -215,6 +216,19 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class())
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
+
+    def test_replace_estimated_with_complete(self):
+        est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated)
+        real_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Complete,
+                             sha256_hexdigest='abc123')
+        # TODO: add data in attributes of real_bill
+        bill_file_handler = Mock(autospec=BillFileHandler)
+
+        est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
+        # TODO: assert values of attributes of est_bill
+
+        # TODO: assert that real_bill was deleted, if possible. might need a
+        # separate test for this in UtilBillTestWithDB
 
 
 class UtilBillTestWithDB(TestCase):
