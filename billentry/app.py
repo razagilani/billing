@@ -208,19 +208,12 @@ def run_test():
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
-    # from core import config
-    # uri = 'mongodb://%(host)s:%(port)s/%(database)s' % dict(
-    #     host=config.get('mongodb', 'host'), port=config.get('mongodb', 'port'),
-    #     database=config.get('mongodb', 'database'))
-    # celery_broker_url = celery_result_backend = uri
-    # celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
-    # i = celery.control.inspect(timeout=10)
-    # print i
-    # print i.scheduled()
-    # print i.active()
 
     #task = reduce_bill_results.AsyncResult(task_id)
-    task = AsyncResult(task_id)
+    task = GroupResult(task_id)
+    print "*****"
+    print task
+    print "*****"
     if task.state == 'PENDING':
         # job did not start yet
         response = {
