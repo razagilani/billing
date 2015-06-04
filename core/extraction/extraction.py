@@ -537,7 +537,8 @@ class ExtractorResult(model.Base):
         """Fill in count fields after the test has finished.
         :param metadata: Celery task metadata/info dictionary.
         """
-        self.all_acount = metadata['all_count']
+        self.finished = datetime.utcnow()
+        self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
-        self.count_by_month = meta['count_by_month']
-        self.count_by_field = meta['count_by_field']
+        self.count_by_month = metadata['count_by_month']
+        self.count_by_field = metadata['count_by_field']
