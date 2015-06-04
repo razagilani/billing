@@ -31,7 +31,7 @@ from celery.task.control import inspect
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
-from core.extraction.extraction import Extractor
+from core.extraction.extraction import Extractor, Applier
 from core.extraction.task import test_extractor, test_bill, reduce_bill_results, test_bills_batch
 from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
@@ -178,7 +178,8 @@ def test_extractors():
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
     utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
-    response = render_template('test-extractors.html', extractors=extractors, nbills = nbills, utilities=utilities)
+    fields = Applier.KEYS.keys()
+    response = render_template('test-extractors.html', extractors=extractors, nbills = nbills, utilities=utilities, fields=fields)
     return response
 
 @app.route('/run-test', methods=['POST'])
@@ -228,7 +229,8 @@ def test_status(task_id):
             'state': task.state,
             'all_count': 0,
             'any_count': 0,
-            'total_count': 0
+            'total_count': 0,
+            'fields':None,
         }
     elif task.state != 'FAILURE':
         response = {
@@ -236,9 +238,10 @@ def test_status(task_id):
             'all_count': task.info.get('all_count'),
             'any_count': task.info.get('any_count'),
             'total_count': task.info.get('total_count'),
+            'fields': task.info.get('fields'),
         }
-        if 'result' in task.info:
-            response['result'] = task.info['result']
+        # if 'result' in task.info:
+        #     response['result'] = task.info['result']
     else:
         # something went wrong in the background job
         response = {
@@ -246,6 +249,7 @@ def test_status(task_id):
             'all_count': task.info.get('all_count'),
             'any_count': task.info.get('any_count'),
             'total_count': task.info.get('total_count'),
+            'fields': task.info.get('fields'),
             'status': str(task.info),  # this is the exception raised
         }
     return jsonify(response)

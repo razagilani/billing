@@ -159,8 +159,14 @@ def test_bills_batch(self, extractor_id, bill_ids):
     bills = s.query(UtilBill).filter(UtilBill.id.in_(bill_ids)).all()
 
     all_count, any_count, total_count = 0, 0, 0
+    field_count = {f.applier_key:0 for f in extractor.fields}
     for bill in bills:
-        c = extractor.get_success_count(bill, bill_file_handler)
+        #TODO right now this is a private method, we should make it public
+        #good is of type [(field, value), ...]
+        good, error = extractor._get_values(bill, bill_file_handler)
+        c = len(good)
+        for g in good:
+            field_count[g[0].applier_key] += 1
 
         if c > 0:
             any_count += 1
@@ -170,11 +176,13 @@ def test_bills_batch(self, extractor_id, bill_ids):
         self.update_state(state='PROGRESS', meta={
             'all_count': all_count,
             'any_count': any_count,
-            'total_count': total_count
+            'total_count': total_count,
+            'fields': field_count,
         })
 
     return {
         'all_count': all_count,
         'any_count': any_count,
-        'total_count': total_count
+        'total_count': total_count,
+        'fields': field_count,
     }

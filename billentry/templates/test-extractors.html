@@ -62,6 +62,10 @@
 					<td id="total_count">Total Bills</td>
 					<td id="all_count">Bills with <i>all</i> fields read</td>
 					<td id="any_count">Bills with <i>any</i> fields read</td>
+					
+					{% for f in fields %}
+					<td class="field" id="{{ f }}">{{ f }}</td>
+					{% endfor %}
 				</tr>
 			</thead>
 			<tbody>

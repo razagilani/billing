@@ -1,10 +1,16 @@
 tasks = []
+fields = {}
 
 $(document).ready(function() { 
+	//Assign id-specific function to each run button
 	$(".runbtn").each(function(index, elem){
 		elem.onclick = function(){
 			runExtractor($(this).attr("name"));
 		}
+	});
+	//Load field names into hash
+	$("#results thead .field").each(function(index, elem){
+		fields[$(elem).attr("id")] = 0;
 	});
 	//setInterval(updateStatus, 1000);
 });
@@ -25,25 +31,49 @@ function selectAll(){
 
 function updateStatus(){
 	tasks.forEach(function(elem){
+		//get appropriate row
 		task_table_row = $('#results tr[id='+ elem.extractor_id +']');
 
 		total_count = 0;
 		all_count = 0;
 		any_count = 0;
-
-		$.post("/test-status/"+elem.task_ids[0], function(data){
-			console.log(data);
-			total_count +=  data.total_count;
-			all_count +=  data.all_count;
-			any_count +=  data.any_count;
-
-			//TODO state different for each sub-task
-			task_table_row.children("td[header=status]").text(data.state);
+		Object.keys(fields).forEach(function(key, index){
+			fields[key] = 0;
 		});
 
-		task_table_row.children("td[header=total_count]").text(total_count);
-		task_table_row.children("td[header=all_count]").text(all_count);
-		task_table_row.children("td[header=any_count]").text(any_count);
+		//For each sub-task...
+		elem.task_ids.forEach(function(tid, index){
+			$.post("/test-status/"+tid, function(data){
+				total_count +=  data.total_count;
+				all_count +=  data.all_count;
+				any_count +=  data.any_count;
+				if(data.fields != null){
+					Object.keys(data.fields).forEach(function(key, index){
+						if (key in fields) {
+							fields[key]+=data.fields[key];
+						}
+						else {
+							fields[key] = 0;
+						}
+					});
+				}
+
+				//TODO state different for each sub-task, find better descriptor
+				task_table_row.children("td[header=status]").text(data.state);
+
+				//When last sub-task update request is processed, update the table. 
+				if (index == task_ids.length - 1){
+					task_table_row.children("td[header=total_count]").text(total_count);
+					task_table_row.children("td[header=all_count]").text(all_count);
+					task_table_row.children("td[header=any_count]").text(any_count);
+					//update field values
+					task_table_row.children("td.field").each(function(index, elem){
+						$(elem).text(fields[$(elem).attr("header")]);
+					});
+				}
+			});
+		});
+
 	});
 }
 
@@ -69,9 +99,12 @@ function runExtractor(extractor_id){
 		'<td header="status"></td>\n' + 
 		'<td header="total_count"></td>\n' + 
 		'<td header="all_count"></td>\n' + 
-		'<td header="any_count"></td>\n' + 
-		'</tr>'
-		$("#results tr:last").after(table_row);
+		'<td header="any_count"></td>\n'; 
+		$('#results thead td.field').each(function(index, elem){
+			table_row += '<td class="field" header="'+$(elem).attr('id')+'"></td>\n';
+		})
+		table_row += '</tr>\n'
+		$("#results tbody").append(table_row);
 	});
 }
 
