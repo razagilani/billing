@@ -42,8 +42,6 @@ Ext.define('Ext.panel.PDF',{
 
     noSrcMessage: '<div style="position: absolute; top: 200px; width: 100%; text-align: center">No PDF selected</div>',
 
-    textRenderDelay: 20,
-
     cache: true,
 
     initComponent: function(){
@@ -111,7 +109,17 @@ Ext.define('Ext.panel.PDF',{
     },
 
     setLoading: function(){
+        this.resetLayers();
         this.canvasLayer.innerHTML = this.loadingMessage;
+    },
+
+    resetLayers: function(){
+        while (this.textLayerDiv.lastChild) {
+            this.textLayerDiv.removeChild(this.textLayerDiv.lastChild);
+        }
+        while (this.canvasLayer.lastChild) {
+            this.canvasLayer.removeChild(this.canvasLayer.lastChild);
+        }
     },
     
     getDocument: function(regenBustCache){
@@ -177,15 +185,6 @@ Ext.define('Ext.panel.PDF',{
         if(!pdfDoc || panelWidth <= 0)
             return;
 
-        var resetLayers = function(){
-            while (me.textLayerDiv.lastChild) {
-                me.textLayerDiv.removeChild(me.textLayerDiv.lastChild);
-            }
-            while (me.canvasLayer.lastChild) {
-                me.canvasLayer.removeChild(me.canvasLayer.lastChild);
-            }
-        };
-
         var renderPage = function(page){
             // The scale can only be set once the first page of the document has
             // been retrieved
@@ -239,7 +238,7 @@ Ext.define('Ext.panel.PDF',{
             return pageTasks;
         };
 
-        resetLayers();
+        this.resetLayers();
         Promise.all(execForAllPages(renderPage)).then(
             execForAllPages(renderPageText)
         );
