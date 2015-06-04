@@ -119,32 +119,57 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    c = extractor.get_success_count(bill, bill_file_handler)
     all_count, any_count, total_count = 0, 0, 0
+    field_count = {f.applier_key:0 for f in extractor.fields}
+    #TODO right now this is a private method, we should make it public
+    # good is of type [(field, value), ...]
+    good, error = extractor._get_values(bill, bill_file_handler)
+    c = len(good)
+    for g in good:
+        field_count[g[0].applier_key] += 1
+
     if c > 0:
-        any_count = 1
+        any_count += 1
     if c == len(extractor.fields) and len(extractor.fields) > 0:
-        all_count = 1
-    total_count = 1
+        all_count += 1
+    total_count += 1
+
     return {
         'all_count': all_count,
         'any_count': any_count,
-        'total_count': total_count
+        'total_count': total_count,
+        'fields': field_count,
+        # TODO: add count_by_field and count_by_month
     }
 
 @celery.task(bind=True)
 def reduce_bill_results(self, results):
     '''
     Combines a bunch of results from individual bill tests into one summary.
-    This is done the summing up the all_count, any_count, and total_count fields.
+    Note: All results should be from same extractor
+
     :param results: The set of results to reduce
     :return: The sum of the fields of the given results.
     '''
-    return reduce(lambda r1, r2: {
-        'all_count': r1['all_count'] + r2['all_count'],
-        'any_count': r1['any_count'] + r2['any_count'],
-        'total_count': r1['total_count'] + r2['total_count'],
-    }, results)
+
+    all_count, any_count, total_count = 0, 0, 0
+    fields = None
+    results = filter(None, results)
+    for r in results:
+        all_count += r['all_count']
+        any_count += r['any_count']
+        total_count += r['total_count']
+        if fields is None:
+               fields = r['fields']
+        else:
+            for k in r['fields'].keys():
+                fields[k] += r['fields'][k]
+    return {
+            'all_count': all_count,
+            'any_count': any_count,
+            'total_count': total_count,
+            'fields': fields,
+        }
 
 @celery.task(bind=True)
 def test_bills_batch(self, extractor_id, bill_ids):

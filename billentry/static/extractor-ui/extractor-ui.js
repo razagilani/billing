@@ -1,5 +1,4 @@
 tasks=[];
-fields = {}
 
 $(document).ready(function() { 
 	//Assign id-specific function to each run button
@@ -7,10 +6,6 @@ $(document).ready(function() {
 		elem.onclick = function(){
 			runExtractor($(this).attr("name"));
 		}
-	});
-	//Load field names into hash
-	$("#results thead .field").each(function(index, elem){
-		fields[$(elem).attr("id")] = 0;
 	});
 	//setInterval(updateStatus, 1000);
 });
@@ -38,11 +33,10 @@ function updateStatus(){
 			total_count =  data.total_count;
 			all_count =  data.all_count;
 			any_count =  data.any_count;
-			if(data.fields != null){
-				Object.keys(data.fields).forEach(function(key, index){
-					fields[key]=data.fields[key];
-				});
-			}
+			fields = {}
+			Object.keys(data.fields).forEach(function(key, index){
+				fields[key]=data.fields[key];
+			});
 
 			task_table_row.children("td[header=status]").text(data.state);
 			task_table_row.children("td[header=total_count]").text(total_count);
@@ -56,62 +50,13 @@ function updateStatus(){
 	});
 }
 
-/* BATCH PROCESSING VERSION */
-// function updateStatus(){
-// 	tasks.forEach(function(elem){
-// 		//get appropriate row
-// 		task_table_row = $('#results tr[id='+ elem.extractor_id +']');
-
-// 		total_count = 0;
-// 		all_count = 0;
-// 		any_count = 0;
-// 		Object.keys(fields).forEach(function(key, index){
-// 			fields[key] = 0;
-// 		});
-
-// 		//For each sub-task...
-// 		elem.task_ids.forEach(function(tid, index){
-// 			$.post("/test-status/"+tid, function(data){
-// 				total_count +=  data.total_count;
-// 				all_count +=  data.all_count;
-// 				any_count +=  data.any_count;
-// 				if(data.fields != null){
-// 					Object.keys(data.fields).forEach(function(key, index){
-// 						if (key in fields) {
-// 							fields[key]+=data.fields[key];
-// 						}
-// 						else {
-// 							fields[key] = 0;
-// 						}
-// 					});
-// 				}
-
-// 				//TODO state different for each sub-task, find better descriptor
-// 				task_table_row.children("td[header=status]").text(data.state);
-
-// 				//When last sub-task update request is processed, update the table. 
-// 				if (index == task_ids.length - 1){
-// 					task_table_row.children("td[header=total_count]").text(total_count);
-// 					task_table_row.children("td[header=all_count]").text(all_count);
-// 					task_table_row.children("td[header=any_count]").text(any_count);
-// 					//update field values
-// 					task_table_row.children("td.field").each(function(index, elem){
-// 						$(elem).text(fields[$(elem).attr("header")]);
-// 					});
-// 				}
-// 			});
-// 		});
-
-// 	});
-// }
-
-
 function runExtractor(extractor_id){
 	utility_id = $("select[name="+extractor_id+"]").val(); 
 	postParameters = {extractor_id:extractor_id, utility_id:(utility_id == "" ? null : utility_id)};
-	utiltiy_name = (utility_id=="" ? "None" : utility_id);
+	utiltiy_name = $("option[value="+utility_id+"]:first").text()
 	$.post("/run-test", postParameters, function(data, status, request){
 		task_id = data.task_id;
+		bills_to_run = data.bills_to_run;
 		tasks.push({
 			extractor_id: extractor_id,
 			utility_id: (utility_id=="" ? "None" : utility_id),
@@ -125,6 +70,7 @@ function runExtractor(extractor_id){
 		'<td header="extractor_id">'+ extractor_id + '</td>\n' + 
 		'<td header="utility_name">'+ utiltiy_name+'</td>\n' + 
 		'<td header="status"></td>\n' + 
+		'<td header="bills_to_run">' + bills_to_run + '</td>\n' + 
 		'<td header="total_count"></td>\n' + 
 		'<td header="all_count"></td>\n' + 
 		'<td header="any_count"></td>\n'; 
