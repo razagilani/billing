@@ -26,8 +26,8 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
 from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app, Response, jsonify
 from flask_oauth import OAuth, OAuthException
-from celery import Celery, chord
-from celery.task.control import inspect
+from celery import Celery, chord, group
+from celery.result import GroupResult
 
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
@@ -190,9 +190,6 @@ def run_test():
     :return 202, and JSON data containing the URL which will provide status updates
     '''
 
-    # run test_extractor with the given id's
-    # task = test_extractor.apply_async(args=[extractor_id, utility_id])
-
     extractor_id = request.form.get('extractor_id')
     utility_id=request.form.get('utility_id')
 
@@ -203,12 +200,11 @@ def run_test():
     if utility_id != "":
         q = q.filter(UtilBill.utility_id == utility_id)
     bills = q.all()
-    bill_ids = [b.id for b in bills]
-    billchunks = [bill_ids[x:x+100] for x in range(0, len(bill_ids), 100)]
+    job = group([test_bill.s(extractor_id, b.id) for b in bills])
+    result = job.apply_async()
+    # result.save()
 
-    tasks = [test_bills_batch.delay(extractor_id, blist) for blist in billchunks]
-
-    return jsonify({'task_ids':[t.id for t in tasks]}), 202
+    return jsonify({'task_id':result.id}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
