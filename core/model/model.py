@@ -1279,9 +1279,9 @@ class UtilBill(Base):
         self.check_editable()
         if self.state != self.Estimated:
             raise BillStateError("Bill to replace must be estimated")
-        if other.state <= self.UtilityEstimated:
+        if other.state == self.Estimated:
             raise BillStateError("Replacement bill must not be estimated")
-        assert self.sha256_hexdigest is None
+        assert self.sha256_hexdigest in ('', None)
         bill_file_handler.check_file_exists(other)
 
         # copy the data and update 'state'
