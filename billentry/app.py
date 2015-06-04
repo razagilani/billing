@@ -212,42 +212,25 @@ def run_test():
     bills = q.all()
     job = group([test_bill.s(extractor_id, b.id) for b in bills])
     result = job.apply_async()
+    result.save()
 
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
                     task_id=result.id, started=datetime.utcnow())
     s.add(er)
     s.commit()
-    return jsonify({'task_id': result.id}), 202
-
+    return jsonify({'task_id': result.id, 'bills_to_run':len(bills)}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
-
-    # task = reduce_bill_results.AsyncResult(task_id)
-    task = GroupResult(task_id)
-    print "*****"
-    print task
-    print "*****"
-    if task.state == 'PENDING':
-        # job did not start yet
-        response = {'state': task.state, 'all_count': 0, 'any_count': 0,
-            'total_count': 0, 'fields': None, }
-    elif task.state != 'FAILURE':
-        response = {'state': task.state,
-            'all_count': task.info.get('all_count'),
-            'any_count': task.info.get('any_count'),
-            'total_count': task.info.get('total_count'),
-            'fields': task.info.get('fields'), }
-        # if 'result' in task.info:
-        #     response['result'] = task.info['result']
-    else:
-        # something went wrong in the background job
-        response = {'state': task.state,
-            'all_count': task.info.get('all_count'),
-            'any_count': task.info.get('any_count'),
-            'total_count': task.info.get('total_count'),
-            'fields': task.info.get('fields'), 'status': str(task.info),
-        # this is the exception raised}
+    '''
+    Returns the status for a given task.
+    This is done by calling reduce_bill_results on all the sub-tasks for a given task.
+    :param task_id: The id of the current task
+    :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
+    '''
+    celery = Celery(broker="mongodb://localhost:27017/skyline-dev", backend="mongodb://localhost:27017/skyline-dev")
+    task = GroupResult.restore(task_id)
+    response = reduce_bill_results([r.info for r in task.results])
     return jsonify(response)
 
 
