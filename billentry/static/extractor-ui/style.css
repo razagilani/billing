@@ -2,6 +2,7 @@ body {margin:50px;}
 thead {
 	font-weight:bold;
 }
+td.field{font-style: italic;}
 td {padding-right:20px;}
 /*td.check, td.id {width:30px;}*/
 /*#extractorpane {max-height:50%; overflow-y:scroll;}*/
