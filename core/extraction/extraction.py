@@ -3,9 +3,10 @@ import re
 
 from dateutil import parser as dateutil_parser
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime
+    UniqueConstraint, DateTime, func
 from sqlalchemy.dialects.postgresql import HSTORE
-from sqlalchemy.orm import relationship, RelationshipProperty
+from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
+    MapperExtension
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from core import model
@@ -415,10 +416,13 @@ class Extractor(model.Base):
     extractor_id = Column(Integer, primary_key=True)
     discriminator = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    created = Column(DateTime, nullable=False, server_default=func.now())
+    modified = Column(DateTime, nullable=False, server_default=func.now(),
+                      onupdate=func.now())
 
     __mapper_args__ = {
         'polymorphic_on': discriminator,
-        'polymorphic_identity': 'extractor'
+        'polymorphic_identity': 'extractor',
     }
 
     # instance variable to hold cached input data
