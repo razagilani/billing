@@ -17,7 +17,7 @@ from core import init_model, initialize, init_config
 log = logging.getLogger(__name__)
 
 def create_extractors(s):
-    date_format = r'[A-Za-z]+ [0-9]{1,2}, [0-9]{4}'
+    date_format = r'[A-Za-z]+\s*[0-9]{1,2},\s*[0-9]{4}'
     num_format = r'[0-9\.]+'
     start_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period (%s)' % date_format
     end_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period %s to (%s)' % (date_format, date_format)
@@ -56,8 +56,8 @@ def create_extractors(s):
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=Applier.CHARGES))
 
     #washington gas bills
-    wg_start_regex = r'(%s)-%s \(\d+ Days\)' % (date_format, date_format)
-    wg_end_regex = r'%s-(%s) \(\d+ Days\)' % (date_format, date_format)
+    wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
+    wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
     wg_energy_regex = r'Total Therms \(TH\) used(%s)' % num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
     wg_charges_regex = r'.*(DISTRIBUTION SERVICE.*)Account number'

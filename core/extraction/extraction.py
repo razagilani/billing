@@ -169,7 +169,7 @@ def convert_wg_charges_std(text):
     tax_charge_strs = re.findall(charge, tax_charges)
 
     def extract_charge(charge_str, charge_type):
-        name = re.match(charge_name, charge_str).group(0).strip()
+        name = re.match(charge_name, charge_str, re.IGNORECASE).group(0).strip()
         # "*?" means non-greedy *
         total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
 
@@ -208,9 +208,9 @@ def convert_wg_charges_wgl(text):
     tax_charge_strs = re.findall(charge, tax_charges)
 
     def extract_charge(charge_str, charge_type):
-        name = re.match(charge_name, charge_str).group(0).strip()
+        name = re.match(charge_name, charge_str, re.IGNORECASE).group(0).strip()
         # "*?" means non-greedy *
-        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
+        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str, re.IGNORECASE).group(1)
 
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
         return Charge(rsi_binding, name=name, target_total=float(total_str),
@@ -521,7 +521,7 @@ class TextExtractor(Extractor):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
-            m = re.search(self.regex, text)
+            m = re.search(self.regex, text, re.IGNORECASE)
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
