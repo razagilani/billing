@@ -327,15 +327,16 @@ class Field(model.Base):
         belonging to the extractor has been added, changed, or removed.
         """
         def before_insert(self, mapper, connection, instance):
-            instance.extractor.modified = func.now()
+            # TODO: better to use SQL function (func.now()), if it worked
+            instance.extractor.modified = datetime.utcnow()
 
         def before_update(self, mapper, connection, instance):
             if object_session(instance).is_modified(instance,
                     include_collections=False):
-                instance.modified = func.now()
+                instance.extractor.modified = datetime.utcnow()
 
         def before_delete(self, mapper, connection, instance):
-            instance.extractor.modified = func.now()
+            instance.extractor.modified = datetime.utcnow()
 
     # various functions can be used to convert strings into other types. each
     #  one has a name so it can be stored in the database.

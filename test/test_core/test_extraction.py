@@ -1,6 +1,6 @@
 from datetime import date, datetime
 import os
-from unittest import TestCase
+from unittest import TestCase, skip
 
 from boto.s3.connection import S3Connection
 from celery.result import AsyncResult
@@ -251,6 +251,23 @@ class TestIntegration(TestCase):
             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D),
         ], self.bill.charges)
         self.assertIsInstance(self.bill.date_extracted, datetime)
+
+    @skip('not working yet')
+    def test_created_modified(self):
+        self.assertIsNone(self.e1.created)
+        self.assertIsNone(self.e1.modified)
+
+        s = Session()
+        s.add(self.e1)
+        s.flush()
+        modified = self.e1.modified
+        self.assertIsNotNone(self.e1.created)
+        self.assertIsNotNone(modified)
+        self.assertLessEqual(self.e1.created, modified)
+
+        self.e1.fields[0].name = 'new name'
+        s.flush()
+        self.assertGreater(self.e1.modified, modified)
 
     def test_test_extractor(self):
         # TODO: it might be possible to write this as a unit test, without the
