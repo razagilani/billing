@@ -4,7 +4,7 @@ from celery.result import AsyncResult
 from sqlalchemy import desc, func
 from sqlalchemy.sql.expression import nullslast
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Main, Extractor
+from core.extraction.extraction import Main, Extractor, ExtractorResult
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 
@@ -178,11 +178,9 @@ def test_bills_batch(self, extractor_id, bill_ids):
             'any_count': any_count,
             'total_count': total_count,
             'fields': field_count,
+            # TODO: add count_by_field and count_by_month
         })
 
-    return {
-        'all_count': all_count,
-        'any_count': any_count,
-        'total_count': total_count,
-        'fields': field_count,
-    }
+    result = s.query(ExtractorResult).filter_by(task_id=self.request.id).one()
+    result.set_results(self.request.info)
+    return self.request.info
