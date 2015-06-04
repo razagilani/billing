@@ -255,6 +255,7 @@ def test_status(task_id):
             'any_count': task.info.get('any_count'),
             'total_count': task.info.get('total_count'),
             'fields': task.info.get('fields'), 'status': str(task.info),
+        }
         # this is the exception raised}
     return jsonify(response)
 
