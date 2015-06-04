@@ -21,6 +21,11 @@ def upgrade():
         sa.Column('extractor_id', sa.Integer(), nullable=False),
                     sa.Column('discriminator', sa.String(), nullable=False),
                     sa.Column('name', sa.String(), nullable=False),
+                    sa.Column('created', sa.DateTime(), nullable=False,
+                              server_default=sa.func.now()),
+                    sa.Column('modified', sa.DateTime(), nullable=False,
+                              server_default=sa.func.now(),
+                              onupdate=sa.func.now()),
         sa.PrimaryKeyConstraint('extractor_id')
     )
     op.create_table('field',
