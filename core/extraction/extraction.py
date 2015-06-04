@@ -3,7 +3,8 @@ import re
 
 from dateutil import parser as dateutil_parser
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint
+    UniqueConstraint, DateTime
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm import relationship, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
@@ -511,3 +512,32 @@ class TextExtractor(Extractor):
         """Return text dumped from the given bill's PDF file.
         """
         return utilbill.get_text(bill_file_handler)
+
+class ExtractorResult(model.Base):
+    __tablename__ = 'extractor_result'
+
+    extractor_result_id = Column(Integer, primary_key=True)
+    extractor_id = Column(Integer, ForeignKey('extractor.id'))
+
+    # date when the test was started, and finished (if it has finished)
+    started = Column(DateTime, nullable=False)
+    finished = Column(DateTime)
+
+    # used when filtering bills by utility
+    utility_id = Column(Integer, ForeignKey('utility.id'))
+
+    # results to be filled in after the test has finished
+    all_count = Column(Integer)
+    any_count = Column(Integer)
+    total_count = Column(Integer)
+    count_by_month = Column(HSTORE)
+    count_by_field = Column(HSTORE)
+
+    def set_results(self, metadata):
+        """Fill in count fields after the test has finished.
+        :param metadata: Celery task metadata/info dictionary.
+        """
+        self.all_acount = metadata['all_count']
+        self.any_count = metadata['any_count']
+        self.count_by_month = meta['count_by_month']
+        self.count_by_field = meta['count_by_field']

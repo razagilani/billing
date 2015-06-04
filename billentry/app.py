@@ -15,6 +15,7 @@ import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
+from celery.result import AsyncResult
 from sqlalchemy import desc, func
 
 import xkcdpass.xkcd_password  as xp
@@ -222,7 +223,8 @@ def test_status(task_id):
     # print i.scheduled()
     # print i.active()
 
-    task = reduce_bill_results.AsyncResult(task_id)
+    #task = reduce_bill_results.AsyncResult(task_id)
+    task = AsyncResult(task_id)
     if task.state == 'PENDING':
         # job did not start yet
         response = {
