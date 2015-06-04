@@ -107,6 +107,9 @@ def test_bill(self, extractor_id, bill_id):
                 all_count: 1 if all fields were extracted, 0 otherwise
                 any_count: 1 if any fields were extracted, 0 otherwise
                 total_count: 1
+                fields: {
+                    --- fields corresponding to Applier.
+                }
             }
     '''
     from core.model import Session
@@ -133,6 +136,19 @@ def test_bill(self, extractor_id, bill_id):
     if c == len(extractor.fields) and len(extractor.fields) > 0:
         all_count += 1
     total_count += 1
+
+    debug = True
+    if all_count != total_count and debug:
+        print "\n***"
+        print "Extractor Name: ", extractor.name
+        print "Bill ID: ", str(bill_id)
+        print "Utility: ", bill.utility_id
+        for g in good:
+            print "Field: ", g[0].applier_key, " Value: ", g[1]
+        for e in error:
+            print "Error: ", e
+        print "Text: ", bill.get_text(bill_file_handler)
+        print "***\n"
 
     return {
         'all_count': all_count,
