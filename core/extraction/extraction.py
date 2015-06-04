@@ -518,7 +518,7 @@ class ExtractorResult(model.Base):
 
     extractor_result_id = Column(Integer, primary_key=True)
     extractor_id = Column(Integer, ForeignKey('extractor.id'))
-
+    task_id = Column(String, nullable=False)
     # date when the test was started, and finished (if it has finished)
     started = Column(DateTime, nullable=False)
     finished = Column(DateTime)

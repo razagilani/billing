@@ -40,7 +40,18 @@ def upgrade():
     op.add_column(u'charge', sa.Column('name', sa.String(), nullable=True))
     op.add_column(u'utilbill', sa.Column('text', sa.String(), nullable=True))
     op.add_column(u'utility', sa.Column('charge_name_map', postgresql.HSTORE(), nullable=False, server_default=''))
-
+    op.create_table('extractor_result',
+        sa.Column('extractor_result_id', sa.Integer(), primary_key=True),
+        sa.Column('task_id', sa.String(), nullable=False),
+        sa.Column('extractor_id', sa.Integer(), sa.ForeignKey('extractor.extractor_id')),
+        sa.Column('started', sa.DateTime(), nullable=False),
+        sa.Column('finished', sa.DateTime()),
+        sa.Column('utility_id', sa.Integer(), sa.ForeignKey('utility.id')),
+        sa.Column('all_count', sa.Integer()),
+        sa.Column('any_count', sa.Integer()),
+        sa.Column('total_count', sa.Integer()),
+        sa.Column('count_by_month', postgresql.HSTORE()),
+        sa.Column('count_by_field', postgresql.HSTORE()))
 
 def downgrade():
     raise NotImplementedError
