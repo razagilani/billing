@@ -108,7 +108,7 @@ function updateStatus(){
 
 function runExtractor(extractor_id){
 	utility_id = $("select[name="+extractor_id+"]").val(); 
-	postParameters = {extractor_id:extractor_id, utility_id:utility_id};
+	postParameters = {extractor_id:extractor_id, utility_id:(utility_id == "" ? null : utility_id)};
 	utiltiy_name = (utility_id=="" ? "None" : utility_id);
 	$.post("/run-test", postParameters, function(data, status, request){
 		task_id = data.task_id;
