@@ -22,7 +22,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError
+    UnEditableBillError, NotProcessable, BillingError, BillStateError
 from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
@@ -1259,3 +1259,38 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
+
+    def _copy_data_from(self, other):
+        """Copy all column values from 'other', replacing existing values.
+        :param other: UtilBill
+        """
+        # TODO: this is not UtilBill-specific and should be moved to Base
+        for col_name in other.column_names():
+            setattr(self, col_name, getattr(other, col_name))
+
+    def replace_estimated_with_complete(self, other, bill_file_handler):
+        """Convert an estimated bill, which has no file, into a real bill by
+        copying all data from another non-estimated bill to this one, and
+        deleting the other bill.
+        :param other: UtilBill
+        :param bill_file_handler: BillFileHandler
+        """
+        # validation
+        self.check_editable()
+        if self.state != self.Estimated:
+            raise BillStateError("Bill to replace must be estimated")
+        if other.state <= self.UtilityEstimated:
+            raise BillStateError("Replacement bill must not be estimated")
+        assert self.sha256_hexdigest is None
+        bill_file_handler.check_file_exists(other)
+
+        # copy the data and update 'state'
+        self._copy_data_from(other)
+        assert self.sha256_hexdigest is not None
+        bill_file_handler.check_file_exists(self)
+        self.state = self.Complete
+
+        # delete the other bill
+        s = object_session(other)
+        if s is not None:
+            s.delete(other)
