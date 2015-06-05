@@ -50,6 +50,7 @@
 
 	<h3>There are {{ nbills }} total bills.</h3>
 	<h3>Results:</h3>
+	
 	<!-- Subsmaple: (%) <input type="number"> -->
 	<div id="resultpane">
 		<table id="results">
@@ -72,11 +73,31 @@
 			<tbody>
 			</tbody>
 		</table>
-	<div>
+	</div>
 	<br>
-	<button type="button" onclick="updateStatus()">Refresh</button>
-
-
+	<span id="detailed-results-span" style="display:inherit">
+		<h3>Detailed Results:</h3>
+		<div id="detailed-results-pane">
+			<table id="detailed-results">
+				<thead>
+					<tr>
+						<td id="date">Date</td>
+						<td id="total_count">Total so far</td>
+						<td id="all_count">Bills with <i>all</i> fields read</td>
+						<td id="any_count">Bills with <i>any</i> fields read</td>
+						
+						{% for f in fields %}
+						<td class="field" id="{{ f }}">{{ f }}</td>
+						{% endfor %}
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</span>
+	<br>
+ 	<button type="button" onclick="updateStatus()">Refresh</button>
 </body>
 
 </html>

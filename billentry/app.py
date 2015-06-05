@@ -205,11 +205,13 @@ def run_test():
 
     s = Session();
     q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
-                                 UtilBill.sha256_hexdigest != '').order_by(
+        UtilBill.sha256_hexdigest != '').order_by(
         func.random())
     if utility_id is not None:
         q = q.filter(UtilBill.utility_id == utility_id)
     bills = q.all()
+    if not bills:
+        return jsonify({'bills_to_run':0})
     job = group([test_bill.s(extractor_id, b.id) for b in bills])
     result = job.apply_async()
     result.save()

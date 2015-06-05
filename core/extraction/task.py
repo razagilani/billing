@@ -2,9 +2,10 @@ from boto.s3.connection import S3Connection
 from celery.bin import celery
 from celery.result import AsyncResult
 from sqlalchemy import desc, func
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.sql.expression import nullslast
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Main, Extractor, ExtractorResult
+from core.extraction.extraction import Main, Applier, Extractor, ExtractorResult
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 
@@ -15,6 +16,7 @@ from core import init_config, init_celery, init_model
 init_config()
 init_celery()
 from core import celery
+
 
 def _create_bill_file_handler():
     from core import config
@@ -33,6 +35,19 @@ def _create_bill_file_handler():
 def _create_main():
     bfh = _create_bill_file_handler()
     return Main(bfh)
+
+class DBTask(celery.Task):
+    """
+    An abstract celery task class that ensures that the database connection is closed after a task completes.
+    """
+    abstract=True
+    def after_return(self, status, retval, task_id, args, kwargs, einfo):
+        if status == 'FAILURE':
+            print "Error: ", retval
+            Session.rollback()
+        else:
+            Session.commit()
+        Session.close()
 
 @celery.task
 def extract_bill(utilbill_id):
@@ -92,27 +107,22 @@ def test_extractor(self, extractor_id, utility_id=None):
     s.commit()
     return all_count, any_count, total_count
 
-@celery.task(bind=True)
+@celery.task(bind=True, base=DBTask)
 def test_bill(self, extractor_id, bill_id):
     '''
     Tests an extractor on a single bill, and returns whether or not it succeeded.
 
-    TODO This function calls init_model() and _create_bill_file_handler().
-    I'm not sure if this is a performance issue, or if we can do this once for a whole set of bills.
-    I'm not sure how celery handles data sharing between tasks.
-
     :param extractor: The extractor to apply to the bill
     :param bill: The bill to test
-    :return: A dict containing {
-                all_count: 1 if all fields were extracted, 0 otherwise
-                any_count: 1 if any fields were extracted, 0 otherwise
-                total_count: 1
-                fields: {
-                    --- fields corresponding to Applier.
-                }
-            }
+    :return: {
+        num_fields : the total number of fields that should be extracted
+        fields : For each field, a map of {name:value}. If field was not extracted, value is None.
+        date : The bill's period end date, read from the database, or if not in the database, from the bill.
+                If neither succeeds, this is None. 'date' is used to group bills by date to see whether formats change over time.
+    }
     '''
     from core.model import Session
+
     if Session.bind is None:
         del Session
         init_model()
@@ -122,23 +132,30 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    all_count, any_count, total_count = 0, 0, 0
-    field_count = {f.applier_key:0 for f in extractor.fields}
+    response = {'fields':{key:None for key in Applier.KEYS}}
+    response['extractor_id'] = extractor_id
+    response['bill_id'] = bill_id
+    response['num_fields'] = len(extractor.fields)
+
     #TODO right now this is a private method, we should make it public
     # good is of type [(field, value), ...]
     good, error = extractor._get_values(bill, bill_file_handler)
-    c = len(good)
     for g in good:
-        field_count[g[0].applier_key] += 1
+        response['fields'][g[0].applier_key] = str(g[1])
 
-    if c > 0:
-        any_count += 1
-    if c == len(extractor.fields) and len(extractor.fields) > 0:
-        all_count += 1
-    total_count += 1
+    #get bill period end date from DB, or from extractor
+    # this is used to group bills by date and to check for changes over time in format
+    if bill.period_end is not None:
+        print "**** database date"
+        response['date'] = "{:0>4d}-{:0>2d}".format(bill.period_end.year, bill.period_end.month)
+    elif response['fields']['end'] is not None:
+        print "**** bill extracted       date"
+        response['date'] = response['fields']['end'][:7]
+    else:
+        response['date'] = None
 
-    debug = True
-    if all_count != total_count and debug:
+    debug = False
+    if len(good) != len(extractor.fields) and debug:
         print "\n***"
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
@@ -150,13 +167,7 @@ def test_bill(self, extractor_id, bill_id):
         print "Text: ", bill.get_text(bill_file_handler)
         print "***\n"
 
-    return {
-        'all_count': all_count,
-        'any_count': any_count,
-        'total_count': total_count,
-        'fields': field_count,
-        # TODO: add count_by_field and count_by_month
-    }
+    return response
 
 @celery.task(bind=True)
 def reduce_bill_results(self, results):
@@ -165,29 +176,64 @@ def reduce_bill_results(self, results):
     Note: All results should be from same extractor
 
     :param results: The set of results to reduce
-    :return: The sum of the fields of the given results.
+    :return: response {
+        'all_count': number of bills with all fields,
+        'any_count': number of bills with at least one field,
+        'total_count': total number of bills processed,
+        'fields': success counts for each field, in a dictionary {name:success count}
+        'dates' : dictionary of year-month, each mapping to a copy of 'fields' for all bills in the given time year & month,
+        'failed': number of tasks failed,
+    }
     '''
 
     all_count, any_count, total_count = 0, 0, 0
-    fields = None
+    dates = {}
+    fields = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
+    failed = 0
     for r in results:
-        all_count += r['all_count']
-        any_count += r['any_count']
-        total_count += r['total_count']
-        if fields is None:
-               fields = r['fields']
-        else:
-            for k in r['fields'].keys():
-                fields[k] += r['fields'][k]
-    return {
-            'all_count': all_count,
-            'any_count': any_count,
-            'total_count': total_count,
-            'fields': fields,
-        }
+        #if task failed, then r is in fact an Error object
+        if not isinstance(r, dict):
+            failed += 1
+            continue
 
-@celery.task(bind=True)
+        bill_date = r['date']
+        if bill_date not in dates:
+            dates[bill_date] = {
+                'all_count': 0,
+                'any_count': 0,
+                'total_count': 0,
+                'fields': {key: 0 for key in Applier.KEYS},
+            }
+
+        #count number of successfully read fields
+        success_fields = 0
+        for k in r['fields'].keys():
+            if r['fields'][k] is not None:
+                success_fields += 1
+                fields[k] += 1
+                dates[bill_date]['fields'][k] += 1
+
+        #Count success for this individual bill
+        total_fields = r['num_fields']
+        total_count += 1
+        dates[bill_date]['total_count'] += 1
+        if success_fields > 0:
+            any_count += 1
+            dates[bill_date]['any_count'] += 1
+        if success_fields == total_fields:
+            all_count += 1
+            dates[bill_date]['all_count'] += 1
+    return {
+        'all_count': all_count,
+        'any_count': any_count,
+        'total_count': total_count,
+        'fields': fields,
+        'dates' : dates,
+        'failed': failed,
+    }
+
+@celery.task(bind=True, base=DBTask)
 def test_bills_batch(self, extractor_id, bill_ids):
     from core.model import Session
     if Session.bind is None:
@@ -224,4 +270,5 @@ def test_bills_batch(self, extractor_id, bill_ids):
 
     result = s.query(ExtractorResult).filter_by(task_id=self.request.id).one()
     result.set_results(self.request.info)
+
     return self.request.info
