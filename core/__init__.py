@@ -155,29 +155,9 @@ def init_celery():
         database=config.get('mongodb', 'database'))
     celery_broker_url = celery_result_backend = uri
 
-    # def task_monitor(app):
-    #     state = app.events.State()
-    #
-    #     def process_succeeded_task(event):
-    #         state.event(event)
-    #         # task name is sent only with -received event, and state
-    #         # will keep track of this for us.
-    #         task = state.tasks.get(event['uuid'])
-    #
-    #         print('TASK SUCCEEDED: %s[%s] %s' % (
-    #             task.name, task.uuid, task.info(), ))
-    #
-    #     with app.connection() as connection:
-    #         recv = app.events.Receiver(connection, handlers={
-    #                 'task-succeeded': process_succeeded_task,
-    #                 '*': state.event,
-    #         })
-    #         recv.capture(limit=None, timeout=None, wakeup=True)
-
     global celery
     celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
-    #task_monitor(celery)
-    #celery = Celery('tasks', backend='amqp', broker='amqp://')
+
     # if you're using a Python dictionary for configuration (as is usual with
     # Flask), you can set celery's "conf" directly from the application's
     # config dictionary with "celery.conf.update(app.config)".
