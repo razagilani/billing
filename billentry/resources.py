@@ -17,6 +17,7 @@ from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
+from core.altitude import AltitudeAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
 from core.model import UtilityAccount
@@ -214,6 +215,16 @@ class AccountResource(BaseResource):
             'service_address': CallableField(String(),
                                              attribute='get_service_address'),
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+
+
+class AltitudeAccountResource(BaseResource):
+
+    def get(self):
+        altitude_accounts = Session.query(AltitudeAccount).all()
+        return dict(marshal(altitude_account, {
+            'utility_account_id': Integer,
+            'guid': String
+        }) for altitude_account in altitude_accounts)
 
 
 class UtilBillListResource(BaseResource):
