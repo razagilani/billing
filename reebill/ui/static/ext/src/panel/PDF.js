@@ -44,6 +44,8 @@ Ext.define('Ext.panel.PDF',{
 
     cache: true,
 
+    scale: 1.0,
+
     initComponent: function(){
         var me = this,
             userItems = me.items || [],
@@ -56,7 +58,6 @@ Ext.define('Ext.panel.PDF',{
         me.cls += (' ' + me.extraBaseCls);
 
         PDFJS.disableTextLayer = me.disableTextLayer;
-
 
         var textLayerDiv = '';
         if(!PDFJS.disableTextLayer){
@@ -80,6 +81,21 @@ Ext.define('Ext.panel.PDF',{
             }
         });
         me.items = userItems;
+
+        userDockedItems.push({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            items: ['->',{
+                xtype: 'button',
+                text: '+ Zoom In',
+                handler: function(){me.zoomIn.call(me)}
+            },{
+                xtype: 'button',
+                text: '&#151; Zoom Out',
+                handler: function(){me.zoomOut.call(me)}
+            }]
+        });
+        me.dockedItems = userDockedItems;
 
         me.callParent(arguments);
 
@@ -180,22 +196,30 @@ Ext.define('Ext.panel.PDF',{
         var me = this;
         var pdfDoc = me._pdfDoc;
         var panelWidth =  me.width - 20;
-        var scale;
+        var renderScale;
 
         if(!pdfDoc || panelWidth <= 0)
             return;
 
+        var makePageLayer = function(tag, pageNumber, width, height, classes){
+            var cls = classes || '';
+            var elem = document.createElement(tag);
+            elem.height = height;
+            elem.width = width;
+            elem.style.top = (pageNumber - 1) * height + 'px';
+            elem.className = cls;
+            return elem;
+        };
+
         var renderPage = function(page){
             // The scale can only be set once the first page of the document has
             // been retrieved
-            if(!scale)
-                scale = panelWidth / page.getViewport(1.0).width;
-            var canvas = document.createElement('canvas');
-            var viewport = page.getViewport(scale);
-
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            canvas.style.top = (page.pageNumber - 1) * viewport.height  + 'px';
+            if(!renderScale)
+                renderScale = panelWidth / page.getViewport(me.scale).width;
+            var viewport = page.getViewport(renderScale);
+            var canvas = makePageLayer(
+                'canvas', page.pageNumber, viewport.width, viewport.height
+            );
             me.canvasLayer.appendChild(canvas);
 
             // This returns a Promise that fires when the page has rendered
@@ -207,13 +231,14 @@ Ext.define('Ext.panel.PDF',{
 
         var renderPageText = function(page){
             return page.getTextContent().then(function(content){
-                var viewport = page.getViewport(scale);
-                var textLayerSubDiv = document.createElement('div');
-
-                textLayerSubDiv.className = 'textLayer';
-                textLayerSubDiv.style.height = viewport.height + 'px';
-                textLayerSubDiv.style.width = viewport.width + 'px';
-                textLayerSubDiv.style.top = ((page.pageNumber - 1) * viewport.height)  + 'px';
+                var viewport = page.getViewport(renderScale);
+                var textLayerSubDiv = makePageLayer(
+                    'div', page.pageNumber, viewport.width, viewport.height,
+                    'textLayer'
+                );
+                textLayerSubDiv.addEventListener(
+                    'dblclick', function(e){me.handleLayerClick.call(me,e)}, true
+                );
 
                 var textLayer = new TextLayerBuilder({
                     textLayerDiv: textLayerSubDiv,
@@ -242,6 +267,22 @@ Ext.define('Ext.panel.PDF',{
         Promise.all(execForAllPages(renderPage)).then(
             execForAllPages(renderPageText)
         );
+    },
+
+    handleLayerClick: function(mouseEvent){
+        mouseEvent.shiftKey ? this.zoomOut.call(this) : this.zoomIn.call(this);
+    },
+
+    zoomIn: function(){
+        this.scale -= 0.2;
+        this.renderDoc();
+    },
+
+    zoomOut: function(){
+        if (this.scale <= 0.8) {
+            this.scale += 0.2;
+            this.renderDoc();
+        }
     }
 
 });
