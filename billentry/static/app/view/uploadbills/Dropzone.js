@@ -21,8 +21,4 @@ Ext.define('BillEntry.view.uploadbills.Dropzone', {
 
         me.callParent(arguments);
     }
-
-    //items: [{}],
-    //
-    //dockedItems: [{}]
 })
