@@ -50,11 +50,19 @@ function displayData(task, isDetailed){
 		$("#detailed-results-span").css('display', 'inherit');
 		$("#detailed-results tbody").empty();
 		Object.keys(task_data.dates).forEach(function(elem){
-			var table_row = '<tr id="'+elem+'">\n' + 
+			var percentString;
+			if(task_data.dates[elem].total_count > 0){
+				percentString = Math.floor((100.0 * task_data.dates[elem].any_count / task_data.dates[elem].total_count));
+			} else {
+				percentString = "--";
+			}
+			isZero = (task_data.dates[elem].any_count == 0) ? "zero" : "";
+			var table_row = '<tr class="'+isZero+'" id="'+elem+'">\n' + 
 			'<td header="date">'+elem+'</td>\n' + 
 			'<td header="total_count">'+task_data.dates[elem].total_count+'</td>\n' + 
 			'<td header="all_count">'+task_data.dates[elem].all_count+'</td>\n' + 
-			'<td header="any_count">'+task_data.dates[elem].any_count+'</td>\n';
+			'<td header="any_count">'+task_data.dates[elem].any_count+'</td>\n' + 
+			'<td header="percentage">'+percentString+'</td>\n';
 			$('#detailed-results thead td.field').each(function(index, field){
 				var fieldname = $(field).attr('id');
 				table_row += '<td class="field" header="'+fieldname+'">' + task_data.dates[elem].fields[fieldname] + '</td>\n';

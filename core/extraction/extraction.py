@@ -157,7 +157,7 @@ def convert_wg_charges_std(text):
     name='washington gas').one().charge_name_map
 
     groups = '.*DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*)'
-    num = r'[\d.]*'
+    num = r'[\d,.]*'
     charge_total = r'\$\s*' + num
     charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
                     + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
@@ -562,5 +562,6 @@ class ExtractorResult(model.Base):
         self.finished = datetime.utcnow()
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
-        self.count_by_month = metadata['count_by_month']
-        self.count_by_field = metadata['count_by_field']
+        self.total_count = metadata['total_count']
+        self.count_by_field = { k : str(v) for k, v in metadata['fields'].iteritems()}
+        # self.count_by_month = metadata['count_by_month']

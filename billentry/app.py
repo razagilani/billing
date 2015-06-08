@@ -207,12 +207,15 @@ def run_test():
     q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
         UtilBill.sha256_hexdigest != '').order_by(
         func.random())
-    if utility_id is not None:
+    if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
     bills = q.all()
     if not bills:
         return jsonify({'bills_to_run':0})
     job = group([test_bill.s(extractor_id, b.id) for b in bills])
+    # TODO maybe use custom task id, so tasks in database from multiple sessiosn don't interfere.
+    # I don't know how celery creates its task ids, but using the timestamp as a task id might be safer
+    #  one can set task id using "task.apply_async(args, kwargs, task_id='...')"
     result = job.apply_async()
     result.save()
 
@@ -230,9 +233,20 @@ def test_status(task_id):
     :param task_id: The id of the current task
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
+
+    #celery object is not used, but this needs to be here, otherwise can't get group results (produces DisabledBackend error)
     celery = Celery(broker="mongodb://localhost:27017/skyline-dev", backend="mongodb://localhost:27017/skyline-dev")
     task = GroupResult.restore(task_id)
     response = reduce_bill_results([r.info for r in task.results])
+
+    #if all bills have been processed, save result to the database.
+    if response['nbills'] == response['total_count'] :
+        s = Session()
+        q = s.query(ExtractorResult).filter(ExtractorResult.task_id == task_id)
+        extractor_result = q.one()
+        extractor_result.set_results(response)
+        s.commit()
+
     return jsonify(response)
 
 
