@@ -1,15 +1,12 @@
 from boto.s3.connection import S3Connection
-from celery.bin import celery
-from celery.result import AsyncResult
-from sqlalchemy import desc, func
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.sql.expression import nullslast
+from sqlalchemy import func
+
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main, Applier, Extractor, ExtractorResult
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
-
 from core import init_config, init_celery, init_model
+
 
 # init_model can't be called here because it will cause a circular import
 # with billentry
@@ -112,8 +109,8 @@ def test_bill(self, extractor_id, bill_id):
     '''
     Tests an extractor on a single bill, and returns whether or not it succeeded.
 
-    :param extractor: The extractor to apply to the bill
-    :param bill: The bill to test
+    :param extractor_id: The id of the extractor to apply to the bill
+    :param bill_id: The id of the bill to test
     :return: {
         num_fields : the total number of fields that should be extracted
         fields : For each field, a map of {name:value}. If field was not extracted, value is None.
@@ -137,22 +134,36 @@ def test_bill(self, extractor_id, bill_id):
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
 
+    #TODO find better method to get db column from applier key
+    getters_map = {
+        "charges": lambda x : x.get_total_charges(),
+        "end": lambda x : x.period_end,
+        "start": lambda x : x.period_start,
+        "next read": lambda x : x.get_next_meter_read_date(),
+        "energy": lambda x : x.get_total_energy(),
+    }
+
     #TODO right now this is a private method, we should make it public
     # good is of type [(field, value), ...]
     good, error = extractor._get_values(bill, bill_file_handler)
     for g in good:
+        #Compare extracted value to that in the database, to check for false positives.
+        db_val = getters_map[g[0].applier_key](bill)
+        if db_val:
+            if g[1] != db_val:
+                print "*** VERIFICATION FAILED ***\t%s\t%s\t%s\tID: %s\n" % (g[0].applier_key, g[1], db_val, bill_id)
+                print bill.get_text(bill_file_handler)
+
         response['fields'][g[0].applier_key] = str(g[1])
 
     #get bill period end date from DB, or from extractor
     # this is used to group bills by date and to check for changes over time in format
     if bill.period_end is not None:
-        print "**** database date"
         response['date'] = "{:0>4d}-{:0>2d}".format(bill.period_end.year, bill.period_end.month)
     elif response['fields']['end'] is not None:
-        print "**** bill extracted       date"
         response['date'] = response['fields']['end'][:7]
     else:
-        response['date'] = None
+        response['date'] = ""
 
     debug = False
     if len(good) != len(extractor.fields) and debug:

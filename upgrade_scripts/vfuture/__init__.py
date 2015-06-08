@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 def create_extractors(s):
     date_format = r'[A-Za-z]+\s*[0-9]{1,2},\s*[0-9]{4}'
-    num_format = r'[0-9\.]+'
+    num_format = r'[0-9,\.]+'
     start_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period (%s)' % date_format
     end_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period %s to (%s)' % (date_format, date_format)
     energy_regex = r'.*([0-9]{4})Your next meter'
