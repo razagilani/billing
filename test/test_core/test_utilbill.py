@@ -225,7 +225,22 @@ class UtilBillTest(TestCase):
         bill_file_handler = Mock(autospec=BillFileHandler)
 
         est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
-        # TODO: assert values of attributes of est_bill
+
+        # all attributes should match: both columns and relationships
+        # (including ones based on foreign keys in other tables like charges)
+        attr_names = est_bill.column_names() + [
+            'utility_account',
+            'supplier',
+            'rate_class',
+            'billing_address',
+            'service_address',
+            'utility',
+            'charges',
+            '_registers',
+        ]
+        for attr_name in attr_names:
+            self.assertEqual(getattr(real_bill, attr_name),
+                             getattr(est_bill, attr_name))
 
         # TODO: assert that real_bill was deleted, if possible. might need a
         # separate test for this in UtilBillTestWithDB
