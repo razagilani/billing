@@ -132,8 +132,7 @@ class Base(object):
 
     def _copy_data_from(self, other):
         """Copy all column values from 'other' (except primary key),  replacing
-        existing values. Child objects that can have only one parent will be
-        moved rather not copied, meaning they will be deleted from 'other'.
+        existing values.
         param other: object having same class as self.
         """
         assert other.__class__ == self.__class__
