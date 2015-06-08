@@ -4,5 +4,6 @@ thead { font-weight:bold;}
 #results tbody tr.selected { background-color:#CCC; }
 #results tbody tr:hover { border: 1px solid #000; }
 tr.failed { background-color:#FAA; }
+tr.zero { color:#999999; }
 td.field { font-style: italic; }
 td { padding-right:20px; }

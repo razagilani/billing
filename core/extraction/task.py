@@ -185,7 +185,7 @@ def reduce_bill_results(self, results):
         'failed': number of tasks failed,
     }
     '''
-
+    nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
     dates = {}
     fields = {key:0 for key in Applier.KEYS}
@@ -231,6 +231,7 @@ def reduce_bill_results(self, results):
         'fields': fields,
         'dates' : dates,
         'failed': failed,
+        'nbills' : nbills,
     }
 
 @celery.task(bind=True, base=DBTask)
