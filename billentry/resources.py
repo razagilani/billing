@@ -228,7 +228,7 @@ class AltitudeAccountResource(BaseResource):
         altitude_accounts = Session.query(AltitudeAccount).all()
         accounts = [marshal(altitude_account, self.altitude_account_fields)
             for altitude_account in altitude_accounts]
-        return accounts
+        return {'rows': accounts, 'results': len(accounts)}
 
 
 class UtilBillListResource(BaseResource):
