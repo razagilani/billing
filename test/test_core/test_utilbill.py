@@ -219,18 +219,22 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_service())
 
     def test_replace_estimated_with_complete(self):
-        est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated)
+        # estimated bill and real bill have different data
+        est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated,
+                            period_start=date(2000,1,1), target_total=12.34)
         real_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Complete,
+                             period_start=date(2000,1,2), target_total=56.78,
                              sha256_hexdigest='abc123')
+        real_bill.charges = [Charge('a', target_total=9.10)]
 
         # TODO: add data in attributes of real_bill
         bill_file_handler = Mock(autospec=BillFileHandler)
 
         est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
 
-        # all attributes should match: both columns and relationships
+        # all attributes in estoimated bill should now match the real bill
         # (including ones based on foreign keys in other tables like charges)
-        attr_names = est_bill.column_names() + [
+        for attr_name in est_bill.column_names() + [
             'utility_account',
             'supplier',
             'rate_class',
@@ -239,13 +243,9 @@ class UtilBillTest(TestCase):
             'utility',
             'charges',
             '_registers',
-        ]
-        for attr_name in attr_names:
+        ]:
             self.assertEqual(getattr(real_bill, attr_name),
                              getattr(est_bill, attr_name))
-
-        # TODO: assert that real_bill was deleted, if possible. might need a
-        # separate test for this in UtilBillTestWithDB
 
 
 class UtilBillTestWithDB(TestCase):
