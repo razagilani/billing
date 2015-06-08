@@ -18,6 +18,7 @@ from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.inspection import inspect
 import tsort
 from alembic.migration import MigrationContext
 
@@ -1265,8 +1266,12 @@ class UtilBill(Base):
         :param other: UtilBill
         """
         # TODO: this is not UtilBill-specific and should be moved to Base
+        # all attributes are either
         for col_name in other.column_names():
             setattr(self, col_name, getattr(other, col_name))
+        for relationship in inspect(self.__class__).relationships:
+            attr_name = relationship.key
+            setattr(self, attr_name, getattr(other, attr_name))
 
     def replace_estimated_with_complete(self, other, bill_file_handler):
         """Convert an estimated bill, which has no file, into a real bill by
