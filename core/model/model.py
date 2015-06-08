@@ -10,6 +10,8 @@ import json
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
     UniqueConstraint
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -130,17 +132,29 @@ class Base(object):
 
     def _copy_data_from(self, other):
         """Copy all column values from 'other' (except primary key),  replacing
-        existing values.
-        :param other: object having same class as self.
+        existing values. Child objects that can have only one parent will be
+        moved rather not copied, meaning they will be deleted from 'other'.
+        param other: object having same class as self.
         """
         assert other.__class__ == self.__class__
         # all attributes are either columns or relationships (note that some
         # relationship attributes, like charges, correspond to a foreign key
         # in a different table)
-        attr_names = set(other.column_names()).union({r.key for r in inspect(
-            self.__class__).relationships}) - self._get_primary_key_names()
-        for attr_name in attr_names:
-            setattr(self, attr_name, getattr(other, attr_name))
+        for col_name in other.column_names():
+            setattr(self, col_name, getattr(other, col_name))
+        for name, property in inspect(self.__class__).relationships.items():
+            other_value = getattr(other, name)
+            # for a relationship attribute, use of copy of it or its
+            # contents. i doubt this is going to successfully copy an entire
+            # graph of SQLAlchemy objects but should work for at least one
+            # level, like UtilBill.charges.
+            # TODO: what about non-child relationships like UtilBill.utility?
+            # those should not be copied!
+            if isinstance(other_value, Base):
+                other_value = other_value.clone()
+            elif isinstance(other_value, InstrumentedList):
+                other_value = [element.clone() for element in other_value]
+            setattr(self, name, other_value)
 
 
 Base = declarative_base(cls=Base)
