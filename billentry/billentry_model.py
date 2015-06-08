@@ -163,8 +163,8 @@ class BEUtilBill(UtilBill):
     billentry_date = Column(DateTime)
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser)
-    locked_for_user_id = Column(Integer, ForeignKey('billentry_user.id'))
-    locked_for_user = relationship(BillEntryUser)
+    locked_by_user_id = Column(Integer, ForeignKey('billentry_user.id'))
+    locked_by_user = relationship(BillEntryUser)
     flagged = Column(Boolean)
 
     # TODO remove--no longer necessary
@@ -263,15 +263,18 @@ class BEUtilBill(UtilBill):
             return False
         return True
 
+    def is_locked_by_current_user(self):
+
+
     def lock(self, user):
         """ Marks a bill as locked for 'user'. Nobody but 'user' should be
         able to edit the bill
         """
-        pass
+        assert self.locked_by_user is None
+        self.locked_by_user = user
 
     def unlock(self, user):
-        """ Marks a bill as locked for 'user'. Nobody but 'user' should be
-        able to edit the bill
+        """ Unlocks a bill if the bill was previously locked by 'user'
         """
         pass
 
