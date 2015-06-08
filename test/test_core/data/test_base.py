@@ -1,11 +1,11 @@
 """Unit tests for the core.model.Base class, which contains methods shared by
 all SQLAlchemy model objects."""
-from sqlalchemy import Column, Integer, ForeignKey, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker, backref
-from core.model import Base
+from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy.orm import relationship
 
+from core.model import Base
 from test.testing_utils import TestCase
+
 
 class B(Base):
     """Example class used in test below.
@@ -16,7 +16,8 @@ class B(Base):
 
 
 class A(Base):
-    """Example class used in test below.
+    """Example class used in test below. Includes all attribute types:
+    primary key, regular column, foreign key, and relationship.
     """
     __tablename__ = 'a'
     id = Column(Integer, primary_key=True)
