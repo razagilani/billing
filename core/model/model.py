@@ -89,6 +89,11 @@ class Base(object):
         return hash((self.__class__.__name__,) + tuple(
             getattr(self, x) for x in self.column_names()))
 
+    def _get_primary_key_names(self):
+        """:return: set of names of primary key columns.
+        """
+        return {c.key for c in class_mapper(self.__class__).primary_key}
+
     def clone(self):
         """Return an object identical to this one except for primary keys and
         foreign keys.
@@ -98,14 +103,14 @@ class Base(object):
         # https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg10895.html
         # (this code does not completely follow those instructions)
         cls = self.__class__
-        pk_keys = set(c.key for c in class_mapper(cls).primary_key)
         foreign_key_columns = chain.from_iterable(
             c.columns for c in self.__table__.constraints if
             isinstance(c, ForeignKeyConstraint))
         foreign_keys = set(col.key for col in foreign_key_columns)
 
         relevant_attr_names = [x for x in self.column_names() if
-                               x not in pk_keys and x not in foreign_keys]
+                               x not in self._get_primary_key_names() and
+                               x not in foreign_keys]
 
         # NOTE it is necessary to use __new__ to avoid calling the
         # constructor here (because the constructor arguments are not known,
@@ -130,10 +135,9 @@ class Base(object):
         # all attributes are either columns or relationships (note that some
         # relationship attributes, like charges, correspond to a foreign key
         # in a different table)
-        for col_name in other.column_names():
-            setattr(self, col_name, getattr(other, col_name))
-        for relationship in inspect(self.__class__).relationships:
-            attr_name = relationship.key
+        attr_names = set(other.column_names()).union({r.key for r in inspect(
+            self.__class__).relationships}) - self._get_primary_key_names()
+        for attr_name in attr_names:
             setattr(self, attr_name, getattr(other, attr_name))
 
 
