@@ -723,7 +723,7 @@ class UtilBillTestWithDB(TestCase):
         # other) here when they are added.
         self.assertEqual(3, len(utilbill.get_distribution_charges()))
 
-    def test_replace_estimated_with_complete(self):
+    def test_replace_estimated_with_complete_db(self):
         """Test for the database aspect of
         UtilBill.test_replace_estimated_with_complete: deleting the
         non-estimated bill. (See UtilBillTest for the copying of data from
