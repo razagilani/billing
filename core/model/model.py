@@ -1305,4 +1305,4 @@ class UtilBill(Base):
         # delete the other bill
         s = object_session(other)
         if s is not None:
-            s.delete(other)
+            s.expunge(other)
