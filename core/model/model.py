@@ -129,9 +129,11 @@ class Base(object):
         return new_obj
 
     def _copy_data_from(self, other):
-        """Copy all column values from 'other', replacing existing values.
-        :param other: UtilBill
+        """Copy all column values from 'other' (except primary key),  replacing
+        existing values.
+        :param other: object having same class as self.
         """
+        assert other.__class__ == self.__class__
         # all attributes are either columns or relationships (note that some
         # relationship attributes, like charges, correspond to a foreign key
         # in a different table)
