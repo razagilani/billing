@@ -55,8 +55,16 @@ def upgrade():
         sa.Column('all_count', sa.Integer()),
         sa.Column('any_count', sa.Integer()),
         sa.Column('total_count', sa.Integer()),
-        sa.Column('count_by_month', postgresql.HSTORE()),
-        sa.Column('count_by_field', postgresql.HSTORE()))
+        sa.Column('field_charges', sa.Integer()),
+        sa.Column('field_next_read', sa.Integer()),
+        sa.Column('field_energy', sa.Integer()),
+        sa.Column('field_start', sa.Integer()),
+        sa.Column('field_end', sa.Integer()),
+        sa.Column('charges_by_month', postgresql.HSTORE()),
+        sa.Column('next_read_by_month', postgresql.HSTORE()),
+        sa.Column('energy_by_month', postgresql.HSTORE()),
+        sa.Column('start_by_month', postgresql.HSTORE()),
+        sa.Column('end_by_month', postgresql.HSTORE()))
 
 def downgrade():
     raise NotImplementedError

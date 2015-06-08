@@ -552,8 +552,19 @@ class ExtractorResult(model.Base):
     all_count = Column(Integer)
     any_count = Column(Integer)
     total_count = Column(Integer)
-    count_by_month = Column(HSTORE)
-    count_by_field = Column(HSTORE)
+    #TODO should find a way to sync these with UtilBill's list of fields
+    # field counts
+    field_charges = Column(Integer)
+    field_next_read = Column(Integer)
+    field_energy = Column(Integer)
+    field_start = Column(Integer)
+    field_end = Column(Integer)
+    # field counts by month
+    charges_by_month = Column(HSTORE)
+    next_read_by_month = Column(HSTORE)
+    energy_by_month = Column(HSTORE)
+    start_by_month = Column(HSTORE)
+    end_by_month = Column(HSTORE)
 
     def set_results(self, metadata):
         """Fill in count fields after the test has finished.
@@ -563,5 +574,7 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
-        self.count_by_field = { k : str(v) for k, v in metadata['fields'].iteritems()}
-        # self.count_by_month = metadata['count_by_month']
+        for v, k in metadata['fields'].iteritems():
+            setattr(self, "field_" + v, k)
+        for field in metadata['fields']:
+            setattr(self, field+"_by_month", {date:(str(counts[field]) if field in counts else "0") for date, counts in metadata['dates'].iteritems()})
