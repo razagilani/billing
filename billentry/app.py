@@ -201,6 +201,7 @@ def run_test():
 
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
+    sample_amount = float(request.form.get('sample_amount'))
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
@@ -211,14 +212,23 @@ def run_test():
         q = q.filter(UtilBill.utility_id == utility_id)
     #TODO add ability to randomly subsample for results
     bills = q.all()
+    bills = bills[:int(len(bills)*sample_amount)]
     if not bills:
         return jsonify({'bills_to_run':0})
     job = group([test_bill.s(extractor_id, b.id) for b in bills])
-    # TODO maybe use custom task id, so tasks in database from multiple sessiosn don't interfere.
-    # I don't know how celery creates its task ids, but using the timestamp as a task id might be safer
-    #  one can set task id using "task.apply_async(args, kwargs, task_id='...')"
-    result = job.apply_async()
-    result.save()
+    result = None
+
+    # This determines if the tasks run in a celery group or a celery chord.
+    # A group can return intermediate results and give progress updates, but reduce_bill_results must be called manually
+    #   after the task is finished.
+    # A chord automatically calls reduce_bill_results at the end, so this will be useful when running big jobs on AWS,
+    #   but we can't get status updates on how the job is doing.
+    use_chord = False
+    if use_chord:
+        result = chord(job)(reduce_bill_results.s())
+    else:
+        result = job.apply_async()
+        result.save()
 
     #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
