@@ -14,6 +14,10 @@ class B(Base):
     id = Column(Integer, primary_key=True)
     a_id = Column(Integer, ForeignKey('a.id'))
 
+    def __eq__(self, other):
+        # two Bs with different primary keys can be equal
+        return self.__class__ == other.__class__ and self.a_id == other.a_id
+
 
 class A(Base):
     """Example class used in test below. Includes all attribute types:
