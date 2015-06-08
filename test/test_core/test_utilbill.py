@@ -1,4 +1,5 @@
 from mock import MagicMock, Mock
+from sqlalchemy.inspection import inspect
 from core import init_model
 from core.bill_file_handler import BillFileHandler
 
@@ -221,6 +222,7 @@ class UtilBillTest(TestCase):
         est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated)
         real_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Complete,
                              sha256_hexdigest='abc123')
+
         # TODO: add data in attributes of real_bill
         bill_file_handler = Mock(autospec=BillFileHandler)
 
@@ -720,4 +722,29 @@ class UtilBillTestWithDB(TestCase):
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
         self.assertEqual(3, len(utilbill.get_distribution_charges()))
+
+    def test_replace_estimated_with_complete(self):
+        """Test for the database aspect of
+        UtilBill.test_replace_estimated_with_complete: deleting the
+        non-estimated bill. (See UtilBillTest for the copying of data from
+        one bill to the other.)
+        """
+        est_bill = UtilBill(self.utility_account, None, None,
+                            state=UtilBill.Estimated)
+        real_bill = UtilBill(self.utility_account, None, None)
+        s = Session()
+        s.add_all([est_bill, real_bill])
+
+        # at first both bills are (going to be inserted in) the db
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).pending)
+
+        est_bill.replace_estimated_with_complete(
+            real_bill, Mock(autospec=BillFileHandler))
+
+        # real bill gets deleted (or in this case, is removed from the
+        # session before it gets inserted), estimated bill doesn't
+        self.assertNotIn(real_bill, s)
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).transient)
 
