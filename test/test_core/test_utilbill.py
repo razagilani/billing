@@ -227,14 +227,10 @@ class UtilBillTest(TestCase):
                              sha256_hexdigest='abc123')
         real_bill.charges = [Charge('a', target_total=9.10)]
 
-        # TODO: add data in attributes of real_bill
-        bill_file_handler = Mock(autospec=BillFileHandler)
-
-        est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
-
-        # all attributes in estoimated bill should now match the real bill
-        # (including ones based on foreign keys in other tables like charges)
-        for attr_name in est_bill.column_names() + [
+        # these are the attributes that will be transferred from the real
+        # bill to the estimated one. must be saved in advance because some
+        # child objects will be moved from one to the other rather than copied.
+        attr_names = est_bill.column_names() + [
             'utility_account',
             'supplier',
             'rate_class',
@@ -243,9 +239,24 @@ class UtilBillTest(TestCase):
             'utility',
             'charges',
             '_registers',
-        ]:
-            self.assertEqual(getattr(real_bill, attr_name),
+        ]
+        real_bill_data = {attr_name: getattr(real_bill, attr_name)
+                          for attr_name in attr_names}
+
+        bill_file_handler = Mock(autospec=BillFileHandler)
+        est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
+
+        # all attributes in estimated bill should match the other that were
+        # originally in real bill
+        for attr_name in attr_names:
+            self.assertEqual(real_bill_data[attr_name],
                              getattr(est_bill, attr_name))
+
+        # make sure the values of certain attributes are not duplicated
+        self.assertIs(real_bill.utility, est_bill.utility)
+        self.assertIs(real_bill.rate_class, est_bill.rate_class)
+        self.assertIs(real_bill.supplier, est_bill.supplier)
+        self.assertIs(real_bill.supply_group, est_bill.supply_group)
 
 
 class UtilBillTestWithDB(TestCase):
