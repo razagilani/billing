@@ -123,6 +123,19 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
+    def _copy_data_from(self, other):
+        """Copy all column values from 'other', replacing existing values.
+        :param other: UtilBill
+        """
+        # all attributes are either columns or relationships (note that some
+        # relationship attributes, like charges, correspond to a foreign key
+        # in a different table)
+        for col_name in other.column_names():
+            setattr(self, col_name, getattr(other, col_name))
+        for relationship in inspect(self.__class__).relationships:
+            attr_name = relationship.key
+            setattr(self, attr_name, getattr(other, attr_name))
+
 
 Base = declarative_base(cls=Base)
 
@@ -1260,20 +1273,6 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
-
-    def _copy_data_from(self, other):
-        """Copy all column values from 'other', replacing existing values.
-        :param other: UtilBill
-        """
-        # TODO: this is not UtilBill-specific and should be moved to Base
-        # all attributes are either columns or relationships (note that some
-        # relationship attributes, like charges, correspond to a foreign key
-        # in a different table)
-        for col_name in other.column_names():
-            setattr(self, col_name, getattr(other, col_name))
-        for relationship in inspect(self.__class__).relationships:
-            attr_name = relationship.key
-            setattr(self, attr_name, getattr(other, attr_name))
 
     def replace_estimated_with_complete(self, other, bill_file_handler):
         """Convert an estimated bill, which has no file, into a real bill by
