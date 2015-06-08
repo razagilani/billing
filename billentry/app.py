@@ -179,36 +179,37 @@ def test_extractors():
     '''
     Displays a user interface for testing different bill data extractors on
     the database.
-    Sends a list of all extractors, as well as all utilities, to the client.
+    Provides the client a list of extractors, utilities, and bill fields.
     '''
     s = Session();
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
     utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
     fields = Applier.KEYS.keys()
-    response = render_template('test-extractors.html', extractors=extractors,
+    return render_template('test-extractors.html', extractors=extractors,
                                nbills=nbills, utilities=utilities,
                                fields=fields)
-    return response
 
 
 @app.route('/run-test', methods=['POST'])
 def run_test():
     '''
-    Runs a test of bill data extractors as an asynchronous Celery task
-    :return 202, and JSON data containing the URL which will provide status
-    updates
+    Runs a test of bill data extractors as an asynchronous Celery task.
+    Also creates a database row in the ExtractorResult table for this test.
+    :return the ID of the task being run, as well as the total number of bills
     '''
 
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
 
     s = Session();
+    #get bills with valid PDF addresses, and filter by utility if necessary
     q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
         UtilBill.sha256_hexdigest != '').order_by(
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
+    #TODO add ability to randomly subsample for results
     bills = q.all()
     if not bills:
         return jsonify({'bills_to_run':0})
@@ -219,6 +220,7 @@ def run_test():
     result = job.apply_async()
     result.save()
 
+    #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
                     task_id=result.id, started=datetime.utcnow())
     s.add(er)
