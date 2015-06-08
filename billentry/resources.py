@@ -172,6 +172,11 @@ class BaseResource(Resource):
             'sos_supply_group_id': String
         }
 
+        self.altitude_account_fields = {
+            'utility_account_id': Integer,
+            'guid': String
+        }
+
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
 id_parser = RequestParser()
@@ -221,10 +226,9 @@ class AltitudeAccountResource(BaseResource):
 
     def get(self):
         altitude_accounts = Session.query(AltitudeAccount).all()
-        return dict(marshal(altitude_account, {
-            'utility_account_id': Integer,
-            'guid': String
-        }) for altitude_account in altitude_accounts)
+        accounts = [marshal(altitude_account, self.altitude_account_fields)
+            for altitude_account in altitude_accounts]
+        return accounts
 
 
 class UtilBillListResource(BaseResource):
