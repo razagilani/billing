@@ -1266,7 +1266,9 @@ class UtilBill(Base):
         :param other: UtilBill
         """
         # TODO: this is not UtilBill-specific and should be moved to Base
-        # all attributes are either
+        # all attributes are either columns or relationships (note that some
+        # relationship attributes, like charges, correspond to a foreign key
+        # in a different table)
         for col_name in other.column_names():
             setattr(self, col_name, getattr(other, col_name))
         for relationship in inspect(self.__class__).relationships:
