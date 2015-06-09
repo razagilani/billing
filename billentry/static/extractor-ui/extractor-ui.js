@@ -109,12 +109,16 @@ function runExtractor(extractor_id){
 	var utility_id = $("select[name="+extractor_id+"]").val(); 
 	var sample_amount_str = $("input[name=sample_amount]").val()
 	if(sample_amount_str == ""){
-		sample_amount = 100;
+		num_bills = 100;
 	} else {
-		sample_amount = clamp(sample_amount_str, 0, 100);
+		num_bills = clamp(sample_amount_str, 0, 100);
 	}
-	
-	var postParameters = {extractor_id:extractor_id, utility_id:(utility_id == "" ? null : utility_id), sample_amount:sample_amount/100.0};
+
+	var postParameters = {
+		extractor_id: extractor_id,
+		utility_id: (utility_id == "" ? null : utility_id),
+		num_bills: num_bills,
+	};
 	var utility_name = $("option[value="+utility_id+"]:first").text()
 	$.post("/run-test", postParameters, function(data, status, request){
 		var bills_to_run = data.bills_to_run;
