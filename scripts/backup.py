@@ -40,7 +40,7 @@ DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s --host %(host)s %(filepath)s')
-MONGO_COLLECTIONS = ['users', 'journal']
+MONGO_COLLECTIONS = ['journal']
 
 ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 
@@ -526,10 +526,8 @@ if __name__ == '__main__':
                 'defaults to value in settings.cfg ({0})'.format(config.get('aws_s3', 'bucket'))))
 
     # arguments for local backup files
-    all_file_names = ['%s or %s' % (
-    BACKUP_FILE_NAME, BACKUP_FILE_NAME)] + [
-                         (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in
-                         MONGO_COLLECTIONS]
+    all_file_names = [BACKUP_FILE_NAME] + [(MONGO_BACKUP_FILE_NAME_FORMAT % c)
+                                           for c in MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser,
         backup_local_parser):
         parser.add_argument(dest='local_dir', type=str,
