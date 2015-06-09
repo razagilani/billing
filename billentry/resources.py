@@ -1,6 +1,7 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
 from datetime import datetime
+import os
 
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
@@ -340,7 +341,10 @@ class UtilityBillFileResource(BaseResource):
         parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files', required=True)
         args = parser.parse_args()
         file = args['file']
+        file.save(file.filename)
+        file = open(file.filename, "rb")
         sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
+        os.remove(os.path.abspath(file.name))
 
 
 class ChargeResource(BaseResource):
