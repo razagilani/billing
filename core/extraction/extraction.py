@@ -580,6 +580,6 @@ class ExtractorResult(model.Base):
         for field_name in Applier.KEYS.iterkeys():
             count_for_field = metadata['fields'][field_name]['count']
             setattr(self, "field_" + field_name, count_for_field)
-            date_count_dict = {date: str(counts.get(field_name, 0)) for
+            date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, field_name + "_by_month", date_count_dict)
