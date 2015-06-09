@@ -11,6 +11,7 @@ from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case
 from sqlalchemy.orm import joinedload
+import werkzeug
 
 from billentry.billentry_model import BEUtilBill, BEUserSession
 from billentry.billentry_model import BillEntryUser
@@ -330,6 +331,16 @@ class ChargeListResource(BaseResource):
         rows = [marshal(c, self.charge_fields) for c in
                 utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
+
+
+class UtilityBillFileResource(BaseResource):
+
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files', required=True)
+        args = parser.parse_args()
+        file = args['file']
+        sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
 
 
 class ChargeResource(BaseResource):
