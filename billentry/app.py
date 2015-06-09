@@ -198,7 +198,7 @@ def run_test():
     '''
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
-    num_bills = float(request.form.get('num_bills'))
+    num_bills = int(request.form.get('num_bills'))
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
@@ -207,24 +207,12 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
-    q = q.limit(num_bills)
+    if num_bills > 0:
+        q = q.limit(num_bills)
     if q.count() == 0:
         return jsonify({'bills_to_run':0})
     job = group([test_bill.s(extractor_id, b.id) for b in q])
-
-    # This determines if the tasks run in a celery group or a celery chord.
-    # A group can return intermediate results and give progress updates,
-    # but reduce_bill_results must be called manually after the task is finished.
-    # A chord automatically calls reduce_bill_results at the end, but we
-    # can't get status updates on how the job is doing because we can't query
-    # for the subtask IDs of a chord.
-    use_chord = False
-    if use_chord:
-        result = chord(job)(reduce_bill_results.s(commit=True))
-    else:
-        result = job.apply_async()
-        # TODO: find out what this does and why it's necessary
-        result.save()
+    result = chord(job)(reduce_bill_results.s())
 
     #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
@@ -250,32 +238,17 @@ def test_status(task_id):
 
     task = GroupResult.restore(task_id)
 
-    # when task is a chord and is finished, 'task' is a dictionary; otherwise
-    # it's a GroupResult
-    if isinstance(task, dict):
-        return jsonify(dict(task, state='Finished'))
+    if task is None:
+        return jsonify({'state':'Running...'})
 
-    # Determine if task is run as a celery group or as a chord.
-    task_result = reduce_bill_results([r.info for r in task.results])
-
-    response = dict(task_result)
+    response = dict(task)
     def format_date(d):
         return None if d is None else "{:0>4d}-{:0>2d}".format(d.year, d.month)
 
-    response['dates'] = {format_date(d): task_result['dates'][d]
-                         for d in task_result['dates']}
-    response['state'] = 'Finished.' if task.ready() else 'Running...'
+    response['dates'] = {format_date(d): task['dates'][d]
+                         for d in task['dates']}
+    response['state'] = 'Finished.'
 
-    #if all bills have been processed, save result to the database.
-    # If task is a chord, this is done automatically
-    # TODO: this should be done when the task finsishes, as part of the task,
-    # not when the client wants to see the current state. move to reduce function
-    if task.ready():
-        s = Session()
-        q = s.query(ExtractorResult).filter(ExtractorResult.task_id == task_id)
-        extractor_result = q.one()
-        extractor_result.set_results(task_result)
-        s.commit()
     return jsonify(response)
 
 

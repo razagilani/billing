@@ -107,12 +107,9 @@ function displayData(task, isDetailed){
 //Start a new task on the server. 
 function runExtractor(extractor_id){
 	var utility_id = $("select[name="+extractor_id+"]").val(); 
-	var sample_amount_str = $("input[name=sample_amount]").val()
-	if(sample_amount_str == ""){
-		num_bills = 100;
-	} else {
-		num_bills = clamp(sample_amount_str, 0, 100);
-	}
+	var num_bills_str = $("input[name=num_bills]").val()
+	if(num_bills_str == ""){
+		num_bills = -1;
 
 	var postParameters = {
 		extractor_id: extractor_id,
