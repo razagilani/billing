@@ -455,6 +455,7 @@ class Extractor(model.Base):
         """
         raise NotImplementedError
 
+    #TODO right now this is a private method, we should make it public
     def _get_values(self, utilbill, bill_file_handler):
         """
         :param utilbill: UtilBill
