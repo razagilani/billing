@@ -538,10 +538,6 @@ if __name__ == '__main__':
 
     # args for restoring databases
     for parser in (restore_parser, restore_local_parser):
-        # only root can restore a MySQL database, but root's credentials are not
-        # stored in the config file.
-        parser.add_argument('--root-password', type=str, default='root',
-                help=('MySQL root password, default "root".'))
         parser.add_argument('--scrub', action='store_true',
                 help=('After restoring, replace parts of the data set with '
                 'placeholder values (for development only).'))
