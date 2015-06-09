@@ -112,8 +112,12 @@ def test_bill(self, extractor_id, bill_id):
     :param extractor_id: The id of the extractor to apply to the bill
     :param bill_id: The id of the bill to test
     :return: {
+        extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
-        fields : For each field, a map of {name:value}. If field was not extracted, value is None.
+        fields : Data for each field. It is of the type {'name1': {'value':###, 'db_match':bool}, 'name2':..., }
+                'value' stores the actual retrieved value for each given field name.
+                'db_match' is None if the database does not have a value already stored for this field.
+                    otherwise, db_match is set to True if the extracted value matches the value in the database, False otherwise.
         date : The bill's period end date, read from the database, or if not in the database, from the bill.
                 If neither succeeds, this is None. 'date' is used to group bills by date to see whether formats change over time.
     }
@@ -134,21 +138,6 @@ def test_bill(self, extractor_id, bill_id):
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
 
-    #TODO right now this is a private method, we should make it public
-    # good is of type [(field, value), ...]
-    good, error = extractor._get_values(bill, bill_file_handler)
-    for g in good:
-        response['fields'][g[0].applier_key] = str(g[1])
-
-    #get bill period end date from DB, or from extractor
-    # this is used to group bills by date and to check for changes over time in format
-    if bill.period_end is not None:
-        response['date'] = "{:0>4d}-{:0>2d}".format(bill.period_end.year, bill.period_end.month)
-    elif response['fields']['end'] is not None:
-        response['date'] = response['fields']['end'][:7]
-    else:
-        response['date'] = ""
-
     #TODO find better method to get db column from applier key
     getters_map = {
         "charges": lambda x : x.get_total_charges(),
@@ -157,6 +146,32 @@ def test_bill(self, extractor_id, bill_id):
         "next read": lambda x : x.get_next_meter_read_date(),
         "energy": lambda x : x.get_total_energy(),
     }
+
+    #TODO right now this is a private method, we should make it public
+    # Store field values for each successful result,
+    #   as well as whether or not the result matches what's in the database.
+    # Note: 'good' is of type [(field, value), ...]
+    good, error = extractor._get_values(bill, bill_file_handler)
+    for g in good:
+        response['fields'][g[0].applier_key] = {'value':str(g[1])}
+        db_val = getters_map[g[0].applier_key](bill)
+        if db_val:
+            if g[1] == db_val:
+                response['fields'][g[0].applier_key]['db_match'] = True
+            else:
+                response['fields'][g[0].applier_key]['db_match'] = False
+        else:
+            response['fields'][g[0].applier_key]['db_match'] = None
+
+    #get bill period end date from DB, or from extractor
+    # this is used to group bills by date and to check for changes over time in format
+    if bill.period_end is not None:
+        response['date'] = "{:0>4d}-{:0>2d}".format(bill.period_end.year, bill.period_end.month)
+    elif response['fields']['end'] is not None:
+        response['date'] = response['fields']['end']['value'][:7]
+    else:
+        response['date'] = ""
+
     debug = False
     if len(good) != len(extractor.fields) and debug:
         print "\n***"
@@ -188,15 +203,19 @@ def reduce_bill_results(self, results, commit=False):
         'all_count': number of bills with all fields,
         'any_count': number of bills with at least one field,
         'total_count': total number of bills processed,
-        'fields': success counts for each field, in a dictionary {name:success count}
+        'fields': success counts for each field, in a dictionary {name1:{'count', 'db_match', 'db_conflict'}, name2:{...}, ...}
+                    'count' stores the number of bills that retrieved the specific field
+                    'db_match' stores the number of times the retrieved field matched what was in the database
+                    'db_conflict' stores the number of times the retrieved field did *not* match what was in the database
         'dates' : dictionary of year-month, each mapping to a copy of 'fields' for all bills in the given time year & month,
         'failed': number of tasks failed,
+        'nbills': number of total bills to be processed (including ones not yet finished)
     }
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
     dates = {}
-    fields = {key:0 for key in Applier.KEYS}
+    fields = {key:{'count':0, 'db_match':0, 'db_conflict':0} for key in Applier.KEYS}
     results = filter(None, results)
     failed = 0
     for r in results:
@@ -219,7 +238,12 @@ def reduce_bill_results(self, results, commit=False):
         for k in r['fields'].keys():
             if r['fields'][k] is not None:
                 success_fields += 1
-                fields[k] += 1
+                fields[k]['count'] += 1
+                if r['fields'][k]['db_match'] is not None:
+                    if r['fields'][k]['db_match']:
+                        fields[k]['db_match'] +=1
+                    else:
+                        fields[k]['db_conflict'] +=1
                 dates[bill_date]['fields'][k] += 1
 
         #Count success for this individual bill
