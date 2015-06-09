@@ -46,6 +46,11 @@ def create_and_assign_supply_groups(s):
         utility.sos_supplier = supplier
 
     for rate_class in s.query(RateClass).all():
+        if rate_class.service not in ('gas', 'electric'):
+            log.warning('Unknown Service for Rate Class %s: %s, assuming '
+                        'electric', rate_class.name, rate_class.service)
+            rate_class.service = 'electric'
+
         supply_group = SupplyGroup(
             '%s %s SOS' % (rate_class.utility.name, rate_class.name),
             rate_class.utility.sos_supplier, rate_class.service)

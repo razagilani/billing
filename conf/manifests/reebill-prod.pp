@@ -11,6 +11,7 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
+include mongo::mongo_tools
 require host::hosts_file
 
 package { 'httpd':
@@ -74,6 +75,12 @@ rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
 }
 rabbit_mq::base_resource_configuration {$env:
     env => $env
+}
+cron { backup:
+    command => "source /var/local/reebill-prod/bin/activate && cd /var/local/reebill-prod/billing/scripts && python backup.py backup billing-prod-backup --access-key AKIAI46IGKZFBH4ILWFA --secret-key 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 > /home/reebill-prod/backup_stdout.log 2> /home/reebill-prod/backup_stderr.log",
+    user => $username,
+    hour => 1,
+    minute => 0
 }
 cron { run_reports:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
