@@ -34,9 +34,7 @@ from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config
 from core.extraction.extraction import Extractor, Applier, ExtractorResult
-from core.extraction.task import test_extractor, test_bill, \
-    reduce_bill_results, \
-    test_bills_batch
+from core.extraction.task import test_bill, reduce_bill_results
 from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError
