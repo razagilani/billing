@@ -85,6 +85,16 @@ class BillFileHandler(object):
         if key is None:
             raise MissingFileError('Key "%s" does not exist' % key_name)
 
+    def file_exists(self, key_name):
+        """Raise MissingFileError if the S3 key
+        does not exist.
+        """
+        key = self._get_amazon_bucket().get_key(key_name)
+        if key is None:
+            raise MissingFileError('Key "%s" does not exist' % key_name)
+        return True
+
+
     def write_copy_to_file(self, utilbill, output_file):
         """Write a copy of the given bill's file to 'output_file'. (boto
         doesn't allow directly opening a file corresponding to the S3 key.)
