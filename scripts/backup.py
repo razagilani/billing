@@ -28,14 +28,14 @@ from core import config
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
 # whenever the key is accessed without specifying a version.
-OLD_BACKUP_FILE_NAME = 'reebill_mysql.gz'
-CUR_BACKUP_FILE_NAME = 'billing_db.gz'
+BACKUP_FILE_NAME = 'billing_db.gz'
 MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 
 # force no password prompt because it shouldn't be necessary and isn't
 # entered through the subprocess stdin
+DROP_COMMAND = 'dropdb --if-exists %(db)s'
+CREATE_COMMAND = 'createdb %(db)s'
 DUMP_COMMAND = 'pg_dump %(db)s -U %(user)s -w'
-OLD_DB_SHELL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
 DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
@@ -46,14 +46,10 @@ ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 
 # extract database connection parameters from URI in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
-old_db_uri = config.get('db', 'old_uri')
-cur_db_uri = config.get('db', 'uri')
-MYSQL_FORMAT = r'^\w+://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$'
+db_uri = config.get('db', 'uri')
 PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
-m = re.match(MYSQL_FORMAT, old_db_uri)
-old_db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
-m = re.match(PG_FORMAT, cur_db_uri)
-cur_db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
+m = re.match(PG_FORMAT, db_uri)
+db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
 
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
@@ -183,7 +179,7 @@ def _refresh_s3_key(key):
     return key.bucket.get_key(key.name)
 
 def backup_main_db(s3_key):
-    command = DUMP_COMMAND % cur_db_params
+    command = DUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
     s3_key = _refresh_s3_key(s3_key)
@@ -192,7 +188,7 @@ def backup_main_db(s3_key):
             s3_key.last_modified)
 
 def backup_main_db_local(file_path):
-    command = DUMP_COMMAND % cur_db_params
+    command = DUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
@@ -214,28 +210,26 @@ def backup_mongo_collection_local(collection_name, file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
-def _recreate_main_db(root_password):
-    '''Drop and re-create the main database because mysqldump only includes drop
+def _recreate_main_db():
+    '''Drop and re-create the main database because pg_dump only includes drop
     commands for tables that already exist in the backup.
     '''
-    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
-                                          password='root')
-    stdin, _, check_exit_status = run_command(command)
-    stdin.write('drop database if exists %s;' % old_db_params['db'])
-    stdin.write('create database %s;' % old_db_params['db'])
-    stdin.close()
-    check_exit_status()
+    for command_format in [DROP_COMMAND, CREATE_COMMAND]:
+        command = command_format % dict(db_params)
+        stdin, _, check_exit_status = run_command(command)
+        stdin.close()
+        check_exit_status()
 
-def restore_main_db_s3(bucket, root_password):
-    _recreate_main_db(root_password)
-    command = OLD_DB_SHELL_COMMAND % dict(old_db_params)
+def restore_main_db_s3(bucket):
+    _recreate_main_db()
+    command = DB_SHELL_COMMAND % dict(db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
-    key = bucket.get_key(OLD_BACKUP_FILE_NAME)
+    key = bucket.get_key(BACKUP_FILE_NAME)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                OLD_BACKUP_FILE_NAME, bucket.name))
+                BACKUP_FILE_NAME, bucket.name))
     print 'restoring main database from %s/%s version %s (modified %s)' % (
             bucket.name, key.name, key.version_id, key.last_modified)
     key.get_contents_to_file(ungzip_file)
@@ -244,10 +238,9 @@ def restore_main_db_s3(bucket, root_password):
     stdin.close()
     check_exit_status()
 
-def restore_main_db_local(dump_file_path, root_password):
-    _recreate_main_db(root_password)
-    command = OLD_DB_SHELL_COMMAND % dict(old_db_params, user='root',
-            password=root_password)
+def restore_main_db_local(dump_file_path):
+    _recreate_main_db()
+    command = DB_SHELL_COMMAND % dict(db_params)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -316,7 +309,7 @@ def scrub_dev_data():
     TODO: the right way to do this is to scrub the data before it even gets
     into a development environment, just in case.
     '''
-    command = OLD_DB_SHELL_COMMAND % old_db_params
+    command = DB_SHELL_COMMAND % db_params
     stdin, _, check_exit_status = run_command(command)
     sql = get_scrub_sql()
     print 'scrub commands:\n%s' % sql
@@ -341,7 +334,7 @@ def get_bucket(bucket_name, connection, enforce_versioning=True):
 def backup(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
-    backup_main_db(bucket.get_key(CUR_BACKUP_FILE_NAME, validate=False))
+    backup_main_db(bucket.get_key(BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
@@ -349,7 +342,7 @@ def backup(args):
 def restore(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
-    restore_main_db_s3(bucket, args.root_password)
+    restore_main_db_s3(bucket)
     for collection in MONGO_COLLECTIONS:
         # NOTE mongorestore cannot restore from a file unless its name
         # ends with ".bson".
@@ -372,12 +365,12 @@ def download(args):
     bucket = get_bucket(args.bucket, conn)
 
     # download main database dump
-    key = bucket.get_key(OLD_BACKUP_FILE_NAME)
+    key = bucket.get_key(BACKUP_FILE_NAME)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
                 key.name, bucket.name))
     key.get_contents_to_filename(os.path.join(
-            local_dir_absolute_path, OLD_BACKUP_FILE_NAME))
+            local_dir_absolute_path, BACKUP_FILE_NAME))
 
     # download Mongo dump
     for collection in MONGO_COLLECTIONS:
@@ -452,15 +445,14 @@ def restore_files(args):
             print 'Destination already has key {0}, not copying'.format(key_name)
 
 def backup_local(args):
-    backup_main_db_local(os.path.join(args.local_dir, CUR_BACKUP_FILE_NAME))
+    backup_main_db_local(os.path.join(args.local_dir, BACKUP_FILE_NAME))
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
         backup_mongo_collection_local(collection, backup_file_path)
 
 def restore_local(args):
-    restore_main_db_local(os.path.join(args.local_dir,
-            OLD_BACKUP_FILE_NAME), args.root_password)
+    restore_main_db_local(os.path.join(args.local_dir, BACKUP_FILE_NAME))
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.local_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
@@ -535,7 +527,7 @@ if __name__ == '__main__':
 
     # arguments for local backup files
     all_file_names = ['%s or %s' % (
-    OLD_BACKUP_FILE_NAME, CUR_BACKUP_FILE_NAME)] + [
+    BACKUP_FILE_NAME, BACKUP_FILE_NAME)] + [
                          (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in
                          MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser,
