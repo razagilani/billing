@@ -242,28 +242,40 @@ def test_status(task_id):
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
 
-    #celery object is not used, but this needs to be here, otherwise can't get group results (produces DisabledBackend error)
-    acelery = Celery(broker="mongodb://localhost:27017/skyline-dev", backend="mongodb://localhost:27017/skyline-dev")
-    task = GroupResult.restore(task_id)
-    print type(task)
-    # Determine if task is run as a celery group or as a chord.
-    if isinstance(task, GroupResult):
-        response = reduce_bill_results([r.info for r in task.results])
-        response['state'] = 'Finished.' if task.ready() else 'Running...'
-        #if all bills have been processed, save result to the database.
-        # If task is a chord, this is done automatically
-        if task.ready():
-            s = Session()
-            q = s.query(ExtractorResult).filter(ExtractorResult.task_id == task_id)
-            extractor_result = q.one()
-            extractor_result.set_results(response)
-            s.commit()
-    elif type(task) is dict:
-        response = task
-        response['state'] = 'Finished.'
-    else:
-        response = {'update_fail':True}
+    # celery object is not used, but this needs to be here, otherwise can't
+    # get group results (produces DisabledBackend error)
+    # TODO: see if calling init_celery() fixes it
+    Celery(broker="mongodb://localhost:27017/skyline-dev",
+           backend="mongodb://localhost:27017/skyline-dev")
 
+    task = GroupResult.restore(task_id)
+
+    # when task is a chord and is finished, 'task' is a dictionary; otherwise
+    # it's a GroupResult
+    if isinstance(task, dict):
+        return jsonify(dict(task, state='Finished'))
+
+    # Determine if task is run as a celery group or as a chord.
+    task_result = reduce_bill_results([r.info for r in task.results])
+
+    response = dict(task_result)
+    def format_date(d):
+        return None if d is None else "{:0>4d}-{:0>2d}".format(d.year, d.month)
+
+    response['dates'] = {format_date(d): task_result['dates'][d]
+                         for d in task_result['dates']}
+    response['state'] = 'Finished.' if task.ready() else 'Running...'
+
+    #if all bills have been processed, save result to the database.
+    # If task is a chord, this is done automatically
+    # TODO: this should be done when the task finsishes, as part of the task,
+    # not when the client wants to see the current state
+    if task.ready():
+        s = Session()
+        q = s.query(ExtractorResult).filter(ExtractorResult.task_id == task_id)
+        extractor_result = q.one()
+        extractor_result.set_results(task_result)
+        s.commit()
     return jsonify(response)
 
 
