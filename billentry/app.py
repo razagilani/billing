@@ -269,7 +269,7 @@ def test_status(task_id):
     #if all bills have been processed, save result to the database.
     # If task is a chord, this is done automatically
     # TODO: this should be done when the task finsishes, as part of the task,
-    # not when the client wants to see the current state
+    # not when the client wants to see the current state. move to reduce function
     if task.ready():
         s = Session()
         q = s.query(ExtractorResult).filter(ExtractorResult.task_id == task_id)
