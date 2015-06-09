@@ -8,9 +8,9 @@ $(document).ready(function() {
 			runExtractor($(this).attr("name"));
 		}
 	});
-	//setInterval(updateStatus, 1000);
 });
 
+//Selects all checkboxes, unless all are already selected, in which case it unselects all
 function selectAll(){
 	var checkboxes = $("input[type=checkbox]");
 	var allChecked = true;
@@ -25,6 +25,7 @@ function selectAll(){
 	});
 }
 
+//For all current tasks, get updated progress info from the server, and display it.
 function updateStatus(){
 	tasks.forEach(function(elem){
 		$.post("/test-status/"+elem.task_id, function(data){
@@ -46,7 +47,14 @@ function displayData(task, isDetailed){
 		return;
 	}
 	var task_data = task.data;
+	//If update failed (most likely due to the task being run as a 'chord', which cannot return intermediate results),
+	//	then don't give the detailed update, just edit the status line in the summary table. 
+	if (task_data.update_fail){
+		console.log(task_data);
+		isDetailed = false;
+	}
 	if(isDetailed){
+		//results for a single task, sorted by month
 		$("#detailed-results-span").css('display', 'inherit');
 		$("#detailed-results tbody").empty();
 		Object.keys(task_data.dates).forEach(function(elem){
@@ -71,7 +79,12 @@ function displayData(task, isDetailed){
 			$("#detailed-results tbody").append(table_row);
 		});
 	} else {
+		//task summary for a single task
 		var task_table_row = $('#results tr[id='+ task.task_id +']');
+		if(task_data.update_fail){
+			task_table_row.children("td[header=status]").text("Can't get update.");
+			return;
+		}
 		var total_count = task_data.total_count;
 		var all_count = task_data.all_count;
 		var any_count = task_data.any_count;
@@ -90,6 +103,7 @@ function displayData(task, isDetailed){
 	}
 }
 
+//Start a new task on the server. 
 function runExtractor(extractor_id){
 	var utility_id = $("select[name="+extractor_id+"]").val(); 
 	var sample_amount_str = $("input[name=sample_amount]").val()
@@ -159,6 +173,7 @@ function newRow(task_id, job_id, extractor_id, utility_name, status, bills_to_ru
 	}
 }
 
+//Runs all the selected extractors as new tasks
 function runSelected(){
 	var checkboxes = $("input[type=checkbox]");
 	checkboxes.each(function(index, elem){
