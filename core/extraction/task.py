@@ -134,26 +134,10 @@ def test_bill(self, extractor_id, bill_id):
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
 
-    #TODO find better method to get db column from applier key
-    getters_map = {
-        "charges": lambda x : x.get_total_charges(),
-        "end": lambda x : x.period_end,
-        "start": lambda x : x.period_start,
-        "next read": lambda x : x.get_next_meter_read_date(),
-        "energy": lambda x : x.get_total_energy(),
-    }
-
     #TODO right now this is a private method, we should make it public
     # good is of type [(field, value), ...]
     good, error = extractor._get_values(bill, bill_file_handler)
     for g in good:
-        #Compare extracted value to that in the database, to check for false positives.
-        db_val = getters_map[g[0].applier_key](bill)
-        if db_val:
-            if g[1] != db_val:
-                print "*** VERIFICATION FAILED ***\t%s\t%s\t%s\tID: %s\n" % (g[0].applier_key, g[1], db_val, bill_id)
-                print bill.get_text(bill_file_handler)
-
         response['fields'][g[0].applier_key] = str(g[1])
 
     #get bill period end date from DB, or from extractor
@@ -165,6 +149,14 @@ def test_bill(self, extractor_id, bill_id):
     else:
         response['date'] = ""
 
+    #TODO find better method to get db column from applier key
+    getters_map = {
+        "charges": lambda x : x.get_total_charges(),
+        "end": lambda x : x.period_end,
+        "start": lambda x : x.period_start,
+        "next read": lambda x : x.get_next_meter_read_date(),
+        "energy": lambda x : x.get_total_energy(),
+    }
     debug = False
     if len(good) != len(extractor.fields) and debug:
         print "\n***"
@@ -172,7 +164,11 @@ def test_bill(self, extractor_id, bill_id):
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
         for g in good:
-            print "Field: ", g[0].applier_key, " Value: ", g[1]
+            #Compare extracted value to that in the database, to check for false positives.
+            db_val = getters_map[g[0].applier_key](bill)
+            if db_val and g[1] != db_val:
+                print "*** VERIFICATION FAILED ***\t%s\t%s\t%s\tID: %s\n" % (g[0].applier_key, g[1], db_val, bill_id)
+                print bill.get_text(bill_file_handler)
         for e in error:
             print "Error: ", e
         print "Text: ", bill.get_text(bill_file_handler)
@@ -181,9 +177,10 @@ def test_bill(self, extractor_id, bill_id):
     return response
 
 @celery.task(bind=True)
-def reduce_bill_results(self, results):
+def reduce_bill_results(self, results, commit=False):
     '''
     Combines a bunch of results from individual bill tests into one summary.
+    Can also commit the results to the database, if it is run as a celery task.
     Note: All results should be from same extractor
 
     :param results: The set of results to reduce
@@ -235,7 +232,8 @@ def reduce_bill_results(self, results):
         if success_fields == total_fields:
             all_count += 1
             dates[bill_date]['all_count'] += 1
-    return {
+
+    response =  {
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
@@ -244,6 +242,15 @@ def reduce_bill_results(self, results):
         'failed': failed,
         'nbills' : nbills,
     }
+
+    if commit:
+        s = Session()
+        q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
+        extractor_result = q.one()
+        extractor_result.set_results(response)
+        s.commit()
+
+    return response
 
 @celery.task(bind=True, base=DBTask)
 def test_bills_batch(self, extractor_id, bill_ids):
