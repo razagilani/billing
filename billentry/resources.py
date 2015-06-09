@@ -17,6 +17,7 @@ from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
+from core.altitude import AltitudeAccount
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
 from core.model import UtilityAccount
@@ -171,6 +172,11 @@ class BaseResource(Resource):
             'sos_supply_group_id': String
         }
 
+        self.altitude_account_fields = {
+            'utility_account_id': Integer,
+            'guid': String
+        }
+
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
 id_parser = RequestParser()
@@ -214,6 +220,15 @@ class AccountResource(BaseResource):
             'service_address': CallableField(String(),
                                              attribute='get_service_address'),
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+
+
+class AltitudeAccountResource(BaseResource):
+
+    def get(self):
+        altitude_accounts = Session.query(AltitudeAccount).all()
+        accounts = [marshal(altitude_account, self.altitude_account_fields)
+            for altitude_account in altitude_accounts]
+        return {'rows': accounts, 'results': len(accounts)}
 
 
 class UtilBillListResource(BaseResource):
