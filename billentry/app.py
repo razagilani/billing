@@ -198,35 +198,34 @@ def run_test():
     Also creates a database row in the ExtractorResult table for this test.
     :return the ID of the task being run, as well as the total number of bills
     '''
-
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
-    sample_amount = float(request.form.get('sample_amount'))
+    num_bills = float(request.form.get('num_bills'))
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
-    q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
+    q = s.query(UtilBill.id).filter(UtilBill.sha256_hexdigest != None,
         UtilBill.sha256_hexdigest != '').order_by(
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
-    #TODO add ability to randomly subsample for results
-    bills = q.all()
-    bills = bills[:int(len(bills)*sample_amount)]
-    if not bills:
+    q = q.limit(num_bills)
+    if q.count() == 0:
         return jsonify({'bills_to_run':0})
-    job = group([test_bill.s(extractor_id, b.id) for b in bills])
+    job = group([test_bill.s(extractor_id, b.id) for b in q])
 
     # This determines if the tasks run in a celery group or a celery chord.
-    # A group can return intermediate results and give progress updates, but reduce_bill_results must be called manually
-    #   after the task is finished.
-    # A chord automatically calls reduce_bill_results at the end, so this will be useful when running big jobs on AWS,
-    #   but we can't get status updates on how the job is doing.
+    # A group can return intermediate results and give progress updates,
+    # but reduce_bill_results must be called manually after the task is finished.
+    # A chord automatically calls reduce_bill_results at the end, but we
+    # can't get status updates on how the job is doing because we can't query
+    # for the subtask IDs of a chord.
     use_chord = False
     if use_chord:
         result = chord(job)(reduce_bill_results.s(commit=True))
     else:
         result = job.apply_async()
+        # TODO: find out what this does and why it's necessary
         result.save()
 
     #add task to db
@@ -234,7 +233,7 @@ def run_test():
                     task_id=result.id, started=datetime.utcnow())
     s.add(er)
     s.commit()
-    return jsonify({'task_id': result.id, 'bills_to_run':len(bills)}), 202
+    return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):

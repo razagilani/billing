@@ -574,7 +574,11 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
-        for v, k in metadata['fields'].iteritems():
-            setattr(self, "field_" + v, k)
-        for field in metadata['fields']:
-            setattr(self, field+"_by_month", {date:(str(counts[field]) if field in counts else "0") for date, counts in metadata['dates'].iteritems()})
+
+        # update overall count and count by month for each field
+        for field_name in Applier.KEYS.iterkeys():
+            count_for_field = metadata['fields'][field_name]['count']
+            setattr(self, "field_" + field_name, count_for_field)
+            date_count_dict = {date: str(counts.get(field_name, 0)) for
+                               date, counts in metadata['dates'].iteritems()}
+            setattr(self, field_name + "_by_month", date_count_dict)
