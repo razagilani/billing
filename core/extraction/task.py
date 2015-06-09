@@ -145,7 +145,7 @@ def test_bill(self, extractor_id, bill_id):
     return response
 
 @celery.task(bind=True)
-def reduce_bill_results(self, results, commit=False):
+def reduce_bill_results(self, results):
     '''
     Combines a bunch of results from individual bill tests into one summary.
     Can also commit the results to the database, if it is run as a celery task.
@@ -220,12 +220,11 @@ def reduce_bill_results(self, results, commit=False):
         'nbills' : nbills,
     }
 
-    if commit:
-        s = Session()
-        q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
-        extractor_result = q.one()
-        extractor_result.set_results(response)
-        s.commit()
+    s = Session()
+    q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
+    extractor_result = q.one()
+    extractor_result.set_results(response)
+    s.commit()
 
     return response
 
