@@ -55,55 +55,6 @@ def extract_bill(utilbill_id):
     main = _create_main()
     main.extract(utilbill_id)
 
-@celery.task(bind=True)
-def test_extractor(self, extractor_id, utility_id=None):
-    """Test an extractor on all bills.
-    """
-    # init_model() can't be called in global scope because it causes a
-    # circular import with Bill Entry. but if init_model is called after it
-    # has already been called and data have been inserted (e.g. in a test),
-    # the transaction is rolled back and inserted data will be lost. so,
-    # only call init_model if it hasn't been called yet.
-    from core.model import Session
-    if Session.bind is None:
-        del Session
-        init_model()
-        from core.model import Session
-
-    bill_file_handler = _create_bill_file_handler()
-    s = Session()
-    extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
-
-    # sort bills in random order so partial results show success rates more
-    # similar to the final result. bills without file names are excluded
-    # because there is no file to extract from.
-    q = s.query(UtilBill).filter(UtilBill.sha256_hexdigest != None,
-                                 UtilBill.sha256_hexdigest != ''
-                                 ).order_by(func.random())
-    if utility_id is not None:
-        q = q.filter(UtilBill.utility_id==utility_id)
-
-    all_count, any_count, total_count = 0, 0, 0
-    for bill in q:
-        c = extractor.get_success_count(bill, bill_file_handler)
-        if c > 0:
-            any_count += 1
-        if c == len(extractor.fields) and len(extractor.fields) > 0:
-            all_count += 1
-        total_count += 1
-
-        # set custom state with process so far
-        # (i think it's not possible/easy to retrieve the current state
-        # metadata after setting it.)
-        self.update_state(state='PROGRESS', meta={
-            'all_count': all_count,
-            'any_count': any_count,
-            'total_count': total_count
-        })
-        print '***** "%s"' % bill.sha256_hexdigest, all_count, any_count, total_count
-    s.commit()
-    return all_count, any_count, total_count
-
 @celery.task(bind=True, base=DBTask)
 def test_bill(self, extractor_id, bill_id):
     '''
@@ -278,42 +229,3 @@ def reduce_bill_results(self, results, commit=False):
 
     return response
 
-@celery.task(bind=True, base=DBTask)
-def test_bills_batch(self, extractor_id, bill_ids):
-    from core.model import Session
-    if Session.bind is None:
-        del Session
-        init_model()
-        from core.model import Session
-    bill_file_handler = _create_bill_file_handler()
-    s = Session()
-    extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
-    bills = s.query(UtilBill).filter(UtilBill.id.in_(bill_ids)).all()
-
-    all_count, any_count, total_count = 0, 0, 0
-    field_count = {f.applier_key:0 for f in extractor.fields}
-    for bill in bills:
-        #TODO right now this is a private method, we should make it public
-        #good is of type [(field, value), ...]
-        good, error = extractor._get_values(bill, bill_file_handler)
-        c = len(good)
-        for g in good:
-            field_count[g[0].applier_key] += 1
-
-        if c > 0:
-            any_count += 1
-        if c == len(extractor.fields) and len(extractor.fields) > 0:
-            all_count += 1
-        total_count += 1
-        self.update_state(state='PROGRESS', meta={
-            'all_count': all_count,
-            'any_count': any_count,
-            'total_count': total_count,
-            'fields': field_count,
-            # TODO: add count_by_field and count_by_month
-        })
-
-    result = s.query(ExtractorResult).filter_by(task_id=self.request.id).one()
-    result.set_results(self.request.info)
-
-    return self.request.info
