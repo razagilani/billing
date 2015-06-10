@@ -66,13 +66,10 @@ def test_bill(self, extractor_id, bill_id):
         extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
         fields : Data for each field. It is of the type {'name1': {
-        'value':###, 'db_match':bool}, 'name2':..., }
+        'value':###, 'db_conflict':bool}, 'name2':..., }
                 'value' stores the actual retrieved value for each given
                 field name.
-                'db_match' is None if the database does not have a value
-                already stored for this field.
-                    otherwise, db_match is set to True if the extracted value
-                    matches the value in the database, False otherwise.
+                'db_conflict' stores the number of times a retrieved value from a bill conflicted with a value in a database.
         date : The bill's period end date, read from the database, or if not
         in the database, from the bill.
                 If neither succeeds, this is None. 'date' is used to group
@@ -98,11 +95,13 @@ def test_bill(self, extractor_id, bill_id):
     # methods to get existing values corresponding to applier keys
     #TODO find better method to get db column from applier key
     getters_map = {
+        Applier.BILLING_ADDRESS: lambda x : x.billing_address,
         Applier.CHARGES: lambda x : x.charges,
         Applier.END: lambda x : x.period_end,
-        Applier.START: lambda x : x.period_start,
-        Applier.NEXT_READ: lambda x : x.get_next_meter_read_date(),
         Applier.ENERGY: lambda x : x.get_total_energy(),
+        Applier.NEXT_READ: lambda x : x.get_next_meter_read_date(),
+        Applier.SERVICE_ADDRESS: lambda x : x.service_address,
+        Applier.START: lambda x : x.period_start,
     }
 
     # Store field values for each successful result,
@@ -112,7 +111,7 @@ def test_bill(self, extractor_id, bill_id):
     for field, value in good:
         response['fields'][field.applier_key] = {'value': value}
         db_val = getters_map[field.applier_key](bill)
-        response['fields'][field.applier_key]['db_match'] = (db_val == value)
+        response['fields'][field.applier_key]['db_conflict'] = (db_val and db_val != value)
 
     # get bill period end date from DB, or from extractor
     # this is used to group bills by date and to check for changes over time
@@ -127,7 +126,7 @@ def test_bill(self, extractor_id, bill_id):
     # print out debug information in celery log
     debug = False
     if len(good) != len(extractor.fields) and debug:
-        print "\n***"
+        print "\n*******"
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
@@ -135,16 +134,18 @@ def test_bill(self, extractor_id, bill_id):
             #Compare extracted value to that in the database, to check for false positives.
             db_val = getters_map[g[0].applier_key](bill)
             if db_val and g[1] != db_val:
-                print "*** VERIFICATION FAILED ***\t%s\t%s\t%s\tID: %s\n" % (g[0].applier_key, g[1], db_val, bill_id)
-                print bill.get_text(bill_file_handler)
+                print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
         for e in error:
             print "Error: ", e
-        print "Text: ", bill.get_text(bill_file_handler)
-        print "***\n"
+        if not bill.get_text(bill_file_handler):
+            print "**** NO TEXT ****"
+        else:
+            print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler)))
+        print "*******\n"
 
     return response
 
-@celery.task(bind=True)
+@celery.task(bind=True, base=DBTask)
 def reduce_bill_results(self, results):
     '''
     Combines a bunch of results from individual bill tests into one summary.
@@ -156,9 +157,8 @@ def reduce_bill_results(self, results):
         'all_count': number of bills with all fields,
         'any_count': number of bills with at least one field,
         'total_count': total number of bills processed,
-        'fields': success counts for each field, in a dictionary {name1:{'count', 'db_match', 'db_conflict'}, name2:{...}, ...}
+        'fields': success counts for each field, in a dictionary {name1:{'count', 'db_conflict'}, name2:{...}, ...}
                     'count' stores the number of bills that retrieved the specific field
-                    'db_match' stores the number of times the retrieved field matched what was in the database
                     'db_conflict' stores the number of times the retrieved field did *not* match what was in the database
         'dates' : dictionary of year-month, each mapping to a copy of 'fields' for all bills in the given time year & month,
         'failed': number of tasks failed,
@@ -168,7 +168,7 @@ def reduce_bill_results(self, results):
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
     dates = {}
-    fields = {key:{'count':0, 'db_match':0, 'db_conflict':0} for key in Applier.KEYS}
+    fields = {key:{'count':0, 'db_conflict':0} for key in Applier.KEYS}
     results = filter(None, results)
     failed = 0
     for r in results:
@@ -192,11 +192,8 @@ def reduce_bill_results(self, results):
             if r['fields'][k] is not None:
                 success_fields += 1
                 fields[k]['count'] += 1
-                if r['fields'][k]['db_match'] is not None:
-                    if r['fields'][k]['db_match']:
-                        fields[k]['db_match'] +=1
-                    else:
-                        fields[k]['db_conflict'] +=1
+                if r['fields'][k]['db_conflict']:
+                    fields[k]['db_conflict'] +=1
                 dates[bill_date]['fields'][k] += 1
 
         #Count success for this individual bill
@@ -220,11 +217,17 @@ def reduce_bill_results(self, results):
         'nbills' : nbills,
     }
 
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+
     s = Session()
     q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
     extractor_result = q.one()
     extractor_result.set_results(response)
     s.commit()
 
-    return response
 
+    return response

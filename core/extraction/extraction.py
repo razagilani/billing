@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from core import model
-from core.model import Charge, Session, Utility
+from core.model import Charge, Session, Utility, Address
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
 
@@ -71,16 +71,20 @@ class Applier(object):
     created that includes the non-UtilBill specific parts, and other subclasses
     of it would have different 'KEYS' and a different implementation of 'apply'.
     """
+    BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
+    SERVICE_ADDRESS = 'service address'
     START = 'start'
     KEYS = {
+        BILLING_ADDRESS: model.UtilBill.billing_address,
         CHARGES: model.UtilBill.charges,
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
+        SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
     # TODO:
@@ -237,9 +241,9 @@ def pep_old_convert_charges(text):
     #in pepco bills, supply and distribution charges are separate
     distribution_charges_exp = r'Distribution Services\:(.*?)CURRENT CHARGES'
     supply_charges_exp = r'Generation and Transmission.*?\d{4}\:(.*?)Charges This Period'
-    text = re.sub(r'at (\d)', r' \1', text) #remove the "at"s at the end of charge name, ie "Trust Fundat 0.0020500 per..."
-    dist_text = re.search(distribution_charges_exp, text).group(1)
-    supply_text = re.search(supply_charges_exp, text).group(1)
+    text = re.sub(r'at (\d)', r' \1', text, re.DOTALL | re.IGNORECASE) #remove the "at"s at the end of charge name, ie "Trust Fundat 0.0020500 per..."
+    dist_text = re.search(distribution_charges_exp, text, re.DOTALL).group(1)
+    supply_text = re.search(supply_charges_exp, text, re.DOTALL).group(1)
 
     def process_charge(p, ct):
         name = p[0]
@@ -314,6 +318,15 @@ def pep_new_convert_charges(text):
 
     return charges
 
+def convert_address(text):
+    #TODO extract zip code and other elements
+    return Address(street=text)
+    # addressee = Column(String(1000), nullable=False, default='')
+    #     street = Column(String(1000), nullable=False, default='')
+    #     city = Column(String(1000), nullable=False, default='')
+    #     state = Column(String(1000), nullable=False, default='')
+    #     postal_code = Column(String(1000), nullable=False, default='')
+
 class Field(model.Base):
     """Recipe for extracting one piece of data from a larger amount of input
     data. All values are initially strings, and a separate function is used
@@ -340,6 +353,7 @@ class Field(model.Base):
 
     # various functions can be used to convert strings into other types. each
     #  one has a name so it can be stored in the database.
+    ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
     STRING = 'string'
@@ -348,8 +362,9 @@ class Field(model.Base):
     PEPCO_OLD_CHARGES = 'pepco old charges'
     PEPCO_NEW_CHARGES = 'pepco new charges'
     TYPES = {
+        ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
-        FLOAT: float,
+        FLOAT: lambda x: float(x.replace(',','')),
         STRING: unicode,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,
@@ -522,7 +537,8 @@ class TextExtractor(Extractor):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
-            m = re.search(self.regex, text, re.IGNORECASE)
+            m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
+
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
