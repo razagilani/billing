@@ -4,6 +4,7 @@ reebill.reebill_model.
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock
+from core import init_model
 
 from core.model import UtilBill, Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
@@ -11,8 +12,10 @@ from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test.setup_teardown import clear_db
+from test import init_test_config, clear_db
 
+def setUpModule():
+    init_test_config()
 
 class ReeBillCustomerTest(unittest.TestCase):
     """Unit tests for the ReeBillCustomer class.
@@ -67,8 +70,8 @@ class ReeBillUnitTest(unittest.TestCase):
     def setUp(self):
         # unfortunately mocks will not work for any of the SQLAlchemy objects
         # because of relationships. replace with mocks if/when possible.
-        utility_account = UtilityAccount('', '', None, None, None, Address(),
-                                         Address())
+        utility_account = UtilityAccount('', '', None, None, None, None,
+                                         Address(), Address())
         self.customer = ReeBillCustomer(
             utility_account=utility_account,
             bill_email_recipient='test@example.com')
@@ -76,7 +79,7 @@ class ReeBillUnitTest(unittest.TestCase):
         utilbill = UtilBill(utility_account, None, None,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill.registers = [Register(Register.TOTAL, 'kWh')]
+        utilbill._registers = [Register(Register.TOTAL, 'kWh')]
         self.reebill = ReeBill(self.customer, 1, utilbill=utilbill)
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -159,10 +162,13 @@ class ReeBillUnitTest(unittest.TestCase):
         corrected_bill.issue(now, reebill_processor)
 
 
-class ReebillTest(unittest.TestCase):
+class ReebillTestWithDB(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        init_model()
 
     def setUp(self):
-        clear_db()
         washgas = Utility(name='washgas', address=Address())
         supplier = Supplier(name='supplier')
         c_rate_class = RateClass(name='Test Rate Class', utility=washgas,
@@ -182,11 +188,11 @@ class ReebillTest(unittest.TestCase):
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))
         self.register = Register(Register.TOTAL, 'therms', quantity=100)
-        self.utilbill.registers = [self.register]
+        self.utilbill._registers = [self.register]
         self.utilbill.charges = [
-            Charge('A', Charge.get_simple_formula(Register.TOTAL), rate=2,
-                   description='a', unit='therms'),
-            Charge('B', '1', rate=1, description='b', unit='therms',
+            Charge('A', formula=Charge.get_simple_formula(Register.TOTAL),
+                   rate=2, description='a', unit='therms'),
+            Charge('B', formula='1', rate=1, description='b', unit='therms',
                    has_charge=False),
         ]
 
@@ -196,7 +202,7 @@ class ReebillTest(unittest.TestCase):
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
     def tearDown(self):
-        clear_db()
+        pass
 
     def test_compute_charges(self):
         self.assertEqual(1, len(self.reebill.readings))
@@ -274,7 +280,7 @@ class ReebillTest(unittest.TestCase):
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
         new_register = Register(Register.DEMAND, 'kWh', quantity=200)
-        self.utilbill.registers.append(new_register)
+        self.utilbill._registers.append(new_register)
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings
@@ -293,7 +299,7 @@ class ReebillTest(unittest.TestCase):
             self.assertEqual(0, r.renewable_quantity)
 
         # removing a register
-        self.utilbill.registers.remove(self.utilbill.registers[0])
+        self.utilbill._registers.remove(self.utilbill._registers[0])
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
         self.assertEqual(1, len(self.reebill.readings))
         self.assertEqual(new_register.register_binding,

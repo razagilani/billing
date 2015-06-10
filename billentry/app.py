@@ -394,10 +394,16 @@ def check_password(plain_text_password, hashed_password):
     # Check hased password. Using bcrypt, the salt is saved into the hash itself
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
-api = Api(app)
+# Class to raise the exceptions to fall through to the normal Flask error handling
+class MyApi(Api):
+    def handle_error(self, e):
+        raise
+
+api = MyApi(app)
 api.add_resource(resources.AccountListResource, '/utilitybills/accounts')
 api.add_resource(resources.AccountResource, '/utilitybills/accounts/<int:id>')
 api.add_resource(resources.UtilBillListResource, '/utilitybills/utilitybills')
+api.add_resource(resources.AltitudeAccountResource, '/utilitybills/altitudeaccounts')
 api.add_resource(resources.UtilBillResource,
                  '/utilitybills/utilitybills/<int:id>')
 api.add_resource(resources.SuppliersResource, '/utilitybills/suppliers')
