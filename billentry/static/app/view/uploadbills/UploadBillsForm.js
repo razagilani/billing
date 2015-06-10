@@ -5,8 +5,6 @@ Ext.define('BillEntry.view.uploadbills.UploadBillsForm', {
 
     alias: 'widget.uploadBillsForm',
 
-    id: 'bills-form',
-
     requires: ['BillEntry.store.AltitudeAccounts'],
 
     bodyPadding: 15,
@@ -28,6 +26,7 @@ Ext.define('BillEntry.view.uploadbills.UploadBillsForm', {
         items:[{
             xtype: 'combo',
             fieldLabel: 'Account GUID',
+            name: 'guid',
             store: 'AltitudeAccounts',
             itemId: 'altitude_account_combo',
             displayField: 'guid',
