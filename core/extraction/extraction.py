@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from core import model
-from core.model import Charge, Session, Utility, Address
+from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
 
@@ -76,6 +76,7 @@ class Applier(object):
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
+    RATE_CLASS = 'rate class'
     SERVICE_ADDRESS = 'service address'
     START = 'start'
     KEYS = {
@@ -84,13 +85,13 @@ class Applier(object):
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
+        RATE_CLASS: model.UtilBill.rate_class,
         SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
     # TODO:
-    # addresses
     # target_total (?)
-    # supplier, rate class
+    # supplier
     # utility (could be determined by layout itself)
 
     _instance = None
@@ -321,11 +322,18 @@ def pep_new_convert_charges(text):
 def convert_address(text):
     #TODO extract zip code and other elements
     return Address(street=text)
-    # addressee = Column(String(1000), nullable=False, default='')
-    #     street = Column(String(1000), nullable=False, default='')
-    #     city = Column(String(1000), nullable=False, default='')
-    #     state = Column(String(1000), nullable=False, default='')
-    #     postal_code = Column(String(1000), nullable=False, default='')
+    # addressee
+    #     street
+    #     city
+    #     state
+    #     postal_code
+
+def convert_rate_class(text):
+    #TODO fill in fields correctly
+    return RateClass(name=text)
+    # name
+    # utility
+    # service
 
 class Field(model.Base):
     """Recipe for extracting one piece of data from a larger amount of input
@@ -356,6 +364,7 @@ class Field(model.Base):
     ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
+    RATE_CLASS = 'rate class'
     STRING = 'string'
     WG_CHARGES = 'wg charges'
     WG_CHARGES_WGL = 'wg charges wgl'
@@ -365,6 +374,7 @@ class Field(model.Base):
         ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
+        RATE_CLASS: lambda x: convert_rate_class(x),
         STRING: unicode,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,
@@ -571,17 +581,21 @@ class ExtractorResult(model.Base):
     total_count = Column(Integer)
     #TODO should find a way to sync these with UtilBill's list of fields
     # field counts
+    field_billing_address = Column(Integer)
     field_charges = Column(Integer)
-    field_next_read = Column(Integer)
-    field_energy = Column(Integer)
-    field_start = Column(Integer)
     field_end = Column(Integer)
+    field_energy = Column(Integer)
+    field_next_read = Column(Integer)
+    field_start = Column(Integer)
+    field_service_address = Column(Integer)
     # field counts by month
+    billing_address_by_month = Column(HSTORE)
     charges_by_month = Column(HSTORE)
-    next_read_by_month = Column(HSTORE)
-    energy_by_month = Column(HSTORE)
-    start_by_month = Column(HSTORE)
     end_by_month = Column(HSTORE)
+    energy_by_month = Column(HSTORE)
+    next_read_by_month = Column(HSTORE)
+    service_address_by_month = Column(HSTORE)
+    start_by_month = Column(HSTORE)
 
     def set_results(self, metadata):
         """Fill in count fields after the test has finished.

@@ -100,6 +100,7 @@ def test_bill(self, extractor_id, bill_id):
         Applier.END: lambda x : x.period_end,
         Applier.ENERGY: lambda x : x.get_total_energy(),
         Applier.NEXT_READ: lambda x : x.get_next_meter_read_date(),
+        Applier.RATE_CLASS: lambda x : x.get_rate_class(),
         Applier.SERVICE_ADDRESS: lambda x : x.service_address,
         Applier.START: lambda x : x.period_start,
     }
@@ -228,6 +229,5 @@ def reduce_bill_results(self, results):
     extractor_result = q.one()
     extractor_result.set_results(response)
     s.commit()
-
 
     return response
