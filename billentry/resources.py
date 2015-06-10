@@ -5,12 +5,13 @@ import os
 
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
+from flask import session
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func, case, cast
+from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 import werkzeug
@@ -20,7 +21,7 @@ from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
-from core.altitude import AltitudeAccount
+from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
 from core.model import UtilityAccount
@@ -31,6 +32,8 @@ from core.utilbill_processor import UtilbillProcessor
 
 project_mgr_permission = Permission(RoleNeed('Project Manager'),
                                     RoleNeed('admin'))
+
+admin_permission = Permission(RoleNeed('admin'))
 
 
 # TODO: would be even better to make flask-restful automatically call any
@@ -317,49 +320,60 @@ class UtilBillResource(BaseResource):
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
-    def post(self):
-        s = Session()
-        parser = RequestParser()
-        parser.add_argument('guid', type=str, required=True)
-        parser.add_argument('utility', type=int, required=True)
-        parser.add_argument('utility_account_number', type=str, required=True)
-        parser.add_argument('sa_addressee', type=str)
-        parser.add_argument('sa_street', type=str)
-        parser.add_argument('sa_city', type=str)
-        parser.add_argument('sa_state', type=str)
-        parser.add_argument('sa_postal_code', type=str)
-        args = parser.parse_args()
-        try:
-            utility = s.query(Utility).filter_by(id=args['utility']).one()
-            try:
-                utility_account = s.query(UtilityAccount).filter_by(
-                    account_number=args['utility_account_number'],
-                    fb_utility=utility).one()
-            except NoResultFound:
-                last_account = s.query(
-                    cast(UtilityAccount.account,Integer)).order_by(
-                    cast(UtilityAccount.account, Integer).desc()).first()
-                next_account = str(last_account[0] + 1)
-                utility_account = UtilityAccount(
-                    '', next_account, utility, None, None, Address(),
-                    Address(addresse=args['sa_addresse'], street=args['sa_street'],
-                            city=args['city'], state=args['sa_state'],
-                            postal_code=args['sa_postal_code']),
-                    args['utility_account_number'])
-                s.add(utility_account)
-        except Exception as e:
-            #logger.error('Failed to process message:', exc_info=True)
-            s.rollback()
-            raise
-        finally:
-            # Session.remove() probably should be called here but can't
-            # because tests use the Session to query for data. not sure what
-            # to do about that.
-            pass
-
     def delete(self, id):
         self.utilbill_processor.delete_utility_bill_by_id(id)
         return {}
+
+
+class UploadUtilityBillResource(BaseResource):
+
+    def post(self):
+        with admin_permission.require():
+            s = Session()
+            parser = RequestParser()
+            parser.add_argument('guid', type=str, required=True)
+            parser.add_argument('utility', type=int, required=True)
+            parser.add_argument('utility_account_number', type=str, required=True)
+            parser.add_argument('sa_addressee', type=str)
+            parser.add_argument('sa_street', type=str)
+            parser.add_argument('sa_city', type=str)
+            parser.add_argument('sa_state', type=str)
+            parser.add_argument('sa_postal_code', type=str)
+            args = parser.parse_args()
+            address = Address(addressee=args['sa_addressee'], street=args['sa_street'],
+                                city=args['sa_city'], state=args['sa_state'],
+                                postal_code=args['sa_postal_code'])
+            try:
+                utility = s.query(Utility).filter_by(id=args['utility']).one()
+                try:
+                    utility_account = s.query(UtilityAccount).filter_by(
+                        account_number=args['utility_account_number'],
+                        fb_utility=utility).one()
+                except NoResultFound:
+                    last_account = s.query(
+                        cast(UtilityAccount.account, integer)).order_by(
+                        cast(UtilityAccount.account, integer).desc()).first()
+                    next_account = str(int(last_account[0]) + 1)
+                    utility_account = UtilityAccount(
+                        '', next_account, utility, None, None, Address(),
+                        address, args['utility_account_number'])
+                    s.add(utility_account)
+                for hash_digest in session.get('hash-digest'):
+                    ub = self.utilbill_processor.create_utility_bill_with_existing_file(
+                    utility_account, utility, hash_digest,
+                    service_address=address)
+                    s.add(ub)
+                update_altitude_account_guids(utility_account, args['guid'])
+                s.commit()
+            except Exception as e:
+                #logger.error('Failed to process message:', exc_info=True)
+                s.rollback()
+                raise
+            finally:
+                # Session.remove() probably should be called here but can't
+                # because tests use the Session to query for data. not sure what
+                # to do about that.
+                pass
 
 
 class ChargeListResource(BaseResource):
@@ -378,14 +392,17 @@ class ChargeListResource(BaseResource):
 class UtilityBillFileResource(BaseResource):
 
     def post(self):
-        parser = RequestParser()
-        parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files', required=True)
-        args = parser.parse_args()
-        file = args['file']
-        file.save(file.filename)
-        file = open(file.filename, "rb")
-        sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
-        os.remove(os.path.abspath(file.name))
+        with admin_permission.require():
+            parser = RequestParser()
+            parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files', required=True)
+            args = parser.parse_args()
+            file = args['file']
+            sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
+            if session.get('hash-digest') is not None:
+                session['hash-digest'].append(sha_digest)
+            else:
+                session['hash-digest'] = []
+                session['hash-digest'].append(sha_digest)
 
 
 class ChargeResource(BaseResource):
