@@ -10,7 +10,7 @@ Ext.define('BillEntry.controller.UploadBills', {
 
     refs: [{
         ref: 'uploadBillsForm',
-        selector: 'uploadBills'
+        selector: 'uploadBillsForm'
     }],
 
     init: function() {
@@ -34,10 +34,8 @@ Ext.define('BillEntry.controller.UploadBills', {
     handleSubmit: function() {
         var scope = this;
         var store = this.getAltitudeAccountsStore();
-        var dropzoneform = Ext.ComponentQuery.query('uploadFiles');
-        dropzoneform.processQueue();
         this.getUploadBillsForm().getForm().submit({
-             url: 'http://' + window.location.host + '/utilitybills/utilitybills',
+             url: 'http://' + window.location.host + '/utilitybills/uploadbill',
              success: function () {
                  scope.initalizeUploadForm();
                  store.reload();
