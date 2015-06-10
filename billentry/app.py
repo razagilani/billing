@@ -32,7 +32,7 @@ from celery.result import GroupResult
 
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
-from core import init_config
+from core import init_config, init_celery
 from core.extraction.extraction import Extractor, Applier, ExtractorResult
 from core.extraction.task import test_bill, reduce_bill_results
 from core.model import Session, UtilBill, Utility
@@ -229,25 +229,18 @@ def test_status(task_id):
     :param task_id: The id of the current task
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
+    init_celery()
 
-    # celery object is not used, but this needs to be here, otherwise can't
-    # get group results (produces DisabledBackend error)
-    # TODO: see if calling init_celery() fixes it
-    Celery(broker="mongodb://localhost:27017/skyline-dev",
-           backend="mongodb://localhost:27017/skyline-dev")
+    task = AsyncResult(task_id)
+    if not task.ready():
+        return jsonify({'state':task.state})
+    response = task.get()
 
-    task = GroupResult.restore(task_id)
-
-    if task is None:
-        return jsonify({'state':'Running...'})
-
-    response = dict(task)
     def format_date(d):
         return None if d is None else "{:0>4d}-{:0>2d}".format(d.year, d.month)
-
-    response['dates'] = {format_date(d): task['dates'][d]
-                         for d in task['dates']}
-    response['state'] = 'Finished.'
+    response['dates'] = {format_date(d): response['dates'][d]
+                         for d in response['dates']}
+    response['state'] = task.state
 
     return jsonify(response)
 

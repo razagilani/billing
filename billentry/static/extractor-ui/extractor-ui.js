@@ -47,11 +47,9 @@ function displayData(task, isDetailed){
 		return;
 	}
 	var task_data = task.data;
-	//If update failed (most likely due to the task being run as a 'chord', which cannot return intermediate results),
-	//	then don't give the detailed update, just edit the status line in the summary table. 
-	if (task_data.update_fail){
-		console.log(task_data);
-		isDetailed = false;
+	if (task_data.state != "SUCCESS"){
+		$("#results tr[id="+task.task_id+"] td[header=status]").text(task_data.state);
+		return;
 	}
 	if(isDetailed){
 		//results for a single task, sorted by month
@@ -81,10 +79,6 @@ function displayData(task, isDetailed){
 	} else {
 		//task summary for a single task
 		var task_table_row = $('#results tr[id='+ task.task_id +']');
-		if(task_data.update_fail){
-			task_table_row.children("td[header=status]").text("Can't get update.");
-			return;
-		}
 		var total_count = task_data.total_count;
 		var all_count = task_data.all_count;
 		var any_count = task_data.any_count;
@@ -107,14 +101,16 @@ function displayData(task, isDetailed){
 //Start a new task on the server. 
 function runExtractor(extractor_id){
 	var utility_id = $("select[name="+extractor_id+"]").val(); 
-	var num_bills_str = $("input[name=num_bills]").val()
+	var num_bills_str = $("input[name=num_bills]").val();
 	if(num_bills_str == ""){
-		num_bills = -1;
-
+		var num_bills = -1;
+	} else {
+		var num_bills = parseInt(num_bills_str);
+	}
 	var postParameters = {
 		extractor_id: extractor_id,
 		utility_id: (utility_id == "" ? null : utility_id),
-		num_bills: num_bills,
+		num_bills: num_bills
 	};
 	var utility_name = $("option[value="+utility_id+"]:first").text()
 	$.post("/run-test", postParameters, function(data, status, request){

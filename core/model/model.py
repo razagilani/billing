@@ -8,6 +8,7 @@ from itertools import chain
 import json
 from StringIO import StringIO
 from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFSyntaxError
@@ -1164,7 +1165,9 @@ class UtilBill(Base):
                 infile.seek(0)
                 rsrcmgr = PDFResourceManager()
                 outfile = StringIO()
-                device = TextConverter(rsrcmgr, outfile, codec='utf-8')
+                #laparams = LAParams() # Use this to tell interpreter to capture newlines
+                laparams = None
+                device = TextConverter(rsrcmgr, outfile, codec='utf-8', laparams=laparams)
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
                 try:
                     for page in PDFPage.get_pages(infile, set(),
