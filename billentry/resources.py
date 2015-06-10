@@ -10,8 +10,9 @@ from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func, case
+from sqlalchemy import desc, and_, func, case, cast
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 import werkzeug
 
 from billentry.billentry_model import BEUtilBill, BEUserSession
@@ -21,7 +22,7 @@ from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
+from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -315,6 +316,46 @@ class UtilBillResource(BaseResource):
 
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
+
+    def post(self):
+        s = Session()
+        parser = RequestParser()
+        parser.add_argument('guid', type=str, required=True)
+        parser.add_argument('utility', type=int, required=True)
+        parser.add_argument('utility_account_number', type=str, required=True)
+        parser.add_argument('sa_addressee', type=str)
+        parser.add_argument('sa_street', type=str)
+        parser.add_argument('sa_city', type=str)
+        parser.add_argument('sa_state', type=str)
+        parser.add_argument('sa_postal_code', type=str)
+        args = parser.parse_args()
+        try:
+            utility = s.query(Utility).filter_by(id=args['utility']).one()
+            try:
+                utility_account = s.query(UtilityAccount).filter_by(
+                    account_number=args['utility_account_number'],
+                    fb_utility=utility).one()
+            except NoResultFound:
+                last_account = s.query(
+                    cast(UtilityAccount.account,Integer)).order_by(
+                    cast(UtilityAccount.account, Integer).desc()).first()
+                next_account = str(last_account[0] + 1)
+                utility_account = UtilityAccount(
+                    '', next_account, utility, None, None, Address(),
+                    Address(addresse=args['sa_addresse'], street=args['sa_street'],
+                            city=args['city'], state=args['sa_state'],
+                            postal_code=args['sa_postal_code']),
+                    args['utility_account_number'])
+                s.add(utility_account)
+        except Exception as e:
+            #logger.error('Failed to process message:', exc_info=True)
+            s.rollback()
+            raise
+        finally:
+            # Session.remove() probably should be called here but can't
+            # because tests use the Session to query for data. not sure what
+            # to do about that.
+            pass
 
     def delete(self, id):
         self.utilbill_processor.delete_utility_bill_by_id(id)

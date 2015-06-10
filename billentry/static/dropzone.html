@@ -7,9 +7,14 @@
     <!-- Dropzone -->
     <script src="ext/lib/dropzone.js/dropzone.js"></script>
     <link rel="stylesheet" href="ext/lib/dropzone.js/dropzone.css" />
+    <script>
+        Dropzone.options.uploadFiles = {
+            autoProcessQueue: false
+        }
+    </script>
 
 </head>
 <body style="width:100%;height: 100%;margin: 0px">
-<form action="/utilitybills/uploadfile" class="dropzone" style="width:100%;height: 100%"> <div class="fallback"> <input name="file" type="file" multiple /> </div> </form>
+<form action="/utilitybills/uploadfile" class="dropzone" style="width:100%;height: 100%" id="upload-files"> <div class="fallback"> <input name="file" type="file" multiple /> </div> </form>
 </body>
 </html>
