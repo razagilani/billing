@@ -8,7 +8,8 @@ from itertools import chain
 import json
 
 import sqlalchemy
-from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
+    UniqueConstraint
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -20,27 +21,14 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError
+from util.units import unit_registry
 
-
-__all__ = [
-    'Address',
-    'Base',
-    'Charge',
-    'ChargeEvaluation',
-    'Evaluation',
-    'MYSQLDB_DATETIME_MIN',
-    'Register',
-    'Session',
-    'Supplier',
-    'RateClass',
-    'Utility',
-    'UtilBill',
-    'UtilityAccount',
-    'check_schema_revision',
-]
+__all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
+    'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'Supplier', 'SupplyGroup',
+    'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
+    'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -49,28 +37,42 @@ MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
 
-# allowed units for register quantities
-PHYSICAL_UNITS = [
-    'BTU',
-    'MMBTU',
-    'kWD',
-    'kWh',
-    'therms',
-]
-physical_unit_type = Enum(*PHYSICAL_UNITS, name='physical_unit')
+# allowed units for register quantities.
+# UnitRegistry attributes are used in the values to ensure that there's an
+# entry for every one of the allowed units (otherwise unit conversion would
+# fail, as it has in past bugs.)
+PHYSICAL_UNITS = {
+    'BTU': unit_registry.BTU,
+    'MMBTU': unit_registry.MMBTU,
+    'kWD': unit_registry.kWD,
+    'kWh': unit_registry.kWh,
+    'therms': unit_registry.therms,
+}
+
+# this type should be used for database columns whose values can be the unit
+# names above
+physical_unit_type = Enum(*PHYSICAL_UNITS.keys(), name='physical_unit')
+
+GAS, ELECTRIC = 'gas', 'electric'
+SERVICES = (GAS, ELECTRIC)
+
+# this type should be used for all database columns whose values are one of
+# the SERVICES above
+SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
 class Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
     '''
+
     @classmethod
     def column_names(cls):
         '''Return list of attributes in the class that correspond to
         database columns.
         '''
-        return [prop.key for prop in class_mapper(cls).iterate_properties
-                if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+        return [prop.key for prop in class_mapper(cls).iterate_properties if
+                isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -120,10 +122,12 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
+
 Base = declarative_base(cls=Base)
 
-
 _schema_revision = '58383ed620d3'
+
+
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -135,29 +139,35 @@ def check_schema_revision(schema_revision=None):
     current_revision = context.get_current_revision()
     if current_revision != schema_revision:
         raise DatabaseError("Database schema revision mismatch."
-                            " Require revision %s; current revision %s"
-                            % (schema_revision, current_revision))
+                            " Require revision %s; current revision %s" % (
+                            schema_revision, current_revision))
+
 
 class UtilbillCallback(MapperExtension):
     '''This class is used to update the date_modified field of UtilBill Model,
     whenever any updates are made to UtilBills.
     See http://docs.sqlalchemy.org/en/rel_0_6/orm/interfaces.html.
     '''
+
     def before_update(self, mapper, connection, instance):
         if object_session(instance).is_modified(instance,
                                                 include_collections=False):
             instance.date_modified = datetime.utcnow()
 
+
 class Evaluation(object):
     """A data structure to hold inputs for calculating charges. It can hold
     the value of a `Register` or the result of evaluating a `Charge`.
     """
+
     def __init__(self, quantity):
         self.quantity = quantity
+
 
 class ChargeEvaluation(Evaluation):
     """An `Evaluation to store the result of evaluating a `Charge`.
     """
+
     def __init__(self, quantity=None, rate=None, exception=None):
         super(ChargeEvaluation, self).__init__(quantity)
         assert quantity is None or isinstance(quantity, (float, int))
@@ -177,6 +187,7 @@ class ChargeEvaluation(Evaluation):
         self.rate = rate
         self.exception = exception
 
+
 class Address(Base):
     __tablename__ = 'address'
 
@@ -188,16 +199,16 @@ class Address(Base):
     postal_code = Column(String(1000), nullable=False, default='')
 
     def __hash__(self):
-        return hash(self.addressee + self.street + self.city +
-                    self.postal_code)
+        return hash(self.addressee + self.street + self.city + self.postal_code)
 
     def __repr__(self):
-        return 'Address<(%s, %s, %s, %s, %s)' % (self.addressee, self.street,
-                self.city, self.state, self.postal_code)
+        return 'Address<(%s, %s, %s, %s, %s)' % (
+        self.addressee, self.street, self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s %s' % (
             self.street, self.city, self.state, self.postal_code)
+
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution
@@ -207,9 +218,23 @@ class Utility(Base):
 
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
+    sos_supplier_id = Column(
+        Integer, ForeignKey('supplier.id', ondelete='CASCADE'), unique=True, )
 
-    name = Column(String(1000), nullable=False)
+    name = Column(String(1000), nullable=False, unique=True)
     address = relationship("Address")
+    sos_supplier = relationship('Supplier', single_parent=True,
+                                cascade='all, delete-orphan')
+
+    def __init__(self, name='', sos_supplier=None, **kwargs):
+        super(Utility, self).__init__(**kwargs)
+        self.name = name
+        if sos_supplier is None:
+            sos_supplier = Supplier(name=name + ' SOS')
+        self.sos_supplier = sos_supplier
+
+    def get_sos_supplier(self):
+        return self.sos_supplier
 
     def __repr__(self):
         return '<Utility(%s)>' % self.name
@@ -217,6 +242,8 @@ class Utility(Base):
     def __str__(self):
         return self.name
 
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
 
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
@@ -225,7 +252,7 @@ class Supplier(Base):
     '''
     __tablename__ = 'supplier'
     id = Column(Integer, primary_key=True)
-    name = Column(String(1000), nullable=False)
+    name = Column(String(1000), nullable=False, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
@@ -252,32 +279,20 @@ class Register(Base):
 
     # complete set of allowed register binding values (should match the
     # definition of enum columns in the database)
-    REGISTER_BINDINGS = [
-        TOTAL,
-        DEMAND,
-        PEAK,
-        INTERMEDIATE,
-        OFFPEAK,
-        'REG_TOTAL_SECONDARY',
-        'REG_TOTAL_TERTIARY',
-        'REG_POWERFACTOR',
+    REGISTER_BINDINGS = [TOTAL, DEMAND, PEAK, INTERMEDIATE, OFFPEAK,
+        'REG_TOTAL_SECONDARY', 'REG_TOTAL_TERTIARY', 'REG_POWERFACTOR',
 
         # related to "sub-bills": these are regular meter readings but belong
         # to a sub-period so there is more than one per bill. using special
         # register names is not a good way to implement this.
-        'REG_PEAK_RATE_INCREASE',
-        'REG_INTERMEDIATE_RATE_INCREASE',
-        'REG_OFFPEAK_RATE_INCREASE',
-        'FIRST_MONTH_THERMS',
+        'REG_PEAK_RATE_INCREASE', 'REG_INTERMEDIATE_RATE_INCREASE',
+        'REG_OFFPEAK_RATE_INCREASE', 'FIRST_MONTH_THERMS',
         'SECOND_MONTH_THERMS',
 
         # related to gas supply contracts. BEGIN/END_INVENTORY might be
         # considered real meter reads, but CONTRACT_VOLUME is one of the
         # terms of the supply contract and should not be a register.
-        'BEGIN_INVENTORY',
-        'END_INVENTORY',
-        'CONTRACT_VOLUME',
-    ]
+        'BEGIN_INVENTORY', 'END_INVENTORY', 'CONTRACT_VOLUME', ]
     register_binding_type = Enum(*REGISTER_BINDINGS, name='register_binding')
 
     id = Column(Integer, primary_key=True)
@@ -295,8 +310,8 @@ class Register(Base):
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
-    utilbill = relationship(
-        "UtilBill", backref=backref('registers', cascade='all, delete-orphan'))
+    utilbill = relationship("UtilBill",
+        backref=backref('_registers', cascade='all, delete-orphan'))
 
     @classmethod
     def create_from_template(cls, register_template):
@@ -359,8 +374,8 @@ class RegisterTemplate(Base):
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column( Register.register_binding_type, nullable=False)
-    unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
+    register_binding = Column(Register.register_binding_type, nullable=False)
+    unit = Column(physical_unit_type, nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
 
@@ -368,38 +383,88 @@ class RegisterTemplate(Base):
     def get_total_register_template(cls, unit):
         return cls(register_binding=Register.TOTAL, unit=unit)
 
+
+class SupplyGroup(Base):
+    """Represents a supply contract associated with one or more customers,
+    or in other words a group of customers that all have the same supply
+    charges. (Like rate class, but for supply instead of distribution.)
+
+    All SOS customers with the same rate class have the same supply group,
+    because the rate class also determines the supply charges.
+    For non-SOS supply contracts, we usually can't find out what supply
+    group a customer belongs to from their utility bill, but may be able to
+    find out when switching the customer to a new supply contract.
+    """
+    __tablename__ = 'supply_group'
+    __table_args__ = (UniqueConstraint('supplier_id', 'name'),)
+
+    id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    service = Column(SERVICES_TYPE)
+    name = Column(String(255), nullable=False)
+
+    supplier = relationship('Supplier')
+
+    def __init__(self, name='', supplier=None, service='gas'):
+        assert service in SERVICES
+        self.name = name
+        self.supplier = supplier
+        self.service = service
+
+    def __repr__(self):
+        return '<SupplyGroup(%s)>' % self.name
+
+    def __str__(self):
+        return self.name
+
+    def get_service(self):
+        return self.service
+
+
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
     and the same pricing for distribution.
 
     Every bill in a rate class gets billed according to the same kinds of
     meter values (like total energy, demand, etc.) so the rate class also
-    determines which registers exist in each bill.
-
-    The rate class also determines what supply contracts may be available to
-    a customer.
+    determines which _registers exist in each bill.
     """
     __tablename__ = 'rate_class'
-
-    GAS, ELECTRIC = 'gas', 'electric'
-    SERVICES = (GAS, ELECTRIC)
+    __table_args__ = (UniqueConstraint('utility_id', 'name'),)
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
-    service = Column(Enum(*SERVICES, name='services'), nullable=False)
+    service = Column(SERVICES_TYPE, nullable=False)
     name = Column(String(255), nullable=False)
+    sos_supply_group_id = Column(
+        Integer, ForeignKey('supply_group.id', ondelete='CASCADE'),
+        nullable=True)
 
     utility = relationship('Utility')
+    sos_supply_group = relationship("SupplyGroup", single_parent=True,
+                                    cascade='all, delete-orphan')
     register_templates = relationship('RegisterTemplate')
 
-    def __init__(self, name='', utility=None, service='gas'):
+    def __init__(self, name='', utility=None, service='gas',
+                 sos_supply_group=None):
         self.name = name
         self.utility = utility
         self.service = service
+        if sos_supply_group is None:
+            if utility is None:
+                # the database requires utility_id to be non-null, but in tests,
+                # we create RateClass instances that have no utility
+                sos_supply_group = SupplyGroup(name='%s %s SOS' % ('?', name),
+                    service=service)
+            else:
+                sos_supply_group = SupplyGroup(
+                    name='%s %s SOS' % (utility.name, name),
+                    supplier=utility.get_sos_supplier(), service=service)
+        self.sos_supply_group = sos_supply_group
 
         # TODO: a newly-created rate class should have one "REG_TOTAL"
         # register by default (the unit can be picked according to
-        # "service"). but for now, all UtilBills initially have no registers
+        # "service"). but for now, all UtilBills initially have no _registers
         # when they are created.
         unit = 'therms' if service == 'gas' else 'kWh'
         self.register_templates = [
@@ -417,10 +482,15 @@ class RateClass(Base):
         return [Register.create_from_template(tr) for tr in
                 self.register_templates]
 
+    def get_sos_supply_group(self):
+        return self.sos_supply_group
+
+
+
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
-    id = Column(Integer, primary_key = True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(45))
 
     # account number used by the utility, shown on utility bills and
@@ -436,16 +506,21 @@ class UtilityAccount(Base):
     # "fb_" = to be assigned to the utility_account's first-created utility bill
     fb_utility_id = Column(Integer, ForeignKey('utility.id'))
     fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
-        nullable=True)
+                              nullable=True)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
+                                   nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
-    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
+                                   nullable=False)
+    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+                                nullable=True)
+    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
         nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
+    fb_supply_group = relationship('SupplyGroup', uselist=False,
+        primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
@@ -454,9 +529,9 @@ class UtilityAccount(Base):
         primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
     fb_utility = relationship('Utility')
 
-    def __init__(self, name, account, fb_utility, fb_supplier,
-                fb_rate_class, fb_billing_address, fb_service_address,
-                account_number=''):
+    def __init__(self, name, account, fb_utility, fb_supplier, fb_rate_class,
+                 fb_billing_address, fb_service_address, account_number='',
+                 fb_supply_group=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -476,10 +551,16 @@ class UtilityAccount(Base):
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
+        # if the utility is known but the supply group is not known, assume it's
+        # the utility's SOS supply group
+        if fb_supply_group is None and fb_rate_class is not None:
+            self.fb_supply_group = self.fb_rate_class.get_sos_supply_group()
+        else:
+            self.fb_supply_group = fb_supply_group
 
     def __repr__(self):
-        return '<utility_account(name=%s, account=%s)>' \
-               % (self.name, self.account)
+        return '<utility_account(name=%s, account=%s)>' % (
+        self.name, self.account)
 
     def get_service_address(self):
         """Return the service address (Address object) of any bill for this
@@ -496,7 +577,7 @@ class Charge(Base):
     __tablename__ = 'charge'
 
     # allowed units for "quantity" field of charges
-    CHARGE_UNITS = PHYSICAL_UNITS + ['dollars']
+    CHARGE_UNITS = PHYSICAL_UNITS.keys() + ['dollars']
     charge_unit_type = Enum(*CHARGE_UNITS, name='charge_unit')
 
     # allowed values for "type" field of charges
@@ -538,8 +619,8 @@ class Charge(Base):
         :param var: the string to check being a builtin.
         """
         try:
-            return eval('type(%s)' % var).__name__ == \
-                   'builtin_function_or_method'
+            return eval(
+                'type(%s)' % var).__name__ == 'builtin_function_or_method'
         except NameError:
             return False
 
@@ -650,13 +731,11 @@ class UtilBill(Base):
 
     __tablename__ = 'utilbill'
 
-    __mapper_args__ = {
-        'extension': UtilbillCallback(),
+    __mapper_args__ = {'extension': UtilbillCallback(),
 
         # single-table inheritance
         'polymorphic_identity': POLYMORPHIC_IDENTITY,
-        'polymorphic_on': 'discriminator',
-    }
+        'polymorphic_on': 'discriminator', }
 
     discriminator = Column(String(1000), nullable=False)
 
@@ -664,14 +743,16 @@ class UtilBill(Base):
 
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
     billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
+                                nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False)
-    supplier_id = Column(Integer, ForeignKey('supplier.id'),
-        nullable=True)
+                                nullable=False)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=True)
     utility_account_id = Column(Integer, ForeignKey('utility_account.id'),
-        nullable=False)
-    rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+                                nullable=False)
+    rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
+                             nullable=True)
+    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
         nullable=True)
 
     state = Column(Integer, nullable=False)
@@ -681,7 +762,7 @@ class UtilBill(Base):
 
     # this is created for letting bill entry user's marking/un marking a
     # bill for Time Of Use. The value of the column has nothing to do with
-    # whether there are time-of-use registers or whether the energy is
+    # whether there are time-of-use _registers or whether the energy is
     # actually priced according to time of use
     tou = Column(Boolean, nullable=False)
 
@@ -724,18 +805,25 @@ class UtilBill(Base):
     # be added to the session after the file upload succeeded (because in a
     # test, there is no way to check that the UtilBill was not inserted into
     # the database because the transaction was rolled back).
-    utility_account = relationship("UtilityAccount", backref=backref(
-        'utilbills', order_by=id, cascade='delete'))
+    utility_account = relationship("UtilityAccount",
+                                   backref=backref('utilbills', order_by=id,
+                                       cascade='delete'))
 
     # the 'supplier' attribute should not move to UtilityAccount because
     # it can change from one bill to the next.
     supplier = relationship('Supplier', uselist=False,
-        primaryjoin='UtilBill.supplier_id==Supplier.id')
-    rate_class = relationship('RateClass', uselist=False,
+                            primaryjoin='UtilBill.supplier_id==Supplier.id')
+    rate_class = relationship(
+        'RateClass', uselist=False,
         primaryjoin='UtilBill.rate_class_id==RateClass.id')
-    billing_address = relationship('Address', uselist=False, cascade='all',
+    supply_group = relationship(
+        'SupplyGroup', uselist=False,
+        primaryjoin='UtilBill.supply_group_id==SupplyGroup.id')
+    billing_address = relationship(
+        'Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False, cascade='all',
+    service_address = relationship(
+        'Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
 
     # the 'utility' attribute may move to UtilityAccount where it would
@@ -769,7 +857,8 @@ class UtilBill(Base):
                  period_start=None, period_end=None, billing_address=None,
                  service_address=None, target_total=0, date_received=None,
                  processed=False, sha256_hexdigest='', due_date=None,
-                 next_meter_read_date=None, state=Complete, tou=False):
+                 next_meter_read_date=None, state=Complete, tou=False,
+                 supply_group=None):
         """
         :param state: Complete, UtilityEstimated, or Estimated.
         """
@@ -780,6 +869,7 @@ class UtilBill(Base):
         self.utility = utility
         self.rate_class = rate_class
         self.supplier = supplier
+        self.supply_group = supply_group
         if billing_address is None:
             billing_address = Address()
         self.billing_address = billing_address
@@ -802,9 +892,9 @@ class UtilBill(Base):
         # files for them.
         self.sha256_hexdigest = sha256_hexdigest
 
-        # set registers according to the rate class
+        # set _registers according to the rate class
         if rate_class is not None:
-            self.registers = rate_class.get_register_list()
+            self._registers = rate_class.get_register_list()
 
         self.charges = []
         self.date_modified = datetime.utcnow()
@@ -812,8 +902,14 @@ class UtilBill(Base):
     def get_utility(self):
         return self.utility
 
+    def get_utility_id(self):
+        return self.utility_id
+
     def get_supplier(self):
         return self.supplier
+
+    def get_supplier_id(self):
+        return self.supplier_id
 
     def get_utility_name(self):
         '''Return name of this bill's utility.
@@ -841,8 +937,27 @@ class UtilBill(Base):
             return None
         return self.rate_class.name
 
+    def get_supply_group_name(self):
+        """Return name of this bill's supply_group or None if the supply_group
+        is None (unknown).
+        """
+        if self.supply_group is None:
+            return None
+        return self.supply_group.name
+
+    def get_supply_group(self):
+        return self.supply_group
+
+    def set_supply_group(self, supply_group):
+        """Set the supply_group
+        """
+        self.supply_group = supply_group
+
     def get_rate_class(self):
         return self.rate_class
+
+    def get_rate_class_id(self):
+        return self.rate_class_id
 
     def set_utility(self, utility):
         """Set the utility, and set the rate class to None if the utility is
@@ -853,15 +968,24 @@ class UtilBill(Base):
             self.set_rate_class(None)
         self.utility = utility
 
+    def set_supplier(self, supplier):
+        """Set the supplier, and set the supply group to None if the supplier is
+        different from the current one.
+        :param Supplier: Utility or None
+        """
+        if supplier != self.supplier:
+            self.set_supply_group(None)
+        self.supplier = supplier
+
     def set_rate_class(self, rate_class):
-        """Set the rate class and also update the set of registers to match
-        the new rate class (no registers of rate_class is None).
+        """Set the rate class and also update the set of _registers to match
+        the new rate class (no _registers of rate_class is None).
         :param rate_class: RateClass or None
         """
         if rate_class is None:
-            self.registers = []
+            self._registers = []
         else:
-            self.registers = rate_class.get_register_list()
+            self._registers = rate_class.get_register_list()
         self.rate_class = rate_class
 
     def get_supplier_name(self):
@@ -889,8 +1013,8 @@ class UtilBill(Base):
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
-            self.utility_account.account, self.get_service(), self.period_start,
-            self.period_end, self.state)
+                   self.utility_account.account, self.get_service(),
+                   self.period_start, self.period_end, self.state)
 
     def add_charge(self, **charge_kwargs):
         self.check_editable()
@@ -903,17 +1027,18 @@ class UtilBill(Base):
             rsi_binding=charge_kwargs.get('rsi_binding', "New Charge %s" % n),
             rate=charge_kwargs.get('rate', 0.0),
             formula=charge_kwargs.get('quantity_formula', ''),
-            description=charge_kwargs.get(
-                'description', "New Charge - Insert description here"),
+            description=charge_kwargs.get('description',
+                "New Charge - Insert description here"),
             unit=charge_kwargs.get('unit', "dollars"),
             type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
-        registers = self.registers
+        registers = self._registers
         charge.quantity_formula = '' if len(registers) == 0 else \
-            '%s.quantity' % Register.TOTAL if any([register.register_binding ==
-                Register.TOTAL for register in registers]) else \
-            registers[0].register_binding
+            '%s.quantity' % Register.TOTAL if any(
+                [register.register_binding == Register.TOTAL for register in
+                 registers]) else \
+                registers[0].register_binding
         session.flush()
         return charge
 
@@ -933,7 +1058,7 @@ class UtilBill(Base):
 
         for binding, depended_bindings in depends.iteritems():
             for depended_binding in depended_bindings:
-                #binding depends on depended_binding
+                # binding depends on depended_binding
                 dependency_graph.append((depended_binding, binding))
                 independent_bindings.discard(binding)
                 independent_bindings.discard(depended_binding)
@@ -944,20 +1069,20 @@ class UtilBill(Base):
             except tsort.GraphError as g:
                 circular_bindings = set(g.args[1])
                 independent_bindings.update(circular_bindings)
-                dependency_graph = [(a, b) for a, b in dependency_graph
-                                    if b not in circular_bindings]
+                dependency_graph = [(a, b) for a, b in dependency_graph if
+                                    b not in circular_bindings]
             except KeyError as e:
                 # tsort sometimes gets a KeyError when generating its error
                 # message about a cycle. in that case there's only one
                 # binding to move into 'independent bindings'
                 binding = e.args[0]
                 independent_bindings.add(binding)
-                dependency_graph = [(a, b) for a, b in dependency_graph
-                                    if b != binding]
+                dependency_graph = [(a, b) for a, b in dependency_graph if
+                                    b != binding]
             else:
                 break
-        order = list(independent_bindings) + [x for x in sortresult
-                if x not in independent_bindings]
+        order = list(independent_bindings) + [x for x in sortresult if
+                                              x not in independent_bindings]
         return sorted(self.charges, key=lambda x: order.index(x.rsi_binding))
 
     def compute_charges(self, raise_exception=False):
@@ -969,7 +1094,7 @@ class UtilBill(Base):
         """
         self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
-                   self.registers}
+                   self._registers}
         sorted_charges = self.ordered_charges()
         exception = None
         for charge in sorted_charges:
@@ -1004,14 +1129,15 @@ class UtilBill(Base):
     def is_processable(self):
         '''Returns False if a bill is missing any of the required fields
         '''
-        return None not in (self.utility, self.rate_class, self.supplier,
-                            self.period_start, self.period_end)
+        return None not in (
+        self.utility, self.rate_class, self.supplier, self.period_start,
+        self.period_end)
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
         if not self.is_processable():
-            attrs = ['utility', 'rate_class', 'supplier',
-                     'period_start', 'period_end']
+            attrs = ['utility', 'rate_class', 'supplier', 'period_start',
+                     'period_end']
             missing_attrs = ', '.join(
                 [attr for attr in attrs if getattr(self, attr) is None])
             raise NotProcessable("The following fields have to be entered "
@@ -1048,21 +1174,21 @@ class UtilBill(Base):
         supply, or other), excluding charges that are "fake" (
         has_charge == False).
         '''
-        return [c for c in self.charges
-                if c.has_charge and c.type == 'distribution']
+        return [c for c in self.charges if
+                c.has_charge and c.type == 'distribution']
 
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
         errors.
         """
-        return sum(charge.total for charge in self.charges
-                if charge.total is not None)
+        return sum(
+            charge.total for charge in self.charges if charge.total is not None)
 
     def get_total_energy(self):
         # NOTE: this may have been implemented already on another branch;
         # remove duplicate when merged
         try:
-            total_register = next(r for r in self.registers if
+            total_register = next(r for r in self._registers if
                                   r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
@@ -1070,21 +1196,21 @@ class UtilBill(Base):
 
     def set_total_energy(self, quantity):
         self.check_editable()
-        total_register = next(r for r in self.registers if
-                              r.register_binding == Register.TOTAL)
+        total_register = next(
+            r for r in self._registers if r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
     def get_register_by_binding(self, register_binding):
         """Return the register whose register_binding is 'register_binding'.
         This should only be called by consumers that need to know about
-        registers--not to get total energy, demand, etc. (Maybe there
-        shouldn't be any consumers that know about registers, but currently
+        _registers--not to get total energy, demand, etc. (Maybe there
+        shouldn't be any consumers that know about _registers, but currently
         reebill.fetch_bill_data.RenewableEnergyGetter does.)
         :param register_binding: register binding string
         """
         try:
-            register = next(r for r in self.registers if
-                              r.register_binding == register_binding)
+            register = next(r for r in self._registers if
+                            r.register_binding == register_binding)
         except StopIteration:
             raise BillingError('No register "%s"' % register_binding)
         return register
@@ -1095,24 +1221,24 @@ class UtilBill(Base):
         This is the total supply cost shown on the bill, not calculated from
         formula and rate.
         '''
-        return sum(c.target_total for c in self.get_supply_charges()
-                   if c.target_total is not None and c.has_charge)
+        return sum(c.target_total for c in self.get_supply_charges() if
+                   c.target_total is not None and c.has_charge)
 
     def set_total_meter_identifier(self, meter_identifier):
         '''sets the value of meter_identifier field of the register with
         register_binding of REG_TOTAL'''
-        #TODO: make this more generic once implementation of Regiter is changed
+        # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
-        register = next(r for r in self.registers if r.register_binding
-                                                     == Register.TOTAL)
+        register = next(
+            r for r in self._registers if r.register_binding == Register.TOTAL)
         register.meter_identifier = meter_identifier
 
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
         register_binding of REG_TOTAL.'''
         try:
-            register = next(r for r in self.registers if r.register_binding
-                                                         == Register.TOTAL)
+            register = next(r for r in self._registers if
+                            r.register_binding == Register.TOTAL)
         except StopIteration:
             return None
         return register.meter_identifier
@@ -1123,8 +1249,8 @@ class UtilBill(Base):
         total register (which is not supposed to happen).
         '''
         try:
-            total_register = next(r for r in self.registers
-                                  if r.register_binding == Register.TOTAL)
+            total_register = next(r for r in self._registers if
+                                  r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity

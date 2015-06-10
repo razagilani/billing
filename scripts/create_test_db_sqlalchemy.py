@@ -33,6 +33,11 @@ if __name__ == '__main__':
     # to already exist in the database
     uri = config.get('db', 'uri')
     engine = create_engine(uri, echo=args.echo)
+
+    engine.execute('drop database if not exists test')
+    engine.execute('create database test')
+    engine.execute('create extension if not exists hstore')
+
     Base.metadata.bind = engine
 
     Base.metadata.drop_all()
