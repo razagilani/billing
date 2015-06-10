@@ -366,13 +366,9 @@ class UploadUtilityBillResource(BaseResource):
                 update_altitude_account_guids(utility_account, args['guid'])
                 s.commit()
             except Exception as e:
-                #logger.error('Failed to process message:', exc_info=True)
                 s.rollback()
                 raise
             finally:
-                # Session.remove() probably should be called here but can't
-                # because tests use the Session to query for data. not sure what
-                # to do about that.
                 pass
 
 
