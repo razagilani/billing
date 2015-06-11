@@ -50,7 +50,7 @@ Ext.define('BillEntry.controller.UploadBills', {
              },
              failure: function (form, action) {
                  utils.makeServerExceptionWindow(
-                     'Unknown', 'Error', action.response.responseXML.body.innerHTML);
+                     'Unknown', 'Error', action.response.responseText);
              }
          });
     },
