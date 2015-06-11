@@ -1165,8 +1165,8 @@ class UtilBill(Base):
                 infile.seek(0)
                 rsrcmgr = PDFResourceManager()
                 outfile = StringIO()
-                #laparams = LAParams() # Use this to tell interpreter to capture newlines
-                laparams = None
+                laparams = LAParams() # Use this to tell interpreter to capture newlines
+                #laparams = None
                 device = TextConverter(rsrcmgr, outfile, codec='utf-8', laparams=laparams)
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
                 try:
