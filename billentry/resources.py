@@ -359,6 +359,7 @@ class UploadUtilityBillResource(BaseResource):
                         '', next_account, utility, None, None, Address(),
                         address, args['utility_account_number'])
                     s.add(utility_account)
+
                 # Utility bills won't be created if there are no utility
                 # bill files
                 if not session.get('hash-digest'):
@@ -374,7 +375,7 @@ class UploadUtilityBillResource(BaseResource):
                 s.commit()
             except Exception as e:
                 raise
-            # Since this is initated by an Ajax request, we will still have to
+            # Since this is initiated by an Ajax request, we will still have to
             # send a {'success', 'true'} parameter
             return {'success': 'true'}
 
