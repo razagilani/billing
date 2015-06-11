@@ -8,7 +8,7 @@ from boto.s3.connection import S3Connection
 from flask import session
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
-from flask.ext.restful import Resource, marshal
+from flask.ext.restful import Resource, marshal, abort
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
@@ -28,6 +28,7 @@ from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
+from exc import MissingFileError
 
 
 project_mgr_permission = Permission(RoleNeed('Project Manager'),
@@ -358,18 +359,21 @@ class UploadUtilityBillResource(BaseResource):
                         '', next_account, utility, None, None, Address(),
                         address, args['utility_account_number'])
                     s.add(utility_account)
+                # Utility bills won't be created if there are no utility
+                # bill files
+                if not session.get('hash-digest'):
+                    raise MissingFileError()
                 for hash_digest in session.get('hash-digest'):
                     ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                    utility_account, utility, hash_digest,
-                    service_address=address)
+                        utility_account, utility, hash_digest,
+                        service_address=address)
                     s.add(ub)
+                session.pop('hash-digest')
                 update_altitude_account_guids(utility_account, args['guid'])
                 s.commit()
             except Exception as e:
-                s.rollback()
                 raise
-            finally:
-                pass
+            return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
 
 
 class ChargeListResource(BaseResource):
