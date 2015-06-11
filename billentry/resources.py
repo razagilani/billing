@@ -368,6 +368,7 @@ class UploadUtilityBillResource(BaseResource):
                         utility_account, utility, hash_digest,
                         service_address=address)
                     s.add(ub)
+                # remove the consumed hash-digest from session
                 session.pop('hash-digest')
                 update_altitude_account_guids(utility_account, args['guid'])
                 s.commit()
