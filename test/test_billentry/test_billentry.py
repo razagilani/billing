@@ -1344,6 +1344,7 @@ class TestUploadBills(unittest.TestCase):
         file1_hash = '396bb98e4ca497a698daa2a3c066cdac7730bd744cd7feb4cc4e3366452d99fd.pdf'
 
         rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file1, 'fake.pdf')))
+
         # this should result in a status_code of '403 permission denied'
         # as only members of 'admin' role are allowed  access to upload
         # utility bill files and user1 is not a member of admin role
@@ -1358,6 +1359,7 @@ class TestUploadBills(unittest.TestCase):
 
         file1 = StringIO('fake PDF')
         rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file1, 'fake.pdf')))
+
         # this should succeed with 200 as user1 is member of Admin Role
         self.assertEqual(200, rv.status_code)
         self.assertTrue(self.billupload.file_exists(file1_hash))
@@ -1370,7 +1372,9 @@ class TestUploadBills(unittest.TestCase):
 
         file2 = StringIO('another fake PDF')
         file2_hash = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11.pdf'
+
         rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file2, 'fake.pdf')))
+
         # this should succeed with 200 as user2 is member of Admin Role
         self.assertEqual(200, rv.status_code)
         self.assertTrue(self.billupload.file_exists(file2_hash))
@@ -1384,14 +1388,19 @@ class TestUploadBills(unittest.TestCase):
                 'sa_state': 'MD',
                 'sa_postal_code': '20815-5148'
         }
+
         stored_hash1 = '396bb98e4ca497a698daa2a3c066cdac7730bd744cd7feb4cc4e3366452d99fd'
         stored_hash2 = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11'
+
         rv = self.app.post(self.URL_PREFIX + 'uploadbill', data=data)
         self.assertEqual(200, rv.status_code)
+
         utilbill = s.query(UtilBill).filter_by(sha256_hexdigest=stored_hash1).all()
         self.assertEqual(len(utilbill), 1)
+
         utilbill = s.query(UtilBill).filter_by(sha256_hexdigest=stored_hash2).all()
         self.assertEqual(len(utilbill), 1)
+
         latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
         latest_utilbill_id = latest_utilbill.id
         self.assertEqual(stored_hash2, latest_utilbill.sha256_hexdigest)
@@ -1410,7 +1419,9 @@ class TestUploadBills(unittest.TestCase):
                 'sa_postal_code': '20815-5148'
         }
         rv = self.app.post(self.URL_PREFIX + 'uploadbill', data=data)
+
         self.assertEqual(500, rv.status_code)
+
         # since no utility bills were created the latest utility bill id
         # should still be the same
         latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
