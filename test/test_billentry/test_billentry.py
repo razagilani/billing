@@ -1301,6 +1301,9 @@ class TestUploadBills(unittest.TestCase):
         FakeS3Manager.start()
         cls.utilbill_processor = create_utilbill_processor()
         cls.billupload = cls.utilbill_processor.bill_file_handler
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
         cls.app = billentry.app.test_client()
 
     @classmethod
@@ -1411,9 +1414,8 @@ class TestUploadBills(unittest.TestCase):
                 'sa_state': 'MD',
                 'sa_postal_code': '20815-5148'
         }
-        rv = self.app.post(self.URL_PREFIX + 'uploadbill', data=data)
 
-        self.assertEqual(500, rv.status_code)
+        self.assertRaises(MissingFileError, self.app.post, self.URL_PREFIX + 'uploadbill', data=data)
 
         # since no utility bills were created the latest utility bill id
         # should still be the same
