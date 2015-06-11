@@ -1329,7 +1329,6 @@ class TestUploadBills(unittest.TestCase):
         s.add_all([self.user1, self.user2, self.user3, self.admin_role,
             self.utility, self.utility_account])
 
-
     def tearDown(self):
         clear_db()
 
@@ -1352,8 +1351,8 @@ class TestUploadBills(unittest.TestCase):
         self.assertRaises(MissingFileError, self.billupload.file_exists, file1_hash)
 
         data = {'email':'2@example.com', 'password': 'password'}
-        # post request for user login for user2, a member of admin role
 
+        # post request for user login for user2, a member of admin role
         self.app.post('/userlogin',
                       content_type='multipart/form-data', data=data)
 
@@ -1363,12 +1362,6 @@ class TestUploadBills(unittest.TestCase):
         # this should succeed with 200 as user1 is member of Admin Role
         self.assertEqual(200, rv.status_code)
         self.assertTrue(self.billupload.file_exists(file1_hash))
-
-        # data = {'email':'3@example.com', 'password': 'password'}
-        # # post request for user login for user2, a member of admin role
-        #
-        # self.app.post('/userlogin',
-        #               content_type='multipart/form-data', data=data)
 
         file2 = StringIO('another fake PDF')
         file2_hash = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11.pdf'
