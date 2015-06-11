@@ -6,7 +6,7 @@ from brokerage.read_quotes import DirectEnergyMatrixParser
 
 class DirectEnergyParserTest(TestCase):
     EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
-                                  'directenergy.xlsm')
+                                  'Matrix 1 Example - Direct Energy.xls')
 
     def setUp(self):
         self.parser = DirectEnergyMatrixParser()
