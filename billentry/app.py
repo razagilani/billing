@@ -31,7 +31,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
-from exc import UnEditableBillError
+from exc import UnEditableBillError, MissingFileError
 
 LOG_NAME = 'billentry'
 
@@ -312,6 +312,17 @@ def login_page():
 @app.errorhandler(OAuthException)
 def page_not_found(e):
     return render_template('403.html'), 403
+
+@app.errorhandler(MissingFileError)
+def uneditable_bill_error(e):
+    # Flask is not supposed to run error handler functions
+    # if these are true, but it does (even if they are set
+    # before the "errorhandler" decorator is called).
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
+        app.config['PROPAGATE_EXCEPTIONS']):
+        raise
+    error_message = log_error('MissingFileError', traceback)
+    return error_message, 400
 
 @app.errorhandler(UnEditableBillError)
 def uneditable_bill_error(e):
