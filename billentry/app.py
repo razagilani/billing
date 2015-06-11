@@ -230,19 +230,12 @@ def test_status(task_id):
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
     init_celery()
-
     task = AsyncResult(task_id)
     if not task.ready():
         return jsonify({'state':task.state})
-    response = task.get()
-
-    def format_date(d):
-        return None if d is None else "{:0>4d}-{:0>2d}".format(d.year, d.month)
-    response['dates'] = {format_date(d): response['dates'][d]
-                         for d in response['dates']}
-    response['state'] = task.state
-
-    return jsonify(response)
+    result = task.get()
+    result['state'] = task.state
+    return jsonify(result)
 
 
 def create_user_in_db(access_token):

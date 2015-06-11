@@ -90,7 +90,7 @@ function displayData(task, isDetailed){
 		//update field values
 		task_table_row.children("td.field").each(function(index, elem){
 			var fieldname = $(elem).attr("header");
-			var val = task_data.fields[fieldname].count;
+			var val = task_data.fields[fieldname];
 			if(val != undefined){
 				$(elem).text(val);
 			}
