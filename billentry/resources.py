@@ -374,7 +374,9 @@ class UploadUtilityBillResource(BaseResource):
                 s.commit()
             except Exception as e:
                 raise
-            return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
+            # Since this is initated by an Ajax request, we will still have to
+            # send a {'success', 'true'} parameter
+            return {'success': 'true'}
 
 
 class ChargeListResource(BaseResource):
