@@ -37,6 +37,7 @@ DROP_COMMAND = 'dropdb --if-exists %(db)s -h %(host)s -U %(user)s -w'
 CREATE_COMMAND = 'createdb %(db)s %(host)s -U %(user)s -w'
 DUMP_COMMAND = 'pg_dump %(db)s -h %(host)s -U %(user)s -w'
 DB_SHELL_COMMAND = 'psql %(db)s -h %(host)s -U %(user)s -w'
+TEMP_DB_NAME = 'template1'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s --host %(host)s %(filepath)s')
@@ -214,11 +215,15 @@ def _recreate_main_db():
     '''Drop and re-create the main database because pg_dump only includes drop
     commands for tables that already exist in the backup.
     '''
-    for command_format in [DROP_COMMAND, CREATE_COMMAND]:
-        command = command_format % dict(db_params)
-        stdin, _, check_exit_status = run_command(command)
-        stdin.close()
-        check_exit_status()
+    # Postgres requires you to connect to a different database while dropping
+    # the current database. the "template1" database is always guaranteed to
+    # exist.
+    command = DB_SHELL_COMMAND % dict(db_params, db=TEMP_DB_NAME)
+    stdin, _, check_exit_status = run_command(command)
+    stdin.write(
+        'drop database if exists %(db)s; create database %(db)s' % db_params)
+    stdin.close()
+    check_exit_status()
 
 def restore_main_db_s3(bucket):
     _recreate_main_db()
