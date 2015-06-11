@@ -4,6 +4,7 @@ quotes.
 import calendar
 import re
 from datetime import datetime, timedelta
+from dateutil import parser
 
 from tablib import Databook, formats
 
@@ -39,7 +40,8 @@ class QuoteParser(object):
         # TODO tablib always chooses the "active" sheet to make a Dataset,
         # but it should actually create a Databook for all sheets
         result = Databook()
-        formats.xlsx.import_book(result, quote_file)
+        filecontents = quote_file.read()
+        formats.xls.import_book(result, filecontents)
         return result
 
     # subclasses can set this to use sheet titles to validate the file
@@ -57,7 +59,7 @@ class QuoteParser(object):
         """
         self._databook = self._get_databook_from_file(quote_file)
         # it is assumed that only one sheet actually contains the quotes
-        self._sheet = self._databook.sheets()[1]
+        self._sheet = self._databook.sheets()[0]
         self._validated = False
 
     def validate(self):
@@ -136,31 +138,24 @@ class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
     QUOTE_START_ROW = 9
-    DATE_ROW = 0
-    DATE_COL = 10
+    DATE_ROW = 1
+    DATE_COL = 0
     VOLUME_RANGE_ROW = 7
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
     expected_sheet_titles = [
-        'Select',
-        'Output',
-        'PricingMatrixReport',
-        'Mappings',
-        'FormInput',
-        'LF',
-        'Restricted Use'
+        'Daily Matrix Price',
     ]
 
     def _validate(self):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
-        _assert_equal('Date:', self._get(self.DATE_ROW, 8, basestring))
-        _assert_equal('Annual Volume (MWh)', self._get(6, 8, basestring))
-        _assert_equal('***** For easier print view, use the filters '
-                      'to narrow down the prices displayed ******',
-                      self._get(6, 1, basestring))
+        self._get_matches(self.DATE_ROW,self.DATE_COL,r'as of (\d+/\d+/\d+)',[parser.parse])
+        _assert_equal('Annual Volume (MWh)', self._get(48,8,basestring))
+        _assert_equal('Direct Energy HQ - Daily Matrix Price Report',
+                      self._sheet.headers[0])
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
