@@ -28,6 +28,14 @@ Ext.define('BillEntry.controller.UploadBills', {
          });
     },
 
+     /**
+     * Initialize the upload form.
+     */
+    initalizeUploadForm: function() {
+        var form = this.getUploadBillsForm();
+        form.getForm().reset();
+     },
+
     /**
     * Handle the submit button being clicked.
     */
@@ -51,7 +59,6 @@ Ext.define('BillEntry.controller.UploadBills', {
      * Handle the compute button being clicked.
      */
     handleReset: function() {
-        var form = this.getUploadBillsForm();
-        form.getForm().reset();
+        this.initalizeUploadForm();
     }
 })
