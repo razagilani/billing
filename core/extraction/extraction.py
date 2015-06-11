@@ -158,35 +158,48 @@ def convert_wg_charges_std(text):
     # these functions, this creates duplicate code both for loading the name map
     # and for using it to convert names into rsi_bindings. it probably should
     # be an argument.
-    charge_name_map = Session().query(Utility).filter_by(
-    name='washington gas').one().charge_name_map
+    charge_name_map = Session().query(Utility).filter_by(name='washington gas').one().charge_name_map
+    groups = r'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*?)' \
+             r'Total Current Washington Gas Charges(.*?)' \
+             r'Total Washington Gas Charges This Period'
+    regexflags = re.IGNORECASE | re.MULTILINE | re.DOTALL
+    dist_charge_block, supply_charge_block, taxes_charge_block, charge_values_block = re.search(groups, text, regexflags).groups()
+    dist_charge_names = re.split("\n+", dist_charge_block, regexflags)
+    supply_charge_names = re.split("\n+", supply_charge_block, regexflags)
+    taxes_charge_names = re.split("\n+", taxes_charge_block, regexflags)
+    charge_values_names = re.split("\n+", charge_values_block, regexflags)
 
-    groups = '.*DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*)'
-    num = r'[\d,.]*'
-    charge_total = r'\$\s*' + num
-    charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
-                    + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
-    charge_name = r'[A-Za-z- -]+'
-    charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
-    d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
-    d_charge_strs = re.findall(charge, d_charges)
-    s_charge_strs = re.findall(charge, s_charges)
-    tax_charge_strs = re.findall(charge, tax_charges)
+    charge_name_exp = r"([a-z]['a-z \-]+?[a-z])\s*[\d@\n]"
+    #read charges backwards, because WG bills include previous bill amounts at top of table
+    charge_values_names = charge_values_names[::-1]
+    charge_data = [(taxes_charge_names[::-1], Charge.DISTRIBUTION),
+        (supply_charge_names[::-1], Charge.SUPPLY),
+        (dist_charge_names[::-1], Charge.DISTRIBUTION)]
 
-    def extract_charge(charge_str, charge_type):
-        name = re.match(charge_name, charge_str, re.IGNORECASE).group(0).strip()
-        # "*?" means non-greedy *
-        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str).group(1)
 
+    def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
-        return Charge(rsi_binding, name=name, target_total=float(total_str),
-                      type=charge_type)
+        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
 
     charges = []
-    for charge_type, charge_texts in [(Charge.DISTRIBUTION, d_charge_strs),
-                                      (Charge.SUPPLY, s_charge_strs),
-                                      (Charge.DISTRIBUTION, tax_charge_strs)]:
-        charges.extend([extract_charge(t, charge_type) for t in charge_texts])
+    for names, type in charge_data:
+        for n in names:
+            if not charge_values_names:
+                break
+            charge_value_text = charge_values_names[0]
+            del charge_values_names[0]
+            match = re.search(r"\$\s+(-?\d+(?:\.\d+)?)", charge_value_text)
+            if not match:
+                continue
+            charge_value = float(match.group(1))
+
+            match = re.search(charge_name_exp, n, regexflags)
+            if not match:
+                continue
+            charge_name = match.group(1)
+
+            charges.append(process_charge(charge_name, charge_value, type))
+
     return charges
 
 def convert_wg_charges_wgl(text):
@@ -200,32 +213,46 @@ def convert_wg_charges_wgl(text):
     # be an argument.
     charge_name_map = Session().query(Utility).filter_by(
         name='washington gas').one().charge_name_map
-    groups = '.*DISTRIBUTION SERVICE(.*?)TAXES(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*)'
-    num = r'[\d.]*'
-    charge_total = r'\$\s*' + num
-    charge_stuff = (r'\s*' + num + r'\s*(?:TH\s*)?(?:@\s*' + num
-                    + ')?(?:x\s*)?' + num + r'\s*' + charge_total + r'\s*')
-    charge_name = r'[A-Za-z- -]+'
-    charge = r'\s*(' + charge_name + charge_stuff + r')\s*'
-    d_charges, s_charges, tax_charges = re.match(groups, text, re.IGNORECASE).groups()
-    d_charge_strs = re.findall(charge, d_charges)
-    s_charge_strs = re.findall(charge, s_charges)
-    tax_charge_strs = re.findall(charge, tax_charges)
+    groups = 'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*)TAXES(.*?)' \
+             'Total Current Washington Gas Charges(.*?)' \
+             'Total Washington Gas Charges This Period'
+    regexflags = re.IGNORECASE | re.MULTILINE | re.DOTALL
+    dist_charge_block, supply_charge_block, taxes_charge_block, charge_values_block = re.search(groups, text, regexflags)
+    dist_charge_names = re.split("\n+", dist_charge_block, regexflags)
+    supply_charge_names = re.split("\n+", supply_charge_block, regexflags)
+    taxes_charge_names = re.split("\n+", taxes_charge_block, regexflags)
+    charge_values_names = re.split("\n+", charge_values_block, regexflags)
 
-    def extract_charge(charge_str, charge_type):
-        name = re.match(charge_name, charge_str, re.IGNORECASE).group(0).strip()
-        # "*?" means non-greedy *
-        total_str = re.match(r'.*?(' + num + r')\s*$', charge_str, re.IGNORECASE).group(1)
+    charge_name_exp = r"([a-z]['a-z ]+?[a-z])\s*[\d@\n]"
+    #read charges backwards, because WG bills include previous bill amounts at top of table
+    charge_values_names = charge_values_names[::-1]
+    charge_data = [(taxes_charge_names[::-1], Charge.DISTRIBUTION),
+        (supply_charge_names[::-1], Charge.SUPPLY),
+        (dist_charge_names[::-1], Charge.DISTRIBUTION)]
 
+    def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
-        return Charge(rsi_binding, name=name, target_total=float(total_str),
-                      type=charge_type)
+        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
 
     charges = []
-    for charge_type, charge_texts in [(Charge.DISTRIBUTION, d_charge_strs),
-                                      (Charge.SUPPLY, s_charge_strs),
-                                      (Charge.DISTRIBUTION, tax_charge_strs)]:
-        charges.extend([extract_charge(t, charge_type) for t in charge_texts])
+    for names, type in charge_data:
+        for n in names:
+            if not charge_values_names:
+                break
+            charge_value_text = charge_values_names[0]
+            del charge_values_names[0]
+            match = re.search(r"\$\s+(-?\d+(?:\.\d+)?)", charge_value_text)
+            if not match:
+                continue
+            charge_value = float(match.group(1))
+
+            match = re.search(charge_name_exp, n, regexflags)
+            if not match:
+                continue
+            charge_name = match.group(1)
+
+            charges.append(process_charge(charge_name, charge_value, type))
+
     return charges
 
 def pep_old_convert_charges(text):
@@ -235,54 +262,54 @@ def pep_old_convert_charges(text):
     :param text - the text containing both distribution and supply charges.
     :returns A list of Charge objects representing the charges from the bill
     """
+    #TODO deal with external suppliers
     #TODO find a better method for categorizing charge names
     charge_name_map = Session().query(Utility).filter_by(
         name='pepco').one().charge_name_map
 
-    #in pepco bills, supply and distribution charges are separate
-    distribution_charges_exp = r'Distribution Services\:(.*?)CURRENT CHARGES'
-    supply_charges_exp = r'Generation and Transmission.*?\d{4}\:(.*?)Charges This Period'
-    text = re.sub(r'at (\d)', r' \1', text, re.DOTALL | re.IGNORECASE) #remove the "at"s at the end of charge name, ie "Trust Fundat 0.0020500 per..."
-    dist_text = re.search(distribution_charges_exp, text, re.DOTALL).group(1)
-    supply_text = re.search(supply_charges_exp, text, re.DOTALL).group(1)
 
-    def process_charge(p, ct):
-        name = p[0]
-        value = float(p[1])
+    distribution_charges_exp = r'Distribution Services:(.*?)Generation Services:'
+    supply_charges_exp = r'Generation Services:(.*?)Transmission Services:'
+    transmission_charges_exp = r'Transmission Servces:(.*?Total Charges - Transmission)'
+    charge_values_exp = r'Total Charges - Transmission(.*?)CURRENT CHARGES THIS PERIOD'
+
+    regex_flags =  re.DOTALL | re.IGNORECASE | re.MULTILINE
+    dist_charges_block = re.search(distribution_charges_exp, text, regex_flags).group(1)
+    supply_charges_block = re.search(supply_charges_exp, text, regex_flags).group(1)
+    trans_charges_block = re.search(transmission_charges_exp, text, regex_flags).group(1)
+    charge_values_block = re.search(charge_values_exp, text, regex_flags).group(1)
+
+    dist_charges_names = re.split(r"\n+", dist_charges_block, regex_flags)
+    supply_charges_names = re.split(r"\n+", supply_charges_block, regex_flags)
+    trans_charges_names = re.split(r"\n+", trans_charges_block, regex_flags)
+    charge_values = re.split(r"\n+", charge_values_block, regex_flags)
+    trans_charges_names_clean = []
+    # clean rate strings (eg 'at 0.0000607 per KWH') from transmission charges.
+    for name in trans_charges_names:
+        if not name or re.match(r'\d|at|Includ|Next', name):
+            continue
+        trans_charges_names_clean.append(name)
+
+    def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
         return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
 
-    #matches a price (ie a number that end in ".##"), or a capitalized word that is not 'KWH'
-    price_exp = r'\d+\.\d{2}'
-    name_exp = r'[A-Z][A-Za-z ]+'
-    tokenizer_exp = r'(' + price_exp + '(?=[^\d]|' + price_exp + '))|(?:KWH(?: x )?)|(' + name_exp + ')'
     charges = []
-    #looks at tokens one by one, and matches up names and numbers.
-    #Reasoning is that a pair of corresponding name and number can be in reversed order, but still adjacent to each other.
-    for section, type in [(dist_text, Charge.DISTRIBUTION), (supply_text, Charge.SUPPLY)]:
-        charge_data_pairs = []
-        tokens = re.findall(tokenizer_exp, section)
-        name_tmp=''
-        value_tmp=''
-        for t in tokens:
-            #if token is a number:
-            if t[0]:
-                if name_tmp:
-                    charge_data_pairs.append((name_tmp, t[0]))
-                    name_tmp = ''
-                else:
-                    value_tmp = t[0]
-            #if token is a name:
-            elif t[1]:
-                if value_tmp:
-                    charge_data_pairs.append((t[1], value_tmp))
-                    value_tmp = ''
-                else:
-                    name_tmp = t[1]
-        for cdp in charge_data_pairs:
-            charges.append(process_charge(cdp, type))
+    charge_data = [(dist_charges_names, Charge.DISTRIBUTION), (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean, Charge.DISTRIBUTION)]
+    for names, type in charge_data:
+        for charge_name in names:
+            if not charge_name:
+                continue
+            # in case some charges failed to be read
+            if not charge_values:
+                break
+            charge_num_text = charge_values[0]
+            del charge_values[0]
+            charge_num = float(re.search(r'\d+(?:\.\d+)?', charge_num_text))
+            charges.append(process_charge(charge_name, charge_num, type))
 
     return charges
+
 
 def pep_new_convert_charges(text):
     """
@@ -320,20 +347,47 @@ def pep_new_convert_charges(text):
     return charges
 
 def convert_address(text):
-    #TODO extract zip code and other elements
-    return Address(street=text)
-    # addressee
-    #     street
-    #     city
-    #     state
-    #     postal_code
+    '''
+    Given a string containing an address, parses the address into an Address object in the database.
+    '''
+    #matches city, state, and zip code
+    regional_exp = r'(\w+)\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
+    #for attn: line in billing addresses
+    attn_co_exp = r"(?:(?:attn:?|C/?O) )+(.*)$$"
+    #A PO box, or a line that starts with a number
+    street_exp = r"(\d+.*$|PO BOX \d+)"
+
+    addressee = city = state = postal_code = None
+    lines = re.split("\n+", text, re.MULTILINE)
+
+    for line in lines:
+        #if line has "attn:" in it, this is the addresse
+        match = re.search(attn_co_exp, line, re.IGNORECASE)
+        if match:
+            addressee = match.group(1)
+            continue
+        #if it a po box or starts with a number, this line is a street address
+        match = re.search(street_exp, line, re.IGNORECASE)
+        if match:
+            street = match.group(1)
+            continue
+        # check if this line contains city/state/zipcode
+        match = re.search(regional_exp, line, re.IGNORECASE)
+        if match:
+            city, state, postal_code = match.groups
+            continue
+        #if none of the above patterns match, assume that this line is the addresse
+        addressee = line
+    return Address(addressee=addressee, street=street, city=city, state=state, postal_code=postal_code)
 
 def convert_rate_class(text):
-    #TODO fill in fields correctly
-    return RateClass(name=text)
-    # name
-    # utility
-    # service
+    s = Session()
+    q = s.query(RateClass).filter(RateClass.name == text)
+    if q.count():
+        return q.one()
+    else:
+        #TODO fill in fields correctly
+        return RateClass(name=text)
 
 class Field(model.Base):
     """Recipe for extracting one piece of data from a larger amount of input
@@ -608,7 +662,7 @@ class ExtractorResult(model.Base):
 
         # update overall count and count by month for each field
         for field_name in Applier.KEYS.iterkeys():
-            count_for_field = metadata['fields'][field_name]['count']
+            count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + field_name, count_for_field)
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}

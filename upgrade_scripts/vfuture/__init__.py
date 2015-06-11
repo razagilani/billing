@@ -31,9 +31,9 @@ def create_extractors(s):
     e.fields.append(TextExtractor.TextField(regex=next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
 
     #pepco bills from 2015, with banner
-    pep_start_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period (%s)' % date_format
-    pep_end_regex = 'Your electric bill - [A-Za-z]+ [0-9]{4}for the period %s to (%s)' % (date_format, date_format)
-    pep_energy_regex = r'([0-9]{4})Your next meter'
+    pep_start_regex = 'your electric bill for the period\s*(%s) to %s' % (date_format, date_format)
+    pep_end_regex = 'your electric bill for the period\s*%s to (%s)' % (date_format, date_format)
+    pep_energy_regex = r'Use \(kWh\)\s+(%s)' % num_format
     pep_next_meter_read_regex = r'Your next meter reading is scheduled for (%s)' % date_format
     pep_charges_regex = r'(Distribution Services:.*?(?:Status of your Deferred|Page)(?:.*?)Transmission Services\:.*?Energy Usage History)'
     pep_service_address_regex = r'service address:\s*(.*?)Bill Issue'
@@ -52,14 +52,11 @@ def create_extractors(s):
     #pepco bills from before 2015, blue logo
     pep_old_start_regex = r'Services for (%s) to %s' % (date_format, date_format)
     pep_old_end_regex = r'Services for %s to (%s)' % (date_format, date_format)
-    pep_old_energy_regex = r'Total Use: (%s) kwh' % num_format
+    pep_old_energy_regex = r'KWH\s*Used\s+(\d+)'
     pep_old_next_meter_read_regex = r'.Your next scheduled meter reading is (%s)' % date_format
-    pep_old_charges_regex = r'(Distribution Services:.*?CURRENT CHARGES.*?Generation and Transmission.*?Charges This Period)'
-    # for service address, long non-capturing group in the middle is another line in the bill that gets put right before
-    #   the actual address in some bills.
-    #   When we get newlines along with the text, we'll be able to avoid this.
-    pep_old_service_address_regex = r'payable to Pepco(?:\d+.*?\.\d{3})?(.*?)Service address:'
-    pep_old_billing_address_regex = r'Telephone Contacts:Page 1 of \d\s*(.*?%s)' % zip_code_format
+    pep_old_charges_regex = r'(distribution services.*?current charges this period)'
+    pep_old_service_address_regex = r'Service Address:\s+(.*?)\n\n'
+    pep_old_billing_address_regex = r'\n\n((?:[^\n]|\n(?!\n))+%s)\n\nPepco Telephone Contacts:' % zip_code_format
     pep_old_rate_class_regex = r'Meter Reading Information[A-Z0-9]*\s+(.*)The present reading'
     pepco_old = TextExtractor(name='Pepco bills from before 2015 with blue logo id 2631')
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_start_regex, type=Field.DATE, applier_key=Applier.START))
@@ -74,12 +71,13 @@ def create_extractors(s):
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
     wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
-    wg_energy_regex = r'Total Therms \(TH\) used\s*(?:for.*?days)?(%s)' % num_format
+    wg_energy_regex = r"(%s)\s+Gas you've used this period" % num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
-    wg_charges_regex = r'.*(DISTRIBUTION SERVICE.*)Account number'
-    wg_service_address_regex = r'\([0-9]+ days\)(.*?)Gas Bill'
-    wg_billing_address_regex=r'ADDRESS SERVICE REQUESTED(.*?)Account Number'
-    wg_rate_class_regex = r'Rate Class:Meter number:Next read date:(.*?)\s+Page'
+    wg_charges_regex = r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))'
+    wg_service_address_regex = r'(?:Days\)|Service address:)\s+(.+?)\s+(?:Questions|Please)'
+    #for billing address, before "check here to donate", get all characters that are not a double newline
+    wg_billing_address_regex=r'\n\n([^\n]|\n(?!\n))*\n\nCheck here to donate'
+    wg_rate_class_regex = r'rate class:\s+meter number:\s+([^\n]+)'
     washington_gas = TextExtractor(name='Extractor for Washington Gas bills with green and yellow and chart id 15311')
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE, applier_key=Applier.START))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE, applier_key=Applier.END))

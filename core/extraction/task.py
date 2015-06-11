@@ -17,6 +17,7 @@ from core import celery
 
 def _create_bill_file_handler():
     from core import config
+
     s3_connection = S3Connection(
         config.get('aws_s3', 'aws_access_key_id'),
         config.get('aws_s3', 'aws_secret_access_key'),
@@ -27,17 +28,20 @@ def _create_bill_file_handler():
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
     return BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
-                          UtilBillLoader(), url_format)
+        UtilBillLoader(), url_format)
+
 
 def _create_main():
     bfh = _create_bill_file_handler()
     return Main(bfh)
 
+
 class DBTask(celery.Task):
     """
     An abstract celery task class that ensures that the database connection is closed after a task completes.
     """
-    abstract=True
+    abstract = True
+
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         if status == 'FAILURE':
             print "Error: ", retval
@@ -45,6 +49,7 @@ class DBTask(celery.Task):
         else:
             Session.commit()
         Session.close()
+
 
 @celery.task
 def extract_bill(utilbill_id):
@@ -54,6 +59,7 @@ def extract_bill(utilbill_id):
     # TODO: the same Main object could be shared by all tasks
     main = _create_main()
     main.extract(utilbill_id)
+
 
 @celery.task(bind=True, base=DBTask)
 def test_bill(self, extractor_id, bill_id):
@@ -65,11 +71,8 @@ def test_bill(self, extractor_id, bill_id):
     :return: {
         extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
-        fields : Data for each field. It is of the type {'name1': {
-        'value':###, 'db_conflict':bool}, 'name2':..., }
-                'value' stores the actual retrieved value for each given
-                field name.
-                'db_conflict' stores the number of times a retrieved value from a bill conflicted with a value in a database.
+        fields : {name:value, ...} for each field name in Applier.KEYS.
+                Value is None if it could not be recovered
         date : The bill's period end date, read from the database, or if not
         in the database, from the bill.
                 If neither succeeds, this is None. 'date' is used to group
@@ -92,50 +95,37 @@ def test_bill(self, extractor_id, bill_id):
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
 
-    # methods to get existing values corresponding to applier keys
-    #TODO find better method to get db column from applier key
-    getters_map = {
-        Applier.BILLING_ADDRESS: lambda x : x.billing_address,
-        Applier.CHARGES: lambda x : x.charges,
-        Applier.END: lambda x : x.period_end,
-        Applier.ENERGY: lambda x : x.get_total_energy(),
-        Applier.NEXT_READ: lambda x : x.get_next_meter_read_date(),
-        Applier.RATE_CLASS: lambda x : x.get_rate_class(),
-        Applier.SERVICE_ADDRESS: lambda x : x.service_address,
-        Applier.START: lambda x : x.period_start,
-    }
-
-    # Store field values for each successful result,
-    #   as well as whether or not the result matches what's in the database.
+    # Store field values for each successful result
     # Note: 'good' is of type [(field, value), ...]
+    bill_end_date = None
     good, error = extractor._get_values(bill, bill_file_handler)
     for field, value in good:
-        response['fields'][field.applier_key] = {'value': value}
-        db_val = getters_map[field.applier_key](bill)
-        response['fields'][field.applier_key]['db_conflict'] = (db_val and db_val != value)
+        response['fields'][field.applier_key] = value
+        if field.applier_key == Applier.END:
+            bill_end_date = value
 
     # get bill period end date from DB, or from extractor
     # this is used to group bills by date and to check for changes over time
     # in format
     if bill.period_end is not None:
         response['date'] = bill.period_end
-    elif response['fields'][Applier.END] is not None:
-        response['date'] = response['fields'][Applier.END]['value']
+    elif bill_end_date is not None:
+        response['date'] = bill_end_date
     else:
         response['date'] = None
 
     # print out debug information in celery log
     debug = False
     if len(good) != len(extractor.fields) and debug:
-        print "\n*******"
+        print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
-        for g in good:
-            #Compare extracted value to that in the database, to check for false positives.
-            db_val = getters_map[g[0].applier_key](bill)
-            if db_val and g[1] != db_val:
-                print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
+        # for g in good:
+        #     #Compare extracted value to that in the database, to check for false positives.
+        #     db_val = getters_map[g[0].applier_key](bill)
+        #     if db_val and g[1] != db_val:
+        #         print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
         for e in error:
             print "Error: ", e
         if not bill.get_text(bill_file_handler):
@@ -143,8 +133,8 @@ def test_bill(self, extractor_id, bill_id):
         else:
             print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler)))
         print "*******\n"
-
     return response
+
 
 @celery.task(bind=True, base=DBTask)
 def reduce_bill_results(self, results):
@@ -169,56 +159,59 @@ def reduce_bill_results(self, results):
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
     dates = {}
-    fields = {key:{'count':0, 'db_conflict':0} for key in Applier.KEYS}
+    fields = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
     failed = 0
     for r in results:
-        #if task failed, then r is in fact an Error object
+        # if task failed, then r is in fact an Error object
         if not isinstance(r, dict):
             failed += 1
             continue
 
         bill_date = r['date']
-        if bill_date not in dates:
-            dates[bill_date] = {
+        if bill_date is not None:
+            bill_date_format = "%04d-%02d" % (bill_date.year, bill_date.month)
+        else:
+            bill_date_format = "no date"
+        if bill_date_format not in dates:
+            dates[bill_date_format] = {
                 'all_count': 0,
                 'any_count': 0,
                 'total_count': 0,
                 'fields': {key: 0 for key in Applier.KEYS},
             }
 
-        #count number of successfully read fields
+        # count number of successfully read fields
         success_fields = 0
         for k in r['fields'].keys():
             if r['fields'][k] is not None:
                 success_fields += 1
-                fields[k]['count'] += 1
-                if r['fields'][k]['db_conflict']:
-                    fields[k]['db_conflict'] +=1
-                dates[bill_date]['fields'][k] += 1
+                fields[k] += 1
+                dates[bill_date_format]['fields'][k] += 1
 
-        #Count success for this individual bill
+        # Count success for this individual bill
         total_fields = r['num_fields']
         total_count += 1
-        dates[bill_date]['total_count'] += 1
+        dates[bill_date_format]['total_count'] += 1
         if success_fields > 0:
             any_count += 1
-            dates[bill_date]['any_count'] += 1
+            dates[bill_date_format]['any_count'] += 1
         if success_fields == total_fields:
             all_count += 1
-            dates[bill_date]['all_count'] += 1
+            dates[bill_date_format]['all_count'] += 1
 
-    response =  {
+    response = {
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
         'fields': fields,
-        'dates' : dates,
+        'dates': dates,
         'failed': failed,
-        'nbills' : nbills,
+        'nbills': nbills,
     }
 
     from core.model import Session
+
     if Session.bind is None:
         del Session
         init_model()
