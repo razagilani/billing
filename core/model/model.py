@@ -9,7 +9,7 @@ import json
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint
+    UniqueConstraint, MetaData
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -26,9 +26,9 @@ from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
 from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
-    'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'Supplier', 'SupplyGroup',
-    'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
-    'check_schema_revision', ]
+           'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'AltitudeSession',
+           'altitude_metadata', 'Supplier', 'SupplyGroup', 'RateClass',
+           'Utility', 'UtilBill', 'UtilityAccount', 'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -36,6 +36,8 @@ __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
+AltitudeSession = scoped_session(sessionmaker())
+altitude_metadata = MetaData()
 
 # allowed units for register quantities.
 # UnitRegistry attributes are used in the values to ensure that there's an

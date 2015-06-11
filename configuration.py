@@ -95,6 +95,7 @@ class reebillestimatedrevenue(Schema):
 class db(Schema):
     # database connection URI
     uri = String()
+    altitude_uri = String()
     # URI to be used for restoring from a backup of an old database--this will
     # differ from "uri" only when migrating to a different database.
     old_uri = String()
@@ -104,6 +105,10 @@ class mongodb(Schema):
     database = String()
     host = String()
     port = TCPPort()
+
+class brokerage(Schema):
+    # path to Dropbox directoy where quote files should be put for importing
+    quote_directory = Directory()
 
 class mailer(Schema):
     # sending reebill emails to customers
@@ -181,6 +186,11 @@ class logger_amqp_utilbill_guids_file(Schema):
     handlers = String()
     qualname = String()
 
+class logger_read_quotes(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
 class handler_consoleHandler(Schema):
     level = String()
     formatter = String()
@@ -216,6 +226,12 @@ class handler_amqp_utilbill_guids_file_handler(Schema):
     formatter = String()
     args = String()
 handler_amqp_utilbill_guids_file_handler.add_field('class', String())
+
+class handler_read_quotes_handler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_read_quotes_handler.add_field('class', String())
 
 class formatter_simpleFormatter(Schema):
     format = String()
