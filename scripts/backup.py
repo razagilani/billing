@@ -33,10 +33,10 @@ MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 
 # force no password prompt because it shouldn't be necessary and isn't
 # entered through the subprocess stdin
-DROP_COMMAND = 'dropdb --if-exists %(db)s -U %(user)s -w'
-CREATE_COMMAND = 'createdb %(db)s -U %(user)s -w'
-DUMP_COMMAND = 'pg_dump %(db)s -U %(user)s -w'
-DB_SHELL_COMMAND = 'psql %(db)s -U %(user)s -w'
+DROP_COMMAND = 'dropdb --if-exists %(db)s -h %(host)s -U %(user)s -w'
+CREATE_COMMAND = 'createdb %(db)s %(host)s -U %(user)s -w'
+DUMP_COMMAND = 'pg_dump %(db)s -h %(host)s -U %(user)s -w'
+DB_SHELL_COMMAND = 'psql %(db)s -h %(host)s -U %(user)s -w'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s --host %(host)s %(filepath)s')
