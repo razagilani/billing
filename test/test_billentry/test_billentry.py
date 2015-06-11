@@ -1392,6 +1392,26 @@ class TestUploadBills(unittest.TestCase):
         self.assertEqual(len(utilbill), 1)
         utilbill = s.query(UtilBill).filter_by(sha256_hexdigest=stored_hash2).all()
         self.assertEqual(len(utilbill), 1)
+        latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
+        latest_utilbill_id = latest_utilbill.id
+        self.assertEqual(stored_hash2, latest_utilbill.sha256_hexdigest)
 
+        # make another request for creating a new utility bill without
+        # uploading any files. This should make server raise
+        # MissingFileError exception
 
-
+        data = {'guid': '0b8ff51d-84a9-40bf-b97cf693ff00f4ec',
+                'utility': 1,
+                'utility_account_number': '2051.065107',
+                'sa_addressee': 'College Park Car Wash',
+                'sa_street': '7106 Ridgewood Ave',
+                'sa_city': 'Chevy Chase',
+                'sa_state': 'MD',
+                'sa_postal_code': '20815-5148'
+        }
+        rv = self.app.post(self.URL_PREFIX + 'uploadbill', data=data)
+        self.assertEqual(500, rv.status_code)
+        # since no utility bills were created the latest utility bill id
+        # should still be the same
+        latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
+        self.assertEqual(latest_utilbill.id, latest_utilbill_id)
