@@ -175,9 +175,8 @@ class DirectEnergyMatrixParser(QuoteParser):
     ]
 
     def _validate(self):
-        # note: it does not seem possible to access the first row (what Excel
-        # would call row 1, the one that says "Daily Price Matrix") through
-        # tablib/xlwt.
+        # note: tablib considers the first of the spreadsheet to be the
+        # "header" rather than a row
         _assert_equal('Direct Energy HQ - Daily Matrix Price Report',
                       self._sheet.headers[0])
         self._get_matches(self.DATE_ROW, self.DATE_COL, r'as of (\d+/\d+/\d+)',
