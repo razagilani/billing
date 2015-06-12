@@ -1,11 +1,11 @@
 """Code for reading quote files. Could include both matrix quotes and custom
 quotes.
 """
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 import calendar
 import re
 from datetime import datetime, timedelta
-from dateutil import parser
+from dateutil.parser import parse as parse_date
 
 from tablib import Databook, formats
 
@@ -96,45 +96,56 @@ class QuoteParser(object):
             self.validate()
         return self._extract_quotes()
 
+    @abstractmethod
     def _validate(self):
         # subclasses do validation here
         raise NotImplementedError
 
+    @abstractmethod
     def _extract_quotes(self):
         # subclasses do extraction here
         raise NotImplementedError
 
-    def _get(self, row, col, type):
+    def _get(self, row, col, the_type):
         """Return a value extracted from the spreadsheet cell at (row, col),
         and expect the given type (e.g. int, float, basestring, datetime).
         Raise ValidationError if the cell does not exist or has the wrong type.
         :param row: row index
         :param row: column index
-        :param type: expected type of the cell contents
+        :param the_type: expected type of the cell contents
         """
         try:
             value = self._sheet[row][col]
         except IndexError:
             raise ValidationError('No cell (%s, %s)' % (row, col))
-        _assert_true(isinstance(value, type))
+        if not isinstance(value, the_type):
+            raise ValidationError(
+                'Expected type %s, found "%s" with type %s' % (
+                the_type, value, type(value)))
         return value
 
     def _get_matches(self, row, col, regex, types):
-        """Return a tuple of values extracted from the spreadsheet cell at (
-        row, col) using groups in the given regular expression. Values are
-        converted from strings to the given types.
-        Raise ValidationError if there are 0 matches or the wrong number of
-        matches or they could not be converted to the expected types.
+        """Get list of values extracted from the spreadsheet cell at
+        (row, col) using groups (parentheses) in a regular expression. Values
+        are converted from strings to the given types. Raise ValidationError
+        if there are 0 matches or the wrong number of matches or any value
+        could not be converted to the expected type.
         :param row: row index
-        :param row: column index
+        :param col: column index
         :param regex: regular expression string
-        :param types: expected type of each match, e.g. (int, float, str).
-        length must correspond to the number of matches.
+        :param types: expected type of each match represented as a callable
+        that converts a string to that type, or a list/tuple of them whose
+        length corresponds to the number of matches.
+        Example:
+        >>> self._get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
+        >>> self._get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
         """
+        if not isinstance(types, (list, tuple)):
+            types = [types]
         text = self._get(row, col, basestring)
         m = re.match(regex, text)
         if m is None:
-            raise ValidationError
+            raise ValidationError('No match for "%s" in "%s"' % (regex, text))
         if len(m.groups()) != len(types):
             raise ValidationError
         results = []
@@ -152,10 +163,10 @@ class DirectEnergyMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xls
 
-    QUOTE_START_ROW = 9
+    QUOTE_START_ROW = 50
     DATE_ROW = 1
     DATE_COL = 0
-    VOLUME_RANGE_ROW = 7
+    VOLUME_RANGE_ROW = QUOTE_START_ROW - 1
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
@@ -167,18 +178,27 @@ class DirectEnergyMatrixParser(QuoteParser):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
-        self._get_matches(self.DATE_ROW, self.DATE_COL, r'as of (\d+/\d+/\d+)',
-                          [parser.parse])
-        _assert_equal('Annual Volume (MWh)', self._get(48,8,basestring))
         _assert_equal('Direct Energy HQ - Daily Matrix Price Report',
                       self._sheet.headers[0])
+        self._get_matches(self.DATE_ROW, self.DATE_COL, r'as of (\d+/\d+/\d+)',
+                          parse_date)
+        _assert_equal((
+            'Contract Start Month',
+            'State',
+            'Utility',
+            'Zone',
+            'Rate Code(s)',
+            'Product Special Options',
+            'Billing Method',
+            'Term'
+        ), self._sheet[self.QUOTE_START_ROW - 1][:8])
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
         # means < 150, so 1 is added to the 2nd number--unless it is the
         # highest volume range, in which case the 2nd number really means
         # what it says.
-        regex = r'(\d+)-(\d+)'
+        regex = r'(\d+)\s*-\s*(\d+)'
         low, high = self._get_matches(row, col, regex, (float, float))
         if col != self.PRICE_END_COL:
             high += 1
@@ -187,7 +207,8 @@ class DirectEnergyMatrixParser(QuoteParser):
     def _extract_quotes(self):
         # date at the top of the sheet: validity/expiration date for every
         # quote in this sheet
-        the_date = self._get(self.DATE_ROW, self.DATE_COL, datetime)
+        the_date = self._get_matches(self.DATE_ROW, self.DATE_COL,
+                                     'as of (\d+/\d+/\d+)', parse_date)
 
         volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
                          for col in xrange(self.PRICE_START_COL,
@@ -195,7 +216,7 @@ class DirectEnergyMatrixParser(QuoteParser):
 
         # volume ranges should be contiguous
         for i, vr in enumerate(volume_ranges[:-1]):
-            next_vr = volume_ranges[i+1]
+            next_vr = volume_ranges[i + 1]
             _assert_equal(vr[1], next_vr[0])
 
         for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
