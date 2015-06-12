@@ -17,7 +17,7 @@ QUOTE_DIRECTORY_PATH = '/tmp'
 # maps file names supplier primary keys.
 # only quote files with these names will be processed.
 FILE_NAMES_SUPPLIERS = {
-    'directenergy.xlsm': 13,
+    'directenergy.xls': 13,
     'aep.xls': 95,
 }
 

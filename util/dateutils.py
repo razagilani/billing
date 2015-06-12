@@ -274,3 +274,14 @@ def parse_date(string):
     # datetime must be on a day boundary (no hours, minutes, seconds, etc.)
     assert result == date_to_datetime(result)
     return result.date()
+
+def get_end_of_day(date_or_datetime):
+    """
+    :param date_or_datetime: date or datetime
+    :return: datetime representing the end of the day
+    """
+    if isinstance(date_or_datetime, datetime):
+        d = date_to_datetime(date_or_datetime).date()
+    else:
+        d = date_or_datetime
+    return date_to_datetime(d + timedelta(days=1))

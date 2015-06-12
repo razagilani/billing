@@ -9,17 +9,15 @@ from datetime import datetime, timedelta, date
 from tablib import Databook, formats
 
 from exc import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime
+from util.dateutils import parse_date, parse_datetime, get_end_of_day, \
+    date_to_datetime
 from brokerage.brokerage_model import MatrixQuote
 
 
 # TODO:
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
-# - make sure all spreadsheet format errors are ValidationErrors,
-# not IndexErrors, ValueErrors, etc (might want to use different exceptions
-# for validation and errors while extracting quotes)
-# - move code for asserting cell contents into superclass
+from util.monthmath import Month
 
 
 def _assert_true(p):
@@ -36,21 +34,24 @@ def _assert_match(regex, string):
     if not re.match(regex, string):
         raise ValidationError('No match for "%s" in "%s"' % (regex, string))
 
+
 def excel_number_to_date(number):
-    """Dates in some XLS spreadsheets will appear as numbers. These appear to
-    be the number of days since December 30, 1899.
+    """Dates in some XLS spreadsheets will appear as numbers of days since
+    (apparently) December 30, 1899.
     :param number: int or float
     :return: date
     """
     return date(1899, 12, 30) + timedelta(days=number)
 
+
 def excel_number_to_datetime(number):
-    """Dates in some XLS spreadsheets will appear as numbers. These appear to
-    be the number of days since December 30, 1899.
+    """Dates in some XLS spreadsheets will appear as numbers of days since
+    (apparently) December 30, 1899.
     :param number: int or float
     :return: datetime
     """
     return datetime(1899, 12, 30) + timedelta(days=number)
+
 
 class QuoteParser(object):
     """Class for parsing a particular quote spreadsheet. This is stateful and
@@ -75,6 +76,10 @@ class QuoteParser(object):
 
     @classmethod
     def _get_databook_from_file(cls, quote_file):
+        """
+        :param quote_file: file object
+        :return: tablib.Databook
+        """
         # tablib's "xls" format takes the file contents as a string as its
         # argument, but "xlsx" and others take a file object
         result = Databook()
@@ -130,8 +135,8 @@ class QuoteParser(object):
         pass
 
     def extract_quotes(self):
-        """Yield Quotes extracted from the file. Raises ValidationError if
-        the quote file is malformed.
+        """Yield Quotes extracted from the file. Raise ValidationError if the
+        quote file is malformed (no other exceptions should not be raised).
         """
         if not self._validated:
             self.validate()
@@ -166,7 +171,7 @@ class QuoteParser(object):
         if not isinstance(value, the_type):
             raise ValidationError(
                 'Expected type %s, found "%s" with type %s' % (
-                the_type, value, type(value)))
+                    the_type, value, type(value)))
         return value
 
     def _get_matches(self, row, col, regex, types):
@@ -257,9 +262,7 @@ class DirectEnergyMatrixParser(QuoteParser):
             # TODO use time zone here
             start_from = excel_number_to_datetime(
                 self._get(row, 0, (int, float)))
-            end_day = calendar.monthrange(start_from.year, start_from.month)[1]
-            start_until = datetime(start_from.year, start_from.month,
-                                   end_day) + timedelta(days=1)
+            start_until = date_to_datetime((Month(start_from) + 1).first)
             term_months = self._get(row, self.TERM_COL, (int, float))
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
