@@ -4,12 +4,12 @@ quotes.
 from abc import ABCMeta, abstractmethod
 import calendar
 import re
-from datetime import datetime, timedelta
-from dateutil.parser import parse as parse_date
+from datetime import datetime, timedelta, date
 
 from tablib import Databook, formats
 
 from exc import ValidationError, BillingError
+from util.dateutils import parse_date, parse_datetime
 from brokerage.brokerage_model import MatrixQuote
 
 
@@ -32,6 +32,26 @@ def _assert_equal(a, b):
         raise ValidationError("Expected %s, found %s" % (a, b))
 
 
+def _assert_match(regex, string):
+    if not re.match(regex, string):
+        raise ValidationError('No match for "%s" in "%s"' % (regex, string))
+
+def excel_number_to_date(number):
+    """Dates in some XLS spreadsheets will appear as numbers. These appear to
+    be the number of days since December 30, 1899.
+    :param number: int or float
+    :return: date
+    """
+    return date(1899, 12, 30) + timedelta(days=number)
+
+def excel_number_to_datetime(number):
+    """Dates in some XLS spreadsheets will appear as numbers. These appear to
+    be the number of days since December 30, 1899.
+    :param number: int or float
+    :return: datetime
+    """
+    return datetime(1899, 12, 30) + timedelta(days=number)
+
 class QuoteParser(object):
     """Class for parsing a particular quote spreadsheet. This is stateful and
     one instance should be used per file.
@@ -43,6 +63,15 @@ class QuoteParser(object):
 
     # subclasses can set this to use sheet titles to validate the file
     EXPECTED_SHEET_TITLES = None
+
+    # subclassses can fill this with (row, col, regex) tuples to assert
+    # expected contents of certain cells
+    EXPECTED_CELLS = []
+
+    # optional (row, col, regex) for for the validity/expiration date of every
+    # quote in this matrix: regex must have 1 parenthesized group that can be
+    # parsed as a date
+    DATE_CELL = None
 
     @classmethod
     def _get_databook_from_file(cls, quote_file):
@@ -61,9 +90,17 @@ class QuoteParser(object):
         return result
 
     def __init__(self):
+        # Databook and Dataset representing whole spreadsheet and relevant
+        # sheet respectively
         self._databook = None
         self._sheet = None
+
+        # whether validation has been done yet
         self._validated = False
+
+        # optional validity date and expiration date of all quotes (matrix
+        # quote spreadsheets tend have a date on them and are good for one day)
+        self.date = None
 
     def load_file(self, quote_file):
         """Read from 'quote_file'. May be very slow and take a huge amount of
@@ -85,8 +122,15 @@ class QuoteParser(object):
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_equal(self.EXPECTED_SHEET_TITLES,
                           [s.title for s in self._databook.sheets()])
+        for row, col, regex in self.EXPECTED_CELLS:
+            text = self._get(row, col, basestring)
+            _assert_match(regex, text)
         self._validate()
         self._validated = True
+
+    def _validate(self):
+        # subclasses can override this to do additional validation
+        pass
 
     def extract_quotes(self):
         """Yield Quotes extracted from the file. Raises ValidationError if
@@ -94,12 +138,12 @@ class QuoteParser(object):
         """
         if not self._validated:
             self.validate()
-        return self._extract_quotes()
 
-    @abstractmethod
-    def _validate(self):
-        # subclasses do validation here
-        raise NotImplementedError
+        # extract the date using DATE_CELL
+        row, col, regex = self.DATE_CELL
+        self.date = self._get_matches(row, col, regex, parse_datetime)
+
+        return self._extract_quotes()
 
     @abstractmethod
     def _extract_quotes(self):
@@ -115,7 +159,11 @@ class QuoteParser(object):
         :param the_type: expected type of the cell contents
         """
         try:
-            value = self._sheet[row][col]
+            if row == -1:
+                # 1st row is the header, 2nd row is index "0"
+                value = self._sheet.headers[col]
+            else:
+                value = self._sheet[row][col]
         except IndexError:
             raise ValidationError('No cell (%s, %s)' % (row, col))
         if not isinstance(value, the_type):
@@ -136,6 +184,7 @@ class QuoteParser(object):
         :param types: expected type of each match represented as a callable
         that converts a string to that type, or a list/tuple of them whose
         length corresponds to the number of matches.
+        :return: resulting value or list of values
         Example:
         >>> self._get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
         >>> self._get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
@@ -143,9 +192,8 @@ class QuoteParser(object):
         if not isinstance(types, (list, tuple)):
             types = [types]
         text = self._get(row, col, basestring)
+        _assert_match(regex, text)
         m = re.match(regex, text)
-        if m is None:
-            raise ValidationError('No match for "%s" in "%s"' % (regex, text))
         if len(m.groups()) != len(types):
             raise ValidationError
         results = []
@@ -155,6 +203,8 @@ class QuoteParser(object):
             except ValueError:
                 raise ValidationError
             results.append(value)
+        if len(results) == 1:
+            return results[0]
         return results
 
 
@@ -163,34 +213,30 @@ class DirectEnergyMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xls
 
+    HEADER_ROW = 49
     QUOTE_START_ROW = 50
     DATE_ROW = 1
     DATE_COL = 0
     VOLUME_RANGE_ROW = QUOTE_START_ROW - 1
+    TERM_COL = 7
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
     EXPECTED_SHEET_TITLES = [
         'Daily Matrix Price',
     ]
-
-    def _validate(self):
-        # note: tablib considers the first of the spreadsheet to be the
-        # "header" rather than a row
-        _assert_equal('Direct Energy HQ - Daily Matrix Price Report',
-                      self._sheet.headers[0])
-        self._get_matches(self.DATE_ROW, self.DATE_COL, r'as of (\d+/\d+/\d+)',
-                          parse_date)
-        _assert_equal((
-            'Contract Start Month',
-            'State',
-            'Utility',
-            'Zone',
-            'Rate Code(s)',
-            'Product Special Options',
-            'Billing Method',
-            'Term'
-        ), self._sheet[self.QUOTE_START_ROW - 1][:8])
+    EXPECTED_CELLS = [
+        (-1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
+        (HEADER_ROW, 0, 'Contract Start Month'),
+        (HEADER_ROW, 1, 'State'),
+        (HEADER_ROW, 2, 'Utility'),
+        (HEADER_ROW, 3, 'Zone'),
+        (HEADER_ROW, 4, r'Rate Code\(s\)'),
+        (HEADER_ROW, 5, 'Product Special Options'),
+        (HEADER_ROW, 6, 'Billing Method'),
+        (HEADER_ROW, 7, 'Term'),
+    ]
+    DATE_CELL = (DATE_ROW, DATE_COL, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -204,15 +250,9 @@ class DirectEnergyMatrixParser(QuoteParser):
         return low, high
 
     def _extract_quotes(self):
-        # date at the top of the sheet: validity/expiration date for every
-        # quote in this sheet
-        the_date = self._get_matches(self.DATE_ROW, self.DATE_COL,
-                                     'as of (\d+/\d+/\d+)', parse_date)
-
         volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
                          for col in xrange(self.PRICE_START_COL,
                                            self.PRICE_END_COL + 1)]
-
         # volume ranges should be contiguous
         for i, vr in enumerate(volume_ranges[:-1]):
             next_vr = volume_ranges[i + 1]
@@ -220,17 +260,18 @@ class DirectEnergyMatrixParser(QuoteParser):
 
         for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
             # TODO use time zone here
-            start_from = self._get(row, 0, datetime)
+            start_from = excel_number_to_datetime(
+                self._get(row, 0, (int, float)))
             end_day = calendar.monthrange(start_from.year, start_from.month)[1]
             start_until = datetime(start_from.year, start_from.month,
                                    end_day) + timedelta(days=1)
-            term_months = self._get(row, 6, int)
+            term_months = self._get(row, self.TERM_COL, (int, float))
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._get(row, col, (int, float)) / 100.
                 yield MatrixQuote(
                     start_from=start_from, start_until=start_until,
-                    term_months=term_months, valid_from=the_date,
-                    valid_until=the_date + timedelta(days=1),
+                    term_months=term_months, valid_from=self.date,
+                    valid_until=self.date + timedelta(days=1),
                     min_volume=min_vol, limit_volume=max_vol, price=price)
