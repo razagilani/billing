@@ -344,37 +344,35 @@ class UploadUtilityBillResource(BaseResource):
         address = Address(addressee=args['sa_addressee'], street=args['sa_street'],
                             city=args['sa_city'], state=args['sa_state'],
                             postal_code=args['sa_postal_code'])
-        try:
-            utility = s.query(Utility).filter_by(id=args['utility']).one()
-            try:
-                utility_account = s.query(UtilityAccount).filter_by(
-                    account_number=args['utility_account_number'],
-                    fb_utility=utility).one()
-            except NoResultFound:
-                last_account = s.query(
-                    cast(UtilityAccount.account, integer)).order_by(
-                    cast(UtilityAccount.account, integer).desc()).first()
-                next_account = str(int(last_account[0]) + 1)
-                utility_account = UtilityAccount(
-                    '', next_account, utility, None, None, Address(),
-                    address, args['utility_account_number'])
-                s.add(utility_account)
 
-            # Utility bills won't be created if there are no utility
-            # bill files
-            if not session.get('hash-digest'):
-                raise MissingFileError()
-            for hash_digest in session.get('hash-digest'):
-                ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                    utility_account, utility, hash_digest,
-                    service_address=address)
-                s.add(ub)
-            # remove the consumed hash-digest from session
-            session.pop('hash-digest')
-            update_altitude_account_guids(utility_account, args['guid'])
-            s.commit()
-        except Exception as e:
-            raise
+        utility = s.query(Utility).filter_by(id=args['utility']).one()
+        try:
+            utility_account = s.query(UtilityAccount).filter_by(
+                account_number=args['utility_account_number'],
+                fb_utility=utility).one()
+        except NoResultFound:
+            last_account = s.query(
+                cast(UtilityAccount.account, integer)).order_by(
+                cast(UtilityAccount.account, integer).desc()).first()
+            next_account = str(int(last_account[0]) + 1)
+            utility_account = UtilityAccount(
+                '', next_account, utility, None, None, Address(),
+                address, args['utility_account_number'])
+            s.add(utility_account)
+
+        # Utility bills won't be created if there are no utility
+        # bill files
+        if not session.get('hash-digest'):
+            raise MissingFileError()
+        for hash_digest in session.get('hash-digest'):
+            ub = self.utilbill_processor.create_utility_bill_with_existing_file(
+                utility_account, utility, hash_digest,
+                service_address=address)
+            s.add(ub)
+        # remove the consumed hash-digest from session
+        session.pop('hash-digest')
+        update_altitude_account_guids(utility_account, args['guid'])
+        s.commit()
         # Since this is initiated by an Ajax request, we will still have to
         # send a {'success', 'true'} parameter
         return {'success': 'true'}
