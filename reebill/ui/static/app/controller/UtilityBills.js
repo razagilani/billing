@@ -249,19 +249,19 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleUtilityComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('utility').name);
+        combo.setRawValue(selected.get('utility').name);
     },
 
     handleRateClassComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('rate_class').name);
+        combo.setRawValue(selected.get('rate_class').name);
     },
 
     handleSupplierComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('supplier').name);
+        combo.setRawValue(selected.get('supplier').name);
     },
 
     handleSupplyGroupComboFocus: function(combo) {
@@ -269,7 +269,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var selected = utility_grid.getSelectionModel().getSelection()[0];
         supply_group = selected.get('supply_group');
         if (supply_group !== null)
-            combo.setValue(selected.get('supply_group').name);
+            combo.setRawValue(selected.get('supply_group').name);
     },
 
     handleRateClassExpand: function(combo, record, index){
