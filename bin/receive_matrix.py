@@ -17,8 +17,9 @@ QUOTE_DIRECTORY_PATH = '/tmp'
 # maps file names supplier primary keys.
 # only quote files with these names will be processed.
 FILE_NAMES_SUPPLIERS = {
-    'directenergy.xls': 13,
     'aep.xls': 95,
+    'directenergy.xls': 13,
+    'usge.xlsx': 199,
 }
 
 def get_files():

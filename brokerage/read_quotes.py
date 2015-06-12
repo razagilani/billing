@@ -9,14 +9,14 @@ from tablib import Databook, formats
 
 from exc import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, date_to_datetime
+from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-
 
 
 # TODO:
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
-from util.monthmath import Month
+# - extract duplicate code for volume ranges across subclasses
 
 
 def _assert_true(p):
@@ -41,6 +41,16 @@ def excel_number_to_date(number):
     :return: date
     """
     return date(1899, 12, 30) + timedelta(days=number)
+
+def parse_number(string):
+    """Convert number string into a number.
+    :param string: number string formatted for American humans (with commas)
+    :return: int (if the number is really an integer) or float
+    """
+    result = float(string.replace(',', ''))
+    if result == round(result):
+        return int(result)
+    return result
 
 
 def excel_number_to_datetime(number):
@@ -279,3 +289,48 @@ class DirectEnergyMatrixParser(QuoteParser):
                     min_volume=min_vol, limit_volume=max_vol,
                     purchase_of_receivables=(special_options == 'POR'),
                     price=price)
+
+class USGEMatrixParser(QuoteParser):
+    """Parser for USGE spreadsheet. This one has energy along the rows and
+    time along the columns.
+    """
+    FILE_FORMAT = formats.xlsx
+
+    HEADER_ROW = 3
+    VOLUME_RANGE_COL = 3
+
+    EXPECTED_SHEET_TITLES = [
+        'KY',
+        'MD',
+        'NJ',
+        'NY',
+        'OH',
+        'PA',
+    ]
+    EXPECTED_CELLS = [
+        (0, 1, 'Pricing Date'),
+        (1, 1, 'Valid Thru'),
+        (HEADER_ROW, 0, 'LDC'),
+        (HEADER_ROW, 1, 'Customer Type'),
+        (HEADER_ROW, 2, 'RateClass'),
+        (HEADER_ROW, 3, 'Annual Usage Tier'),
+        (HEADER_ROW, 4, 'UOM'),
+    ]
+    DATE_CELL = (0, 2, '(\d+/\d+/\d+)')
+    # TODO: include validity time like "4 PM EPT" in the date
+
+    def _extract_volume_range(self, row, col):
+        below_regex = r'Below ([\d,]+) ccf/therms'
+        normal_regex = r'([\d,])+ to ([\d,])+) ccf/therms'
+        try:
+            low, high = self._get_matches(row, col, normal_regex,
+                                          (parse_number, parse_number))
+            low -= 1
+        except ValidationError:
+            high = self._get_matches(row, col, below_regex, parse_number)
+            low = 0
+        return low, high
+
+    def _extract_quotes(self):
+        # TODO
+        pass
