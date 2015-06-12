@@ -102,6 +102,8 @@ function displayData(task, isDetailed){
 function runExtractor(extractor_id){
 	var utility_id = $("select[name="+extractor_id+"]").val(); 
 	var num_bills_str = $("input[name=num_bills]").val();
+	var date_filter_type = $("select[name=date_filter_type").val();
+	var filter_date = $("input[name=filter_date]").val();
 	if(num_bills_str == ""){
 		var num_bills = -1;
 	} else {
@@ -110,7 +112,9 @@ function runExtractor(extractor_id){
 	var postParameters = {
 		extractor_id: extractor_id,
 		utility_id: (utility_id == "" ? null : utility_id),
-		num_bills: num_bills
+		num_bills: num_bills,
+		date_filter_type: date_filter_type,
+		filter_date: filter_date,
 	};
 	var utility_name = $("option[value="+utility_id+"]:first").text()
 	$.post("/run-test", postParameters, function(data, status, request){

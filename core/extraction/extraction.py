@@ -291,7 +291,7 @@ def pep_old_convert_charges(text):
         trans_charges_names_clean.append(name)
 
     def process_charge(name, value, ct):
-        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        rsi_binding = charge_name_map.get(name, name.upper().replautce(' ', '_'))
         return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
 
     charges = []
