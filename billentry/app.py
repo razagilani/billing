@@ -10,6 +10,7 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
 -structure
 '''
 import logging
+import re
 import traceback
 import urllib
 import uuid
@@ -199,6 +200,11 @@ def run_test():
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
     num_bills = int(request.form.get('num_bills'))
+    date_filter_type = request.form.get('date_filter_type')
+    filter_date = request.form.get('filter_date')
+    #if date is just a 4-digit year, add 'january 1st' to make a full date.
+    if re.match(r'\d{4}$', filter_date):
+        filter_date = filter_date + "-01-01"
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
@@ -207,6 +213,12 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
+    print filter_date, date_filter_type
+    if filter_date and date_filter_type:
+        if date_filter_type == 'before':
+            q = q.filter(UtilBill.period_end <= filter_date)
+        elif date_filter_type == 'after':
+            q = q.filter(UtilBill.period_end >= filter_date)
     if num_bills > 0:
         q = q.limit(num_bills)
     if q.count() == 0:

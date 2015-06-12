@@ -43,10 +43,18 @@
 			</tbody>
 		</table>
 	</div>
-	<br>
-	<button type="button" onclick="selectAll()">Select All</button>
-	<button type="button" onclick="runSelected()" style="margin-right:0px">Run Selected</button>
-	Limit Bills: <input type="number" name="num_bills" min="0">
+	<span style="line-height:200%">
+		<button type="button" onclick="selectAll()">Select All</button>
+		<button type="button" onclick="runSelected()" style="margin-right:0px">Run Selected</button>
+		<br>Limit Bills: <input type="number" name="num_bills" min="0">
+		<br>
+		Only get bills 
+		<select name="date_filter_type">
+			<option value="before">before</option>
+			<option value="after">after</option>
+		</select> 
+		the date (yyyy-mm-dd) <input type="text" name="filter_date">
+	</span>
 	</form>
 
 	<h3>There are {{ nbills }} total bills.</h3>
