@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
     MapperExtension
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.exc import NoResultFound
 
 from core import model
 from core.model import Charge, Session, Utility, Address, RateClass
@@ -63,6 +64,7 @@ class Main(object):
             total_count += 1
         return all_count, any_count, total_count
 
+
 class Applier(object):
     """Applies extracted values to attributes of UtilBill. There's no
     instance-specific state so only one instance is needed.
@@ -71,6 +73,27 @@ class Applier(object):
     created that includes the non-UtilBill specific parts, and other subclasses
     of it would have different 'KEYS' and a different implementation of 'apply'.
     """
+    @staticmethod
+    def set_rate_class(bill, rate_class_name):
+        """
+        Given a bill and a rate class name, this function sets the rate class of the bill.
+        If the name corresponds to an existing rate class in the database, then the existing rate class is used.
+        Otherwise, a new rate class object is created.
+        Note: This function uses the default service for all bills.
+        :param bill: A UtilBill object
+        :param rate_class_name:  A string, the name of the rate class
+        """
+        s = Session()
+        bill_util = bill.get_utility()
+        if bill_util is None:
+            raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
+        q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
+        try:
+            rate_class = q.one()
+        except NoResultFound:
+            rate_class = RateClass(utility=bill_util, name=rate_class_name)
+        bill.rate_class = rate_class
+
     BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
@@ -85,7 +108,7 @@ class Applier(object):
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
-        RATE_CLASS: model.UtilBill.rate_class,
+        RATE_CLASS: set_rate_class,
         SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
@@ -119,10 +142,14 @@ class Applier(object):
 
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
-            # method
-            method_name = attr.__name__
-            method = getattr(utilbill, method_name)
-            apply = lambda: method(value)
+            method = getattr(utilbill, attr.__name__)
+            if hasattr(utilbill, attr.__name__):
+                # method of UtilBill
+                apply = lambda: method(value)
+            else:
+                # other callable, such as method of this class.
+                # it must take a UtilBill and the value to apply.
+                apply = lambda: method(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
@@ -139,7 +166,7 @@ class Applier(object):
             else:
                 raise ApplicationError(
                     "Can't apply %s to %s: unknown attribute type %s" % (
-                    value, attr, type(attr)))
+                        value, attr, type(attr)))
             apply = lambda: setattr(utilbill, attr_name, value)
 
         # do it
@@ -159,48 +186,41 @@ def convert_wg_charges_std(text):
     # and for using it to convert names into rsi_bindings. it probably should
     # be an argument.
     charge_name_map = Session().query(Utility).filter_by(name='washington gas').one().charge_name_map
-    groups = r'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*?)' \
-             r'Total Current Washington Gas Charges(.*?)' \
-             r'Total Washington Gas Charges This Period'
     regexflags = re.IGNORECASE | re.MULTILINE | re.DOTALL
+    groups = r'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*?' \
+             r'Total Current Washington Gas Charges)(.*?)' \
+             r'Total Washington Gas Charges This Period'
+    charge_name_exp = r"([a-z]['a-z \-]+?[a-z])\s*(?:[\d@\n]|$)"
     dist_charge_block, supply_charge_block, taxes_charge_block, charge_values_block = re.search(groups, text, regexflags).groups()
-    dist_charge_names = re.split("\n+", dist_charge_block, regexflags)
-    supply_charge_names = re.split("\n+", supply_charge_block, regexflags)
-    taxes_charge_names = re.split("\n+", taxes_charge_block, regexflags)
-    charge_values_names = re.split("\n+", charge_values_block, regexflags)
+    dist_charge_names = re.findall(charge_name_exp, dist_charge_block, regexflags)
+    supply_charge_names = re.findall(charge_name_exp, supply_charge_block, regexflags)
+    taxes_charge_names = re.findall(charge_name_exp, taxes_charge_block, regexflags)
+    charge_values_lines = filter(None, re.split("\n+", charge_values_block,
+        regexflags))
 
-    charge_name_exp = r"([a-z]['a-z \-]+?[a-z])\s*[\d@\n]"
     #read charges backwards, because WG bills include previous bill amounts at top of table
-    charge_values_names = charge_values_names[::-1]
+    charge_values_lines = charge_values_lines[::-1]
     charge_data = [(taxes_charge_names[::-1], Charge.DISTRIBUTION),
         (supply_charge_names[::-1], Charge.SUPPLY),
         (dist_charge_names[::-1], Charge.DISTRIBUTION)]
 
-
     def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
         return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
-
     charges = []
     for names, type in charge_data:
-        for n in names:
-            if not charge_values_names:
+        for charge_name in names:
+            if not charge_values_lines:
                 break
-            charge_value_text = charge_values_names[0]
-            del charge_values_names[0]
+            charge_value_text = charge_values_lines[0]
+            del charge_values_lines[0]
             match = re.search(r"\$\s+(-?\d+(?:\.\d+)?)", charge_value_text)
             if not match:
                 continue
             charge_value = float(match.group(1))
-
-            match = re.search(charge_name_exp, n, regexflags)
-            if not match:
-                continue
-            charge_name = match.group(1)
-
             charges.append(process_charge(charge_name, charge_value, type))
-
-    return charges
+    #reverse list, remove last item ('Total Current Washington Gas Charges')
+    return charges[:0:-1]
 
 def convert_wg_charges_wgl(text):
     """Function to convert a string containing charges from a particular
@@ -383,9 +403,9 @@ def convert_address(text):
 def convert_rate_class(text):
     s = Session()
     q = s.query(RateClass).filter(RateClass.name == text)
-    if q.count():
+    try:
         return q.one()
-    else:
+    except NoResultFound:
         #TODO fill in fields correctly
         return RateClass(name=text)
 
@@ -418,7 +438,6 @@ class Field(model.Base):
     ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
-    RATE_CLASS = 'rate class'
     STRING = 'string'
     WG_CHARGES = 'wg charges'
     WG_CHARGES_WGL = 'wg charges wgl'
@@ -428,7 +447,6 @@ class Field(model.Base):
         ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
-        RATE_CLASS: lambda x: convert_rate_class(x),
         STRING: unicode,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,

@@ -10,7 +10,11 @@ from core import init_config, init_celery, init_model
 
 # init_model can't be called here because it will cause a circular import
 # with billentry
-init_config()
+from core import config
+if not config:
+    del config
+    init_config()
+    from core import config
 init_celery()
 from core import celery
 
