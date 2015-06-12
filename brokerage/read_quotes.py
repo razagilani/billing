@@ -2,16 +2,15 @@
 quotes.
 """
 from abc import ABCMeta, abstractmethod
-import calendar
 import re
 from datetime import datetime, timedelta, date
 
 from tablib import Databook, formats
 
 from exc import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime, get_end_of_day, \
-    date_to_datetime
+from util.dateutils import parse_date, parse_datetime, date_to_datetime
 from brokerage.brokerage_model import MatrixQuote
+
 
 
 # TODO:
@@ -218,6 +217,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     HEADER_ROW = 49
     VOLUME_RANGE_ROW = 49
     QUOTE_START_ROW = 50
+    SPECIAL_OPTIONS_COL = 5
     TERM_COL = 7
     PRICE_START_COL = 8
     PRICE_END_COL = 13
@@ -265,6 +265,10 @@ class DirectEnergyMatrixParser(QuoteParser):
             start_until = date_to_datetime((Month(start_from) + 1).first)
             term_months = self._get(row, self.TERM_COL, (int, float))
 
+            special_options = self._get(row, self.SPECIAL_OPTIONS_COL,
+                                        basestring)
+            _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
+
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._get(row, col, (int, float)) / 100.
@@ -272,4 +276,6 @@ class DirectEnergyMatrixParser(QuoteParser):
                     start_from=start_from, start_until=start_until,
                     term_months=term_months, valid_from=self._date,
                     valid_until=self._date + timedelta(days=1),
-                    min_volume=min_vol, limit_volume=max_vol, price=price)
+                    min_volume=min_vol, limit_volume=max_vol,
+                    purchase_of_receivables=(special_options == 'POR'),
+                    price=price)
