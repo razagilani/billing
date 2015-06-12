@@ -1,6 +1,7 @@
 """Code for reading quote files. Could include both matrix quotes and custom
 quotes.
 """
+from abc import ABCMeta
 import calendar
 import re
 from datetime import datetime, timedelta
@@ -8,7 +9,7 @@ from dateutil import parser
 
 from tablib import Databook, formats
 
-from exc import ValidationError
+from exc import ValidationError, BillingError
 from brokerage.brokerage_model import MatrixQuote
 
 
@@ -35,17 +36,29 @@ class QuoteParser(object):
     """Class for parsing a particular quote spreadsheet. This is stateful and
     one instance should be used per file.
     """
-    @staticmethod
-    def _get_databook_from_file(quote_file):
+    __metaclass__ = ABCMeta
+
+    # tablib submodule that should be used to import data from the spreadsheet
+    FILE_FORMAT = None
+
+    # subclasses can set this to use sheet titles to validate the file
+    EXPECTED_SHEET_TITLES = None
+
+    @classmethod
+    def _get_databook_from_file(cls, quote_file):
         # TODO tablib always chooses the "active" sheet to make a Dataset,
         # but it should actually create a Databook for all sheets
         result = Databook()
-        filecontents = quote_file.read()
-        formats.xls.import_book(result, filecontents)
-        return result
 
-    # subclasses can set this to use sheet titles to validate the file
-    expected_sheet_titles = None
+        # tablib's "xls" format takes the file contents as a string as its
+        # argument, but "xlsx" and others take a file object
+        if cls.FILE_FORMAT in [formats.xlsx]:
+            cls.FILE_FORMAT.import_book(result, quote_file)
+        elif cls.FILE_FORMAT in [formats.xls]:
+            cls.FILE_FORMAT.import_book(result, quote_file.read())
+        else:
+            raise BillingError('Unknown format: %s' % format.__name__)
+        return result
 
     def __init__(self):
         self._databook = None
@@ -69,8 +82,8 @@ class QuoteParser(object):
         problems the contents in advance.
         """
         assert self._databook is not None
-        if self.expected_sheet_titles is not None:
-            _assert_equal(self.expected_sheet_titles,
+        if self.EXPECTED_SHEET_TITLES is not None:
+            _assert_equal(self.EXPECTED_SHEET_TITLES,
                           [s.title for s in self._databook.sheets()])
         self._validate()
         self._validated = True
@@ -137,6 +150,8 @@ class QuoteParser(object):
 class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
+    FILE_FORMAT = formats.xls
+
     QUOTE_START_ROW = 9
     DATE_ROW = 1
     DATE_COL = 0
@@ -144,7 +159,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
-    expected_sheet_titles = [
+    EXPECTED_SHEET_TITLES = [
         'Daily Matrix Price',
     ]
 
@@ -152,7 +167,8 @@ class DirectEnergyMatrixParser(QuoteParser):
         # note: it does not seem possible to access the first row (what Excel
         # would call row 1, the one that says "Daily Price Matrix") through
         # tablib/xlwt.
-        self._get_matches(self.DATE_ROW,self.DATE_COL,r'as of (\d+/\d+/\d+)',[parser.parse])
+        self._get_matches(self.DATE_ROW, self.DATE_COL, r'as of (\d+/\d+/\d+)',
+                          [parser.parse])
         _assert_equal('Annual Volume (MWh)', self._get(48,8,basestring))
         _assert_equal('Direct Energy HQ - Daily Matrix Price Report',
                       self._sheet.headers[0])

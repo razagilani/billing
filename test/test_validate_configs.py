@@ -22,5 +22,4 @@ class TestValidateConfigs(TestCase):
     def test_validate_configs(self):
         for path in self.file_paths:
             with open(path) as fp:
-                print path
                 self.config_parser.readfp(fp)
