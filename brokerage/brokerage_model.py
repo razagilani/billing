@@ -48,7 +48,11 @@ class Quote(Base):
     valid_from = Column(DateTime, nullable=False)
     valid_until = Column(DateTime, nullable=False)
 
-    # fixed price for energy in dollars/kWh
+    # whether this quote involves "POR" (supplier is offering a discount
+    # because credit risk is transferred to the utility)
+    purchase_of_receivables = Column(Boolean, nullable=False, default=False)
+
+    # fixed price for energy in dollars/energy unit
     price = Column(Float, nullable=False)
 
     # other attributes that may need to be added
@@ -69,7 +73,7 @@ class Quote(Base):
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
-                 price=None):
+                 price=None, por=False):
         self.start_from = start_from
         self.start_until = start_until
         self.term_months = term_months
@@ -77,6 +81,7 @@ class Quote(Base):
         self.valid_from = valid_from
         self.valid_until = valid_until
         self.price = price
+        self.por = por
 
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
@@ -119,11 +124,11 @@ class MatrixQuote(Quote):
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
-                 price=None, min_volume=None, limit_volume=None):
+                 price=None, min_volume=None, limit_volume=None, por=False):
         super(MatrixQuote, self).__init__(
             start_from=start_from, start_until=start_until,
             term_months=term_months, date_received=date_received,
-            valid_from=valid_from, valid_until=valid_until, price=price)
+            valid_from=valid_from, valid_until=valid_until, price=price, por=por)
         self.min_volume = min_volume
         self.limit_volume = limit_volume
 
