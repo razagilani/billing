@@ -271,5 +271,6 @@ def parse_date(string):
     :return: date
     """
     result = parser.parse(string)
-    assert isinstance(result, date)
-    return result
+    # datetime must be on a day boundary (no hours, minutes, seconds, etc.)
+    assert result == date_to_datetime(result)
+    return result.date()
