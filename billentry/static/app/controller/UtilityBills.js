@@ -66,7 +66,6 @@ Ext.define('BillEntry.controller.UtilityBills', {
                 click: this.handleUtilbillHelp
             },
             '#utility_combo':{
-                //select: this.handleUtilityComboChanged,
                 focus: this.handleUtilityComboFocus,
                 blur: this.handleUtilityBlur
             },
@@ -263,24 +262,6 @@ Ext.define('BillEntry.controller.UtilityBills', {
                 return false;
             }
         }
-    },
-
-    /**
-     * Update the rate_class combo to display either the first rate_class
-     * for the currently selected utility or Unknown if the currently
-     * selected utility has no rate_classes
-     */
-    handleUtilityComboChanged: function(utility_combo, record){
-        var rate_class_store = Ext.getStore("RateClasses");
-        rate_class_store.clearFilter(true);
-        rate_class_store.filter({property:"utility_id", type: 'int',
-                                    value: record[0].get('id'), exactMatch:true});
-        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var utility_store = this.getUtilityBillsStore();
-        if (rate_class_store.count() > 0)
-            selected.set('rate_class', rate_class_store.getAt(0).get('name'));
-        else
-            selected.set('rate_class', 'Unknown Rate Class')
     },
 
     /*
