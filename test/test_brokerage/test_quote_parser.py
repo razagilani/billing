@@ -32,5 +32,5 @@ class DirectEnergyParserTest(TestCase):
         self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual(75.0, q1.limit_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.7036, q1.price)
