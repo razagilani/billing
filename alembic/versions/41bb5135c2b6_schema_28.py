@@ -15,8 +15,9 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    pass
+    op.add_column('quote', sa.Column('purchase_of_receivables', sa.Boolean,
+                                     nullable=False))
 
 
 def downgrade():
-    pass
+    raise NotImplementedError
