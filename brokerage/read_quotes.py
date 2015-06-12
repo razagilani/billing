@@ -75,12 +75,9 @@ class QuoteParser(object):
 
     @classmethod
     def _get_databook_from_file(cls, quote_file):
-        # TODO tablib always chooses the "active" sheet to make a Dataset,
-        # but it should actually create a Databook for all sheets
-        result = Databook()
-
         # tablib's "xls" format takes the file contents as a string as its
         # argument, but "xlsx" and others take a file object
+        result = Databook()
         if cls.FILE_FORMAT in [formats.xlsx]:
             cls.FILE_FORMAT.import_book(result, quote_file)
         elif cls.FILE_FORMAT in [formats.xls]:
@@ -100,7 +97,7 @@ class QuoteParser(object):
 
         # optional validity date and expiration date of all quotes (matrix
         # quote spreadsheets tend have a date on them and are good for one day)
-        self.date = None
+        self._date = None
 
     def load_file(self, quote_file):
         """Read from 'quote_file'. May be very slow and take a huge amount of
@@ -141,7 +138,7 @@ class QuoteParser(object):
 
         # extract the date using DATE_CELL
         row, col, regex = self.DATE_CELL
-        self.date = self._get_matches(row, col, regex, parse_datetime)
+        self._date = self._get_matches(row, col, regex, parse_datetime)
 
         return self._extract_quotes()
 
@@ -214,10 +211,8 @@ class DirectEnergyMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xls
 
     HEADER_ROW = 49
+    VOLUME_RANGE_ROW = 49
     QUOTE_START_ROW = 50
-    DATE_ROW = 1
-    DATE_COL = 0
-    VOLUME_RANGE_ROW = QUOTE_START_ROW - 1
     TERM_COL = 7
     PRICE_START_COL = 8
     PRICE_END_COL = 13
@@ -236,7 +231,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (HEADER_ROW, 6, 'Billing Method'),
         (HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (DATE_ROW, DATE_COL, 'as of (\d+/\d+/\d+)')
+    DATE_CELL = (1, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -272,6 +267,6 @@ class DirectEnergyMatrixParser(QuoteParser):
                 price = self._get(row, col, (int, float)) / 100.
                 yield MatrixQuote(
                     start_from=start_from, start_until=start_until,
-                    term_months=term_months, valid_from=self.date,
-                    valid_until=self.date + timedelta(days=1),
+                    term_months=term_months, valid_from=self._date,
+                    valid_until=self._date + timedelta(days=1),
                     min_volume=min_vol, limit_volume=max_vol, price=price)
