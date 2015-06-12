@@ -124,7 +124,8 @@ class MatrixQuote(Quote):
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
-                 price=None, min_volume=None, limit_volume=None, por=False):
+                 price=None, min_volume=None, limit_volume=None,
+                 purchase_of_receivables=None):
         super(MatrixQuote, self).__init__(
             start_from=start_from, start_until=start_until,
             term_months=term_months, date_received=date_received,
