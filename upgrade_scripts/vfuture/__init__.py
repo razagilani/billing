@@ -47,7 +47,7 @@ def create_extractors(s):
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_charges_regex, type=Field.PEPCO_NEW_CHARGES, applier_key=Applier.CHARGES))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_service_address_regex, type=Field.ADDRESS, applier_key=Applier.SERVICE_ADDRESS))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_billing_address_regex, type=Field.ADDRESS, applier_key=Applier.BILLING_ADDRESS))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_rate_class_regex, type=Field.RATE_CLASS, applier_key=Applier.RATE_CLASS))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
     #pepco bills from before 2015, blue logo
     pep_old_start_regex = r'Services for (%s) to %s' % (date_format, date_format)
@@ -66,12 +66,12 @@ def create_extractors(s):
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=Applier.CHARGES))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_service_address_regex, type=Field.ADDRESS, applier_key=Applier.SERVICE_ADDRESS))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_billing_address_regex, type=Field.ADDRESS, applier_key=Applier.BILLING_ADDRESS))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_rate_class_regex, type=Field.RATE_CLASS, applier_key=Applier.RATE_CLASS))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
     wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
-    wg_energy_regex = r"(%s)\s+Gas you've used this period" % num_format
+    wg_energy_regex = r"Distribution Charge\s+(%s)" % num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
     wg_charges_regex = r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))'
     wg_service_address_regex = r'(?:Days\)|Service address:)\s+(.+?)\s+(?:Questions|Please)'
@@ -86,7 +86,8 @@ def create_extractors(s):
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_charges_regex, type=Field.WG_CHARGES, applier_key=Applier.CHARGES))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_service_address_regex, type=Field.ADDRESS, applier_key=Applier.SERVICE_ADDRESS))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_billing_address_regex, type=Field.ADDRESS, applier_key=Applier.BILLING_ADDRESS))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_rate_class_regex, type=Field.RATE_CLASS, applier_key=Applier.RATE_CLASS))
+    washington_gas.fields.append(TextExtractor.TextField(
+        regex=wg_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
     s.add_all([e, pepco_2015, pepco_old, washington_gas])
 

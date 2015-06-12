@@ -10,7 +10,6 @@ from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import TextExtractor, Field, Applier, \
     Extractor, Main
-from core.extraction.task import test_extractor
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
@@ -201,21 +200,29 @@ class TestIntegration(TestCase):
 
         # create extractor
         e1 =  TextExtractor(name='Example')
-        date_fmt = '[A-Za-z]+ [0-9]{1,2}, [0-9]{4}'
+        date_format = r'[A-Za-z]+\s*[0-9]{1,2},\s*[0-9]{4}'
+        num_format = r'[0-9,\.]+'
         e1.fields = [
             TextExtractor.TextField(
-                regex='.*Actual Meter Reading(%s)' % date_fmt,
+                regex=r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format),
                 type=Field.DATE, applier_key='start'),
-            TextExtractor.TextField(regex='.*used this period(%s)' % date_fmt,
+            TextExtractor.TextField(regex=r'%s-(%s)\s*\(\d+ Days\)' % (
+                date_format, date_format),
                 type=Field.DATE, applier_key='end'),
             TextExtractor.TextField(
-                regex='.*days([0-9]+.?[0-9]*)Previous Bill Amount',
+                regex=r"Distribution Charge\s+(%s)" % num_format,
                 type=Field.FLOAT, applier_key='energy'),
-            TextExtractor.TextField(regex='.*reading date is (%s)' % date_fmt,
+            TextExtractor.TextField(regex=r'Your next meter reading date is ('
+                                          r'%s)' % date_format,
                 type=Field.DATE, applier_key='next read'),
-            TextExtractor.TextField(regex=r'.*(DISTRIBUTION SERVICE.*)Total Cu',
+            TextExtractor.TextField(regex=r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))',
                            type=Field.WG_CHARGES, applier_key='charges')
         ]
+        # wg_service_address_regex = r'(?:Days\)|Service address:)\s+(.+?)\s+(?:Questions|Please)'
+        # # for billing address, before "check here to donate", get all characters that are not a double newline
+        # wg_billing_address_regex = r'\n\n([^\n]|\n(?!\n))*\n\nCheck here to donate'
+        # wg_rate_class_regex = r'rate class:\s+meter number:\s+([^\n]+)'
+
         e2 = TextExtractor(name='Another')
         Session().add_all([self.bill, e1, e2])
         self.e1, self.e2 = e1, e2
@@ -269,6 +276,7 @@ class TestIntegration(TestCase):
         s.flush()
         self.assertGreater(self.e1.modified, modified)
 
+    @skip('this task was deleted, might come back')
     def test_test_extractor(self):
         # TODO: it might be possible to write this as a unit test, without the
         # database. database queries in tasks would be moved to a DAO like
