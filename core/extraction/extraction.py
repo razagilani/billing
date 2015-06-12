@@ -640,6 +640,7 @@ class ExtractorResult(model.Base):
     field_end = Column(Integer)
     field_energy = Column(Integer)
     field_next_read = Column(Integer)
+    field_rate_class = Column(Integer)
     field_start = Column(Integer)
     field_service_address = Column(Integer)
     # field counts by month
@@ -648,6 +649,7 @@ class ExtractorResult(model.Base):
     end_by_month = Column(HSTORE)
     energy_by_month = Column(HSTORE)
     next_read_by_month = Column(HSTORE)
+    rate_class_by_month = Column(HSTORE)
     service_address_by_month = Column(HSTORE)
     start_by_month = Column(HSTORE)
 
@@ -662,8 +664,9 @@ class ExtractorResult(model.Base):
 
         # update overall count and count by month for each field
         for field_name in Applier.KEYS.iterkeys():
+            attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
-            setattr(self, "field_" + field_name, count_for_field)
+            setattr(self, "field_" + attr_name, count_for_field)
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
-            setattr(self, field_name + "_by_month", date_count_dict)
+            setattr(self, attr_name + "_by_month", date_count_dict)
