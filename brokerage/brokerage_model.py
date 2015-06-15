@@ -2,10 +2,10 @@
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float
+    Float, Table
 from sqlalchemy.orm import relationship
 
-from core.model import Base, UtilityAccount
+from core.model import Base, UtilityAccount, altitude_metadata
 from exc import ValidationError
 
 
@@ -24,45 +24,55 @@ class BrokerageAccount(Base):
         self.utility_account = utility_account
 
 
+# Company = Table('Company', altitude_metadata,
+#                 Column('Company_ID', Integer))
+class Company(Base):
+    __tablename__ = 'Company'
+    company_id = Column('Company_ID', Integer, primary_key=True)
+    name = Column('Company', Integer, primary_key=True)
+
 class Quote(Base):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'rate'
+    __tablename__ = 'Rate'
 
-    quote_id = Column(Integer, primary_key=True)
-    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    rate_id = Column('Rate_ID', Integer, primary_key=True)
+    supplier_id = Column('CompanySupplier_ID', Integer,
+                         ForeignKey('Company.Company_ID'), nullable=False)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
-    start_from = Column(DateTime, nullable=False)
-    start_until = Column(DateTime, nullable=False)
+    start_from = Column('Start_From', DateTime, nullable=False)
+    start_until = Column('Start_Until', DateTime, nullable=False)
 
     # term length in number of utility billing periods
-    term_months = Column(Integer, nullable=False)
+    term_months = Column('Term_Months', Integer, nullable=False)
 
     # when this quote was received
-    date_received = Column(DateTime, nullable=False)
+    date_received = Column('Date_Received', DateTime, nullable=False)
 
     # inclusive start and exclusive end of the period during which this quote
     # is valid
-    valid_from = Column(DateTime, nullable=False)
-    valid_until = Column(DateTime, nullable=False)
+    valid_from = Column('Valid_From', DateTime, nullable=False)
+    valid_until = Column('Valid_Until', DateTime, nullable=False)
 
     # whether this quote involves "POR" (supplier is offering a discount
     # because credit risk is transferred to the utility)
-    purchase_of_receivables = Column(Boolean, nullable=False, default=False)
+    purchase_of_receivables = Column('Purchase_Of_Receivables', Boolean,
+                                     nullable=False, default=False)
 
     # fixed price for energy in dollars/energy unit
-    price = Column(Float, nullable=False)
+    price = Column('Price', Float, nullable=False)
 
     # zone
-    zone = Column(String)
+    zone = Column('Zone', String)
 
     # dual billing
-    dual_billing = Column(Boolean, nullable=False)
+    dual_billing = Column('Dual_Billing', Boolean, nullable=False,
+                          default=False)
 
     # Percent Swing Allowable
-    percent_swing_allowable = Column(Float)
+    percent_swing = Column('Percent_Swing', Float)
 
     discriminator = Column(String(50), nullable=False)
     __mapper_args__ = {
@@ -120,8 +130,8 @@ class MatrixQuote(Quote):
     # that this quote applies to. nullable because there might be no
     # restrictions on energy usage.
     # (min_volume <= customer's energy consumption < limit_volume)
-    min_volume = Column(Float)
-    limit_volume = Column(Float)
+    min_volume = Column('Min_Volume', Float)
+    limit_volume = Column('Max_Volume', Float)
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,

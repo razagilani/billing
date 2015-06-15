@@ -4,6 +4,7 @@ stdin. Can be triggered by Postfix.
 import logging
 import os
 import traceback
+from brokerage.brokerage_model import Company
 from core import init_altitude_db, init_config, init_logging, init_model
 from core.model import AltitudeSession, Session
 from brokerage.read_quotes import DirectEnergyMatrixParser
@@ -17,33 +18,37 @@ QUOTE_DIRECTORY_PATH = '/tmp'
 # maps file names supplier primary keys.
 # only quote files with these names will be processed.
 FILE_NAMES_SUPPLIERS = {
-    'aep.xls': 95,
-    'directenergy.xls': 13,
-    'usge.xlsx': 199,
+    'aep.xls': 'AEP',
+    'directenergy.xls': 'Direct Energy',
+    'usge.xlsx': 'USGE',
 }
 
 def get_files():
     logger = logging.getLogger(LOG_NAME)
 
-    #s = AltitudeSession()
-    s = Session()
+    s = AltitudeSession()
+    #s = Session()
 
-    for file_name, supplier_id in FILE_NAMES_SUPPLIERS.iteritems():
+    for file_name, supplier_name in FILE_NAMES_SUPPLIERS.iteritems():
         full_path = os.path.join(QUOTE_DIRECTORY_PATH, file_name)
         if not os.access(full_path, os.W_OK):
             logger.info('Skipped "%s"' % file_name)
             continue
+        supplier = s.query(Company).filter_by(name=supplier_name).one()
         count = 0
         try:
             with open(full_path, 'rb') as quote_file:
                 quote_parser = DirectEnergyMatrixParser()
+                logger.info('Starting to read from "%s"' % file_name)
                 quote_parser.load_file(quote_file)
                 quote_parser.validate()
                 for quote in quote_parser.extract_quotes():
-                    quote.supplier_id = supplier_id
+                    quote.supplier_id = supplier.company_id
                     s.add(quote)
                     s.flush()
                     count += 1
+                    if count % 1000 == 0:
+                        logger.debug('%s quotes so far' % count)
                 s.commit()
             os.remove(full_path)
         except Exception as e:
