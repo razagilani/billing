@@ -27,7 +27,7 @@ class BrokerageAccount(Base):
 class Quote(Base):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'quote'
+    __tablename__ = 'rate'
 
     quote_id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
@@ -51,11 +51,15 @@ class Quote(Base):
     # fixed price for energy in dollars/kWh
     price = Column(Float, nullable=False)
 
-    # other attributes that may need to be added
-    # swing_range (%)
-    # swing_penalty_rate (is there just one? how do we determine what it is?)
+    # zone
+    zone = Column(String)
 
-    # joined-table inheritance
+    # dual billing
+    dual_billing = Column(Boolean, nullable=False)
+
+    # Percent Swing Allowable
+    percent_swing_allowable = Column(Float)
+
     discriminator = Column(String(50), nullable=False)
     __mapper_args__ = {
         'polymorphic_identity': 'quote',
@@ -103,8 +107,6 @@ class MatrixQuote(Quote):
     a particular utility, rate class, and annual total energy usage, taken
     from a daily "matrix" spreadsheet.
     """
-    __tablename__ = 'matrix_quote'
-
     # lower and upper limits on annual total energy consumption for customers
     # that this quote applies to. nullable because there might be no
     # restrictions on energy usage.
@@ -112,7 +114,6 @@ class MatrixQuote(Quote):
     min_volume = Column(Float)
     limit_volume = Column(Float)
 
-    quote_id = Column(Integer, ForeignKey('quote.quote_id'), primary_key=True)
     __mapper_args__ = {
         'polymorphic_identity': 'matrixquote',
     }
