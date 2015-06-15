@@ -27,7 +27,7 @@ class BrokerageAccount(Base):
 class Quote(Base):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'quote'
+    __tablename__ = 'rate'
 
     quote_id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
@@ -55,11 +55,15 @@ class Quote(Base):
     # fixed price for energy in dollars/energy unit
     price = Column(Float, nullable=False)
 
-    # other attributes that may need to be added
-    # swing_range (%)
-    # swing_penalty_rate (is there just one? how do we determine what it is?)
+    # zone
+    zone = Column(String)
 
-    # joined-table inheritance
+    # dual billing
+    dual_billing = Column(Boolean, nullable=False)
+
+    # Percent Swing Allowable
+    percent_swing_allowable = Column(Float)
+
     discriminator = Column(String(50), nullable=False)
     __mapper_args__ = {
         'polymorphic_identity': 'quote',
