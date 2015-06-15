@@ -27,6 +27,18 @@ from core.model import Register
 from upgrade_scripts.v27.postgres import migrate_to_postgres
 
 
+def insert_matrix_file_names(s):
+    de = s.query(Supplier).filter_by(name='direct energy').one()
+    de.matrix_file_name = 'directenergy.xls'
+    aep = s.query(Supplier).filter_by(name='AEP').one()
+    aep.matrix_file_name = 'aep.xls'
+
 def upgrade():
     alembic_upgrade('41bb5135c2b6')
 
+    init_model()
+    s = Session()
+
+    insert_matrix_file_names(s)
+
+    s.commit()

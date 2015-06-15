@@ -256,6 +256,9 @@ class Supplier(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False, unique=True)
 
+    # for importing matrix quotes from files
+    matrix_file_name = Column(String, unique=True)
+
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
 
