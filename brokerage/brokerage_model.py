@@ -108,7 +108,9 @@ class MatrixQuote(Quote):
     a particular utility, rate class, and annual total energy usage, taken
     from a daily "matrix" spreadsheet.
     """
-    __tablename__ = 'matrix_quote'
+    __mapper_args__ = {
+        'polymorphic_identity': 'matrixquote',
+    }
 
     # lower and upper limits on annual total energy consumption for customers
     # that this quote applies to. nullable because there might be no
@@ -116,11 +118,6 @@ class MatrixQuote(Quote):
     # (min_volume <= customer's energy consumption < limit_volume)
     min_volume = Column(Float)
     limit_volume = Column(Float)
-
-    quote_id = Column(Integer, ForeignKey('quote.quote_id'), primary_key=True)
-    __mapper_args__ = {
-        'polymorphic_identity': 'matrixquote',
-    }
 
     def __init__(self, start_from=None, start_until=None, term_months=None,
                  date_received=None, valid_from=None, valid_until=None,
