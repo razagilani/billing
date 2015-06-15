@@ -29,7 +29,7 @@ class BrokerageAccount(Base):
 class Company(Base):
     __tablename__ = 'Company'
     company_id = Column('Company_ID', Integer, primary_key=True)
-    name = Column('Company', Integer, primary_key=True)
+    name = Column('Company', String, unique=True)
 
 class Quote(Base):
     """Fixed-price candidate supply contract.
