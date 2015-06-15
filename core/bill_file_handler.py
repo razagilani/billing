@@ -1,8 +1,8 @@
 import hashlib
+import string
 
 from core.model import UtilBill
 from exc import MissingFileError, DuplicateFileError
-
 
 class BillFileHandler(object):
     """Handles everything related to utility bill files. These are
@@ -93,6 +93,8 @@ class BillFileHandler(object):
         """
         key_name = self.get_key_name_for_utilbill(utilbill)
         key = self._get_amazon_bucket().get_key(key_name)
+        if key is None:
+            raise MissingFileError('Key "%s" does not exist' % key_name)
         key.get_contents_to_file(output_file)
 
     def delete_file(self, utilbill):
