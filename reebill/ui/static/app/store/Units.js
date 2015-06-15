@@ -4,7 +4,7 @@ Ext.define('ReeBill.store.Units', {
     fields: ['name', 'value'],
     data: [
         {name : 'dollars', value: 'dollars'},
-        {name : 'kWh', value: 'kwh'},
+        {name : 'kWh', value: 'kWh'},
         {name : 'BTU', value: 'BTU'},
         {name : 'MMBTU', value: 'MMBTU'},
         {name : 'therms', value: 'therms'},
