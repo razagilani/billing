@@ -19,7 +19,7 @@ from util.dictutils import deep_map
 
 init_test_config()
 
-from core.altitude import AltitudeBill, get_utilbill_from_guid
+from core.altitude import AltitudeBill, get_utilbill_from_guid, AltitudeAccount
 
 import billentry
 from billentry import common
@@ -146,24 +146,26 @@ class BillEntryIntegrationTest(object):
         self.utility = Utility(name='Example Utility')
         self.utility.id = 1
         self.ua1 = UtilityAccount('Account 1', '11111', self.utility, None,
-                                  None, Address(), Address(), '1')
+                                  None, Address(), Address(), account_number='1')
         self.ua1.id = 1
-        self.rate_class = RateClass('Some Rate Class', self.utility, 'gas')
-        self.ub1 = BEUtilBill(self.ua1, self.utility, self.rate_class,
+        self.some_rate_class = RateClass('Some Rate Class', self.utility, 'gas')
+        self.some_rate_class.id= 1
+        self.ub1 = BEUtilBill(self.ua1, self.utility, self.some_rate_class,
                               service_address=Address(street='1 Example St.'))
-        self.ub1.registers[0].quantity = 150
-        self.ub1.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub1._registers[0].meter_identifier = "GHIJKL"
         self.ub2 = BEUtilBill(self.ua1, self.utility, None,
                               service_address=Address(street='2 Example St.'))
         self.ua2 = UtilityAccount('Account 2', '22222', self.utility, None,
-                                  None, Address(), Address(), '2')
+                                  None, Address(), Address(), account_number='2')
         self.ua2.id = 2
         self.rate_class2 = RateClass('Some Electric Rate Class', self.utility,
                                      'electric')
+        self.rate_class2.id = 2
         self.ub2.set_rate_class(self.rate_class2)
-        self.ub2.registers[0].unit = 'therms'
-        self.ub2.registers[0].quantity = 250.0
-        self.ub2.registers[0].meter_identifier = 'MNOPQR'
+        self.ub2._registers[0].unit = 'therms'
+        self.ub2._registers[0].quantity = 250.0
+        self.ub2._registers[0].meter_identifier = 'MNOPQR'
         self.ub3 = BEUtilBill(self.ua2, self.utility, self.rate_class2,
                               service_address=Address(street='1 Electric St.'))
         self.ub1.id = 1
@@ -171,7 +173,7 @@ class BillEntryIntegrationTest(object):
         self.ub3.id = 3
         s = Session()
         s.add_all([
-            self.utility, self.ua1, self.rate_class, self.ub1,
+            self.utility, self.ua1, self.some_rate_class, self.ub1,
             self.ub2, self.project_mgr_role, self.admin_role,
         ])
         # TODO: add more database objects used in multiple subclass setUps
@@ -191,22 +193,28 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         utility1 = Utility(name='Empty Utility')
         utility2 = Utility(name='Some Other Utility')
         ua2 = UtilityAccount('Account 2', '22222', self.utility, None, None,
-                             Address(), Address(), '2')
+                             Address(), Address(), account_number='2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
-                             Address(), Address(), '3')
-        rate_class1 = RateClass('Other Rate Class', self.utility, 'electric')
-        s.add_all([self.rate_class, rate_class1])
+                             Address(), Address(), account_number='3')
+        self.altitude_account1 = AltitudeAccount(ua2,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff6')
+        self.altitude_account2 = AltitudeAccount(ua3,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff7')
+        self.other_rate_class = RateClass('Other Rate Class', self.utility, 'electric')
+        self.other_rate_class.id = 3
+        s.add_all([self.some_rate_class, self.other_rate_class])
         ua2.id, ua3.id = 2, 3
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
-                   BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
+                   BrokerageAccount(self.ua1), BrokerageAccount(ua2),
+                   self.altitude_account1, self.altitude_account2])
         ub3 = UtilBill(ua3, utility1, None,
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
 
-        self.ub1.registers[0].quantity = 150
-        self.ub2.registers[0].quantity = 150
-        self.ub2.registers[0].meter_identifier = "GHIJKL"
+        self.ub1._registers[0].quantity = 150
+        self.ub2._registers[0].quantity = 150
+        self.ub2._registers[0].meter_identifier = "GHIJKL"
 
         c1 = Charge('CONSTANT', rate=0.4, formula='100', unit='dollars',
                     type='distribution', target_total=1)
@@ -223,7 +231,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         self.ub1.charges = [c1, c2]
         self.ub2.charges = [c3, c4, c5]
-        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
+
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3,
+            self.altitude_account1, self.altitude_account2])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
 
@@ -258,6 +268,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             {'results': 0,
              'rows': [], }, rv.data)
 
+    def test_altitude_accounts_list(self):
+        rv = self.app.get(self.URL_PREFIX + 'altitudeaccounts')
+        expected = {'results': 2,
+            'rows': [
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff6',
+                 'utility_account_id': 2},
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff7',
+                 'utility_account_id': 3}
+            ]}
+        self.assertJson(expected, rv.data)
+
+
     def test_utilbills_list(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         expected = {'results': 2,
@@ -270,14 +292,19 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Electric Rate Class',
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
               'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_total': 0.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'supply_choice_id': None,
@@ -296,15 +323,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -367,15 +399,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': '2000-01-01',
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_id': 1,
               'utility_account_number': '1',
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -461,15 +498,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Electric Rate Class',
+              'rate_class': self.rate_class2.name,
+              'rate_class_id': self.rate_class2.id,
               'service': 'Electric',
               'service_address': '2 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_total': 0.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
               'utility_account_id': 1,
+              'utility_id': 1,
               'utility_account_number': '1',
               'supply_choice_id': None,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -487,15 +529,20 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'period_end': None,
               'period_start': None,
               'processed': False,
-              'rate_class': 'Some Rate Class',
+              'rate_class': self.some_rate_class.name,
+              'rate_class_id': self.some_rate_class.id,
               'service': 'Gas',
               'service_address': '1 Example St., ,  ',
               'supplier': 'Unknown',
+              'supplier_id': None,
+              'supply_group': 'Unknown',
+              'supply_group_id': None,
               'supply_choice_id': None,
               'supply_total': 2.0,
               'target_total': 0.0,
               'total_energy': 150.0,
               'utility': 'Example Utility',
+              'utility_id': 1,
               'utility_account_number': '1',
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
@@ -506,17 +553,19 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
         self.assertJson(expected, rv.data)
 
-        # TODO reuse 'expected' in later assertions instead of repeating the
-        # giant dictionary over and over
+        utility = Utility(name="Empty Utility1")
+        utility.id = 3
+        Session().add(utility)
+        Session().commit()
 
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 2,
-                utility = "Empty Utility"
+                utility = utility.id
         ))
         self.assertJson({
             "results": 1,
             "rows": {
-         	    'computed_total': 40.0,
+         	    'computed_total': 85.0,
                 'due_date': None,
                 'entered': False,
                 'id': 1,
@@ -525,34 +574,42 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Unknown',
-                'service': 'Unknown',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
+                'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_choice_id': None,
                 'supply_total': 2.0,
                 'target_total': 0.0,
-                'total_energy': 0,
-                'utility': 'Empty Utility',
+                'total_energy': 150.0,
+                'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_number': '1',
                 'utility_account_id': 1,
-                'wiki_url': 'http://example.com/utility:Empty Utility',
+                'wiki_url': 'http://example.com/utility:Example Utility',
                 'flagged': False,
-                'meter_identifier': None,
+                'meter_identifier': 'GHIJKL',
                 'tou': False
             }}, rv.data
         )
-
+        utility = Utility(name="Some Other Utility1")
+        utility.id = 4
+        Session().add(utility)
+        Session().commit()
         rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
                 id = 10,
-                utility = "Some Other Utility"
+                utility = utility.id
         ))
 
         self.assertJson(
             {
             "results": 1,
             "rows": {
-                  'computed_total': 40.0,
+                  'computed_total': 85.0,
                   'id': 1,
                   'due_date': None,
                   'next_meter_read_date': None,
@@ -560,21 +617,26 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Unknown',
-                  'service': 'Unknown',
+                  'rate_class': self.some_rate_class.name,
+                  'rate_class_id': self.some_rate_class.id,
+                  'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
+                  'supplier_id': None,
+                  'supply_group': 'Unknown',
+                  'supply_group_id': None,
                   'supply_total': 2.0,
                   'target_total': 0.0,
-                  'total_energy': 0,
-                  'utility': 'Some Other Utility',
+                  'total_energy': 150.0,
+                  'utility': 'Example Utility',
+                  'utility_id': 1,
                   'utility_account_number': '1',
                   'utility_account_id': 1,
                   'supply_choice_id': None,
-                  'wiki_url': 'http://example.com/utility:Some Other Utility',
+                  'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': False,
                   'flagged': False,
-                  'meter_identifier': None,
+                  'meter_identifier': 'GHIJKL',
                   'tou': False
             },
             }, rv.data
@@ -762,14 +824,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Electric Rate Class',
+                'rate_class': self.rate_class2.name,
+                'rate_class_id': self.rate_class2.id,
                 'service': 'Electric',
                 'service_address': '2 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
                 'total_energy': 250.0,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -787,14 +854,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
                 'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
                 'total_energy': 150.0,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -819,14 +891,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'period_end': None,
                 'period_start': None,
                 'processed': False,
-                'rate_class': 'Some Rate Class',
+                'rate_class': self.some_rate_class.name,
+                'rate_class_id': self.some_rate_class.id,
                 'service': 'Gas',
                 'service_address': '1 Example St., ,  ',
                 'supplier': 'Unknown',
+                'supplier_id': None,
+                'supply_group': 'Unknown',
+                'supply_group_id': None,
                 'supply_total': 0,
                 'target_total': 0,
                 'total_energy': 150,
                 'utility': 'Example Utility',
+                'utility_id': 1,
                 'utility_account_id': 1,
                 'utility_account_number': '1',
                 'supply_choice_id': None,
@@ -863,14 +940,19 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'period_end': None,
                   'period_start': None,
                   'processed': False,
-                  'rate_class': 'Some Rate Class',
+                  'rate_class': self.some_rate_class.name,
+                  'rate_class_id': self.some_rate_class.id,
                   'service': 'Gas',
                   'service_address': '1 Example St., ,  ',
                   'supplier': 'Unknown',
+                  'supplier_id': None,
+                  'supply_group': 'Unknown',
+                  'supply_group_id': None,
                   'supply_total': 0,
                   'target_total': 0,
                   'total_energy': 150.0,
                   'utility': 'Example Utility',
+                  'utility_id': 1,
                   'utility_account_id': 1,
                   'utility_account_number': '1',
                   'supply_choice_id': None,
@@ -894,7 +976,7 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
 
     def test_replace_utilbill_with_beutilbill(self):
         s = Session()
-        u = UtilBill(self.ua1, self.utility, self.rate_class)
+        u = UtilBill(self.ua1, self.utility, self.some_rate_class)
         u.id = 3
         s.add(u)
         s.flush() # set u.id
@@ -906,9 +988,9 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         # utilbill.id, but it may
         original_id = u.id
 
-        # load charges and registers while 'utilbill' is still valid, so they
+        # load charges and _registers while 'utilbill' is still valid, so they
         # can be compared below
-        u.charges, u.registers
+        u.charges, u._registers
 
         new_beutilbill = replace_utilbill_with_beutilbill(u)
         self.assertEqual(original_id, new_beutilbill.id)
@@ -935,8 +1017,8 @@ class TestReplaceUtilBillWithBEUtilBill(BillEntryIntegrationTest,
         self.assertEqual(u.charges, new_beutilbill.charges)
         self.assertEqual([c.id for c in u.charges],
                          [c.id for c in new_beutilbill.charges])
-        self.assertEqual([r.id for r in u.registers],
-                         [r.id for r in new_beutilbill.registers])
+        self.assertEqual([r.id for r in u._registers],
+                         [r.id for r in new_beutilbill._registers])
 
         # also the child objects should really exist in the database
         self.assertEqual(1, s.query(Address).filter_by(
