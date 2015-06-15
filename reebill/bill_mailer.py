@@ -46,7 +46,7 @@ class Mailer(object):
             container = MIMEMultipart()
         container['Subject'] = subject
         container['From'] = self._mail_from
-        container['To'] = u', '.join(recipients)
+        container['To'] = recipients
 
         ctype, encoding = mimetypes.guess_type(display_file_path)
         if ctype is None or encoding is not None:
