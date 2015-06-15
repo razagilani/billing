@@ -2,7 +2,7 @@ from datetime import date
 from mock import Mock
 
 from core.model import Charge, UtilBill, Address, \
-    ChargeEvaluation, UtilityAccount
+    ChargeEvaluation, UtilityAccount, Utility
 from exc import FormulaError
 from test import testing_utils
 
@@ -21,10 +21,11 @@ class ChargeUnitTests(testing_utils.TestCase):
 
     def setUp(self):
         # TOOD: how can this work with strings as utility, rate class, supplier?
-        self.bill = UtilBill(UtilityAccount('someone', '98989', 'FB Test Utility',
-                                 'FB Test Supplier', 'FB Test Rate Class',
+        self.bill = UtilBill(UtilityAccount('someone', '98989',
+                                 Utility(name='FB Test Utility'),
+                                 None, None, None,
                                  Address(), Address()),
-                                 'utility', None,
+                                 Utility(name='utility'), None,
                                  supplier='supplier',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1))

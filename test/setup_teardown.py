@@ -15,7 +15,7 @@ from reebill.payment_dao import PaymentDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount
+from core.model import Supplier, RateClass, UtilityAccount, Base, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.reebill_model import Session, UtilBill, \
@@ -275,25 +275,30 @@ class TestCaseWithSetup(test_utils.TestCase):
                       city='Utilco City',
                       state='XX',
                       postal_code='12345')
-
-        uc = Utility(name='Test Utility Company Template', address=ca1)
         supplier = Supplier(name='Test Supplier', address=ca1)
+        supply_group = SupplyGroup(name='test', supplier=supplier,
+                                   service='gas')
+        uc = Utility(name='Test Utility Company Template', address=ca1)
+
 
         ca2 = Address(addressee='Test Other Utilco Address',
                       street='123 Utilco Street',
                       city='Utilco City',
                       state='XX',
                       postal_code='12345')
-
-        other_uc = Utility(name='Other Utility', address=ca1)
         other_supplier = Supplier(name='Other Supplier', address=ca1)
+        other_supply_group = SupplyGroup(name='test', supplier=other_supplier,
+                                   service='gas')
+        other_uc = Utility(name='Other Utility', address=ca1)
+
+
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
                         other_supplier])
         session.flush()
         rate_class = RateClass(name='Test Rate Class Template', utility=uc,
-                               service='gas')
+                               service='gas', sos_supply_group=supply_group)
         utility_account = UtilityAccount(
             'Test Customer', '99999', uc, supplier, rate_class, fa_ba1, fa_sa1,
             account_number='1')
@@ -301,14 +306,15 @@ class TestCaseWithSetup(test_utils.TestCase):
                                 discount_rate=.12, late_charge_rate=.34,
                                 service='thermal',
                                 bill_email_recipient='example@example.com',
-                                utility_account=utility_account)
+                                utility_account=utility_account,
+                                payee='payee')
         session.add(utility_account)
         session.add(reebill_customer)
 
         #Template Customer aka "Template Account" in UI
         utility_account2 = UtilityAccount(
-            'Test Customer 2', '100000', uc, supplier, rate_class, fa_ba2,
-            fa_sa2, account_number='2')
+            'Test Customer 2', '100000', uc, supplier, rate_class,
+            fa_ba2, fa_sa2, account_number='2')
         reebill_customer2 = ReeBillCustomer(name='Test Customer 2',
                                 discount_rate=.12, late_charge_rate=.34,
                                 service='thermal',
@@ -335,14 +341,14 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 3, 3),
                              processed=True)
 
-        # replaced registers that were automatically created by the rate class
+        # replaced _registers that were automatically created by the rate class
         # because old tests rely on these specific values
-        u1.registers = []
+        u1._registers = []
         u1r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
         u1r1.utilbill = u1
-        u2.registers = []
+        u2._registers = []
         u2r1 = Register(Register.TOTAL, 'therms', quantity=123.45,
                         description='test description', identifier="M60324",
                         meter_identifier="M60324", reg_type='total')
@@ -363,7 +369,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                      state='XX',
                      postal_code='12345')
         other_rate_class = RateClass(name='Other Rate Class',
-                                     utility=other_uc, service='gas')
+                                     utility=other_uc, service='gas',
+                                     sos_supply_group=other_supply_group)
         utility_account4 = UtilityAccount(
             'Test Customer 3 No Rate Strucutres', '100001', other_uc,
             other_supplier, other_rate_class, c4ba, c4sa)
