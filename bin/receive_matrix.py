@@ -6,7 +6,7 @@ import os
 import traceback
 from brokerage.brokerage_model import Company
 from core import init_altitude_db, init_config, init_logging, init_model
-from core.model import AltitudeSession, Session
+from core.model import AltitudeSession, Session, Supplier
 from brokerage.read_quotes import DirectEnergyMatrixParser
 
 # TODO: can't get log file to appear where it's supposed to
@@ -15,26 +15,25 @@ LOG_NAME = 'read_quotes'
 # where to look for quotes
 QUOTE_DIRECTORY_PATH = '/tmp'
 
-# maps file names supplier primary keys.
-# only quote files with these names will be processed.
-FILE_NAMES_SUPPLIERS = {
-    'aep.xls': 'AEP',
-    'directenergy.xls': 'Direct Energy',
-    'usge.xlsx': 'USGE',
-}
-
 def get_files():
     logger = logging.getLogger(LOG_NAME)
 
-    s = AltitudeSession()
-    #s = Session()
+    s = Session()
+    altitude_session = AltitudeSession()
 
-    for file_name, supplier_name in FILE_NAMES_SUPPLIERS.iteritems():
+    for supplier in s.query(Supplier).filter(
+                    Supplier.matrix_file_name != None).order_by(Supplier.id):
+        file_name = supplier.matrix_file_name
         full_path = os.path.join(QUOTE_DIRECTORY_PATH, file_name)
         if not os.access(full_path, os.W_OK):
             logger.info('Skipped "%s"' % file_name)
             continue
-        supplier = s.query(Company).filter_by(name=supplier_name).one()
+
+        # match supplier in Altitude database by name--this means names for the
+        # same supplier must always be the same
+        altitude_supplier = altitude_session.query(Company).filter_by(
+            name=supplier.name).one()
+
         count = 0
         try:
             with open(full_path, 'rb') as quote_file:
@@ -43,20 +42,22 @@ def get_files():
                 quote_parser.load_file(quote_file)
                 quote_parser.validate()
                 for quote in quote_parser.extract_quotes():
-                    quote.supplier_id = supplier.company_id
-                    s.add(quote)
-                    s.flush()
+                    quote.supplier_id = altitude_supplier.company_id
+                    altitude_session.add(quote)
                     count += 1
-                    if count % 1000 == 0:
+                    if count % 100 == 0:
+                        altitude_session.flush()
                         logger.debug('%s quotes so far' % count)
-                s.commit()
+                altitude_session.commit()
             os.remove(full_path)
         except Exception as e:
             logger.error('Error when processing "%s":\n%s' % (
                 file_name, traceback.format_exc()))
-            s.rollback()
+            altitude_session.rollback()
         else:
             logger.info('Read %s quotes from "%s"' % (count, file_name))
+    Session.remove()
+    AltitudeSession.remove()
 
 if __name__ == '__main__':
     init_config()
