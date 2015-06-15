@@ -12,56 +12,69 @@ from brokerage.read_quotes import DirectEnergyMatrixParser
 # TODO: can't get log file to appear where it's supposed to
 LOG_NAME = 'read_quotes'
 
-# where to look for quotes
-QUOTE_DIRECTORY_PATH = '/tmp'
+# TODO: name to distinguish from QuoteParser
+class QuoteReader(object):
+    def __init__(self):
+        from core import config
+        self.logger = logging.getLogger(LOG_NAME)
+        self.quote_directory_path = config.get('brokerage', 'quote_directory')
+        self.altitude_session = AltitudeSession()
 
-def get_files():
-    logger = logging.getLogger(LOG_NAME)
+    def _read_file(self, quote_file, altitude_supplier):
+        num = 0
+        # TODO: choose correct class
+        quote_parser = DirectEnergyMatrixParser()
+        quote_parser.load_file(quote_file)
+        quote_parser.validate()
+        for quote in quote_parser.extract_quotes():
+            quote.supplier_id = altitude_supplier.company_id
+            self.altitude_session.add(quote)
+            num += 1
+            if num % 100 == 0:
+                yield num
 
-    s = Session()
-    altitude_session = AltitudeSession()
+    def run(self):
+        """Open, process, and delete quote files for all suppliers.
+        """
+        for supplier in Session().query(Supplier).filter(
+                        Supplier.matrix_file_name != None).order_by(
+            Supplier.id):
+            # check if the file for this supplier exists and is writable
+            path = os.path.join(self.quote_directory_path,
+                                supplier.matrix_file_name)
+            if not os.access(path, os.W_OK):
+                self.logger.info('Skipped "%s"' % path)
+                continue
 
-    for supplier in s.query(Supplier).filter(
-                    Supplier.matrix_file_name != None).order_by(Supplier.id):
-        file_name = supplier.matrix_file_name
-        full_path = os.path.join(QUOTE_DIRECTORY_PATH, file_name)
-        if not os.access(full_path, os.W_OK):
-            logger.info('Skipped "%s"' % file_name)
-            continue
+            # match supplier in Altitude database by name--this means names
+            # for the same supplier must always be the same
+            altitude_supplier = self.altitude_session.query(Company).filter_by(
+                name=supplier.name).one()
 
-        # match supplier in Altitude database by name--this means names for the
-        # same supplier must always be the same
-        altitude_supplier = altitude_session.query(Company).filter_by(
-            name=supplier.name).one()
-
-        count = 0
-        try:
-            with open(full_path, 'rb') as quote_file:
-                quote_parser = DirectEnergyMatrixParser()
-                logger.info('Starting to read from "%s"' % file_name)
-                quote_parser.load_file(quote_file)
-                quote_parser.validate()
-                for quote in quote_parser.extract_quotes():
-                    quote.supplier_id = altitude_supplier.company_id
-                    altitude_session.add(quote)
-                    count += 1
-                    if count % 100 == 0:
-                        altitude_session.flush()
-                        logger.debug('%s quotes so far' % count)
-                altitude_session.commit()
-            os.remove(full_path)
-        except Exception as e:
-            logger.error('Error when processing "%s":\n%s' % (
-                file_name, traceback.format_exc()))
-            altitude_session.rollback()
-        else:
-            logger.info('Read %s quotes from "%s"' % (count, file_name))
-    Session.remove()
-    AltitudeSession.remove()
+            # load quotes from the file into the database, then delete the file
+            count = 0
+            try:
+                with open(path, 'rb') as quote_file:
+                    self.logger.info('Starting to read from "%s"' % path)
+                    for num in self._read_file(quote_file, altitude_supplier):
+                        count += num
+                        self.altitude_session.flush()
+                        self.logger.debug('%s quotes so far' % count)
+                    self.altitude_session.commit()
+                os.remove(path)
+            except Exception as e:
+                self.logger.error('Error when processing "%s":\n%s' % (
+                    path, traceback.format_exc()))
+                self.altitude_session.rollback()
+            else:
+                self.logger.info('Read %s quotes from "%s"' % (count, path))
+        Session.remove()
+        AltitudeSession.remove()
 
 if __name__ == '__main__':
     init_config()
     init_logging()
     init_altitude_db()
     init_model()
-    get_files()
+
+    QuoteReader().run()
