@@ -39,6 +39,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     },{
         header: 'Service',
         dataIndex: 'service',
+        emptyText: 'Unknown',
         width: 100
     },{
         header: 'Start Date',
@@ -115,13 +116,14 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         width: 100
     },{
         header: 'Utility',
-        dataIndex: 'utility',
+        dataIndex: 'utility_id',
+        emptyText: 'Unknown Utility',
         editor: {
             xtype: 'combo',
             store: 'Utilities',
             itemId: 'utility_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
@@ -131,19 +133,43 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             minChars: 1
         },
         width: 150,
-        renderer: function(value, metaData, record) {
-            return record.get('utility').name;
+        renderer: function(val, metaDate, record){
+            return record.get('utility');
+        }
+    },{
+        header: 'Rate Class',
+        dataIndex: 'rate_class_id',
+        emptyText: 'Unknown Rate Class',
+        editor: {
+            xtype: 'combo',
+            store: 'RateClasses',
+            itemId: 'rate_class_combo',
+            displayField: 'name',
+            valueField: 'id',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay: 1,
+            autoSelect: false,
+            regex: /[a-zA-Z0-9]+/,
+            minChars: 1
+        },
+        minWidth: 250,
+        flex: 1,
+        renderer: function(val, metaDate, record){
+            var rate_class = record.get('rate_class');
+            return rate_class ? rate_class : 'Unknown';
         }
     },{
         header: 'Supplier',
-        dataIndex: 'supplier',
+        dataIndex: 'supplier_id',
         emptyText: 'Unknown Supplier',
         editor: {
             xtype: 'combo',
             store: 'Suppliers',
             itemId: 'supplier_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
@@ -152,17 +178,21 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
         },
-        width: 150
+        width: 150,
+        renderer: function(val, metaDate, record){
+            var supplier = record.get('supplier');
+            return supplier ? supplier : 'Unknown';
+        }
     },{
-        header: 'Rate Class',
-        dataIndex: 'rate_class',
-        emptyText: 'Unknown Rate Class',
+        header: 'Supply Group',
+        dataIndex: 'supply_group_id',
+        emptyText: 'Unknown Supply Group',
         editor: {
             xtype: 'combo',
-            store: 'RateClasses',
-            itemId: 'rate_class_combo',
+            store: 'SupplyGroups',
+            itemId: 'supply_group_combo',
             displayField: 'name',
-            valueField: 'name',
+            valueField: 'id',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
@@ -170,6 +200,10 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             autoSelect: false,
             regex: /[a-zA-Z0-9]+/,
             minChars: 1
+        },
+        renderer: function(val, metaDate, record){
+            var supply_group = record.get('supply_group');
+            return supply_group ? supply_group : 'Unknown';
         },
         minWidth: 250,
         flex: 1
