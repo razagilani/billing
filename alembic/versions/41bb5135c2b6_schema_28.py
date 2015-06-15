@@ -15,8 +15,12 @@ import sqlalchemy as sa
 
 
 def upgrade():
+    op.drop_table('matrix_quote')
     op.add_column('quote', sa.Column('purchase_of_receivables', sa.Boolean,
                                      nullable=False))
+    op.add_column('quote', sa.Column('min_volume', sa.Float))
+    op.add_column('quote', sa.Column('limit_volume', sa.Float))
+    op.rename_table('quote', 'rate')
 
 
 def downgrade():
