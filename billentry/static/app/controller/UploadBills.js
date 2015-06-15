@@ -56,7 +56,7 @@ Ext.define('BillEntry.controller.UploadBills', {
     },
 
     /**
-     * Handle the compute button being clicked.
+     * Handle the reset button being clicked.
      */
     handleReset: function() {
         this.initalizeUploadForm();
