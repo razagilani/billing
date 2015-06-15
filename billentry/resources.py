@@ -400,11 +400,9 @@ class UtilityBillFileResource(BaseResource):
         args = parser.parse_args()
         file = args['file']
         sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
-        if session.get('hash-digest') is not None:
-            session['hash-digest'].append(sha_digest)
-        else:
+        if session.get('hash-digest') is None:
             session['hash-digest'] = []
-            session['hash-digest'].append(sha_digest)
+        session['hash-digest'].append(sha_digest)
 
 
 class ChargeResource(BaseResource):
