@@ -8,7 +8,8 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 import logging
-from core.extraction.extraction import TextExtractor, Field, Applier, Extractor
+from core.extraction.extraction import TextExtractor, Field, Applier, Extractor, \
+    LayoutExtractor, BoundingBox
 from core.model import Utility
 
 from upgrade_scripts import alembic_upgrade
@@ -89,7 +90,14 @@ def create_extractors(s):
     washington_gas.fields.append(TextExtractor.TextField(
         regex=wg_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
-    s.add_all([e, pepco_2015, pepco_old, washington_gas])
+    washington_gas_layout = LayoutExtractor(name='Layout Extractor for '
+                                                 'Washington Gas bills with green and yellow and chart id 15311')
+    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        regex=r"Rate Class:\s+(.*?)\s*$", page_num=2,
+        bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
+        type=Field.STRING,
+        applier_key=Applier.RATE_CLASS))
+    s.add_all([e, pepco_2015, pepco_old, washington_gas, washington_gas_layout])
 
 def create_charge_name_maps(s):
     wg = s.query(Utility).filter_by(name='washington gas').one()

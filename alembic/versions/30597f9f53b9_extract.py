@@ -38,6 +38,11 @@ def upgrade():
         sa.Column('applier_key', sa.Enum('billing address', 'charges', 'rate class', 'next read', 'energy', 'end', 'service address', 'start', name='applier_key'),
             nullable=True),
         sa.Column('regex', sa.String(length=1000), nullable=False),
+        sa.Column('page_num', sa.Integer()),
+        sa.Column('bbminx', sa.Float(), nullable=True),
+        sa.Column('bbminy', sa.Float(), nullable=True),
+        sa.Column('bbmaxx', sa.Float(), nullable=True),
+        sa.Column('bbmaxy', sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(['extractor_id'], ['extractor.extractor_id'], ),
         sa.PrimaryKeyConstraint('field_id'),
         sa.UniqueConstraint('extractor_id', 'applier_key')

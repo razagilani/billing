@@ -7,11 +7,12 @@ from datetime import date, datetime
 from itertools import chain
 import json
 from StringIO import StringIO
-from pdfminer.converter import TextConverter
+from pdfminer.converter import TextConverter, PDFPageAggregator
 from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFSyntaxError
+from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint
@@ -29,7 +30,6 @@ from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError, MissingFileError
-
 
 __all__ = [
     'Address',
@@ -70,19 +70,20 @@ class Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
     '''
+
     @classmethod
     def column_names(cls):
         '''Return list of attributes in the class that correspond to
         database columns.
         '''
         return [prop.key for prop in class_mapper(cls).iterate_properties
-                if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+            if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
         return all([getattr(self, x) == getattr(other, x) for x in
-                    self.column_names()])
+            self.column_names()])
 
     def __hash__(self):
         """Must be consistent with __eq__: if x == y, then hash(x) == hash(y)
@@ -104,11 +105,11 @@ class Base(object):
         pk_keys = set(c.key for c in class_mapper(cls).primary_key)
         foreign_key_columns = chain.from_iterable(
             c.columns for c in self.__table__.constraints if
-            isinstance(c, ForeignKeyConstraint))
+                isinstance(c, ForeignKeyConstraint))
         foreign_keys = set(col.key for col in foreign_key_columns)
 
         relevant_attr_names = [x for x in self.column_names() if
-                               x not in pk_keys and x not in foreign_keys]
+            x not in pk_keys and x not in foreign_keys]
 
         # NOTE it is necessary to use __new__ to avoid calling the
         # constructor here (because the constructor arguments are not known,
@@ -126,10 +127,12 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
+
 Base = declarative_base(cls=Base)
 
-
 _schema_revision = '30597f9f53b9'
+
+
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -144,26 +147,32 @@ def check_schema_revision(schema_revision=None):
                             " Require revision %s; current revision %s"
                             % (schema_revision, current_revision))
 
+
 class UtilbillCallback(MapperExtension):
     '''This class is used to update the date_modified field of UtilBill Model,
     whenever any updates are made to UtilBills.
     See http://docs.sqlalchemy.org/en/rel_0_6/orm/interfaces.html.
     '''
+
     def before_update(self, mapper, connection, instance):
         if object_session(instance).is_modified(instance,
-                                                include_collections=False):
+                include_collections=False):
             instance.date_modified = datetime.utcnow()
+
 
 class Evaluation(object):
     """A data structure to hold inputs for calculating charges. It can hold
     the value of a `Register` or the result of evaluating a `Charge`.
     """
+
     def __init__(self, quantity):
         self.quantity = quantity
+
 
 class ChargeEvaluation(Evaluation):
     """An `Evaluation to store the result of evaluating a `Charge`.
     """
+
     def __init__(self, quantity=None, rate=None, exception=None):
         super(ChargeEvaluation, self).__init__(quantity)
         assert quantity is None or isinstance(quantity, (float, int))
@@ -183,6 +192,7 @@ class ChargeEvaluation(Evaluation):
         self.rate = rate
         self.exception = exception
 
+
 class Address(Base):
     __tablename__ = 'address'
 
@@ -199,11 +209,12 @@ class Address(Base):
 
     def __repr__(self):
         return 'Address<(%s, %s, %s, %s, %s)' % (self.addressee, self.street,
-                self.city, self.state, self.postal_code)
+        self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s %s' % (
             self.street, self.city, self.state, self.postal_code)
+
 
 class Utility(Base):
     '''A company that distributes energy and is responsible for the distribution
@@ -316,8 +327,8 @@ class Register(Base):
         :param register_template: RegisterTemplate instance.
         """
         return cls(register_template.register_binding, register_template.unit,
-                   description=register_template.description,
-                   active_periods=register_template.active_periods)
+            description=register_template.description,
+            active_periods=register_template.active_periods)
 
     def __init__(self, register_binding, unit, quantity=0.0, description='',
                  identifier='', estimated=False, active_periods=None,
@@ -371,7 +382,7 @@ class RegisterTemplate(Base):
     register_template_id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
 
-    register_binding = Column( Register.register_binding_type, nullable=False)
+    register_binding = Column(Register.register_binding_type, nullable=False)
     unit = Column(Enum(*PHYSICAL_UNITS, name='physical_units'), nullable=False)
     active_periods = Column(String(2048))
     description = Column(String(255), nullable=False, default='')
@@ -379,6 +390,7 @@ class RegisterTemplate(Base):
     @classmethod
     def get_total_register_template(cls, unit):
         return cls(register_binding=Register.TOTAL, unit=unit)
+
 
 class RateClass(Base):
     """Represents a group of utility accounts that all have the same utility
@@ -427,12 +439,13 @@ class RateClass(Base):
         """Return a list of Registers for a bill belonging to this rate class.
         """
         return [Register.create_from_template(tr) for tr in
-                self.register_templates]
+            self.register_templates]
+
 
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
-    id = Column(Integer, primary_key = True)
+    id = Column(Integer, primary_key=True)
     name = Column(String(45))
 
     # account number used by the utility, shown on utility bills and
@@ -467,8 +480,8 @@ class UtilityAccount(Base):
     fb_utility = relationship('Utility')
 
     def __init__(self, name, account, fb_utility, fb_supplier,
-                fb_rate_class, fb_billing_address, fb_service_address,
-                account_number=''):
+                 fb_rate_class, fb_billing_address, fb_service_address,
+                 account_number=''):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -719,7 +732,7 @@ class UtilBill(Base):
     processed = Column(Boolean, nullable=False)
 
     # which Extractor was used to get data out of the bill file, and when
-    date_extracted = Column('date_scraped', DateTime,)
+    date_extracted = Column('date_scraped', DateTime, )
 
     # cached text taken from a PDF for use with TextExtractor
     _text = Column('text', String)
@@ -758,7 +771,7 @@ class UtilBill(Base):
     utility = relationship('Utility')
 
     charges = relationship("Charge", backref='utilbill', order_by='Charge.id',
-                           cascade='all, delete, delete-orphan')
+        cascade='all, delete, delete-orphan')
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -904,8 +917,9 @@ class UtilBill(Base):
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
-            self.utility_account.account, self.get_service(), self.period_start,
-            self.period_end, self.state)
+                   self.utility_account.account, self.get_service(),
+                   self.period_start,
+                   self.period_end, self.state)
 
     def add_charge(self, **charge_kwargs):
         self.check_editable()
@@ -927,8 +941,9 @@ class UtilBill(Base):
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
             '%s.quantity' % Register.TOTAL if any([register.register_binding ==
-                Register.TOTAL for register in registers]) else \
-            registers[0].register_binding
+                                                   Register.TOTAL for register
+                in registers]) else \
+                registers[0].register_binding
         session.flush()
         return charge
 
@@ -948,7 +963,7 @@ class UtilBill(Base):
 
         for binding, depended_bindings in depends.iteritems():
             for depended_binding in depended_bindings:
-                #binding depends on depended_binding
+                # binding depends on depended_binding
                 dependency_graph.append((depended_binding, binding))
                 independent_bindings.discard(binding)
                 independent_bindings.discard(depended_binding)
@@ -960,7 +975,7 @@ class UtilBill(Base):
                 circular_bindings = set(g.args[1])
                 independent_bindings.update(circular_bindings)
                 dependency_graph = [(a, b) for a, b in dependency_graph
-                                    if b not in circular_bindings]
+                    if b not in circular_bindings]
             except KeyError as e:
                 # tsort sometimes gets a KeyError when generating its error
                 # message about a cycle. in that case there's only one
@@ -968,11 +983,11 @@ class UtilBill(Base):
                 binding = e.args[0]
                 independent_bindings.add(binding)
                 dependency_graph = [(a, b) for a, b in dependency_graph
-                                    if b != binding]
+                    if b != binding]
             else:
                 break
         order = list(independent_bindings) + [x for x in sortresult
-                if x not in independent_bindings]
+            if x not in independent_bindings]
         return sorted(self.charges, key=lambda x: order.index(x.rsi_binding))
 
     def compute_charges(self, raise_exception=False):
@@ -984,7 +999,7 @@ class UtilBill(Base):
         """
         self.check_editable()
         context = {r.register_binding: Evaluation(r.quantity) for r in
-                   self.registers}
+            self.registers}
         sorted_charges = self.ordered_charges()
         exception = None
         for charge in sorted_charges:
@@ -1020,13 +1035,13 @@ class UtilBill(Base):
         '''Returns False if a bill is missing any of the required fields
         '''
         return None not in (self.utility, self.rate_class, self.supplier,
-                            self.period_start, self.period_end)
+        self.period_start, self.period_end)
 
     def check_processable(self):
         '''Raises NotProcessable if this bill cannot be marked as processed.'''
         if not self.is_processable():
             attrs = ['utility', 'rate_class', 'supplier',
-                     'period_start', 'period_end']
+                'period_start', 'period_end']
             missing_attrs = ', '.join(
                 [attr for attr in attrs if getattr(self, attr) is None])
             raise NotProcessable("The following fields have to be entered "
@@ -1064,21 +1079,21 @@ class UtilBill(Base):
         has_charge == False).
         '''
         return [c for c in self.charges
-                if c.has_charge and c.type == 'distribution']
+            if c.has_charge and c.type == 'distribution']
 
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
         errors.
         """
         return sum(charge.total for charge in self.charges
-                if charge.total is not None)
+            if charge.total is not None)
 
     def get_total_energy(self):
         # NOTE: this may have been implemented already on another branch;
         # remove duplicate when merged
         try:
             total_register = next(r for r in self.registers if
-                                  r.register_binding == Register.TOTAL)
+                r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity
@@ -1086,7 +1101,7 @@ class UtilBill(Base):
     def set_total_energy(self, quantity):
         self.check_editable()
         total_register = next(r for r in self.registers if
-                              r.register_binding == Register.TOTAL)
+            r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
     def get_register_by_binding(self, register_binding):
@@ -1099,7 +1114,7 @@ class UtilBill(Base):
         """
         try:
             register = next(r for r in self.registers if
-                              r.register_binding == register_binding)
+                r.register_binding == register_binding)
         except StopIteration:
             raise BillingError('No register "%s"' % register_binding)
         return register
@@ -1111,12 +1126,12 @@ class UtilBill(Base):
         formula and rate.
         '''
         return sum(c.target_total for c in self.get_supply_charges()
-                   if c.target_total is not None and c.has_charge)
+            if c.target_total is not None and c.has_charge)
 
     def set_total_meter_identifier(self, meter_identifier):
         '''sets the value of meter_identifier field of the register with
         register_binding of REG_TOTAL'''
-        #TODO: make this more generic once implementation of Regiter is changed
+        # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
         register = next(r for r in self.registers if r.register_binding
                                                      == Register.TOTAL)
@@ -1139,7 +1154,7 @@ class UtilBill(Base):
         '''
         try:
             total_register = next(r for r in self.registers
-                                  if r.register_binding == Register.TOTAL)
+                if r.register_binding == Register.TOTAL)
         except StopIteration:
             return 0
         return total_register.quantity
@@ -1165,13 +1180,14 @@ class UtilBill(Base):
                 infile.seek(0)
                 rsrcmgr = PDFResourceManager()
                 outfile = StringIO()
-                laparams = LAParams() # Use this to tell interpreter to capture newlines
-                #laparams = None
-                device = TextConverter(rsrcmgr, outfile, codec='utf-8', laparams=laparams)
+                laparams = LAParams()  # Use this to tell interpreter to capture newlines
+                # laparams = None
+                device = TextConverter(rsrcmgr, outfile, codec='utf-8',
+                    laparams=laparams)
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
                 try:
                     for page in PDFPage.get_pages(infile, set(),
-                                                  check_extractable=True):
+                            check_extractable=True):
                         interpreter.process_page(page)
                 except PDFSyntaxError:
                     text = ''
@@ -1182,3 +1198,36 @@ class UtilBill(Base):
                 device.close()
             self._text = text
         return self._text
+
+    def get_layout(self, bill_file_handler):
+        """
+        Returns a list of LTPage objects, containing PDFMiner's layout
+        information for the PDF
+        :param bill_file_handler: used to get the PDF file
+        """
+        #TODO cache layout info after retrieval
+        # maybe use 'PickleType' sqlalchemy column?
+        pages = []
+        infile = StringIO()
+        try:
+            bill_file_handler.write_copy_to_file(self, infile)
+        except MissingFileError as e:
+            print e
+        else:
+            infile.seek(0)
+            parser = PDFParser(infile)
+            document = PDFDocument(parser)
+            rsrcmgr = PDFResourceManager()
+            laparams = LAParams()
+            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+            interpreter = PDFPageInterpreter(rsrcmgr, device)
+            try:
+                for page in PDFPage.create_pages(document):
+                    interpreter.process_page(page)
+                    pages.append(device.get_result())
+            except PDFSyntaxError as e:
+                pages = []
+                print e
+            device.close()
+
+        return pages
