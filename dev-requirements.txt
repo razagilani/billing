@@ -1,0 +1,13 @@
+# 62431060 paramiko bug necessitated this version? Nope.
+# 63545928 requires 1.6.1?
+# Fabric==1.6.1
+# Paramiko==1.11.1
+# let's use the latest in development
+fabric
+coverage
+ipdb
+mock
+nose
+nose-progressive
+awscli # command-line tool from Amazon for working with AWS
+
