@@ -2,6 +2,7 @@ from StringIO import StringIO
 from datetime import date
 from os.path import join, dirname, realpath
 import unittest
+from mock import MagicMock
 
 import requests
 from sqlalchemy import desc
@@ -262,6 +263,14 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         s.commit()
         self.utilbill_processor.update_utility_account_number(utility_account.id, 12345)
         self.assertEqual(utility_account.account_number, 12345)
+
+    def test_set_total_meter_identifier(self):
+        utilbill = UtilBill(MagicMock(), MagicMock(), MagicMock())
+        # This should not result in any changes as utilbill doesn't have register with
+        # register_binding of REG_TOTAL
+        utilbill.set_total_meter_identifier('7715')
+        self.assertEqual(utilbill.get_total_meter_identifier(), None)
+
 
     def test_upload_utility_bill(self):
         '''Tests saving of utility bills in database (which also belongs partly

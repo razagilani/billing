@@ -66,11 +66,11 @@ Ext.define('BillEntry.controller.UtilityBills', {
                 click: this.handleUtilbillHelp
             },
             '#utility_combo':{
-                select: this.handleUtilityComboChanged,
                 focus: this.handleUtilityComboFocus,
                 blur: this.handleUtilityBlur
             },
            '#rate_class_combo': {
+                expand: this.handleRateClassExpand,
                 focus: this.handleRateClassComboFocus,
                 blur: this.handleRateClassBlur
             },
@@ -221,6 +221,19 @@ Ext.define('BillEntry.controller.UtilityBills', {
     },
 
     /**
+     * Displays the rate classes related with the currently selected utility
+     */
+    handleRateClassExpand: function(combo, record, index){
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        var rate_class_store = Ext.getStore('RateClasses');
+        rate_class_store.clearFilter(true);
+        rate_class_store.filter({property:"utility_id", type: 'int',
+                                    value: selected.get('utility_id'),
+                                    exactMatch:true});
+    },
+
+    /**
      * Handle reloading utility bills tore when service combo loses focus
      */
     handleServiceComboBlur: function(combo){
@@ -251,29 +264,16 @@ Ext.define('BillEntry.controller.UtilityBills', {
         }
     },
 
-    /**
-     * Update the rate_class combo to display either the first rate_class
-     * for the currently selected utility or Unknown if the currently
-     * selected utility has no rate_classes
-     */
-    handleUtilityComboChanged: function(utility_combo, record){
-        var rate_class_store = Ext.getStore("RateClasses");
-        rate_class_store.clearFilter(true);
-        rate_class_store.filter({property:"utility_id", type: 'int',
-                                    value: record[0].get('id'), exactMatch:true});
-        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var utility_store = this.getUtilityBillsStore();
-        if (rate_class_store.count() > 0)
-            selected.set('rate_class', rate_class_store.getAt(0).get('name'));
-        else
-            selected.set('rate_class', 'Unknown Rate Class')
-    },
-
     /*
      * creates a new utility when the utility combo box loses focus
      */
     handleUtilityBlur: function(combo, event, opts){
         var utilityStore = this.getUtilitiesStore();
+        if (combo.getRawValue() == '') {
+            utilityStore.rejectChanges();
+            this.getUtilityBillsStore().rejectChanges();
+            return;
+        }
         var selected = combo.findParentByType('grid').getSelectionModel().getSelection()[0];
         if (utilityStore.findRecord('id', combo.getValue()) === null){
             var utilBillsStore = this.getUtilityBillsStore();
@@ -303,7 +303,7 @@ Ext.define('BillEntry.controller.UtilityBills', {
     handleUtilityComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('utility'));
+        combo.setRawValue(selected.get('utility'));
     },
 
     /**
@@ -313,7 +313,7 @@ Ext.define('BillEntry.controller.UtilityBills', {
     handleSupplierComboFocus: function(combo) {
         var utility_grid = combo.findParentByType('grid');
         var selected = utility_grid.getSelectionModel().getSelection()[0];
-        combo.setValue(selected.get('supplier'));
+        combo.setRawValue(selected.get('supplier'));
     },
 
     /*
