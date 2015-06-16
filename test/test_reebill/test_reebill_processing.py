@@ -210,7 +210,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': 'payee'
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -254,7 +254,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': None
+            'payee': 'payee'
         }], data)
 
     def test_set_payee_for_utility_account(self):
@@ -443,10 +443,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility':
-                                          column_dict(
-                                              self.views.get_utility(
-                                                  'Test Utility Company Template')),
+                                          'utility': 'Test Utility Company Template',
                                           }, utilbill_data)
 
         # create a reebill
@@ -468,9 +465,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                     'Test Rate Class Template').name,
                 'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
-                'utility': column_dict(
-                    self.views.get_utility(
-                    'Test Utility Company Template')),
+                'utility': 'Test Utility Company Template',
             }, utilbill_data)
 
 
@@ -532,7 +527,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
                  'quantity_formula':  Charge.get_simple_formula(Register.TOTAL),
                 'rate': 1}, utilbill_id=ub.id, rsi_binding='New Charge 1')
 
-            self.utilbill_processor.update_register(ub.registers[0].id,
+            self.utilbill_processor.update_register(ub._registers[0].id,
                                                     {'quantity': 100})
             self.utilbill_processor.compute_utility_bill(ub.id)
             self.utilbill_processor.update_utilbill_metadata(ub.id,
@@ -649,7 +644,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             register.id, {'register_binding': Register.DEMAND})
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
-        # 2nd utility bill should have the same registers as the first
+        # 2nd utility bill should have the same _registers as the first
         utilbill = self.utilbill_processor.upload_utility_bill(
             account, StringIO('May 2000'), date(2000, 2, 2), date(2000, 3, 3),
             'gas')
@@ -661,15 +656,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.reebill_processor.compute_reebill(account, 1)
         self.reebill_processor.issue(account, 1,
                            issue_date=datetime(2000, 2, 1))
-        # delete register from the 2nd utility bill
-        id_2 = self.views.get_all_utilbills_json(
-            account, 0, 30)[0][0]['id']
-
-        register = filter(lambda x: x.identifier == 'R' and
-                                    x.meter_identifier == 'M60324',
-                          utilbill.registers)[0]
-        self.utilbill_processor.delete_register(register.id)
-
         self.utilbill_processor.update_utilbill_metadata(utilbill.id,
                                                          processed=True)
         # 2nd reebill should NOT have a reading corresponding to the
@@ -1138,7 +1124,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.reebill_file_handler.render_max_version\
             .return_value = 2
         # ValueError is Raised if an issued Bill is issued again
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.reebill_processor.issue_and_mail(
                 account=acc, sequence=1, recipients=two.email_recipient)
         self.reebill_processor.toggle_reebill_processed(acc, 2, True)
@@ -1894,20 +1880,20 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
                           utilbills_data[0]['id'])
 
     def test_two_registers_one_reading(self):
-        '''Test the situation where a utiltiy bill has 2 registers, but its
+        '''Test the situation where a utiltiy bill has 2 _registers, but its
         reebill has only one reading corresponding to the first register,
         so only that register gets offset by renewable energy.
 
-        This has been done in cases where there are two "total" registers
+        This has been done in cases where there are two "total" _registers
         that get added together to measure total energy, and sometimes users
-        have created two registers to represent two different utility meter
+        have created two _registers to represent two different utility meter
         reads that occurred within one billing period, with different pricing
         applied to each one, and want to avoid charging the customer for
         twice as much renewable energy as they actually consumed. (This is
         not strictly correct because the energy would be priced differently
         depending on which part of the period it was consumed in.)
         '''
-        # utility bill with 2 registers
+        # utility bill with 2 _registers
         utilbill_id = self.views.get_all_utilbills_json(
             '99999', 0, 30)[0][0]['id']
         def add_2nd_register():
@@ -1919,7 +1905,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         add_2nd_register()
 
         # the utility bill must have some charges that depend on both
-        # registers' values
+        # _registers' values
         self.utilbill_processor.add_charge(utilbill_id)
         self.utilbill_processor.update_charge(
             {'rsi_binding': 'A',
@@ -2036,7 +2022,7 @@ class TestTouMetering(unittest.TestCase):
         self.reebill_processor.ree_getter.get_billable_energy_timeseries = \
             get_mock_energy_consumption
 
-        # modify registers of this utility bill so they are TOU
+        # modify _registers of this utility bill so they are TOU
         u = Session().query(UtilBill).join(UtilityAccount). \
             filter_by(account=account).one()
         active_periods = {
@@ -2093,10 +2079,10 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
                              Address(), Address())
-        customer2 = ReeBillCustomer(utility_account=ua2, name='')
+        customer2 = ReeBillCustomer(utility_account=ua2, name='', payee='payee')
         utilbill2 = self.utilbill.clone()
         utilbill2.utility = self.utilbill.utility
-        utilbill2.registers = [self.utilbill.registers[0].clone()]
+        utilbill2.set_rate_class(self.utilbill.get_rate_class())
         utilbill2.billing_address = utilbill2.service_address = Address()
         utilbill2.utility_account = ua2
         s = Session()
