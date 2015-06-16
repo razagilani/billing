@@ -11,16 +11,42 @@ env.roledefs.update({
     'skyline-internal-prod': ['skyline-internal-prod'],
     'skyline-internal-stage': ['skyline-internal-stage'],
     'billing-stage': ['billing-stage'],
+    'billing-dev': ['billing-dev'],
     'billing-prod': ['billing-prod'],
+    'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev', 'billingworker3-dev'],
 })
 
 #
 # Configurations that are specific to this app
 #
 common.CommonFabTask.update_deployment_configs({
+    "extraction-worker-dev": {
+        "deploy_version":"3",
+        "app_name":"extraction-worker-dev",
+        "os_user":"worker-dev",
+        "os_group":"worker-dev",
+        "default_deployment_dir":"/var/local/worker-dev/billing",
+        # set up mappings between names and remote files so that a local file can be
+        # associated and deployed to the value of the name below
+        "deployment_dirs": {
+            # package name:destination path
+            # package names are specified in tasks wrapper decorators
+            "app": "/var/local/worker-dev/billing",
+            "www": "/var/local/worker-dev/billing/www",
+            "skyliner": "/var/local/worker-dev/billing/skyliner",
+            },
+        "config_files": [
+            ("conf/configs/settings-dev-template.cfg", "/var/local/worker-dev/billing/settings.cfg"),
+            ("conf/configs/alembic-dev.ini", "/var/local/worker-dev/billing/alembic.ini"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/worker-dev/billing/skyliner/config.yaml"),
+            ("mq/conf/config-template-dev.yml", "/var/local/worker-dev/billing/mq/config.yml"),
+            ],
+        "makefiles":[
+        ],
+        },
     "dev": {
         "deploy_version":"3", 
-        "app_name":"reebill-dev", 
+        "app_name":"reebill-dev",
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-dev", 
         "os_group":"reebill-dev",
