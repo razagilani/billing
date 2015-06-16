@@ -143,8 +143,6 @@ class Applier(object):
         if attr is None:
             raise ApplicationError('Unknown key "%s"' % key)
 
-        print attr
-        print type(attr)
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
             method = getattr(utilbill, attr.__name__)
@@ -682,8 +680,6 @@ class LayoutExtractor(Extractor):
                 BoundingBox(minx=self.bbminx, miny=self.bbminy,
                     maxx=self.bbmaxx, maxy=self.bbmaxy))
 
-            print text
-
             if not self.regex:
                 return text
 
@@ -692,7 +688,6 @@ class LayoutExtractor(Extractor):
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
-            print m.groups()[0].strip()
             return m.groups()[0].strip()
 
     #TODO
