@@ -1351,7 +1351,7 @@ class TestUploadBills(unittest.TestCase):
         # as only members of 'admin' role are allowed  access to upload
         # utility bill files and user1 is not a member of admin role
         self.assertEqual(403, rv.status_code)
-        self.assertRaises(MissingFileError, self.billupload.file_exists, file1_hash)
+        self.assertRaises(MissingFileError, self.billupload.key_exists, file1_hash)
 
         data = {'email':'2@example.com', 'password': 'password'}
 
@@ -1364,7 +1364,7 @@ class TestUploadBills(unittest.TestCase):
 
         # this should succeed with 200 as user1 is member of Admin Role
         self.assertEqual(200, rv.status_code)
-        self.assertTrue(self.billupload.file_exists(file1_hash))
+        self.assertTrue(self.billupload.key_exists(file1_hash))
 
         file2 = StringIO('another fake PDF')
         file2_hash = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11.pdf'
@@ -1373,7 +1373,7 @@ class TestUploadBills(unittest.TestCase):
 
         # this should succeed with 200 as user2 is member of Admin Role
         self.assertEqual(200, rv.status_code)
-        self.assertTrue(self.billupload.file_exists(file2_hash))
+        self.assertTrue(self.billupload.key_exists(file2_hash))
 
         data = {'guid': '0b8ff51d-84a9-40bf-b97cf693ff00f4ed',
                 'utility': 1,

@@ -81,11 +81,9 @@ class BillFileHandler(object):
         does not exist.
         """
         key_name = self.get_key_name_for_utilbill(utilbill)
-        key = self._get_amazon_bucket().get_key(key_name)
-        if key is None:
-            raise MissingFileError('Key "%s" does not exist' % key_name)
+        self.key_exists(key_name)
 
-    def file_exists(self, key_name):
+    def key_exists(self, key_name):
         """Raise MissingFileError if the S3 key
         does not exist.
         """
