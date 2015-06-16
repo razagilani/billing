@@ -42,8 +42,6 @@ Ext.define('Ext.panel.PDF',{
 
     noSrcMessage: '<div style="position: absolute; top: 200px; width: 100%; text-align: center">No PDF selected</div>',
 
-    textRenderDelay: 20,
-
     cache: true,
 
     initComponent: function(){
@@ -93,8 +91,7 @@ Ext.define('Ext.panel.PDF',{
     },
 
     onLoad: function(){
-        var me = this;
-        me.getDocument();
+        this.getDocument();
     },
 
     onResize: function(){
@@ -112,15 +109,21 @@ Ext.define('Ext.panel.PDF',{
     },
 
     setLoading: function(){
+        this.resetLayers();
         this.canvasLayer.innerHTML = this.loadingMessage;
+    },
+
+    resetLayers: function(){
+        while (this.textLayerDiv.lastChild) {
+            this.textLayerDiv.removeChild(this.textLayerDiv.lastChild);
+        }
+        while (this.canvasLayer.lastChild) {
+            this.canvasLayer.removeChild(this.canvasLayer.lastChild);
+        }
     },
     
     getDocument: function(regenBustCache){
         var me = this;
-
-        if(me._bustCache === undefined || regenBustCache === true){
-            me._makeBustCache();
-        }
 
         if(me.src === ''){
             me.canvasLayer.innerHTML = me.noSrcMessage;
@@ -146,23 +149,25 @@ Ext.define('Ext.panel.PDF',{
             });
         };
 
-        var cacheparam;
-        if(!me.cache){
-            cacheparam = '?_bc=' + me._bustCache;
-        }else{
-            cacheparam = '';
-        }
+        var makeFullUrl = function(){
+            var cacheparam;
+            if(!me.cache){
+                if(me._bustCache === undefined || regenBustCache === true){
+                    this._bustCache = Math.random()*100000000000000000;
+                }
+                cacheparam = '?_bc=' + me._bustCache;
+            }else{
+                cacheparam = '';
+            }
+            return me.src + cacheparam
+        };
 
-        PDFJS.getDocument(me.src + cacheparam).then(
-        //success
-        function(pdfDoc){
+        PDFJS.getDocument(makeFullUrl()).then(function(pdfDoc){
+            // Maintain a reference to the document so that it can be rerendered
+            // when the size or scale of the panel changes
             me._pdfDoc = pdfDoc;
-            me._pages = []
-            me._content = []
-            getPage(1);
-        },
-        //failure
-        function(message, exception) {
+            me.renderDoc();
+        }, function(message, exception){
             console.log(message, exception);
             if(message.lastIndexOf('Missing PDF', 0) === 0){
                 me.canvasLayer.innerHTML = me.pdfNotFoundMessage;
@@ -171,87 +176,72 @@ Ext.define('Ext.panel.PDF',{
         return me;
     },
 
-    renderDoc: function(scope){
-        var me = scope;
+    renderDoc: function(){
+        var me = this;
+        var pdfDoc = me._pdfDoc;
         var panelWidth =  me.width - 20;
+        var scale;
 
-        if(!me._pdfDoc) {
+        if(!pdfDoc || panelWidth <= 0)
             return;
-        }
 
-        if(panelWidth > 0) {
-            while (me.textLayerDiv.lastChild) {
-                me.textLayerDiv.removeChild(me.textLayerDiv.lastChild);
-            }
-            while (me.canvasLayer.lastChild) {
-                me.canvasLayer.removeChild(me.canvasLayer.lastChild);
-            }
+        var renderPage = function(page){
+            // The scale can only be set once the first page of the document has
+            // been retrieved
+            if(!scale)
+                scale = panelWidth / page.getViewport(1.0).width;
+            var canvas = document.createElement('canvas');
+            var viewport = page.getViewport(scale);
 
-            for(var i = 0; i < me._pages.length; i++) {
-                var page = me._pages[i];
-                var content  = me._content[i];
-                me._makeAsyncRenderPageFunc(page, content)();
-            }
-        }
-    },
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            canvas.style.top = (page.pageNumber - 1) * viewport.height  + 'px';
+            me.canvasLayer.appendChild(canvas);
 
-    _renderPage: function(page, content){
-        var me = this;
-        var panelWidth =  me.width - 20;
-        var scale = (panelWidth) / page.getViewport(1.0).width;
-        var viewport = page.getViewport(scale);
-        var canvas = document.createElement('canvas');
-
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        canvas.style.top = (page.pageNumber - 1) * viewport.height  + 'px';
-        me.canvasLayer.appendChild(canvas);
-        var context = canvas.getContext('2d');
-
-        page.render({
-            canvasContext: context,
-            viewport: viewport
-        }).then(function(){
-            me._makeAsyncRenderTextFunc(page, content)();
-        });
-    },
-
-    _renderText: function(page, content){
-        var me = this;
-        var panelWidth =  me.width - 20;
-        var scale = (panelWidth) / page.getViewport(1.0).width;
-        var viewport = page.getViewport(scale);
-        var textLayerSubDiv = document.createElement('div');
-
-        textLayerSubDiv.className = 'textLayer';
-        textLayerSubDiv.style.height = viewport.height + 'px';
-        textLayerSubDiv.style.width = viewport.width + 'px';
-        textLayerSubDiv.style.top = ((page.pageNumber - 1) * viewport.height)  + 'px';
-
-        var textLayer = new TextLayerBuilder({textLayerDiv: textLayerSubDiv,
-                pageIndex: page.pageNumber, viewport: viewport,
-                isViewerInPresentationMode: false});
-        textLayer.setTextContent(content);
-        me.textLayerDiv.appendChild(textLayerSubDiv);
-    },
-
-    _makeAsyncRenderPageFunc: function(page, content){
-        var me = this;
-        return function(){
-            setTimeout(function() {me._renderPage(page, content);}, 0);
+            // This returns a Promise that fires when the page has rendered
+            return page.render({
+                canvasContext: canvas.getContext('2d'),
+                viewport: viewport
+            });
         };
-    },
 
-    _makeAsyncRenderTextFunc: function(page, content){
-        var me = this;
-        return function(){
-            setTimeout(function() {me._renderText(page, content);},
-                    page.pageNumber * me.textRenderDelay);
+        var renderPageText = function(page){
+            return page.getTextContent().then(function(content){
+                var viewport = page.getViewport(scale);
+                var textLayerSubDiv = document.createElement('div');
+
+                textLayerSubDiv.className = 'textLayer';
+                textLayerSubDiv.style.height = viewport.height + 'px';
+                textLayerSubDiv.style.width = viewport.width + 'px';
+                textLayerSubDiv.style.top = ((page.pageNumber - 1) * viewport.height)  + 'px';
+
+                var textLayer = new TextLayerBuilder({
+                    textLayerDiv: textLayerSubDiv,
+                    pageIndex: page.pageNumber,
+                    viewport: viewport,
+                    isViewerInPresentationMode: false
+                });
+                textLayer.setTextContent(content);
+                me.textLayerDiv.appendChild(textLayerSubDiv);
+            });
         };
-    },
 
-    _makeBustCache: function(){
-        this._bustCache = Math.random()*100000000000000000;
+        var execForAllPages = function(func){
+            // Retrieves all pages and executes a func on them
+            // Returns an Array of func's return value
+            var pageTasks = [];
+            for(var i = 1; i <= pdfDoc.numPages; i++) {
+                pageTasks.push(
+                    pdfDoc.getPage(i).then(func)
+                )
+            }
+            return pageTasks;
+        };
+
+        this.resetLayers();
+        Promise.all(execForAllPages(renderPage)).then(
+            execForAllPages(renderPageText)
+        );
     }
 
 });
