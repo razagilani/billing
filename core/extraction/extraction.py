@@ -14,7 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core import model
 from core.extraction import layout
 from core.extraction.layout import BoundingBox
-from core.model import Charge, Session, Utility, Address, RateClass
+from core.model import Charge, Session, Utility, Address, RateClass, UtilBill
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
 
@@ -67,6 +67,27 @@ class Main(object):
             total_count += 1
         return all_count, any_count, total_count
 
+def set_rate_class(bill, rate_class_name):
+    """
+    Given a bill and a rate class name, this function sets the rate class of the bill.
+    If the name corresponds to an existing rate class in the database, then the existing rate class is used.
+    Otherwise, a new rate class object is created.
+    Note: This function uses the default service for all bills.
+    :param bill: A UtilBill object
+    :param rate_class_name:  A string, the name of the rate class
+    """
+    s = Session()
+    bill_util = bill.get_utility()
+    if bill_util is None:
+        raise ApplicationError(
+            "Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
+    q = s.query(RateClass).filter(RateClass.name == rate_class_name,
+        RateClass.utility == bill_util)
+    try:
+        rate_class = q.one()
+    except NoResultFound:
+        rate_class = RateClass(utility=bill_util, name=rate_class_name)
+    bill.set_rate_class(rate_class)
 
 class Applier(object):
     """Applies extracted values to attributes of UtilBill. There's no
@@ -76,26 +97,26 @@ class Applier(object):
     created that includes the non-UtilBill specific parts, and other subclasses
     of it would have different 'KEYS' and a different implementation of 'apply'.
     """
-    @staticmethod
-    def set_rate_class(bill, rate_class_name):
-        """
-        Given a bill and a rate class name, this function sets the rate class of the bill.
-        If the name corresponds to an existing rate class in the database, then the existing rate class is used.
-        Otherwise, a new rate class object is created.
-        Note: This function uses the default service for all bills.
-        :param bill: A UtilBill object
-        :param rate_class_name:  A string, the name of the rate class
-        """
-        s = Session()
-        bill_util = bill.get_utility()
-        if bill_util is None:
-            raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
-        q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
-        try:
-            rate_class = q.one()
-        except NoResultFound:
-            rate_class = RateClass(utility=bill_util, name=rate_class_name)
-        bill.rate_class = rate_class
+    # @staticmethod
+    # def set_rate_class(bill, rate_class_name):
+    #     """
+    #     Given a bill and a rate class name, this function sets the rate class of the bill.
+    #     If the name corresponds to an existing rate class in the database, then the existing rate class is used.
+    #     Otherwise, a new rate class object is created.
+    #     Note: This function uses the default service for all bills.
+    #     :param bill: A UtilBill object
+    #     :param rate_class_name:  A string, the name of the rate class
+    #     """
+    #     s = Session()
+    #     bill_util = bill.get_utility()
+    #     if bill_util is None:
+    #         raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
+    #     q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
+    #     try:
+    #         rate_class = q.one()
+    #     except NoResultFound:
+    #         rate_class = RateClass(utility=bill_util, name=rate_class_name)
+    #     bill.set_rate_class(rate_class)
 
     BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
@@ -111,7 +132,7 @@ class Applier(object):
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
-        RATE_CLASS: set_rate_class.__func__,
+        RATE_CLASS: set_rate_class,
         SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
@@ -144,15 +165,19 @@ class Applier(object):
             raise ApplicationError('Unknown key "%s"' % key)
 
         # figure out how to apply the value based on the type of the attribute
-        if callable(attr):
-            method = getattr(utilbill, attr.__name__)
-            if hasattr(utilbill, attr.__name__):
-                # method of UtilBill
+        if callable(attr) or hasattr(attr, '__func__') and callable(\
+                attr.__func__):
+            if hasattr(attr, 'im_class') and attr.im_class is UtilBill:
+                # method of UtilBill:
+                # must get the attribute from the 'utilbill' object so it
+                # can work on a Mock as well as an actual UtilBill
+                method = getattr(utilbill, attr.__name__)
                 apply = lambda: method(value)
             else:
-                # other callable, such as method of this class.
+                # assume any other callable is method of this class.
                 # it must take a UtilBill and the value to apply.
-                apply = lambda: method(utilbill, value)
+                #assert attr.im_class is self.__class__
+                apply = lambda: attr(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
@@ -177,7 +202,6 @@ class Applier(object):
             apply()
         except Exception as e:
             raise ApplicationError('%s: %s' % (e.__class__, e.message))
-
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
@@ -333,7 +357,6 @@ def pep_old_convert_charges(text):
 
     return charges
 
-
 def pep_new_convert_charges(text):
     """
     Given text output from a pepco utility bill PDF that contains supply/distribution/etc charges, parses the individual charges
@@ -374,16 +397,19 @@ def convert_address(text):
     Given a string containing an address, parses the address into an Address object in the database.
     '''
     #matches city, state, and zip code
-    regional_exp = r'(\w+)\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
+    regional_exp = r'([\w ]+),?\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
     #for attn: line in billing addresses
     attn_co_exp = r"(?:(?:attn:?|C/?O) )+(.*)$$"
     #A PO box, or a line that starts with a number
-    street_exp = r"(\d+.*$|PO BOX \d+)"
+    street_exp = r"^(\d+.*$|PO BOX \d+)"
 
-    addressee = city = state = postal_code = None
+    addressee = city = state = street = postal_code = None
     lines = re.split("\n+", text, re.MULTILINE)
 
+    #cannot rely on line ordering, sometimes lines are flipped around in input.
     for line in lines:
+        if not line:
+            continue
         #if line has "attn:" in it, this is the addresse
         match = re.search(attn_co_exp, line, re.IGNORECASE)
         if match:
@@ -397,20 +423,12 @@ def convert_address(text):
         # check if this line contains city/state/zipcode
         match = re.search(regional_exp, line, re.IGNORECASE)
         if match:
-            city, state, postal_code = match.groups
+            city, state, postal_code = match.groups()
             continue
         #if none of the above patterns match, assume that this line is the addresse
         addressee = line
-    return Address(addressee=addressee, street=street, city=city, state=state, postal_code=postal_code)
-
-def convert_rate_class(text):
-    s = Session()
-    q = s.query(RateClass).filter(RateClass.name == text)
-    try:
-        return q.one()
-    except NoResultFound:
-        #TODO fill in fields correctly
-        return RateClass(name=text)
+    return Address(addressee=addressee, street=street, city=city, state=state,
+        postal_code=postal_code)
 
 class Field(model.Base):
     """Recipe for extracting one piece of data from a larger amount of input
@@ -662,10 +680,10 @@ class LayoutExtractor(Extractor):
                 nullable=False))
 
         #bounding box coordinates
-        bbminx = Column(Float, nullable=False)
-        bbminy = Column(Float, nullable=False)
-        bbmaxx = Column(Float, nullable=False)
-        bbmaxy = Column(Float, nullable=False)
+        bbminx = Column(Float)
+        bbminy = Column(Float)
+        bbmaxx = Column(Float)
+        bbmaxy = Column(Float)
 
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
@@ -688,6 +706,8 @@ class LayoutExtractor(Extractor):
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
+            print "------ APPLIER_KEY: %s RESULT: %s ----" % (self.applier_key,
+            m.groups()[0].strip())
             return m.groups()[0].strip()
 
     #TODO

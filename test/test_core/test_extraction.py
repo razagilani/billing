@@ -5,11 +5,12 @@ from unittest import TestCase, skip
 from boto.s3.connection import S3Connection
 from celery.result import AsyncResult
 from mock import Mock, NonCallableMock
+from pdfminer.layout import LTPage, LTTextLine
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import TextExtractor, Field, Applier, \
-    Extractor, Main
+    Extractor, Main, LayoutExtractor, set_rate_class
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.utilbill_loader import UtilBillLoader
@@ -48,6 +49,10 @@ class ApplierTest(TestCase):
         self.bill = NonCallableMock()
         self.bill.set_total_energy = Mock()
         self.bill.set_next_meter_read_date = Mock()
+        self.bill.set_rate_class = Mock()
+        def side_effect(arg):
+            print arg
+        self.bill.set_rate_class = Mock(side_effect=side_effect)
 
     def test_default_applier(self):
         d = date(2000,1,1)
@@ -65,6 +70,12 @@ class ApplierTest(TestCase):
         self.bill.reset_mock()
         self.applier.apply(Applier.ENERGY, 123.456, self.bill)
         self.bill.set_total_energy.assert_called_once_with(123.456)
+
+        # self.bill.reset_mock()
+        # self.applier.apply(Applier.RATE_CLASS, "some rate class", self.bill)
+        # self.bill.set_rate_class.assert_called_once_with(RateClass(
+        #     utility=self.bill.utility, name="some rate class"))
+
 
     def test_errors(self):
         # wrong key
@@ -117,6 +128,7 @@ class TextFieldTest(TestCase):
     def setUp(self):
         self.field = TextExtractor.TextField(
             regex=r'([A-Za-z]+ [0-9]{1,2}, [0-9]{4})', type=Field.DATE)
+        self.address_field = TextExtractor.TextField(regex=r'(.*)', type=Field.ADDRESS)
 
     def test_get_value(self):
         self.assertEqual(date(2000, 1, 1),
@@ -130,6 +142,38 @@ class TextFieldTest(TestCase):
         with self.assertRaises(ConversionError):
             print self.field.get_value('Somemonth 0, 7689')
 
+    def test_convert_address(self):
+        address_str = "MT RAINIER, MD 20712\n2703 QUEENS CHAPEL RD\n"
+        address = Address(street="2703 QUEENS CHAPEL RD",
+                            city="MT RAINIER", state="MD",
+                            postal_code="20712")
+        retrieved_address = self.address_field.get_value(address_str)
+        self.assertEquals(address, retrieved_address)
+
+class BoundingBoxFieldTest(TestCase):
+    def setUp(self):
+        #sample extractor
+        self.field = LayoutExtractor.BoundingBoxField(
+            regex=r"Rate Class:\s+(.*)\s?$", page_num=1,
+            bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
+            type=Field.STRING,
+            applier_key=Applier.RATE_CLASS)
+
+        #sample layout for a bill
+        page = Mock(spec=LTPage)
+        sample_text = Mock(spec=LTTextLine)
+        sample_text.x0 = 39
+        sample_text.y0 = 715
+        sample_text.x1 = 105
+        sample_text.xy = 725
+        sample_text.get_text.return_value = "Rate Class: Example"
+        page._objs = [sample_text]
+        self.pages = [page]
+
+    def test_get_value(self):
+        self.assertEqual("Example", self.field.get_value(
+            self.pages))
+
 class TextExtractorTest(TestCase):
     def setUp(self):
         self.text = 'Bill Text 1234.5 More Text  '
@@ -140,6 +184,18 @@ class TextExtractorTest(TestCase):
 
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
+
+class LayoutExtractorTest(TestCase):
+    def setUp(self):
+        self.layout = [LTPage(pageid=1, bbox=(0,0,0,0), rotate=0)]
+        self.bfh = Mock(autospec=BillFileHandler)
+        self.le = LayoutExtractor()
+        self.bill = Mock(autospec=UtilBill)
+        self.bill.get_layout.return_value = self.layout
+
+    def test_prepare_input(self):
+        self.assertEqual(self.layout, self.le._prepare_input(self.bill,
+            self.bfh))
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
@@ -306,3 +362,19 @@ class TestIntegration(TestCase):
         self.assertEqual((0, 0, 1), result.get())
         self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
                          metadata)
+
+    def test_set_rate_class(self):
+        s = Session()
+        rate_class = RateClass(utility=self.bill.utility,
+                                name="existing test rate class")
+        s.add(rate_class)
+        s.flush()
+
+        # set bill's rate class to an existing rate class in the database
+        set_rate_class(self.bill, "existing test rate class")
+        self.assertEqual(rate_class, self.bill.rate_class)
+
+        #set bill's rate class to a new rate class
+        set_rate_class(self.bill, "new test rate class")
+        self.assertEqual(self.bill.rate_class.utility, self.bill.utility)
+        self.assertEqual(self.bill.rate_class.name, "new test rate class")
