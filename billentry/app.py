@@ -488,10 +488,15 @@ def check_password(plain_text_password, hashed_password):
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
 
-api = Api(app)
+class MyApi(Api):
+    def handle_error(self, e):
+        raise
+
+api = MyApi(app)
 api.add_resource(resources.AccountListResource, '/utilitybills/accounts')
 api.add_resource(resources.AccountResource, '/utilitybills/accounts/<int:id>')
 api.add_resource(resources.UtilBillListResource, '/utilitybills/utilitybills')
+api.add_resource(resources.AltitudeAccountResource, '/utilitybills/altitudeaccounts')
 api.add_resource(resources.UtilBillResource,
                  '/utilitybills/utilitybills/<int:id>')
 api.add_resource(resources.SuppliersResource, '/utilitybills/suppliers')

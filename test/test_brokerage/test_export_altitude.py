@@ -165,8 +165,8 @@ class TestAltitudeBillStorage(TestCase):
             service_address=Address(street='1 Service St.'),
             period_start=date(2000,1,1), period_end=date(2000,1,1),
             due_date=date(2000,2,1))
-        self.utilbill.registers[0].quantity = 150.
-        self.utilbill.registers[0].meter_identifier = 'GHIJKL'
+        self.utilbill._registers[0].quantity = 150.
+        self.utilbill._registers[0].meter_identifier = 'GHIJKL'
         self.utilbill.utility_account_number = '12345'
         altitude_account = AltitudeAccount(ua, 'aaa')
         altitude_utility = AltitudeUtility(utility, guid='uuu')
