@@ -176,8 +176,6 @@ class UtilbillProcessor(object):
             period_start=start, period_end=end, target_total=total,
             date_received=datetime.utcnow(), state=state)
 
-        # update the bill with some data extracted from its PDF file
-        Main(self.bill_file_handler).extract(new_utilbill)
 
         new_utilbill.charges = self.pricing_model. \
             get_predicted_charges(new_utilbill)
@@ -252,6 +250,9 @@ class UtilbillProcessor(object):
         if bill_file is not None:
             self.bill_file_handler.upload_file_for_utilbill(new_utilbill,
                                                              bill_file)
+
+        # update the bill with some data extracted from its PDF file
+        Main(self.bill_file_handler).extract(new_utilbill)
 
         # adding UtilBill should also add Charges and Registers due to cascade
         session.add(new_utilbill)

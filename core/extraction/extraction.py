@@ -111,7 +111,7 @@ class Applier(object):
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
-        RATE_CLASS: set_rate_class,
+        RATE_CLASS: set_rate_class.__func__,
         SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
@@ -143,6 +143,8 @@ class Applier(object):
         if attr is None:
             raise ApplicationError('Unknown key "%s"' % key)
 
+        print attr
+        print type(attr)
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
             method = getattr(utilbill, attr.__name__)
@@ -690,7 +692,8 @@ class LayoutExtractor(Extractor):
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
-            return m.groups()[0]
+            print m.groups()[0].strip()
+            return m.groups()[0].strip()
 
     #TODO
     class TableField(Field):
