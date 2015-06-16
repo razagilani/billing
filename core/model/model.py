@@ -125,7 +125,7 @@ class Base(object):
 
 Base = declarative_base(cls=Base)
 
-_schema_revision = '58383ed620d3'
+_schema_revision = '41bb5135c2b6'
 
 
 def check_schema_revision(schema_revision=None):

@@ -85,6 +85,10 @@ class AltitudeAccount(Base):
         self.utility_account = utility_account
         self.guid = guid
 
+    def get_altitude_account(self):
+        return self.utility_account
+
+
 class AltitudeBill(Base):
     __tablename__ = 'altitude_bill'
 

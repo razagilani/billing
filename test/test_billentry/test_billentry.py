@@ -19,7 +19,7 @@ from util.dictutils import deep_map
 
 init_test_config()
 
-from core.altitude import AltitudeBill, get_utilbill_from_guid
+from core.altitude import AltitudeBill, get_utilbill_from_guid, AltitudeAccount
 
 import billentry
 from billentry import common
@@ -196,13 +196,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                              Address(), Address(), account_number='2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
                              Address(), Address(), account_number='3')
+        self.altitude_account1 = AltitudeAccount(ua2,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff6')
+        self.altitude_account2 = AltitudeAccount(ua3,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff7')
         self.other_rate_class = RateClass('Other Rate Class', self.utility, 'electric')
         self.other_rate_class.id = 3
         s.add_all([self.some_rate_class, self.other_rate_class])
         ua2.id, ua3.id = 2, 3
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
-                   BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
+                   BrokerageAccount(self.ua1), BrokerageAccount(ua2),
+                   self.altitude_account1, self.altitude_account2])
         ub3 = UtilBill(ua3, utility1, None,
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
@@ -226,7 +231,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         self.ub1.charges = [c1, c2]
         self.ub2.charges = [c3, c4, c5]
-        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
+
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3,
+            self.altitude_account1, self.altitude_account2])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
 
@@ -260,6 +267,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson(
             {'results': 0,
              'rows': [], }, rv.data)
+
+    def test_altitude_accounts_list(self):
+        rv = self.app.get(self.URL_PREFIX + 'altitudeaccounts')
+        expected = {'results': 2,
+            'rows': [
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff6',
+                 'utility_account_id': 2},
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff7',
+                 'utility_account_id': 3}
+            ]}
+        self.assertJson(expected, rv.data)
+
 
     def test_utilbills_list(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
