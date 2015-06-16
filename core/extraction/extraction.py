@@ -401,7 +401,7 @@ def convert_address(text):
     #for attn: line in billing addresses
     attn_co_exp = r"(?:(?:attn:?|C/?O) )+(.*)$$"
     #A PO box, or a line that starts with a number
-    street_exp = r"^(\d+.*$|PO BOX \d+)"
+    street_exp = r"^(\d+.*?$|PO BOX \d+)"
 
     addressee = city = state = street = postal_code = None
     lines = re.split("\n+", text, re.MULTILINE)
@@ -699,16 +699,18 @@ class LayoutExtractor(Extractor):
                     maxx=self.bbmaxx, maxy=self.bbmaxy))
 
             if not self.regex:
-                return text
+                print "------ APPLIER_KEY: %s RESULT: %s ----" % \
+                      (self.applier_key, text.strip())
+                return text.strip()
 
             m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None or len(m.groups()) != 1:
+            if m is None:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text[:20]))
             print "------ APPLIER_KEY: %s RESULT: %s ----" % (self.applier_key,
-            m.groups()[0].strip())
-            return m.groups()[0].strip()
+            "\n".join(m.groups()).strip())
+            return "\n".join(m.groups()).strip()
 
     #TODO
     class TableField(Field):
