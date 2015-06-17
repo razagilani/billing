@@ -402,9 +402,10 @@ class RateClassesResource(BaseResource):
         parser.add_argument('utility_id', type=int, required=True)
         parser.add_argument('service', type=str, required=True)
         args = parser.parse_args()
-        rate_class = self.utilbill_processor.create_rate_class(args['name'],
-                                                               args['utility_id'],
-                                                               args['service'])
+        rate_class = self.utilbill_processor.create_rate_class(
+                            args['name'],
+                            args['utility_id'],
+                            args['service'].lower())
         Session().commit()
         return {'rows': marshal(rate_class,{
             'id': Integer,
