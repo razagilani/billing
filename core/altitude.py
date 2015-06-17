@@ -175,7 +175,7 @@ def get_or_create_guid_for_utilbill(utilbill, guid_func, session):
     """
     altitude_bill = _billing_to_altitude(UtilBill, AltitudeBill)(utilbill)
     if altitude_bill is None:
-        altitude_bill =  AltitudeBill(utilbill, guid_func())
+        altitude_bill =  AltitudeBill(utilbill, str(guid_func()))
         session.add(altitude_bill)
 
     return altitude_bill.guid
