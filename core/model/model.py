@@ -7,6 +7,7 @@ from datetime import date, datetime
 from itertools import chain
 import json
 from StringIO import StringIO
+import re
 from pdfminer.converter import TextConverter, PDFPageAggregator
 from pdfminer.layout import LAParams
 from pdfminer.pdfdocument import PDFDocument
@@ -1194,6 +1195,11 @@ class UtilBill(Base):
                 else:
                     outfile.seek(0)
                     text = outfile.read()
+                    #this fixes unicode errors, in which pdfmine replaces
+                    # characters with the text "(cid:###)" where ### is the
+                    # character code.
+                    text = re.sub(r"\(cid:(\d+)\)",
+                        lambda m: chr(int(m.group(1))), text)
                     text = unicode(text, errors='ignore')
                 device.close()
             self._text = text

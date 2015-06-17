@@ -24,8 +24,10 @@ def get_text_from_boundingbox(page, boundingbox):
     """
     textlines = get_all_objs(page, objtype=LTTextLine,
         predicate=lambda o: in_bounds(o, boundingbox))
-
-    return '\n'.join([tl.get_text() for tl in textlines])
+    text = '\n'.join([tl.get_text() for tl in textlines])
+    #for pdfminer unicode issues, fixes occurences of (cid:<char code>)
+    text = re.sub(r"\(cid:(\d+)\)", lambda m: chr(int(m.group(1))), text)
+    return text
 
 def get_text_line(page, regexstr):
     """
@@ -78,8 +80,8 @@ def in_bounds(obj, bounds):
     Determines if the top left corner of a layout object is in the bounding box
     """
     testpoint = (obj.x0, obj.y0)
-    if testpoint[0] >= bounds.minx and testpoint[0] <= bounds.maxx:
-        if testpoint[1] >= bounds.miny and testpoint[1] <= bounds.maxy:
+    if bounds.minx <= testpoint[0] <= bounds.maxx:
+        if bounds.miny <= testpoint[1] <= bounds.maxy:
             return True
 
     return False
