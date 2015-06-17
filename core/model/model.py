@@ -125,7 +125,7 @@ class Base(object):
 
 Base = declarative_base(cls=Base)
 
-_schema_revision = '58383ed620d3'
+_schema_revision = '41bb5135c2b6'
 
 
 def check_schema_revision(schema_revision=None):
@@ -1229,9 +1229,13 @@ class UtilBill(Base):
         register_binding of REG_TOTAL'''
         # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
-        register = next(
-            r for r in self._registers if r.register_binding == Register.TOTAL)
+        try:
+            register = next(
+                r for r in self._registers if r.register_binding == Register.TOTAL)
+        except StopIteration:
+            return
         register.meter_identifier = meter_identifier
+
 
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with

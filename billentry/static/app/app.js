@@ -14,7 +14,8 @@ Ext.application({
         'UtilityBills',
         'Charges',
         'Viewer',
-        'Reports'
+        'Reports',
+        'UploadBills'
     ],
 
     stores: [
@@ -29,7 +30,8 @@ Ext.application({
         'UtilityBills',
         'UserUtilBillCounts',
         'UserUtilityBills',
-        'AllFlaggedUtilityBills'
+        'AllFlaggedUtilityBills',
+        'AltitudeAccounts'
     ],
 
     refs: [{
