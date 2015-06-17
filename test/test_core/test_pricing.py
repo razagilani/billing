@@ -5,7 +5,7 @@ import unittest
 from mock import Mock, call
 
 from core.pricing import FuzzyPricingModel, PricingModel
-from core.model import Charge, UtilBill, RateClass, Utility, Address, Supplier, SupplyGroup
+from core.model import Charge, UtilBill, RateClass, Utility, Address, Supplier
 from exc import NoSuchBillException
 
 class PricingModelTest(unittest.TestCase):
@@ -62,8 +62,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.supplier = Supplier(name='Utility')
         self.rate_class = RateClass(name='Rate Class', utility=self.utility,
                                     service='gas')
-        self.supply_group = SupplyGroup(name='Supply Group',
-                                        supplier=self.supplier)
 
         def make_mock_utilbill(account):
             u = Mock()
@@ -99,7 +97,6 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.u.utility = self.utility
         self.u.supplier = self.supplier
         self.u.rate_class = self.rate_class
-        self.u.supply_group = self.supply_group
         self.u.charges = []
 
     def test_get_predicted_charges(self):
@@ -117,8 +114,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
             processed=True)
         load_calls = [
             call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True), call(supply_group=self.supply_group,
-                                       processed=True)]
+                 processed=True), call(supplier=self.supplier, processed=True)]
         self.utilbill_loader.load_real_utilbills.assert_has_calls(load_calls)
         self.assertEqual([], charges)
 
@@ -159,7 +155,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
         charges = self.fpm.get_predicted_charges(self.u)
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True)])
+                 processed=True),
+            call(supplier=self.u.supplier, processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # however, when u belongs to the same account as an existing bill,
@@ -176,7 +173,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
                  processed=True),
-            call(supply_group=self.supply_group, processed=True)])
+            call(supplier=self.supplier, processed=True)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], charges)
 
@@ -241,7 +238,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.assert_has_calls([
             call(utility=self.utility, rate_class=self.rate_class,
                  processed=True),
-            call(supply_group=self.u.supply_group, processed=True)
+            call(supplier=self.u.supplier, processed=True),
         ])
 
         d_charges = {c for c in charges if c.type == Charge.DISTRIBUTION}

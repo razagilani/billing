@@ -29,8 +29,7 @@ Ext.application({
         'UtilityBills',
         'UserUtilBillCounts',
         'UserUtilityBills',
-        'AllFlaggedUtilityBills',
-        'AltitudeAccounts'
+        'AllFlaggedUtilityBills'
     ],
 
     refs: [{

@@ -17,7 +17,7 @@ from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable
     NoSuchBillException
 from core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Charge
-from util.units import unit_registry, convert_to_therms
+from util.units import ureg, convert_to_therms
 
 
 __all__ = [
@@ -218,7 +218,7 @@ class ReeBill(Base):
             # its parent. otherwise it would be necessary to call
             # s.expunge(elf.readings[0]).
             del self.readings[0]
-        for register in utility_bill._registers:
+        for register in utility_bill.registers:
             self.readings.append(Reading.create_from_register(register))
 
     def update_readings_from_reebill(self, reebill_readings):
@@ -232,7 +232,7 @@ class ReeBill(Base):
             session.delete(r)
 
         utilbill_register_bindings = list(chain.from_iterable(
-                (r.register_binding for r in u._registers)
+                (r.register_binding for r in u.registers)
                 for u in self.utilbills))
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
@@ -270,33 +270,20 @@ class ReeBill(Base):
         else:
             # in all other cases, 'new_quantity' will be in BTU: convert to unit
             # of the reading
-            new_quantity_with_unit = new_quantity * unit_registry.btu
-            unit = unit_registry.parse_expression(unit_string)
+            new_quantity_with_unit = new_quantity * ureg.btu
+            unit = ureg.parse_expression(unit_string)
             converted_quantity = new_quantity_with_unit.to(unit)
             reading.renewable_quantity = converted_quantity.magnitude
 
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
-        """Return sum of all readings' values in therms, regardless of their
-        meaning or whether they measure total energy. Readings whose unit is
-        not an energy unit are treated as 0. (Tests are depending on this
-        behavior, but should change.)
-        """
         return sum(convert_to_therms(
             r.renewable_quantity, r.unit,
             ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def get_total_conventional_energy(self, ccf_conversion_factor=None):
-        """Return total energy of the utility bill in therms (from the stored
-        value in ReeBill.readings, not the current value in the UtilBill).
-        """
-        try:
-            reading = self.get_reading_by_register_binding(Register.TOTAL)
-        except RegisterError:
-            return 0
-        else:
-            return convert_to_therms(
-                reading.conventional_quantity, reading.unit,
-                ccf_conversion_factor=ccf_conversion_factor)
+        return sum(convert_to_therms(
+            r.conventional_quantity, r.unit,
+            ccf_conversion_factor=ccf_conversion_factor) for r in self.readings)
 
     def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
@@ -335,7 +322,7 @@ class ReeBill(Base):
         # corresponding Reading may still be necessary for calculating the
         # charges, so the actual quantity of that register is used.
         context = {r.register_binding: Evaluation(r.quantity)
-                   for r in self.utilbill._registers}
+                   for r in self.utilbill.registers}
         context.update({r.register_binding: Evaluation(r.hypothetical_quantity)
                         for r in self.readings})
 
@@ -454,14 +441,18 @@ class ReeBill(Base):
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
-        # TODO: we can probably get rid of this
         try:
             the_dict['ree_quantity'] = self.get_total_renewable_energy()
         except (ValueError, StopIteration) as e:
+            log.error(
+                "Error when getting renewable energy "
+                "quantity for reebill %s:\n%s" % (
+                self.id, traceback.format_exc()))
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+
         return the_dict
 
-    def issue(self, issue_date, reebill_processor, corrections=None):
+    def issue(self, issue_date, reebill_processor):
         """Set the values of all fields for an issued bill. Does not actually
         generate a file or send an email.
 
@@ -475,24 +466,14 @@ class ReeBill(Base):
         many of which should be moved into this method.
         """
         assert self.issued in (False, 0) # 0 instead of False is a MySQL problem
-        # correction reebills may have issue_date and due_date matching their
-        #  original version rather than None
         assert self.issue_date is None or self.version > 0
         assert self.due_date is None or self.version > 0
-        if corrections is None:
-            corrections = []
-        else:
-            # only a non-correction bill can be issued with corrections
-            assert self.version == 0
 
         # for a non-correction, all earlier bills must be issued first.
         # (ReeBillCustomer is used to avoid doing a direct database query here)
         if self.version == 0 and self is not \
                     self.reebill_customer.get_first_unissued_bill():
             raise NotIssuable("Predecessor must be issued before this one")
-
-        for correction_bill in corrections:
-            correction_bill.issue(issue_date, reebill_processor)
 
         if not self.processed:
             # a ton of attributes of this object get set in this method
@@ -709,12 +690,6 @@ class ReeBillCustomer(Base):
         except ValueError:
             return None
         return result
-
-    def get_unissued_corrections(self):
-        """:return: list of ReeBills belonging to this customer that are not
-        issued whose version > 0.
-        """
-        return [r for r in self.reebills if r.version > 0 and not r.issued]
 
     def get_groups(self):
         """Return a list of CustomerGroups that this ReeBillCustomer belongs

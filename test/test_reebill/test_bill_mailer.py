@@ -31,7 +31,7 @@ class BillMailerTest(TestCase):
         content = "mail body content"
         subject = "Subject"
 
-        bill_mailer.mail('one@example.com, one@gmail.com', subject, content,
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], subject, content,
                          StringIO('data').read(), 'text.txt', boundary='abc')
         contents1 = []
         # TODO don't use repeated hardcoded file paths and don't use relative
@@ -93,14 +93,13 @@ class BillMailerTest(TestCase):
         # file paths
         # TODO don't use repeated hardcoded file paths and don't use relative
         # file paths
-        recipient = 'one@example.com, one@gmail.com'
-        bill_mailer.mail(recipient, subject, content, StringIO('data').read(),
-                         'utility_bill.pdf', boundary='abc')
-        bill_mailer.mail(recipient, subject, content, StringIO('data').read(),
-                         'audio.wav', boundary='abc')
-        bill_mailer.mail(recipient, subject, content,
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], subject, content,
+                         StringIO('data').read(), 'utility_bill.pdf', boundary='abc' )
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], subject, content,
+                         StringIO('data').read(), 'audio.wav', boundary='abc' )
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], subject, content,
                          StringIO('data').read(), 'image.jpg', boundary='abc' )
-        bill_mailer.mail(recipient, subject, content,
+        bill_mailer.mail(['one@example.com', 'one@gmail.com'], subject, content,
                          StringIO('data').read(), 'video.mov', boundary='abc' )
         server.ehlo.assert_has_calls([call(), call(), call(), call(), call(), call()])
         server.starttls.asserrt_has_calls([call(), call(), call(), call()])

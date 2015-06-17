@@ -71,9 +71,26 @@ content => template('conf/billentry-exchange.conf.erb')
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
     cluster => 'rabbit@portal-stage.nextility.net'
 }
-rabbit_mq::base_resource_configuration {$env:
-    env => $env
+
+rabbit_mq::user_permission {'guest':
+    vhost => $env,
+    conf  => '.*',
+    write  => '.*',
+    read  => '.*',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]],
 }
+
+rabbit_mq::vhost {$env:
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
+}
+
+rabbit_mq::policy {'HA':
+    pattern => '.*',
+    vhost => $env,
+    policy => '{"ha-sync-mode":"automatic", "ha-mode":"all", "federation-upstream-set":"all"}',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]]
+}
+
 cron { destage_from_production:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts && python backup.py restore --scrub --root-password root billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/reebill-stage/destage_stdout.log 2> /home/reebill-stage/destage_stderr.log",
     user => $username,

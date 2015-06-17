@@ -4,7 +4,7 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 from mock import Mock, call
-from core.model import Utility, Session, SupplyGroup
+from core.model import Utility, Session
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
@@ -58,8 +58,7 @@ class FetchTest(unittest.TestCase):
     def setUp(self):
         utility_account = UtilityAccount('someone', '12345',
             Mock(autospec=Utility), Mock(autospec=Supplier),
-            Mock(autospec=RateClass), Mock(autospec=SupplyGroup),
-            Address(), Address())
+            Mock(autospec=RateClass), Address(), Address())
         reebill_customer = ReeBillCustomer(name='someone', discount_rate=0.5,
                                 late_charge_rate=0.1, service='thermal',
                                 bill_email_recipient='example@example.com',
@@ -68,7 +67,7 @@ class FetchTest(unittest.TestCase):
         rate_class = RateClass('DC Non Residential Non Heat', utility=utility)
         utilbill = UtilBill(utility_account, utility, rate_class=rate_class,
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
-        utilbill._registers = [Register(Register.TOTAL, 'therms')]
+        utilbill.registers = [Register(Register.TOTAL, 'therms')]
         self.reebill = ReeBill(reebill_customer, 1, utilbill=utilbill)
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
@@ -199,7 +198,7 @@ class FetchTest(unittest.TestCase):
 
 class ReeGetterTestPV(unittest.TestCase):
     '''Test for ReeGetter involving a PV bill with both energy and demand
-    _registers.
+    registers.
     Unlike the above, this has proper mocking and doesn't depend on
     SQLAlchemy objects.
     '''
@@ -257,12 +256,7 @@ class ReeGetterTestPV(unittest.TestCase):
         mock_facts_doc = Mock(autospec=CubeDocument)
         mock_facts_doc.energy_sold = 1
         mock_facts_doc.demand = 2
-        def get_measure_value_for_hour(install, day, hour, measure_name):
-            if measure_name == 'Energy Sold':
-                return 1
-            assert measure_name == 'Demand'
-            return 2
-        self.monguru.get_measure_value_for_hour = get_measure_value_for_hour
+        self.monguru.get_data_for_hour.return_value = mock_facts_doc
 
         splinter = Mock()
         splinter._guru = self.monguru
