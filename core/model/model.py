@@ -31,6 +31,7 @@ from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError, MissingFileError
+from util.pdfminer_util import fix_pdfminer_cid
 
 __all__ = [
     'Address',
@@ -1198,8 +1199,7 @@ class UtilBill(Base):
                     #this fixes unicode errors, in which pdfmine replaces
                     # characters with the text "(cid:###)" where ### is the
                     # character code.
-                    text = re.sub(r"\(cid:(\d+)\)",
-                        lambda m: chr(int(m.group(1))), text)
+                    text = fix_pdfminer_cid(text)
                     text = unicode(text, errors='ignore')
                 device.close()
             self._text = text

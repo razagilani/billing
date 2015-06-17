@@ -154,9 +154,9 @@ class BoundingBoxFieldTest(TestCase):
     def setUp(self):
         #sample extractor
         self.field = LayoutExtractor.BoundingBoxField(
-            regex=r"Rate Class:\s+(.*)\s?$", page_num=1,
+            bbregex=r"Rate Class:\s+(.*)\s?$", page_num=1,
             bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
-            type=Field.STRING,
+            corner=0, type=Field.STRING,
             applier_key=Applier.RATE_CLASS)
 
         #sample layout for a bill
@@ -172,7 +172,7 @@ class BoundingBoxFieldTest(TestCase):
 
     def test_get_value(self):
         self.assertEqual("Example", self.field.get_value(
-            self.pages))
+            (self.pages, 0, 0)))
 
 class TextExtractorTest(TestCase):
     def setUp(self):
@@ -194,7 +194,7 @@ class LayoutExtractorTest(TestCase):
         self.bill.get_layout.return_value = self.layout
 
     def test_prepare_input(self):
-        self.assertEqual(self.layout, self.le._prepare_input(self.bill,
+        self.assertEqual((self.layout, 0, 0), self.le._prepare_input(self.bill,
             self.bfh))
 
 class TestIntegration(TestCase):
