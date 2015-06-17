@@ -28,6 +28,12 @@ package { 'postgresql93':
 package { 'postgresql93-devel':
     ensure  => installed
 }
+package { 'mysql-devel':
+    ensure  => installed
+}
+package { 'mysql-server':
+    ensure  => installed
+}
 package { 'html2ps':
     ensure  => installed
 }

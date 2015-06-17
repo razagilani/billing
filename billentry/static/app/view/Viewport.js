@@ -8,6 +8,8 @@ Ext.define('BillEntry.view.Viewport', {
         'BillEntry.view.accounts.Accounts',
         'BillEntry.view.utilitybills.UtilityBills',
         'BillEntry.view.charges.Charges',
+        'BillEntry.view.uploadbills.UploadBillsForm',
+        'BillEntry.view.uploadbills.Dropzone',
         'BillEntry.view.reports.Reports'
     ],
 
@@ -72,6 +74,27 @@ Ext.define('BillEntry.view.Viewport', {
                     region: 'south',
                     height: 150
                 }]
+            },{
+                xtype: 'panel',
+                name: 'uploadBillsTab',
+                title: 'Upload Utility Bills',
+                layout: 'border',
+                items: [{
+                    xtype: 'uploadBillsForm',
+                    id: 'uploadBillsForm',
+                    region: 'north',
+                    collapsible: false,
+                    flex: 1,
+                    minHeight: 200,
+                    autoScroll: true
+                },{
+                    xtype: 'dropzone',
+                    id: 'dropzone',
+                    layout: 'fit',
+                    region: 'center',
+                    flex: 1,
+                    minHeight: 200
+                    }]
             },{
                 xtype: 'reports'
             }],
