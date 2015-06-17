@@ -166,7 +166,7 @@ class Exporter(object):
             account = ub.utility_account.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
-                for register in ub._registers:
+                for register in ub.registers:
                     if register.register_binding.lower() == 'reg_total':
                         units = register.unit
                         quantity = register.quantity

@@ -104,7 +104,7 @@ class ReebillFileHandler(object):
         def get_utilbill_register_data_for_reebill_reading(reading):
             utilbill = reading.reebill.utilbill
             try:
-                register = next(r for r in utilbill._registers
+                register = next(r for r in utilbill.registers
                         if r.register_binding == reading.register_binding)
             except StopIteration:
                 return '', '', ''

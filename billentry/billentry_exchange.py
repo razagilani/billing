@@ -67,18 +67,13 @@ class ConsumeUtilbillGuidsHandler(MessageHandler):
                      "JSON-serializable")
         guid = message['guid']
         try:
-            try:
-                utilbill = self.core_altitude_module.get_utilbill_from_guid(guid)
-                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                    self.billentry_common_module.\
-                        replace_utilbill_with_beutilbill(utilbill)
-                    Session().commit()
-            except NoResultFound:
-                logger.error('Utility Bill for guid %s not found' % guid)
-                raise
-        except:
-            logger.exception('Failed to process message:')
-            Session().rollback()
+            utilbill = self.core_altitude_module.get_utilbill_from_guid(guid)
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                self.billentry_common_module.\
+                    replace_utilbill_with_beutilbill(utilbill)
+                Session().commit()
+        except NoResultFound:
+            logger.error('Utility Bill for guid %s not found' % guid)
             raise
 
 def consume_utilbill_guids_mq(

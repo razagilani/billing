@@ -11,7 +11,6 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-include mongo::mongo_tools
 require host::hosts_file
 
 package { 'httpd':
@@ -21,12 +20,6 @@ package { 'postgresql93':
     ensure  => installed
 }
 package { 'postgresql93-devel':
-    ensure  => installed
-}
-package { 'mysql-devel':
-    ensure  => installed
-}
-package { 'mysql-server':
     ensure  => installed
 }
 package { 'html2ps':
@@ -71,16 +64,26 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@portal-prod.nextility.net'
+    cluster => 'rabbit@ip-10-0-0-158'
 }
-rabbit_mq::base_resource_configuration {$env:
-    env => $env
+
+rabbit_mq::user_permission {'guest':
+    vhost => $env,
+    conf  => '.*',
+    write  => '.*',
+    read  => '.*',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]],
 }
-cron { backup:
-    command => "source /var/local/reebill-prod/bin/activate && cd /var/local/reebill-prod/billing/scripts && python backup.py backup billing-prod-backup --access-key AKIAI46IGKZFBH4ILWFA --secret-key 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 > /home/reebill-prod/backup_stdout.log 2> /home/reebill-prod/backup_stderr.log",
-    user => $username,
-    hour => 1,
-    minute => 0
+
+rabbit_mq::vhost {$env:
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
+}
+
+rabbit_mq::policy {'HA':
+    pattern => '.*',
+    vhost => $env,
+    policy => '{"ha-sync-mode":"automatic", "ha-mode":"all", "federation-upstream-set":"all"}',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]]
 }
 cron { run_reports:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
@@ -92,5 +95,11 @@ cron { export_pg_data:
     command => "source /var/local/reebill-prod/bin/activate && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
     user => $username,
     hour => 0,
+    minute => 0
+}
+cron { run_reports:
+    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
+    user => $username,
+    hour => 3,
     minute => 0
 }

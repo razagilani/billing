@@ -7,11 +7,8 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
-from itertools import groupby
 import json
 import logging
-from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
-    RateClass
 
 from alembic.config import Config
 import pymongo
@@ -30,35 +27,6 @@ from upgrade_scripts.v27.postgres import migrate_to_postgres
 REVISION = '58383ed620d3'
 
 log = logging.getLogger(__name__)
-
-def create_and_assign_supply_groups(s):
-    for utility, supplier in s.query(Utility, Supplier).outerjoin(
-            Supplier, Utility.name == Supplier.name).all():
-        if utility.name == 'washington gas':
-            supplier = s.query(Supplier).filter_by(name='WGL').one()
-        elif utility.name == 'dominion':
-            supplier = s.query(Supplier).filter_by(
-                name='Dominion Energy Solutions').one()
-        elif supplier is None:
-            supplier = Supplier(name=utility.name + ' SOS')
-            log.info('Created new supplier for %s: %s' % (
-                utility.name, supplier.name))
-        utility.sos_supplier = supplier
-
-    for rate_class in s.query(RateClass).all():
-        if rate_class.service not in ('gas', 'electric'):
-            log.warning('Unknown Service for Rate Class %s: %s, assuming '
-                        'electric', rate_class.name, rate_class.service)
-            rate_class.service = 'electric'
-
-        supply_group = SupplyGroup(
-            '%s %s SOS' % (rate_class.utility.name, rate_class.name),
-            rate_class.utility.sos_supplier, rate_class.service)
-        rate_class.sos_supply_group = supply_group
-        s.add(supply_group)
-
-        for bill in s.query(UtilBill).filter_by(rate_class=rate_class).all():
-            bill.supply_group = supply_group
 
 
 def migrate_users(s):
@@ -117,7 +85,6 @@ def upgrade():
     s = Session()
     migrate_users(s)
     set_payee_for_reebill_customers(s)
-    create_and_assign_supply_groups(s)
     s.commit()
 
     log.info('Migrating to PostgreSQL')

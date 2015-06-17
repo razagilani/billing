@@ -12,7 +12,7 @@ def setUpModule():
     create_tables()
 
 from core.model import Utility, Supplier, Address, Session, \
-    UtilityAccount, RateClass, UtilBill, SupplyGroup
+    UtilityAccount, RateClass, UtilBill
 from core.altitude import AltitudeUtility, AltitudeSupplier, \
     get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, \
     AltitudeBill
@@ -47,6 +47,7 @@ class TestWithDB(TestCase):
         create_tables()
         init_model()
         clear_db()
+
         self.u = Utility(name='A Utility', address=Address())
         self.au = AltitudeUtility(self.u, 'abc')
 
@@ -64,9 +65,6 @@ class TestWithDB(TestCase):
         s = Session()
         s.add_all([self.u, self.au])
         s.add(AltitudeUtility(self.u, 'def'))
-        supplier = Supplier(name='testsupplier', address=Address())
-        supply_group = SupplyGroup(name='test', supplier=supplier,
-                                   service='gas')
         v = Utility(name='Other', address=Address())
         s.add(AltitudeUtility(v, 'abc'))
         s.flush()
@@ -128,13 +126,10 @@ class TestAltitudeBillWithDB(TestCase):
     def setUp(self):
         init_model()
         clear_db()
-        supplier = Supplier(name='test_supplier', address=Address())
-        supply_group = SupplyGroup(name='test', supplier=supplier,
-                                   service='gas')
+
         self.u = Utility(name='A Utility', address=Address())
         utility = Utility(name='example', address=None)
-        ua = UtilityAccount('', '', utility, None, None, Address(),
-                            Address())
+        ua = UtilityAccount('', '', utility, None, None, Address(), Address())
         self.utilbill = UtilBill(ua, utility, None)
 
     def tearDown(self):

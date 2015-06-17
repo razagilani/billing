@@ -291,11 +291,11 @@ class ExporterSheetTest(unittest.TestCase):
         register1.reg_type = 'total'
         register1.register_binding = Register.TOTAL
         register1.active_periods = None
-        u1._registers = [register1]
+        u1.registers = [register1]
         u2 = deepcopy(u1)
         u2.period_start = date(2011,12,15)
         u2.period_end = date(2012,01,14)
-        u2._registers = [deepcopy(register1)]
+        u2.registers = [deepcopy(register1)]
 
         dataset = self.exp.get_energy_usage_sheet([u1, u2])
         correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),

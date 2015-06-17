@@ -217,7 +217,7 @@ class ReebillProcessor(object):
         if last_reebill is None or estimate:
             # this is the first reebill: choose only total register, which is
             #  guaranteed to exist
-            reg_total_register = next(r for r in new_utilbill._registers if
+            reg_total_register = next(r for r in new_utilbill.registers if
                                       r.register_binding == Register.TOTAL)
             new_reebill.readings = [Reading.create_from_register(
                 reg_total_register, estimate=estimate)]
@@ -285,7 +285,6 @@ class ReebillProcessor(object):
             result.append((seq, max_version, adjustment))
         return result
 
-    # deprecated--do not use
     def issue_corrections(self, account, target_sequence, issue_date):
         '''Applies adjustments from all unissued corrections for 'account' to
         the reebill given by 'target_sequence', and marks the corrections as
@@ -532,8 +531,7 @@ class ReebillProcessor(object):
         
         # Render the jinja2 template with template fields
         html_body = Template(template_html).render(fields)
-        if isinstance(recipient_list, list):
-            recipient_list = ', '.join(recipient_list)
+
         # Hand this content off to the mailer
         self.bill_mailer.mail(
             recipient_list,
@@ -563,34 +561,70 @@ class ReebillProcessor(object):
         if accounts_to_be_confirmed:
             raise ConfirmMultipleAdjustments(accounts_to_be_confirmed)
 
-    def _issue_bills(self, reebills):
-        """
-        Mark the given bills as issued, including applying corrections,
-        and send an email to the customer for each one.
-        :param reebills: list of ReeBills
-        """
-        issue_date = datetime.utcnow()
-        for reebill in reebills:
-            # a correction bill cannot be issued by itself
-            assert reebill.version == 0
-            reebill.issue(
-                issue_date, self,
-                corrections=reebill.reebill_customer.get_unissued_corrections())
-            self.mail_reebill("issue_email_template.html", "Energy Bill Due",
-                              reebill, reebill.email_recipient)
-
     def issue_and_mail(self, account, sequence, recipients=None):
         """this function issues a single reebill and sends out a confirmation
         email.
         """
-        reebill = self.state_db.get_reebill(account, sequence, version=0)
-        self._issue_bills([reebill])
-        return [reebill.column_dict()]
+        # If there are unissued corrections and the user has not confirmed
+        # to issue them, we will return a list of those corrections and the
+        # sum of adjustments that have to be made so the client can create
+        # a confirmation message
+        unissued_corrections = self.get_unissued_corrections(account)
 
+        # Let's issue
+        issue_date = datetime.utcnow()
+        try:
+            if len(unissued_corrections) > 0:
+                self.issue_corrections(account, sequence, issue_date)
+            reebill = self.state_db.get_reebill(account, sequence)
+            reebill.issue(issue_date, self)
+        except Exception as e:
+            self.logger.error(('Error when issuing reebill %s-%s: %s' %(
+                    account, sequence, e.__class__.__name__),) + e.args)
+            raise
+
+        # Recepients can be a comma seperated list of email addresses
+        if recipients is None:
+            # this is not supposed to be allowed but somehow it happens
+            # in a test
+            recipient_list = ['']
+        else:
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+
+        # TODO: BILL-6288 place in config file
+        self.mail_reebill("issue_email_template.html", "Energy Bill Due",
+                          reebill, recipient_list)
+
+    # TODO: get rid of this method. load for the processed bills, then call
+    # the issue_and_mail method above to issue them.
     def issue_processed_and_mail(self):
         '''This function issues all processed reebills'''
         bills = self.state_db.get_issuable_reebills().all()
-        self._issue_bills(bills)
+        for bill in bills:
+            # If there are unissued corrections and the user has not confirmed
+            # to issue them, we will return a list of those corrections and the
+            # sum of adjustments that have to be made so the client can create
+            # a confirmation message
+            unissued_corrections = self.get_unissued_corrections(
+                bill.reebill_customer.utility_account.account)
+            # Let's issue
+            issue_date = datetime.utcnow()
+            if len(unissued_corrections) > 0:
+                self.issue_corrections(bill.get_account(), bill.sequence,
+                    issue_date)
+            bill.issue(issue_date, self)
+
+            # email_recipient can be a comma-separated list of email addresses
+            if bill.email_recipient is None:
+                # this is not supposed to be allowed but somehow it happens
+                # in a test
+                recipient_list = ['']
+            else:
+                recipient_list = [rec.strip() for rec in
+                                  bill.email_recipient.split(',')]
+            self.mail_reebill("issue_email_template.html",
+                "Energy Bill Due", bill, recipient_list)
+
         return [bill.column_dict() for bill in bills]
 
     # TODO this method has no test coverage. maybe combine it into
@@ -621,8 +655,8 @@ class ReebillProcessor(object):
         # sweep up corrections and issue bills
         for b in reebills:
             issue_date = datetime.utcnow()
-            b.issue(issue_date, self,
-                    corrections=self.get_unissued_corrections(b.get_account()))
+            self.issue_corrections(b.get_account(), b.sequence, issue_date)
+            b.issue(issue_date, self)
 
         # Summary depends on data of first ReeBill of those summarized 
         self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)

@@ -155,28 +155,26 @@ class FuzzyPricingModel(PricingModel):
         """
         if None in (utilbill.utility, utilbill.rate_class):
             return []
-        return [u for u in self._utilbill_loader.load_real_utilbills(
-            utility=utilbill.utility, rate_class=utilbill.rate_class,
-            processed=True) if not ignore_func(u)]
+        return [utilbill for utilbill in
+                         self._utilbill_loader.load_real_utilbills(
+                             utility=utilbill.utility,
+                             rate_class=utilbill.rate_class,
+                             processed=True
+                         ) if not ignore_func(utilbill)]
 
     def _load_relevant_bills_supply(self, utilbill, ignore_func):
         """Return an iterable of UtilBills relevant for determining the
-        supply charges of 'utilbill' (currently defined as those having the
-        same supply_group, or supplier if the supply_group is not known).
+        supply charges of 'utilbill' (currently defined as having the
+        same supplier).
         :param utilbill: UtilBill whose charges are being generated
         :param ignore_func: exclude bills for which this returns true
         """
         if utilbill.supplier is None:
             return []
-        if utilbill.supply_group is None:
-            return [u for u in self._utilbill_loader.load_real_utilbills(
-                supplier=utilbill.supplier, processed=True) if
-                    not ignore_func(u)]
-        # any two bills with the same supply group should also have the same
-        # supplier, so "supplier" is not used as one of the filtering criteria
-        return [u for u in self._utilbill_loader.load_real_utilbills(
-            supply_group=utilbill.supply_group, processed=True) if
-                not ignore_func(u)]
+        return [utilbill for utilbill in
+                self._utilbill_loader.load_real_utilbills(
+                    supplier=utilbill.supplier, processed=True
+                ) if not ignore_func(utilbill)]
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`

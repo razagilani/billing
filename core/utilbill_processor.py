@@ -5,7 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.extraction.extraction import Main
 
 from core.model import UtilBill, Address, Charge, Register, Session, \
-    Supplier, Utility, RateClass, UtilityAccount, SupplyGroup
+    Supplier, Utility, RateClass, UtilityAccount
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
@@ -18,7 +18,7 @@ class UtilbillProcessor(object):
     - Operations on utility bills: upload, delete, compute, regenerate charges,
     etc.
     - CRUD on child objects of UtilBill that are closely associated
-    with UtilBills, like charges and _registers.
+    with UtilBills, like charges and registers.
     - CRUD on utilities, suppliers, rate classes.
     '''
     def __init__(self, pricing_model, bill_file_handler, logger=None):
@@ -34,8 +34,7 @@ class UtilbillProcessor(object):
     def update_utilbill_metadata(
             self, utilbill_id, period_start=None, period_end=None, service=None,
             target_total=None, utility=None, supplier=None, rate_class=None,
-            supply_group_id=None, processed=None, supply_choice_id=None,
-            meter_identifier=None, tou=None):
+            processed=None, supply_choice_id=None, meter_identifier=None, tou=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -63,20 +62,15 @@ class UtilbillProcessor(object):
             utilbill.supply_choice_id = supply_choice_id
 
         if supplier is not None:
-            supplier = self.get_supplier(supplier)
-            utilbill.set_supplier(supplier)
-
-        if supply_group_id is not None:
-            supply_group = Session().query(SupplyGroup).filter_by(
-                supplier_id=utilbill.supplier_id, id=supply_group_id).one()
-            utilbill.supply_group = supply_group
+            utilbill.supplier = self.get_create_supplier(supplier)
 
         if rate_class is not None:
-            utilbill.rate_class = self.get_rate_class(
-                rate_class)
+            utilbill.rate_class = self.get_create_rate_class(
+                rate_class, utilbill.utility, utilbill.get_service() if
+                utilbill.get_service() is not None else 'gas')
 
-        if utility is not None:
-            utility = self.get_utility(utility)
+        if utility is not None and isinstance(utility, basestring):
+            utility, _ = self.get_create_utility(utility)
             utilbill.set_utility(utility)
 
         if meter_identifier is not None:
@@ -94,8 +88,7 @@ class UtilbillProcessor(object):
 
     def _create_utilbill_in_db(self, utility_account, start=None, end=None,
                                utility=None, rate_class=None, total=0,
-                               state=UtilBill.Complete, supplier=None,
-                               supply_group=None):
+                               state=UtilBill.Complete, supplier=None):
         '''
         Returns a UtilBill with related objects (Charges and Registers
         assigned to it). Does not add anything to the session, so callers can
@@ -175,16 +168,13 @@ class UtilbillProcessor(object):
             rate_class = getattr(predecessor, 'rate_class', None)
         if rate_class is None:
             rate_class = utility_account.fb_rate_class
-        if supply_group is None:
-            supply_group = utility_account.fb_supply_group
 
         new_utilbill = UtilBill(
             utility_account, utility, rate_class, supplier=supplier,
             billing_address=billing_address.clone(),
             service_address=service_address.clone(),
             period_start=start, period_end=end, target_total=total,
-            date_received=datetime.utcnow(), state=state,
-            supply_group=supply_group)
+            date_received=datetime.utcnow(), state=state)
 
         # update the bill with some data extracted from its PDF file
         Main(self.bill_file_handler).extract(new_utilbill)
@@ -193,17 +183,36 @@ class UtilbillProcessor(object):
             get_predicted_charges(new_utilbill)
         new_utilbill.compute_charges()
 
-        # do not re-add any code that directly accesses registers inside a
-        # UtilBill object!
-        if predecessor is not None:
-            new_utilbill.set_total_meter_identifier(
-                predecessor.get_total_meter_identifier())
+        # a register called "REG_TOTAL" should always exist because it's in
+        # the rate class' register list. however, since rate classes don't yet
+        # contain all the registers they should, copy any registers from the
+        # predecessor to the current bill that the current bill does not already
+        # have (as determined by "register_binding").
+        # TODO: in the future, registers should be determined entirely by the
+        # rate class, not by copying from other bills.
+        for register in predecessor.registers if predecessor else []:
+            if register.register_binding in (r.register_binding for r in
+                                             new_utilbill.registers):
+                # Since these registers were created from rate_class
+                # template, and because rate_class template cannot fill in the
+                # correct values for identifier and meter_identifier
+                # so we need to copy these two values from corresponding
+                # predecessor registers
+                for r in new_utilbill.registers:
+                    r.identifier = register.identifier
+                    r.meter_identifier = register.meter_identifier
+                continue
+            new_utilbill.registers.append(
+                Register(register.register_binding, unit=register.unit,
+                         quantity=0, identifier=register.identifier,
+                         reg_type=register.reg_type,
+                         active_periods=register.active_periods,
+                         meter_identifier=register.meter_identifier))
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
                             service=None, utility=None, rate_class=None,
-                            total=0, state=UtilBill.Complete, supplier=None,
-                            supply_group=None):
+                            total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -226,21 +235,18 @@ class UtilbillProcessor(object):
             raise ValueError("Estimated utility bills can't have a file")
 
         # create in database
-        session = Session()
-        if supplier is not None:
-            supplier = session.query(Supplier).filter_by(name=supplier).one()
-        if supply_group is not None:
-            supply_group = self.create_supply_group(supply_group, supplier.id, 'gas')
         if utility is not None:
-            utility = session.query(Utility).filter_by(name=utility).one()
+            utility, new_utility = self.get_create_utility(utility)
         if rate_class is not None:
-            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
-
+            rate_class = self.get_create_rate_class(rate_class, utility, 'gas')
+        if supplier is not None:
+           supplier = self.get_create_supplier(supplier)
+        session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account=account).one()
         new_utilbill = self._create_utilbill_in_db(utility_account, start=start,
             end=end, utility=utility, rate_class=rate_class, total=total,
-            state=state, supplier=supplier, supply_group=supply_group)
+            state=state, supplier=supplier)
 
         # upload the file
         if bill_file is not None:
@@ -326,7 +332,7 @@ class UtilbillProcessor(object):
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
             session.delete(charge)
-        for register in utility_bill._registers:
+        for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
 
@@ -370,11 +376,11 @@ class UtilbillProcessor(object):
         while i < Register.REGISTER_BINDINGS:
             new_reg_binding = Register.REGISTER_BINDINGS[i]
             if new_reg_binding not in (r.register_binding for r in
-                                   utility_bill._registers):
+                                   utility_bill.registers):
                 break
             i += 1
         if i == len(Register.REGISTER_BINDINGS):
-            raise BillingError("No more _registers can be added")
+            raise BillingError("No more registers can be added")
 
         r = Register(
             register_kwargs.get('register_binding', new_reg_binding),
@@ -471,93 +477,44 @@ class UtilbillProcessor(object):
     # TODO move somewhere else (or delete if unnecessary)
     ############################################################################
 
-    def create_utility(self, name):
-        assert name != ''
-        session = Session()
-        utility = Utility(name=name, address=Address())
-        utility.rate_class = None
-        session.add(utility)
-        session.flush()
-        return utility
-
-    def get_utility(self, utility_id):
+    def get_create_utility(self, name):
         session = Session()
         try:
-            result = session.query(Utility).filter_by(
-                id=utility_id).one()
+            result = session.query(Utility).filter_by(name=name).one()
         except NoResultFound:
-            result = None
-        return result
+            result = Utility(name=name, address=Address())
+            return result, True
+        return result, False
 
-    def create_rate_class(self, name, utility_id, service):
-        assert name != ''
-        s = Session()
-        utility = s.query(Utility).filter_by(id=utility_id).first()
-        rate_class = RateClass(name=name, utility=utility, service=service)
-        s.add(rate_class)
-        s.flush()
-        return rate_class
-
-    def create_supply_group(self, name, supplier_id, service):
-        """
-        :param name: name of the supply group (string)
-        :param supplier_id: primary key of the Supplier
-        :param service: one of model.SERVICES ("gas" or "electric")
-        :return: newly-created SupplyGroup
-        """
-        assert name != ''
-        s = Session()
-        supplier = s.query(Supplier).filter_by(id=supplier_id).first()
-        supply_group = SupplyGroup(name=name, supplier=supplier,
-                                   service=service)
-        s.add(supply_group)
-        s.flush()
-        return supply_group
-
-    def create_supplier(self, name):
-        # suppliers are identified in the client by name, rather than
+    def get_create_supplier(self, name):
+        session = Session()
+        # rate classes are identified in the client by name, rather than
         # their primary key. "Unknown Supplier" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
-        assert name != ''
         if name == 'Unknown Supplier':
             return None
-        s = Session()
-        supplier = Supplier(name=name, address=Address())
-        s.add(supplier)
-        s.flush()
-        return supplier
-
-    def get_supplier(self, supplier_id):
-        session = Session()
         try:
-            result = session.query(Supplier).filter_by(
-                id=supplier_id).one()
+            result = session.query(Supplier).filter_by(name=name).one()
         except NoResultFound:
-            result = None
+            result = Supplier(name=name, address=Address())
         return result
 
-    def get_supply_group(self, id, supplier):
+    def get_create_rate_class(self, rate_class_name, utility, service):
+        assert isinstance(utility, Utility)
         session = Session()
-        # supply_groups are identified in the client by name, rather than
-        # their primary key. "Unknown Supply Group" is a name sent by the client
-        # to the server to identify a supply group that is identified by "null"
+        # rate classes are identified in the client by name, rather than
+        # their primary key. "Unknown Rate Class" is a name sent by the client
+        # to the server to identify the rate class that is identified by "null"
         # when sent from the server to the client.
-        session = Session()
-        try:
-            result = session.query(SupplyGroup).filter_by(id=id).\
-                filter_by(supplier=supplier).one()
-        except NoResultFound:
-            result = None
-        return result
-
-    def get_rate_class(self, rate_class_id):
-        session = Session()
+        if rate_class_name == 'Unknown Rate Class':
+            return None
         try:
             result = session.query(RateClass).filter_by(
-                id=rate_class_id).one()
+                name=rate_class_name).one()
         except NoResultFound:
-            result = None
+            result = RateClass(name=rate_class_name, utility=utility,
+                               service=service)
         return result
 
     def update_utility_account_number(self, utility_account_id,

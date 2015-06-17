@@ -56,7 +56,6 @@ Ext.Ajax.request({
                 'Services',
                 'Utilities',
                 'RateClasses',
-                'SupplyGroups',
                 'Accounts',
                 'AccountsFilter',
                 'AccountsMemory',

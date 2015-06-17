@@ -21,7 +21,7 @@ class RenewableEnergyGetter(object):
         self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
-            measure, verbose=False, ):
+            measure, ignore_missing=True, verbose=False, ):
         '''Returns a list of hourly billable-energy values from OLAP during the
         datetime range [start, end) (endpoints must whole hours). Values during
         unbillable annotations are removed. If 'skip_missing' is True, missing OLAP
@@ -42,25 +42,34 @@ class RenewableEnergyGetter(object):
                 hour_number = hour.hour
                 try:
                     try:
-                        measure_value = monguru.get_measure_value_for_hour(
-                            install, day, hour_number, measure)
+                        cube_doc = monguru.get_data_for_hour(install, day, hour_number)
                     except ValueError:
-                        raise MissingDataError(
-                            ("Couldn't get renewable energy data "
+                        raise MissingDataError(("Couldn't get renewable energy data "
                                 "for %s: OLAP document missing at %s") % (
-                            install.name, hour))
-                    if measure_value is None:
-                        raise MissingDataError(
-                            "OLAP document for %s lacks %s measure at %s" % (
-                            install.name, measure, hour))
+                                install.name, hour))
+                    try:
+                        attr_name = measure.lower().replace(' ', '_')
+                        data = getattr(cube_doc, attr_name)
+                        # NOTE CubeDocument returns None if the measure doesn't
+                        # exist, but this should be changed:
+                        # https://www.pivotaltracker.com/story/show/35857625
+                        if data == None:
+                            raise AttributeError('%s' %measure)
+                    except AttributeError:
+                        raise MissingDataError(("Couldn't get %s "
+                            "data for %s: OLAP document lacks energy_sold "
+                            "measure at %s") % (measure, install.name, hour))
                 except MissingDataError as e:
-                    print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
-                    result.append(0)
+                    if ignore_missing:
+                        print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
+                        result.append(0)
+                    else:
+                        raise
                 else:
                     if verbose:
                         print >> sys.stderr, "%s's OLAP %s for %s: %s" % (
-                                install.name, measure, hour, measure_value)
-                    result.append(measure_value)
+                                install.name, measure, hour, data)
+                    result.append(data)
         return result
 
     def update_renewable_readings(self, reebill, use_olap=True, verbose=False):

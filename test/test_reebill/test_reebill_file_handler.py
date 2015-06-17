@@ -14,7 +14,7 @@ import os.path
 from testfixtures import TempDirectory
 
 from core.model import Address, UtilBill, \
-    Register, UtilityAccount, Utility, Supplier, RateClass
+    Register, UtilityAccount
 from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
 from reebill.reebill_file_handler import ReebillFileHandler, \
     SummaryFileGenerator
@@ -32,12 +32,9 @@ class ReebillFileHandlerTest(TestCase):
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
-        utility = Utility(name='Test Utility')
-        supplier = Supplier(name='Test Supplier')
-        rate_class = RateClass(name='Test Rate Class', utility=utility)
         utility_account = UtilityAccount('someaccount', '00001',
-                        utility, supplier, rate_class,
-                        None, ba, sa)
+                        'Test Utility', 'Test Supplier', 'Test Rate Class',
+                        ba, sa)
         c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
                             late_charge_rate=0.1,
                             bill_email_recipient='test@example.com',
@@ -54,7 +51,7 @@ class ReebillFileHandlerTest(TestCase):
                      supplier='Test Supplier', billing_address=ba3,
                      service_address=sa3, period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1))
-        u._registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
@@ -184,11 +181,8 @@ class SummaryFileGeneratorTest(TestCase):
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
-        utility = Utility(name='Test Utility')
-        supplier = Supplier(name='Test Supplier')
-        rate_class = RateClass(name='Test Rate Class', utility=utility)
         utility_account = UtilityAccount('someaccount', '00001',
-                        utility, supplier, rate_class,
+                        'Test Utility', 'Test Supplier', 'Test Rate Class',
                         ba, sa)
         c = ReeBillCustomer(name='Test Customer', discount_rate=0.2,
                             late_charge_rate=0.1,
@@ -198,7 +192,7 @@ class SummaryFileGeneratorTest(TestCase):
              supplier='Test Supplier', billing_address=ba,
              service_address=sa, period_start=date(2000, 1, 1),
              period_end=date(2000, 2, 1))
-        u._registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u.registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_1 = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
@@ -207,7 +201,7 @@ class SummaryFileGeneratorTest(TestCase):
              supplier='Test Supplier', billing_address=ba,
              service_address=sa, period_start=date(2000, 2, 1),
              period_end=date(2000, 3, 1))
-        u2._registers = [Register(Register.TOTAL, 'therms', quantity=100,
+        u2.registers = [Register(Register.TOTAL, 'therms', quantity=100,
                                 identifier='REGID', meter_identifier='METERID',
                                 reg_type='total', description='All energy')]
         self.reebill_2 = ReeBill(c, 2, discount_rate=0.3, late_charge_rate=0.1,

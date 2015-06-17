@@ -1,7 +1,7 @@
 from mock import MagicMock, Mock
 from core import init_model
 
-from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
+from core.model.model import RegisterTemplate
 from core.pricing import PricingModel
 from test import init_test_config, create_tables, clear_db
 
@@ -54,11 +54,11 @@ class UtilBillTest(TestCase):
             utilbill.set_total_energy(10)
 
         # when the register is present, set_total_energy should work
-        # without requiring consumers to know about _registers.
+        # without requiring consumers to know about registers.
         # TODO...
 
     def test_get_register_by_binding(self):
-        utility = Utility(name='utility')
+        utility = Utility()
         rate_class = RateClass(utility=utility)
         bill = UtilBill(MagicMock(), utility, rate_class)
         self.assertIsInstance(bill.get_register_by_binding(Register.TOTAL),
@@ -98,67 +98,16 @@ class UtilBillTest(TestCase):
         utilbill.utility = MagicMock()
         utilbill.rate_class = MagicMock()
         utilbill.supplier = MagicMock()
-        utilbill.supply_group = MagicMock()
         self.assertTrue(utilbill.is_processable())
 
         utilbill.set_processed(True)
         self.assertTrue(utilbill.processed)
 
-    def test_suplier_suply_group(self):
-        utilbill = UtilBill(MagicMock(), None, None)
-        supplier = Supplier(name='supplier')
-        supply_group = SupplyGroup(supplier=supplier, name='supply group',
-                               service=ELECTRIC)
-        other_supplier = Supplier(name='other')
-
-        self.assertIsNone(utilbill.get_supplier())
-        self.assertIsNone(utilbill.get_supplier_name())
-        self.assertIsNone(utilbill.get_supply_group())
-        self.assertIsNone(utilbill.get_supply_group_name())
-
-        utilbill.set_supplier(supplier)
-        self.assertEqual(supplier, utilbill.get_supplier())
-        self.assertEqual('supplier', utilbill.get_supplier_name())
-        self.assertIsNone(utilbill.get_supply_group())
-        self.assertIsNone(utilbill.get_supply_group_name())
-
-        utilbill.set_supply_group(supply_group)
-        self.assertIs(supplier, utilbill.get_supplier())
-        self.assertEqual('supplier', utilbill.get_supplier_name())
-        self.assertIs(supply_group, utilbill.get_supply_group())
-        self.assertEqual('supply group', utilbill.get_supply_group_name())
-        self.assertEqual(ELECTRIC, supply_group.get_service())
-
-        # when the same supplier is set again, supply group is unchanged
-        utilbill.set_supplier(supplier)
-        self.assertIs(supplier, utilbill.get_supplier())
-        self.assertEqual('supplier', utilbill.get_supplier_name())
-        self.assertIs(supply_group, utilbill.get_supply_group())
-        self.assertEqual('supply group', utilbill.get_supply_group_name())
-        self.assertEqual(ELECTRIC, supply_group.get_service())
-
-        # when a different supplier is chosen, supply group is unknown
-        utilbill.set_supplier(other_supplier)
-        self.assertEqual(other_supplier, utilbill.get_supplier())
-        self.assertEqual('other', utilbill.get_supplier_name())
-        self.assertIsNone(utilbill.get_supply_group())
-        self.assertIsNone(utilbill.get_supply_group_name())
-
-
-        # supplier and supply group can be set to None
-        utilbill.set_supplier(None)
-        utilbill.set_supply_group(None)
-        self.assertIsNone(utilbill.get_supplier())
-        self.assertIsNone(utilbill.get_supplier_name())
-        self.assertIsNone(utilbill.get_supply_group())
-        self.assertIsNone(utilbill.get_supply_group_name())
-        self.assertIsNone(utilbill.get_service())
-
     def test_utility_rate_class(self):
         utilbill = UtilBill(MagicMock(), None, None)
         utility = Utility(name='utility')
         rate_class = RateClass(utility=utility, name='rate class',
-                               service=ELECTRIC)
+                               service=RateClass.ELECTRIC)
         other_utility = Utility(name='other')
 
         self.assertIsNone(utilbill.get_utility())
@@ -179,7 +128,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual(ELECTRIC, utilbill.get_service())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
 
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
@@ -191,7 +140,7 @@ class UtilBillTest(TestCase):
         self.assertEqual('utility', utilbill.get_utility_name())
         self.assertIs(rate_class, utilbill.get_rate_class())
         self.assertEqual('rate class', utilbill.get_rate_class_name())
-        self.assertEqual(ELECTRIC, utilbill.get_service())
+        self.assertEqual(RateClass.ELECTRIC, utilbill.get_service())
 
         # when a different utility is chosen, rate class is unknown
         utilbill.set_utility(other_utility)
@@ -201,7 +150,7 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
 
-        # with no rate class, there are no _registers, so you can't set the
+        # with no rate class, there are no registers, so you can't set the
         # energy, but you can get it (it will always be 0)
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
@@ -228,9 +177,8 @@ class UtilBillTestWithDB(TestCase):
 
     def setUp(self):
         clear_db()
-        self.supplier = Supplier(name='supplier', address=Address())
         self.utility = Utility(name='utility', address=Address())
-
+        self.supplier = Supplier(name='supplier', address=Address())
         self.utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
@@ -283,7 +231,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), None, Address(), Address())
+                      service='gas'), Address(), Address())
         utilbill = UtilBill(utility_account, self.utility,
                             RateClass(name='rate class', utility=self.utility,
                                       service='gas'),
@@ -302,7 +250,7 @@ class UtilBillTestWithDB(TestCase):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
             RateClass(name='FB Test Rate Class', utility=self.utility,
-                      service='gas'), None, Address(), Address())
+                      service='gas'), Address(), Address())
         for attr in ('period_start', 'period_end', 'rate_class', 'utility',
                      'supplier'):
             ub = UtilBill(
@@ -318,8 +266,8 @@ class UtilBillTestWithDB(TestCase):
                       RateClass(name='rate class', utility=self.utility,
                                 service='gas'), supplier=self.supplier,
                       period_start=date(2000, 1, 1),
-                      period_end=date(2000, 2, 1),
-                      supply_group='test')
+                      period_end=date(2000, 2, 1))
+        self.assertTrue(ub.is_processable())
 
     def test_add_charge(self):
         utility_account = UtilityAccount(
@@ -336,7 +284,7 @@ class UtilBillTestWithDB(TestCase):
                             rate_class, supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        assert len(utilbill._registers) == 2
+        assert len(utilbill.registers) == 2
 
         session = Session()
         session.add(utilbill)
@@ -360,12 +308,12 @@ class UtilBillTestWithDB(TestCase):
             UtilityAccount('someone', '98989', fb_utility, 'FB Test Supplier',
                            RateClass(name='FB Test Rate Class',
                                      utility=fb_utility, service='gas'),
-                           None, Address(), Address()), utility,
+                           Address(), Address()), utility,
             RateClass(name='rate class', utility=utility, service='gas'),
             supplier=Supplier(name='supplier', address=Address()),
             period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
         register = Register(Register.TOTAL, 'therms', quantity=150)
-        utilbill._registers = [register]
+        utilbill.registers = [register]
         charges = [
             dict(
                 rsi_binding='CONSTANT',
@@ -535,8 +483,8 @@ class UtilBillTestWithDB(TestCase):
         '''Compute utility bill with no charges.
         '''
         utility_account = UtilityAccount('someone', '99999',
-                Utility(name='utility'), None,
-                None, None, Address(), Address())
+                'utility', 'supplier',
+                'rate class', Address(), Address())
         utilbill = UtilBill(utility_account, None, None)
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
@@ -554,7 +502,7 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill._registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
             Charge('A', rate=1, formula='REG_TOTAL.quantity'),
             Charge('B', rate=3, formula='2'),
@@ -619,9 +567,7 @@ class UtilBillTestWithDB(TestCase):
         block in UtilBill.ordered_charges.
         """
         utilbill = UtilBill(MagicMock(), None, None)
-        charges = [Charge('a', rate=0, formula='b'),
-                   Charge('b', rate=0, formula='b')]
-        utilbill.charges = charges
+        utilbill.charges = [Charge('a', formula='b'), Charge('b', formula='b')]
         ordered_charges = utilbill.ordered_charges()
         # in this case any order is OK as long as all the charges are there
         self.assertEqual(set(utilbill.charges), set(ordered_charges))
@@ -641,7 +587,7 @@ class UtilBillTestWithDB(TestCase):
                                       service='gas'), supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill._registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
+        utilbill.registers = [Register(Register.TOTAL, 'kWh', quantity=150)]
         utilbill.charges = [
             Charge('A', rate=1, formula=Register.TOTAL + '.quantity'),
             Charge('B', rate=3, formula='2'),
@@ -659,7 +605,7 @@ class UtilBillTestWithDB(TestCase):
                             supplier=self.supplier,
                             period_start=date(2000, 1, 1),
                             period_end=date(2000, 2, 1))
-        utilbill._registers = [Register('X', 'kWh', quantity=1),
+        utilbill.registers = [Register('X', 'kWh', quantity=1),
                               Register(Register.TOTAL, 'kWh', quantity=2)]
         self.assertEqual(2, utilbill.get_total_energy_consumption())
 
