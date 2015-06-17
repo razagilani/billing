@@ -9,6 +9,10 @@ host::app_user {'appuser':
     username   => $username,
 }
 
+host::skyline_dropbox {"$env":
+    env    => $env,
+}
+
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
 include mongo::mongo_tools
