@@ -1,5 +1,6 @@
 """All tests for the Bill Entry application.
 """
+from StringIO import StringIO
 from datetime import datetime, date
 from time import sleep
 import unittest
@@ -12,14 +13,16 @@ from sqlalchemy.orm.exc import NoResultFound
 # "billentry" will call init_config to initialize the config object with the
 # non-test config file. so init_test_config must be called before
 # "billentry" is imported.
-from exc import UnEditableBillError
+from exc import UnEditableBillError, MissingFileError
 from test import init_test_config, create_tables, clear_db
+from test.setup_teardown import FakeS3Manager
+from test.setup_teardown import create_utilbill_processor
 from util import FixMQ
 from util.dictutils import deep_map
 
 init_test_config()
 
-from core.altitude import AltitudeBill, get_utilbill_from_guid
+from core.altitude import AltitudeBill, get_utilbill_from_guid, AltitudeAccount
 
 import billentry
 from billentry import common
@@ -196,13 +199,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                              Address(), Address(), account_number='2')
         ua3 = UtilityAccount('Not PG', '33333', self.utility, None, None,
                              Address(), Address(), account_number='3')
+        self.altitude_account1 = AltitudeAccount(ua2,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff6')
+        self.altitude_account2 = AltitudeAccount(ua3,
+                                                 '051ab1cb-292f-4a4c-bf3f1fbe00847ff7')
         self.other_rate_class = RateClass('Other Rate Class', self.utility, 'electric')
         self.other_rate_class.id = 3
         s.add_all([self.some_rate_class, self.other_rate_class])
         ua2.id, ua3.id = 2, 3
         utility1.id, utility2.id = 2, 10
         s.add_all([self.utility, utility1, utility2, ua2, ua3,
-                   BrokerageAccount(self.ua1), BrokerageAccount(ua2)])
+                   BrokerageAccount(self.ua1), BrokerageAccount(ua2),
+                   self.altitude_account1, self.altitude_account2])
         ub3 = UtilBill(ua3, utility1, None,
                        service_address=Address(street='2 Example St.'))
         ub3.id = 3
@@ -226,7 +234,9 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         c1.id, c2.id, c3.id, c4.id, c5.id = 1, 2, 3, 4, 5
         self.ub1.charges = [c1, c2]
         self.ub2.charges = [c3, c4, c5]
-        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3])
+
+        s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3,
+            self.altitude_account1, self.altitude_account2])
         user = BillEntryUser(email='user1@test.com', password='password')
         s.add(user)
 
@@ -260,6 +270,18 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson(
             {'results': 0,
              'rows': [], }, rv.data)
+
+    def test_altitude_accounts_list(self):
+        rv = self.app.get(self.URL_PREFIX + 'altitudeaccounts')
+        expected = {'results': 2,
+            'rows': [
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff6',
+                 'utility_account_id': 2},
+                {'guid': '051ab1cb-292f-4a4c-bf3f1fbe00847ff7',
+                 'utility_account_id': 3}
+            ]}
+        self.assertJson(expected, rv.data)
+
 
     def test_utilbills_list(self):
         rv = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
@@ -1266,4 +1288,136 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         self.assertEqual('http://localhost/login-page', response.location)
 
 
+class TestUploadBills(unittest.TestCase):
 
+    URL_PREFIX = '/utilitybills/'
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        FakeS3Manager.start()
+        cls.utilbill_processor = create_utilbill_processor()
+        cls.billupload = cls.utilbill_processor.bill_file_handler
+        billentry.app.config['LOGIN_DISABLED'] = False
+        billentry.app.config['TRAP_HTTP_EXCEPTIONS'] = True
+        billentry.app.config['TESTING'] = True
+        cls.app = billentry.app.test_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeS3Manager.stop()
+
+    def setUp(self):
+        clear_db()
+        s = Session()
+        s.flush()
+        self.admin_role = Role('admin', 'admin role for bill entry app')
+        self.user1 = BillEntryUser(email='1@example.com', password='password')
+        self.user1.id = 1
+        self.user2 = BillEntryUser(email='2@example.com', password='password')
+        self.user2.id = 2
+        self.user3 = BillEntryUser(email='3@example.com', password='password')
+        self.user3.id = 3
+        self.utility = Utility(name='Empty Utility')
+        self.utility.id = 1
+        self.user1.roles = []
+        self.user2.roles = [self.admin_role]
+        self.user3.roles = [self.admin_role]
+        self.utility_account = UtilityAccount('Account 1', '1111',
+                                              self.utility, None,
+                                         None, Address(), Address(), '1')
+        s.add_all([self.user1, self.user2, self.user3, self.admin_role,
+            self.utility, self.utility_account])
+
+    def tearDown(self):
+        clear_db()
+
+    def test_upload_utility_bill(self):
+        s = Session()
+        data = {'email':'1@example.com', 'password': 'password'}
+        # post request for user login with for user1, member of no role
+        self.app.post('/userlogin',
+                      content_type='multipart/form-data', data=data)
+
+        file1 = StringIO('fake PDF')
+        file1_hash = '396bb98e4ca497a698daa2a3c066cdac7730bd744cd7feb4cc4e3366452d99fd.pdf'
+
+        rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file1, 'fake.pdf')))
+
+        # this should result in a status_code of '403 permission denied'
+        # as only members of 'admin' role are allowed  access to upload
+        # utility bill files and user1 is not a member of admin role
+        self.assertEqual(403, rv.status_code)
+        self.assertRaises(MissingFileError, self.billupload.key_exists, file1_hash)
+
+        data = {'email':'2@example.com', 'password': 'password'}
+
+        # post request for user login for user2, a member of admin role
+        self.app.post('/userlogin',
+                      content_type='multipart/form-data', data=data)
+
+        file1 = StringIO('fake PDF')
+        rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file1, 'fake.pdf')))
+
+        # this should succeed with 200 as user1 is member of Admin Role
+        self.assertEqual(200, rv.status_code)
+        self.assertTrue(self.billupload.key_exists(file1_hash))
+
+        file2 = StringIO('another fake PDF')
+        file2_hash = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11.pdf'
+
+        rv = self.app.post(self.URL_PREFIX + 'uploadfile', data=dict(file=(file2, 'fake.pdf')))
+
+        # this should succeed with 200 as user2 is member of Admin Role
+        self.assertEqual(200, rv.status_code)
+        self.assertTrue(self.billupload.key_exists(file2_hash))
+
+        data = {'guid': '0b8ff51d-84a9-40bf-b97cf693ff00f4ed',
+                'utility': 1,
+                'utility_account_number': '2051.065106',
+                'sa_addressee': 'College Park Car Wash',
+                'sa_street': '7106 Ridgewood Ave',
+                'sa_city': 'Chevy Chase',
+                'sa_state': 'MD',
+                'sa_postal_code': '20815-5148'
+        }
+
+        stored_hash1 = '396bb98e4ca497a698daa2a3c066cdac7730bd744cd7feb4cc4e3366452d99fd'
+        stored_hash2 = '26dcbde01927edd35b546b91d689709c3c25ba85a948fb42210fff4ec0db4b11'
+
+        rv = self.app.post(self.URL_PREFIX + 'uploadbill', data=data)
+        self.assertEqual(200, rv.status_code)
+
+        utilbill = s.query(UtilBill).filter_by(sha256_hexdigest=stored_hash1).all()
+        self.assertEqual(len(utilbill), 1)
+
+        utilbill = s.query(UtilBill).filter_by(sha256_hexdigest=stored_hash2).all()
+        self.assertEqual(len(utilbill), 1)
+
+        latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
+        latest_utilbill_id = latest_utilbill.id
+        self.assertEqual(stored_hash2, latest_utilbill.sha256_hexdigest)
+
+        # make another request for creating a new utility bill without
+        # uploading any files. This should make server raise
+        # MissingFileError exception
+
+        data = {'guid': '0b8ff51d-84a9-40bf-b97cf693ff00f4ec',
+                'utility': 1,
+                'utility_account_number': '2051.065107',
+                'sa_addressee': 'College Park Car Wash',
+                'sa_street': '7106 Ridgewood Ave',
+                'sa_city': 'Chevy Chase',
+                'sa_state': 'MD',
+                'sa_postal_code': '20815-5148'
+        }
+
+        self.assertRaises(MissingFileError, self.app.post, self.URL_PREFIX + 'uploadbill', data=data)
+
+        # since no utility bills were created the latest utility bill id
+        # should still be the same
+        latest_utilbill = Session().query(UtilBill).order_by(UtilBill.id.desc()).first()
+        self.assertEqual(latest_utilbill.id, latest_utilbill_id)

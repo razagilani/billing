@@ -1,32 +1,40 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
 from datetime import datetime
+import os
 
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
+from flask import session
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
-from flask.ext.restful import Resource, marshal
+from flask.ext.restful import Resource, marshal, abort
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
-from sqlalchemy import desc, and_, func, case
+from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
+import werkzeug
 
 from billentry.billentry_model import BEUtilBill, BEUserSession
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
+from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup
+from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
+from exc import MissingFileError
 
 
 project_mgr_permission = Permission(RoleNeed('Project Manager'),
                                     RoleNeed('admin'))
+
+admin_permission = Permission(RoleNeed('admin'))
 
 
 # TODO: would be even better to make flask-restful automatically call any
@@ -171,6 +179,11 @@ class BaseResource(Resource):
             'sos_supply_group_id': String
         }
 
+        self.altitude_account_fields = {
+            'utility_account_id': Integer,
+            'guid': String
+        }
+
 # basic RequestParser to be extended with more arguments by each
 # put/post/delete method below.
 id_parser = RequestParser()
@@ -214,6 +227,15 @@ class AccountResource(BaseResource):
             'service_address': CallableField(String(),
                                              attribute='get_service_address'),
         }), bills_to_be_entered=account_has_bills_for_data_entry(account))
+
+
+class AltitudeAccountResource(BaseResource):
+
+    def get(self):
+        altitude_accounts = Session.query(AltitudeAccount).all()
+        accounts = [marshal(altitude_account, self.altitude_account_fields)
+            for altitude_account in altitude_accounts]
+        return {'rows': accounts, 'results': len(accounts)}
 
 
 class UtilBillListResource(BaseResource):
@@ -304,6 +326,58 @@ class UtilBillResource(BaseResource):
         return {}
 
 
+class UploadUtilityBillResource(BaseResource):
+
+    @admin_permission.require()
+    def post(self):
+        s = Session()
+        parser = RequestParser()
+        parser.add_argument('guid', type=str, required=True)
+        parser.add_argument('utility', type=int, required=True)
+        parser.add_argument('utility_account_number', type=str, required=True)
+        parser.add_argument('sa_addressee', type=str)
+        parser.add_argument('sa_street', type=str)
+        parser.add_argument('sa_city', type=str)
+        parser.add_argument('sa_state', type=str)
+        parser.add_argument('sa_postal_code', type=str)
+        args = parser.parse_args()
+        address = Address(addressee=args['sa_addressee'], street=args['sa_street'],
+                            city=args['sa_city'], state=args['sa_state'],
+                            postal_code=args['sa_postal_code'])
+
+        utility = s.query(Utility).filter_by(id=args['utility']).one()
+        try:
+            utility_account = s.query(UtilityAccount).filter_by(
+                account_number=args['utility_account_number'],
+                fb_utility=utility).one()
+        except NoResultFound:
+            last_account = s.query(
+                cast(UtilityAccount.account, integer)).order_by(
+                cast(UtilityAccount.account, integer).desc()).first()
+            next_account = str(int(last_account[0]) + 1)
+            utility_account = UtilityAccount(
+                '', next_account, utility, None, None, Address(),
+                address, args['utility_account_number'])
+            s.add(utility_account)
+
+        # Utility bills won't be created if there are no utility
+        # bill files
+        if not session.get('hash-digest'):
+            raise MissingFileError()
+        for hash_digest in session.get('hash-digest'):
+            ub = self.utilbill_processor.create_utility_bill_with_existing_file(
+                utility_account, utility, hash_digest,
+                service_address=address)
+            s.add(ub)
+        # remove the consumed hash-digest from session
+        session.pop('hash-digest')
+        update_altitude_account_guids(utility_account, args['guid'])
+        s.commit()
+        # Since this is initiated by an Ajax request, we will still have to
+        # send a {'success', 'true'} parameter
+        return {'success': 'true'}
+
+
 class ChargeListResource(BaseResource):
     def get(self):
         parser = RequestParser()
@@ -315,6 +389,20 @@ class ChargeListResource(BaseResource):
         rows = [marshal(c, self.charge_fields) for c in
                 utilbill.get_supply_charges()]
         return {'rows': rows, 'results': len(rows)}
+
+
+class UtilityBillFileResource(BaseResource):
+
+    @admin_permission.require()
+    def post(self):
+        parser = RequestParser()
+        parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files', required=True)
+        args = parser.parse_args()
+        file = args['file']
+        sha_digest = self.utilbill_processor.bill_file_handler.upload_file(file)
+        if session.get('hash-digest') is None:
+            session['hash-digest'] = []
+        session['hash-digest'].append(sha_digest)
 
 
 class ChargeResource(BaseResource):
