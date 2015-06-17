@@ -7,6 +7,8 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 
 #represents a two-dimensional, axis-aligned bounding box.
+from util.pdfminer_util import fix_pdfminer_cid
+
 class BoundingBox:
     def __init__(self, minx, miny, maxx, maxy):
         self.minx = minx
@@ -14,7 +16,19 @@ class BoundingBox:
         self.maxx = maxx
         self.maxy = maxy
 
-def get_text_from_boundingbox(page, boundingbox):
+CORNERS = {
+    'top left' : 0,
+    'top right' : 1,
+    'bottom left' : 2,
+    'bottom right' : 3,
+}
+
+def get_corner(obj, c):
+    x = obj.x1 if (c & 1) else obj.x0
+    y = obj.y1 if (c & 2) else obj.y0
+    return (x, y)
+
+def get_text_from_boundingbox(page, boundingbox, corner):
     """
     Gets all the text on a PDF page that is within the given bounding box.
     Text from different LTTextLines is separated by a newline.
@@ -23,10 +37,10 @@ def get_text_from_boundingbox(page, boundingbox):
     :return:
     """
     textlines = get_all_objs(page, objtype=LTTextLine,
-        predicate=lambda o: in_bounds(o, boundingbox))
+        predicate=lambda o: in_bounds(o, boundingbox, corner))
     text = '\n'.join([tl.get_text() for tl in textlines])
     #for pdfminer unicode issues, fixes occurences of (cid:<char code>)
-    text = re.sub(r"\(cid:(\d+)\)", lambda m: chr(int(m.group(1))), text)
+    text = fix_pdfminer_cid(text)
     return text
 
 def get_text_line(page, regexstr):
@@ -75,11 +89,11 @@ def apply_recursively_to_ltobj(obj, func):
             apply_recursively_to_ltobj(child, func)
 
 
-def in_bounds(obj, bounds):
+def in_bounds(obj, bounds, corner):
     """
     Determines if the top left corner of a layout object is in the bounding box
     """
-    testpoint = (obj.x0, obj.y0)
+    testpoint = get_corner(obj, corner)
     if bounds.minx <= testpoint[0] <= bounds.maxx:
         if bounds.miny <= testpoint[1] <= bounds.maxy:
             return True

@@ -99,39 +99,39 @@ def create_extractors(s):
         origin_x=411.624,
         origin_y=746.91)
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)-%s" % (date_format, date_format), page_num=1,
+        bbregex=r"(%s)-%s" % (date_format, date_format), page_num=1,
         bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.START))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"%s-(%s)" % (date_format, date_format), page_num=1,
+        bbregex=r"%s-(%s)" % (date_format, date_format), page_num=1,
         bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.END))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)" % num_format, page_num=2,
+        bbregex=r"(%s)" % num_format, page_num=2,
         bbminx=225, bbminy=624, bbmaxx=300, bbmaxy=640,
-        type=Field.FLOAT,
+        corner=0, type=Field.FLOAT,
         applier_key=Applier.ENERGY))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)" % date_format, page_num=2,
+        bbregex=r"(%s)" % date_format, page_num=2,
         bbminx=280, bbminy=702, bbmaxx=330, bbmaxy=715,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.NEXT_READ))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(.*)Service address:\s+(.*)$", page_num=1,
+        bbregex=r"(.*)Service address:\s+(.*)$", page_num=1,
         bbminx=411, bbminy=690, bbmaxx=480, bbmaxy=706,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.SERVICE_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=66, bbminy=61, bbmaxx=203, bbmaxy=91,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"Rate Class:\s+(.*)$", page_num=2,
+        bbregex=r"Rate Class:\s+(.*)$", page_num=2,
         bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
-        type=Field.STRING,
+        corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
 
     pepco_2015_layout = LayoutExtractor(
@@ -140,109 +140,109 @@ def create_extractors(s):
         origin_x="333",
         origin_y="617.652")
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s) to %s" % (date_format, date_format), page_num=2,
+        bbregex=r"(%s) to %s" % (date_format, date_format), page_num=2,
         bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.START))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"%s to (%s)" % (date_format, date_format), page_num=2,
+        bbregex=r"%s to (%s)" % (date_format, date_format), page_num=2,
         bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.END))
-    # pepco_2015_layout.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
+    # pepco_2015_layout.fields.append(TextExtractor.TextField(bbregex=pep_energy_regex, corner=0, type=Field.FLOAT, applier_key=Applier.ENERGY))
     # pepco_2015_layout.fields.append(TextExtractor.TextField(
-    #     regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
+    #     bbregex=pep_next_meter_read_regex, corner=0, type=Field.DATE, applier_key=Applier.NEXT_READ))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"Your service address:\s+(.*)$", page_num=1,
+        bbregex=r"Your service address:\s+(.*)$", page_num=1,
         bbminx=45, bbminy=554, bbmaxx=260, bbmaxy=577,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.SERVICE_ADDRESS))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=36, bbminy=61, bbmaxx=206, bbmaxy=95,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(.*) - service number", page_num=2,
+        bbregex=r"(.*) - service number", page_num=2,
         bbminx=35, bbminy=671, bbmaxx=280, bbmaxy=681,
-        type=Field.STRING,
+        corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
 
     pepco_old_layout = LayoutExtractor(
         name='Layout Extractor Pepco bills before 2015, blue logo id 2631')
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s) to %s" % (date_format, date_format), page_num=1,
+        bbregex=r"(%s) to %s" % (date_format, date_format), page_num=1,
         bbminx=435, bbminy=716, bbmaxx=535, bbmaxy=726,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.START))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"%s to (%s)" % (date_format, date_format), page_num=1,
+        bbregex=r"%s to (%s)" % (date_format, date_format), page_num=1,
         bbminx=435, bbminy=716, bbmaxx=535, bbmaxy=726,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.END))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)" % num_format, page_num=1,
+        bbregex=r"(%s)" % num_format, page_num=1,
         bbminx=280, bbminy=481, bbmaxx=305, bbmaxy=491,
-        type=Field.FLOAT,
+        corner=0, type=Field.FLOAT,
         applier_key=Applier.ENERGY))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)" % date_format, page_num=1,
+        bbregex=r"(%s)" % date_format, page_num=1,
         bbminx=13, bbminy=448, bbmaxx=234, bbmaxy=458,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.NEXT_READ))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=435, bbminy=694, bbmaxx=555, bbmaxy=704,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.SERVICE_ADDRESS))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=86, bbminy=66, bbmaxx=224, bbmaxy=108,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=97, bbminy=480, bbmaxx=144, bbmaxy=490,
-        type=Field.STRING,
+        corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
 
     #TODO determine how to tell if we want gas or electric info
     bge_layout = LayoutExtractor(
         name='Layout Extractor BGE bills id 7657')
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s) - %s" % (date_format, date_format), page_num=2,
+        bbregex=r"(%s) - %s" % (date_format, date_format), page_num=2,
         bbminx=25, bbminy=725, bbmaxx=195, bbmaxy=735,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.START))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"%s - (%s)" % (date_format, date_format), page_num=2,
+        bbregex=r"%s - (%s)" % (date_format, date_format), page_num=2,
         bbminx=25, bbminy=725, bbmaxx=195, bbmaxy=735,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.END))
     # pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-    #     regex=r"(%s)" % num_format, page_num=1,
+    #     bbregex=r"(%s)" % num_format, page_num=1,
     #     bbminx=280, bbminy=481, bbmaxx=305, bbmaxy=491,
-    #     type=Field.FLOAT,
+    #     corner=0, type=Field.FLOAT,
     #     applier_key=Applier.ENERGY))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)" % date_format, page_num=1,
+        bbregex=r"(%s)" % date_format, page_num=1,
         bbminx=460, bbminy=672, bbmaxx=586, bbmaxy=682,
-        type=Field.DATE,
+        corner=0, type=Field.DATE,
         applier_key=Applier.NEXT_READ))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
+        bbregex=r"", page_num=1,
         bbminx=370, bbminy=716, bbmaxx=555, bbmaxy=740,
-        type=Field.ADDRESS,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.SERVICE_ADDRESS))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"", page_num=1,
-        bbminx=67, bbminy=110, bbmaxx=200, bbmaxy=141,
-        type=Field.ADDRESS,
+        bbregex=r"", page_num=1,
+        bbminx=40, bbminy=100, bbmaxx=200, bbmaxy=161,
+        corner=0, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     # pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
-    #     regex=r"", page_num=1,
+    #     bbregex=r"", page_num=1,
     #     bbminx=97, bbminy=480, bbmaxx=144, bbmaxy=490,
-    #     type=Field.STRING,
+    #     corner=0, type=Field.STRING,
     #     applier_key=Applier.RATE_CLASS))
 
     s.add_all([e, pepco_2015, pepco_old, washington_gas,

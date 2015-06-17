@@ -5,7 +5,6 @@ from dateutil import parser as dateutil_parser
 from sqlalchemy import Column, Integer, Float, ForeignKey, String, Enum, \
     UniqueConstraint, DateTime, func
 from sqlalchemy.dialects.postgresql import HSTORE
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
     MapperExtension
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -16,7 +15,6 @@ from core.extraction import layout
 from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass, UtilBill
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
-
 
 class Main(object):
     """Handles everything about the extraction process for a particular bill.
@@ -97,27 +95,6 @@ class Applier(object):
     created that includes the non-UtilBill specific parts, and other subclasses
     of it would have different 'KEYS' and a different implementation of 'apply'.
     """
-    # @staticmethod
-    # def set_rate_class(bill, rate_class_name):
-    #     """
-    #     Given a bill and a rate class name, this function sets the rate class of the bill.
-    #     If the name corresponds to an existing rate class in the database, then the existing rate class is used.
-    #     Otherwise, a new rate class object is created.
-    #     Note: This function uses the default service for all bills.
-    #     :param bill: A UtilBill object
-    #     :param rate_class_name:  A string, the name of the rate class
-    #     """
-    #     s = Session()
-    #     bill_util = bill.get_utility()
-    #     if bill_util is None:
-    #         raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
-    #     q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
-    #     try:
-    #         rate_class = q.one()
-    #     except NoResultFound:
-    #         rate_class = RateClass(utility=bill_util, name=rate_class_name)
-    #     bill.set_rate_class(rate_class)
-
     BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
@@ -398,22 +375,21 @@ def convert_address(text):
     '''
     #matches city, state, and zip code
     regional_exp = r'([\w ]+),?\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
-    #for attn: line in billing addresses
-    attn_co_exp = r"(?:(?:attn:?|C/?O) )+(.*)$$"
+    #for attn: or C/O lines in billing addresses
+    addressee_attn_exp = r"attn:?\s*(.*)"
+    addressee_co_exp = r"(C/?O:?\s*.*)$"
     #A PO box, or a line that starts with a number
     street_exp = r"^(\d+.*?$|PO BOX \d+)"
 
     addressee = city = state = street = postal_code = None
     lines = re.split("\n+", text, re.MULTILINE)
 
-    #cannot rely on line ordering, sometimes lines are flipped around in input.
+    # Addresses have an uncertain number (usually 1 or 2) of addressee lines
+    # The last two lines are always street and city, state, zip code.
+    # However, the last two lines are sometimes switched by PDF extractors
+    # This especially happens with service addresses
     for line in lines:
         if not line:
-            continue
-        #if line has "attn:" in it, this is the addresse
-        match = re.search(attn_co_exp, line, re.IGNORECASE)
-        if match:
-            addressee = match.group(1)
             continue
         #if it a po box or starts with a number, this line is a street address
         match = re.search(street_exp, line, re.IGNORECASE)
@@ -425,8 +401,25 @@ def convert_address(text):
         if match:
             city, state, postal_code = match.groups()
             continue
-        #if none of the above patterns match, assume that this line is the addresse
-        addressee = line
+        #if line has "attn:" or "C/O" in it, it is part of addresse.
+        match = re.search(addressee_attn_exp, line, re.IGNORECASE)
+        if match:
+            if addressee is None:
+                addressee = ""
+            addressee += match.group(1) + " "
+            continue
+        match = re.search(addressee_co_exp, line, re.IGNORECASE)
+        if match:
+            if addressee is None:
+                addressee = ""
+            addressee += match.group(1) + " "
+            continue
+
+        #if none of the above patterns match, assume that this line is the
+        # addressee
+        if addressee is None:
+            addressee = ""
+        addressee += line + " "
     return Address(addressee=addressee, street=street, city=city, state=state,
         postal_code=postal_code)
 
@@ -634,11 +627,7 @@ class TextExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
 
-        @declared_attr
-        def regex(cls):
-            "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
+        regex = Column(String)
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
@@ -680,17 +669,18 @@ class LayoutExtractor(Extractor):
 
         # First page is numbered 1, not 0
         page_num = Column(Integer)
-        @declared_attr
-        def regex(cls):
-            "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
+        bbregex = Column(String)
 
         #bounding box coordinates
         bbminx = Column(Float)
         bbminy = Column(Float)
         bbmaxx = Column(Float)
         bbmaxy = Column(Float)
+
+        # represents which corner of textboxes to consider when checking if
+        # they are within a bounding box.
+        # This uses the values in core.extraction.layout.CORNERS
+        corner = Column(Integer)
 
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
@@ -707,14 +697,15 @@ class LayoutExtractor(Extractor):
 
             text = layout.get_text_from_boundingbox(pages[self.page_num - 1],
                 BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
-                    maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy))
+                    maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy), self.corner)
 
-            if self.regex:
-                m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
+            if self.bbregex:
+                m = re.search(self.bbregex, text, re.IGNORECASE | re.DOTALL |
+                                                 re.MULTILINE)
                 if m is None:
                     raise MatchError(
                         'No match for pattern "%s" in text starting with "%s"' % (
-                            self.regex, text[:20]))
+                            self.bbregex, text[:20]))
                 text = "\n".join(m.groups())
 
             # this is done after regex matching, in case a capture group
@@ -734,6 +725,10 @@ class LayoutExtractor(Extractor):
         """
 
     def _prepare_input(self, utilbill, bill_file_handler):
+        """
+        Prepares input for layout extractor by getting PDFMiner layout data
+        and checking if bill's PDF is misaligned.
+        """
         #TODO set up kdtree for faster object lookup
         pages = utilbill.get_layout(bill_file_handler)
 
