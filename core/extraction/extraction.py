@@ -698,19 +698,22 @@ class LayoutExtractor(Extractor):
                 BoundingBox(minx=self.bbminx, miny=self.bbminy,
                     maxx=self.bbmaxx, maxy=self.bbmaxy))
 
-            if not self.regex:
-                print "------ APPLIER_KEY: %s RESULT: %s ----" % \
-                      (self.applier_key, text.strip())
-                return text.strip()
+            if self.regex:
+                m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
+                if m is None:
+                    raise MatchError(
+                        'No match for pattern "%s" in text starting with "%s"' % (
+                            self.regex, text[:20]))
+                text = "\n".join(m.groups())
 
-            m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None:
-                raise MatchError(
-                    'No match for pattern "%s" in text starting with "%s"' % (
-                        self.regex, text[:20]))
+            # this is done after regex matching, in case a capture group
+            # matched an empty string
+            text = text.strip()
+            if not text:
+                raise ExtractionError('Bounding box returned no text.')
             print "------ APPLIER_KEY: %s RESULT: %s ----" % (self.applier_key,
-            "\n".join(m.groups()).strip())
-            return "\n".join(m.groups()).strip()
+            text)
+            return text
 
     #TODO
     class TableField(Field):
