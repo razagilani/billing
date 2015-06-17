@@ -6,6 +6,7 @@ $env = "prod"
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
+    dropbox     => 'true',
     username   => $username,
 }
 
