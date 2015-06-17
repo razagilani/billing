@@ -6,11 +6,17 @@ $env = "stage"
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
+    dropbox     => 'true',
     username   => $username,
 }
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
+
+host::skyline_dropbox {"$env":
+    env    => $env,
+}
+
 
 include mongo::mongo_tools
 include httpd::httpd_server 
@@ -75,7 +81,7 @@ rabbit_mq::base_resource_configuration {$env:
     env => $env
 }
 cron { destage_from_production:
-    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts && python backup.py restore --scrub --root-password root billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/reebill-stage/destage_stdout.log 2> /home/reebill-stage/destage_stderr.log",
+    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts && python backup.py restore --scrub billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/reebill-stage/destage_stdout.log 2> /home/reebill-stage/destage_stderr.log",
     user => $username,
     hour => 1,
     minute => 0
@@ -90,5 +96,12 @@ cron { run_reports:
     command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
     user => $username,
     hour => 3,
+    minute => 0
+}
+
+cron { export_pg_data:
+    command => "source /var/local/reebill-stage/bin/activate && cd /var/local/reebill-stage/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-stage/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-stage/logs/export_pg_data_altitude_stderr.log",
+    user => $username,
+    hour => 0,
     minute => 0
 }
