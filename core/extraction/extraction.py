@@ -15,6 +15,8 @@ from core.extraction import layout
 from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass, UtilBill
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
+from util.pdfminer_util import fix_pdfminer_cid
+
 
 class Main(object):
     """Handles everything about the extraction process for a particular bill.
@@ -671,7 +673,9 @@ class LayoutExtractor(Extractor):
         page_num = Column(Integer)
         bbregex = Column(String)
 
-        #bounding box coordinates
+        # bounding box coordinates.
+        # If these are None, then the first textbox that matches the bbregex
+        # is used.
         bbminx = Column(Float)
         bbminy = Column(Float)
         bbmaxx = Column(Float)
@@ -695,9 +699,22 @@ class LayoutExtractor(Extractor):
                                       '%d out of %d.' % (self.page_num,
                 len(pages)))
 
-            text = layout.get_text_from_boundingbox(pages[self.page_num - 1],
-                BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
-                    maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy), self.corner)
+            #if bounding box is None, instead of using geometry, return first
+            # LTTextLine object that matches bbregex.
+            if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
+                self.bbmaxy]):
+                textline = layout.get_text_line(pages[self.page_num - 1],
+                    self.bbregex)
+                if textline is None:
+                    raise ExtractionError('could not find textline using '
+                                          'regex %s' % self.bbregex)
+                text = fix_pdfminer_cid(textline.get_text())
+            else:
+                text = layout.get_text_from_boundingbox(
+                    pages[self.page_num - 1],
+                    BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
+                        maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
+                    self.corner)
 
             if self.bbregex:
                 m = re.search(self.bbregex, text, re.IGNORECASE | re.DOTALL |
