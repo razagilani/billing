@@ -19,13 +19,16 @@ from sqlalchemy.dialects import postgresql
 def upgrade():
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),
-                    sa.Column('discriminator', sa.String(), nullable=False),
-                    sa.Column('name', sa.String(), nullable=False),
-                    sa.Column('created', sa.DateTime(), nullable=False,
-                              server_default=sa.func.now()),
-                    sa.Column('modified', sa.DateTime(), nullable=False,
-                              server_default=sa.func.now(),
-                              onupdate=sa.func.now()),
+        sa.Column('discriminator', sa.String(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('created', sa.DateTime(), nullable=False,
+            server_default=sa.func.now()),
+        sa.Column('modified', sa.DateTime(), nullable=False,
+            server_default=sa.func.now(),
+            onupdate=sa.func.now()),
+        sa.Column('origin_regex', sa.String()),
+        sa.Column('origin_x', sa.Float()),
+        sa.Column('origin_y', sa.Float()),
         sa.PrimaryKeyConstraint('extractor_id')
     )
     op.create_table('field',

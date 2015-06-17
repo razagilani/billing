@@ -665,6 +665,13 @@ class LayoutExtractor(Extractor):
     """
     __mapper_args__ = {'polymorphic_identity': 'layoutextractor'}
 
+    #used to align bills of the same format that are shifted slightly:
+    #A regular expression used to match a text box used to align the bill.
+    origin_regex = Column(String)
+    # The coordinates that the layout object should have, if the bill is aligned
+    origin_x = Column(Float)
+    origin_y = Column(Float)
+
     class BoundingBoxField(Field):
         """
         A field that extracts text that is within a given bounding box on the PDF
@@ -688,15 +695,19 @@ class LayoutExtractor(Extractor):
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
 
-        def _extract(self, pages):
+        def _extract(self, layoutdata):
+            pages = layoutdata[0]
+            #used to shift coordinates for misaligned bills
+            dx = layoutdata[1]
+            dy = layoutdata[2]
             if self.page_num > len(pages):
                 raise ExtractionError('Not enough pages. Could not get page '
                                       '%d out of %d.' % (self.page_num,
                 len(pages)))
 
             text = layout.get_text_from_boundingbox(pages[self.page_num - 1],
-                BoundingBox(minx=self.bbminx, miny=self.bbminy,
-                    maxx=self.bbmaxx, maxy=self.bbmaxy))
+                BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
+                    maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy))
 
             if self.regex:
                 m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
@@ -724,7 +735,19 @@ class LayoutExtractor(Extractor):
 
     def _prepare_input(self, utilbill, bill_file_handler):
         #TODO set up kdtree for faster object lookup
-        return utilbill.get_layout(bill_file_handler)
+        pages = utilbill.get_layout(bill_file_handler)
+
+        dx = dy = 0
+        if all(v is not None for v in
+                [self.origin_regex, self.origin_x, self.origin_y]):
+            #get textbox used to align the page
+            alignment_box = layout.get_text_line(pages[0], self.origin_regex)
+            if alignment_box is not None:
+                #set the bill's dx and dy so the textbox matches the expected
+                # coordinates.
+                dx = alignment_box.x0 - self.origin_x
+                dy = alignment_box.y0 - self.origin_y
+        return (pages, dx, dy)
 
 class ExtractorResult(model.Base):
     __tablename__ = 'extractor_result'

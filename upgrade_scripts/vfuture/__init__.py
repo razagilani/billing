@@ -92,10 +92,12 @@ def create_extractors(s):
     washington_gas.fields.append(TextExtractor.TextField(
         regex=wg_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
-    washington_gas_layout = LayoutExtractor(name='Layout Extractor for '
-                                                 'Washington Gas bills with '
-                                                 'green and yellow and chart '
-                                                 '(after 2014) id 15311')
+    washington_gas_layout = LayoutExtractor(
+        name='Layout Extractor for Washington Gas bills with green and '
+             'yellow and chart (after 2014) id 15311',
+        origin_regex="account number",
+        origin_x=411.624,
+        origin_y=746.91)
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         regex=r"(%s)-%s" % (date_format, date_format), page_num=1,
         bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
@@ -132,36 +134,39 @@ def create_extractors(s):
         type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
 
-    pepco_2015_layout = LayoutExtractor(name='Layout Extractor for Pepco bills '
-                                             'in 2015 id 18541')
+    pepco_2015_layout = LayoutExtractor(
+        name='Layout Extractor for Pepco bills in 2015 id 18541',
+        origin_regex="How to contact us",
+        origin_x="333",
+        origin_y="617.652")
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"(%s)-%s" % (date_format, date_format), page_num=2,
-        bbminx=310, bbminy=730, bbmaxx=470, bbmaxy=740,
+        regex=r"(%s) to %s" % (date_format, date_format), page_num=2,
+        bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
         type=Field.DATE,
         applier_key=Applier.START))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"%s-(%s)" % (date_format, date_format), page_num=2,
-        bbminx=310, bbminy=730, bbmaxx=470, bbmaxy=740,
+        regex=r"%s to (%s)" % (date_format, date_format), page_num=2,
+        bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
         type=Field.DATE,
         applier_key=Applier.END))
-    pepco_2015_layout.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    pepco_2015_layout.fields.append(TextExtractor.TextField(
-        regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
+    # pepco_2015_layout.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
+    # pepco_2015_layout.fields.append(TextExtractor.TextField(
+    #     regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         regex=r"Your service address:\s+(.*)$", page_num=1,
         bbminx=45, bbminy=554, bbmaxx=260, bbmaxy=577,
         type=Field.ADDRESS,
         applier_key=Applier.SERVICE_ADDRESS))
-    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-    #     regex=r"", page_num=1,
-    #     bbminx=66, bbminy=61, bbmaxx=203, bbmaxy=91,
-    #     type=Field.ADDRESS,
-    #     applier_key=Applier.BILLING_ADDRESS))
-    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-    #     regex=r"Rate Class:\s+(.*)$", page_num=2,
-    #     bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
-    #     type=Field.STRING,
-    #     applier_key=Applier.RATE_CLASS))
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        regex=r"", page_num=1,
+        bbminx=36, bbminy=61, bbmaxx=206, bbmaxy=95,
+        type=Field.ADDRESS,
+        applier_key=Applier.BILLING_ADDRESS))
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        regex=r"(.*) - service number", page_num=2,
+        bbminx=35, bbminy=671, bbmaxx=280, bbmaxy=681,
+        type=Field.STRING,
+        applier_key=Applier.RATE_CLASS))
     s.add_all([e, pepco_2015, pepco_old, washington_gas,
         washington_gas_layout, pepco_2015_layout])
 

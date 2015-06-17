@@ -1,3 +1,5 @@
+import re
+
 from pdfminer.converter import TextConverter, PDFPageAggregator
 from pdfminer.layout import LAParams, LTComponent, LTChar, LTTextLine
 from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
@@ -25,6 +27,19 @@ def get_text_from_boundingbox(page, boundingbox):
 
     return '\n'.join([tl.get_text() for tl in textlines])
 
+def get_text_line(page, regexstr):
+    """
+    Returns the first LTTextLine object found whose text matches the regex.
+    :param page: The page to search
+    :param regex: The regular expression string to match
+    :return: An LTTextLine object, or None
+    """
+    regex = re.compile(regexstr, re.IGNORECASE)
+    objs = get_all_objs(page, LTTextLine,
+        lambda o: regex.search(o.get_text()))
+    if not objs:
+        return None
+    return objs[0]
 
 def get_all_objs(ltobject, objtype=None, predicate=None):
     """
