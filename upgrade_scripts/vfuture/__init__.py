@@ -149,9 +149,17 @@ def create_extractors(s):
         bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
         corner=0, type=Field.DATE,
         applier_key=Applier.END))
-    # pepco_2015_layout.fields.append(TextExtractor.TextField(bbregex=pep_energy_regex, corner=0, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    # pepco_2015_layout.fields.append(TextExtractor.TextField(
-    #     bbregex=pep_next_meter_read_regex, corner=0, type=Field.DATE, applier_key=Applier.NEXT_READ))
+    #non-residential bills have a whole list of subtotals, and the actual
+    # total is at the end of this. Hence the very tall bounding box
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="(%s)\s*Amount" % num_format, page_num=2,
+        bbminx=348, bbminy=328, bbmaxx=361, bbmaxy=623,
+        corner=1, type=Field.FLOAT,
+        applier_key=Applier.ENERGY))
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="your next meter reading is scheduled for (%s)" % date_format,
+        page_num=2, type=Field.DATE,
+        applier_key=Applier.NEXT_READ))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"Your service address:\s+(.*)$", page_num=1,
         bbminx=45, bbminy=554, bbmaxx=260, bbmaxy=577,
