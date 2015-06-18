@@ -9,7 +9,8 @@ from flask import session
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal, abort
-from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
+from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean,\
+    List
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload
@@ -441,6 +442,16 @@ class ChargeResource(BaseResource):
         self.utilbill_processor.delete_charge(id)
         Session().commit()
         return {}
+
+
+class RSIBindingsResource(BaseResource):
+
+    def get(self):
+        rsi_bindings = Session.query(Charge.rsi_binding).distinct().all()
+        rsi_bindings = [dict(name=rsi_binding[0]) for rsi_binding in rsi_bindings]
+        return {'rows': rsi_bindings,
+                'results': len(rsi_bindings)}
+
 
 
 class SuppliersResource(BaseResource):
