@@ -46,8 +46,6 @@ def upgrade():
             nullable=True),
         sa.Column('regex', sa.String(length=1000)),
         sa.Column('bbregex', sa.String(length=1000)),
-        sa.Column('valuesregex', sa.String(length=1000)),
-        sa.Column('labelsregex', sa.String(length=1000)),
         sa.Column('page_num', sa.Integer()),
         sa.Column('bbminx', sa.Float(), nullable=True),
         sa.Column('bbminy', sa.Float(), nullable=True),

@@ -193,44 +193,75 @@ def convert_table_charges(rows):
     num_format = r"[\d,.]+"
     # this is based off the units currently in the charge table in the database.
     # these will probably have to be updated
-    unit_format = r"kWd|kWh|dollars|th|therm|BTU|MMBTU"
+    unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
     # matches text of the form <quantity> <unit> x <rate>
     #   e.g. 1,362.4 TH x .014
-    rate_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format, num_format)
+    register_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format,
+    num_format)
+
+    def convert_unit(unit):
+        if unit in Charge.CHARGE_UNITS:
+            return unit
+        #by default, if no unit then assume dollars
+        if not unit:
+            return "dollars"
+        if unit == "th":
+            return "therms"
+        if unit == "$":
+            return "dollars"
+        #if unit is not valid, raise an error
+        raise ConversionError('unit "%s" is not in set of allowed units.' %
+                              unit)
+
     def process_charge(r):
         text = r[0]
-        value = r[1]
-        #TODO how is quantity set?
+        value = r[-1]
+        if not text or not value:
+            raise ConversionError('Table row ("%s", "%s") contains an empty '
+                                  'element.' % r)
+
         #set up default values
-        quantity = rsi_binding = target_total = None
+        rsi_binding = target_total = None
         rate = 0
         description = unit = ''
         type=Charge.DISTRIBUTION
 
         target_total = re.search(num_format, value).group(0)
 
-        #separate rate/quanitity info from description
-        match = re.match(r"(.*?)\s*%s" % rate_format, text, re.IGNORECASE)
+        # determine unit for charge, from either the value (e.g. "$456")
+        # or from the name e.g. "Peak Usage (kWh):..."
+        match = re.search(r"(%s)" % unit_format, value)
+        if match:
+            unit = match.group(0)
+        else:
+            match = re.match(r"(\(%s\))" % unit_format, text)
+            if match:
+                unit = match.group(0)
+        unit = convert_unit(unit)
+
+        # check if charge refers to a register
+        match = re.match(r"(.*?)\s*%s" % register_format, text, re.IGNORECASE)
         if match:
             description = match.group(1)
-            quantity = match.group(2)
-            unit = match.group(3)
+            reg_quantity = match.group(2)
+            reg_unit = match.group(3)
             rate = match.group(4)
+            #TODO create register, formula
         else:
             description = text
 
         #Get rsi binding from database, by looking for existing charges with
         # the same description.
-        q = Session.query(Charge.rsi_binding).filter_by(
-            description=description)
+        q = Session.query(Charge.rsi_binding).filter(
+            Charge.description==description, bool(Charge.rsi_binding))
         rsi_binding = q.first()
         if rsi_binding is None:
-            #what to do if existing RSI binding not found?
+            #TODO what to do if existing RSI binding not found?
             pass
 
         return Charge(description=description, unit=unit, rate=rate,
             rsi_binding=rsi_binding, type=type, target_total=target_total)
-    charges = [process_charge(r) for r in rows]
+    charges = [process_charge(r) for r in rows if len(r) > 1]
     return charges
 
 def convert_wg_charges_std(text):
@@ -794,9 +825,6 @@ class LayoutExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'tablefield'}
 
-        labelsregex = Column(String)
-        valuesregex = Column(String)
-
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
 
@@ -827,34 +855,16 @@ class LayoutExtractor(Extractor):
                     current_row = []
                     table_data.append(current_row)
                 current_row.append(tl)
-
-            #get first and last element from each table row, if the row has
-            # at least two values. These correspond to the name and value of
-            # the items in question, e.g. utility bill charges.
             output_values = []
             for row in table_data:
-                if len(row) < 2:
-                    continue
+                out_row = [fix_pdfminer_cid(tl.get_text()).strip() for tl in
+                    row]
+                output_values.append(out_row)
 
-                row_label = fix_pdfminer_cid(row[0].get_text()).strip()
-                row_value = fix_pdfminer_cid(row[1].get_text()).strip()
-
-                if self.labelsregex:
-                    match = re.search(self.labelsregex, row_label, re.IGNORECASE)
-                    if match is None:
-                        raise MatchError("TableField label regex %s did not "
-                                         "match row label %s" % (
-                                        self.labelsregex, row_label))
-                    row_label = match.group(1)
-                if self.valuesregex:
-                    match = re.search(self.valuesregex, row_value, re.IGNORECASE)
-                    if match is None:
-                        raise MatchError("TableField value regex %s did not "
-                                         "match row value %s" % (
-                                        self.valuesregex, row_value))
-                    row_value = match.group(1)
-
-                output_values.append((row_label, row_value))
+            if not output_values:
+                raise ExtractionError("No values found in table.")
+            print "------ APPLIER_KEY: %s RESULT: %s ----" % (
+                self.applier_key, output_values)
             return output_values
 
     def _prepare_input(self, utilbill, bill_file_handler):
