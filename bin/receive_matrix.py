@@ -46,22 +46,16 @@ class QuoteReader(object):
         # tables that have triggers.
         statement = MatrixQuote.__table__.insert(implicit_returning=False)
 
-        start = 0
         conn = self.altitude_session.bind.connect()
+
+        generator = quote_parser.extract_quotes()
         while True:
-            # read the next BATCH_SIZE quotes from the file
-            quotes = islice(quote_parser.extract_quotes(), start,
-                            start + self.BATCH_SIZE)
-
-            # TODO: delay between each batch of 1000 gets noticeably longer
-            # each time. probably because islice is iterating through the first 'start'
-            # quotes and throwing them away before getting each batch.
-
-            # build a dictionary of values for each quote--can't be done in a
-            # comprehension because the "supplier_id" attribute must be set
-            # for each quote
+            quote_batch = islice(generator, self.BATCH_SIZE)
             insert_dicts = []
-            for quote in quotes:
+            for quote in quote_batch:
+                # build a dictionary of values for each quote--can't be done
+                # in a comprehension because the "supplier_id" attribute must
+                # be set for each quote
                 quote.supplier_id = altitude_supplier.company_id
                 raw_column_dict = quote.raw_column_dict()
                 # NOTE: SQLAlchemy default values do not get set until flush. there doesn't seem to be any way around this:
@@ -73,13 +67,9 @@ class QuoteReader(object):
                 insert_dicts.append(raw_column_dict)
             if insert_dicts == []:
                 break
-
-            # execute one big "insert" statement
-#            conn.execute(statement, insert_dicts)
-            # TODO: try bulk_insert_mappings; it's supposed to use executemany
-
-            yield self.BATCH_SIZE
-            start += self.BATCH_SIZE
+            # TODO: try "bulk insert" feature because it's supposed to use "executemany" just like this
+            conn.execute(statement, insert_dicts)
+            yield len(insert_dicts)
 
     def run(self):
         """Open, process, and delete quote files for all suppliers.
@@ -115,6 +105,7 @@ class QuoteReader(object):
                     path, traceback.format_exc()))
                 self.altitude_session.rollback()
             else:
+                # total should be 106560 from Direct Energy spreadsheet
                 self.logger.info('Read %s quotes from "%s"' % (count, path))
         Session.remove()
         AltitudeSession.remove()
