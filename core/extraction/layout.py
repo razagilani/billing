@@ -28,20 +28,34 @@ def get_corner(obj, c):
     y = obj.y1 if (c & 2) else obj.y0
     return (x, y)
 
-def get_text_from_boundingbox(page, boundingbox, corner):
+def get_text_from_boundingbox(ltobject, boundingbox, corner):
     """
     Gets all the text on a PDF page that is within the given bounding box.
     Text from different LTTextLines is separated by a newline.
-    :param page:
+    :param ltobject: The object, such as a page, within which to search.
     :param boundingbox:
     :return:
     """
-    textlines = get_all_objs(page, objtype=LTTextLine,
-        predicate=lambda o: in_bounds(o, boundingbox, corner))
+    textlines = get_objects_from_bounding_box(ltobject,
+        boundingbox, corner, objtype=LTTextLine)
     text = '\n'.join([tl.get_text() for tl in textlines])
     #for pdfminer unicode issues, fixes occurences of (cid:<char code>)
     text = fix_pdfminer_cid(text)
     return text
+
+def get_objects_from_bounding_box(ltobject, boundingbox, corner, objtype=None):
+    """
+    Returns alls objects of the given type within a boundingbox.
+    If objtype is None, all objects are returned.
+    :param ltobject:
+    :param boundingbox:
+    :param corner:
+    :param objtype:
+    :return:
+    """
+    return get_all_objs(ltobject,
+                        objtype=objtype,
+                        predicate=lambda o: in_bounds(o, boundingbox, corner))
 
 def get_text_line(page, regexstr):
     """

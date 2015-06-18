@@ -133,6 +133,11 @@ def create_extractors(s):
         bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
         corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
+    washington_gas_layout.fields.append(LayoutExtractor.TableField(
+        labelsregex="", valuesregex="", page_num=2,
+        bbminx=99, bbminy=437, bbmaxx=372, bbmaxy=561,
+        corner=0, type=Field.TABLE_CHARGES,
+        applier_key=Applier.CHARGES))
 
     pepco_2015_layout = LayoutExtractor(
         name='Layout Extractor for Pepco bills in 2015 id 18541',
