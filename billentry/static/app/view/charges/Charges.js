@@ -34,8 +34,16 @@ Ext.define('BillEntry.view.charges.Charges', {
         sortable: true,
         dataIndex: 'rsi_binding',
         editor: {
-            xtype: 'textfield',
+            xtype: 'combo',
+            store: 'RSIBindings',
             allowBlank: false,
+            selectOnFocus: true,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'name',
+            displayField: 'name',
+            forceSelection: true,
             selectOnFocus: true
         },
         width: 180
