@@ -79,7 +79,8 @@ class QuoteReader(object):
                 # in a comprehension because the "supplier_id" attribute must
                 # be set for each quote
                 quote.supplier_id = altitude_supplier.company_id
-                raw_column_dict = quote.raw_column_dict()
+                raw_column_dict = quote.raw_column_dict(
+                    exclude={'dual_billing', 'purchase_of_receiveables'})
                 # NOTE: SQLAlchemy default values do not get set until flush. there doesn't seem to be any way around this:
                 # https://stackoverflow.com/questions/14002631/why-isnt-sqlalchemy-default-column-value-available-before-object-is-committed
                 # so it is necessary to use server_default or manually update the values to access them through Python this way.

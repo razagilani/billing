@@ -5,7 +5,8 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float, Table
 from sqlalchemy.orm import relationship
 
-from core.model import Base, UtilityAccount, altitude_metadata
+from core.model import UtilityAccount, Base
+from core.model.model import AltitudeBase
 from exc import ValidationError
 
 
@@ -26,12 +27,12 @@ class BrokerageAccount(Base):
 
 # Company = Table('Company', altitude_metadata,
 #                 Column('Company_ID', Integer))
-class Company(Base):
+class Company(AltitudeBase):
     __tablename__ = 'Company'
     company_id = Column('Company_ID', Integer, primary_key=True)
     name = Column('Company', String, unique=True)
 
-class Quote(Base):
+class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
     __tablename__ = 'Rate'
@@ -59,7 +60,7 @@ class Quote(Base):
     # whether this quote involves "POR" (supplier is offering a discount
     # because credit risk is transferred to the utility)
     purchase_of_receivables = Column('Purchase_Of_Receivables', Boolean,
-                                     nullable=False, default=False)
+                                     nullable=False, server_default='0')
 
     # fixed price for energy in dollars/energy unit
     price = Column('Price', Float, nullable=False)
@@ -69,7 +70,7 @@ class Quote(Base):
 
     # dual billing
     dual_billing = Column('Dual_Billing', Boolean, nullable=False,
-                          default=False)
+                          server_default='1')
 
     # Percent Swing Allowable
     percent_swing = Column('Percent_Swing', Float)
