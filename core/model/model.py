@@ -70,9 +70,10 @@ class Base(object):
 
     @classmethod
     def column_names(cls):
-        '''Return list of attributes in the class that correspond to
+        """Return list of attributes names in the class that correspond to
+        database columns. These are NOT necessarily the names of actual
         database columns.
-        '''
+        """
         return [prop.key for prop in class_mapper(cls).iterate_properties if
                 isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
@@ -123,6 +124,19 @@ class Base(object):
         for attr_name in relevant_attr_names:
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
+
+    def raw_column_dict(self):
+        """
+        :return: dictionary whose keys are column names in the database table
+        and whose values are the corresponding column values, as in the
+        dictionaries it passes to the DBAPI along with the SQL format strings.
+        Primary key columns are excluded if their value is None.
+        SQLAlchemy probably has an easy way to get this but I couldn't find it.
+        """
+        mapper = self._sa_instance_state.mapper
+        return {column_property.columns[0].name: getattr(self, attr_name) for
+                attr_name, column_property in mapper.column_attrs.items()
+                if column_property.columns[0] not in mapper.primary_key}
 
 
 Base = declarative_base(cls=Base)
