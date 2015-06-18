@@ -186,7 +186,6 @@ class Applier(object):
 def convert_table_charges(rows):
     """
     Converts a list of charges extracted from a TableField.
-    The 'rows' argument is of the form [(name, value), ...]
     """
     #TODO get charge name map by utility
 
@@ -213,12 +212,15 @@ def convert_table_charges(rows):
         raise ConversionError('unit "%s" is not in set of allowed units.' %
                               unit)
 
-    def process_charge(r):
-        text = r[0]
-        value = r[-1]
+    def process_charge(row):
+        #first cell in row is the name of the charge (and sometimes contains
+        # rate info as well), while the last cell in row is the value of the
+        # charge.
+        text = row[0]
+        value = row[-1]
         if not text or not value:
             raise ConversionError('Table row ("%s", "%s") contains an empty '
-                                  'element.' % r)
+                                  'element.' % row)
 
         #set up default values
         rsi_binding = target_total = None
@@ -240,15 +242,21 @@ def convert_table_charges(rows):
         unit = convert_unit(unit)
 
         # check if charge refers to a register
-        match = re.match(r"(.*?)\s*%s" % register_format, text, re.IGNORECASE)
-        if match:
-            description = match.group(1)
-            reg_quantity = match.group(2)
-            reg_unit = match.group(3)
-            rate = match.group(4)
-            #TODO create register, formula
-        else:
-            description = text
+        # register info can appear in first cell, or in a middle column,
+        # so check all columns
+        for i in range(0, len(row)):
+            cell = row[i]
+            match = re.match(r"(.*?)\s*%s" % register_format, cell,
+                re.IGNORECASE)
+            if match:
+                reg_quantity = match.group(2)
+                reg_unit = match.group(3)
+                rate = match.group(4)
+                #TODO create register, formula
+            # register info is often in same text box as the charge name.
+            # If this is the case, separate the description from the other info.
+            if i == 0:
+                description = match.group(1) if match else cell
 
         #Get rsi binding from database, by looking for existing charges with
         # the same description.
