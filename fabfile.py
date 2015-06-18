@@ -11,7 +11,7 @@ env.roledefs.update({
     'skyline-internal-prod': ['skyline-internal-prod'],
     'skyline-internal-stage': ['skyline-internal-stage'],
     'billing-stage': ['billing-stage'],
-    'billing-prod-new': ['billing-prod-new'],
+    'billing-prod-01': ['billing-prod-01'],
     'billing-prod': ['billing-prod'],
 })
 
