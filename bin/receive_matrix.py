@@ -1,7 +1,9 @@
 """Read and parse and email with a matrix quote spreadsheet attachment from
 stdin. Can be triggered by Postfix.
 """
-from itertools import takewhile, islice
+# TODO: move code other than __main__ out of this file into a new file in
+# "brokerage", and add tests for it
+from itertools import islice
 import logging
 import os
 import traceback
@@ -15,7 +17,9 @@ LOG_NAME = 'read_quotes'
 
 # TODO: name to distinguish from QuoteParser
 class QuoteReader(object):
-    BATCH_SIZE = 100
+    # number of quotes to read and insert at once. larger is faster as long
+    # as it doesn't use up too much memory.
+    BATCH_SIZE = 1000
 
     def __init__(self):
         from core import config
@@ -24,39 +28,39 @@ class QuoteReader(object):
         self.altitude_session = AltitudeSession()
 
     def _read_file(self, quote_file, altitude_supplier):
+        """Read and insert 'BATCH_SIZE' quotes fom the given file.
+        :param quote_file: quote file to read from
+        :param altitude_supplier: brokerage.brokerage_model.Company instance
+        corresponding to the Company table in the Altitude SQL Server database,
+        representing a supplier. Not to be confused with the "supplier" table
+        (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
+        mapping between these two.
+        """
         # TODO: choose correct class
         quote_parser = DirectEnergyMatrixParser()
         quote_parser.load_file(quote_file)
         quote_parser.validate()
-        # for quote in quote_parser.extract_quotes():
-        #     quote.supplier_id = altitude_supplier.company_id
-        #     self.altitude_session.add(quote)
-        #     num += 1
-        #     if num % 100 == 0:
-        #         yield num
 
         # implicit_returning must be False to efficiently use the "bulk
-        # insert" feature and is also required when inserting into SQL Server
+        # insert" feature, and is also required when inserting into SQL Server
         # tables that have triggers.
         statement = MatrixQuote.__table__.insert(implicit_returning=False)
 
         start = 0
+        conn = self.altitude_session.bind.connect()
         while True:
-            # batch = list(
-            #     islice(quote_parser.extract_quotes(), start, self.BATCH_SIZE))
-            # if batch == []:
-            #     break
-            #print [str(MatrixQuote.__table__.insert()) % quote.raw_column_dict() for quote in batch]
-            # self.altitude_session.executemany(
-            #     sql, [quote.raw_column_dict() for quote in batch])
-           # cur = self.altitude_session.connection().connection.cursor()
-            #cur.executemany(statement, [quote.raw_column_dict() for quote in batch])
+            # read the next BATCH_SIZE quotes from the file
+            quotes = islice(quote_parser.extract_quotes(), start,
+                            start + self.BATCH_SIZE)
 
-            conn = self.altitude_session.bind.connect()
-            # conn.execute(statement, [quote.raw_column_dict() for quote in batch])
+            # TODO: delay between each batch of 1000 gets noticeably longer
+            # each time. probably because islice is iterating through the first 'start'
+            # quotes and throwing them away before getting each batch.
 
+            # build a dictionary of values for each quote--can't be done in a
+            # comprehension because the "supplier_id" attribute must be set
+            # for each quote
             insert_dicts = []
-            quotes = islice(quote_parser.extract_quotes(), start, start + self.BATCH_SIZE)
             for quote in quotes:
                 quote.supplier_id = altitude_supplier.company_id
                 raw_column_dict = quote.raw_column_dict()
@@ -68,13 +72,14 @@ class QuoteReader(object):
                 raw_column_dict['Purchase_Of_Receivables'] = False
                 insert_dicts.append(raw_column_dict)
             if insert_dicts == []:
-                continue
-            conn.execute(statement, insert_dicts)
+                break
 
+            # execute one big "insert" statement
+#            conn.execute(statement, insert_dicts)
             # TODO: try bulk_insert_mappings; it's supposed to use executemany
+
             yield self.BATCH_SIZE
             start += self.BATCH_SIZE
-
 
     def run(self):
         """Open, process, and delete quote files for all suppliers.
@@ -117,7 +122,7 @@ class QuoteReader(object):
 if __name__ == '__main__':
     init_config()
     # TODO: this causes confusing duplicate output from SQLAlchemy when "echo" is turned on. re-enable later
-    #init_logging()
+    init_logging()
     init_altitude_db()
     init_model()
 
