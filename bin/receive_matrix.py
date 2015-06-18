@@ -3,9 +3,11 @@ stdin. Can be triggered by Postfix.
 """
 # TODO: move code other than __main__ out of this file into a new file in
 # "brokerage", and add tests for it
+from datetime import date, datetime
 from itertools import islice
 import logging
 import os
+import re
 import traceback
 from brokerage.brokerage_model import Company, MatrixQuote
 from core import init_altitude_db, init_config, init_logging, init_model
@@ -13,6 +15,8 @@ from core.model import AltitudeSession, Session, Supplier
 from brokerage.read_quotes import DirectEnergyMatrixParser
 
 # TODO: can't get log file to appear where it's supposed to
+from util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
+
 LOG_NAME = 'read_quotes'
 
 # TODO: name to distinguish from QuoteParser
@@ -48,6 +52,24 @@ class QuoteReader(object):
 
         conn = self.altitude_session.bind.connect()
 
+        def sqlserver_format(value):
+            if value is None:
+                return 'null'
+            if isinstance(value, bool):
+                return int(value)
+            if isinstance(value, (basestring)):
+                return "'%s'" % value
+            if isinstance(value, (date, datetime)):
+                return "'%s'" % value.strftime(ISO_8601_DATETIME_WITHOUT_ZONE)
+            return value
+
+        def _build_sql(statement_str, param_dicts):
+            match = re.search(r'(INSERT INTO .* VALUES )(\(.*\)) (RETURNING.*)$', statement_str)
+            insert_part, values_part, end = match.group(1), match.group(2), match.group(3)
+            middle = ', '.join(values_part % d for d in param_dicts)
+            result = insert_part + middle + '; '
+            return result
+
         generator = quote_parser.extract_quotes()
         while True:
             quote_batch = islice(generator, self.BATCH_SIZE)
@@ -61,14 +83,24 @@ class QuoteReader(object):
                 # NOTE: SQLAlchemy default values do not get set until flush. there doesn't seem to be any way around this:
                 # https://stackoverflow.com/questions/14002631/why-isnt-sqlalchemy-default-column-value-available-before-object-is-committed
                 # so it is necessary to use server_default or manually update the values to access them through Python this way.
-                raw_column_dict['CompanySupplier_ID'] = 1
+                #raw_column_dict['CompanySupplier_ID'] = 1
                 raw_column_dict['Dual_Billing'] = True
                 raw_column_dict['Purchase_Of_Receivables'] = False
+                raw_column_dict = {k: sqlserver_format(v) for k, v in
+                                   raw_column_dict.iteritems()}
                 insert_dicts.append(raw_column_dict)
             if insert_dicts == []:
                 break
-            # TODO: try "bulk insert" feature because it's supposed to use "executemany" just like this
-            conn.execute(statement, insert_dicts)
+
+            # generate a SQL string (with escaped parameters) from the
+            # SQLAlchemy 'Insert' object. parameters must be provided as
+            # keyword arguments in order to exclude the primary key column,
+            # because otherwise all columns are included. the parameters are
+            # in the 'Insert' object but actually excluded from the string so
+            #  it doesn't actually matter which values are used.
+            statement_str = str(statement.values(**insert_dicts[0]))
+            sql = _build_sql(statement_str, insert_dicts)
+            conn.execute(sql)
             yield len(insert_dicts)
 
     def run(self):
@@ -96,7 +128,7 @@ class QuoteReader(object):
                     self.logger.info('Starting to read from "%s"' % path)
                     for num in self._read_file(quote_file, altitude_supplier):
                         count += num
-                        self.altitude_session.flush()
+                        #self.altitude_session.flush()
                         self.logger.debug('%s quotes so far' % count)
                     self.altitude_session.commit()
                 os.remove(path)
