@@ -134,8 +134,8 @@ def create_extractors(s):
         corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
     washington_gas_layout.fields.append(LayoutExtractor.TableField(
-        labelsregex="", valuesregex="", page_num=2,
-        bbminx=99, bbminy=437, bbmaxx=372, bbmaxy=561,
+        page_num=2,
+        bbminx=99, bbminy=437, bbmaxx=372, bbmaxy=571,
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
 
@@ -180,6 +180,14 @@ def create_extractors(s):
         bbminx=35, bbminy=671, bbmaxx=280, bbmaxy=681,
         corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
+    # TODO position of pepco 2015 charges changes with each bill, and spans
+    # multiple pages
+    # pepco_old_layout.fields.append(LayoutExtractor.TableField(
+    #     page_num=2,
+    #     bbminx=259, bbminy=446, bbmaxx=576, bbmaxy=657,
+    #     corner=0, type=Field.TABLE_CHARGES,
+    #     applier_key=Applier.CHARGES))
+
 
     pepco_old_layout = LayoutExtractor(
         name='Layout Extractor Pepco bills before 2015, blue logo id 2631')
@@ -218,6 +226,11 @@ def create_extractors(s):
         bbminx=97, bbminy=480, bbmaxx=144, bbmaxy=490,
         corner=0, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
+    pepco_old_layout.fields.append(LayoutExtractor.TableField(
+        page_num=2,
+        bbminx=259, bbminy=446, bbmaxx=576, bbmaxy=657,
+        corner=0, type=Field.TABLE_CHARGES,
+        applier_key=Applier.CHARGES))
 
     #TODO determine how to tell if we want gas or electric info
     bge_layout = LayoutExtractor(
