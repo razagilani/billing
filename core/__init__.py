@@ -118,11 +118,13 @@ def init_model(uri=None, schema_revision=None):
     import_all_model_modules()
 
     uri = uri if uri else config.get('db', 'uri')
-    engine = create_engine(uri, echo=config.get('db', 'echo'),
+    engine = create_engine(uri, #echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
                            pool_recycle=3600)
+    if config.get('db', 'echo'):
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     Session.configure(bind=engine)
     # TODO: unclear why the above does not work and Session.bind must be
