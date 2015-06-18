@@ -89,7 +89,6 @@ def test_bill(self, extractor_id, bill_id):
         del Session
         init_model()
         from core.model import Session
-
     bill_file_handler = _create_bill_file_handler()
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()

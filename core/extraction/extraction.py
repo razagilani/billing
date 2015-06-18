@@ -1,4 +1,5 @@
 from datetime import datetime
+from pdfminer.layout import LTTextLine
 import re
 
 from dateutil import parser as dateutil_parser
@@ -181,6 +182,56 @@ class Applier(object):
             apply()
         except Exception as e:
             raise ApplicationError('%s: %s' % (e.__class__, e.message))
+
+def convert_table_charges(rows):
+    """
+    Converts a list of charges extracted from a TableField.
+    The 'rows' argument is of the form [(name, value), ...]
+    """
+    #TODO get charge name map by utility
+
+    num_format = r"[\d,.]+"
+    # this is based off the units currently in the charge table in the database.
+    # these will probably have to be updated
+    unit_format = r"kWd|kWh|dollars|th|therm|BTU|MMBTU"
+    # matches text of the form <quantity> <unit> x <rate>
+    #   e.g. 1,362.4 TH x .014
+    rate_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format, num_format)
+    def process_charge(r):
+        text = r[0]
+        value = r[1]
+        #TODO how is quantity set?
+        #set up default values
+        quantity = rsi_binding = target_total = None
+        rate = 0
+        description = unit = ''
+        type=Charge.DISTRIBUTION
+
+        target_total = re.search(num_format, value).group(0)
+
+        #separate rate/quanitity info from description
+        match = re.match(r"(.*?)\s*%s" % rate_format, text, re.IGNORECASE)
+        if match:
+            description = match.group(1)
+            quantity = match.group(2)
+            unit = match.group(3)
+            rate = match.group(4)
+        else:
+            description = text
+
+        #Get rsi binding from database, by looking for existing charges with
+        # the same description.
+        q = Session.query(Charge.rsi_binding).filter_by(
+            description=description)
+        rsi_binding = q.first()
+        if rsi_binding is None:
+            #what to do if existing RSI binding not found?
+            pass
+
+        return Charge(description=description, unit=unit, rate=rate,
+            rsi_binding=rsi_binding, type=type, target_total=target_total)
+    charges = [process_charge(r) for r in rows]
+    return charges
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
@@ -455,6 +506,7 @@ class Field(model.Base):
     DATE = 'date'
     FLOAT = 'float'
     STRING = 'string'
+    TABLE_CHARGES = 'table charges'
     WG_CHARGES = 'wg charges'
     WG_CHARGES_WGL = 'wg charges wgl'
     PEPCO_OLD_CHARGES = 'pepco old charges'
@@ -464,6 +516,7 @@ class Field(model.Base):
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
         STRING: unicode,
+        TABLE_CHARGES: convert_table_charges,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,
         PEPCO_OLD_CHARGES: pep_old_convert_charges,
@@ -735,11 +788,74 @@ class LayoutExtractor(Extractor):
             return text
 
     #TODO
-    class TableField(Field):
+    class TableField(BoundingBoxField):
         """
-        A field that represents tabular data, within a given bounding box
-        Each row is extracted as a tuple of data
+        A field that represents tabular data, within a given bounding box.
         """
+        __mapper_args__ = {'polymorphic_identity': 'tablefield'}
+
+        labelsregex = Column(String)
+        valuesregex = Column(String)
+
+        def __init__(self, *args, **kwargs):
+            super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
+
+        def _extract(self, layoutdata):
+            pages = layoutdata[0]
+            #used to shift coordinates for misaligned bills
+            dx = layoutdata[1]
+            dy = layoutdata[2]
+            if self.page_num > len(pages):
+                raise ExtractionError('Not enough pages. Could not get page '
+                                      '%d out of %d.' % (self.page_num,
+                len(pages)))
+
+            textlines = layout.get_objects_from_bounding_box(
+                pages[self.page_num - 1],
+                BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
+                            maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
+                self.corner, LTTextLine)
+
+            #sort objects first into rows, by descending y values, and then
+            # into columns, by increasing x value
+            sorted_textlines = sorted(textlines, key=lambda tl: (-tl.y0, tl.x0))
+            table_data = []
+            current_y = -1
+            for tl in sorted_textlines:
+                if tl.y0 != current_y or current_y < 0:
+                    current_y = tl.y0
+                    current_row = []
+                    table_data.append(current_row)
+                current_row.append(tl)
+
+            #get first and last element from each table row, if the row has
+            # at least two values. These correspond to the name and value of
+            # the items in question, e.g. utility bill charges.
+            output_values = []
+            for row in table_data:
+                if len(row) < 2:
+                    continue
+
+                row_label = fix_pdfminer_cid(row[0].get_text()).strip()
+                row_value = fix_pdfminer_cid(row[1].get_text()).strip()
+
+                if self.labelsregex:
+                    match = re.search(self.labelsregex, row_label, re.IGNORECASE)
+                    if match is None:
+                        raise MatchError("TableField label regex %s did not "
+                                         "match row label %s" % (
+                                        self.labelsregex, row_label))
+                    row_label = match.group(1)
+                if self.valuesregex:
+                    match = re.search(self.valuesregex, row_value, re.IGNORECASE)
+                    if match is None:
+                        raise MatchError("TableField value regex %s did not "
+                                         "match row value %s" % (
+                                        self.valuesregex, row_value))
+                    row_value = match.group(1)
+
+                output_values.append((row_label, row_value))
+            return output_values
 
     def _prepare_input(self, utilbill, bill_file_handler):
         """
