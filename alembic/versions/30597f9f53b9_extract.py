@@ -52,6 +52,23 @@ def upgrade():
         sa.Column('bbmaxx', sa.Float(), nullable=True),
         sa.Column('bbmaxy', sa.Float(), nullable=True),
         sa.Column('corner', sa.Integer(), nullable=True),
+        sa.Column('multipage_table', sa.Boolean(), nullable=True),
+        sa.Column('maxpage', sa.Integer(), nullable=True),
+        sa.Column('nextpage_top', sa.Float(), nullable=True),
+        sa.Column('table_start_regex', sa.String(length=1000)),
+        sa.Column('table_stop_regex', sa.String(length=1000)),
+        # multipage_table = Column(Boolean)
+        # # For multi-page tables, the last page to which  the table extends.
+        # maxpage = Column(Integer)
+        # # For multi-page tables, the y-value at which the table starts,
+        # # on subsequent pages. i.e. the top margin.
+        # nextpage_top = Column(Float)
+        # # For multi-page tables, the y-value at which the table stops,
+        # # on subsequent pages. i.e. the bottom margin.
+        # nextpage_bottom = Column(Float)
+        # # A regex that matches a text object that comes after the end of the
+        # # table. This is for tables whose ending y-value varies.
+        # table_stop_regex = Column(String)
         sa.ForeignKeyConstraint(['extractor_id'], ['extractor.extractor_id'], ),
         sa.PrimaryKeyConstraint('field_id'),
         sa.UniqueConstraint('extractor_id', 'applier_key')

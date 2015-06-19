@@ -118,21 +118,10 @@ def test_bill(self, extractor_id, bill_id):
         response['date'] = None
 
     # print out debug information in celery log
-    debug = True
-    if len(good) != len(extractor.fields) and debug:
-        print "\n$$$$$$$"
-        print "Extractor Name: ", extractor.name
-        print "Bill ID: ", str(bill_id)
-        print "Utility: ", bill.utility_id
-        # for g in good:
-        #     #Compare extracted value to that in the database, to check for false positives.
-        #     db_val = getters_map[g[0].applier_key](bill)
-        #     if db_val and g[1] != db_val:
-        #         print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
-        print "ERRORS: " + str(len(error))
-        print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler)))
-        print "*******\n"
-    return response
+    debug = False
+    if debug:
+        print "BILL ID: %d good: %d error: %d"  % (bill_id, len(good),
+        len(error))
 
 
 @celery.task(bind=True, base=DBTask)
