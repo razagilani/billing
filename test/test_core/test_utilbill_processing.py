@@ -266,9 +266,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
     def test_set_total_meter_identifier(self):
         utilbill = UtilBill(MagicMock(), MagicMock(), MagicMock())
-        # This should not result in any changes as utilbill doesn't have register with
-        # register_binding of REG_TOTAL
-        utilbill.set_total_meter_identifier('7715')
+        self.assertRaises(StopIteration, utilbill.set_total_meter_identifier,
+                          '7715')
         self.assertEqual(utilbill.get_total_meter_identifier(), None)
 
 
