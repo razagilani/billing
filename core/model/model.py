@@ -6,6 +6,7 @@ import ast
 from datetime import date, datetime
 from itertools import chain
 import json
+from operator import attrgetter
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
@@ -22,7 +23,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError
+    UnEditableBillError, NotProcessable, BillingError, NoSuchBillException
 from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
@@ -569,6 +570,20 @@ class UtilityAccount(Base):
         if len(self.utilbills) > 0:
             return self.utilbills[0].service_address
         return self.fb_service_address
+
+    def get_last_bill(self, processed=None, end=None):
+        """Return the latest-ending UtilBill belonging to this account.
+        :param processed: if True, only consider bills that are processed.
+        :param end: only consider bills whose period ends on/before this date.
+        :return: UtilBill
+        """
+        g = (u for u in self.utilbills
+             if (processed is None or u.processed)
+             and (end is None or u.period_end <= end))
+        try:
+            return max(g, key=attrgetter('period_end'))
+        except ValueError:
+            raise NoSuchBillException
 
 
 class Charge(Base):
