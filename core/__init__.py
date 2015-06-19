@@ -157,12 +157,16 @@ def init_celery():
 
     global celery
     celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
-
     # if you're using a Python dictionary for configuration (as is usual with
     # Flask), you can set celery's "conf" directly from the application's
     # config dictionary with "celery.conf.update(app.config)".
     # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
     # celery.conf['BROKER_URL'] = celery_broker_url
+
+    # when individual tasks fail, the exceptions are forwarded to the callback.
+    # (by default, individual task failures cause the whole Chord to fail and
+    #  return a ChordError.)
+    celery.conf['CELERY_CHORD_PROPAGATES'] = False
 
 def initialize():
     init_logging()
