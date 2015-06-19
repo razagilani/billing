@@ -1,14 +1,9 @@
 import re
+from pdfminer.layout import LTTextLine
 
-from pdfminer.converter import TextConverter, PDFPageAggregator
-from pdfminer.layout import LAParams, LTComponent, LTChar, LTTextLine
-from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFSyntaxError, PDFParser
-
-#represents a two-dimensional, axis-aligned bounding box.
 from util.pdfminer_util import fix_pdfminer_cid
 
+# represents a two-dimensional, axis-aligned bounding box.
 class BoundingBox:
     def __init__(self, minx, miny, maxx, maxy):
         self.minx = minx
@@ -16,17 +11,24 @@ class BoundingBox:
         self.maxx = maxx
         self.maxy = maxy
 
+
 CORNERS = {
-    'top left' : 0,
-    'top right' : 1,
-    'bottom left' : 2,
-    'bottom right' : 3,
+    'top left': 0,
+    'top right': 1,
+    'bottom left': 2,
+    'bottom right': 3,
 }
 
+
 def get_corner(obj, c):
+    """
+    Get a specific corner of an object as an (x, y) tuple.
+    :param: c an integer specifying the corner, as in :CORNERS
+    """
     x = obj.x1 if (c & 1) else obj.x0
     y = obj.y1 if (c & 2) else obj.y0
     return (x, y)
+
 
 def get_text_from_boundingbox(ltobject, boundingbox, corner):
     """
@@ -39,9 +41,10 @@ def get_text_from_boundingbox(ltobject, boundingbox, corner):
     textlines = get_objects_from_bounding_box(ltobject,
         boundingbox, corner, objtype=LTTextLine)
     text = '\n'.join([tl.get_text() for tl in textlines])
-    #for pdfminer unicode issues, fixes occurences of (cid:<char code>)
+    # for pdfminer unicode issues, fixes occurences of (cid:<char code>)
     text = fix_pdfminer_cid(text)
     return text
+
 
 def get_objects_from_bounding_box(ltobject, boundingbox, corner, objtype=None):
     """
@@ -54,8 +57,9 @@ def get_objects_from_bounding_box(ltobject, boundingbox, corner, objtype=None):
     :return:
     """
     return get_all_objs(ltobject,
-                        objtype=objtype,
-                        predicate=lambda o: in_bounds(o, boundingbox, corner))
+        objtype=objtype,
+        predicate=lambda o: in_bounds(o, boundingbox, corner))
+
 
 def get_text_line(page, regexstr):
     """
@@ -70,6 +74,7 @@ def get_text_line(page, regexstr):
     if not objs:
         return None
     return objs[0]
+
 
 def get_all_objs(ltobject, objtype=None, predicate=None):
     """
@@ -113,3 +118,25 @@ def in_bounds(obj, bounds, corner):
             return True
 
     return False
+
+
+def tabulate_objects(objs):
+    """
+    Sort objects first into rows, by descending y values, and then
+    into columns, by increasing x value
+    :param objs:
+    :return: A list of rows, where each row is a list of objects. The rows
+    are sorted by descending y value, and the objects are sorted by
+    increasing x value.
+    """
+    sorted_objs = sorted(objs, key=lambda o: (-o.y0, o.x0))
+    table_data = []
+    current_y = -1
+    for obj in sorted_objs:
+        if obj.y0 != current_y or current_y < 0:
+            current_y = obj.y0
+            current_row = []
+            table_data.append(current_row)
+        current_row.append(obj)
+
+    return table_data

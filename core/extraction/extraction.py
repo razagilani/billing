@@ -4,7 +4,7 @@ import re
 
 from dateutil import parser as dateutil_parser
 from sqlalchemy import Column, Integer, Float, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func
+    UniqueConstraint, DateTime, func, Boolean
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm import relationship, RelationshipProperty, object_session, \
     MapperExtension
@@ -13,10 +13,11 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from core import model
 from core.extraction import layout
-from core.extraction.layout import BoundingBox
+from core.extraction.layout import BoundingBox, tabulate_objects
 from core.model import Charge, Session, Utility, Address, RateClass, UtilBill
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 from util.pdfminer_util import fix_pdfminer_cid
+from util.units import ureg
 
 
 class Main(object):
@@ -199,6 +200,9 @@ def convert_table_charges(rows):
     num_format)
 
     def convert_unit(unit):
+        """
+        Convert units found in bills to standardized formats.
+        """
         if unit in Charge.CHARGE_UNITS:
             return unit
         #by default, if no unit then assume dollars
@@ -212,7 +216,18 @@ def convert_table_charges(rows):
         raise ConversionError('unit "%s" is not in set of allowed units.' %
                               unit)
 
-    def process_charge(row):
+    def process_charge(row, ctype=Charge.DISTRIBUTION):
+        """
+        Processes a row of text values to create a single charge with the given
+        charge type.
+        :param row: A list of strings of length at least 2.
+        :param ctype: The type of the charge
+        :return: a Charge object
+        """
+        if len(row) < 2:
+            raise ConversionError('Charge row %s must have at least two '
+                                  'values.')
+
         #first cell in row is the name of the charge (and sometimes contains
         # rate info as well), while the last cell in row is the value of the
         # charge.
@@ -226,9 +241,13 @@ def convert_table_charges(rows):
         rsi_binding = target_total = None
         rate = 0
         description = unit = ''
-        type=Charge.DISTRIBUTION
 
-        target_total = re.search(num_format, value).group(0)
+        # if row does not end with some kind of number, this is not a charge.
+        match = re.search(num_format, value)
+        if match:
+            target_total = match.group(0)
+        else:
+            return None
 
         # determine unit for charge, from either the value (e.g. "$456")
         # or from the name e.g. "Peak Usage (kWh):..."
@@ -268,9 +287,36 @@ def convert_table_charges(rows):
             pass
 
         return Charge(description=description, unit=unit, rate=rate,
-            rsi_binding=rsi_binding, type=type, target_total=target_total)
-    charges = [process_charge(r) for r in rows if len(r) > 1]
-    return charges
+            rsi_binding=rsi_binding, type=ctype, target_total=target_total)
+
+    # default charge type is DISTRIBUTION
+    charge_type = Charge.DISTRIBUTION
+    charges = []
+    for i in range (0, len(rows)):
+        row = rows[i]
+        if not row:
+            continue
+
+        if len(row) == 1:
+            #If this label is not in all caps and has no colon at the end,
+            # assume it is part of the next row's charge name that got wrapped.
+            if re.search(r"[a-z]", row[0]) and not re.search(":$", row[0]):
+                # if the next row exists, and is an actual charge row,
+                # append this current row's text to the next row's name
+                if i < len(rows) - 1 and len(rows[i+1]) > 1:
+                    rows[i+1][0] = row[0] + " " + rows[i+1][0]
+                    continue
+
+            #check if this row is a header for a type of charge.
+            if re.search(r"suppl[iy]|generation|transmission", row[0],
+                    re.IGNORECASE):
+                charge_type = Charge.SUPPLY
+            else:
+                charge_type = Charge.DISTRIBUTION
+            continue
+
+        charges.append(process_charge(row, charge_type))
+    return filter(None, charges)
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
@@ -822,23 +868,48 @@ class LayoutExtractor(Extractor):
             text = text.strip()
             if not text:
                 raise ExtractionError('Bounding box returned no text.')
-            print "------ APPLIER_KEY: %s RESULT: %s ----" % (self.applier_key,
-            text)
+            # print "------ APPLIER_KEY: %s RESULT: %s ----" % (self.applier_key,
+            # text)
             return text
 
     #TODO
     class TableField(BoundingBoxField):
         """
         A field that represents tabular data, within a given bounding box.
+
+        For multi-page tables, in addition to the initial bounding box,
+        one specifies a max page number and top margin for the
+        subsequent pages. One can also specifiy a regex to find a text object
+        that marks the end or start of the table (inclusive).
         """
         __mapper_args__ = {'polymorphic_identity': 'tablefield'}
+
+        #An (optional) regex that matches a text object that delimits the
+        # start of the table. (in addition to limiting text within the
+        # bounding box)
+        table_start_regex = Column(String)
+        # An (optional) regex that matches a text object that comes at the
+        # end of the table (exclusive). (in addition to limiting text within the
+        # bounding box).
+        # This is for tables whose ending y-value varies.
+        # Once the pattern is matched (on any page), no further text is
+        # returned, even if maxpage has not yet been reached.
+        table_stop_regex = Column(String)
+
+        # whether this table extends across multiple pages.
+        multipage_table = Column(Boolean)
+        # For multi-page tables, the last page to which  the table extends.
+        maxpage = Column(Integer)
+        # For multi-page tables, the y-value at which the table starts,
+        # on subsequent pages. i.e. the top margin.
+        nextpage_top = Column(Float)
 
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
 
         def _extract(self, layoutdata):
             pages = layoutdata[0]
-            #used to shift coordinates for misaligned bills
+            # used to shift coordinates for misaligned bills
             dx = layoutdata[1]
             dy = layoutdata[2]
             if self.page_num > len(pages):
@@ -846,33 +917,69 @@ class LayoutExtractor(Extractor):
                                       '%d out of %d.' % (self.page_num,
                 len(pages)))
 
-            textlines = layout.get_objects_from_bounding_box(
-                pages[self.page_num - 1],
-                BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
-                            maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
-                self.corner, LTTextLine)
-
-            #sort objects first into rows, by descending y values, and then
-            # into columns, by increasing x value
-            sorted_textlines = sorted(textlines, key=lambda tl: (-tl.y0, tl.x0))
             table_data = []
-            current_y = -1
-            for tl in sorted_textlines:
-                if tl.y0 != current_y or current_y < 0:
-                    current_y = tl.y0
-                    current_row = []
-                    table_data.append(current_row)
-                current_row.append(tl)
+
+            #determine last page to search
+            if self.multipage_table:
+                endpage = min(self.maxpage, len(pages))
+            else:
+                endpage = self.page_num
+
+            for i in range(self.page_num-1, endpage):
+                page = pages[i]
+
+                #Either use initial bounding box for first page,
+                # or use bounding box with the top y value of 'nextpage_top'
+                if i == self.page_num - 1:
+                    bbox = BoundingBox(
+                            minx=self.bbminx + dx,
+                            miny=self.bbminy + dy,
+                            maxx=self.bbmaxx + dx,
+                            maxy=self.bbmaxy + dy)
+                else:
+                    bbox = BoundingBox(
+                            minx = self.bbminx + dx,
+                            miny = self.bbminy + dy,
+                            maxx = self.bbmaxx + dx,
+                            maxy = self.nextpage_top + dy)
+
+                new_textlines = layout.get_objects_from_bounding_box(page,
+                    bbox, 0, LTTextLine)
+
+                #match regex at start of table.
+                if self.table_start_regex and i == self.page_num - 1:
+                    top_object = layout.get_text_line(page,
+                        self.table_start_regex)
+                    if top_object:
+                        new_textlines = filter(
+                            lambda tl: tl.y0 < top_object.y0,
+                            new_textlines)
+
+                # if table_stop_regex matches, do not search further pages.
+                if self.table_stop_regex:
+                    bottom_object = layout.get_text_line(page,
+                        self.table_stop_regex)
+                    if bottom_object:
+                        new_textlines = filter(
+                            lambda tl: tl.y0 > bottom_object.y0,
+                            new_textlines)
+                        table_data.extend(tabulate_objects(new_textlines))
+                        break
+
+                table_data.extend(tabulate_objects(new_textlines))
+
+            # extract text from each table cell
             output_values = []
             for row in table_data:
                 out_row = [fix_pdfminer_cid(tl.get_text()).strip() for tl in
                     row]
-                output_values.append(out_row)
+                #remove empty cells
+                out_row = out_row.filter(bool)
+                if out_row:
+                    output_values.append(out_row)
 
             if not output_values:
                 raise ExtractionError("No values found in table.")
-            print "------ APPLIER_KEY: %s RESULT: %s ----" % (
-                self.applier_key, output_values)
             return output_values
 
     def _prepare_input(self, utilbill, bill_file_handler):

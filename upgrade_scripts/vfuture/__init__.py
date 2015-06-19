@@ -136,6 +136,7 @@ def create_extractors(s):
     washington_gas_layout.fields.append(LayoutExtractor.TableField(
         page_num=2,
         bbminx=99, bbminy=437, bbmaxx=372, bbmaxy=571,
+        table_stop_regex=r"total washington gas charges|ways to pay",
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
 
@@ -182,12 +183,15 @@ def create_extractors(s):
         applier_key=Applier.RATE_CLASS))
     # TODO position of pepco 2015 charges changes with each bill, and spans
     # multiple pages
-    # pepco_old_layout.fields.append(LayoutExtractor.TableField(
-    #     page_num=2,
-    #     bbminx=259, bbminy=446, bbmaxx=576, bbmaxy=657,
-    #     corner=0, type=Field.TABLE_CHARGES,
-    #     applier_key=Applier.CHARGES))
-
+    pepco_2015_layout.fields.append(LayoutExtractor.TableField(
+        page_num=2,
+        table_start_regex=r"how we calculate this charge",
+        table_stop_regex=r"total electric charges",
+        bbminx=35, bbminy=246, bbmaxx=354, bbmaxy=512,
+        multipage_table=True, maxpage=3,
+        nextpage_top = 710,
+        corner=0, type=Field.TABLE_CHARGES,
+        applier_key=Applier.CHARGES))
 
     pepco_old_layout = LayoutExtractor(
         name='Layout Extractor Pepco bills before 2015, blue logo id 2631')
@@ -229,6 +233,7 @@ def create_extractors(s):
     pepco_old_layout.fields.append(LayoutExtractor.TableField(
         page_num=2,
         bbminx=259, bbminy=446, bbmaxx=576, bbmaxy=657,
+        table_stop_regex=r"current charges this period",
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
 
