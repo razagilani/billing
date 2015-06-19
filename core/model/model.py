@@ -6,7 +6,6 @@ import ast
 from datetime import date, datetime
 from itertools import chain
 import json
-from operator import attrgetter
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
@@ -581,7 +580,7 @@ class UtilityAccount(Base):
              if (processed is None or u.processed)
              and (end is None or u.period_end <= end))
         try:
-            return max(g, key=attrgetter('period_end'))
+            return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
             raise NoSuchBillException
 
