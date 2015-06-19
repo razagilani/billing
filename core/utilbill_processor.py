@@ -71,8 +71,8 @@ class UtilbillProcessor(object):
             utilbill.supply_group = supply_group
 
         if rate_class is not None:
-            utilbill.rate_class = self.get_rate_class(
-                rate_class)
+            rate_class = self.get_rate_class(rate_class)
+            utilbill.set_rate_class(rate_class)
 
         if utility is not None:
             utility = self.get_utility(utility)
@@ -191,9 +191,13 @@ class UtilbillProcessor(object):
 
         # do not re-add any code that directly accesses registers inside a
         # UtilBill object!
-        if predecessor is not None:
-            new_utilbill.set_total_meter_identifier(
-                predecessor.get_total_meter_identifier())
+        if predecessor is not None and rate_class is not None:
+            mi = predecessor.get_total_meter_identifier()
+            # The predecessor may not have a REG_TOTAL if it doesn't have a
+            # rate class yet
+            if mi is not None:
+                new_utilbill.set_total_meter_identifier(mi)
+
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
