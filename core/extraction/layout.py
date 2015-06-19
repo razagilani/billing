@@ -6,6 +6,9 @@ from util.pdfminer_util import fix_pdfminer_cid
 # represents a two-dimensional, axis-aligned bounding box.
 class BoundingBox:
     def __init__(self, minx, miny, maxx, maxy):
+        if minx > maxx or miny > maxy:
+            raise ValueError("minx and miny must be less than or equal to "
+                             "maxx and maxy, respectively.")
         self.minx = minx
         self.miny = miny
         self.maxx = maxx
@@ -70,7 +73,7 @@ def get_text_line(page, regexstr):
     """
     regex = re.compile(regexstr, re.IGNORECASE)
     objs = get_all_objs(page, LTTextLine,
-        lambda o: regex.search(o.get_text()))
+        lambda o: regex.search(fix_pdfminer_cid(o.get_text())))
     if not objs:
         return None
     return objs[0]

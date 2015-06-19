@@ -104,6 +104,7 @@ class Applier(object):
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
+    PERIOD_TOTAL = 'period total'
     RATE_CLASS = 'rate class'
     SERVICE_ADDRESS = 'service address'
     START = 'start'
@@ -113,6 +114,7 @@ class Applier(object):
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
+        PERIOD_TOTAL: model.UtilBill.target_total,
         RATE_CLASS: set_rate_class,
         SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
@@ -803,13 +805,26 @@ class LayoutExtractor(Extractor):
 
     class BoundingBoxField(Field):
         """
-        A field that extracts text that is within a given bounding box on the PDF
+        A field that extracts text that is within a given bounding box on the PDF.
+
         """
         __mapper_args__ = {'polymorphic_identity': 'boundingboxfield'}
 
         # First page is numbered 1, not 0
+        # The first (or only) page to search for
         page_num = Column(Integer)
+        # The last page to search for. If maxpage is None, then only page_num
+        #  is used.
+        maxpage = Column(Integer)
+        # regex to apply to text after it has been recovered.
+        # If bounding box is null, then the first textline matching bbregex
+        # is returned from the page.
         bbregex = Column(String)
+        # If not null, offset_regex is used to find a text object that served
+        #  as the origin for the bounding box. This is used when a certain
+        # region on a bill has different locations on different PDFs, but the
+        #  same content.
+        offset_regex = Column(String)
 
         # bounding box coordinates.
         # If these are None, then the first textbox that matches the bbregex
@@ -829,30 +844,50 @@ class LayoutExtractor(Extractor):
 
         def _extract(self, layoutdata):
             pages = layoutdata[0]
-            #used to shift coordinates for misaligned bills
-            dx = layoutdata[1]
-            dy = layoutdata[2]
             if self.page_num > len(pages):
                 raise ExtractionError('Not enough pages. Could not get page '
                                       '%d out of %d.' % (self.page_num,
                 len(pages)))
-
-            #if bounding box is None, instead of using geometry, return first
-            # LTTextLine object that matches bbregex.
-            if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
-                self.bbmaxy]):
-                textline = layout.get_text_line(pages[self.page_num - 1],
-                    self.bbregex)
-                if textline is None:
-                    raise ExtractionError('could not find textline using '
-                                          'regex %s' % self.bbregex)
-                text = fix_pdfminer_cid(textline.get_text())
+            if self.maxpage:
+                endpage = min(self.maxpage, len(pages))
             else:
-                text = layout.get_text_from_boundingbox(
-                    pages[self.page_num - 1],
-                    BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
-                        maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
-                    self.corner)
+                endpage = self.page_num
+
+            #used to shift coordinates for misaligned bills
+            dx = layoutdata[1]
+            dy = layoutdata[2]
+
+            text=""
+            for page in pages[self.page_num-1:endpage]:
+                #if bounding box is None, instead of using geometry, return first
+                # LTTextLine object that matches bbregex.
+                if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
+                    self.bbmaxy]):
+                    textline = layout.get_text_line(page,
+                        self.bbregex)
+                    if textline is None:
+                        raise MatchError('Could not find textline using '
+                                              'regex "%s"' % self.bbregex)
+                    text = fix_pdfminer_cid(textline.get_text())
+                else:
+                    #if offset_regex is not None, then find the first block of
+                    # text that it matches, and use that as the origin for
+                    # the bounding box's coordiantes.
+                    if self.offset_regex:
+                        textline = layout.get_text_line(page, self.offset_regex)
+                        if textline is None:
+                            continue
+                        offset_x, offset_y = layout.get_corner(textline,
+                            self.corner)
+                        dx = offset_x
+                        dy = offset_y
+                    text = layout.get_text_from_boundingbox(page,
+                        BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
+                            maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
+                        self.corner)
+                #exit on first match found
+                if text:
+                    break
 
             if self.bbregex:
                 m = re.search(self.bbregex, text, re.IGNORECASE | re.DOTALL |
@@ -898,8 +933,6 @@ class LayoutExtractor(Extractor):
 
         # whether this table extends across multiple pages.
         multipage_table = Column(Boolean)
-        # For multi-page tables, the last page to which  the table extends.
-        maxpage = Column(Integer)
         # For multi-page tables, the y-value at which the table starts,
         # on subsequent pages. i.e. the top margin.
         nextpage_top = Column(Float)
@@ -974,7 +1007,7 @@ class LayoutExtractor(Extractor):
                 out_row = [fix_pdfminer_cid(tl.get_text()).strip() for tl in
                     row]
                 #remove empty cells
-                out_row = out_row.filter(bool)
+                out_row = filter(bool, out_row)
                 if out_row:
                     output_values.append(out_row)
 

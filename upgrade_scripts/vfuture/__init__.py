@@ -139,6 +139,12 @@ def create_extractors(s):
         table_stop_regex=r"total washington gas charges|ways to pay",
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
+    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="(%s)" % num_format, page_num=1,
+        offset_regex="total charges this period",
+        bbminx=0, bbminy=0, bbmaxx=170, bbmaxy=10,
+        corner=0, type=Field.FLOAT,
+        applier_key=Applier.PERIOD_TOTAL))
 
     pepco_2015_layout = LayoutExtractor(
         name='Layout Extractor for Pepco bills in 2015 id 18541',
@@ -192,6 +198,12 @@ def create_extractors(s):
         nextpage_top = 710,
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="(%s)" % num_format, page_num=1, maxpage=3,
+        offset_regex="total electric charges",
+        bbminx=0, bbminy=0, bbmaxx=318, bbmaxy=10,
+        corner=0, type=Field.FLOAT,
+        applier_key=Applier.PERIOD_TOTAL))
 
     pepco_old_layout = LayoutExtractor(
         name='Layout Extractor Pepco bills before 2015, blue logo id 2631')
@@ -236,6 +248,13 @@ def create_extractors(s):
         table_stop_regex=r"current charges this period",
         corner=0, type=Field.TABLE_CHARGES,
         applier_key=Applier.CHARGES))
+    pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="(%s)" % num_format, page_num=1,
+        offset_regex="current charges this period",
+        bbminx=0, bbminy=0, bbmaxx=252, bbmaxy=10,
+        corner=0, type=Field.FLOAT,
+        applier_key=Applier.PERIOD_TOTAL))
+
 
     #TODO determine how to tell if we want gas or electric info
     bge_layout = LayoutExtractor(
@@ -275,6 +294,12 @@ def create_extractors(s):
     #     bbminx=97, bbminy=480, bbmaxx=144, bbmaxy=490,
     #     corner=0, type=Field.STRING,
     #     applier_key=Applier.RATE_CLASS))
+    bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="(%s)" % num_format, page_num=1,
+        offset_regex="total charges this period",
+        bbminx=0, bbminy=0, bbmaxx=255, bbmaxy=10,
+        corner=0, type=Field.FLOAT,
+        applier_key=Applier.PERIOD_TOTAL))
 
     s.add_all([e, pepco_2015, pepco_old, washington_gas,
         washington_gas_layout, pepco_2015_layout, pepco_old_layout, bge_layout])
