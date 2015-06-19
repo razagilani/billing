@@ -122,6 +122,7 @@ def test_bill(self, extractor_id, bill_id):
     if debug:
         print "BILL ID: %d good: %d error: %d"  % (bill_id, len(good),
         len(error))
+    return response
 
 
 @celery.task(bind=True, base=DBTask)
