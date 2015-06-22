@@ -48,37 +48,36 @@ class FuzzyPricingModel(PricingModel):
         return lambda x: max(a**(x * b), minimum)
 
     def __init__(self, utilbill_loader, logger=None):
-        '''
-        'utilbill_loader': an object that has a 'load_utilbills' method
-        returning an iterable of state.UtilBills matching criteria given as
-        keyword arguments (see state.UtilBillLoader). For testing, this can be
-        replaced with a mock object.
-        '''
+        """
+        :param utilbill_loader: an object that has a 'load_utilbills' method
+        returning an iterable of core.model.UtilBills matching criteria given as
+        keyword arguments (see core.utilbill_loader.UtilBillLoader).
+        """
         super(FuzzyPricingModel, self).__init__(logger)
         self._utilbill_loader = utilbill_loader
 
-    def _get_probable_shared_charges(self, period, relevant_bills, charge_type,
-                                     threshold=THRESHOLD,
-                                     ignore=lambda x: False, verbose=False):
-        """Constructs and returns a list of :py:class:`Charge`
-        instances, each of which is unattached to any :py:class:`UtilBill`.
+    def _get_charge_scores(self, period, relevant_bills, charge_type):
+        """Main part of the algorithm to guess what charges will be included
+        in a bill.
 
-        The charges returned represent a guess as to which formulas should
-        be present on the utilbill.
-
+        :param period: (start date, end date) of the bill
         :param relevant_bills: iterable of other bills to look at when
-        deciding which charges should be included in this bill.
-        :param threshold: the minimum score (between 0 and 1) for an RSI to be
-        included.
-        :param ignore: an optional function to exclude UPRSs from the input data
+        deciding which charges should be included in this bill
+        :param charge_type: one of the values in Charge.CHARGE_TYPES: only
+        charges of this type in the 'relevant_bills' are considered
+
+        :return 3 dictionaries:
+        charge name -> score (float in [0, 1])
+        charge name -> total weight of bills that contributed to its score
+        (float >= 0)
+        charge name -> highest-scoring occurrence of that charge and its
+        distance (tuple of Charge object, float)
         """
         assert isinstance(period[0], date) and isinstance(period[1], date)
         assert charge_type in Charge.CHARGE_TYPES
-        assert isinstance(threshold, (int, float))
-        assert callable(ignore)
 
-        distance_func=self.__class__._manhattan_distance
-        weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
+        distance_func = self.__class__._manhattan_distance
+        weight_func = self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
         # the unique identifier of "the same charge" across more than one bill
         # is a combination of both 'type' (e.g. "distribution" or "supply") and
@@ -91,6 +90,7 @@ class FuzzyPricingModel(PricingModel):
             utilbill.charges for utilbill in relevant_bills) if
                        c.type == charge_type)
 
+        # these 3 dictionaries are the 3 return values
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (maxint, None))
@@ -105,7 +105,7 @@ class FuzzyPricingModel(PricingModel):
                     # same 'rsi_binding' AND the relevant 'type'
                     charge = next(c for c in utilbill.charges if
                                   (c.type, c.rsi_binding) == (
-                                  charge_type, binding))
+                                      charge_type, binding))
                 except StopIteration:
                     pass
                 else:
@@ -123,6 +123,37 @@ class FuzzyPricingModel(PricingModel):
                 # whether the binding was present or not, update total weight
                 total_weight[binding] += weight
 
+        # normalize the score of each charge by dividing by the total weight
+        for binding in scores.iterkeys():
+            if total_weight[binding] == 0:
+                scores[binding] = 0
+            else:
+                scores[binding] /= total_weight[binding]
+            assert 0 <= scores[binding] <= 1
+
+        return scores, total_weight, closest_occurrence
+
+    def _get_probable_shared_charges(self, period, relevant_bills, charge_type,
+                                     threshold=THRESHOLD, verbose=False):
+        """Get a list of charges that are expected to be included in a bill
+        with the given period, based on existing bills.
+
+        :param period: (start date, end date) of the bill
+        :param relevant_bills: iterable of other bills to look at when
+        deciding which charges should be included in this bill.
+        :param threshold: the minimum score (between 0 and 1) for an RSI to be
+        included.
+
+        :return: a list of :py:class:`Charge` instances, each of which is
+        unattached to any :py:class:`UtilBill`.
+        """
+        assert isinstance(period[0], date) and isinstance(period[1], date)
+        assert charge_type in Charge.CHARGE_TYPES
+        assert isinstance(threshold, (int, float))
+
+        scores, total_weight, closest_occurrence = self._get_charge_scores(
+            period, relevant_bills, charge_type)
+
         # include in the result all charges whose normalized weight
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
@@ -132,12 +163,10 @@ class FuzzyPricingModel(PricingModel):
             self.logger.info('%35s %s %s' % ('binding:', 'weight:',
                 'normalized weight %:'))
 
-        for binding, weight in scores.iteritems():
-            normalized_weight = weight / total_weight[binding] if \
-                    total_weight[binding] != 0 else 0
+        for binding, normalized_weight in scores.iteritems():
             if self.logger:
-                self.logger.info('%35s %f %5d' % (binding, weight,
-                        100 * normalized_weight))
+                self.logger.info(
+                    '%35s %5d' % (binding, 100 * normalized_weight))
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
@@ -205,16 +234,14 @@ class FuzzyPricingModel(PricingModel):
         distribution_relevant_bills = self._load_relevant_bills_distribution(
             utilbill, ignore_func)
         distribution_charges = self._get_probable_shared_charges(
-            (start, end), distribution_relevant_bills, Charge.DISTRIBUTION,
-            ignore=ignore_func)
+            (start, end), distribution_relevant_bills, Charge.DISTRIBUTION)
         del distribution_relevant_bills
 
         # get supply charges
         supply_relevant_bills = self._load_relevant_bills_supply(
             utilbill, ignore_func)
         supply_charges = self._get_probable_shared_charges(
-            (start, end), supply_relevant_bills, Charge.SUPPLY,
-            ignore=ignore_func)
+            (start, end), supply_relevant_bills, Charge.SUPPLY)
         del supply_relevant_bills
 
         # combine distribution and supply charges to get the full set of
