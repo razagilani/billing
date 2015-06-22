@@ -86,18 +86,10 @@ class Quote(AltitudeBase):
     MIN_PRICE = .01
     MAX_PRICE = 2.0
 
-    def __init__(self, supplier_id=None, start_from=None, start_until=None,
-                 term_months=None, date_received=None, valid_from=None,
-                 valid_until=None, price=None, purchase_of_receivables=None):
-        self.supplier_id = supplier_id
-        self.start_from = start_from
-        self.start_until = start_until
-        self.term_months = term_months
-        self.date_received = date_received or datetime.utcnow()
-        self.valid_from = valid_from
-        self.valid_until = valid_until
-        self.price = price
-        self.purchase_of_receivables = purchase_of_receivables
+    def __init__(self, **kwargs):
+        super(Quote, self).__init__(**kwargs)
+        if self.date_received is None:
+            self.date_received = datetime.utcnow()
 
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
@@ -134,19 +126,6 @@ class MatrixQuote(Quote):
     # (min_volume <= customer's energy consumption < limit_volume)
     min_volume = Column('Min_Volume', Float)
     limit_volume = Column('Max_Volume', Float)
-
-    def __init__(self, supplier_id=None,
-                 start_from=None, start_until=None, term_months=None,
-                 date_received=None, valid_from=None, valid_until=None,
-                 price=None, min_volume=None, limit_volume=None,
-                 purchase_of_receivables=None):
-        super(MatrixQuote, self).__init__(
-            supplier_id=supplier_id, start_from=start_from, start_until=start_until,
-            term_months=term_months, date_received=date_received,
-            valid_from=valid_from, valid_until=valid_until, price=price,
-            purchase_of_receivables=purchase_of_receivables)
-        self.min_volume = min_volume
-        self.limit_volume = limit_volume
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
