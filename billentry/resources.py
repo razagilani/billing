@@ -285,7 +285,8 @@ class UtilBillResource(BaseResource):
         # the keys are None, 'un_enter' has to come before it and 'enter' has
         #  to come after it.
         if row['entered'] is False:
-            utilbill.un_enter()
+            with project_mgr_permission.require():
+                utilbill.un_enter()
 
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
@@ -314,9 +315,10 @@ class UtilBillResource(BaseResource):
             utilbill.un_flag()
 
         if row.get('entered') is True:
-            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                utilbill = replace_utilbill_with_beutilbill(utilbill)
-            utilbill.enter(current_user, datetime.utcnow())
+            with project_mgr_permission.require():
+                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                    utilbill = replace_utilbill_with_beutilbill(utilbill)
+                utilbill.enter(current_user, datetime.utcnow())
 
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
