@@ -315,10 +315,9 @@ class UtilBillResource(BaseResource):
             utilbill.un_flag()
 
         if row.get('entered') is True:
-            with project_mgr_permission.require():
-                if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
-                    utilbill = replace_utilbill_with_beutilbill(utilbill)
-                utilbill.enter(current_user, datetime.utcnow())
+            if utilbill.discriminator == UtilBill.POLYMORPHIC_IDENTITY:
+                utilbill = replace_utilbill_with_beutilbill(utilbill)
+            utilbill.enter(current_user, datetime.utcnow())
 
         s.commit()
         return {'rows': marshal(ub, self.utilbill_fields), 'results': 1}
