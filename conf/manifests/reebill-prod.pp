@@ -6,7 +6,12 @@ $env = "prod"
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
+    dropbox     => 'true',
     username   => $username,
+}
+
+host::skyline_dropbox {"$env":
+    env    => $env,
 }
 
 host::aws_standard_packages {'std_packages':}
@@ -91,6 +96,5 @@ cron { run_reports:
 cron { export_pg_data:
     command => "source /var/local/reebill-prod/bin/activate && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
     user => $username,
-    hour => 0,
     minute => 0
 }
