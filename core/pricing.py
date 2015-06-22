@@ -2,6 +2,7 @@ from __future__ import division
 from collections import defaultdict
 from datetime import date, timedelta
 from itertools import chain
+from logging import getLogger
 from sys import maxint
 
 from exc import NoSuchBillException
@@ -9,17 +10,8 @@ from core.model import Charge, Utility, RateClass
 
 
 class PricingModel(object):
-    '''Responsible for determining what charges are on a given utility bill.
-    '''
-    def __init__(self, logger=None):
-        ''''
-        'logger': optional Logger object to record messages about rate
-        structure prediction.
-        '''
-        # TODO instead of using None as logger, use a logger that does nothing,
-        # to avoid checking if it's None
-        self.logger = logger
-
+    """Responsible for determining what charges are on a given utility bill.
+    """
     def get_predicted_charges(self, utilbill):
         raise NotImplementedError('Subclasses should override this')
 
@@ -47,13 +39,13 @@ class FuzzyPricingModel(PricingModel):
         '''
         return lambda x: max(a**(x * b), minimum)
 
-    def __init__(self, utilbill_loader, logger=None):
+    def __init__(self, utilbill_loader):
         """
         :param utilbill_loader: an object that has a 'load_utilbills' method
         returning an iterable of core.model.UtilBills matching criteria given as
         keyword arguments (see core.utilbill_loader.UtilBillLoader).
         """
-        super(FuzzyPricingModel, self).__init__(logger)
+        super(FuzzyPricingModel, self).__init__()
         self._utilbill_loader = utilbill_loader
 
     def _get_charge_scores(self, period, relevant_bills, charge_type):
@@ -158,15 +150,14 @@ class FuzzyPricingModel(PricingModel):
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
         result = []
+        logger = getLogger()
         if verbose:
-            self.logger.info('Predicted charges for %s - %s' % period)
-            self.logger.info('%35s %s %s' % ('binding:', 'weight:',
-                'normalized weight %:'))
+            logger.info('Predicted charges for %s - %s' % period)
+            logger.info(
+                '%35s %s %s' % ('binding:', 'weight:', 'normalized weight %:'))
 
         for binding, normalized_weight in scores.iteritems():
-            if self.logger:
-                self.logger.info(
-                    '%35s %5d' % (binding, 100 * normalized_weight))
+            logger.info('%35s %5d' % (binding, 100 * normalized_weight))
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
