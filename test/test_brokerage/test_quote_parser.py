@@ -14,12 +14,16 @@ class DirectEnergyParserTest(TestCase):
     def test_read_file(self):
         """Load a real file and get quotes out of it.
         """
+        self.assertEqual(0, self.parser.get_count())
+
         with open(self.EXAMPLE_FILE_PATH, 'rb') as spreadsheet:
             self.parser.load_file(spreadsheet)
         self.parser.validate()
+        self.assertEqual(0, self.parser.get_count())
 
         quotes = list(self.parser.extract_quotes())
         self.assertEqual(106560, len(quotes))
+        self.assertEqual(106560, self.parser.get_count())
         for quote in quotes:
             quote.validate()
 

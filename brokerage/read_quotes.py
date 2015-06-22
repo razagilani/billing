@@ -113,15 +113,21 @@ class QuoteParser(object):
         # quote spreadsheets tend have a date on them and are good for one day)
         self._date = None
 
-    def load_file(self, quote_file):
+        # number of quotes read so far
+        self._count = 0
+
+    def load_file(self, quote_file, supplier_id=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
+        :param supplier_id: if given, set the 'supplier_id' foreign key
+        attribute of extracted quotes to this value.
         """
         self._databook = self._get_databook_from_file(quote_file)
         # it is assumed that only one sheet actually contains the quotes
         self._sheet = self._databook.sheets()[0]
         self._validated = False
+        self._supplier_id = supplier_id
 
     def validate(self):
         """Raise ValidationError if the file does not match expectations about
@@ -160,6 +166,12 @@ class QuoteParser(object):
     def _extract_quotes(self):
         # subclasses do extraction here
         raise NotImplementedError
+
+    def get_count(self):
+        """
+        :return: number of quotes read so far
+        """
+        return self._count
 
     def _get(self, row, col, the_type):
         """Return a value extracted from the spreadsheet cell at (row, col),
@@ -282,7 +294,10 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._get(row, col, (int, float)) / 100.
+                self._count += 1
                 yield MatrixQuote(
+                    # TODO: figure out how to set supplier_id in superclass
+                    supplier_id=self._supplier_id,
                     start_from=start_from, start_until=start_until,
                     term_months=term_months, valid_from=self._date,
                     valid_until=self._date + timedelta(days=1),
