@@ -9,7 +9,7 @@ import json
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint
+    UniqueConstraint, MetaData
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -25,10 +25,11 @@ from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError
 from util.units import unit_registry
 
-__all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
-    'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'Supplier', 'SupplyGroup',
-    'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
-    'check_schema_revision', ]
+__all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
+           'Evaluation', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
+           'AltitudeSession', 'altitude_metadata', 'Supplier', 'SupplyGroup',
+           'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
+           'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -36,6 +37,8 @@ __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
+AltitudeSession = scoped_session(sessionmaker())
+altitude_metadata = MetaData()
 
 # allowed units for register quantities.
 # UnitRegistry attributes are used in the values to ensure that there's an
@@ -61,16 +64,17 @@ SERVICES = (GAS, ELECTRIC)
 SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
-class Base(object):
+class _Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
     '''
 
     @classmethod
     def column_names(cls):
-        '''Return list of attributes in the class that correspond to
+        """Return list of attributes names in the class that correspond to
+        database columns. These are NOT necessarily the names of actual
         database columns.
-        '''
+        """
         return [prop.key for prop in class_mapper(cls).iterate_properties if
                 isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
@@ -122,8 +126,23 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
+    def raw_column_dict(self, exclude=set()):
+        """
+        :return: dictionary whose keys are column names in the database table
+        and whose values are the corresponding column values, as in the
+        dictionaries it passes to the DBAPI along with the SQL format strings.
+        Primary key columns are excluded if their value is None.
+        SQLAlchemy probably has an easy way to get this but I couldn't find it.
+        """
+        mapper = self._sa_instance_state.mapper
+        return {column_property.columns[0].name: getattr(self, attr_name) for
+                  attr_name, column_property in mapper.column_attrs.items()
+                  if column_property.columns[ 0] not in mapper.primary_key
+                  and attr_name not in exclude}
 
-Base = declarative_base(cls=Base)
+
+Base = declarative_base(cls=_Base)
+AltitudeBase = declarative_base(cls=_Base)
 
 _schema_revision = '41bb5135c2b6'
 
@@ -253,6 +272,9 @@ class Supplier(Base):
     __tablename__ = 'supplier'
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False, unique=True)
+
+    # for importing matrix quotes from files
+    matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
