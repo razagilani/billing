@@ -225,9 +225,9 @@ class SummaryFileGeneratorTest(TestCase):
 
     def test_generate_summary_file(self):
         self.sfg.generate_summary_file([self.reebill_1, self.reebill_2],
-                                       self.output_file)
+            {'balance_due':555.55}, self.output_file)
         self.assertEqual(
-            '821a2674bd23b203cc1b0c42b93891221ec386ed',
+            '350db8820c5ebc7c8954ea6b8479a9adf71befe9',
             sha1(self.output_file.getvalue()).hexdigest()
         )
 

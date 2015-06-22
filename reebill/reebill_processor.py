@@ -3,6 +3,7 @@ import traceback
 import re
 from datetime import datetime, timedelta
 from StringIO import StringIO
+from itertools import groupby
 
 from sqlalchemy.sql import desc
 from sqlalchemy import not_, func
@@ -503,19 +504,36 @@ class ReebillProcessor(object):
         :return:
         """
 
-        # create combined PDF file
-        summary_file_contents = StringIO()
-        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
-        sfg.generate_summary_file(reebills, summary_file_contents)
-        summary_file_contents.seek(0)
+        # for all of the reebills passed in, group by account and find the latest bill. Take balance_due from it.
+        # group reebills by account
+        sorted_by_account = sorted(reebills, key=lambda reebill: reebill.get_account())
+        account_group = {}
+        for k, g in groupby(sorted_by_account, key=lambda sorted_reebill: sorted_reebill.get_account()):
+            account_group[k] = list(g)
+
+        # for each set of reebills by account, find greatest sequence number
+        balance_due = 0
+        for account, reebills_by_account in account_group.iteritems():
+            # are there any reebills?
+            if reebills_by_account:
+                # if so, sort them
+                sorted_reebills = sorted(reebills_by_account, key=lambda sorted_reebill: sorted_reebill.sequence, reverse=True)
+                # and take the balance_due from the greatest sequence number (most recent bill per account)
+                balance_due = balance_due + sorted_reebills[0].balance_due
 
         # Set up the fields to be shown in the email msg
         merge_fields = {
             'subject': subject,
-            'balance_due': round(sum(b.balance_due for b in reebills),2),
+            'balance_due': round(balance_due,2),
             'bill_date': max(b.get_period_end() for b in reebills),
             'display_file_path': "summary.pdf"
         }
+
+        # create combined PDF file
+        summary_file_contents = StringIO()
+        sfg = SummaryFileGenerator(self.reebill_file_handler, PDFConcatenator())
+        sfg.generate_summary_file(reebills, merge_fields, summary_file_contents)
+        summary_file_contents.seek(0)
 
         self.merge_and_mail(template_filename, merge_fields, summary_file_contents.getvalue(), [recipient_list])
 
