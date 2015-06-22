@@ -31,7 +31,7 @@ from billentry.common import get_bcrypt_object
 from core import init_config
 from core.model import Session
 from billentry import admin, resources
-from exc import UnEditableBillError
+from exc import UnEditableBillError, MissingFileError
 
 LOG_NAME = 'billentry'
 
@@ -313,6 +313,7 @@ def login_page():
 def page_not_found(e):
     return render_template('403.html'), 403
 
+@app.errorhandler(MissingFileError)
 @app.errorhandler(UnEditableBillError)
 def uneditable_bill_error(e):
     # Flask is not supposed to run error handler functions
@@ -321,7 +322,10 @@ def uneditable_bill_error(e):
     if (app.config['TRAP_HTTP_EXCEPTIONS'] or
         app.config['PROPAGATE_EXCEPTIONS']):
         raise
-    error_message = log_error('UnProcessedBillError', traceback)
+    if isinstance(e, MissingFileError):
+        error_message = log_error('MissingFileError', traceback)
+    else:
+        error_message = log_error('UnProcessedBillError', traceback)
     return error_message, 400
 
 @app.errorhandler(Exception)
@@ -410,6 +414,8 @@ api.add_resource(resources.SuppliersResource, '/utilitybills/suppliers')
 api.add_resource(resources.UtilitiesResource, '/utilitybills/utilities')
 api.add_resource(resources.RateClassesResource, '/utilitybills/rateclasses')
 api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
+api.add_resource(resources.UtilityBillFileResource, '/utilitybills/uploadfile')
+api.add_resource(resources.UploadUtilityBillResource, '/utilitybills/uploadbill')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
