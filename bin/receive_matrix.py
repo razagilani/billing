@@ -42,14 +42,18 @@ class QuoteReader(object):
         """
         # TODO: choose correct class
         quote_parser = DirectEnergyMatrixParser()
-        quote_parser.load_file(quote_file, supplier_id=1)
+        quote_parser.load_file(quote_file)
         quote_parser.validate()
 
         generator = quote_parser.extract_quotes()
         while True:
             prev_count = quote_parser.get_count()
-            quote_batch = islice(generator, self.BATCH_SIZE)
-            self.altitude_session.bulk_save_objects(quote_batch)
+            quote_list = []
+            for quote in islice(generator, self.BATCH_SIZE):
+                quote.supplier_id = altitude_supplier.company_id
+                quote.validate()
+                quote_list.append(quote)
+            self.altitude_session.bulk_save_objects(quote_list)
             # TODO: probably not a good way to find out that the parser is done
             if quote_parser.get_count() == prev_count:
                 break
