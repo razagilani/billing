@@ -42,67 +42,18 @@ class QuoteReader(object):
         """
         # TODO: choose correct class
         quote_parser = DirectEnergyMatrixParser()
-        quote_parser.load_file(quote_file)
+        quote_parser.load_file(quote_file, supplier_id=1)
         quote_parser.validate()
-
-        # implicit_returning must be False to efficiently use the "bulk
-        # insert" feature, and is also required when inserting into SQL Server
-        # tables that have triggers.
-        statement = MatrixQuote.__table__.insert(implicit_returning=False)
-
-        conn = self.altitude_session.bind.connect()
-
-        def sqlserver_format(value):
-            if value is None:
-                return 'null'
-            if isinstance(value, bool):
-                return int(value)
-            if isinstance(value, (basestring)):
-                return "'%s'" % value
-            if isinstance(value, (date, datetime)):
-                return "'%s'" % value.strftime(ISO_8601_DATETIME_WITHOUT_ZONE)
-            return value
-
-        def _build_sql(statement_str, param_dicts):
-            match = re.search(r'(INSERT INTO .* VALUES )(\(.*\)) (RETURNING.*)$', statement_str)
-            insert_part, values_part, end = match.group(1), match.group(2), match.group(3)
-            middle = ', '.join(values_part % d for d in param_dicts)
-            result = insert_part + middle + '; '
-            return result
 
         generator = quote_parser.extract_quotes()
         while True:
+            prev_count = quote_parser.get_count()
             quote_batch = islice(generator, self.BATCH_SIZE)
-            insert_dicts = []
-            for quote in quote_batch:
-                # build a dictionary of values for each quote--can't be done
-                # in a comprehension because the "supplier_id" attribute must
-                # be set for each quote
-                quote.supplier_id = altitude_supplier.company_id
-                raw_column_dict = quote.raw_column_dict(
-                    exclude={'dual_billing', 'purchase_of_receiveables'})
-                # NOTE: SQLAlchemy default values do not get set until flush. there doesn't seem to be any way around this:
-                # https://stackoverflow.com/questions/14002631/why-isnt-sqlalchemy-default-column-value-available-before-object-is-committed
-                # so it is necessary to use server_default or manually update the values to access them through Python this way.
-                #raw_column_dict['CompanySupplier_ID'] = 1
-                raw_column_dict['Dual_Billing'] = True
-                raw_column_dict['Purchase_Of_Receivables'] = False
-                raw_column_dict = {k: sqlserver_format(v) for k, v in
-                                   raw_column_dict.iteritems()}
-                insert_dicts.append(raw_column_dict)
-            if insert_dicts == []:
+            self.altitude_session.bulk_save_objects(quote_batch)
+            # TODO: probably not a good way to find out that the parser is done
+            if quote_parser.get_count() == prev_count:
                 break
-
-            # generate a SQL string (with escaped parameters) from the
-            # SQLAlchemy 'Insert' object. parameters must be provided as
-            # keyword arguments in order to exclude the primary key column,
-            # because otherwise all columns are included. the parameters are
-            # in the 'Insert' object but actually excluded from the string so
-            #  it doesn't actually matter which values are used.
-            statement_str = str(statement.values(**insert_dicts[0]))
-            sql = _build_sql(statement_str, insert_dicts)
-            conn.execute(sql)
-            yield len(insert_dicts)
+            yield quote_parser.get_count()
 
     def run(self):
         """Open, process, and delete quote files for all suppliers.
@@ -123,12 +74,10 @@ class QuoteReader(object):
                 name=supplier.name).one()
 
             # load quotes from the file into the database, then delete the file
-            count = 0
             try:
                 with open(path, 'rb') as quote_file:
                     self.logger.info('Starting to read from "%s"' % path)
-                    for num in self._read_file(quote_file, altitude_supplier):
-                        count += num
+                    for count in self._read_file(quote_file, altitude_supplier):
                         #self.altitude_session.flush()
                         self.logger.debug('%s quotes so far' % count)
                     self.altitude_session.commit()
