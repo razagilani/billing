@@ -1184,8 +1184,8 @@ class TestBillEntryUserSessions(unittest.TestCase):
         self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
 
 
-class TestBillEnrtyAuthentication(unittest.TestCase):
-    URL_PREFIX = 'http://localhost'
+class TestBillEnrtyAuthentication(BillEntryIntegrationTest, unittest.TestCase):
+    URL_PREFIX = '/utilitybills/'
 
     @classmethod
     def setUpClass(cls):
@@ -1201,8 +1201,24 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         init_test_config()
         clear_db()
         s = Session()
+        self.project_manager_role = Role('Project Manager', 'Project Manager'
+                                                            'role')
         user = BillEntryUser(email='user1@test.com', password='password')
-        s.add(user)
+        user2 = BillEntryUser(email='user2@test.com', password='password')
+        user2.roles = [self.project_manager_role]
+        s.add_all([user, user2, self.project_manager_role])
+
+        utility = Utility(name='Empty Utility')
+        utility_account = UtilityAccount('Account 1', '22222', utility, None,
+                                         None, Address(), Address(), '1')
+        utility_account.id = 1
+        regular_utilbill = UtilBill(utility_account, utility, None,
+                       service_address=Address(street='2 Example St.'))
+        regular_utilbill.id = 1
+        beutilbill = BEUtilBill(utility_account, utility, None,
+                                service_address=Address(street='2 Example St.'))
+        beutilbill.id = 2
+        s.add_all([regular_utilbill, beutilbill])
 
     def tearDown(self):
         clear_db()
@@ -1267,7 +1283,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         self.assertEqual(self.URL_PREFIX + '/login-page', response.location)
 
         # invalid email for user login
-        data = {'email':'user2@test.com', 'password': 'password'}
+        data = {'email':'user3@test.com', 'password': 'password'}
 
         # post request for user login with invalid credentials
         response = self.app.post('/userlogin',
@@ -1286,6 +1302,113 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # the login should fail and user should be redirected to login page
         self.assertEqual(response.status_code, 302)
         self.assertEqual('http://localhost/login-page', response.location)
+
+    def test_enter_unenter_utilbill_permission(self):
+
+        expected = {"rows":[
+            {
+            "due_date": None,
+            "target_total": 0.0,
+            "supply_choice_id": None,
+            "id": 2,
+            "utility": "Empty Utility",
+            "supplier_id": None,
+            "service": "Unknown",
+            "supply_group_id": None,
+            "utility_id": 1,
+            "tou": False,
+            "total_energy": 0.0,
+            "period_end": None,
+            "rate_class_id": None,
+            "entered": False,
+            "supply_group": "Unknown",
+            "service_address": "2 Example St., ,  ",
+            "next_meter_read_date": None,
+            "supplier": "Unknown",
+            "meter_identifier": None,
+            "utility_account_id": 1,
+            "rate_class": "Unknown",
+            "period_start": None,
+            "supply_total": 0.0,
+            "wiki_url": "http://example.com/utility:Empty Utility",
+            "pdf_url": "",
+            "computed_total": 0.0,
+            "processed": False,
+            "utility_account_number": "1",
+            "flagged": False
+            }],
+            "results": 1
+        }
+
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # put request for marking beutilbill as entered
+        response = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
+            id = 1,
+            entered = True
+        ))
+        self.assertEqual(403, response.status_code)
+
+        response = self.app.get(self.URL_PREFIX + 'utilitybills?id=1')
+        self.assertJson(response.data, expected)
+
+        self.app.get('/logout')
+
+        # valid data for user login
+        data = {'email':'user2@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # put request for marking beutilbill as entered
+        response = self.app.put(self.URL_PREFIX + 'utilitybills/2', data=dict(
+            id=2,
+            entered=True
+        ))
+        self.assertEqual(200, response.status_code)
+        expected = {"rows":
+            {
+            "due_date": None,
+            "target_total": 0.0,
+            "supply_choice_id": None,
+            "id": 2,
+            "utility": "Empty Utility",
+            "supplier_id": None,
+            "service": "Unknown",
+            "supply_group_id": None,
+            "utility_id": 1,
+            "tou": False,
+            "total_energy": 0.0,
+            "period_end": None,
+            "rate_class_id": None,
+            "entered": True,
+            "supply_group": "Unknown",
+            "service_address": "2 Example St., ,  ",
+            "next_meter_read_date": None,
+            "supplier": "Unknown",
+            "meter_identifier": None,
+            "utility_account_id": 1,
+            "rate_class": "Unknown",
+            "period_start": None,
+            "supply_total": 0.0,
+            "wiki_url": "http://example.com/utility:Empty Utility",
+            "pdf_url": "",
+            "computed_total": 0.0,
+            "processed": False,
+            "utility_account_number": "1",
+            "flagged": False
+            },
+            "results": 1
+        }
+        self.assertJson(response.data, expected)
+        self.app.get('/logout')
+
+
+
 
 
 class TestUploadBills(unittest.TestCase):
