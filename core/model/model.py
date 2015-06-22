@@ -1016,7 +1016,14 @@ class UtilBill(Base):
                    self.utility_account.account, self.get_service(),
                    self.period_start, self.period_end, self.state)
 
-    def add_charge(self, **charge_kwargs):
+    def add_charge(self, charge_kwargs, fuzzy_pricing_model):
+        """
+        :param charge_kwargs: arguments to create a Charge object (this is
+        bad: pass a Charge object itself)
+        :param fuzzy_pricing_model: FuzzyPricingModel, needed to guess the
+        values of certain Charge attributes
+        :return: new Charge object
+        """
         self.check_editable()
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
@@ -1033,12 +1040,11 @@ class UtilBill(Base):
             type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
-        registers = self._registers
-        charge.quantity_formula = '' if len(registers) == 0 else \
-            '%s.quantity' % Register.TOTAL if any(
-                [register.register_binding == Register.TOTAL for register in
-                 registers]) else \
-                registers[0].register_binding
+
+        # pre-fill a likely formula (Register.TOTAL now exists in every bill)
+        if 'formula' not in charge_kwargs:
+            charge.quantity_formula = Charge.get_simple_formula(Register.TOTAL)
+
         session.flush()
         return charge
 

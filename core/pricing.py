@@ -63,7 +63,7 @@ class FuzzyPricingModel(PricingModel):
         charge name -> total weight of bills that contributed to its score
         (float >= 0)
         charge name -> highest-scoring occurrence of that charge and its
-        distance (tuple of Charge object, float)
+        distance (tuple of float, Charge object)
         """
         assert isinstance(period[0], date) and isinstance(period[1], date)
         assert charge_type in Charge.CHARGE_TYPES
@@ -258,3 +258,26 @@ class FuzzyPricingModel(PricingModel):
 
         return result
 
+    def get_closest_occurrence_of_charge(self, utilbill, rsi_binding,
+                                         charge_type):
+        """
+        :param rsi_binding: standardized name of the charge
+        :param period: (start date, end date) tuple
+        :return: the charge with the given rsi_binding whose bill's period is
+        closest to the given period, or None if no occurrences were found.
+        """
+        if charge_type == Charge.SUPPLY:
+            relevant_bills = self._load_relevant_bills_supply(
+                utilbill, ignore_func = lambda ub:ub.id == utilbill.id)
+        else:
+            relevant_bills = self._load_relevant_bills_distribution(
+                utilbill, ignore_func = lambda ub:ub.id == utilbill.id)
+
+        # gathering all this unused data is wasteful
+        _, _, closest_occurrence = self._get_charge_scores(
+            (utilbill.period_start, utilbill.period_end), relevant_bills,
+            charge_type)
+        if rsi_binding not in closest_occurrence:
+            return None
+        _, charge = closest_occurrence[rsi_binding]
+        return charge
