@@ -83,7 +83,7 @@ class QuoteParser(object):
     # parsed as a date
     DATE_CELL = None
 
-    @classmethod,
+    @classmethod
     def _get_databook_from_file(cls, quote_file):
         """
         :param quote_file: file object
