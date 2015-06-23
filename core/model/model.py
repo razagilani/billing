@@ -1044,6 +1044,8 @@ class UtilBill(Base):
         # pre-fill a likely formula (Register.TOTAL now exists in every bill)
         if 'formula' not in charge_kwargs:
             charge.quantity_formula = Charge.get_simple_formula(Register.TOTAL)
+            # since 'rsi_binding' is not a real value yet, it doesn't make
+            # sense to try to pre-fill quantity and rate based on it
 
         session.flush()
         return charge
