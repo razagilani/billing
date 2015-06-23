@@ -19,10 +19,13 @@ from util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 LOG_NAME = 'read_quotes'
 
-# TODO: name to distinguish from QuoteParser
-class QuoteReader(object):
+class QuoteFileProcessor(object):
+    """Checks for files containing matrix quotes in a particular directory,
+    transfers quotes from them into a database, and deletes them.
+    """
     # number of quotes to read and insert at once. larger is faster as long
-    # as it doesn't use up too much memory.
+    # as it doesn't use up too much memory. (1000 is also the maximum number
+    # of rows allowed per insert statement in pymssql.)
     BATCH_SIZE = 1000
 
     def __init__(self):
@@ -40,7 +43,7 @@ class QuoteReader(object):
         (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
         mapping between these two.
         """
-        # TODO: choose correct class
+        # TODO: choose correct class for each supplier
         quote_parser = DirectEnergyMatrixParser()
         quote_parser.load_file(quote_file)
         quote_parser.validate()
@@ -103,4 +106,4 @@ if __name__ == '__main__':
     init_altitude_db()
     init_model()
 
-    QuoteReader().run()
+    QuoteFileProcessor().run()
