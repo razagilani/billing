@@ -4,7 +4,6 @@ from pint import UnitRegistry
 
 import configuration as config_file_schema
 
-
 __version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
@@ -119,12 +118,13 @@ def init_model(uri=None, schema_revision=None):
     import_all_model_modules()
 
     uri = uri if uri else config.get('db', 'uri')
-    log.debug('Intializing sqlalchemy model with uri %s' % uri)
-    engine = create_engine(uri, echo=config.get('db', 'echo'),
+    engine = create_engine(uri, #echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
                            pool_recycle=3600)
+    if config.get('db', 'echo'):
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     Session.configure(bind=engine)
     # TODO: unclear why the above does not work and Session.bind must be
@@ -134,7 +134,30 @@ def init_model(uri=None, schema_revision=None):
     check_schema_revision(schema_revision=schema_revision)
     Session.remove()
 
-    log.debug('Initialized sqlalchemy model')
+    log.debug('Initialized database: ' + uri)
+
+def init_altitude_db(uri=None):
+    """Initialize the Altitude SQL Server database. This is a separate function
+    from init_model because the two databases are not necessarily used at the
+    same time.
+    """
+    from core.model import AltitudeSession, altitude_metadata
+    from sqlalchemy import create_engine
+    import logging
+    log = logging.getLogger(__name__)
+
+    import_all_model_modules()
+
+    uri = uri if uri else config.get('db', 'altitude_uri')
+    engine = create_engine(uri, echo=config.get('db', 'echo'),
+                           pool_recycle=3600)
+
+    altitude_metadata.bind = engine
+    AltitudeSession.configure(bind=engine)
+    AltitudeSession.bind = engine
+    AltitudeSession.remove()
+
+    log.debug('Initialized database: ' + uri)
 
 def initialize():
     init_logging()
