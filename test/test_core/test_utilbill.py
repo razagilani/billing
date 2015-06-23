@@ -342,13 +342,12 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        formula, rate = Charge.get_simple_formula(Register.TOTAL), 1.234
+        formula = Charge.get_simple_formula(Register.TOTAL)
         fpm = Mock(autospec=FuzzyPricingModel)
         fpm.get_closest_occurrence_of_charge.return_value = Charge(
-            "rsi_binding does't matter", formula=formula, rate=rate)
+            "rsi_binding does't matter", formula=formula, rate=1.234)
         charge = utilbill.add_charge({}, fpm)
         self.assertEqual(formula, charge.quantity_formula)
-        self.assertEqual(rate, charge.rate)
 
         session.delete(charge)
 
