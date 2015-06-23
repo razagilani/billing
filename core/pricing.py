@@ -258,26 +258,27 @@ class FuzzyPricingModel(PricingModel):
 
         return result
 
-    def get_closest_occurrence_of_charge(self, utilbill, rsi_binding,
-                                         charge_type):
+    def get_closest_occurrence_of_charge(self, charge):
         """
-        :param rsi_binding: standardized name of the charge
-        :param period: (start date, end date) tuple
+        :param charge: Charge (must be associated with a UtilBill)
         :return: the charge with the given rsi_binding whose bill's period is
-        closest to the given period, or None if no occurrences were found.
+        closest to the bill of the given charge, or None if no occurrences
+        were found.
         """
-        if charge_type == Charge.SUPPLY:
+        utilbill = charge.utilbill
+        assert charge.utilbill is not None
+        if charge.type == Charge.SUPPLY:
             relevant_bills = self._load_relevant_bills_supply(
-                utilbill, ignore_func = lambda ub:ub.id == utilbill.id)
+                utilbill, ignore_func=lambda ub: ub.id == utilbill.id)
         else:
             relevant_bills = self._load_relevant_bills_distribution(
-                utilbill, ignore_func = lambda ub:ub.id == utilbill.id)
+                utilbill, ignore_func=lambda ub: ub.id == utilbill.id)
 
         # gathering all this unused data is wasteful
         _, _, closest_occurrence = self._get_charge_scores(
             (utilbill.period_start, utilbill.period_end), relevant_bills,
-            charge_type)
-        if rsi_binding not in closest_occurrence:
+            charge.type)
+        if charge.rsi_binding not in closest_occurrence:
             return None
-        _, charge = closest_occurrence[rsi_binding]
+        _, charge = closest_occurrence[charge.rsi_binding]
         return charge

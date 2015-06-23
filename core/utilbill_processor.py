@@ -451,7 +451,7 @@ class UtilbillProcessor(object):
         # TODO: this is really slow
         if 'rsi_binding' in fields:
             other_charge = self.pricing_model.get_closest_occurrence_of_charge(
-                utilbill, charge.rsi_binding, charge.type)
+                charge)
             if other_charge is not None:
                 charge.quantity_formula = other_charge.quantity_formula
                 charge.rate = other_charge.rate
