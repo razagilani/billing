@@ -1,4 +1,5 @@
 """Tests for pricing.py"""
+from copy import deepcopy
 from datetime import date
 import unittest
 
@@ -26,34 +27,23 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # never shared so it never gets included in any bill, except one
         # whose "predecessor" contains it.
         self.charge_a_shared = Charge(rsi_binding='A',
-                                      type='distribution',
+                                      type=Charge.DISTRIBUTION,
                                       rate=1,
-                                      formula='',
-                                      description="",
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True)
         self.charge_b_unshared = Charge(rsi_binding='B',
-                                        type='distribution',
+                                        type=Charge.DISTRIBUTION,
                                         rate=2,
-                                        formula='',
-                                        description="",
                                         unit='therms',
-                                        shared=False,
-                                        has_charge=True)
+                                        shared=False)
         self.charge_b_shared = Charge(rsi_binding='B',
-                                      type='distribution',
+                                      type=Charge.DISTRIBUTION,
                                       rate=2,
-                                      formula='',
-                                      description="",
                                       unit='therms',
-                                      shared=True,
-                                      has_charge=True)
+                                      shared=True)
         self.charge_c_unshared = Charge(rsi_binding='C',
-                                        type='distribution',
+                                        type=Charge.DISTRIBUTION,
                                         rate=3,
-                                        formula='',
-                                        description="",
                                         unit='therms',
                                         shared=False,
                                         has_charge=False)
@@ -92,6 +82,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
 
         # target bill for which to generate charges
         self.u = Mock(autospec=UtilBill)
+        self.u.id = 1
         self.u.utility_account.account = '00004'
         self.u.period_start = date(2000, 1, 1)
         self.u.period_end = date(2000, 2, 1)
@@ -214,12 +205,12 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # even though utilbill_1 also has a supply charge.
         # TODO: would be good to share some of this test data with the other
         # test methods if possible.
-        d1 = Charge('d1', 0, '', type='distribution', shared=True)
-        d2 = Charge('d2', 0, '', type='distribution', shared=True)
-        d3 = Charge('d3', 0, '', type='distribution', shared=True)
-        s1 = Charge('s1', 0, '', type='supply', shared=True)
-        s2 = Charge('s2', 0, '', type='supply', shared=True)
-        s3 = Charge('s3', 0, '', type='supply', shared=True)
+        d1 = Charge('d1', type=Charge.DISTRIBUTION, shared=True)
+        d2 = Charge('d2', type=Charge.DISTRIBUTION, shared=True)
+        d3 = Charge('d3', type=Charge.DISTRIBUTION, shared=True)
+        s1 = Charge('s1', type=Charge.SUPPLY, shared=True)
+        s2 = Charge('s2', type=Charge.SUPPLY, shared=True)
+        s3 = Charge('s3', type=Charge.SUPPLY, shared=True)
         self.utilbill_1.charges = [d1, s1]
         self.utilbill_2.charges = [d2, s2]
         self.utilbill_3.charges = [d3, s3]
@@ -251,6 +242,27 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # and s_charges has supply charges of utilbill_2,3
         self.assertEqual({d1, d2}, d_charges)
         self.assertEqual({s2, s3}, s_charges)
+
+    def test_get_closest_occurrence_of_charge(self):
+        b = Mock(autospec=Charge)
+        b.rsi_binding = 'b'
+        b.type = Charge.DISTRIBUTION
+        b.utilbill = self.u
+        b.shared = True
+        self.u.charges = [b]
+        self.utilbill_loader.load_real_utilbills.return_value = [self.u]
+
+        # when the bill of the given charge is the only one, there is no
+        # "closest occurrence"
+        self.assertEqual(None, self.fpm.get_closest_occurrence_of_charge(
+            self.charge_b_shared))
+
+        new_bill = deepcopy(self.u)
+        new_bill.id = 2
+        b.utilbill = new_bill
+        new_bill.charges = [b]
+        self.assertEqual(self.charge_b_shared,
+                         self.fpm.get_closest_occurrence_of_charge(b))
 
 
     # TODO test that the bill whose charges are being generated is ignored when
