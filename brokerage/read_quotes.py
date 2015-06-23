@@ -83,6 +83,9 @@ class QuoteParser(object):
     # parsed as a date
     DATE_CELL = None
 
+    #the index of the she we are useing
+    SHEET_NUMBER = 0
+
     @classmethod
     def _get_databook_from_file(cls, quote_file):
         """
@@ -120,7 +123,7 @@ class QuoteParser(object):
         """
         self._databook = self._get_databook_from_file(quote_file)
         # it is assumed that only one sheet actually contains the quotes
-        self._sheet = self._databook.sheets()[0]
+        self._sheet = self._databook.sheets()[self.SHEET_NUMBER]
         self._validated = False
 
     def validate(self):
@@ -152,7 +155,10 @@ class QuoteParser(object):
 
         # extract the date using DATE_CELL
         row, col, regex = self.DATE_CELL
-        self._date = self._get_matches(row, col, regex, parse_datetime)
+        if regex is None:
+            self._date = self._get(row, col, date)
+        else:
+            self._date = self._get_matches(row, col, regex, parse_datetime)
 
         return self._extract_quotes()
 
@@ -179,8 +185,8 @@ class QuoteParser(object):
             raise ValidationError('No cell (%s, %s)' % (row, col))
         if not isinstance(value, the_type):
             raise ValidationError(
-                'Expected type %s, found "%s" with type %s' % (
-                    the_type, value, type(value)))
+                'At (%s,%s), expected type %s, found "%s" with type %s' % (
+                    row, col, the_type, value, type(value)))
         return value
 
     def _get_matches(self, row, col, regex, types):
@@ -297,7 +303,16 @@ class USGEMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 3
+    UTILITY_COL = 0
     VOLUME_RANGE_COL = 3
+    RATE_START_ROW = 4
+    RATE_END_ROW = 32
+    SHEET_NUMBER = 5
+    RATE_START_COL = 6
+    RATE_END_COL = 11
+    TERM_START_COL = 6
+    TERM_END_COL = 28
+    TERM_HEADER_ROW = 2
 
     EXPECTED_SHEET_TITLES = [
         'KY',
@@ -306,31 +321,61 @@ class USGEMatrixParser(QuoteParser):
         'NY',
         'OH',
         'PA',
+        'CheatSheet',
     ]
     EXPECTED_CELLS = [
-        (0, 1, 'Pricing Date'),
-        (1, 1, 'Valid Thru'),
+        (0, 2, 'Pricing Date'),
+        (1, 2, 'Valid Thru'),
         (HEADER_ROW, 0, 'LDC'),
         (HEADER_ROW, 1, 'Customer Type'),
         (HEADER_ROW, 2, 'RateClass'),
         (HEADER_ROW, 3, 'Annual Usage Tier'),
         (HEADER_ROW, 4, 'UOM'),
     ]
-    DATE_CELL = (0, 2, '(\d+/\d+/\d+)')
+    DATE_CELL = (0, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, row, col):
         below_regex = r'Below ([\d,]+) ccf/therms'
-        normal_regex = r'([\d,])+ to ([\d,])+) ccf/therms'
+        normal_regex = r'([\d,]+) to ([\d,]+) ccf/therms'
         try:
             low, high = self._get_matches(row, col, normal_regex,
                                           (parse_number, parse_number))
-            low -= 1
+            if low > 0 :
+                low -= 1
         except ValidationError:
             high = self._get_matches(row, col, below_regex, parse_number)
             low = 0
         return low, high
 
+
     def _extract_quotes(self):
         # TODO
-        pass
+
+        for row in xrange(self.RATE_START_ROW, self.RATE_END_ROW + 1):
+            utility = self._get(row, self.UTILITY_COL, (basestring, type(None)))
+            if utility is None:
+                continue
+
+            rate_class = self._get(row, 2,(basestring, type(None)))
+            min_volume, limit_volume = self._extract_volume_range(row, self.VOLUME_RANGE_COL)
+
+
+            for t in xrange(self.TERM_START_COL,self.TERM_END_COL):
+                # skip blank column
+                if self._get(2, t, (basestring, type(None))) is None:
+                    continue
+                term = self._get_matches(2, t,'(\d+) Months Beginning in:', int)
+
+                for i in xrange(t,t + 6):
+                    start_from = self._get(3,i,datetime)
+                    start_until = date_to_datetime((Month(start_from) + 1).first)
+                    price = self._get(row, i,(float, type(None)))
+
+                    yield MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_volume, limit_volume=limit_volume,
+                        purchase_of_receivables=False,
+                        price=price)
