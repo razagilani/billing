@@ -32,7 +32,7 @@ def column_dict_utilbill(self):
                                  in self._utilbill_reebills]),
                    ('utility', self.utility.name),
                    ('utility_id', self.utility_id),
-                   ('supplier', self.supplier.name),
+                   ('supplier', self.get_supplier_name()),
                    ('supplier_id', self.supplier_id),
                    ('rate_class', self.get_rate_class_name()),
                    ('rate_class_id', self.rate_class_id),

@@ -487,6 +487,8 @@ class UtilbillProcessor(object):
 
     def create_rate_class(self, name, utility_id, service):
         assert name != ''
+        if name == 'Unknown':
+            return None
         s = Session()
         utility = s.query(Utility).filter_by(id=utility_id).first()
         rate_class = RateClass(name=name, utility=utility, service=service)
@@ -516,7 +518,7 @@ class UtilbillProcessor(object):
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
         assert name != ''
-        if name == 'Unknown Supplier':
+        if name == 'Unknown':
             return None
         s = Session()
         supplier = Supplier(name=name, address=Address())
