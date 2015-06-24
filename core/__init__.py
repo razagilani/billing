@@ -141,7 +141,7 @@ def init_altitude_db(uri=None):
     from init_model because the two databases are not necessarily used at the
     same time.
     """
-    from core.model import AltitudeSession, altitude_metadata
+    from core.model import AltitudeSession, AltitudeBase, altitude_metadata
     from sqlalchemy import create_engine
     import logging
     log = logging.getLogger(__name__)
@@ -155,6 +155,7 @@ def init_altitude_db(uri=None):
     altitude_metadata.bind = engine
     AltitudeSession.configure(bind=engine)
     AltitudeSession.bind = engine
+    AltitudeBase.metadata.bind = engine
     AltitudeSession.remove()
 
     log.debug('Initialized database: ' + uri)

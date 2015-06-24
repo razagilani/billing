@@ -25,10 +25,11 @@ from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
     UnEditableBillError, NotProcessable, BillingError
 from util.units import unit_registry
 
-__all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
-           'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'AltitudeSession',
-           'altitude_metadata', 'Supplier', 'SupplyGroup', 'RateClass',
-           'Utility', 'UtilBill', 'UtilityAccount', 'check_schema_revision', ]
+__all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
+           'Evaluation', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
+           'AltitudeSession', 'altitude_metadata', 'Supplier', 'SupplyGroup',
+           'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
+           'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -63,7 +64,7 @@ SERVICES = (GAS, ELECTRIC)
 SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
-class Base(object):
+class _Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
     '''
@@ -125,7 +126,7 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
-    def raw_column_dict(self):
+    def raw_column_dict(self, exclude=set()):
         """
         :return: dictionary whose keys are column names in the database table
         and whose values are the corresponding column values, as in the
@@ -135,11 +136,13 @@ class Base(object):
         """
         mapper = self._sa_instance_state.mapper
         return {column_property.columns[0].name: getattr(self, attr_name) for
-                attr_name, column_property in mapper.column_attrs.items()
-                if column_property.columns[0] not in mapper.primary_key}
+                  attr_name, column_property in mapper.column_attrs.items()
+                  if column_property.columns[ 0] not in mapper.primary_key
+                  and attr_name not in exclude}
 
 
-Base = declarative_base(cls=Base)
+Base = declarative_base(cls=_Base)
+AltitudeBase = declarative_base(cls=_Base)
 
 _schema_revision = '41bb5135c2b6'
 
@@ -1248,9 +1251,13 @@ class UtilBill(Base):
         register_binding of REG_TOTAL'''
         # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
-        register = next(
-            r for r in self._registers if r.register_binding == Register.TOTAL)
+        try:
+            register = next(
+                r for r in self._registers if r.register_binding == Register.TOTAL)
+        except StopIteration:
+            return
         register.meter_identifier = meter_identifier
+
 
     def get_total_meter_identifier(self):
         '''returns the value of meter_identifier field of the register with
