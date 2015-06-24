@@ -25,12 +25,20 @@ class BrokerageAccount(Base):
         self.utility_account = utility_account
 
 
-# Company = Table('Company', altitude_metadata,
-#                 Column('Company_ID', Integer))
 class Company(AltitudeBase):
     __tablename__ = 'Company'
     company_id = Column('Company_ID', Integer, primary_key=True)
     name = Column('Company', String, unique=True)
+
+
+class CompanyPGSupplier(AltitudeBase):
+    """View based on the Company table that includes only companies that are
+    suppliers.
+    """
+    __tablename__ = 'Company_PG_Supplier'
+    company_id = Column('Company_ID', Integer, primary_key=True)
+    name = Column('Company', String, unique=True)
+
 
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
@@ -39,6 +47,7 @@ class Quote(AltitudeBase):
 
     rate_id = Column('quote_id', Integer, primary_key=True)
     supplier_id = Column('CompanySupplier_ID', Integer,
+                         # foreign key to view is not allowed
                          ForeignKey('Company.Company_ID'), nullable=False)
 
     rate_class_alias = Column(String)
