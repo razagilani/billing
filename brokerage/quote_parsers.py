@@ -66,6 +66,9 @@ class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
     spreadsheets.
     """
+    #the index of the she we are useing
+    SHEET_NUMBER = 0
+
     @classmethod
     def get_databook_from_file(cls, quote_file, file_format):
         """
@@ -148,8 +151,8 @@ class SpreadsheetReader(object):
             raise ValidationError('No cell (%s, %s)' % (row, col))
         if not isinstance(value, the_type):
             raise ValidationError(
-                'Expected type %s, found "%s" with type %s' % (
-                    the_type, value, type(value)))
+                'At (%s,%s), expected type %s, found "%s" with type %s' % (
+                    row, col, the_type, value, type(value)))
         return value
 
     def get_matches(self, sheet_number_or_title, row, col, regex, types):
@@ -264,8 +267,12 @@ class QuoteParser(object):
 
         # extract the date using DATE_CELL
         sheet_number_or_title, row, col, regex = self.DATE_CELL
-        self._date = self._reader.get_matches(sheet_number_or_title, row, col,
-                                              regex, parse_datetime)
+        if regex is None:
+            self._date = self._reader.get(sheet_number_or_title, row, col,
+                                          datetime)
+        else:
+            self._date = self._reader.get_matches(sheet_number_or_title, row,
+                                                  col, regex, parse_datetime)
         return self._extract_quotes()
 
     @abstractmethod
@@ -360,3 +367,93 @@ class DirectEnergyMatrixParser(QuoteParser):
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
 
+
+class USGEMatrixParser(QuoteParser):
+    """Parser for USGE spreadsheet. This one has energy along the rows and
+    time along the columns.
+    """
+    FILE_FORMAT = formats.xlsx
+
+    HEADER_ROW = 3
+    UTILITY_COL = 0
+    VOLUME_RANGE_COL = 3
+    RATE_START_ROW = 4
+    RATE_END_ROW = 32
+    SHEET_NUMBER = 5
+    RATE_START_COL = 6
+    RATE_END_COL = 11
+    TERM_START_COL = 6
+    TERM_END_COL = 28
+    TERM_HEADER_ROW = 2
+
+    EXPECTED_SHEET_TITLES = [
+        'KY',
+        'MD',
+        'NJ',
+        'NY',
+        'OH',
+        'PA',
+        'CheatSheet',
+    ]
+    EXPECTED_CELLS = [
+        ('PA', 0, 2, 'Pricing Date'),
+        ('PA', 1, 2, 'Valid Thru'),
+        ('PA', HEADER_ROW, 0, 'LDC'),
+        ('PA', HEADER_ROW, 1, 'Customer Type'),
+        ('PA', HEADER_ROW, 2, 'RateClass'),
+        ('PA', HEADER_ROW, 3, 'Annual Usage Tier'),
+        ('PA', HEADER_ROW, 4, 'UOM'),
+    ]
+    DATE_CELL = ('PA', 0, 3, None)
+    # TODO: include validity time like "4 PM EPT" in the date
+
+    def _extract_volume_range(self, sheet, row, col):
+        below_regex = r'Below ([\d,]+) ccf/therms'
+        normal_regex = r'([\d,]+) to ([\d,]+) ccf/therms'
+        try:
+            low, high = self._reader.get_matches(sheet, row, col, normal_regex,
+                                                 (parse_number, parse_number))
+            if low > 0 :
+                low -= 1
+        except ValidationError:
+            high = self._reader.get_matches(sheet, row, col, below_regex,
+                                            parse_number)
+            low = 0
+        return low, high
+
+
+    def _extract_quotes(self):
+        sheet = 'PA'
+
+        for row in xrange(self.RATE_START_ROW, self.RATE_END_ROW + 1):
+            utility = self._reader.get(sheet, row, self.UTILITY_COL,
+                                       (basestring, type(None)))
+            if utility is None:
+                continue
+
+            rate_class = self._reader.get(sheet, row, 2,
+                                          (basestring, type(None)))
+            min_volume, limit_volume = self._extract_volume_range(
+                sheet, row, self.VOLUME_RANGE_COL)
+
+            for t in xrange(self.TERM_START_COL,self.TERM_END_COL):
+                # skip blank column
+                if self._reader.get(sheet, 2, t,
+                                    (basestring, type(None))) is None:
+                    continue
+                term = self._reader.get_matches(
+                    sheet, 2, t, '(\d+) Months Beginning in:', int)
+
+                for i in xrange(t,t + 6):
+                    start_from = self._reader.get(sheet, 3,i,datetime)
+                    start_until = date_to_datetime(
+                        (Month(start_from) + 1).first)
+                    price = self._reader.get(sheet, row, i, (float, type(None)))
+
+                    yield MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_volume, limit_volume=limit_volume,
+                        purchase_of_receivables=False,
+                        price=price)
