@@ -22,8 +22,8 @@ class DirectEnergyParserTest(TestCase):
         self.assertEqual(0, self.parser.get_count())
 
         quotes = list(self.parser.extract_quotes())
-        self.assertEqual(204480, len(quotes))
-        self.assertEqual(204480, self.parser.get_count())
+        self.assertEqual(204474, len(quotes))
+        self.assertEqual(204474, self.parser.get_count())
         for quote in quotes:
             quote.validate()
 

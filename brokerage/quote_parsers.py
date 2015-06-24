@@ -81,6 +81,16 @@ class SpreadsheetReader(object):
             raise ValueError('Invalid column letter "%s"' % letter)
 
     @classmethod
+    def _row_number_to_index(cls, number):
+        """
+        :param number: number as shown in Excel
+        :return: tablib row number (where -1 means the "header")
+        """
+        if number < 0:
+            raise ValueError('Negative row number')
+        return number - 2
+
+    @classmethod
     def get_databook_from_file(cls, quote_file, file_format):
         """
         :param quote_file: file object
@@ -139,7 +149,8 @@ class SpreadsheetReader(object):
         of the sheet to use
         :return: int
         """
-        return self._get_sheet(sheet_number_or_title).height
+        # tablib does not count the "header" as a row
+        return self._get_sheet(sheet_number_or_title).height + 1
 
     def get(self, sheet_number_or_title, row, col, the_type):
         """Return a value extracted from the cell of the given sheet at (row,
@@ -152,6 +163,7 @@ class SpreadsheetReader(object):
         :param the_type: expected type of the cell contents
         """
         sheet = self._get_sheet(sheet_number_or_title)
+        row = self._row_number_to_index(row)
         if isinstance(col, basestring):
             col = self._col_letter_to_index(col)
         try:
@@ -301,12 +313,12 @@ class DirectEnergyMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xls
 
-    HEADER_ROW = 49
-    VOLUME_RANGE_ROW = 49
-    QUOTE_START_ROW = 50
-    RATE_CLASS_COL = 4
-    SPECIAL_OPTIONS_COL = 5
-    TERM_COL = 7
+    HEADER_ROW = 51
+    VOLUME_RANGE_ROW = 51
+    QUOTE_START_ROW = 52
+    RATE_CLASS_COL = 'E'
+    SPECIAL_OPTIONS_COL = 'F'
+    TERM_COL = 'H'
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
@@ -314,7 +326,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         'Daily Matrix Price',
     ]
     EXPECTED_CELLS = [
-        (0, -1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
+        (0, 1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
         (0, HEADER_ROW, 0, 'Contract Start Month'),
         (0, HEADER_ROW, 1, 'State'),
         (0, HEADER_ROW, 2, 'Utility'),
@@ -324,7 +336,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 1, 0, 'as of (\d+/\d+/\d+)')
+    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
