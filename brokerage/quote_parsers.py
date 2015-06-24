@@ -294,11 +294,15 @@ class QuoteParser(object):
         sheet_number_or_title, row, col, regex = self.DATE_CELL
         self._date = self._reader.get_matches(sheet_number_or_title, row, col,
                                               regex, parse_datetime)
-        return self._extract_quotes()
+        for quote in self._extract_quotes():
+            self._count += 1
+            yield quote
 
     @abstractmethod
     def _extract_quotes(self):
-        # subclasses do extraction here
+        """Subclasses do extraction here. Should be implemented as a generator
+        so consumers can control how many quotes get read at one time.
+        """
         raise NotImplementedError
 
     def get_count(self):
@@ -378,7 +382,6 @@ class DirectEnergyMatrixParser(QuoteParser):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 100.
                 for rate_class_alias in rate_class_aliases:
-                    self._count += 1
                     yield MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,
