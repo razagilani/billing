@@ -67,7 +67,7 @@ class SpreadsheetReader(object):
     spreadsheets.
     """
     @classmethod
-    def _get_databook_from_file(cls, quote_file, file_format):
+    def get_databook_from_file(cls, quote_file, file_format):
         """
         :param quote_file: file object
         :return: tablib.Databook
@@ -96,9 +96,9 @@ class SpreadsheetReader(object):
         memory.
         :param quote_file: file to read from.
         """
-        self._databook = self._get_databook_from_file(quote_file, file_format)
+        self._databook = self.get_databook_from_file(quote_file, file_format)
 
-    def _get(self, row, col, the_type):
+    def get(self, row, col, the_type):
         """Return a value extracted from the spreadsheet cell at (row, col),
         and expect the given type (e.g. int, float, basestring, datetime).
         Raise ValidationError if the cell does not exist or has the wrong type.
@@ -121,7 +121,7 @@ class SpreadsheetReader(object):
                     the_type, value, type(value)))
         return value
 
-    def _get_matches(self, row, col, regex, types):
+    def get_matches(self, row, col, regex, types):
         """Get list of values extracted from the spreadsheet cell at
         (row, col) using groups (parentheses) in a regular expression. Values
         are converted from strings to the given types. Raise ValidationError
@@ -135,12 +135,12 @@ class SpreadsheetReader(object):
         length corresponds to the number of matches.
         :return: resulting value or list of values
         Example:
-        >>> self._get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
-        >>> self._get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
+        >>> self.get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
+        >>> self.get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
         """
         if not isinstance(types, (list, tuple)):
             types = [types]
-        text = self._get(row, col, basestring)
+        text = self.get(row, col, basestring)
         _assert_match(regex, text)
         m = re.match(regex, text)
         if len(m.groups()) != len(types):
@@ -222,7 +222,7 @@ class QuoteParser(object):
                           # TODO fix use of private variable
                           [s.title for s in self._reader._databook.sheets()])
         for row, col, regex in self.EXPECTED_CELLS:
-            text = self._reader._get(row, col, basestring)
+            text = self._reader.get(row, col, basestring)
             _assert_match(regex, text)
         self._validate()
         self._validated = True
@@ -242,7 +242,7 @@ class QuoteParser(object):
 
         # extract the date using DATE_CELL
         row, col, regex = self.DATE_CELL
-        self._date = self._reader._get_matches(row, col, regex, parse_datetime)
+        self._date = self._reader.get_matches(row, col, regex, parse_datetime)
 
         return self._extract_quotes()
 
@@ -294,7 +294,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         # highest volume range, in which case the 2nd number really means
         # what it says.
         regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader._get_matches(row, col, regex, (float, float))
+        low, high = self._reader.get_matches(row, col, regex, (float, float))
         if col != self.PRICE_END_COL:
             high += 1
         return low, high
@@ -311,22 +311,22 @@ class DirectEnergyMatrixParser(QuoteParser):
         for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader._get(row, 0, (int, float)))
+                self._reader.get(row, 0, (int, float)))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self._reader._get(row, self.TERM_COL, (int, float))
+            term_months = self._reader.get(row, self.TERM_COL, (int, float))
 
             # rate class names are separated by commas and optional whitespace
-            rate_class_text = self._reader._get(row, self.RATE_CLASS_COL,
-                                                basestring)
+            rate_class_text = self._reader.get(row, self.RATE_CLASS_COL,
+                                               basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
 
-            special_options = self._reader._get(row, self.SPECIAL_OPTIONS_COL,
-                                                basestring)
+            special_options = self._reader.get(row, self.SPECIAL_OPTIONS_COL,
+                                               basestring)
             _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader._get(row, col, (int, float)) / 100.
+                price = self._reader.get(row, col, (int, float)) / 100.
                 for rate_class_alias in rate_class_aliases:
                     self._count += 1
                     yield MatrixQuote(
@@ -372,11 +372,11 @@ class USGEMatrixParser(QuoteParser):
         below_regex = r'Below ([\d,]+) ccf/therms'
         normal_regex = r'([\d,])+ to ([\d,])+) ccf/therms'
         try:
-            low, high = self._get_matches(row, col, normal_regex,
+            low, high = self.get_matches(row, col, normal_regex,
                                           (parse_number, parse_number))
             low -= 1
         except ValidationError:
-            high = self._get_matches(row, col, below_regex, parse_number)
+            high = self.get_matches(row, col, below_regex, parse_number)
             low = 0
         return low, high
 
