@@ -62,29 +62,12 @@ def excel_number_to_datetime(number):
     return datetime(1899, 12, 30) + timedelta(days=number)
 
 
-class QuoteParser(object):
-    """Class for parsing a particular quote spreadsheet. This is stateful and
-    one instance should be used per file.
+class SpreadsheetReader(object):
+    """Wrapper for tablib.Databook with methods to easily get data from
+    spreadsheets.
     """
-    __metaclass__ = ABCMeta
-
-    # tablib submodule that should be used to import data from the spreadsheet
-    FILE_FORMAT = None
-
-    # subclasses can set this to use sheet titles to validate the file
-    EXPECTED_SHEET_TITLES = None
-
-    # subclassses can fill this with (row, col, regex) tuples to assert
-    # expected contents of certain cells
-    EXPECTED_CELLS = []
-
-    # optional (row, col, regex) for for the validity/expiration date of every
-    # quote in this matrix: regex must have 1 parenthesized group that can be
-    # parsed as a date
-    DATE_CELL = None
-
     @classmethod
-    def _get_databook_from_file(cls, quote_file):
+    def _get_databook_from_file(cls, quote_file, file_format):
         """
         :param quote_file: file object
         :return: tablib.Databook
@@ -92,85 +75,28 @@ class QuoteParser(object):
         # tablib's "xls" format takes the file contents as a string as its
         # argument, but "xlsx" and others take a file object
         result = Databook()
-        if cls.FILE_FORMAT in [formats.xlsx]:
-            cls.FILE_FORMAT.import_book(result, quote_file)
-        elif cls.FILE_FORMAT in [formats.xls]:
-            cls.FILE_FORMAT.import_book(result, quote_file.read())
+        if file_format in [formats.xlsx]:
+            file_format.import_book(result, quote_file)
+        elif file_format in [formats.xls]:
+            file_format.import_book(result, quote_file.read())
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
         return result
 
     def __init__(self):
-        # Databook and Dataset representing whole spreadsheet and relevant
-        # sheet respectively
+        # Databook representing whole spreadsheet and relevant sheet
+        # respectively
         self._databook = None
-        self._sheet = None
-
-        # whether validation has been done yet
-        self._validated = False
-
-        # optional validity date and expiration date of all quotes (matrix
-        # quote spreadsheets tend have a date on them and are good for one day)
-        self._date = None
 
         # number of quotes read so far
         self._count = 0
 
-    def load_file(self, quote_file):
+    def load_file(self, quote_file, file_format):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
         """
-        self._databook = self._get_databook_from_file(quote_file)
-        # it is assumed that only one sheet actually contains the quotes
-        self._sheet = self._databook.sheets()[0]
-        self._validated = False
-
-    def validate(self):
-        """Raise ValidationError if the file does not match expectations about
-        its format. This is supposed to detect format changes or prevent
-        reading the wrong file by accident, not to find all possible
-        problems the contents in advance.
-        """
-        assert self._databook is not None
-        if self.EXPECTED_SHEET_TITLES is not None:
-            _assert_equal(self.EXPECTED_SHEET_TITLES,
-                          [s.title for s in self._databook.sheets()])
-        for row, col, regex in self.EXPECTED_CELLS:
-            text = self._get(row, col, basestring)
-            _assert_match(regex, text)
-        self._validate()
-        self._validated = True
-
-    def _validate(self):
-        # subclasses can override this to do additional validation
-        pass
-
-    def extract_quotes(self):
-        """Yield Quotes extracted from the file. Raise ValidationError if the
-        quote file is malformed (no other exceptions should not be raised).
-        The Quotes are not associated with a supplier, so this must be done
-        by the caller.
-        """
-        if not self._validated:
-            self.validate()
-
-        # extract the date using DATE_CELL
-        row, col, regex = self.DATE_CELL
-        self._date = self._get_matches(row, col, regex, parse_datetime)
-
-        return self._extract_quotes()
-
-    @abstractmethod
-    def _extract_quotes(self):
-        # subclasses do extraction here
-        raise NotImplementedError
-
-    def get_count(self):
-        """
-        :return: number of quotes read so far
-        """
-        return self._count
+        self._databook = self._get_databook_from_file(quote_file, file_format)
 
     def _get(self, row, col, the_type):
         """Return a value extracted from the spreadsheet cell at (row, col),
@@ -180,12 +106,13 @@ class QuoteParser(object):
         :param row: column index
         :param the_type: expected type of the cell contents
         """
+        sheet = self._databook.sheets()[0]
         try:
             if row == -1:
                 # 1st row is the header, 2nd row is index "0"
-                value = self._sheet.headers[col]
+                value = sheet.headers[col]
             else:
-                value = self._sheet[row][col]
+                value = sheet[row][col]
         except IndexError:
             raise ValidationError('No cell (%s, %s)' % (row, col))
         if not isinstance(value, the_type):
@@ -230,6 +157,107 @@ class QuoteParser(object):
         return results
 
 
+class QuoteParser(object):
+    """Superclass for classes representing particular spreadsheet formats.
+    These should contain everything format-specific, but not general-purpose
+    code for reading spreadsheets.
+    """
+    __metaclass__ = ABCMeta
+
+    # tablib submodule that should be used to import data from the spreadsheet
+    FILE_FORMAT = None
+
+    # subclasses can set this to use sheet titles to validate the file
+    EXPECTED_SHEET_TITLES = None
+
+    # subclassses can fill this with (row, col, regex) tuples to assert
+    # expected contents of certain cells
+    EXPECTED_CELLS = []
+
+    # optional (row, col, regex) for for the validity/expiration date of every
+    # quote in this matrix: regex must have 1 parenthesized group that can be
+    # parsed as a date
+    DATE_CELL = None
+
+    def __init__(self):
+        self._reader = SpreadsheetReader()
+
+        # Dataset representing whole spreadsheet and relevant
+        # sheet respectively
+        self._sheet = None
+
+        # whether validation has been done yet
+        self._validated = False
+
+        # optional validity date and expiration date of all quotes (matrix
+        # quote spreadsheets tend have a date on them and are good for one day)
+        self._date = None
+
+        # number of quotes read so far
+        self._count = 0
+
+    def load_file(self, quote_file):
+        """Read from 'quote_file'. May be very slow and take a huge amount of
+        memory.
+        :param quote_file: file to read from.
+        """
+        self._reader.load_file(quote_file, self.FILE_FORMAT)
+
+        # it is assumed that only one sheet actually contains the quotes
+        # TODO: fix use of private variable
+        self._sheet = self._reader._databook.sheets()[0]
+
+        self._validated = False
+
+    def validate(self):
+        """Raise ValidationError if the file does not match expectations about
+        its format. This is supposed to detect format changes or prevent
+        reading the wrong file by accident, not to find all possible
+        problems the contents in advance.
+        """
+        # TODO: fix use of private variable
+        assert self._reader._databook is not None
+        if self.EXPECTED_SHEET_TITLES is not None:
+            _assert_equal(self.EXPECTED_SHEET_TITLES,
+                          # TODO fix use of private variable
+                          [s.title for s in self._reader._databook.sheets()])
+        for row, col, regex in self.EXPECTED_CELLS:
+            text = self._reader._get(row, col, basestring)
+            _assert_match(regex, text)
+        self._validate()
+        self._validated = True
+
+    def _validate(self):
+        # subclasses can override this to do additional validation
+        pass
+
+    def extract_quotes(self):
+        """Yield Quotes extracted from the file. Raise ValidationError if the
+        quote file is malformed (no other exceptions should not be raised).
+        The Quotes are not associated with a supplier, so this must be done
+        by the caller.
+        """
+        if not self._validated:
+            self.validate()
+
+        # extract the date using DATE_CELL
+        row, col, regex = self.DATE_CELL
+        self._date = self._reader._get_matches(row, col, regex, parse_datetime)
+
+        return self._extract_quotes()
+
+    @abstractmethod
+    def _extract_quotes(self):
+        # subclasses do extraction here
+        raise NotImplementedError
+
+    def get_count(self):
+        """
+        :return: number of quotes read so far
+        """
+        return self._count
+
+
 class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
@@ -266,7 +294,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         # highest volume range, in which case the 2nd number really means
         # what it says.
         regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._get_matches(row, col, regex, (float, float))
+        low, high = self._reader._get_matches(row, col, regex, (float, float))
         if col != self.PRICE_END_COL:
             high += 1
         return low, high
@@ -283,21 +311,22 @@ class DirectEnergyMatrixParser(QuoteParser):
         for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._get(row, 0, (int, float)))
+                self._reader._get(row, 0, (int, float)))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self._get(row, self.TERM_COL, (int, float))
+            term_months = self._reader._get(row, self.TERM_COL, (int, float))
 
             # rate class names are separated by commas and optional whitespace
-            rate_class_text = self._get(row, self.RATE_CLASS_COL, basestring)
+            rate_class_text = self._reader._get(row, self.RATE_CLASS_COL,
+                                                basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
 
-            special_options = self._get(row, self.SPECIAL_OPTIONS_COL,
-                                        basestring)
+            special_options = self._reader._get(row, self.SPECIAL_OPTIONS_COL,
+                                                basestring)
             _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._get(row, col, (int, float)) / 100.
+                price = self._reader._get(row, col, (int, float)) / 100.
                 for rate_class_alias in rate_class_aliases:
                     self._count += 1
                     yield MatrixQuote(
@@ -308,6 +337,7 @@ class DirectEnergyMatrixParser(QuoteParser):
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
+
 
 class USGEMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
