@@ -32,7 +32,7 @@ class BillFileHandler(object):
         self._url_format = url_format
 
     @classmethod
-    def _compute_hexdigest(cls, file):
+    def compute_hexdigest(cls, file):
         """Return SHA-256 hash of the given file (must be seekable).
         :param file: seekable file
         """
@@ -126,7 +126,7 @@ class BillFileHandler(object):
         """Upload the given file to s3.
         :param file: a seekable file
         """
-        sha256_hexdigest = BillFileHandler._compute_hexdigest(file)
+        sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
         if self._utilbill_loader.count_utilbills_with_hash(
                 sha256_hexdigest) != 0:
             raise DuplicateFileError('File already exists with hash %s ' %
