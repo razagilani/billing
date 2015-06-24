@@ -112,6 +112,16 @@ class SpreadsheetReader(object):
         """
         self._databook = self.get_databook_from_file(quote_file, file_format)
 
+    def is_loaded(self):
+        """:return: True if file has been loaded, False otherwise.
+        """
+        return self._databook is not None
+
+    def get_sheet_titles(self):
+        """:return: list of titles of all sheets (strings)
+        """
+        return [s.title for s in self._databook.sheets()]
+
     def get_height(self, sheet_number_or_title):
         """Return the number of rows in the given sheet.
         :param sheet_number_or_title: 0-based index (int) or title (string)
@@ -232,12 +242,10 @@ class QuoteParser(object):
         reading the wrong file by accident, not to find all possible
         problems the contents in advance.
         """
-        # TODO: fix use of private variable
-        assert self._reader._databook is not None
+        assert self._reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_equal(self.EXPECTED_SHEET_TITLES,
-                          # TODO fix use of private variable
-                          [s.title for s in self._reader._databook.sheets()])
+                          self._reader.get_sheet_titles())
         for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
             text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
@@ -259,9 +267,12 @@ class QuoteParser(object):
 
         # extract the date using DATE_CELL
         sheet_number_or_title, row, col, regex = self.DATE_CELL
-        self._date = self._reader.get_matches(sheet_number_or_title, row, col,
-                                              regex, parse_datetime)
-
+        if regex is None:
+            self._date = self._reader.get(sheet_number_or_title, row, col,
+                                          datetime)
+        else:
+            self._date = self._reader.get_matches(sheet_number_or_title, row,
+                                                  col, regex, parse_datetime)
         return self._extract_quotes()
 
     @abstractmethod
@@ -396,46 +407,48 @@ class USGEMatrixParser(QuoteParser):
     DATE_CELL = ('PA', 0, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
-    def _extract_volume_range(self, row, col):
+    def _extract_volume_range(self, sheet, row, col):
         below_regex = r'Below ([\d,]+) ccf/therms'
         normal_regex = r'([\d,]+) to ([\d,]+) ccf/therms'
         try:
-            low, high = self._reader._get_matches(row, col, normal_regex,
-                                          (parse_number, parse_number))
+            low, high = self._reader.get_matches(sheet, row, col, normal_regex,
+                                                 (parse_number, parse_number))
             if low > 0 :
                 low -= 1
         except ValidationError:
-            high = self._reader._get_matches(row, col, below_regex, parse_number)
+            high = self._reader.get_matches(sheet, row, col, below_regex,
+                                            parse_number)
             low = 0
         return low, high
 
 
     def _extract_quotes(self):
-        # TODO
+        sheet = 'PA'
 
         for row in xrange(self.RATE_START_ROW, self.RATE_END_ROW + 1):
-            utility = self._reader._get(row, self.UTILITY_COL,
-                                        (basestring, type(None)))
+            utility = self._reader.get(sheet, row, self.UTILITY_COL,
+                                       (basestring, type(None)))
             if utility is None:
                 continue
 
-            rate_class = self._reader._get(row, 2,(basestring, type(None)))
+            rate_class = self._reader.get(sheet, row, 2,
+                                          (basestring, type(None)))
             min_volume, limit_volume = self._extract_volume_range(
-                row, self.VOLUME_RANGE_COL)
-
+                sheet, row, self.VOLUME_RANGE_COL)
 
             for t in xrange(self.TERM_START_COL,self.TERM_END_COL):
                 # skip blank column
-                if self._reader._get(2, t, (basestring, type(None))) is None:
+                if self._reader.get(sheet, 2, t,
+                                    (basestring, type(None))) is None:
                     continue
-                term = self._reader._get_matches(
-                    2, t, '(\d+) Months Beginning in:', int)
+                term = self._reader.get_matches(
+                    sheet, 2, t, '(\d+) Months Beginning in:', int)
 
                 for i in xrange(t,t + 6):
-                    start_from = self._reader._get(3,i,datetime)
+                    start_from = self._reader.get(sheet, 3,i,datetime)
                     start_until = date_to_datetime(
                         (Month(start_from) + 1).first)
-                    price = self._reader._get(row, i,(float, type(None)))
+                    price = self._reader.get(sheet, row, i, (float, type(None)))
 
                     yield MatrixQuote(
                         start_from=start_from, start_until=start_until,

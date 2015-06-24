@@ -32,6 +32,10 @@ def upgrade():
                     sa.Column('Company_ID', sa.Integer, primary_key=True),
                     sa.Column('Company', sa.String, unique=True))
 
+    op.create_table('Company_PG_Supplier',
+                    sa.Column('Company_ID', sa.Integer, primary_key=True),
+                    sa.Column('Company', sa.String, unique=True))
+
 
 def downgrade():
     raise NotImplementedError
