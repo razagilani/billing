@@ -93,6 +93,7 @@ class Quote(AltitudeBase):
         if self.date_received is None:
             self.date_received = datetime.utcnow()
 
+    # TODO: validation needs to be extensible for subclasses
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
         """
@@ -128,6 +129,11 @@ class MatrixQuote(Quote):
     # (min_volume <= customer's energy consumption < limit_volume)
     min_volume = Column('min_volume', Float)
     limit_volume = Column('limit_volume', Float)
+
+    MIN_MIN_VOLUME = 0
+    MAX_MIN_VOLUME = 2000
+    MIN_LIMIT_VOLUME = 25
+    MAX_LIMIT_VOLUME = 2000
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
