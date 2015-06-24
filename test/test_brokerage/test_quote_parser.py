@@ -2,7 +2,7 @@ from datetime import datetime
 from os import path
 from unittest import TestCase
 from core import ROOT_PATH
-from brokerage.read_quotes import DirectEnergyMatrixParser
+from brokerage.quote_parsers import DirectEnergyMatrixParser
 
 class DirectEnergyParserTest(TestCase):
     EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
