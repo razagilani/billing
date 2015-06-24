@@ -35,45 +35,47 @@ class Company(AltitudeBase):
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'Rate'
+    __tablename__ = 'rate'
 
-    rate_id = Column('Rate_ID', Integer, primary_key=True)
+    rate_id = Column('quote_id', Integer, primary_key=True)
     supplier_id = Column('CompanySupplier_ID', Integer,
                          ForeignKey('Company.Company_ID'), nullable=False)
 
+    rate_class_alias = Column(String)
+
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
-    start_from = Column('Start_From', DateTime, nullable=False)
-    start_until = Column('Start_Until', DateTime, nullable=False)
+    start_from = Column('start_from', DateTime, nullable=False)
+    start_until = Column('start_until', DateTime, nullable=False)
 
     # term length in number of utility billing periods
-    term_months = Column('Term_Months', Integer, nullable=False)
+    term_months = Column('term_months', Integer, nullable=False)
 
     # when this quote was received
-    date_received = Column('Date_Received', DateTime, nullable=False)
+    date_received = Column('date_received', DateTime, nullable=False)
 
     # inclusive start and exclusive end of the period during which this quote
     # is valid
-    valid_from = Column('Valid_From', DateTime, nullable=False)
-    valid_until = Column('Valid_Until', DateTime, nullable=False)
+    valid_from = Column('valid_from', DateTime, nullable=False)
+    valid_until = Column('valid_until', DateTime, nullable=False)
 
     # whether this quote involves "POR" (supplier is offering a discount
     # because credit risk is transferred to the utility)
-    purchase_of_receivables = Column('Purchase_Of_Receivables', Boolean,
+    purchase_of_receivables = Column('purchase_of_receivables', Boolean,
                                      nullable=False, server_default='0')
 
     # fixed price for energy in dollars/energy unit
-    price = Column('Price', Float, nullable=False)
+    price = Column('price', Float, nullable=False)
 
     # zone
-    zone = Column('Zone', String)
+    zone = Column('zone', String)
 
     # dual billing
-    dual_billing = Column('Dual_Billing', Boolean, nullable=False,
+    dual_billing = Column('dual_billing', Boolean, nullable=False,
                           server_default='1')
 
     # Percent Swing Allowable
-    percent_swing = Column('Percent_Swing', Float)
+    percent_swing = Column('percent_swing', Float)
 
     discriminator = Column(String(50), nullable=False)
     __mapper_args__ = {
@@ -124,8 +126,8 @@ class MatrixQuote(Quote):
     # that this quote applies to. nullable because there might be no
     # restrictions on energy usage.
     # (min_volume <= customer's energy consumption < limit_volume)
-    min_volume = Column('Min_Volume', Float)
-    limit_volume = Column('Max_Volume', Float)
+    min_volume = Column('min_volume', Float)
+    limit_volume = Column('limit_volume', Float)
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
