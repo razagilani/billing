@@ -534,7 +534,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -575,7 +575,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
