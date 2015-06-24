@@ -10,8 +10,9 @@ calling :func:`.core.init_model`.
 from itertools import groupby
 import json
 import logging
+from brokerage.brokerage_model import Company
 from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
-    RateClass
+    RateClass, AltitudeSession
 
 from alembic.config import Config
 import pymongo
@@ -19,7 +20,7 @@ import pymongo
 from sqlalchemy import create_engine
 
 from upgrade_scripts import alembic_upgrade
-from core import init_model
+from core import init_model, init_altitude_db
 from core.model import Session
 from reebill.reebill_model import User, ReeBillCustomer
 from upgrade_scripts import alembic_upgrade
@@ -37,8 +38,13 @@ def upgrade():
     alembic_upgrade('41bb5135c2b6')
 
     init_model()
-    s = Session()
+    init_altitude_db()
+    s, a = Session(), AltitudeSession()
 
     insert_matrix_file_names(s)
+    #s.add_all(a.query(Company).all())
+    for supplier in a.query(Company).all():
+        s.merge(supplier)
 
     s.commit()
+    a.rollback()

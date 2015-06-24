@@ -1016,7 +1016,7 @@ class ReebillWSGI(object):
         )
 
         # create a FuzzyPricingModel
-        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader,logger=logger)
+        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
