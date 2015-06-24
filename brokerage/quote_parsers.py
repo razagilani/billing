@@ -109,6 +109,16 @@ class SpreadsheetReader(object):
         """
         self._databook = self.get_databook_from_file(quote_file, file_format)
 
+    def is_loaded(self):
+        """:return: True if file has been loaded, False otherwise.
+        """
+        return self._databook is not None
+
+    def get_sheet_titles(self):
+        """:return: list of titles of all sheets (strings)
+        """
+        return [s.title for s in self._databook.sheets()]
+
     def get_height(self, sheet_number_or_title):
         """Return the number of rows in the given sheet.
         :param sheet_number_or_title: 0-based index (int) or title (string)
@@ -229,12 +239,10 @@ class QuoteParser(object):
         reading the wrong file by accident, not to find all possible
         problems the contents in advance.
         """
-        # TODO: fix use of private variable
-        assert self._reader._databook is not None
+        assert self._reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_equal(self.EXPECTED_SHEET_TITLES,
-                          # TODO fix use of private variable
-                          [s.title for s in self._reader._databook.sheets()])
+                          self._reader.get_sheet_titles())
         for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
             text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
@@ -258,7 +266,6 @@ class QuoteParser(object):
         sheet_number_or_title, row, col, regex = self.DATE_CELL
         self._date = self._reader.get_matches(sheet_number_or_title, row, col,
                                               regex, parse_datetime)
-
         return self._extract_quotes()
 
     @abstractmethod
@@ -353,48 +360,3 @@ class DirectEnergyMatrixParser(QuoteParser):
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
 
-
-class USGEMatrixParser(QuoteParser):
-    """Parser for USGE spreadsheet. This one has energy along the rows and
-    time along the columns.
-    """
-    FILE_FORMAT = formats.xlsx
-
-    HEADER_ROW = 3
-    VOLUME_RANGE_COL = 3
-
-    EXPECTED_SHEET_TITLES = [
-        'KY',
-        'MD',
-        'NJ',
-        'NY',
-        'OH',
-        'PA',
-    ]
-    EXPECTED_CELLS = [
-        (0, 1, 'Pricing Date'),
-        (1, 1, 'Valid Thru'),
-        (HEADER_ROW, 0, 'LDC'),
-        (HEADER_ROW, 1, 'Customer Type'),
-        (HEADER_ROW, 2, 'RateClass'),
-        (HEADER_ROW, 3, 'Annual Usage Tier'),
-        (HEADER_ROW, 4, 'UOM'),
-    ]
-    DATE_CELL = ('PA', 0, 2, '(\d+/\d+/\d+)')
-    # TODO: include validity time like "4 PM EPT" in the date
-
-    def _extract_volume_range(self, row, col):
-        below_regex = r'Below ([\d,]+) ccf/therms'
-        normal_regex = r'([\d,])+ to ([\d,])+) ccf/therms'
-        try:
-            low, high = self.get_matches(row, col, normal_regex,
-                                          (parse_number, parse_number))
-            low -= 1
-        except ValidationError:
-            high = self.get_matches(row, col, below_regex, parse_number)
-            low = 0
-        return low, high
-
-    def _extract_quotes(self):
-        # TODO
-        pass
