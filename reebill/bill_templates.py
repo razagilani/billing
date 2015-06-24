@@ -10,8 +10,8 @@ from collections import deque
 from pyPdf import PdfFileWriter, PdfFileReader
 
 import reportlab  
-from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
-from reportlab.platypus.flowables import UseUpSpace
+from reportlab.platypus import BaseDocTemplate, Paragraph, Table, LongTable, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
+from reportlab.platypus.flowables import UseUpSpace, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
@@ -97,7 +97,7 @@ class BillDoc(BaseDocTemplate):
         # Here, the filename is passed in on render()
         # TODO filesep
         #BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
-        BaseDocTemplate.__init__(self, "basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=1)
+        BaseDocTemplate.__init__(self, "basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
 
     def _load_fonts(self):
 
@@ -1501,7 +1501,7 @@ class SummaryBillDoc(BillDoc):
         Returns list (all pages) of lists (each a page) of frames 
         """
 
-        _showBoundaries = 1
+        _showBoundaries = 0
 
         # first page frames
         fr1 = []
@@ -1524,15 +1524,15 @@ class SummaryBillDoc(BillDoc):
             Frame(300, 620, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='totalAmountDue', showBoundary=_showBoundaries)
         )
 
-        # bill list (h 500)
+
         fr1.append(
-            Frame(35, 35, 542, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billList', showBoundary=_showBoundaries)
+            Frame(35, 35, 542, 500, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billList', showBoundary=_showBoundaries)
         )
 
         fr2 = []
-        # bill list (h 600)
+        # bill list1
         fr2.append(
-            Frame(35, 35, 542, 600, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billList2', showBoundary=_showBoundaries)
+            Frame(35, 35, 542, 730, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='SecondPagebillList2', showBoundary=_showBoundaries)
         )
 
         return [fr1, fr2]
@@ -1575,18 +1575,18 @@ class SummaryBillDoc(BillDoc):
 
         # First row of summary table
         summary_table_data = [[
-            Paragraph("Account", s['BillLabelExSm']), 
-            Paragraph("Service Location", s['BillLabelExSm']), 
-            Paragraph("Green Energy", s['BillLabelExSm']), 
+            Paragraph("Account", s['BillLabelExSm']),
+            Paragraph("Service Location", s['BillLabelExSm']),
+            Paragraph("Green Energy", s['BillLabelExSm']),
             Paragraph("Prior Balance", s['BillLabelExSm']),
             Paragraph("Payment Rcvd", s['BillLabelExSm']),
             Paragraph("Balance Fwd", s['BillLabelExSm']),
             Paragraph("Late Charges", s['BillLabelExSm']),
             Paragraph("Balance Due", s['BillLabelExSm']),
             ]] 
-
-        # build individual bill rows
-        for b in bill_data:
+        import copy
+        # tables simply won't split and go into next frame, which is the whole purpose of flowables.wtf.
+        for b in bill_data[:20]:
             summary_table_data.append([
                 Paragraph("%s-%s" % (b["account"], b["sequence"]), s['BillFieldExSm']),
                 Paragraph(b["service_street"], s['BillFieldExSm']),
@@ -1599,16 +1599,50 @@ class SummaryBillDoc(BillDoc):
                 Paragraph(format_for_display(b["balance_due"]), s['BillFieldExSm'])
             ])
 
-        t = Table(summary_table_data, colWidths=[55, 158, 55, 55, 55, 55, 55, 55])
+        t = Table(summary_table_data, colWidths=[55, 158, 55, 55, 55, 55, 55, 55], repeatRows=0)
         t.setStyle(TableStyle([('ALIGN',(0,0),(1,-1),'LEFT'), ('ALIGN',(2,0),(7,-1),'RIGHT'), ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black), ('BOX', (0,0), (-1,-1), 0.25, colors.black)]))
 
         fl.append(t)
         fl.append(UseUpSpace())
 
-        fl.append(NextPageTemplate(self.page_names[1]));
-        #fl.append(PageBreak());
+        if len(bill_data) > 20:
 
+            fl.append(NextPageTemplate(self.page_names[1]));
+            fl.append(PageBreak());
 
+            # and we repeat here the next part of the table, because tables themselves won't split.wtf.
+            # First row of summary table
+            summary_table_data = [[
+                Paragraph("Account", s['BillLabelExSm']),
+                Paragraph("Service Location", s['BillLabelExSm']),
+                Paragraph("Green Energy", s['BillLabelExSm']),
+                Paragraph("Prior Balance", s['BillLabelExSm']),
+                Paragraph("Payment Rcvd", s['BillLabelExSm']),
+                Paragraph("Balance Fwd", s['BillLabelExSm']),
+                Paragraph("Late Charges", s['BillLabelExSm']),
+                Paragraph("Balance Due", s['BillLabelExSm']),
+            ]]
+
+            # tables simply won't split and go into next frame, which is the whole purpose of flowables.wtf.
+            for b in bill_data[20:]:
+                summary_table_data.append([
+                    Paragraph("%s-%s" % (b["account"], b["sequence"]), s['BillFieldExSm']),
+                    Paragraph(b["service_street"], s['BillFieldExSm']),
+                    # Need units to be passed in
+                    Paragraph("%s" % b["total_re_consumed"], s['BillFieldExSm']),
+                    Paragraph(format_for_display(b["prior_balance"]), s['BillFieldExSm']),
+                    Paragraph(format_for_display(b["payment_received"]), s['BillFieldExSm']),
+                    Paragraph(format_for_display(b["prior_balance"]), s['BillFieldExSm']),
+                    Paragraph(format_for_display(b["late_charge"]), s['BillFieldExSm']),
+                    Paragraph(format_for_display(b["balance_due"]), s['BillFieldExSm'])
+                ])
+
+            t = Table(summary_table_data, colWidths=[55, 158, 55, 55, 55, 55, 55, 55], repeatRows=0)
+            t.setStyle(TableStyle([('ALIGN',(0,0),(1,-1),'LEFT'), ('ALIGN',(2,0),(7,-1),'RIGHT'), ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black), ('BOX', (0,0), (-1,-1), 0.25, colors.black)]))
+
+            fl.append(t)
+
+        # and now what are we supposed to do if there are more than 40 bills to list? Replace ReportLab.wtf.
 
         return fl
 
