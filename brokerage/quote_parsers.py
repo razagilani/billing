@@ -158,16 +158,13 @@ class SpreadsheetReader(object):
         Raise ValidationError if the cell does not exist or has the wrong type.
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
-        :param row: row index (int)
+        :param row: Excel-style row number (int)
         :param col: column index (int) or letter (string)
         :param the_type: expected type of the cell contents
         """
         sheet = self._get_sheet(sheet_number_or_title)
         y = self._row_number_to_index(row)
-        if isinstance(col, basestring):
-            x = self._col_letter_to_index(col)
-        else:
-            x = col
+        x = col if isinstance(col, int) else self._col_letter_to_index(col)
         try:
             if y == -1:
                 # 1st row is the header, 2nd row is index "0"
