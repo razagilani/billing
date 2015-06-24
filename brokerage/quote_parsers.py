@@ -88,8 +88,19 @@ class SpreadsheetReader(object):
         # respectively
         self._databook = None
 
-        # number of quotes read so far
-        self._count = 0
+    def _get_sheet(self, sheet_number_or_title):
+        """
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        """
+        if isinstance(sheet_number_or_title, int):
+            return self._databook.sheets()[0]
+        assert isinstance(sheet_number_or_title, basestring)
+        try:
+            return next(s for s in self._databook.sheets() if
+                        s.title == sheet_number_or_title)
+        except StopIteration:
+            raise ValueError('No sheet named "%s"' % sheet_number_or_title)
 
     def load_file(self, quote_file, file_format):
         """Read from 'quote_file'. May be very slow and take a huge amount of
@@ -98,15 +109,25 @@ class SpreadsheetReader(object):
         """
         self._databook = self.get_databook_from_file(quote_file, file_format)
 
-    def get(self, row, col, the_type):
-        """Return a value extracted from the spreadsheet cell at (row, col),
-        and expect the given type (e.g. int, float, basestring, datetime).
+    def get_height(self, sheet_number_or_title):
+        """Return the number of rows in the given sheet.
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :return: int
+        """
+        return self._get_sheet(sheet_number_or_title).height
+
+    def get(self, sheet_number_or_title, row, col, the_type):
+        """Return a value extracted from the cell of the given sheet at (row,
+        col), and expect the given type (e.g. int, float, basestring, datetime).
         Raise ValidationError if the cell does not exist or has the wrong type.
-        :param row: row index
-        :param row: column index
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :param row: row index (int)
+        :param row: column index (int)
         :param the_type: expected type of the cell contents
         """
-        sheet = self._databook.sheets()[0]
+        sheet = self._get_sheet(sheet_number_or_title)
         try:
             if row == -1:
                 # 1st row is the header, 2nd row is index "0"
@@ -121,14 +142,16 @@ class SpreadsheetReader(object):
                     the_type, value, type(value)))
         return value
 
-    def get_matches(self, row, col, regex, types):
+    def get_matches(self, sheet_number_or_title, row, col, regex, types):
         """Get list of values extracted from the spreadsheet cell at
         (row, col) using groups (parentheses) in a regular expression. Values
         are converted from strings to the given types. Raise ValidationError
         if there are 0 matches or the wrong number of matches or any value
         could not be converted to the expected type.
-        :param row: row index
-        :param col: column index
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :param row: row index (int)
+        :param col: column index (int)
         :param regex: regular expression string
         :param types: expected type of each match represented as a callable
         that converts a string to that type, or a list/tuple of them whose
@@ -140,7 +163,7 @@ class SpreadsheetReader(object):
         """
         if not isinstance(types, (list, tuple)):
             types = [types]
-        text = self.get(row, col, basestring)
+        text = self.get(sheet_number_or_title, row, col, basestring)
         _assert_match(regex, text)
         m = re.match(regex, text)
         if len(m.groups()) != len(types):
@@ -182,10 +205,6 @@ class QuoteParser(object):
     def __init__(self):
         self._reader = SpreadsheetReader()
 
-        # Dataset representing whole spreadsheet and relevant
-        # sheet respectively
-        self._sheet = None
-
         # whether validation has been done yet
         self._validated = False
 
@@ -202,11 +221,6 @@ class QuoteParser(object):
         :param quote_file: file to read from.
         """
         self._reader.load_file(quote_file, self.FILE_FORMAT)
-
-        # it is assumed that only one sheet actually contains the quotes
-        # TODO: fix use of private variable
-        self._sheet = self._reader._databook.sheets()[0]
-
         self._validated = False
 
     def validate(self):
@@ -221,8 +235,8 @@ class QuoteParser(object):
             _assert_equal(self.EXPECTED_SHEET_TITLES,
                           # TODO fix use of private variable
                           [s.title for s in self._reader._databook.sheets()])
-        for row, col, regex in self.EXPECTED_CELLS:
-            text = self._reader.get(row, col, basestring)
+        for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
+            text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
         self._validate()
         self._validated = True
@@ -241,8 +255,9 @@ class QuoteParser(object):
             self.validate()
 
         # extract the date using DATE_CELL
-        row, col, regex = self.DATE_CELL
-        self._date = self._reader.get_matches(row, col, regex, parse_datetime)
+        sheet_number_or_title, row, col, regex = self.DATE_CELL
+        self._date = self._reader.get_matches(sheet_number_or_title, row, col,
+                                              regex, parse_datetime)
 
         return self._extract_quotes()
 
@@ -276,17 +291,17 @@ class DirectEnergyMatrixParser(QuoteParser):
         'Daily Matrix Price',
     ]
     EXPECTED_CELLS = [
-        (-1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
-        (HEADER_ROW, 0, 'Contract Start Month'),
-        (HEADER_ROW, 1, 'State'),
-        (HEADER_ROW, 2, 'Utility'),
-        (HEADER_ROW, 3, 'Zone'),
-        (HEADER_ROW, 4, r'Rate Code\(s\)'),
-        (HEADER_ROW, 5, 'Product Special Options'),
-        (HEADER_ROW, 6, 'Billing Method'),
-        (HEADER_ROW, 7, 'Term'),
+        (0, -1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
+        (0, HEADER_ROW, 0, 'Contract Start Month'),
+        (0, HEADER_ROW, 1, 'State'),
+        (0, HEADER_ROW, 2, 'Utility'),
+        (0, HEADER_ROW, 3, 'Zone'),
+        (0, HEADER_ROW, 4, r'Rate Code\(s\)'),
+        (0, HEADER_ROW, 5, 'Product Special Options'),
+        (0, HEADER_ROW, 6, 'Billing Method'),
+        (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (1, 0, 'as of (\d+/\d+/\d+)')
+    DATE_CELL = (0, 1, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -294,7 +309,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         # highest volume range, in which case the 2nd number really means
         # what it says.
         regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader.get_matches(row, col, regex, (float, float))
+        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
         if col != self.PRICE_END_COL:
             high += 1
         return low, high
@@ -308,25 +323,25 @@ class DirectEnergyMatrixParser(QuoteParser):
             next_vr = volume_ranges[i + 1]
             _assert_equal(vr[1], next_vr[0])
 
-        for row in xrange(self.QUOTE_START_ROW, self._sheet.height):
+        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader.get(row, 0, (int, float)))
+                self._reader.get(0, row, 0, (int, float)))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self._reader.get(row, self.TERM_COL, (int, float))
+            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
 
             # rate class names are separated by commas and optional whitespace
-            rate_class_text = self._reader.get(row, self.RATE_CLASS_COL,
+            rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
 
-            special_options = self._reader.get(row, self.SPECIAL_OPTIONS_COL,
+            special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
                                                basestring)
             _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader.get(row, col, (int, float)) / 100.
+                price = self._reader.get(0, row, col, (int, float)) / 100.
                 for rate_class_alias in rate_class_aliases:
                     self._count += 1
                     yield MatrixQuote(
@@ -365,7 +380,7 @@ class USGEMatrixParser(QuoteParser):
         (HEADER_ROW, 3, 'Annual Usage Tier'),
         (HEADER_ROW, 4, 'UOM'),
     ]
-    DATE_CELL = (0, 2, '(\d+/\d+/\d+)')
+    DATE_CELL = ('PA', 0, 2, '(\d+/\d+/\d+)')
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, row, col):
