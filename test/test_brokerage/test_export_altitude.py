@@ -72,18 +72,20 @@ class TestExportAltitude(TestCase):
         altitude_converter = Mock()
         altitude_converter.get_guid_for_utility\
             .return_value = 'A' * 36
-        altitude_converter.get_or_create_guid_for_supplier\
-            .side_effect = ['B' * 36, 'B' * 36]
         altitude_converter.get_one_altitude_account_guid_for_utility_account\
             .side_effect = ['C' * 36, None]
         self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
-                      str(uuid5(NAMESPACE_DNS, 'b'))]
+                      str(uuid5(NAMESPACE_DNS, 'b')),
+                      str(uuid5(NAMESPACE_DNS, 'c')),
+                      str(uuid5(NAMESPACE_DNS, 'd'))]
         def uuid_func(count=[0]):
             result = self.uuids[count[0]]
             count[0] += 1
             return result
         altitude_converter.get_or_create_guid_for_utilbill.side_effect = [
-            self.uuids[0], self.uuids[1]]
+            self.uuids[0], self.uuids[2]]
+        altitude_converter.get_or_create_guid_for_supplier\
+            .side_effect = [self.uuids[1], self.uuids[3]]
         self.pgae = PGAltitudeExporter(uuid_func, altitude_converter)
 
     def test_get_dataset(self):
@@ -94,7 +96,7 @@ class TestExportAltitude(TestCase):
                              '11111',
                              self.uuids[0],
                              'A' * 36,
-                             'B' * 36,
+                             self.uuids[1],
                              'electric',
                              '1',
                              '2000-01-01T00:00:00Z',
@@ -117,9 +119,9 @@ class TestExportAltitude(TestCase):
         self.assertEqual((
                              '',
                              '22222',
-                             self.uuids[1],
+                             self.uuids[2],
                              'A' * 36,
-                             'B' * 36,
+                             self.uuids[3],
                              '',
                              '2',
                              '2000-01-15T00:00:00Z',
@@ -219,5 +221,20 @@ class TestAltitudeBillStorage(TestCase):
 
         dataset_2 = self.pgae.get_dataset([self.utilbill])
         self.assertEqual(1, s.query(AltitudeBill).count())
+        self.assertEqual(dataset_1.csv, dataset_2.csv)
+
+    def test_altitude_supplier_consistency(self):
+        """Check that an AlititudeSupplier is created only once and reused
+        during repeated calls to get_dataset for the same supplier.
+        """
+        s = Session()
+        s.query(AltitudeSupplier).delete()
+        self.assertEqual(0, s.query(AltitudeSupplier).count())
+
+        dataset_1 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeSupplier).count())
+
+        dataset_2 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeSupplier).count())
         self.assertEqual(dataset_1.csv, dataset_2.csv)
 
