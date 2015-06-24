@@ -238,6 +238,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     HEADER_ROW = 49
     VOLUME_RANGE_ROW = 49
     QUOTE_START_ROW = 50
+    RATE_CLASS_COL = 4
     SPECIAL_OPTIONS_COL = 5
     TERM_COL = 7
     PRICE_START_COL = 8
@@ -286,6 +287,10 @@ class DirectEnergyMatrixParser(QuoteParser):
             start_until = date_to_datetime((Month(start_from) + 1).first)
             term_months = self._get(row, self.TERM_COL, (int, float))
 
+            # rate class names are separated by commas and optional whitespace
+            rate_class_text = self._get(row, self.RATE_CLASS_COL, basestring)
+            rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
+
             special_options = self._get(row, self.SPECIAL_OPTIONS_COL,
                                         basestring)
             _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
@@ -293,14 +298,16 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._get(row, col, (int, float)) / 100.
-                self._count += 1
-                yield MatrixQuote(
-                    start_from=start_from, start_until=start_until,
-                    term_months=term_months, valid_from=self._date,
-                    valid_until=self._date + timedelta(days=1),
-                    min_volume=min_vol, limit_volume=max_vol,
-                    purchase_of_receivables=(special_options == 'POR'),
-                    price=price)
+                for rate_class_alias in rate_class_aliases:
+                    self._count += 1
+                    yield MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_vol, limit_volume=max_vol,
+                        rate_class_alias=rate_class_alias,
+                        purchase_of_receivables=(special_options == 'POR'),
+                        price=price)
 
 class USGEMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
