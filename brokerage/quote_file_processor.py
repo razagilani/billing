@@ -41,7 +41,6 @@ class QuoteFileProcessor(object):
 
         generator = quote_parser.extract_quotes()
         while True:
-            prev_count = quote_parser.get_count()
             quote_list = []
             for quote in islice(generator, self.BATCH_SIZE):
                 if altitude_supplier is not None:
@@ -80,7 +79,7 @@ class QuoteFileProcessor(object):
                     for count in self._read_file(quote_file, altitude_supplier):
                         self.logger.debug('%s quotes so far' % count)
                     self.altitude_session.commit()
-                #os.remove(path)
+                os.remove(path)
             except Exception as e:
                 self.logger.error('Error when processing "%s":\n%s' % (
                     path, traceback.format_exc()))
