@@ -14,7 +14,8 @@ Ext.application({
         'UtilityBills',
         'Charges',
         'Viewer',
-        'Reports'
+        'Reports',
+        'UploadBills'
     ],
 
     stores: [
