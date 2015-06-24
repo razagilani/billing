@@ -66,6 +66,20 @@ class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
     spreadsheets.
     """
+    LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
+
+    @classmethod
+    def _col_letter_to_index(cls, letter):
+        """
+        :param letter: A-Z (string)
+        :return index of spreadsheet column.
+        """
+        letter = letter.upper()
+        try:
+            return cls.LETTERS.index(letter)
+        except ValueError:
+            raise ValueError('Invalid column letter "%s"' % letter)
+
     @classmethod
     def get_databook_from_file(cls, quote_file, file_format):
         """
@@ -134,10 +148,12 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param row: column index (int)
+        :param col: column index (int) or letter (string)
         :param the_type: expected type of the cell contents
         """
         sheet = self._get_sheet(sheet_number_or_title)
+        if isinstance(col, basestring):
+            col = self._col_letter_to_index(col)
         try:
             if row == -1:
                 # 1st row is the header, 2nd row is index "0"
@@ -161,7 +177,7 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param col: column index (int)
+        :param col: column index (int) or letter (string)
         :param regex: regular expression string
         :param types: expected type of each match represented as a callable
         that converts a string to that type, or a list/tuple of them whose
