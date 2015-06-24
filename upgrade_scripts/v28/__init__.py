@@ -10,7 +10,7 @@ calling :func:`.core.init_model`.
 from itertools import groupby
 import json
 import logging
-from brokerage.brokerage_model import Company
+from brokerage.brokerage_model import Company, MatrixQuote, CompanyPGSupplier
 from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
     RateClass, AltitudeSession
 
@@ -43,8 +43,11 @@ def upgrade():
 
     insert_matrix_file_names(s)
     #s.add_all(a.query(Company).all())
-    for supplier in a.query(Company).all():
+    for supplier in a.query(CompanyPGSupplier).all():
         s.merge(supplier)
 
+    MatrixQuote.__table__.drop(checkfirst=True)
+    MatrixQuote.__table__.create()
+
     s.commit()
-    a.rollback()
+    a.commit()
