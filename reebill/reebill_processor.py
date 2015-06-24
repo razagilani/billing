@@ -524,7 +524,7 @@ class ReebillProcessor(object):
         # Set up the fields to be shown in the email msg
         merge_fields = {
             'subject': subject,
-            'balance_due': round(balance_due,2),
+            'balance_due': balance_due,
             'bill_date': max(b.get_period_end() for b in reebills),
             'display_file_path': "summary.pdf"
         }
