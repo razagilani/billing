@@ -66,8 +66,29 @@ class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
     spreadsheets.
     """
-    #the index of the she we are useing
-    SHEET_NUMBER = 0
+    LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
+
+    @classmethod
+    def _col_letter_to_index(cls, letter):
+        """
+        :param letter: A-Z (string)
+        :return index of spreadsheet column.
+        """
+        letter = letter.upper()
+        try:
+            return cls.LETTERS.index(letter)
+        except ValueError:
+            raise ValueError('Invalid column letter "%s"' % letter)
+
+    @classmethod
+    def _row_number_to_index(cls, number):
+        """
+        :param number: number as shown in Excel
+        :return: tablib row number (where -1 means the "header")
+        """
+        if number < 0:
+            raise ValueError('Negative row number')
+        return number - 2
 
     @classmethod
     def get_databook_from_file(cls, quote_file, file_format):
@@ -128,7 +149,8 @@ class SpreadsheetReader(object):
         of the sheet to use
         :return: int
         """
-        return self._get_sheet(sheet_number_or_title).height
+        # tablib does not count the "header" as a row
+        return self._get_sheet(sheet_number_or_title).height + 1
 
     def get(self, sheet_number_or_title, row, col, the_type):
         """Return a value extracted from the cell of the given sheet at (row,
@@ -137,16 +159,21 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param row: column index (int)
+        :param col: column index (int) or letter (string)
         :param the_type: expected type of the cell contents
         """
         sheet = self._get_sheet(sheet_number_or_title)
+        y = self._row_number_to_index(row)
+        if isinstance(col, basestring):
+            x = self._col_letter_to_index(col)
+        else:
+            x = col
         try:
-            if row == -1:
+            if y == -1:
                 # 1st row is the header, 2nd row is index "0"
-                value = sheet.headers[col]
+                value = sheet.headers[x]
             else:
-                value = sheet[row][col]
+                value = sheet[y][x]
         except IndexError:
             raise ValidationError('No cell (%s, %s)' % (row, col))
         if not isinstance(value, the_type):
@@ -164,7 +191,7 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param col: column index (int)
+        :param col: column index (int) or letter (string)
         :param regex: regular expression string
         :param types: expected type of each match represented as a callable
         that converts a string to that type, or a list/tuple of them whose
@@ -292,12 +319,12 @@ class DirectEnergyMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xls
 
-    HEADER_ROW = 49
-    VOLUME_RANGE_ROW = 49
-    QUOTE_START_ROW = 50
-    RATE_CLASS_COL = 4
-    SPECIAL_OPTIONS_COL = 5
-    TERM_COL = 7
+    HEADER_ROW = 51
+    VOLUME_RANGE_ROW = 51
+    QUOTE_START_ROW = 52
+    RATE_CLASS_COL = 'E'
+    SPECIAL_OPTIONS_COL = 'F'
+    TERM_COL = 'H'
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
@@ -305,7 +332,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         'Daily Matrix Price',
     ]
     EXPECTED_CELLS = [
-        (0, -1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
+        (0, 1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
         (0, HEADER_ROW, 0, 'Contract Start Month'),
         (0, HEADER_ROW, 1, 'State'),
         (0, HEADER_ROW, 2, 'Utility'),
@@ -315,7 +342,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 1, 0, 'as of (\d+/\d+/\d+)')
+    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -374,17 +401,16 @@ class USGEMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xlsx
 
-    HEADER_ROW = 3
+    TERM_HEADER_ROW = 4
+    HEADER_ROW = 5
+    RATE_START_ROW = 6
+    RATE_END_ROW = 34
     UTILITY_COL = 0
     VOLUME_RANGE_COL = 3
-    RATE_START_ROW = 4
-    RATE_END_ROW = 32
-    SHEET_NUMBER = 5
     RATE_START_COL = 6
     RATE_END_COL = 11
     TERM_START_COL = 6
     TERM_END_COL = 28
-    TERM_HEADER_ROW = 2
 
     EXPECTED_SHEET_TITLES = [
         'KY',
@@ -396,15 +422,15 @@ class USGEMatrixParser(QuoteParser):
         'CheatSheet',
     ]
     EXPECTED_CELLS = [
-        ('PA', 0, 2, 'Pricing Date'),
-        ('PA', 1, 2, 'Valid Thru'),
+        ('PA', 2, 2, 'Pricing Date'),
+        ('PA', 3, 2, 'Valid Thru'),
         ('PA', HEADER_ROW, 0, 'LDC'),
         ('PA', HEADER_ROW, 1, 'Customer Type'),
         ('PA', HEADER_ROW, 2, 'RateClass'),
         ('PA', HEADER_ROW, 3, 'Annual Usage Tier'),
         ('PA', HEADER_ROW, 4, 'UOM'),
     ]
-    DATE_CELL = ('PA', 0, 3, None)
+    DATE_CELL = ('PA', 2, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, sheet, row, col):
@@ -438,14 +464,15 @@ class USGEMatrixParser(QuoteParser):
 
             for t in xrange(self.TERM_START_COL,self.TERM_END_COL):
                 # skip blank column
-                if self._reader.get(sheet, 2, t,
-                                    (basestring, type(None))) is None:
+                if self._reader.get(sheet, self.HEADER_ROW, t, object) is None:
                     continue
                 term = self._reader.get_matches(
-                    sheet, 2, t, '(\d+) Months Beginning in:', int)
+                    sheet, self.TERM_HEADER_ROW, t,
+                    '(\d+) Months Beginning in:', int)
 
                 for i in xrange(t,t + 6):
-                    start_from = self._reader.get(sheet, 3,i,datetime)
+                    start_from = self._reader.get(sheet, self.HEADER_ROW,
+                                                  i, datetime)
                     start_until = date_to_datetime(
                         (Month(start_from) + 1).first)
                     price = self._reader.get(sheet, row, i, (float, type(None)))
