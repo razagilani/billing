@@ -10,8 +10,8 @@ from collections import deque
 from pyPdf import PdfFileWriter, PdfFileReader
 
 import reportlab  
-from reportlab.platypus import BaseDocTemplate, Paragraph, Table, LongTable, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
-from reportlab.platypus.flowables import UseUpSpace, KeepTogether
+from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
+from reportlab.platypus.flowables import UseUpSpace
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
@@ -1513,7 +1513,6 @@ class SummaryBillDoc(BillDoc):
             Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
         )
 
-        # TODO: dynamic based on financier
         # Remit Payment To:
         fr1.append(
             Frame(35, 590, 220, 80, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='remitPayment', showBoundary=_showBoundaries)
@@ -1530,7 +1529,6 @@ class SummaryBillDoc(BillDoc):
         )
 
         fr2 = []
-        # bill list1
         fr2.append(
             Frame(35, 35, 542, 730, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='SecondPagebillList2', showBoundary=_showBoundaries)
         )
