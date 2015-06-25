@@ -664,10 +664,10 @@ class LayoutExtractor(Extractor):
                 nullable=False))
 
         #bounding box coordinates
-        bbminx = Column(Float, nullable=False)
-        bbminy = Column(Float, nullable=False)
-        bbmaxx = Column(Float, nullable=False)
-        bbmaxy = Column(Float, nullable=False)
+        bbminx = Column(Float, nullable=True)
+        bbminy = Column(Float, nullable=True)
+        bbmaxx = Column(Float, nullable=True)
+        bbmaxy = Column(Float, nullable=True)
 
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
