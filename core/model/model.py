@@ -774,8 +774,6 @@ class UtilBill(Base):
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=True)
     supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                              nullable=True)
-    supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
-        nullable=True)
 
     state = Column(Integer, nullable=False)
     period_start = Column(Date)
@@ -1029,9 +1027,6 @@ class UtilBill(Base):
         '''
         return self.utility_account.account
 
-    def get_utility_account_number(self):
-        return self.utility_account.account_number
-
     def __repr__(self):
         return ('<UtilBill(utility_account=<%s>, service=%s, period_start=%s, '
                 'period_end=%s, state=%s)>') % (
@@ -1251,11 +1246,8 @@ class UtilBill(Base):
         register_binding of REG_TOTAL'''
         # TODO: make this more generic once implementation of Regiter is changed
         self.check_editable()
-        try:
-            register = next(
-                r for r in self._registers if r.register_binding == Register.TOTAL)
-        except StopIteration:
-            return
+        register = next(
+            r for r in self._registers if r.register_binding == Register.TOTAL)
         register.meter_identifier = meter_identifier
 
 
