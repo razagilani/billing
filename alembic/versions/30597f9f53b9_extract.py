@@ -17,6 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 
 def upgrade():
+    op.execute('create extension hstore')
+
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),
                     sa.Column('discriminator', sa.String(), nullable=False),

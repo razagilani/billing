@@ -35,7 +35,7 @@ def insert_matrix_file_names(s):
     aep.matrix_file_name = 'aep.xls'
 
 def upgrade():
-    alembic_upgrade('41bb5135c2b6')
+    alembic_upgrade('30597f9f53b9')
 
     init_model()
     init_altitude_db()
