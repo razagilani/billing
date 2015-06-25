@@ -12,8 +12,8 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 
 from core import model
-from core.extraction import layout
-from core.extraction.layout import BoundingBox
+#from core.extraction import layout
+#from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
