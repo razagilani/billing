@@ -3,6 +3,7 @@ from datetime import datetime, date
 
 from sqlalchemy.orm.exc import NoResultFound
 from core.bill_file_handler import BillFileHandler
+from core.extraction.extraction import Main
 
 from core.model import UtilBill, Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
@@ -196,6 +197,7 @@ class UtilbillProcessor(object):
         """
         # TODO: insert extraction code here (must come first because steps
         # below use extracted data)
+        Main(self.bill_file_handler).extract(utilbill)
 
         # 'period_end' may be None, in which case this is the last bill overall
         try:

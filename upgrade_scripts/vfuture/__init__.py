@@ -90,30 +90,30 @@ def create_extractors(s):
     washington_gas.fields.append(TextExtractor.TextField(
         regex=wg_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
 
-    wg_layout_period_regex = r"Period:\s+(%s)-%s" % (date_format, date_format)
-    washington_gas_layout = LayoutExtractor(name='Layout Extractor for '
-                                                 'Washington Gas bills with green and yellow and chart id 15311')
-    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"Rate Class:\s+(.*)\s?$", page_num=2,
-        bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
-        type=Field.STRING,
-        applier_key=Applier.RATE_CLASS))
-    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=wg_layout_period_regex, page_num=1,
-        bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
-        type=Field.DATE,
-        applier_key=Applier.START))
-    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=wg_layout_period_regex, page_num=1,
-        bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
-        type=Field.DATE,
-        applier_key=Applier.END))
-    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        regex=r"Service address:\s+(.*)\s?$", page_num=1,
-        bbminx=411, bbminy=690, bbmaxx=480, bbmaxy=706,
-        type=Field.ADDRESS,
-        applier_key=Applier.SERVICE_ADDRESS))
-    s.add_all([e, pepco_2015, pepco_old, washington_gas, washington_gas_layout])
+    # wg_layout_period_regex = r"Period:\s+(%s)-%s" % (date_format, date_format)
+    # washington_gas_layout = LayoutExtractor(name='Layout Extractor for '
+    #                                              'Washington Gas bills with green and yellow and chart id 15311')
+    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+    #     regex=r"Rate Class:\s+(.*)\s?$", page_num=2,
+    #     bbminx=39, bbminy=715, bbmaxx=105, bbmaxy=725,
+    #     type=Field.STRING,
+    #     applier_key=Applier.RATE_CLASS))
+    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+    #     regex=wg_layout_period_regex, page_num=1,
+    #     bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
+    #     type=Field.DATE,
+    #     applier_key=Applier.START))
+    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+    #     regex=wg_layout_period_regex, page_num=1,
+    #     bbminx=411, bbminy=712, bbmaxx=441, bbmaxy=717,
+    #     type=Field.DATE,
+    #     applier_key=Applier.END))
+    # washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+    #     regex=r"Service address:\s+(.*)\s?$", page_num=1,
+    #     bbminx=411, bbminy=690, bbmaxx=480, bbmaxy=706,
+    #     type=Field.ADDRESS,
+    #     applier_key=Applier.SERVICE_ADDRESS))
+    s.add_all([e, pepco_2015, pepco_old, washington_gas])
 
 def create_charge_name_maps(s):
     wg = s.query(Utility).filter_by(name='washington gas').one()

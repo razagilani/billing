@@ -622,8 +622,8 @@ class UtilityAccount(Base):
         :return: UtilBill
         """
         g = (u for u in self.utilbills
-             if (processed is None or u.processed)
-             and (end is None or u.period_end <= end))
+             if (processed is None or u.processed) and (
+             end is None or (u.period_end is not None and u.period_end <= end)))
         try:
             return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
@@ -1256,6 +1256,16 @@ class UtilBill(Base):
         total_register = next(
             r for r in self._registers if r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
+
+    def get_total_energy_unit(self):
+        """:return: name of unit for measuring total energy (string), or None
+        if this is unknown, which will happen if the rate class is not known.
+        """
+        if self.rate_class is None:
+            assert self._registers == []
+            return None
+        total_register = self.get_register_by_binding(Register.TOTAL)
+        return total_register.unit
 
     def get_register_by_binding(self, register_binding):
         """Return the register whose register_binding is 'register_binding'.
