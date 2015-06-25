@@ -66,6 +66,30 @@ class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
     spreadsheets.
     """
+    LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
+
+    @classmethod
+    def _col_letter_to_index(cls, letter):
+        """
+        :param letter: A-Z (string)
+        :return index of spreadsheet column.
+        """
+        letter = letter.upper()
+        try:
+            return cls.LETTERS.index(letter)
+        except ValueError:
+            raise ValueError('Invalid column letter "%s"' % letter)
+
+    @classmethod
+    def _row_number_to_index(cls, number):
+        """
+        :param number: number as shown in Excel
+        :return: tablib row number (where -1 means the "header")
+        """
+        if number < 0:
+            raise ValueError('Negative row number')
+        return number - 2
+
     @classmethod
     def get_databook_from_file(cls, quote_file, file_format):
         """
@@ -125,7 +149,8 @@ class SpreadsheetReader(object):
         of the sheet to use
         :return: int
         """
-        return self._get_sheet(sheet_number_or_title).height
+        # tablib does not count the "header" as a row
+        return self._get_sheet(sheet_number_or_title).height + 1
 
     def get(self, sheet_number_or_title, row, col, the_type):
         """Return a value extracted from the cell of the given sheet at (row,
@@ -134,10 +159,13 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param row: column index (int)
+        :param col: column index (int) or letter (string)
         :param the_type: expected type of the cell contents
         """
         sheet = self._get_sheet(sheet_number_or_title)
+        row = self._row_number_to_index(row)
+        if isinstance(col, basestring):
+            col = self._col_letter_to_index(col)
         try:
             if row == -1:
                 # 1st row is the header, 2nd row is index "0"
@@ -161,7 +189,7 @@ class SpreadsheetReader(object):
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
-        :param col: column index (int)
+        :param col: column index (int) or letter (string)
         :param regex: regular expression string
         :param types: expected type of each match represented as a callable
         that converts a string to that type, or a list/tuple of them whose
@@ -266,11 +294,15 @@ class QuoteParser(object):
         sheet_number_or_title, row, col, regex = self.DATE_CELL
         self._date = self._reader.get_matches(sheet_number_or_title, row, col,
                                               regex, parse_datetime)
-        return self._extract_quotes()
+        for quote in self._extract_quotes():
+            self._count += 1
+            yield quote
 
     @abstractmethod
     def _extract_quotes(self):
-        # subclasses do extraction here
+        """Subclasses do extraction here. Should be implemented as a generator
+        so consumers can control how many quotes get read at one time.
+        """
         raise NotImplementedError
 
     def get_count(self):
@@ -285,12 +317,12 @@ class DirectEnergyMatrixParser(QuoteParser):
     """
     FILE_FORMAT = formats.xls
 
-    HEADER_ROW = 49
-    VOLUME_RANGE_ROW = 49
-    QUOTE_START_ROW = 50
-    RATE_CLASS_COL = 4
-    SPECIAL_OPTIONS_COL = 5
-    TERM_COL = 7
+    HEADER_ROW = 51
+    VOLUME_RANGE_ROW = 51
+    QUOTE_START_ROW = 52
+    RATE_CLASS_COL = 'E'
+    SPECIAL_OPTIONS_COL = 'F'
+    TERM_COL = 'H'
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
@@ -298,7 +330,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         'Daily Matrix Price',
     ]
     EXPECTED_CELLS = [
-        (0, -1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
+        (0, 1, 0, 'Direct Energy HQ - Daily Matrix Price Report'),
         (0, HEADER_ROW, 0, 'Contract Start Month'),
         (0, HEADER_ROW, 1, 'State'),
         (0, HEADER_ROW, 2, 'Utility'),
@@ -308,7 +340,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 1, 0, 'as of (\d+/\d+/\d+)')
+    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -350,7 +382,6 @@ class DirectEnergyMatrixParser(QuoteParser):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 100.
                 for rate_class_alias in rate_class_aliases:
-                    self._count += 1
                     yield MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,

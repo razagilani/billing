@@ -73,6 +73,7 @@ Ext.Ajax.request({
                 'Reebills',
                 'ReeBillVersions',
                 'RSIBindings',
+                'RegisterBindings',
                 'ServiceTypes',
                 'Types',
                 'Units',
