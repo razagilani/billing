@@ -1,5 +1,6 @@
 import os.path as path
 from os.path import dirname, realpath
+from celery import Celery
 from pint import UnitRegistry
 
 import configuration as config_file_schema
@@ -11,7 +12,13 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 
 ROOT_PATH = dirname(dirname(realpath(__file__)))
 
+# import this object after calling 'init_config' to get values from the
+# config file
 config = None
+
+# import this object after calling 'init_celery' to use Celery.
+# (dont confuse this object with the 'celery' module itself.)
+celery = None
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -73,6 +80,7 @@ def import_all_model_modules():
     """
     import core.model
     import core.altitude
+    import core.extraction
     import reebill.reebill_model
     import brokerage.brokerage_model
     import billentry.billentry_model
@@ -160,7 +168,28 @@ def init_altitude_db(uri=None):
 
     log.debug('Initialized database: ' + uri)
 
+def init_celery():
+    from core import config
+    # since celery is using the database as its back end, no additional
+    # config keys are needed. for a different back end, these would have to
+    # be added to the config file.
+    #uri = config.get('db', 'uri')
+    uri = 'mongodb://%(host)s:%(port)s/%(database)s' % dict(
+        host=config.get('mongodb', 'host'), port=config.get('mongodb', 'port'),
+        database=config.get('mongodb', 'database'))
+    celery_broker_url = celery_result_backend = uri
+
+    global celery
+    celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
+
+    # if you're using a Python dictionary for configuration (as is usual with
+    # Flask), you can set celery's "conf" directly from the application's
+    # config dictionary with "celery.conf.update(app.config)".
+    # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
+    # celery.conf['BROKER_URL'] = celery_broker_url
+
 def initialize():
     init_logging()
     init_config()
     init_model()
+    init_celery()

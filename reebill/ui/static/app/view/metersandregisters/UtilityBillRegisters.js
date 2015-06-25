@@ -27,17 +27,17 @@ Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
         dataIndex: 'meter_identifier',
         sortable: false,
         editor: {
-            xtype: 'textfield',
+            xtype: 'textfield'
         },
-        width: 150,
+        width: 150
     },{
         header: 'Register ID',
         dataIndex: 'identifier',
         sortable: false,
         editor: {
-            xtype: 'textfield',
+            xtype: 'textfield'
         },
-        width: 150,
+        width: 150
     },{
         header: 'Type',
         dataIndex: 'reg_type',
@@ -46,16 +46,25 @@ Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 100,
+        width: 100
     },{
         header: 'Register Binding',
         dataIndex: 'register_binding',
         sortable: false,
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'RegisterBindings',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'name',
+            queryMode: 'local',
+            forceSelection: true,
+            selectOnFocus: true
         },
-        width: 200,
+        width: 200
     },{
         header: 'Quantity',
         dataIndex: 'quantity',
@@ -64,7 +73,7 @@ Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 150,
+        width: 150
     },{
         header: 'Units',
         dataIndex: 'unit',
