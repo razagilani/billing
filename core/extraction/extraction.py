@@ -12,8 +12,8 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 
 from core import model
-from core.extraction import layout
-from core.extraction.layout import BoundingBox
+# from core.extraction import layout
+# from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 
@@ -97,6 +97,21 @@ class Applier(object):
             rate_class = RateClass(utility=bill_util, name=rate_class_name)
         bill.rate_class = rate_class
 
+    @staticmethod
+    def set_charges(bill, charges):
+        """Special function to apply a list of charges, because the a unit is
+        required and may not be known. If possible, get rid of this function.
+        """
+        unit = bill.get_total_energy_unit()
+
+        # unit will not be known if rate class is not set
+        if unit is None:
+            unit = 'kWh'
+
+        for charge in charges:
+            charge.unit = unit
+        bill.charges = charges
+
     BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
@@ -107,7 +122,7 @@ class Applier(object):
     START = 'start'
     KEYS = {
         BILLING_ADDRESS: model.UtilBill.billing_address,
-        CHARGES: model.UtilBill.charges,
+        CHARGES: set_charges.__func__,
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
@@ -145,14 +160,14 @@ class Applier(object):
 
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
-            method = getattr(utilbill, attr.__name__)
             if hasattr(utilbill, attr.__name__):
+                method = getattr(utilbill, attr.__name__)
                 # method of UtilBill
                 apply = lambda: method(value)
             else:
                 # other callable, such as method of this class.
                 # it must take a UtilBill and the value to apply.
-                apply = lambda: method(utilbill, value)
+                apply = lambda: attr(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):

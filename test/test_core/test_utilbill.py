@@ -184,6 +184,7 @@ class UtilBillTest(TestCase):
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
         self.assertEqual(1, utilbill.get_total_energy())
+        self.assertEqual('kWh', utilbill.get_total_energy_unit())
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
@@ -206,6 +207,7 @@ class UtilBillTest(TestCase):
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
         self.assertEqual(0, utilbill.get_total_energy())
+        self.assertEqual(None, utilbill.get_total_energy_unit())
 
         # utility and rate class can be set to None
         utilbill.set_utility(None)
