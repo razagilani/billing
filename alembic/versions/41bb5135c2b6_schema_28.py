@@ -15,8 +15,27 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    pass
+    op.drop_table('matrix_quote')
+    op.add_column('quote', sa.Column('purchase_of_receivables', sa.Boolean,
+                                     nullable=False))
+    op.add_column('quote', sa.Column('min_volume', sa.Float))
+    op.add_column('quote', sa.Column('limit_volume', sa.Float))
+    op.add_column('quote', sa.Column('rate_class_alias', sa.String))
+    op.alter_column('quote', 'supplier_id', nullable=True)
+    op.rename_table('quote', 'rate')
+
+    op.add_column('supplier', sa.Column('matrix_file_name', sa.String))
+    op.create_unique_constraint('uq_supplier_matrix_file_name', 'supplier',
+                                ['matrix_file_name'])
+
+    op.create_table('Company',
+                    sa.Column('Company_ID', sa.Integer, primary_key=True),
+                    sa.Column('Company', sa.String, unique=True))
+
+    op.create_table('Company_PG_Supplier',
+                    sa.Column('Company_ID', sa.Integer, primary_key=True),
+                    sa.Column('Company', sa.String, unique=True))
 
 
 def downgrade():
-    pass
+    raise NotImplementedError
