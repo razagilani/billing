@@ -1,4 +1,40 @@
+from io import StringIO
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFSyntaxError
 from pyPdf import PdfFileWriter, PdfFileReader
+
+# TODO: no test coverage
+class PDFUtil(object):
+    """Misc methods for working with PDF file contents.
+    """
+    def get_pdf_text(pdf_file):
+        """Get all text from a PDF file.
+        :param pdf_file: file object
+        """
+        pdf_file.seek(0)
+        rsrcmgr = PDFResourceManager()
+        outfile = StringIO()
+        laparams = LAParams()  # Use this to tell interpreter to capture newlines
+        # laparams = None
+        device = TextConverter(rsrcmgr, outfile, codec='utf-8',
+                               laparams=laparams)
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        try:
+            for page in PDFPage.get_pages(pdf_file, set(),
+                                          check_extractable=True):
+                interpreter.process_page(page)
+        except PDFSyntaxError:
+            text = ''
+        else:
+            outfile.seek(0)
+            text = outfile.read()
+            text = unicode(text, errors='ignore')
+        device.close()
+        return text
+
 
 class PDFConcatenator(object):
     """Accumulates PDF files into one big PDF file.
