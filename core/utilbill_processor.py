@@ -195,8 +195,7 @@ class UtilbillProcessor(object):
         of some attributes.
         :param utilbill: UtilBill
         """
-        # TODO: insert extraction code here (must come first because steps
-        # below use extracted data)
+        # extract data from bill file
         Main(self.bill_file_handler).extract(utilbill)
 
         # 'period_end' may be None, in which case this is the last bill overall
