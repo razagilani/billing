@@ -33,6 +33,8 @@ def insert_matrix_file_names(s):
     de.matrix_file_name = 'directenergy.xls'
     aep = s.query(Supplier).filter_by(name='AEP').one()
     aep.matrix_file_name = 'aep.xls'
+    usge = s.query(Supplier).filter_by(name='USG&E').one()
+    usge.matrix_file_name = 'usge.xls'
 
 def upgrade():
     alembic_upgrade('30597f9f53b9')
