@@ -462,15 +462,17 @@ class USGEMatrixParser(QuoteParser):
             min_volume, limit_volume = self._extract_volume_range(
                 sheet, row, self.VOLUME_RANGE_COL)
 
-            for t in xrange(self.TERM_START_COL,self.TERM_END_COL):
+            for term_col in xrange(self.TERM_START_COL, self.TERM_END_COL + 1,
+                                   7):
                 # skip blank column
-                if self._reader.get(sheet, self.HEADER_ROW, t, object) is None:
+                if self._reader.get(sheet, self.HEADER_ROW, term_col,
+                                    object) is None:
                     continue
                 term = self._reader.get_matches(
-                    sheet, self.TERM_HEADER_ROW, t,
+                    sheet, self.TERM_HEADER_ROW, term_col,
                     '(\d+) Months Beginning in:', int)
 
-                for i in xrange(t,t + 6):
+                for i in xrange(term_col, term_col + 6):
                     start_from = self._reader.get(sheet, self.HEADER_ROW,
                                                   i, datetime)
                     start_until = date_to_datetime(
