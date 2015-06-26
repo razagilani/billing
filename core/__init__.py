@@ -192,4 +192,5 @@ def initialize():
     init_logging()
     init_config()
     init_model()
+    init_altitude_db()
     init_celery()
