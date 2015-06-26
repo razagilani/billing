@@ -266,9 +266,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
     def test_set_total_meter_identifier(self):
         utilbill = UtilBill(MagicMock(), MagicMock(), MagicMock())
-        # This should not result in any changes as utilbill doesn't have register with
-        # register_binding of REG_TOTAL
-        utilbill.set_total_meter_identifier('7715')
+        self.assertRaises(StopIteration, utilbill.set_total_meter_identifier,
+                          '7715')
         self.assertEqual(utilbill.get_total_meter_identifier(), None)
 
 
@@ -534,7 +533,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -575,7 +574,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
