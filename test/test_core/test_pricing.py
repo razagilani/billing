@@ -270,7 +270,7 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.utilbill_loader.load_real_utilbills.return_value = [self.u, bill_1]
         self.assertIs(charge_1, self.fpm.get_closest_occurrence_of_charge(b))
 
-        # when more than one other bill containts "b", the closer one is picked
+        # when more than one other bill contains "b", the closer one is picked
         bill_2 = deepcopy(self.u)
         bill_2.id = 3
         bill_2.period_start = date(2000, 1, 2)
@@ -290,6 +290,11 @@ class FuzzyPricingModelTest(unittest.TestCase):
         irrelevant_charge.utilbill = bill_2
         bill_2.charges = [charge_2, irrelevant_charge]
         self.assertIs(charge_2, self.fpm.get_closest_occurrence_of_charge(b))
+
+        # the "closest occurrence" can't be a charge with a different type
+        b.type = Charge.SUPPLY
+        self.assertEqual(None, self.fpm.get_closest_occurrence_of_charge(b))
+
 
 
     # TODO test that the bill whose charges are being generated is ignored when
