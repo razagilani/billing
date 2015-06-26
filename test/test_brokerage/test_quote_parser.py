@@ -56,15 +56,14 @@ class USGEMatrixParserTest(TestCase):
         self.parser.validate()
 
         quotes = list(self.parser.extract_quotes())
+        self.assertEqual(2448,len(quotes))
 
         for quote in quotes:
-            print quote
             quote.validate()
 
-        self.assertEqual(480,len(quotes))
-
-        # since there are so many, only check one
+        #KY check
         q1 = quotes[0]
+        self.assertEqual('Residential',q1.rate_class_alias)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -73,4 +72,71 @@ class USGEMatrixParserTest(TestCase):
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(.4621 , q1.price)
+        self.assertEqual(.4729, q1.price)
+
+        #MD check
+        q1 = quotes[96]
+        self.assertEqual('Residential',q1.rate_class_alias)
+        self.assertEqual(datetime(2015, 6, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 7, 1), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.4793, q1.price)
+
+        #NJ check
+        q1 = quotes[288]
+        self.assertEqual('Residential',q1.rate_class_alias)
+        self.assertEqual(datetime(2015, 7, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 8, 1), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.5242, q1.price)
+
+        #NY check
+        q1 = quotes[528]
+        self.assertEqual('Residential',q1.rate_class_alias)
+        self.assertEqual(datetime(2015, 6, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 7, 1), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.6292, q1.price)
+
+        #OH check
+        q1 = quotes[1776]
+        self.assertEqual('Residential',q1.rate_class_alias)
+        self.assertEqual(datetime(2015, 6, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 7, 1), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.5630, q1.price)
+
+        #PA check
+        q1 = quotes[1968]
+        self.assertEqual('Residential',q1.rate_class_alias)
+        self.assertEqual(datetime(2015, 6, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 7, 1), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.4621, q1.price)
+
+
