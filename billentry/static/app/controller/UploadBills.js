@@ -32,8 +32,10 @@ Ext.define('BillEntry.controller.UploadBills', {
      * Initialize the upload form.
      */
     initalizeUploadForm: function() {
-        var form = this.getUploadBillsForm();
-        form.getForm().reset();
+         var form = this.getUploadBillsForm();
+         form.getForm().reset();
+         var dropzone = document.getElementById('dropzoneIFrame').contentDocument.getElementById('upload-files').dropzone;
+         dropzone.removeAllFiles();
      },
 
     /**
@@ -42,6 +44,7 @@ Ext.define('BillEntry.controller.UploadBills', {
     handleSubmit: function() {
         var scope = this;
         var store = this.getAltitudeAccountsStore();
+
         this.getUploadBillsForm().getForm().submit({
              url: 'http://' + window.location.host + '/utilitybills/uploadbill',
              success: function () {
