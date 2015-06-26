@@ -1073,7 +1073,7 @@ class UtilBill(Base):
                    self.utility_account.account, self.get_service(),
                    self.period_start, self.period_end, self.state)
 
-    def add_charge(self, charge_kwargs, fuzzy_pricing_model):
+    def add_charge(self, charge_kwargs):
         """
         :param charge_kwargs: arguments to create a Charge object (this is
         bad: pass a Charge object itself)
