@@ -6,7 +6,6 @@ from brokerage.brokerage_model import Company
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser
 from core.model import AltitudeSession, Session, Supplier
 
-# TODO: can't get log file to appear where it's supposed to
 LOG_NAME = 'read_quotes'
 
 # TODO: this class has no test coverage
