@@ -244,26 +244,53 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.assertEqual({s2, s3}, s_charges)
 
     def test_get_closest_occurrence_of_charge(self):
+        # this charge is the one whose "closest occurrence" will be searched for
         b = Mock(autospec=Charge)
         b.rsi_binding = 'b'
+        b.rate = 1
         b.type = Charge.DISTRIBUTION
         b.utilbill = self.u
         b.shared = True
         self.u.charges = [b]
         self.utilbill_loader.load_real_utilbills.return_value = [self.u]
 
-        # when the bill of the given charge is the only one, there is no
-        # "closest occurrence"
-        self.assertEqual(None, self.fpm.get_closest_occurrence_of_charge(
-            self.charge_b_shared))
+        # when the bill of the given charge is the only one, there are no
+        # other occurrences
+        self.assertEqual(None, self.fpm.get_closest_occurrence_of_charge(b))
 
         # one other bill contains a charge called "b"
-        new_bill = deepcopy(self.u)
-        new_bill.id = 2
-        b.utilbill = new_bill
-        new_bill.charges = [b]
-        self.assertEqual(self.charge_b_shared,
-                         self.fpm.get_closest_occurrence_of_charge(b))
+        bill_1 = deepcopy(self.u)
+        bill_1.id = 2
+        bill_1.period_start = date(1999, 11, 1)
+        bill_1.period_end = date(2000, 12, 1)
+        charge_1 = deepcopy(b)
+        charge_1.rate = 2
+        charge_1.utilbill = bill_1
+        bill_1.charges = [charge_1]
+        self.utilbill_loader.load_real_utilbills.return_value = [self.u, bill_1]
+        self.assertIs(charge_1, self.fpm.get_closest_occurrence_of_charge(b))
+
+        # when more than one other bill containts "b", the closer one is picked
+        bill_2 = deepcopy(self.u)
+        bill_2.id = 3
+        bill_2.period_start = date(2000, 1, 2)
+        bill_2.period_end = date(2000, 2, 2)
+        charge_2 = deepcopy(b)
+        charge_2.rate = 3
+        charge_2.utilbill = bill_2
+        bill_2.charges = [charge_2]
+        self.utilbill_loader.load_real_utilbills.return_value = [self.u, bill_1,
+                                                                 bill_2]
+        self.assertIs(charge_2, self.fpm.get_closest_occurrence_of_charge(b))
+
+        # and if there are other charges, they don't affect the result
+        irrelevant_charge = deepcopy(b)
+        irrelevant_charge.rsi_binding = 'x'
+        irrelevant_charge.rate = 4
+        irrelevant_charge.utilbill = bill_2
+        bill_2.charges = [charge_2, irrelevant_charge]
+        self.assertIs(charge_2, self.fpm.get_closest_occurrence_of_charge(b))
+
 
     # TODO test that the bill whose charges are being generated is ignored when
     # collecting the set of bills to generate charges
