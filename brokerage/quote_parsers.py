@@ -2,6 +2,7 @@
 quotes.
 """
 from abc import ABCMeta, abstractmethod
+from itertools import chain
 import re
 from datetime import datetime, timedelta, date
 
@@ -420,15 +421,16 @@ class USGEMatrixParser(QuoteParser):
         'PA',
         'CheatSheet',
     ]
-    EXPECTED_CELLS = [
-        ('PA', 2, 2, 'Pricing Date'),
-        ('PA', 3, 2, 'Valid Thru'),
-        ('PA', HEADER_ROW, 0, 'LDC'),
-        ('PA', HEADER_ROW, 1, 'Customer Type'),
-        ('PA', HEADER_ROW, 2, 'RateClass'),
-        ('PA', HEADER_ROW, 3, 'Annual Usage Tier'),
-        ('PA', HEADER_ROW, 4, 'UOM'),
-    ]
+    EXPECTED_CELLS = list(chain.from_iterable([
+            (sheet, 2, 2, 'Pricing Date'),
+            (sheet, 3, 2, 'Valid Thru'),
+            (sheet, 5, 0, 'LDC'),
+            (sheet, 5, 1, 'Customer Type'),
+            (sheet, 5, 2, 'RateClass'),
+            (sheet, 5, 3, 'Annual Usage Tier'),
+            (sheet, 5, 4, '(UOM)|(Zone)'),
+    ] for sheet in ['KY', 'MD', 'NJ', 'NY', 'OH', 'PA']))
+
     DATE_CELL = ('PA', 2, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
