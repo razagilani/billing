@@ -458,7 +458,8 @@ class USGEMatrixParser(QuoteParser):
                 term_start_col = 6
                 term_end_col = 28
 
-            for row in xrange(self.RATE_START_ROW, self._reader.get_height(sheet) + 1):
+            for row in xrange(self.RATE_START_ROW,
+                              self._reader.get_height(sheet) + 1):
                 utility = self._reader.get(sheet, row, self.UTILITY_COL,
                                            (basestring, type(None)))
                 if utility is None:
@@ -469,13 +470,7 @@ class USGEMatrixParser(QuoteParser):
                 min_volume, limit_volume = self._extract_volume_range(
                     sheet, row, self.VOLUME_RANGE_COL)
 
-                for term_col in xrange(term_start_col, term_end_col + 1,
-                                       7):
-                    # # skip blank column
-                    # if self._reader.get(sheet, self.HEADER_ROW, term_col,
-                    #                     object) is None:
-                    #     continue
-
+                for term_col in xrange(term_start_col, term_end_col + 1, 7):
                     term = self._reader.get_matches(
                         sheet, self.TERM_HEADER_ROW, term_col,
                         '(\d+) Months Beginning in:', int)
@@ -483,19 +478,18 @@ class USGEMatrixParser(QuoteParser):
                     for i in xrange(term_col, term_col + 6):
                         start_from = self._reader.get(sheet, self.HEADER_ROW,
                                                       i, (type(None),datetime))
-
-                        print i, start_from
                         if start_from is None:
                             continue
 
                         start_until = date_to_datetime(
                             (Month(start_from) + 1).first)
-                        price = self._reader.get(sheet, row, i, (float, type(None)))
+                        price = self._reader.get(sheet, row, i,
+                                                 (float, type(None)))
 
                         yield MatrixQuote(
                             start_from=start_from, start_until=start_until,
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
-                            purchase_of_receivables=False,rate_class_alias=rate_class,
-                            price=price)
+                            purchase_of_receivables=False,
+                            rate_class_alias=rate_class, price=price)

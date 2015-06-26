@@ -43,7 +43,8 @@ class DirectEnergyParserTest(TestCase):
 
 
 class USGEMatrixParserTest(TestCase):
-    EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage', 'Matrix 2a Example - USGE.xlsx')
+    EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
+                                  'Matrix 2a Example - USGE.xlsx')
 
     def setUp(self):
         self.parser = USGEMatrixParser()
