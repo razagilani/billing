@@ -61,7 +61,9 @@ class USGEMatrixParserTest(TestCase):
             print quote
             quote.validate()
 
-    # since there are so many, only check one
+        self.assertEqual(480,len(quotes))
+
+        # since there are so many, only check one
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
