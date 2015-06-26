@@ -257,13 +257,13 @@ class FuzzyPricingModelTest(unittest.TestCase):
         self.assertEqual(None, self.fpm.get_closest_occurrence_of_charge(
             self.charge_b_shared))
 
+        # one other bill contains a charge called "b"
         new_bill = deepcopy(self.u)
         new_bill.id = 2
         b.utilbill = new_bill
         new_bill.charges = [b]
         self.assertEqual(self.charge_b_shared,
                          self.fpm.get_closest_occurrence_of_charge(b))
-
 
     # TODO test that the bill whose charges are being generated is ignored when
     # collecting the set of bills to generate charges
