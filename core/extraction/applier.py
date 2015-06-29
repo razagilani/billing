@@ -29,6 +29,7 @@ class Applier(object):
         :param bill: A UtilBill object
         :param rate_class_name:  A string, the name of the rate class
         """
+        rate_class_name = rate_class_name.strip()
         s = Session()
         bill_util = bill.get_utility()
         if bill_util is None:
@@ -55,22 +56,18 @@ class Applier(object):
             charge.unit = unit
         bill.charges = charges
 
-    BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
     RATE_CLASS = 'rate class'
-    SERVICE_ADDRESS = 'service address'
     START = 'start'
     KEYS = {
-        BILLING_ADDRESS: model.UtilBill.billing_address,
         CHARGES: set_charges.__func__,
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
         RATE_CLASS: set_rate_class.__func__,
-        SERVICE_ADDRESS: model.UtilBill.service_address,
         START: model.UtilBill.period_start,
     }
     # TODO:
@@ -103,13 +100,17 @@ class Applier(object):
 
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
-            if hasattr(utilbill, attr.__name__):
+            if hasattr(self.__class__, attr.__name__):
+                # method of this class (takes precedence over UtilBill method
+                # with the same name)
+                apply = lambda: attr(utilbill, value)
+            elif hasattr(utilbill, attr.__name__):
                 method = getattr(utilbill, attr.__name__)
                 # method of UtilBill
                 apply = lambda: method(value)
             else:
-                # other callable, such as method of this class.
-                # it must take a UtilBill and the value to apply.
+                # other callable. it must take a UtilBill and the value to
+                # apply.
                 apply = lambda: attr(utilbill, value)
         else:
             # non-method attribute
@@ -131,10 +132,16 @@ class Applier(object):
             apply = lambda: setattr(utilbill, attr_name, value)
 
         # do it
+        s = Session()
         try:
             apply()
+            # catch database errors here too
+            s.flush()
         except Exception as e:
             raise ApplicationError('%s: %s' % (e.__class__, e.message))
+        finally:
+            s.flush()
+
 
 
 def convert_wg_charges_std(text):
@@ -328,41 +335,6 @@ def pep_new_convert_charges(text):
         charges.extend([process_charge(c, charge_type) for c in charge_exp.findall(charge_text)])
 
     return charges
-
-
-def convert_address(text):
-    '''
-    Given a string containing an address, parses the address into an Address object in the database.
-    '''
-    #matches city, state, and zip code
-    regional_exp = r'(\w+)\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
-    #for attn: line in billing addresses
-    attn_co_exp = r"(?:(?:attn:?|C/?O) )+(.*)$$"
-    #A PO box, or a line that starts with a number
-    street_exp = r"(\d+.*$|PO BOX \d+)"
-
-    addressee = city = state = postal_code = None
-    lines = re.split("\n+", text, re.MULTILINE)
-
-    for line in lines:
-        #if line has "attn:" in it, this is the addresse
-        match = re.search(attn_co_exp, line, re.IGNORECASE)
-        if match:
-            addressee = match.group(1)
-            continue
-        #if it a po box or starts with a number, this line is a street address
-        match = re.search(street_exp, line, re.IGNORECASE)
-        if match:
-            street = match.group(1)
-            continue
-        # check if this line contains city/state/zipcode
-        match = re.search(regional_exp, line, re.IGNORECASE)
-        if match:
-            city, state, postal_code = match.groups
-            continue
-        #if none of the above patterns match, assume that this line is the addresse
-        addressee = line
-    return Address(addressee=addressee, street=street, city=city, state=state, postal_code=postal_code)
 
 
 def convert_rate_class(text):
