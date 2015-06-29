@@ -67,10 +67,15 @@ class Applier(object):
         bill.charges = charges
 
         for charge in charges:
+            charge.unit = unit
+
+            # if there is a "closest occurrence", always copy the formula
+            # from it, but only copy the rate if was not already extracted
             other_charge = fpm.get_closest_occurrence_of_charge(charge)
             if other_charge is not None:
                 charge.formula = other_charge.formula
-            charge.unit = unit
+                if charge.rate is None:
+                    charge.rate = other_charge.rate
 
     CHARGES = 'charges'
     END = 'end'
