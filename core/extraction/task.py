@@ -2,7 +2,7 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Main, Applier, Extractor, ExtractorResult
+from core.extraction import Main, Extractor, ExtractorResult, Applier
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 from core import init_config, init_celery, init_model
