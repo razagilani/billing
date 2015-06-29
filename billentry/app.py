@@ -34,7 +34,8 @@ from celery.result import GroupResult
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config, init_celery
-from core.extraction.extraction import Extractor, Applier, ExtractorResult
+from core.extraction import Extractor, ExtractorResult
+from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
 from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
