@@ -469,7 +469,7 @@ class UtilbillProcessor(object):
         passed as keyword arguments to the charge"""
         utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         utilbill.check_editable()
-        charge = utilbill.add_charge(charge_kwargs, self.pricing_model)
+        charge = utilbill.add_charge(charge_kwargs)
         self.compute_utility_bill(utilbill_id)
         return charge
 
