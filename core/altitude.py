@@ -33,7 +33,11 @@ class AltitudeUtility(Base):
     utility_id = Column('utility_id', Integer(), ForeignKey('utility.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    utility = relationship('Utility')
+    utility = relationship(
+        'Utility',
+        # delete-orphan so AltitudeUtilities go away when their Utility is
+        # deleted, instead of preventing Utilities from being deleted.
+        backref=backref('altitude_utility', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
@@ -52,7 +56,11 @@ class AltitudeSupplier(Base):
     supplier_id = Column('supplier_id', Integer(), ForeignKey('supplier.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    supplier = relationship('Supplier')
+    supplier = relationship(
+        'Supplier',
+        # delete-orphan so AltitudeSupplierss go away when their Supplier is
+        # deleted, instead of preventing Suppliers from being deleted.
+        backref=backref('altitude_supplier', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
@@ -73,7 +81,12 @@ class AltitudeAccount(Base):
     utility_account_id = Column('utility_account_id', Integer(),
                         ForeignKey('utility_account.id'), nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    utility_account = relationship('UtilityAccount')
+    utility_account = relationship(
+        'UtilityAccount',
+        # delete-orphan so AltitudeAccounts go away when their UtilityAccount
+        #  is  deleted, instead of preventing Utility Accounts from being
+        # deleted.
+        backref=backref('altitude_account', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
