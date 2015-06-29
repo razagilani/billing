@@ -11,7 +11,9 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier, Register
-from brokerage.export_altitude import PGAltitudeExporter
+from brokerage.brokerage_model import BrokerageAccount
+from brokerage.export_altitude import PGAltitudeExporter, \
+    _create_brokerage_accounts_for_utility_accounts, _load_pg_utilbills
 from test import init_test_config, clear_db, create_tables
 from util.dateutils import ISO_8601_DATETIME
 
@@ -20,6 +22,36 @@ def setUpModule():
     init_test_config()
     create_tables()
     init_model()
+
+class TestUtilityAccountLoaderMethods(TestCase):
+
+    def setUp(self):
+        clear_db()
+        self.utility = Utility('test utility')
+        self.supplier = Supplier(name='test supplier')
+        self.rate_class = RateClass(name='test rate class',
+                                    utility=self.utility)
+
+    def test_create_brokerage_accounts_for_utility_accounts(self):
+        ua1 = UtilityAccount('', '20022', self.utility, self.supplier,
+                             self.rate_class, Address(), Address())
+        ua2 = UtilityAccount('', '20023', self.utility, self.supplier,
+                             self.rate_class, Address(), Address())
+        Session().add_all([ua1, ua2])
+
+        _create_brokerage_accounts_for_utility_accounts()
+        ba1 = Session().query(BrokerageAccount).filter(
+            BrokerageAccount.utility_account==ua1).one()
+        ba2 = Session().query(BrokerageAccount).filter(
+            BrokerageAccount.utility_account==ua2).one()
+        self.assertEqual(ba1.utility_account, ua1)
+        self.assertEqual(ba2.utility_account, ua2)
+
+
+    def test_load_pg_utilbills(self):
+        # Just excecise the code
+        _load_pg_utilbills().all()
+
 
 class TestExportAltitude(TestCase):
     def setUp(self):

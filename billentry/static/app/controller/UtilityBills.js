@@ -183,14 +183,9 @@ Ext.define('BillEntry.controller.UtilityBills', {
      * When rate_class combo is selected in the UI
      */
     handleRateClassComboFocus: function(combo) {
-        var utility_bill_grid = combo.findParentByType('grid');
-        var selected = utility_bill_grid.getSelectionModel().getSelection()[0];
-        var utilities_store = this.getUtilitiesStore();
-        var utility = utilities_store.findRecord('name', selected.get('utility'));
-        var rate_classes_store = this.getRateClassesStore();
-        rate_classes_store.clearFilter(true);
-        rate_classes_store.filter({property:"utility_id", type: 'int',
-                                    value: utility.get('id'), exactMatch:true});
+        var utility_grid = combo.findParentByType('grid');
+        var selected = utility_grid.getSelectionModel().getSelection()[0];
+        combo.setRawValue(selected.get('rate_class'));
     },
 
     /*

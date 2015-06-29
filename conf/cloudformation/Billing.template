@@ -55,12 +55,12 @@
     "NexusWebSecurityGroup" : {
       "Type" : "String",
       "Default" : "",
-      "Description" : "(Required) Security group for Mongo database host"
+      "Description" : "(Optional) Security group for Nexus Mongo database host"
     },
     "OlapSecurityGroup" : {
       "Type" : "String",
       "Default" : "",
-      "Description" : "(Required) Security group for Olap Mongo database host"
+      "Description" : "(Optional) Security group for Olap Mongo database host"
     },
     "EbsVolumeSize" : {
       "Type" : "Number",
@@ -85,6 +85,10 @@
       "Type" : "String",
       "Description" : "Target environment of stack"
     }
+  },
+  "Conditions":{
+    "CreateNexusWebIngressRules" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "NexusWebSecurityGroup"}, ""]}]},
+    "CreateOlapIngressRules" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "OlapSecurityGroup"}, ""]}]}
   },
   "Mappings" : {
     "AWSInstanceType2Arch" : {
@@ -198,6 +202,7 @@
     },
     "OlapIngressRule" : {
       "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Condition" : "CreateOlapIngressRules",
       "Properties" : {
         "GroupId" : {"Ref" : "OlapSecurityGroup"},
         "FromPort" : 27017,
@@ -208,6 +213,7 @@
     },
     "NexusWebIngressRule" : {
       "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Condition" : "CreateNexusWebIngressRules",
       "Properties" : {
         "GroupId" : {"Ref" : "NexusWebSecurityGroup"},
         "FromPort" : 80,

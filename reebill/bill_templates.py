@@ -1931,3 +1931,4 @@ if __name__ == '__main__':
         elif args.skin_name == "summary":
             doc = SummaryBillDoc()
         doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
+
