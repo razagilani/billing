@@ -17,6 +17,7 @@ from core import model
 # from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
+from util.pdf import PDFUtil
 
 
 class Main(object):
@@ -655,7 +656,8 @@ class TextExtractor(Extractor):
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
         """
-        return utilbill.get_text(bill_file_handler)
+        return utilbill.get_text(bill_file_handler, PDFUtil())
+
 
 class LayoutExtractor(Extractor):
     """
