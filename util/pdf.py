@@ -1,4 +1,4 @@
-from io import StringIO
+from io import BytesIO
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
@@ -10,13 +10,13 @@ from pyPdf import PdfFileWriter, PdfFileReader
 class PDFUtil(object):
     """Misc methods for working with PDF file contents.
     """
-    def get_pdf_text(pdf_file):
+    def get_pdf_text(self, pdf_file):
         """Get all text from a PDF file.
         :param pdf_file: file object
         """
         pdf_file.seek(0)
         rsrcmgr = PDFResourceManager()
-        outfile = StringIO()
+        outfile = BytesIO()
         laparams = LAParams()  # Use this to tell interpreter to capture newlines
         # laparams = None
         device = TextConverter(rsrcmgr, outfile, codec='utf-8',
