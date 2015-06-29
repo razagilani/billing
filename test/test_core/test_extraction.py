@@ -110,8 +110,11 @@ class ExtractorTest(TestCase):
             self.utilbill, self.bill_file_handler, self.applier)
         self.assertEqual(1, count)
         self.assertEqual(2, len(errors))
-        self.assertIsInstance(errors[0], ExtractionError)
-        self.assertIsInstance(errors[1], ApplicationError)
+        applier_keys, exceptions = zip(*errors)
+        self.assertEqual(('b', 'c'), applier_keys)
+        self.assertIsInstance(exceptions[0], ExtractionError)
+        self.assertIsInstance(exceptions[1], ApplicationError)
+
 
 class TextFieldTest(TestCase):
     def setUp(self):
@@ -130,6 +133,7 @@ class TextFieldTest(TestCase):
         with self.assertRaises(ConversionError):
             print self.field.get_value('Somemonth 0, 7689')
 
+
 class TextExtractorTest(TestCase):
     def setUp(self):
         self.text = 'Bill Text 1234.5 More Text  '
@@ -140,6 +144,7 @@ class TextExtractorTest(TestCase):
 
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
+
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
