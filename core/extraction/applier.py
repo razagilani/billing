@@ -2,12 +2,15 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
+from collections import OrderedDict
 import re
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 from core import model
 from core.model import Session, RateClass, Utility, Charge, Address
+from core.pricing import FuzzyPricingModel
+from core.utilbill_loader import UtilBillLoader
 from exc import ApplicationError
 
 
@@ -52,9 +55,22 @@ class Applier(object):
         if unit is None:
             unit = 'kWh'
 
-        for charge in charges:
-            charge.unit = unit
+        # use FuzzyPricingModel to find nearby occurrences of the same charge
+        # in bills with the same rate class/supplier/supply group, to copy
+        # the formula from them. this will only work if the rate
+        # class/supplier/supply group and period dates are known (if
+        # extracted they must be applied before charges).
+        fpm = FuzzyPricingModel(UtilBillLoader())
+
+        # charges must be associated with UtilBill for
+        # get_closest_occurrence_of_charge to work below
         bill.charges = charges
+
+        for charge in charges:
+            other_charge = fpm.get_closest_occurrence_of_charge(charge)
+            if other_charge is not None:
+                charge.formula = other_charge.formula
+            charge.unit = unit
 
     CHARGES = 'charges'
     END = 'end'
@@ -62,14 +78,17 @@ class Applier(object):
     NEXT_READ = 'next read'
     RATE_CLASS = 'rate class'
     START = 'start'
-    KEYS = {
-        CHARGES: set_charges.__func__,
-        END: model.UtilBill.period_end,
-        ENERGY: model.UtilBill.set_total_energy,
-        NEXT_READ: model.UtilBill.set_next_meter_read_date,
-        RATE_CLASS: set_rate_class.__func__,
-        START: model.UtilBill.period_start,
-    }
+
+    # values must be applied in a certain order because some are needed in
+    # order to apply others (e.g. rate class is needed for energy and charges)
+    KEYS = OrderedDict([
+        (START, model.UtilBill.period_start),
+        (END, model.UtilBill.period_end),
+        (NEXT_READ, model.UtilBill.set_next_meter_read_date),
+        (RATE_CLASS, set_rate_class.__func__),
+        (ENERGY, model.UtilBill.set_total_energy),
+        (CHARGES, set_charges.__func__),
+    ])
     # TODO:
     # target_total (?)
     # supplier
@@ -85,6 +104,12 @@ class Applier(object):
 
     def __init__(self, keys):
         self.keys = keys
+
+    def get_keys(self):
+        """:return: list of keys (strings) in the order they should be
+        applied. (Not necessarily the 'KEYS' of the default Applier.)
+        """
+        return self.keys.keys()
 
     def apply(self, key, value, utilbill):
         """Set the value of a UtilBill attribute. Raise ApplicationError if
