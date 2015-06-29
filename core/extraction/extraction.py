@@ -3,6 +3,7 @@ from io import StringIO
 import re
 
 from dateutil import parser as dateutil_parser
+from flask import logging
 from sqlalchemy import Column, Integer, Float, ForeignKey, String, Enum, \
     UniqueConstraint, DateTime, func
 from sqlalchemy.dialects.postgresql import HSTORE
@@ -19,13 +20,13 @@ from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 from util.pdf import PDFUtil
 
-
 class Main(object):
     """Handles everything about the extraction process for a particular bill.
     Consumers only need to use this.
     """
     def __init__(self, bill_file_handler):
         self._bill_file_handler = bill_file_handler
+        self.log = logging.getLogger()
 
     def extract(self, utilbill):
         """Update the given bill with data extracted from its file. An
@@ -41,10 +42,21 @@ class Main(object):
             utilbill, self._bill_file_handler))
 
         # values are cached so it's OK to call this repeatedly
-        best_extractor.apply_values(utilbill, self._bill_file_handler,
-                                    Applier.get_instance())
-
+        success_count, errors = best_extractor.apply_values(
+            utilbill, self._bill_file_handler, Applier.get_instance())
         utilbill.date_extracted = datetime.utcnow()
+        error_list_str = '\n'.join(('Field "%s": %s: %s' % (
+            key, exception.__class__.__name__, exception.message)) for
+                                   (key, exception) in errors)
+        self.log.info(
+            'Applied extractor %(eid)s "%(ename)s" to bill %(bid)s from %('
+            'utility)s %(start)s - %(end)s received %(received)s: '
+            '%(success)s/%(total)s fields\n%(errors)s' % dict(
+                eid=best_extractor.extractor_id, ename=best_extractor.name,
+                utility=utilbill.get_utility_name(), bid=utilbill.id,
+                start=utilbill.period_start, end=utilbill.period_end,
+                received=utilbill.date_received, success=success_count,
+                total=success_count + len(errors), errors=error_list_str))
 
     def test_extractor(self, extractor, utilbills):
         """Check performance of the given Extractor on the given set of bills.
@@ -577,9 +589,9 @@ class Extractor(model.Base):
         """
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler
-        :return: list of (field, extracted value) pairs for fields that
-        succeeded in extracted values, and list of ExtractionErrors for fields
-        that failed.
+        :return: list of (applier key, extracted value) pairs for fields that
+        succeeded in extracted values, and list of (applier key,
+        ExtractionError) pairs for fields that failed.
         """
         self._input = self._prepare_input(utilbill, bill_file_handler)
         good, errors = [], []
@@ -587,9 +599,9 @@ class Extractor(model.Base):
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
-                errors.append(error)
+                errors.append((field.applier_key, error))
             else:
-                good.append((field, value))
+                good.append((field.applier_key, value))
         return good, errors
 
     def get_success_count(self, utilbill, bill_file_handler):
@@ -613,11 +625,11 @@ class Extractor(model.Base):
         """
         good, errors = self._get_values(utilbill, bill_file_handler)
         success_count = 0
-        for field, value in good:
+        for applier_key, value in good:
             try:
-                applier.apply(field.applier_key, value, utilbill)
+                applier.apply(applier_key, value, utilbill)
             except ApplicationError as error:
-                errors.append(error)
+                errors.append((applier_key, error))
             else:
                 success_count += 1
         return success_count, errors
@@ -648,7 +660,7 @@ class TextExtractor(Extractor):
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
-                        self.regex, text[:20]))
+                        self.regex, text.strip()[:20]))
             return m.groups()[0]
 
     #fields = relationship(TextField, backref='extractor')
