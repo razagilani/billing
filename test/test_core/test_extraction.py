@@ -207,26 +207,34 @@ class TestIntegration(TestCase):
         e1 =  TextExtractor(name='Example')
         date_format = r'[A-Za-z]+\s*[0-9]{1,2},\s*[0-9]{4}'
         num_format = r'[0-9,\.]+'
+        wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
+        wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
+        wg_energy_regex = r"Distribution Charge\s+(%s)" % num_format
+        wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % \
+                                   date_format
+        wg_charges_regex = r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas ' \
+                           r'Charges This Period|the easiest way to pay))'
+        #wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+(.*\n)\n\n.*'
+        # wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+^(.*)$^.*$Next read date'
+        wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+([^\n]+).*Next read date'
+        tf = TextExtractor.TextField
         e1.fields = [
-            TextExtractor.TextField(
-                regex=r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format),
-                type=Field.DATE, applier_key='start'),
-            TextExtractor.TextField(regex=r'%s-(%s)\s*\(\d+ Days\)' % (
-                date_format, date_format),
-                type=Field.DATE, applier_key='end'),
-            TextExtractor.TextField(
-                regex=r"Distribution Charge\s+(%s)" % num_format,
-                type=Field.FLOAT, applier_key='energy'),
-            TextExtractor.TextField(regex=r'Your next meter reading date is ('
-                                          r'%s)' % date_format,
-                type=Field.DATE, applier_key='next read'),
-            TextExtractor.TextField(regex=r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))',
-                           type=Field.WG_CHARGES, applier_key='charges')
+            TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE,
+                                    applier_key=Applier.START),
+            TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE,
+                                    applier_key=Applier.END),
+            TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT,
+                                    applier_key=Applier.ENERGY),
+            TextExtractor.TextField(regex=wg_next_meter_read_regex,
+                                    type=Field.DATE,
+                                    applier_key=Applier.NEXT_READ),
+            TextExtractor.TextField(regex=wg_charges_regex,
+                                    type=Field.WG_CHARGES,
+                                    applier_key=Applier.CHARGES),
+            TextExtractor.TextField(regex=wg_rate_class_regex,
+                                    type=Field.STRING,
+                                    applier_key=Applier.RATE_CLASS),
         ]
-        # wg_service_address_regex = r'(?:Days\)|Service address:)\s+(.+?)\s+(?:Questions|Please)'
-        # # for billing address, before "check here to donate", get all characters that are not a double newline
-        # wg_billing_address_regex = r'\n\n([^\n]|\n(?!\n))*\n\nCheck here to donate'
-        # wg_rate_class_regex = r'rate class:\s+meter number:\s+([^\n]+)'
 
         e2 = TextExtractor(name='Another')
         Session().add_all([self.bill, e1, e2])
@@ -263,7 +271,16 @@ class TestIntegration(TestCase):
                    type=D, unit='therms'),
             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
                    unit='therms')]
-        self.assertEqual(expected, self.bill.charges)
+        for expected_charge, actual_charge in zip(expected, self.bill.charges):
+            self.assertEqual(expected_charge.rsi_binding,
+                             actual_charge.rsi_binding)
+            self.assertEqual(expected_charge.name, actual_charge.name)
+            self.assertEqual(expected_charge.rate, actual_charge.rate)
+            self.assertEqual(expected_charge.target_total,
+                             actual_charge.target_total)
+
+        self.assertEqual('Commercial and Industrial Non-heating/Non-cooling',
+                         self.bill.get_rate_class_name())
         self.assertIsInstance(self.bill.date_extracted, datetime)
 
     @skip('not working yet')

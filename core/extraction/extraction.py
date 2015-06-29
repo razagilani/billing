@@ -15,8 +15,8 @@ from sqlalchemy.orm import relationship, object_session, \
 
 from core import model
 from core.extraction.applier import Applier, convert_wg_charges_std, \
-    convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
-    convert_address
+    convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges
+from core.model import Address, Session
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
@@ -116,7 +116,6 @@ class Field(model.Base):
 
     # various functions can be used to convert strings into other types. each
     #  one has a name so it can be stored in the database.
-    ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
     STRING = 'string'
@@ -125,7 +124,6 @@ class Field(model.Base):
     PEPCO_OLD_CHARGES = 'pepco old charges'
     PEPCO_NEW_CHARGES = 'pepco new charges'
     TYPES = {
-        ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
         STRING: unicode,
@@ -303,6 +301,8 @@ class TextExtractor(Extractor):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
+            # TODO: DOTALL should not be used because there is no way to
+            # match any character except newlines
             m = re.search(self.regex, text,
                           re.IGNORECASE | re.DOTALL | re.MULTILINE)
             if m is None or len(m.groups()) != 1:
