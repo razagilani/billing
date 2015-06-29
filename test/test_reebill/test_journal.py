@@ -5,12 +5,13 @@ from datetime import date, datetime, timedelta
 from time import sleep
 from reebill import journal
 from util.dateutils import ISO_8601_DATE
-from test import testing_utils, init_test_config
+from test import testing_utils, init_test_config, create_tables
 from core import init_model
 
 
 def setUpModule():
     init_test_config()
+    create_tables()
     init_model()
     mongoengine.connect('test', host='localhost', port=27017, alias='journal')
 

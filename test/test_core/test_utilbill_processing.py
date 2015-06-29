@@ -66,8 +66,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             }
         # Create new account "88888" based on template account "99999",
         # which was created in setUp
-        init_test_config()
-        init_model()
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
             service_address, '100000', '12345', 'test')
