@@ -1,0 +1,111 @@
+<html>
+<head>
+	<title>Extractor Testing UI</title>
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='extractor-ui/style.css') }}">
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script src="{{ url_for('static', filename='extractor-ui/extractor-ui.js') }}"> </script>
+</head>
+
+<body>
+	<h1>Test Extractors</h1>
+	<h3>Current Extractors in Database:</h3>
+	<form>
+
+	<div id="extractorpane">
+		<table id="extractors">
+			<thead>
+				<tr>
+					<td class="check"></td>
+					<td class="id">ID</td>
+					<td>Name</td>
+					<td>Filter</td>
+				</tr>
+			</thead>
+			<tbody>
+				{% for exc in extractors %}
+				<tr>
+					<td class="check"><input type="checkbox" name="extractors" value=" {{ exc.extractor_id }} " /></td>
+					<td class="id"><b>{{ exc.extractor_id }}</b></td>
+					<td class="name">{{ exc.name }}</td>
+					<td class="filter">
+						<select name="{{ exc.extractor_id }}">
+							<option value="">-- no filter --</option>
+							{% for u in utilities %}
+							<option value="{{ u.id }}">{{ u.name }}</option>
+							{% endfor %}
+						</select>
+					</td>
+					<td class="run">
+						<button class="runbtn" name="{{ exc.extractor_id }}" type="button">Run</button>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<span style="line-height:200%">
+		<button type="button" onclick="selectAll()">Select All</button>
+		<button type="button" onclick="runSelected()" style="margin-right:0px">Run Selected</button>
+		<br>Limit Bills: <input type="number" name="num_bills" min="0">
+		<br>
+		Only get bills 
+		<select name="date_filter_type">
+			<option value="before">before</option>
+			<option value="after">after</option>
+		</select> 
+		the date (yyyy-mm-dd) <input type="text" name="filter_date">
+	</span>
+	</form>
+
+	<h3>There are {{ nbills }} total bills.</h3>
+	<h3>Results:</h3>
+	
+	<div id="resultpane">
+		<table id="results">
+			<thead>
+				<tr>
+					<td id="job_id">Job ID</td>
+					<td id="extractor_id">Extractor</td>
+					<td id="utility_name">Utility</td>
+					<td id="status">Status</td>
+					<td id="bills_to_run">Bills to run</td>
+					<td id="total_count">Total so far</td>
+					<td id="all_count">Bills with <i>all</i> fields read</td>
+					<td id="any_count">Bills with <i>any</i> fields read</td>
+					
+					{% for f in fields %}
+					<td class="field" id="{{ f }}">{{ f }}</td>
+					{% endfor %}
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+	<br>
+	<span id="detailed-results-span" style="display:none">
+		<h3>Detailed Results:</h3>
+		<div id="detailed-results-pane">
+			<table id="detailed-results">
+				<thead>
+					<tr>
+						<td id="date">Date</td>
+						<td id="total_count">Total so far</td>
+						<td id="all_count"># <i>all</i> fields read</td>
+						<td id="any_count"># <i>any</i> fields read</td>
+						<td id="percentage">% (any/total)</td>
+						{% for f in fields %}
+						<td class="field" id="{{ f }}">{{ f }}</td>
+						{% endfor %}
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</span>
+	<br>
+ 	<button type="button" onclick="updateStatus()">Refresh</button>
+</body>
+
+</html>
