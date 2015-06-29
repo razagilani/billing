@@ -14,8 +14,6 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 
 from core import model
-# from core.extraction import layout
-# from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
 from util.pdf import PDFUtil
@@ -670,66 +668,6 @@ class TextExtractor(Extractor):
         """
         return utilbill.get_text(bill_file_handler, PDFUtil())
 
-
-class LayoutExtractor(Extractor):
-    """
-    Extracts data about a bill based on the layout of text in the PDF
-    """
-    __mapper_args__ = {'polymorphic_identity': 'layoutextractor'}
-
-    class BoundingBoxField(Field):
-        """
-        A field that extracts text that is within a given bounding box on the PDF
-        """
-        __mapper_args__ = {'polymorphic_identity': 'boundingboxfield'}
-
-        # First page is numbered 1, not 0
-        page_num = Column(Integer)
-        @declared_attr
-        def regex(cls):
-            "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
-
-        #bounding box coordinates
-        bbminx = Column(Float, nullable=True)
-        bbminy = Column(Float, nullable=True)
-        bbmaxx = Column(Float, nullable=True)
-        bbmaxy = Column(Float, nullable=True)
-
-        def __init__(self, *args, **kwargs):
-            super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
-
-        def _extract(self, pages):
-            if self.page_num > len(pages):
-                raise ExtractionError('Not enough pages. Could not get page '
-                                      '%d out of %d.' % (self.page_num,
-                len(pages)))
-
-            text = layout.get_text_from_boundingbox(pages[self.page_num - 1],
-                BoundingBox(minx=self.bbminx, miny=self.bbminy,
-                    maxx=self.bbmaxx, maxy=self.bbmaxy))
-
-            if not self.regex:
-                return text
-
-            m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None or len(m.groups()) != 1:
-                raise MatchError(
-                    'No match for pattern "%s" in text starting with "%s"' % (
-                        self.regex, text[:20]))
-            return m.groups()[0].strip()
-
-    #TODO
-    class TableField(Field):
-        """
-        A field that represents tabular data, within a given bounding box
-        Each row is extracted as a tuple of data
-        """
-
-    def _prepare_input(self, utilbill, bill_file_handler):
-        #TODO set up kdtree for faster object lookup
-        return utilbill.get_layout(bill_file_handler)
 
 class ExtractorResult(model.Base):
     __tablename__ = 'extractor_result'
