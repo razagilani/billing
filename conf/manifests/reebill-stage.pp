@@ -81,7 +81,7 @@ rabbit_mq::base_resource_configuration {$env:
     env => $env
 }
 cron { destage_from_production:
-    command => "source /home/reebill-stage.bash_profile && cd /var/local/reebill-stage/billing/scripts && python backup.py restore --scrub billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/reebill-stage/destage_stdout.log 2> /home/reebill-stage/destage_stderr.log",
+    command => "source /home/reebill-stage/.bash_profile && cd /var/local/reebill-stage/billing/scripts && python backup.py restore --scrub billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/reebill-stage/destage_stdout.log 2> /home/reebill-stage/destage_stderr.log",
     user => $username,
     hour => 1,
     minute => 0
