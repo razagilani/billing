@@ -10,10 +10,12 @@ from argparse import ArgumentParser
 from uuid import uuid4
 from core import init_config, init_model
 from core import altitude
-from brokerage.export_altitude import PGAltitudeExporter, _load_pg_utilbills
+from brokerage.export_altitude import PGAltitudeExporter, _load_pg_utilbills,\
+    _create_brokerage_accounts_for_utility_accounts
 
 if __name__ == '__main__':
     init_config()
     init_model()
+    _create_brokerage_accounts_for_utility_accounts()
     pgae = PGAltitudeExporter(uuid4, altitude)
     pgae.write_csv(_load_pg_utilbills(), stdout)
