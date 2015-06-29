@@ -110,8 +110,11 @@ class ExtractorTest(TestCase):
             self.utilbill, self.bill_file_handler, self.applier)
         self.assertEqual(1, count)
         self.assertEqual(2, len(errors))
-        self.assertIsInstance(errors[0], ExtractionError)
-        self.assertIsInstance(errors[1], ApplicationError)
+        applier_keys, exceptions = zip(*errors)
+        self.assertEqual(('b', 'c'), applier_keys)
+        self.assertIsInstance(exceptions[0], ExtractionError)
+        self.assertIsInstance(exceptions[1], ApplicationError)
+
 
 class TextFieldTest(TestCase):
     def setUp(self):
@@ -130,6 +133,7 @@ class TextFieldTest(TestCase):
         with self.assertRaises(ConversionError):
             print self.field.get_value('Somemonth 0, 7689')
 
+
 class TextExtractorTest(TestCase):
     def setUp(self):
         self.text = 'Bill Text 1234.5 More Text  '
@@ -140,6 +144,7 @@ class TextExtractorTest(TestCase):
 
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
+
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
@@ -239,24 +244,26 @@ class TestIntegration(TestCase):
         self.assertEqual(date(2014, 5, 15),
                          self.bill.get_next_meter_read_date())
         D, S = Charge.DISTRIBUTION, Charge.SUPPLY
-        self.assertEqual([
+        expected = [
             Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
-                   target_total=158.7, type=D),
+                   target_total=158.7, type=D, unit='therms'),
             Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
-                   type=D),
-            Charge('PGC', name='PGC', target_total=417.91, type=S),
+                   type=D, unit='therms'),
+            Charge('PGC', name='PGC', target_total=417.91, type=S,
+                   unit='therms'),
             Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
-                   target_total=15.79, type=D),
+                   target_total=15.79, type=D, unit='therms'),
             Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
-                   target_total=13.42, type=D),
+                   target_total=13.42, type=D, unit='therms'),
             Charge('SETF', name='Sustainable Energy Trust Fund',
-                   target_total=7.06, type=D),
+                   target_total=7.06, type=D, unit='therms'),
             Charge('EATF', name='Energy Assistance Trust Fund',
-                   target_total=3.03, type=D),
+                   target_total=3.03, type=D, unit='therms'),
             Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
-                   type=D),
-            Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D),
-        ], self.bill.charges)
+                   type=D, unit='therms'),
+            Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
+                   unit='therms')]
+        self.assertEqual(expected, self.bill.charges)
         self.assertIsInstance(self.bill.date_extracted, datetime)
 
     @skip('not working yet')

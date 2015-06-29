@@ -89,9 +89,9 @@ class PGAltitudeExporter(object):
                 'utility_guid': format_possible_none(
                     self._altitude_converter.get_guid_for_utility(
                         ub.get_utility())),
-                'supplier_guid': format_possible_none(
-                    self._altitude_converter.get_guid_for_supplier(
-                        ub.get_supplier())),
+                'supplier_guid':
+                    self._altitude_converter.get_or_create_guid_for_supplier(
+                        ub.get_supplier(), self._uuid_func, session),
                 'service_type': format_possible_none(ub.get_service()),
                 'utility_account_number': ub.get_utility_account_number(),
                 'billing_period_start_date':  format_date(ub.period_start),
