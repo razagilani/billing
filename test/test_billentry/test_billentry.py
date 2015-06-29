@@ -140,6 +140,7 @@ class BillEntryIntegrationTest(object):
 
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
+        create_tables()
         init_model()
 
         self.project_mgr_role = Role(
@@ -1295,6 +1296,7 @@ class TestUploadBills(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
         init_model()
         # these objects don't change during the tests, so they should be
         # created only once.

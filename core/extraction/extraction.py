@@ -1,7 +1,9 @@
 from datetime import datetime
+from io import StringIO
 import re
 
 from dateutil import parser as dateutil_parser
+from flask import logging
 from sqlalchemy import Column, Integer, Float, ForeignKey, String, Enum, \
     UniqueConstraint, DateTime, func
 from sqlalchemy.dialects.postgresql import HSTORE
@@ -16,7 +18,7 @@ from core import model
 #from core.extraction.layout import BoundingBox
 from core.model import Charge, Session, Utility, Address, RateClass
 from exc import MatchError, ConversionError, ExtractionError, ApplicationError
-
+from util.pdf import PDFUtil
 
 class Main(object):
     """Handles everything about the extraction process for a particular bill.
@@ -24,6 +26,7 @@ class Main(object):
     """
     def __init__(self, bill_file_handler):
         self._bill_file_handler = bill_file_handler
+        self.log = logging.getLogger()
 
     def extract(self, utilbill):
         """Update the given bill with data extracted from its file. An
@@ -39,10 +42,21 @@ class Main(object):
             utilbill, self._bill_file_handler))
 
         # values are cached so it's OK to call this repeatedly
-        best_extractor.apply_values(utilbill, self._bill_file_handler,
-                                    Applier.get_instance())
-
+        success_count, errors = best_extractor.apply_values(
+            utilbill, self._bill_file_handler, Applier.get_instance())
         utilbill.date_extracted = datetime.utcnow()
+        error_list_str = '\n'.join(('Field "%s": %s: %s' % (
+            key, exception.__class__.__name__, exception.message)) for
+                                   (key, exception) in errors)
+        self.log.info(
+            'Applied extractor %(eid)s "%(ename)s" to bill %(bid)s from %('
+            'utility)s %(start)s - %(end)s received %(received)s: '
+            '%(success)s/%(total)s fields\n%(errors)s' % dict(
+                eid=best_extractor.extractor_id, ename=best_extractor.name,
+                utility=utilbill.get_utility_name(), bid=utilbill.id,
+                start=utilbill.period_start, end=utilbill.period_end,
+                received=utilbill.date_received, success=success_count,
+                total=success_count + len(errors), errors=error_list_str))
 
     def test_extractor(self, extractor, utilbills):
         """Check performance of the given Extractor on the given set of bills.
@@ -97,6 +111,21 @@ class Applier(object):
             rate_class = RateClass(utility=bill_util, name=rate_class_name)
         bill.rate_class = rate_class
 
+    @staticmethod
+    def set_charges(bill, charges):
+        """Special function to apply a list of charges, because the a unit is
+        required and may not be known. If possible, get rid of this function.
+        """
+        unit = bill.get_total_energy_unit()
+
+        # unit will not be known if rate class is not set
+        if unit is None:
+            unit = 'kWh'
+
+        for charge in charges:
+            charge.unit = unit
+        bill.charges = charges
+
     BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
@@ -107,7 +136,7 @@ class Applier(object):
     START = 'start'
     KEYS = {
         BILLING_ADDRESS: model.UtilBill.billing_address,
-        CHARGES: model.UtilBill.charges,
+        CHARGES: set_charges.__func__,
         END: model.UtilBill.period_end,
         ENERGY: model.UtilBill.set_total_energy,
         NEXT_READ: model.UtilBill.set_next_meter_read_date,
@@ -145,14 +174,14 @@ class Applier(object):
 
         # figure out how to apply the value based on the type of the attribute
         if callable(attr):
-            method = getattr(utilbill, attr.__name__)
             if hasattr(utilbill, attr.__name__):
+                method = getattr(utilbill, attr.__name__)
                 # method of UtilBill
                 apply = lambda: method(value)
             else:
                 # other callable, such as method of this class.
                 # it must take a UtilBill and the value to apply.
-                apply = lambda: method(utilbill, value)
+                apply = lambda: attr(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
@@ -560,9 +589,9 @@ class Extractor(model.Base):
         """
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler
-        :return: list of (field, extracted value) pairs for fields that
-        succeeded in extracted values, and list of ExtractionErrors for fields
-        that failed.
+        :return: list of (applier key, extracted value) pairs for fields that
+        succeeded in extracted values, and list of (applier key,
+        ExtractionError) pairs for fields that failed.
         """
         self._input = self._prepare_input(utilbill, bill_file_handler)
         good, errors = [], []
@@ -570,9 +599,9 @@ class Extractor(model.Base):
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
-                errors.append(error)
+                errors.append((field.applier_key, error))
             else:
-                good.append((field, value))
+                good.append((field.applier_key, value))
         return good, errors
 
     def get_success_count(self, utilbill, bill_file_handler):
@@ -596,11 +625,11 @@ class Extractor(model.Base):
         """
         good, errors = self._get_values(utilbill, bill_file_handler)
         success_count = 0
-        for field, value in good:
+        for applier_key, value in good:
             try:
-                applier.apply(field.applier_key, value, utilbill)
+                applier.apply(applier_key, value, utilbill)
             except ApplicationError as error:
-                errors.append(error)
+                errors.append((applier_key, error))
             else:
                 success_count += 1
         return success_count, errors
@@ -631,7 +660,7 @@ class TextExtractor(Extractor):
             if m is None or len(m.groups()) != 1:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
-                        self.regex, text[:20]))
+                        self.regex, text.strip()[:20]))
             return m.groups()[0]
 
     #fields = relationship(TextField, backref='extractor')
@@ -639,67 +668,8 @@ class TextExtractor(Extractor):
     def _prepare_input(self, utilbill, bill_file_handler):
         """Return text dumped from the given bill's PDF file.
         """
-        return utilbill.get_text(bill_file_handler)
+        return utilbill.get_text(bill_file_handler, PDFUtil())
 
-class LayoutExtractor(Extractor):
-    """
-    Extracts data about a bill based on the layout of text in the PDF
-    """
-    __mapper_args__ = {'polymorphic_identity': 'layoutextractor'}
-
-    class BoundingBoxField(Field):
-        """
-        A field that extracts text that is within a given bounding box on the PDF
-        """
-        __mapper_args__ = {'polymorphic_identity': 'boundingboxfield'}
-
-        # First page is numbered 1, not 0
-        page_num = Column(Integer)
-        @declared_attr
-        def regex(cls):
-            "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
-
-        #bounding box coordinates
-        bbminx = Column(Float, nullable=True)
-        bbminy = Column(Float, nullable=True)
-        bbmaxx = Column(Float, nullable=True)
-        bbmaxy = Column(Float, nullable=True)
-
-        def __init__(self, *args, **kwargs):
-            super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
-
-        def _extract(self, pages):
-            if self.page_num > len(pages):
-                raise ExtractionError('Not enough pages. Could not get page '
-                                      '%d out of %d.' % (self.page_num,
-                len(pages)))
-
-            text = layout.get_text_from_boundingbox(pages[self.page_num - 1],
-                BoundingBox(minx=self.bbminx, miny=self.bbminy,
-                    maxx=self.bbmaxx, maxy=self.bbmaxy))
-
-            if not self.regex:
-                return text
-
-            m = re.search(self.regex, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None or len(m.groups()) != 1:
-                raise MatchError(
-                    'No match for pattern "%s" in text starting with "%s"' % (
-                        self.regex, text[:20]))
-            return m.groups()[0].strip()
-
-    #TODO
-    class TableField(Field):
-        """
-        A field that represents tabular data, within a given bounding box
-        Each row is extracted as a tuple of data
-        """
-
-    def _prepare_input(self, utilbill, bill_file_handler):
-        #TODO set up kdtree for faster object lookup
-        return utilbill.get_layout(bill_file_handler)
 
 class ExtractorResult(model.Base):
     __tablename__ = 'extractor_result'

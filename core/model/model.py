@@ -30,7 +30,8 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError, NoSuchBillException
+    UnEditableBillError, NotProcessable, BillingError, NoSuchBillException, \
+    MissingFileError
 from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
@@ -622,8 +623,8 @@ class UtilityAccount(Base):
         :return: UtilBill
         """
         g = (u for u in self.utilbills
-             if (processed is None or u.processed)
-             and (end is None or u.period_end <= end))
+             if (processed is None or u.processed) and (
+             end is None or (u.period_end is not None and u.period_end <= end)))
         try:
             return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
@@ -1257,6 +1258,16 @@ class UtilBill(Base):
             r for r in self._registers if r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
+    def get_total_energy_unit(self):
+        """:return: name of unit for measuring total energy (string), or None
+        if this is unknown, which will happen if the rate class is not known.
+        """
+        if self.rate_class is None:
+            assert self._registers == []
+            return None
+        total_register = self.get_register_by_binding(Register.TOTAL)
+        return total_register.unit
+
     def get_register_by_binding(self, register_binding):
         """Return the register whose register_binding is 'register_binding'.
         This should only be called by consumers that need to know about
@@ -1318,10 +1329,11 @@ class UtilBill(Base):
             return self.rate_class.service
         return None
 
-    def get_text(self, bill_file_handler):
+    def get_text(self, bill_file_handler, pdf_util):
         """Return text dump of the bill's PDF.
         :param bill_file_handler: used to get the PDF file (only if the text for
         this bill is not already cached).
+        :param pdf_util: PDFUtil object used to parse the PDF file
         """
         if self._text in (None, ''):
             infile = StringIO()
@@ -1329,27 +1341,8 @@ class UtilBill(Base):
                 bill_file_handler.write_copy_to_file(self, infile)
             except MissingFileError as e:
                 text = ''
-                print e
             else:
-                infile.seek(0)
-                rsrcmgr = PDFResourceManager()
-                outfile = StringIO()
-                laparams = LAParams()  # Use this to tell interpreter to capture newlines
-                # laparams = None
-                device = TextConverter(rsrcmgr, outfile, codec='utf-8',
-                    laparams=laparams)
-                interpreter = PDFPageInterpreter(rsrcmgr, device)
-                try:
-                    for page in PDFPage.get_pages(infile, set(),
-                            check_extractable=True):
-                        interpreter.process_page(page)
-                except PDFSyntaxError:
-                    text = ''
-                else:
-                    outfile.seek(0)
-                    text = outfile.read()
-                    text = unicode(text, errors='ignore')
-                device.close()
+                text = pdf_util.get_pdf_text(infile)
             self._text = text
         return self._text
 
@@ -1368,6 +1361,8 @@ class UtilBill(Base):
         except MissingFileError as e:
             print e
         else:
+            # TODO: code for parsing PDF files probably doesn't belong in
+            # UtilBill; maybe in BillFileHandler or extraction
             infile.seek(0)
             parser = PDFParser(infile)
             document = PDFDocument(parser)
