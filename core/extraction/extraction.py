@@ -23,6 +23,7 @@ from util.pdf import PDFUtil
 __all__ = [
     'Main',
     'Extractor',
+    'Field',
     'TextExtractor',
     'ExtractorResult'
 ]

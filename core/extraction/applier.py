@@ -39,7 +39,7 @@ class Applier(object):
             rate_class = q.one()
         except NoResultFound:
             rate_class = RateClass(utility=bill_util, name=rate_class_name)
-        bill.rate_class = rate_class
+        bill.set_rate_class(rate_class)
 
     @staticmethod
     def set_charges(bill, charges):
