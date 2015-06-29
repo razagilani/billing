@@ -8,8 +8,9 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 from brokerage.brokerage_model import MatrixQuote, CompanyPGSupplier
-from core.extraction.extraction import Field, TextExtractor
-from core.extraction.extraction import Applier
+from core.extraction import Field, TextExtractor
+from core.extraction.text import TextExtractor
+from core.extraction.applier import Applier
 from core.model import Supplier, Utility, AltitudeSession
 
 from core import init_model, init_altitude_db
