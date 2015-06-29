@@ -261,9 +261,9 @@ class FuzzyPricingModel(PricingModel):
     def get_closest_occurrence_of_charge(self, charge):
         """
         :param charge: Charge (must be associated with a UtilBill)
-        :return: the charge with the given rsi_binding whose bill's period is
-        closest to the bill of the given charge, or None if no occurrences
-        were found.
+        :return: a charge with the same rsi_binding as the given charge, whose
+        bill's period is closest to the bill of the given one, or None if no
+        occurrences were found.
         """
         utilbill = charge.utilbill
         assert charge.utilbill is not None
