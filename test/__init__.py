@@ -34,6 +34,9 @@ def create_tables():
     uri = config.get('db', 'uri')
     engine = create_engine(uri, echo=config.get('db', 'echo'))
 
+    # blank database has hstore disabled by default; enable it
+    engine.execute('create extension if not exists hstore')
+
     import_all_model_modules()
     Base.metadata.bind = engine
     Base.metadata.reflect()

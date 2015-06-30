@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 import sqlalchemy as sa
 import IPython
 
-from core import init_config, init_model
+from core import init_config, init_model, init_altitude_db
 from core.model import *
 from core.altitude import *
 from reebill.reebill_model import *
@@ -17,6 +17,7 @@ from brokerage.brokerage_model import *
 if __name__ == '__main__':
     init_config()
     init_model()
+    init_altitude_db()
     s = Session()
     print '%s at %s' % (Session.bind.url,
                         s.execute("select * from alembic_version").scalar())

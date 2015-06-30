@@ -1,18 +1,50 @@
 """ Unit tests for the UtilityAccount class
 """
+from datetime import date
 from unittest import TestCase
+from exc import NoSuchBillException
 
 from test import init_test_config, create_tables, clear_db
 from core import init_model
 from core.model import UtilBill, Session, Address, Utility, Supplier, \
     RateClass, UtilityAccount
-from exc import RSIError, UnEditableBillError, NotProcessable
-def setUpModule():
-    init_test_config()
-    create_tables()
-    init_model()
+
+class UtilityAccountUnitTest(TestCase):
+    """Unit tests for UtilityAccount."""
+    def setUp(self):
+        # self.utility = Utility(name='utility', address=Address())
+        # self.supplier = Supplier(name='supplier', address=Address())
+        # self.rate_class = RateClass(name='rate class', utility=self.utility,
+        #                             service='gas')
+        self.ua = UtilityAccount('example', '1', None, None, None, Address(),
+                                 Address())
+        self.u1 = UtilBill(self.ua, None, None, period_start=date(2000, 1, 2),
+                           period_end=date(2000, 2, 1), processed=True)
+        self.u2 = UtilBill(self.ua, None, None, period_start=date(2000, 1, 1),
+                           period_end=date(2000, 2, 2), processed=False)
+
+    def test_get_last_bill(self):
+        self.assertEqual(self.u2, self.ua.get_last_bill())
+        self.assertEqual(self.u1, self.ua.get_last_bill(processed=True))
+        self.assertEqual(self.u2, self.ua.get_last_bill(end=date(2000, 2, 2)))
+        self.assertEqual(self.u1, self.ua.get_last_bill(end=date(2000, 2, 1)))
+
+        self.ua.utilbills = [self.u1]
+        self.assertEqual(self.u1, self.ua.get_last_bill())
+
+        self.ua.utilbills = []
+        with self.assertRaises(NoSuchBillException):
+            self.ua.get_last_bill()
+
 
 class UtilityAccountTest(TestCase):
+    """Integration test using the database."""
+
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
 
     def setUp(self):
         clear_db()

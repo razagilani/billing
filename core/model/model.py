@@ -6,10 +6,18 @@ import ast
 from datetime import date, datetime
 from itertools import chain
 import json
+from StringIO import StringIO
+from pdfminer.converter import TextConverter, PDFPageAggregator
+from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint
+    UniqueConstraint, MetaData
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -22,13 +30,15 @@ import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError
+    UnEditableBillError, NotProcessable, BillingError, NoSuchBillException, \
+    MissingFileError
 from util.units import unit_registry
 
-__all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
-    'MYSQLDB_DATETIME_MIN', 'Register', 'Session', 'Supplier', 'SupplyGroup',
-    'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
-    'check_schema_revision', ]
+__all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
+           'Evaluation', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
+           'AltitudeSession', 'altitude_metadata', 'Supplier', 'SupplyGroup',
+           'RateClass', 'Utility', 'UtilBill', 'UtilityAccount',
+           'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -36,6 +46,8 @@ __all__ = ['Address', 'Base', 'Charge', 'ChargeEvaluation', 'Evaluation',
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 
 Session = scoped_session(sessionmaker())
+AltitudeSession = scoped_session(sessionmaker())
+altitude_metadata = MetaData()
 
 # allowed units for register quantities.
 # UnitRegistry attributes are used in the values to ensure that there's an
@@ -61,16 +73,18 @@ SERVICES = (GAS, ELECTRIC)
 SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
-class Base(object):
+class _Base(object):
     '''Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
     '''
 
+
     @classmethod
     def column_names(cls):
-        '''Return list of attributes in the class that correspond to
+        """Return list of attributes names in the class that correspond to
+        database columns. These are NOT necessarily the names of actual
         database columns.
-        '''
+        """
         return [prop.key for prop in class_mapper(cls).iterate_properties if
                 isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
@@ -100,11 +114,11 @@ class Base(object):
         pk_keys = set(c.key for c in class_mapper(cls).primary_key)
         foreign_key_columns = chain.from_iterable(
             c.columns for c in self.__table__.constraints if
-            isinstance(c, ForeignKeyConstraint))
+                isinstance(c, ForeignKeyConstraint))
         foreign_keys = set(col.key for col in foreign_key_columns)
 
         relevant_attr_names = [x for x in self.column_names() if
-                               x not in pk_keys and x not in foreign_keys]
+            x not in pk_keys and x not in foreign_keys]
 
         # NOTE it is necessary to use __new__ to avoid calling the
         # constructor here (because the constructor arguments are not known,
@@ -122,10 +136,25 @@ class Base(object):
             setattr(new_obj, attr_name, getattr(self, attr_name))
         return new_obj
 
+    def raw_column_dict(self, exclude=set()):
+        """
+        :return: dictionary whose keys are column names in the database table
+        and whose values are the corresponding column values, as in the
+        dictionaries it passes to the DBAPI along with the SQL format strings.
+        Primary key columns are excluded if their value is None.
+        SQLAlchemy probably has an easy way to get this but I couldn't find it.
+        """
+        mapper = self._sa_instance_state.mapper
+        return {column_property.columns[0].name: getattr(self, attr_name) for
+                  attr_name, column_property in mapper.column_attrs.items()
+                  if column_property.columns[ 0] not in mapper.primary_key
+                  and attr_name not in exclude}
 
-Base = declarative_base(cls=Base)
 
-_schema_revision = '41bb5135c2b6'
+Base = declarative_base(cls=_Base)
+AltitudeBase = declarative_base(cls=_Base)
+
+_schema_revision = '30597f9f53b9'
 
 
 def check_schema_revision(schema_revision=None):
@@ -143,6 +172,7 @@ def check_schema_revision(schema_revision=None):
                             schema_revision, current_revision))
 
 
+
 class UtilbillCallback(MapperExtension):
     '''This class is used to update the date_modified field of UtilBill Model,
     whenever any updates are made to UtilBills.
@@ -151,7 +181,7 @@ class UtilbillCallback(MapperExtension):
 
     def before_update(self, mapper, connection, instance):
         if object_session(instance).is_modified(instance,
-                                                include_collections=False):
+                include_collections=False):
             instance.date_modified = datetime.utcnow()
 
 
@@ -236,6 +266,12 @@ class Utility(Base):
     def get_sos_supplier(self):
         return self.sos_supplier
 
+    # association of names of charges as displayed on bills with the
+    # standardized names used in Charge.rsi_binding. this might be better
+    # associated with each rate class (which defines the distribution charges)
+    # and/or bill layout (which determines the display names of charges)
+    charge_name_map = Column(HSTORE, nullable=False, server_default='')
+
     def __repr__(self):
         return '<Utility(%s)>' % self.name
 
@@ -253,6 +289,9 @@ class Supplier(Base):
     __tablename__ = 'supplier'
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False, unique=True)
+
+    # for importing matrix quotes from files
+    matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
@@ -428,9 +467,16 @@ class RateClass(Base):
     Every bill in a rate class gets billed according to the same kinds of
     meter values (like total energy, demand, etc.) so the rate class also
     determines which _registers exist in each bill.
+    determines which registers exist in each bill.
+
+    The rate class also determines what supply contracts may be available to
+    a customer.
     """
     __tablename__ = 'rate_class'
     __table_args__ = (UniqueConstraint('utility_id', 'name'),)
+
+    GAS, ELECTRIC = 'gas', 'electric'
+    SERVICES = (GAS, ELECTRIC)
 
     id = Column(Integer, primary_key=True)
     utility_id = Column(Integer, ForeignKey('utility.id'), nullable=False)
@@ -570,6 +616,20 @@ class UtilityAccount(Base):
             return self.utilbills[0].service_address
         return self.fb_service_address
 
+    def get_last_bill(self, processed=None, end=None):
+        """Return the latest-ending UtilBill belonging to this account.
+        :param processed: if True, only consider bills that are processed.
+        :param end: only consider bills whose period ends on/before this date.
+        :return: UtilBill
+        """
+        g = (u for u in self.utilbills
+             if (processed is None or u.processed) and (
+             end is None or (u.period_end is not None and u.period_end <= end)))
+        try:
+            return max(g, key=lambda utilbill: utilbill.period_end)
+        except ValueError:
+            raise NoSuchBillException
+
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
@@ -593,6 +653,9 @@ class Charge(Base):
 
     unit = Column(charge_unit_type, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
+
+    # optional human-readable name of the charge as displayed on the bill
+    name = Column(String(1000))
 
     quantity_formula = Column(String(1000), nullable=False)
     rate = Column(Float, nullable=False)
@@ -649,9 +712,9 @@ class Charge(Base):
         assert register_binding in Register.REGISTER_BINDINGS
         return register_binding + '.quantity'
 
-    def __init__(self, rsi_binding, formula='', rate=0, target_total=None,
-                 description='', unit='kWh', has_charge=True, shared=False,
-                 roundrule="", type=DISTRIBUTION):
+    def __init__(self, rsi_binding, name=None, formula='', rate=0,
+                 target_total=None, description='', unit='', has_charge=True,
+                 shared=False, roundrule="", type=DISTRIBUTION):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -667,6 +730,7 @@ class Charge(Base):
         self.description = description
         self.unit = unit
         self.rsi_binding = rsi_binding
+        self.name = name
         self.quantity_formula = formula
         self.target_total = target_total
         self.has_charge = has_charge
@@ -781,12 +845,11 @@ class UtilBill(Base):
     # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Boolean, nullable=False)
 
-    # date when a process was run to extract data from the bill file to fill in
-    # data automatically. (note this is different from data scraped from the
-    # utility web site, because that can only be done while the bill is being
-    # downloaded and can't take into account information from other sources.)
-    # TODO: not being used at all
-    date_scraped = Column(DateTime)
+    # which Extractor was used to get data out of the bill file, and when
+    date_extracted = Column('date_scraped', DateTime, )
+
+    # cached text taken from a PDF for use with TextExtractor
+    _text = Column('text', String)
 
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
@@ -829,7 +892,7 @@ class UtilBill(Base):
     utility = relationship('Utility')
 
     charges = relationship("Charge", backref='utilbill', order_by='Charge.id',
-                           cascade='all, delete, delete-orphan')
+        cascade='all, delete, delete-orphan')
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -1195,6 +1258,16 @@ class UtilBill(Base):
             r for r in self._registers if r.register_binding == Register.TOTAL)
         total_register.quantity = quantity
 
+    def get_total_energy_unit(self):
+        """:return: name of unit for measuring total energy (string), or None
+        if this is unknown, which will happen if the rate class is not known.
+        """
+        if self.rate_class is None:
+            assert self._registers == []
+            return None
+        total_register = self.get_register_by_binding(Register.TOTAL)
+        return total_register.unit
+
     def get_register_by_binding(self, register_binding):
         """Return the register whose register_binding is 'register_binding'.
         This should only be called by consumers that need to know about
@@ -1255,3 +1328,55 @@ class UtilBill(Base):
         if self.rate_class is not None:
             return self.rate_class.service
         return None
+
+    def get_text(self, bill_file_handler, pdf_util):
+        """Return text dump of the bill's PDF.
+        :param bill_file_handler: used to get the PDF file (only if the text for
+        this bill is not already cached).
+        :param pdf_util: PDFUtil object used to parse the PDF file
+        """
+        if self._text in (None, ''):
+            infile = StringIO()
+            try:
+                bill_file_handler.write_copy_to_file(self, infile)
+            except MissingFileError as e:
+                text = ''
+            else:
+                text = pdf_util.get_pdf_text(infile)
+            self._text = text
+        return self._text
+
+    def get_layout(self, bill_file_handler):
+        """
+        Returns a list of LTPage objects, containing PDFMiner's layout
+        information for the PDF
+        :param bill_file_handler: used to get the PDF file
+        """
+        #TODO cache layout info after retrieval
+        # maybe use 'PickleType' sqlalchemy column?
+        pages = []
+        infile = StringIO()
+        try:
+            bill_file_handler.write_copy_to_file(self, infile)
+        except MissingFileError as e:
+            print e
+        else:
+            # TODO: code for parsing PDF files probably doesn't belong in
+            # UtilBill; maybe in BillFileHandler or extraction
+            infile.seek(0)
+            parser = PDFParser(infile)
+            document = PDFDocument(parser)
+            rsrcmgr = PDFResourceManager()
+            laparams = LAParams()
+            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+            interpreter = PDFPageInterpreter(rsrcmgr, device)
+            try:
+                for page in PDFPage.create_pages(document):
+                    interpreter.process_page(page)
+                    pages.append(device.get_result())
+            except PDFSyntaxError as e:
+                pages = []
+                print e
+            device.close()
+
+        return pages

@@ -43,7 +43,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.state = UtilBill.Complete
 
     def test_compute_hexdigest(self):
-        self.assertEqual(self.file_hash, self.bfh._compute_hexdigest(self.file))
+        self.assertEqual(self.file_hash, self.bfh.compute_hexdigest(self.file))
 
     def test_get_s3_url(self):
         self.utilbill.state = UtilBill.Complete
