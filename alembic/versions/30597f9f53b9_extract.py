@@ -8,7 +8,7 @@ Create Date: 2015-05-22 13:20:06.676570
 
 # revision identifiers, used by Alembic.
 revision = '30597f9f53b9'
-down_revision = '41bb5135c2b6'
+down_revision = '14c726a1ee30'
 
 from alembic import op
 import sqlalchemy as sa
@@ -17,7 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 
 def upgrade():
-    op.execute('create extension hstore')
+    # Assume the HSTORE extension exists since we can't create it as a
+    # non-superuser in staging/production 
 
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),
