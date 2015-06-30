@@ -85,7 +85,7 @@ class TestBEUtilBill(unittest.TestCase):
         self.assertEqual(the_date, self.ub.get_date())
         self.assertEqual(self.user, self.ub.get_user())
         self.assertTrue(self.ub.is_entered())
-        self.assertEqual(self.ub.editable(), False)
+        self.assertEqual(self.ub.editable(), True)
 
         self.ub.un_enter()
         self.assertEqual(None, self.ub.get_date())
@@ -140,6 +140,7 @@ class BillEntryIntegrationTest(object):
 
         # TODO: this should not have to be done multiple times, but removing it
         # causes a failure when the session is committed below.
+        create_tables()
         init_model()
 
         self.project_mgr_role = Role(
@@ -190,6 +191,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
     BillEntryIntegrationTest must be the first superclass for super() to work.
     """
     def setUp(self):
+        init_test_config()
         super(TestBillEntryMain, self).setUp()
 
         s = Session()
@@ -433,14 +435,6 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         ))
         expected['rows']['period_start'] = '2000-01-01'
         self.assertJson(expected, rv.data)
-
-        # catch ProcessedBillError because a 500 response is returned
-        # when the user tries to edit a bill that is not editable=
-        with self.assertRaises(UnEditableBillError):
-            rv = self.app.put(self.URL_PREFIX + 'utilitybills/1', data=dict(
-                id=2,
-                next_meter_read_date=date(2000, 2, 5).isoformat()
-                ))
 
         # this request is being made using a different content-type because
         # with the default content-type of form-urlencoded bool False
@@ -1295,6 +1289,7 @@ class TestUploadBills(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
         init_model()
         # these objects don't change during the tests, so they should be
         # created only once.
