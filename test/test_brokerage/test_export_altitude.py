@@ -104,8 +104,8 @@ class TestExportAltitude(TestCase):
         altitude_converter = Mock()
         altitude_converter.get_guid_for_utility\
             .return_value = 'A' * 36
-        altitude_converter.get_guid_for_supplier\
-            .return_value = 'B' * 36
+        altitude_converter.get_or_create_guid_for_supplier\
+            .side_effect = ['B' * 36, 'B' * 36]
         altitude_converter.get_one_altitude_account_guid_for_utility_account\
             .side_effect = ['C' * 36, None]
         self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
