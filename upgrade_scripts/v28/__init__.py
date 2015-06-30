@@ -9,7 +9,6 @@ calling :func:`.core.init_model`.
 """
 from brokerage.brokerage_model import MatrixQuote, CompanyPGSupplier
 from core.extraction import Field, TextExtractor
-from core.extraction.text import TextExtractor
 from core.extraction.applier import Applier
 from core.model import Supplier, Utility, AltitudeSession
 
