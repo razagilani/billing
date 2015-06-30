@@ -97,3 +97,23 @@ class ValidationError(BillingError):
     pass
 
 
+class ExtractionError(BillingError):
+    """Error related to extracting data from bill files.
+    """
+    pass
+
+class MatchError(ExtractionError):
+    """Failed to find exactly one match for a regular expression when
+    extracting data from text.
+    """
+    pass
+
+class ConversionError(ExtractionError):
+    """Failed to convert an extracted string into the expected type.
+    """
+    pass
+
+class ApplicationError(ExtractionError):
+    """Failed to apply an extracted value to a bill.
+    """
+    pass
