@@ -11,7 +11,7 @@ from tablib import Databook, formats
 from exc import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, date_to_datetime
 from util.monthmath import Month
-from brokerage.brokerage_model import MatrixQuote
+from brokerage.brokerage_model import MatrixQuote, get_rate_class_from_alias
 
 
 # TODO:
@@ -377,6 +377,8 @@ class DirectEnergyMatrixParser(QuoteParser):
             rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
+            rate_classes = [get_rate_class_from_alias(alias) for alias in
+                            rate_class_aliases]
 
             special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
                                                basestring)
@@ -385,15 +387,18 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 100.
-                for rate_class_alias in rate_class_aliases:
-                    yield MatrixQuote(
+                for rate_class in rate_classes:
+                    quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,
                         valid_until=self._date + timedelta(days=1),
                         min_volume=min_vol, limit_volume=max_vol,
-                        rate_class_alias=rate_class_alias,
+                        rate_class=rate_class,
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
+                    print quote
+                    yield quote
+
 
 
 class USGEMatrixParser(QuoteParser):
