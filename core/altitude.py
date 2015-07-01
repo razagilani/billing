@@ -199,6 +199,8 @@ def get_or_create_guid_for_supplier(supplier, guid_func, session):
     not exist, generate one using 'guid_func', store a new AltitudeSupplier with
     the GUID string, and return it.
     """
+    if supplier is None:
+        return
     altitude_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)(supplier)
     if altitude_supplier is None:
         altitude_supplier = AltitudeSupplier(supplier, str(guid_func()))
