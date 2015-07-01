@@ -6,6 +6,15 @@ from boto.s3.connection import S3Connection
 from celery.result import AsyncResult
 from mock import Mock, NonCallableMock
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor
