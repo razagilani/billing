@@ -34,8 +34,12 @@ def create_tables():
     uri = config.get('db', 'uri')
     engine = create_engine(uri, echo=config.get('db', 'echo'))
 
+    # blank database has hstore disabled by default; enable it
+    engine.execute('create extension if not exists hstore')
+
     import_all_model_modules()
     Base.metadata.bind = engine
+    Base.metadata.reflect()
     Base.metadata.drop_all()
     Base.metadata.create_all(checkfirst=True)
 
@@ -59,6 +63,8 @@ def clear_db():
     """
     session = Session()
     Session.rollback()
+    # because of the call to Base.metadata.reflect() in create_tables(),
+    # this now also deletes the "alembic_version" table
     for t in reversed(Base.metadata.sorted_tables):
         session.execute(t.delete())
     session.commit()

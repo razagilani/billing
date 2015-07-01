@@ -205,7 +205,7 @@ class FakeS3Manager(object):
     def check(cls):
         exit_status = cls.fakes3_process.poll()
         if exit_status is not None:
-            raise CalledProcessError(exit_status, cls.fakes3_command)
+                raise CalledProcessError(exit_status, cls.fakes3_command)
 
     @classmethod
     def stop(cls):

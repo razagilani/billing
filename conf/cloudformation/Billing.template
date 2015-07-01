@@ -72,6 +72,11 @@
       "Default" : "billing",
       "Description" : "name of host instance (default is billing)"
     },
+    "InternalDnsName" : {
+      "Type" : "String",
+      "Default" : "billing",
+      "Description" : "short name to use for Internal DNS (default is billing)"
+    },
     "InstanceSubnet" : {
       "Type" : "String",
       "Description" : "ID of subnet to create instance"
@@ -125,8 +130,8 @@
       "Properties" : {
         "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
           "#cloud-config",
-          {"Fn::Join" : ["", ["local-hostname: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
-          {"Fn::Join" : ["", ["fqdn: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["local-hostname: ", {"Ref":"InternalDnsName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", {"Ref":"InternalDnsName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
           "manage_etc_hosts: true",
           "preserve_hostname: false",
           "packages:",
@@ -223,7 +228,7 @@
          "HostedZoneId" : { "Ref" : "HostedZoneId" },
          "Name" : {
             "Fn::Join" : [ "", [
-               {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, ".",
+               {"Ref": "InternalDnsName"}, "-", {"Ref": "Environment"}, ".",
                {"Ref" : "HostedZone"} ,"."
             ] ]
          },

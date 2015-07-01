@@ -1,5 +1,16 @@
 from mock import MagicMock, Mock
+
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from core import init_model
+from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
 from core.pricing import PricingModel
@@ -8,9 +19,11 @@ from test import init_test_config, create_tables, clear_db
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
+    MissingFileError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from util.pdf import PDFUtil
 
 
 class UtilBillTest(TestCase):
@@ -184,6 +197,7 @@ class UtilBillTest(TestCase):
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
         self.assertEqual(1, utilbill.get_total_energy())
+        self.assertEqual('kWh', utilbill.get_total_energy_unit())
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
@@ -206,6 +220,7 @@ class UtilBillTest(TestCase):
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
         self.assertEqual(0, utilbill.get_total_energy())
+        self.assertEqual(None, utilbill.get_total_energy_unit())
 
         # utility and rate class can be set to None
         utilbill.set_utility(None)
@@ -215,6 +230,32 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class())
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
+
+    def test_get_text(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        bfh = Mock(autospec=BillFileHandler)
+        pdf_util = Mock(autospec=PDFUtil)
+        pdf_util.get_pdf_text.return_value = 'example text'
+
+        # if file is missing, text is empty (and is not cached)
+        bfh.write_copy_to_file.side_effect = MissingFileError
+        self.assertEqual('', utilbill.get_text(bfh, pdf_util))
+
+        # get the text
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        bfh.write_copy_to_file.side_effect = None
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(1, bfh.write_copy_to_file.call_count)
+        self.assertEqual(1, pdf_util.get_pdf_text.call_count)
+
+        # text is cached the 2nd time so methods to get the file and text are
+        # not called
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(0, bfh.write_copy_to_file.call_count)
+        self.assertEqual(0, pdf_util.get_pdf_text.call_count)
 
 
 class UtilBillTestWithDB(TestCase):

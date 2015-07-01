@@ -1,16 +1,28 @@
 from StringIO import StringIO
 from datetime import date
+import time
 from os.path import join, dirname, realpath
 import unittest
-from mock import MagicMock
+from mock import MagicMock, Mock
+
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
 
 import requests
 from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
+from billentry.billentry_model import BillEntryUser
+from billentry.common import replace_utilbill_with_beutilbill
 from core import init_model
 
 from reebill.views import column_dict
-from test import init_test_config, create_tables, clear_db
+from test import create_tables, clear_db
 from exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
@@ -66,8 +78,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             }
         # Create new account "88888" based on template account "99999",
         # which was created in setUp
-        init_test_config()
-        init_model()
         self.reebill_processor.create_new_account(
             '88888', 'New Account', 'thermal', 0.6, 0.2, billing_address,
             service_address, '100000', '12345', 'test')
@@ -251,6 +261,16 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                                                          processed=True)
         self.assertEqual(True, utilbill.processed)
 
+    def test_utilbill_editable(self):
+        utilbill = self.utilbill_processor.upload_utility_bill(
+            '99999', StringIO('January 2013'), date(2013, 1, 1),
+            date(2013, 2, 1), 'Gas', total=100)
+        beutilbill = replace_utilbill_with_beutilbill(utilbill)
+        beutilbill.enter(Mock(autospec=BillEntryUser), time.time())
+        self.assertFalse(beutilbill.processed)
+        self.assertIsNotNone(beutilbill.billentry_date)
+        self.assertTrue(beutilbill.editable())
+
     def test_update_account_number(self):
         s = Session()
         utility = Utility(name='utility', address=Address())
@@ -266,9 +286,8 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
     def test_set_total_meter_identifier(self):
         utilbill = UtilBill(MagicMock(), MagicMock(), MagicMock())
-        # This should not result in any changes as utilbill doesn't have register with
-        # register_binding of REG_TOTAL
-        utilbill.set_total_meter_identifier('7715')
+        self.assertRaises(StopIteration, utilbill.set_total_meter_identifier,
+                          '7715')
         self.assertEqual(utilbill.get_total_meter_identifier(), None)
 
 
@@ -534,7 +553,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -575,7 +594,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
