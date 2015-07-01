@@ -4,6 +4,15 @@ from unittest import TestCase
 from uuid import uuid5, uuid4
 from uuid import NAMESPACE_DNS
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from mock import Mock
 from core import altitude, init_model
 from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
