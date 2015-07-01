@@ -295,20 +295,21 @@ class TestIntegration(TestCase):
         #                  self.bill.get_rate_class_name())
         self.assertIsInstance(self.bill.date_extracted, datetime)
 
-    @skip('not working yet')
     def test_created_modified(self):
         self.assertIsNone(self.e1.created)
         self.assertIsNone(self.e1.modified)
 
         s = Session()
         s.add(self.e1)
+        s.add_all(self.e1.fields)
         s.flush()
         modified = self.e1.modified
         self.assertIsNotNone(self.e1.created)
         self.assertIsNotNone(modified)
         self.assertLessEqual(self.e1.created, modified)
 
-        self.e1.fields[0].name = 'new name'
+        # changing a Field updates the modification date of the Extractor
+        self.e1.fields[0].regex = 'something else'
         s.flush()
         self.assertGreater(self.e1.modified, modified)
 
