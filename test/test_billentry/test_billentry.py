@@ -115,6 +115,7 @@ class BillEntryIntegrationTest(object):
 
     # this may change
     URL_PREFIX = '/utilitybills/'
+    LOGIN_PREFIX = 'http://localhost/'
 
     def assertJson(self, expected, actual):
         '''AssertEqual for JSON where the things being compared can be in
@@ -244,6 +245,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         s.add_all([self.ub1, self.ub2, c1, c2, c3, c4, c5, ub3,
             self.altitude_account1, self.altitude_account2])
         user = BillEntryUser(email='user1@test.com', password='password')
+        user.roles = [self.project_mgr_role]
         s.add(user)
 
     def test_accounts_get(self):
@@ -399,6 +401,12 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
             }, rv.data)
 
     def test_utilbill(self):
+         # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
         expected = {'rows':
              {'computed_total': 85.0,
               'due_date': None,
@@ -670,7 +678,6 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         s.flush()
 
     def test_report_count_for_user(self):
-
         data = {'email': '1@example.com', 'password': 'password'}
         # post request for user login with valid credentials
         response = self.app.post('/userlogin',
@@ -678,7 +685,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
 
         # on successful login user is routed to the next url
         self.assertTrue(response.status_code == 302)
-        self.assertEqual('http://localhost/', response.location)
+        self.assertEqual(self.LOGIN_PREFIX, response.location)
 
         url_format = self.URL_PREFIX + 'users_counts?start=%s&end=%s'
 
@@ -1182,8 +1189,8 @@ class TestBillEntryUserSessions(unittest.TestCase):
         self.assertEqual(0, user.get_beuser_billentry_duration(current_timestamp, datetime.utcnow()))
 
 
-class TestBillEnrtyAuthentication(unittest.TestCase):
-    URL_PREFIX = 'http://localhost'
+class TestBillEnrtyAuthentication(BillEntryIntegrationTest, unittest.TestCase):
+    URL_PREFIX = '/utilitybills/'
 
     @classmethod
     def setUpClass(cls):
@@ -1199,8 +1206,25 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         init_test_config()
         clear_db()
         s = Session()
+        self.project_manager_role = Role('Project Manager', 'Project Manager'
+                                                            'role')
         user = BillEntryUser(email='user1@test.com', password='password')
-        s.add(user)
+        user2 = BillEntryUser(email='user2@test.com', password='password')
+        user2.roles = [self.project_manager_role]
+        s.add_all([user, user2, self.project_manager_role])
+
+        utility = Utility(name='Empty Utility')
+        utility.id = 1
+        utility_account = UtilityAccount('Account 1', '22222', utility, None,
+                                         None, Address(), Address(), '1')
+        utility_account.id = 1
+        regular_utilbill = UtilBill(utility_account, utility, None,
+                       service_address=Address(street='2 Example St.'))
+        regular_utilbill.id = 1
+        beutilbill = BEUtilBill(utility_account, utility, None,
+                                service_address=Address(street='2 Example St.'))
+        beutilbill.id = 2
+        s.add_all([regular_utilbill, beutilbill])
 
     def tearDown(self):
         clear_db()
@@ -1212,7 +1236,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # first the user tries to go to 'original_url' and 401 is returned
         rv = self.app.get(original_url)
         self.assertEqual(302, rv.status_code)
-        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', rv.location)
 
         # then the user clicks on the "Log in with Google" link, whose URL is
         #  /login, and gets redirected to Google's OAuth URL
@@ -1226,19 +1250,19 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         # Google would provide, so the response is invalid
         rv = self.app.get('/oauth2callback')
         self.assertEqual(302, rv.status_code)
-        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', rv.location)
 
         # after unsuccessful login, the user still can't get to a normal page
         rv = self.app.get('/')
         self.assertEqual(302, rv.status_code)
-        self.assertEqual(self.URL_PREFIX + '/login-page', rv.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', rv.location)
 
     def test_local_login(self):
         response = self.app.get('/')
         # because user is not logged in so a redirect to login-page should
         # happen
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(self.URL_PREFIX + '/login-page', response.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', response.location)
 
         # valid data for user login
         data = {'email':'user1@test.com', 'password': 'password'}\
@@ -1247,10 +1271,10 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
                                  content_type='multipart/form-data', data=data)
 
         self.assertTrue(response.status_code == 302)
-        self.assertEqual('http://localhost/', response.location)
+        self.assertEqual(self.LOGIN_PREFIX, response.location)
 
         # user successfully gets index.html
-        response = self.app.get(self.URL_PREFIX + '/')
+        response = self.app.get(self.LOGIN_PREFIX)
         self.assertEqual(200, response.status_code)
 
         # logout user
@@ -1262,10 +1286,10 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
         response = self.app.get('/')
         # because user is not logged in so a 401 is returned
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(self.URL_PREFIX + '/login-page', response.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', response.location)
 
         # invalid email for user login
-        data = {'email':'user2@test.com', 'password': 'password'}
+        data = {'email':'user3@test.com', 'password': 'password'}
 
         # post request for user login with invalid credentials
         response = self.app.post('/userlogin',
@@ -1273,7 +1297,7 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
 
         # the login should fail and user should be redirected to login page
         self.assertEqual(response.status_code, 302)
-        self.assertEqual('http://localhost/login-page', response.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', response.location)
 
         # invalid password for user login
         data = {'email':'user1@test.com', 'password': 'password1'}
@@ -1283,7 +1307,93 @@ class TestBillEnrtyAuthentication(unittest.TestCase):
                                  content_type='multipart/form-data', data=data)
         # the login should fail and user should be redirected to login page
         self.assertEqual(response.status_code, 302)
-        self.assertEqual('http://localhost/login-page', response.location)
+        self.assertEqual(self.LOGIN_PREFIX + 'login-page', response.location)
+
+    def test_unenter_utilbill_permission(self):
+
+        expected = {"rows":
+            {
+            "due_date": None,
+            "target_total": 0.0,
+            "supply_choice_id": None,
+            "id": 2,
+            "utility": "Empty Utility",
+            "supplier_id": None,
+            "service": "Unknown",
+            "supply_group_id": None,
+            "utility_id": 1,
+            "tou": False,
+            "total_energy": 0.0,
+            "period_end": None,
+            "rate_class_id": None,
+            "entered": False,
+            "supply_group": "Unknown",
+            "service_address": "2 Example St., ,  ",
+            "next_meter_read_date": None,
+            "supplier": "Unknown",
+            "meter_identifier": None,
+            "utility_account_id": 1,
+            "rate_class": "Unknown",
+            "period_start": None,
+            "supply_total": 0.0,
+            "wiki_url": "http://example.com/utility:Empty Utility",
+            "pdf_url": "",
+            "computed_total": 0.0,
+            "processed": False,
+            "utility_account_number": "1",
+            "flagged": False
+            },
+            "results": 1
+        }
+
+        # valid data for user login
+        data = {'email':'user1@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # put request for marking beutilbill as entered
+        response = self.app.put(self.URL_PREFIX + 'utilitybills/2', data=dict(
+            id=2,
+            entered=True
+        ))
+        self.assertEqual(200, response.status_code)
+
+        expected['rows']['entered'] = True
+        self.assertJson(response.data, expected)
+
+        # put request for marking beutilbill as unentered
+        response = self.app.put(self.URL_PREFIX + 'utilitybills/2',
+                                content_type='application/json',
+            data=json.dumps(dict(
+                id=2,
+                entered=False
+        )))
+        #This should fail with a status code of 403 as user1@test.com
+        # is not a member of project manager role
+        self.assertEqual(403, response.status_code)
+        self.app.get('/logout')
+
+        # valid data for user login
+        data = {'email':'user2@test.com', 'password': 'password'}\
+        # post request for user login with valid credentials
+        response = self.app.post('/userlogin',
+                                 content_type='multipart/form-data', data=data)
+
+        # put request for marking beutilbill as entered
+        response = self.app.put(self.URL_PREFIX + 'utilitybills/2',
+                                content_type='application/json',
+            data=json.dumps(dict(
+                id=2,
+                entered=False
+        )))
+        # this should succeed as user2@test.com is a member of project
+        # manager role and only members of project manager role are allowed
+        # to mark a bill as unentered
+        self.assertEqual(200, response.status_code)
+        expected['rows']['entered'] = False
+        self.assertJson(response.data, expected)
+        self.app.get('/logout')
 
 
 class TestUploadBills(unittest.TestCase):
