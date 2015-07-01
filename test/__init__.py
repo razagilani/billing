@@ -63,6 +63,8 @@ def clear_db():
     """
     session = Session()
     Session.rollback()
+    # because of the call to Base.metadata.reflect() in create_tables(),
+    # this now also deletes the "alembic_version" table
     for t in reversed(Base.metadata.sorted_tables):
         session.execute(t.delete())
     session.commit()

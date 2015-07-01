@@ -1,15 +1,38 @@
+import sqlalchemy
+
 from uuid import uuid4
 from datetime import timedelta
 from tablib import Dataset
+from sqlalchemy.sql.expression import cast
+from sqlalchemy.orm import joinedload
 from core.model import Session, UtilBill, UtilityAccount
 from util.dateutils import ISO_8601_DATETIME
 from brokerage.brokerage_model import BrokerageAccount
+
+def _create_brokerage_accounts_for_utility_accounts():
+    ''' This is a temporary Workaround that creates brokerage accounts for
+    utility accounts with account > 20000.
+    '''
+    utility_accounts = Session().query(
+        UtilityAccount, BrokerageAccount).outerjoin(BrokerageAccount).filter(
+            cast(UtilityAccount.account, sqlalchemy.Integer) >= 20000
+        ).filter(BrokerageAccount.utility_account_id == None).all()
+    brokerage_accounts = [BrokerageAccount(ua[0]) for ua in utility_accounts]
+    Session().add_all(brokerage_accounts)
+    Session().commit()
 
 def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a BrokerageAccount.
     '''
     return Session().query(UtilBill).join(UtilityAccount).join(
-        BrokerageAccount)
+        BrokerageAccount).options(
+            joinedload('service_address')).options(
+            joinedload('rate_class')).options(
+            joinedload('supplier').joinedload('altitude_supplier')).options(
+            joinedload('utility').joinedload('altitude_utility')).options(
+            joinedload('charges')).options(
+            joinedload('utility_account')).options(
+            joinedload('altitude_bills'))
 
 class PGAltitudeExporter(object):
 

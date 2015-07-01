@@ -557,7 +557,7 @@ class UtilbillProcessor(object):
 
     def create_supplier(self, name):
         # suppliers are identified in the client by name, rather than
-        # their primary key. "Unknown Supplier" is a name sent by the client
+        # their primary key. "Unknown" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
         assert name != ''
