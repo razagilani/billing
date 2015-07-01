@@ -110,7 +110,7 @@ def create_charge_name_maps(s):
     }
 
 def upgrade():
-    alembic_upgrade('30597f9f53b9')
+    alembic_upgrade('49b8d9978d7e')
 
     init_model()
     init_altitude_db()
