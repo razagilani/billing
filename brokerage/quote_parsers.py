@@ -9,7 +9,8 @@ from datetime import datetime, timedelta, date
 from tablib import Databook, formats
 
 from exc import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime, date_to_datetime
+from util.dateutils import parse_date, parse_datetime, date_to_datetime, \
+    excel_number_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 
@@ -34,14 +35,6 @@ def _assert_match(regex, string):
     if not re.match(regex, string):
         raise ValidationError('No match for "%s" in "%s"' % (regex, string))
 
-
-def excel_number_to_date(number):
-    """Dates in some XLS spreadsheets will appear as numbers of days since
-    (apparently) December 30, 1899.
-    :param number: int or float
-    :return: date
-    """
-    return date(1899, 12, 30) + timedelta(days=number)
 
 def parse_number(string):
     """Convert number string into a number.
@@ -293,8 +286,11 @@ class QuoteParser(object):
         # extract the date using DATE_CELL
         sheet_number_or_title, row, col, regex = self.DATE_CELL
         if regex is None:
-            self._date = self._reader.get(sheet_number_or_title, row, col,
-                                          datetime)
+            cell_value = self._reader.get(sheet_number_or_title, row, col,
+                                          (datetime, int, float))
+            if isinstance(cell_value, (int, float)):
+                cell_value = excel_number_to_datetime(cell_value)
+            self._date = cell_value
         else:
             self._date = self._reader.get_matches(sheet_number_or_title, row,
                                                   col, regex, parse_datetime)
@@ -533,12 +529,18 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 13, 'F', "Rate Codes/Description"),
         (SHEET, 13, 'G', "Start Month"),
     ]
-    DATE_CELL = (SHEET, 3, 'W', None)
+    DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
+    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell below
 
     VOLUME_RANGE_ROW = 11
     HEADER_ROW = 13
     QUOTE_START_ROW = 14
+    STATE_COL = 'C'
+    UTILITY_COL = 'D'
+    # TODO what is "rate code(s)" in col E?
     RATE_CLASS_COL = 'F'
+    START_MONTH_COL = 'G'
+
     PRICE_START_COL = 'I'
     PRICE_END_COL = 'X'
 
@@ -554,40 +556,23 @@ class AEPMatrixParser(QuoteParser):
         return low, high
 
     def _extract_quotes(self):
-        return
-        volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
-                         for col in xrange(self.PRICE_START_COL,
-                                           self.PRICE_END_COL + 1)]
-        # volume ranges should be contiguous
-        for i, vr in enumerate(volume_ranges[:-1]):
-            next_vr = volume_ranges[i + 1]
-            _assert_equal(vr[1], next_vr[0])
+        for row in xrange(self.QUOTE_START_ROW,
+                          self._reader.get_height(self.SHEET)):
+            state = self._reader.get(self.SHEET, row, self.STATE_COL,
+                                     basestring)
+            # blank line means end of sheet
+            if state == '':
+                continue
 
-        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
+                                       basestring)
+            rate_class_str = self._reader.get(self.SHEET, row,
+                                              self.RATE_CLASS_COL, basestring)
+            rate_classes = [s.strip for s in rate_class_str.split(',')]
+
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader.get(0, row, 0, (int, float)))
-            start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+                self._reader.get(self.SHEET, row, self.START_MONTH_COL, float))
+            start_until = (Month(start_from) + 1).first
+            continue
 
-            # rate class names are separated by commas and optional whitespace
-            rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                               basestring)
-            rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
-
-            special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
-                                               basestring)
-            _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
-
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
-                min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader.get(0, row, col, (int, float)) / 100.
-                for rate_class_alias in rate_class_aliases:
-                    yield MatrixQuote(
-                        start_from=start_from, start_until=start_until,
-                        term_months=term_months, valid_from=self._date,
-                        valid_until=self._date + timedelta(days=1),
-                        min_volume=min_vol, limit_volume=max_vol,
-                        rate_class_alias=rate_class_alias,
-                        purchase_of_receivables=(special_options == 'POR'),
-                        price=price)
