@@ -16,7 +16,7 @@ from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint, MetaData
+    UniqueConstraint, MetaData, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
@@ -154,7 +154,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '30597f9f53b9'
+_schema_revision = '49b8d9978d7e'
 
 
 def check_schema_revision(schema_revision=None):
@@ -794,6 +794,10 @@ class UtilBill(Base):
     POLYMORPHIC_IDENTITY = 'utilbill'
 
     __tablename__ = 'utilbill'
+
+    __table_args__ = (CheckConstraint('period_start > 1900-01-01'),
+                    CheckConstraint('period_end > 1900-01-01'),
+                    CheckConstraint('next_meter_read_date > 1900-01-01'))
 
     __mapper_args__ = {'extension': UtilbillCallback(),
 
