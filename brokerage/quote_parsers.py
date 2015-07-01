@@ -510,7 +510,7 @@ class USGEMatrixParser(QuoteParser):
 
 
 class AEPMatrixParser(QuoteParser):
-    """Parser for Direct Energy spreadsheet.
+    """Parser for AEP Energy spreadsheet.
     """
     FILE_FORMAT = formats.xls
 
@@ -546,7 +546,8 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 13, 'G', "Start Month"),
     ]
     DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
-    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell below
+    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
+    # below the date cell
 
     VOLUME_RANGE_ROW = 11
     HEADER_ROW = 13
@@ -557,6 +558,7 @@ class AEPMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
 
+    # columns for headers like "Customer Size: 101-250 Annuals MWhs"
     VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
 
     def _extract_volume_range(self, row, col):
@@ -603,7 +605,7 @@ class AEPMatrixParser(QuoteParser):
                                                    col, (int, float))
 
                     price = self._reader.get(self.SHEET, row, col,
-                                              (float, basestring, (None)))
+                                              (float, basestring, type(None)))
                     # skip blanks
                     if price in (None, ""):
                         continue
@@ -617,6 +619,4 @@ class AEPMatrixParser(QuoteParser):
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
                             rate_class_alias=alias, price=price)
-
-            continue
 
