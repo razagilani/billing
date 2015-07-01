@@ -63,6 +63,22 @@ class SpreadsheetReader(object):
     LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
 
     @classmethod
+    def column_range(cls, start, stop, step=1):
+        """Return a list of column numbers numbers between the given column
+        numbers or letters (like the built-in "range" function, but allows
+        letters).
+        :param start: inclusive start column letter or number (required
+        unlike in the "range" function)
+        :param end: exclusive end column letter or number
+        :param step: int
+        """
+        if isinstance(start, basestring):
+            start = cls._col_letter_to_index(start)
+        if isinstance(stop, basestring):
+            limit = cls._col_letter_to_index(stop)
+        return range(start, limit, step)
+
+    @classmethod
     def _col_letter_to_index(cls, letter):
         """
         :param letter: A-Z (string)
@@ -541,18 +557,14 @@ class AEPMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
 
-    PRICE_START_COL = 'I'
-    PRICE_END_COL = 'X'
+    VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
 
     def _extract_volume_range(self, row, col):
-        # these cells are strings like like "75-149" where "149" really
-        # means < 150, so 1 is added to the 2nd number--unless it is the
-        # highest volume range, in which case the 2nd number really means
-        # what it says.
-        regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
-        if col != self.PRICE_END_COL:
-            high += 1
+        regex = r'Customer Size: (\d+)-(\d+) Annuals MWhs'
+        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
+                                             (int, int))
+        if low % 10 == 1:
+            low -= 1
         return low, high
 
     def _extract_quotes(self):
@@ -574,5 +586,27 @@ class AEPMatrixParser(QuoteParser):
             start_from = excel_number_to_datetime(
                 self._reader.get(self.SHEET, row, self.START_MONTH_COL, float))
             start_until = (Month(start_from) + 1).first
+
+            for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
+                min_volume, limit_volume = self._extract_volume_range(
+                    self.VOLUME_RANGE_ROW, vol_col)
+                print min_volume, limit_volume
+
+                # TODO: ugly
+                try:
+                    next_vol_col = self.VOLUME_RANGE_COLS[i + 1]
+                except IndexError:
+                    next_vol_col = 'Y'
+
+                for col in SpreadsheetReader.column_range(vol_col, next_vol_col):
+                    price = self._reader.get(self.SHEET, row, col,
+                                              (float, basestring, (None)))
+                    # skip blanks
+                    if price in (None, ""):
+                        continue
+                    _assert_true(type(price) is float)
+
+                    print row, col, price
+
             continue
 
