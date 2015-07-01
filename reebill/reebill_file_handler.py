@@ -206,7 +206,7 @@ class ReebillFileHandler(object):
                 self._get_skin_directory_name_for_account(
                         reebill.get_account()))
 
-    def render_summary(self, reebills):
+    def render_summary(self, reebills, fields):
         '''Create a summary PDF of a list given :class:`ReeBill`s.
         '''
 
@@ -225,7 +225,7 @@ class ReebillFileHandler(object):
 
         SummaryBillDoc().render(bill_data, dir_path, 
             file_name, self._template_dir_path,
-            "summary")
+            "summary", fields)
 
         return dir_path, file_name
 
@@ -238,7 +238,7 @@ class SummaryFileGenerator(object):
         self._reebill_file_handler = reebill_file_handler
         self._pdf_concatenator = pdf_concatenator
 
-    def generate_summary_file(self, reebills, output_file):
+    def generate_summary_file(self, reebills, fields, output_file):
         """
         :param reebills: nonempty iterable of ReeBills that should be included.
         :param output_file: file where the summary will be written.
@@ -246,7 +246,7 @@ class SummaryFileGenerator(object):
         assert reebills
 
         # write summary to a file
-        dir_path, file_name = self._reebill_file_handler.render_summary(reebills)
+        dir_path, file_name = self._reebill_file_handler.render_summary(reebills, fields)
 
         # Open the file which is to be closed when the pdf concatenator 
         # is destroyed

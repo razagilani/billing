@@ -276,13 +276,14 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         url: window.location.origin + '/reebill/issuable/create_summary_for_bills',
                         method: 'POST',
                         params: params,
+                        timeout: 240000,
                         failure: failureFunc,
                         success: successFunc
                     });
                 }
             });
         }, failureFunc);
-        Ext.getBody().mask('Please wait ....');
+        Ext.getBody().mask('Please wait, this may take a while...');
     },
 
     handleCreateSummaryForTag: function(){
@@ -343,13 +344,14 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         url: window.location.origin + '/reebill/issuable/issue_summary_for_customer_group',
                         method: 'POST',
                         params: params,
+                        timeout: 240000,
                         failure: failureFunc,
                         success: successFunc
                     });
                 }
             });
         }, failureFunc);
-        Ext.getBody().mask('Please wait ....');
+        Ext.getBody().mask('Please wait, this may take some time...');
     },
 
     handleFilterBillsComboChanged: function(filter_bills_combo, record){
