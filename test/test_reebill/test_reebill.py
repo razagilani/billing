@@ -168,6 +168,7 @@ class ReebillTestWithDB(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        create_tables()
         init_model()
 
     def setUp(self):
