@@ -9,18 +9,22 @@ import json
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
-# if init_test_config() is not called before "billentry" is imported,
-# "billentry" will call init_config to initialize the config object with the
-# non-test config file. so init_test_config must be called before
-# "billentry" is imported.
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from exc import UnEditableBillError, MissingFileError
-from test import init_test_config, create_tables, clear_db
+from test import create_tables, clear_db
 from test.setup_teardown import FakeS3Manager
 from test.setup_teardown import create_utilbill_processor
 from util import FixMQ
 from util.dictutils import deep_map
 
-init_test_config()
 
 from core.altitude import AltitudeBill, get_utilbill_from_guid, AltitudeAccount
 
