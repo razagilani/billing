@@ -164,8 +164,8 @@ class AEPParserTest(TestCase):
         self.assertEqual(0, self.parser.get_count())
 
         quotes = list(self.parser.extract_quotes())
-        self.assertEqual(204474, len(quotes))
-        self.assertEqual(204474, self.parser.get_count())
+        self.assertEqual(21608, len(quotes))
+        self.assertEqual(21608, self.parser.get_count())
         for quote in quotes:
             quote.validate()
 
@@ -173,11 +173,12 @@ class AEPParserTest(TestCase):
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 5, 1), q1.start_from)
         self.assertEqual(datetime(2015, 6, 1), q1.start_until)
-        self.assertEqual(6, q1.term_months)
+        self.assertEqual(12, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
-        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
+        self.assertEqual(datetime(2015, 5, 5), q1.valid_from)
+        self.assertEqual(datetime(2015, 5, 6), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual('37', q1.rate_class_alias)
+        self.assertEqual(100, q1.limit_volume)
+        self.assertEqual('GSLV ND', q1.rate_class_alias)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(.7036, q1.price)
+        self.assertEqual(0.09084478584241074, q1.price)
