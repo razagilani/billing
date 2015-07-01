@@ -578,19 +578,18 @@ class AEPMatrixParser(QuoteParser):
 
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
-            rate_class_str = self._reader.get(self.SHEET, row,
+            rate_class_cell = self._reader.get(self.SHEET, row,
                                               self.RATE_CLASS_COL, basestring)
-            rate_classes = [s.strip for s in rate_class_str.split(',')]
+            rate_class_aliases = [s.strip() for s in rate_class_cell.split(',')]
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
                 self._reader.get(self.SHEET, row, self.START_MONTH_COL, float))
-            start_until = (Month(start_from) + 1).first
+            start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
                 min_volume, limit_volume = self._extract_volume_range(
                     self.VOLUME_RANGE_ROW, vol_col)
-                print min_volume, limit_volume
 
                 # TODO: ugly
                 try:
@@ -598,7 +597,11 @@ class AEPMatrixParser(QuoteParser):
                 except IndexError:
                     next_vol_col = 'Y'
 
-                for col in SpreadsheetReader.column_range(vol_col, next_vol_col):
+                for col in self._reader.column_range(vol_col, next_vol_col):
+                    # TODO: extracted unnecessarily many times
+                    term = self._reader.get(self.SHEET, self.HEADER_ROW,
+                                                   col, (int, float))
+
                     price = self._reader.get(self.SHEET, row, col,
                                               (float, basestring, (None)))
                     # skip blanks
@@ -606,7 +609,14 @@ class AEPMatrixParser(QuoteParser):
                         continue
                     _assert_true(type(price) is float)
 
-                    print row, col, price
+                    for alias in rate_class_aliases:
+                        yield MatrixQuote(
+                            start_from=start_from, start_until=start_until,
+                            term_months=term, valid_from=self._date,
+                            valid_until=self._date + timedelta(days=1),
+                            min_volume=min_volume, limit_volume=limit_volume,
+                            purchase_of_receivables=False,
+                            rate_class_alias=alias, price=price)
 
             continue
 
