@@ -1,9 +1,13 @@
-import unittest
 import calendar
-import math
-from datetime import date, time, timedelta
-# TODO: import * is bad because it confuses both humans and IDEs
-from util.dateutils import *
+from datetime import date, datetime
+import unittest
+from util.dateutils import iso_year_start, iso_week_generator, w_week_number, \
+    date_by_w_week, get_w_week_start, length_of_w_week, days_in_month, \
+    estimate_month, months_of_past_year, month_offset, month_difference, \
+    date_generator, nth_weekday, next_w_week_start, parse_datetime, parse_date, \
+    get_end_of_day
+from util.dateutils import iso_to_date
+
 
 class DateUtilsTest(unittest.TestCase):
     def test_iso_year_start(self):
@@ -291,6 +295,18 @@ class DateUtilsTest(unittest.TestCase):
 
         self.assertEquals(date(2013,2,18), nth_weekday(3,1,2)(2013))
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_parse_datetime(self):
+        self.assertEqual(datetime(2000, 1, 1), parse_datetime('2000/1/1'))
+        self.assertEqual(datetime(2000, 1, 1), parse_datetime('2000/1/1 00:00'))
 
+    def test_parse_date(self):
+        self.assertEqual(date(2000, 1, 1), parse_date('2000/1/1'))
+        self.assertEqual(date(2000, 1, 1), parse_date('2000/1/1 00:00'))
+        with self.assertRaises(AssertionError):
+            parse_date('2000/1/1 01:23')
+
+    def test_get_end_of_day(self):
+        end = datetime(2000, 1, 2)
+        self.assertEqual(end, get_end_of_day(date(2000, 1, 1)))
+        self.assertEqual(end, get_end_of_day(datetime(2000, 1, 1)))
+        self.assertEqual(end, get_end_of_day(datetime(2000, 1, 1, 2, 3)))

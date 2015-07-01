@@ -13,6 +13,7 @@ from reebill.reports.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
+from test import create_tables
 
 
 class ExporterSheetTest(unittest.TestCase):
@@ -314,6 +315,7 @@ class ExporterDataBookTest(unittest.TestCase):
 
     def setUp(self):
         init_config('test/tstsettings.cfg')
+        create_tables()
         init_model()
 
         self.exp = Exporter(ReeBillDAO(), PaymentDAO())

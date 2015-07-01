@@ -4,7 +4,7 @@ from unittest import TestCase
 from core import init_model
 from reebill.reebill_model import User
 from reebill.users import UserDAO
-from test import init_test_config
+from test import init_test_config, create_tables
 
 
 class TestUser(TestCase):
@@ -31,6 +31,7 @@ class TestUserDAO(TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
         init_model()
 
     def setUp(self):

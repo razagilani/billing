@@ -1,8 +1,8 @@
 import hashlib
+import string
 
 from core.model import UtilBill
 from exc import MissingFileError, DuplicateFileError
-
 
 class BillFileHandler(object):
     """Handles everything related to utility bill files. These are
@@ -32,7 +32,7 @@ class BillFileHandler(object):
         self._url_format = url_format
 
     @classmethod
-    def _compute_hexdigest(cls, file):
+    def compute_hexdigest(cls, file):
         """Return SHA-256 hash of the given file (must be seekable).
         :param file: seekable file
         """
@@ -101,6 +101,8 @@ class BillFileHandler(object):
         """
         key_name = self.get_key_name_for_utilbill(utilbill)
         key = self._get_amazon_bucket().get_key(key_name)
+        if key is None:
+            raise MissingFileError('Key "%s" does not exist' % key_name)
         key.get_contents_to_file(output_file)
 
     def delete_file(self, utilbill):
@@ -126,7 +128,7 @@ class BillFileHandler(object):
         """Upload the given file to s3.
         :param file: a seekable file
         """
-        sha256_hexdigest = BillFileHandler._compute_hexdigest(file)
+        sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
         if self._utilbill_loader.count_utilbills_with_hash(
                 sha256_hexdigest) != 0:
             raise DuplicateFileError('File already exists with hash %s ' %
