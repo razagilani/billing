@@ -8,9 +8,6 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 import logging
-from core.extraction.extraction import TextExtractor, Field, Applier, Extractor, \
-    LayoutExtractor, BoundingBox
-from core.model import Utility
 
 from upgrade_scripts import alembic_upgrade
 from core import init_model, initialize, init_config

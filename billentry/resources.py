@@ -286,7 +286,8 @@ class UtilBillResource(BaseResource):
         # the keys are None, 'un_enter' has to come before it and 'enter' has
         #  to come after it.
         if row['entered'] is False:
-            utilbill.un_enter()
+            with project_mgr_permission.require():
+                utilbill.un_enter()
 
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
