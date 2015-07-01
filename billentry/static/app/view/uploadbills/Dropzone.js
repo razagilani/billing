@@ -15,7 +15,7 @@ Ext.define('BillEntry.view.uploadbills.Dropzone', {
                            xtype: 'container',
                            width: '100%',
                            height: '100%',
-                           html: '<iframe src="dropzone.html" style="border:0px;width:100%;height:100%"></iframe>'
+                           html: '<iframe src="dropzone.html" id="dropzoneIFrame" style="border:0px;width:100%;height:100%"></iframe>'
                        });
         me.items = userItems;
 

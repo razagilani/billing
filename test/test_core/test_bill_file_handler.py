@@ -9,6 +9,15 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from core.model import UtilBill
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
@@ -43,7 +52,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.state = UtilBill.Complete
 
     def test_compute_hexdigest(self):
-        self.assertEqual(self.file_hash, self.bfh._compute_hexdigest(self.file))
+        self.assertEqual(self.file_hash, self.bfh.compute_hexdigest(self.file))
 
     def test_get_s3_url(self):
         self.utilbill.state = UtilBill.Complete
