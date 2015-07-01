@@ -799,6 +799,13 @@ class UtilBill(Base):
                     CheckConstraint('period_end > 1900-01-01'),
                     CheckConstraint('next_meter_read_date > 1900-01-01'))
 
+    __table_args__ = (CheckConstraint('period_start > 1900-01-01'),
+                    CheckConstraint('period_end > 1900-01-01'),
+                    CheckConstraint('next_meter_read_date > 1900-01-01'),
+                    CheckConstraint('due_date > 1900-01-01'),
+                    CheckConstraint('date_received > 1900-01-01'),
+                    CheckConstraint('date_modified > 1900-01-01'),
+                    CheckConstraint('date_extracted > 1900-01-01'))
     __mapper_args__ = {'extension': UtilbillCallback(),
 
         # single-table inheritance
