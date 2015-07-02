@@ -295,22 +295,41 @@ class TestIntegration(TestCase):
         #                  self.bill.get_rate_class_name())
         self.assertIsInstance(self.bill.date_extracted, datetime)
 
-    @skip('not working yet')
+    @skip(
+        "Broken: when a Field is deleted, the before_update method is called, "
+        "but the 'extractor' attribute there is None, and before_delete is "
+        "not called")
     def test_created_modified(self):
         self.assertIsNone(self.e1.created)
         self.assertIsNone(self.e1.modified)
 
         s = Session()
         s.add(self.e1)
+        s.add_all(self.e1.fields)
         s.flush()
-        modified = self.e1.modified
+        last_modified = self.e1.modified
         self.assertIsNotNone(self.e1.created)
-        self.assertIsNotNone(modified)
-        self.assertLessEqual(self.e1.created, modified)
+        self.assertIsNotNone(last_modified)
+        self.assertLessEqual(self.e1.created, last_modified)
 
-        self.e1.fields[0].name = 'new name'
+        # changing a Field updates the modification date of the Extractor
+        self.e1.fields[0].regex = 'something else'
         s.flush()
-        self.assertGreater(self.e1.modified, modified)
+        self.assertGreater(self.e1.modified, last_modified)
+        last_modified = self.e1.modified
+
+        # adding a field
+        last_modified = self.e1.modified
+        self.e1.fields.append(TextExtractor.TextField(regex='a'))
+        s.flush()
+        self.assertGreater(self.e1.modified, last_modified)
+        last_modified = self.e1.modified
+
+        # deleting a field
+        # TODO this doesn't work
+        del self.e1.fields[-1]
+        s.flush()
+        self.assertGreater(self.e1.modified, last_modified)
 
     @skip('this task was deleted, might come back')
     def test_test_extractor(self):
