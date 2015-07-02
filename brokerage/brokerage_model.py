@@ -5,7 +5,7 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float, Table
 from sqlalchemy.orm import relationship
 
-from core.model import UtilityAccount, Base
+from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
 from exc import ValidationError
 
@@ -24,7 +24,6 @@ class BrokerageAccount(Base):
     def __init__(self, utility_account):
         self.utility_account = utility_account
 
-
 class Company(AltitudeBase):
     __tablename__ = 'Company'
     company_id = Column('Company_ID', Integer, primary_key=True)
@@ -39,29 +38,54 @@ class CompanyPGSupplier(AltitudeBase):
     company_id = Column('Company_ID', Integer, primary_key=True)
     name = Column('Company', String, unique=True)
 
+class RateClass(AltitudeBase):
+    __tablename__ = 'Rate_Class1'
+    rate_class_id = Column('Rate_Class_ID', Integer, primary_key=True)
+
+class RateClassAlias(AltitudeBase):
+    __tablename__ = 'Rate_Class_Alias'
+    rate_class_alias_id = Column('Rate_Class_Alias_ID', Integer,
+                                 primary_key=True)
+    rate_class_id = Column('Rate_Class_ID', Integer,
+                           ForeignKey('Rate_Class1.Rate_Class_ID'))
+    rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
+
+
+def get_rate_class_from_alias(alias):
+    """Return the RateClass for the given alias, or None if it could not be
+    found.
+    """
+    session = AltitudeSession()
+    rate_class = session.query(RateClass).join(RateClassAlias).filter_by(
+        rate_class_alias=alias).first()
+    return rate_class
+
 
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'rate'
+    __tablename__ = 'Rate_Matrix'
 
-    rate_id = Column('quote_id', Integer, primary_key=True)
-    supplier_id = Column('CompanySupplier_ID', Integer,
+    rate_id = Column('Rate_Matrix_ID', Integer, primary_key=True)
+    supplier_id = Column('Supplier_Company_ID', Integer,
                          # foreign key to view is not allowed
                          ForeignKey('Company.Company_ID'), nullable=False)
 
-    rate_class_alias = Column(String)
+    rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
+    rate_class_id = Column('Rate_Class_ID', Integer,
+                           ForeignKey('Rate_Class1.Rate_Class_ID'),
+                           nullable=True)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
-    start_from = Column('start_from', DateTime, nullable=False)
-    start_until = Column('start_until', DateTime, nullable=False)
+    start_from = Column('Earliest_Contract_Start_Date', DateTime, nullable=False)
+    start_until = Column('Latest_Contract_Start_Date', DateTime, nullable=False)
 
     # term length in number of utility billing periods
-    term_months = Column('term_months', Integer, nullable=False)
+    term_months = Column('Contract_Term_Months', Integer, nullable=False)
 
     # when this quote was received
-    date_received = Column('date_received', DateTime, nullable=False)
+    date_received = Column('Created_On', DateTime, nullable=False)
 
     # inclusive start and exclusive end of the period during which this quote
     # is valid
@@ -70,23 +94,26 @@ class Quote(AltitudeBase):
 
     # whether this quote involves "POR" (supplier is offering a discount
     # because credit risk is transferred to the utility)
-    purchase_of_receivables = Column('purchase_of_receivables', Boolean,
+    purchase_of_receivables = Column('Purchase_Of_Receivables', Boolean,
                                      nullable=False, server_default='0')
 
     # fixed price for energy in dollars/energy unit
-    price = Column('price', Float, nullable=False)
+    price = Column('Supplier_Price_Dollars_KWH_Therm', Float, nullable=False)
 
     # zone
-    zone = Column('zone', String)
+    zone = Column('Zone', String)
 
     # dual billing
-    dual_billing = Column('dual_billing', Boolean, nullable=False,
+    dual_billing = Column('Dual_Billing', Boolean, nullable=False,
                           server_default='1')
 
     # Percent Swing Allowable
-    percent_swing = Column('percent_swing', Float)
+    percent_swing = Column('Percent_Swing_Allowable', Float)
 
     discriminator = Column(String(50), nullable=False)
+
+    rate_class = relationship('RateClass')
+
     __mapper_args__ = {
         'polymorphic_identity': 'quote',
         'polymorphic_on': discriminator,
@@ -136,8 +163,8 @@ class MatrixQuote(Quote):
     # that this quote applies to. nullable because there might be no
     # restrictions on energy usage.
     # (min_volume <= customer's energy consumption < limit_volume)
-    min_volume = Column('min_volume', Float)
-    limit_volume = Column('limit_volume', Float)
+    min_volume = Column('Minimum_Annual_Volume_KWH_Therm', Float)
+    limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
     MAX_MIN_VOLUME = 2000
