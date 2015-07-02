@@ -13,7 +13,7 @@ from core import init_model
 from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
-from core.pricing import PricingModel
+from core.pricing import PricingModel, FuzzyPricingModel
 from test import init_test_config, create_tables, clear_db
 
 from datetime import date
@@ -383,15 +383,13 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        charge = utilbill.add_charge()
-        self.assertEqual('%s.quantity' % Register.TOTAL,
-                         charge.quantity_formula)
+        formula = Charge.get_simple_formula(Register.TOTAL)
+        fpm = Mock(autospec=FuzzyPricingModel)
+        fpm.get_closest_occurrence_of_charge.return_value = Charge(
+            "rsi_binding does't matter", formula=formula, rate=1.234)
+        charge = utilbill.add_charge({})
+        self.assertEqual(formula, charge.quantity_formula)
 
-        session.delete(charge)
-
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula,
-                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
 
     def test_compute(self):
