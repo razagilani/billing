@@ -6,6 +6,15 @@ from boto.s3.connection import S3Connection
 from celery.result import AsyncResult
 from mock import Mock, NonCallableMock
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor
@@ -286,22 +295,41 @@ class TestIntegration(TestCase):
         #                  self.bill.get_rate_class_name())
         self.assertIsInstance(self.bill.date_extracted, datetime)
 
-    @skip('not working yet')
+    @skip(
+        "Broken: when a Field is deleted, the before_update method is called, "
+        "but the 'extractor' attribute there is None, and before_delete is "
+        "not called")
     def test_created_modified(self):
         self.assertIsNone(self.e1.created)
         self.assertIsNone(self.e1.modified)
 
         s = Session()
         s.add(self.e1)
+        s.add_all(self.e1.fields)
         s.flush()
-        modified = self.e1.modified
+        last_modified = self.e1.modified
         self.assertIsNotNone(self.e1.created)
-        self.assertIsNotNone(modified)
-        self.assertLessEqual(self.e1.created, modified)
+        self.assertIsNotNone(last_modified)
+        self.assertLessEqual(self.e1.created, last_modified)
 
-        self.e1.fields[0].name = 'new name'
+        # changing a Field updates the modification date of the Extractor
+        self.e1.fields[0].regex = 'something else'
         s.flush()
-        self.assertGreater(self.e1.modified, modified)
+        self.assertGreater(self.e1.modified, last_modified)
+        last_modified = self.e1.modified
+
+        # adding a field
+        last_modified = self.e1.modified
+        self.e1.fields.append(TextExtractor.TextField(regex='a'))
+        s.flush()
+        self.assertGreater(self.e1.modified, last_modified)
+        last_modified = self.e1.modified
+
+        # deleting a field
+        # TODO this doesn't work
+        del self.e1.fields[-1]
+        s.flush()
+        self.assertGreater(self.e1.modified, last_modified)
 
     @skip('this task was deleted, might come back')
     def test_test_extractor(self):
