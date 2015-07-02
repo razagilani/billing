@@ -108,8 +108,8 @@ class Field(model.Base):
             instance.extractor.modified = datetime.utcnow()
 
         def before_update(self, mapper, connection, instance):
-            if object_session(instance).is_modified(instance,
-                    include_collections=False):
+            if object_session(instance).is_modified(
+                    instance, include_collections=False):
                 instance.extractor.modified = datetime.utcnow()
 
         def before_delete(self, mapper, connection, instance):

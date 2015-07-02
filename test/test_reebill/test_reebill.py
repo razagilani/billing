@@ -17,6 +17,7 @@ from test import init_test_config, clear_db, create_tables
 
 def setUpModule():
     init_test_config()
+    create_tables()
 
 class ReeBillCustomerTest(unittest.TestCase):
     """Unit tests for the ReeBillCustomer class.
