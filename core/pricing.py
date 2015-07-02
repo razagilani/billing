@@ -175,7 +175,7 @@ class FuzzyPricingModel(PricingModel):
         """
         if None in (utilbill.utility, utilbill.rate_class):
             return []
-        return [u for u in self._utilbill_loader.load_real_utilbills(
+        return [u for u in self._utilbill_loader.load_utilbills(
             utility=utilbill.utility, rate_class=utilbill.rate_class,
             processed=True) if not ignore_func(u)]
 
@@ -189,12 +189,12 @@ class FuzzyPricingModel(PricingModel):
         if utilbill.supplier is None:
             return []
         if utilbill.supply_group is None:
-            return [u for u in self._utilbill_loader.load_real_utilbills(
+            return [u for u in self._utilbill_loader.load_utilbills(
                 supplier=utilbill.supplier, processed=True) if
                     not ignore_func(u)]
         # any two bills with the same supply group should also have the same
         # supplier, so "supplier" is not used as one of the filtering criteria
-        return [u for u in self._utilbill_loader.load_real_utilbills(
+        return [u for u in self._utilbill_loader.load_utilbills(
             supply_group=utilbill.supply_group, processed=True) if
                 not ignore_func(u)]
 
