@@ -106,10 +106,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.u.utility_account.account, end=self.u.period_start,
             utility=self.u.utility, rate_class=self.u.rate_class,
             processed=True)
-        load_calls = [
-            call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True), call(supply_group=self.supply_group,
-                                       processed=True)]
+        load_calls = [call(rate_class=self.rate_class, processed=True,
+                           join=UtilBill.charges),
+            call(supply_group=self.supply_group, processed=True,
+                 join=UtilBill.charges)]
         self.utilbill_loader.load_utilbills.assert_has_calls(load_calls)
         self.assertEqual([], charges)
 
@@ -149,8 +149,8 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1, self.utilbill_2, self.utilbill_3]
         charges = self.fpm.get_predicted_charges(self.u)
         self.utilbill_loader.load_utilbills.assert_has_calls([
-            call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True)])
+            call(rate_class=self.rate_class, processed=True,
+                 join=UtilBill.charges)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], charges)
 
         # however, when u belongs to the same account as an existing bill,
@@ -165,9 +165,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
             self.utilbill_1
         charges = self.fpm.get_predicted_charges(self.u)
         self.utilbill_loader.load_utilbills.assert_has_calls([
-            call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True),
-            call(supply_group=self.supply_group, processed=True)])
+            call(rate_class=self.rate_class, processed=True,
+                 join=UtilBill.charges),
+            call(supply_group=self.supply_group, processed=True,
+                 join=UtilBill.charges)])
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
                 self.charge_c_unshared], charges)
 
@@ -230,9 +231,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
         charges = self.fpm.get_predicted_charges(self.u)
 
         self.utilbill_loader.load_utilbills.assert_has_calls([
-            call(utility=self.utility, rate_class=self.rate_class,
-                 processed=True),
-            call(supply_group=self.u.supply_group, processed=True)
+            call(rate_class=self.rate_class, processed=True,
+                 join=UtilBill.charges),
+            call(supply_group=self.u.supply_group, processed=True,
+                 join=UtilBill.charges)
         ])
 
         d_charges = {c for c in charges if c.type == Charge.DISTRIBUTION}

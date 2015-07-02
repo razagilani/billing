@@ -1,4 +1,5 @@
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from core.model import UtilBill, UtilityAccount, Session, RateClass
 from exc import NoSuchBillException
 
@@ -15,11 +16,21 @@ class UtilBillLoader(object):
     def load_utilbills(self, **kwargs):
         """Load UtilBills matching the criteria given by **kwargs.
         :param: kwargs: UtilBill attributes and their values to filter by,
-        or "service" to include only electric or gas bills.
+        or "service" to include only electric or gas bills, or "join" with a
+        relationship attribute or list/tuple of attributes to eagerly load
+        other tables.
+        :return: Query object of UtilBills
         """
         cursor = Session().query(UtilBill)
         for key, value in kwargs.iteritems():
-            if key == 'service':
+            if key == 'join':
+                # list or tuple is requred because general iterable is hard
+                # to distinguish from an iterable SQLAlchemy attribute
+                if not isinstance(value, (list, tuple)):
+                    value = [value]
+                for attr in value:
+                    cursor = cursor.options(joinedload(attr))
+            elif key == 'service':
                 cursor = cursor.join(RateClass).filter(
                     RateClass.service == value)
             else:
