@@ -6,7 +6,7 @@ from logging import getLogger
 from sys import maxint
 
 from exc import NoSuchBillException
-from core.model import Charge, Utility, RateClass
+from core.model import Charge, Utility, RateClass, UtilBill
 
 
 class PricingModel(object):
@@ -176,8 +176,8 @@ class FuzzyPricingModel(PricingModel):
         if None in (utilbill.utility, utilbill.rate_class):
             return []
         return [u for u in self._utilbill_loader.load_utilbills(
-            utility=utilbill.utility, rate_class=utilbill.rate_class,
-            processed=True) if not ignore_func(u)]
+            rate_class=utilbill.rate_class, processed=True,
+            join=UtilBill.charges) if not ignore_func(u)]
 
     def _load_relevant_bills_supply(self, utilbill, ignore_func):
         """Return an iterable of UtilBills relevant for determining the
@@ -195,8 +195,8 @@ class FuzzyPricingModel(PricingModel):
         # any two bills with the same supply group should also have the same
         # supplier, so "supplier" is not used as one of the filtering criteria
         return [u for u in self._utilbill_loader.load_utilbills(
-            supply_group=utilbill.supply_group, processed=True) if
-                not ignore_func(u)]
+            supply_group=utilbill.supply_group, processed=True,
+            join=UtilBill.charges) if not ignore_func(u)]
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
