@@ -1,4 +1,5 @@
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from core.model import UtilBill, UtilityAccount, Session, RateClass
 from exc import NoSuchBillException
 
@@ -12,20 +13,29 @@ class UtilBillLoader(object):
         '''Return utilbill with the given id.'''
         return Session().query(UtilBill).filter_by(id=utilbill_id).one()
 
-    def load_real_utilbills(self, **kwargs):
-        '''Returns a cursor of UtilBill objects matching the criteria given
-        by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
-        state Estimated or lower) are included.
-        '''
-        cursor = Session().query(UtilBill).join(RateClass) \
-            .filter(UtilBill.state <= UtilBill.Estimated)
+    def load_utilbills(self, **kwargs):
+        """Load UtilBills matching the criteria given by **kwargs.
+        :param: kwargs: UtilBill attributes and their values to filter by,
+        or "service" to include only electric or gas bills, or "join" with a
+        relationship attribute or list/tuple of attributes to eagerly load
+        other tables.
+        :return: Query object of UtilBills
+        """
+        cursor = Session().query(UtilBill)
         for key, value in kwargs.iteritems():
-            if key == 'service':
-                cursor = cursor.filter(RateClass.service == value)
+            if key == 'join':
+                # list or tuple is requred because general iterable is hard
+                # to distinguish from an iterable SQLAlchemy attribute
+                if not isinstance(value, (list, tuple)):
+                    value = [value]
+                for attr in value:
+                    cursor = cursor.options(joinedload(attr))
+            elif key == 'service':
+                cursor = cursor.join(RateClass).filter(
+                    RateClass.service == value)
             else:
                 cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
-
 
     def get_last_real_utilbill(self, account, end=None, service=None,
             utility=None, rate_class=None, processed=None):
