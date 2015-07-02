@@ -24,13 +24,13 @@ class UtilbillLoaderTest(unittest.TestCase):
         self.session = Session()
         blank_address = Address()
         supplier = Supplier(name='Test Supplier', address=Address())
-        supply_group = SupplyGroup('supply_group', supplier, 'gas')
+        supply_group = SupplyGroup('supply_group', supplier, GAS)
         utility =  Utility(name='Test Utility', address=Address())
         self.utility_account = UtilityAccount('Test Customer', 99999,
                             utility,
                             supplier,
                             RateClass(name='FB Test Rate Class',
-                                      utility=utility, service='gas'),
+                                      utility=utility, service=GAS),
                             blank_address, blank_address, fb_supply_group=supply_group)
         self.session.add(self.utility_account)
         self.session.commit()
@@ -45,9 +45,9 @@ class UtilbillLoaderTest(unittest.TestCase):
         self.pepco = Utility(name='pepco', address=Address())
         self.other_supplier = Supplier(name='Other Supplier', address=Address())
         self.rateclass1 = RateClass(name='DC Non Residential Non Heat',
-                               utility=self.washington_gas, service='gas')
+                               utility=self.washington_gas, service=GAS)
         self.rateclass2 = RateClass(name='whatever', utility=self.pepco,
-                                    service='electric')
+                                    service=ELECTRIC)
         self.gas_bill_1 = UtilBill(self.utility_account, self.washington_gas,
                               self.rateclass1, supplier=self.supplier,
                               period_start=date(2000,1,1),
@@ -115,12 +115,12 @@ class UtilbillLoaderTest(unittest.TestCase):
 
         # electric bill is ignored if service "gas" is specified
         self.assertEqual(self.gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', end=date(2000, 2, 2), service='gas'))
+            '99999', end=date(2000, 2, 2), service=GAS))
         self.assertEqual(self.gas_bill_1, self.ubl.get_last_real_utilbill(
-            '99999', end=date(2000, 2, 1), service='gas'))
+            '99999', end=date(2000, 2, 1), service=GAS))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
-                          end=date(2000,1,31), service='gas')
+                          end=date(2000,1,31), service=GAS)
 
         # filter by utility and rate class
         self.assertEqual(self.gas_bill_1, self.ubl.get_last_real_utilbill(
@@ -148,7 +148,7 @@ class UtilbillLoaderTest(unittest.TestCase):
             UtilBill(self.utility_account, self.utility_account.fb_utility,
                      RateClass(name='RC1',
                                utility=self.utility_account.fb_utility,
-                               service='gas'),
+                               service=GAS),
                      supplier=self.utility_account.fb_supplier,
                      period_start=date(2000, 1, 1),
                      period_end=date(2000, 2, 1), sha256_hexdigest=hash))
@@ -158,7 +158,7 @@ class UtilbillLoaderTest(unittest.TestCase):
             UtilBill(self.utility_account, self.utility_account.fb_utility,
                      RateClass(name='RC2',
                                utility=self.utility_account.fb_utility,
-                               service='gas'),
+                               service=GAS),
                      supplier=self.utility_account.fb_supplier,
                      period_start=date(2000, 2, 1),
                      period_end=date(2000, 3, 1), sha256_hexdigest=hash))
@@ -168,7 +168,7 @@ class UtilbillLoaderTest(unittest.TestCase):
             UtilBill(self.utility_account, self.utility_account.fb_utility,
                      RateClass(name='RC3',
                                utility=self.utility_account.fb_utility,
-                               service='gas'),
+                               service=GAS),
                      supplier=self.utility_account.fb_supplier,
                      period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
@@ -190,14 +190,14 @@ class UtilbillLoaderTest(unittest.TestCase):
             UtilBill(self.utility_account, self.utility_account.fb_utility,
                      RateClass(name='RC1',
                                utility=self.utility_account.fb_utility,
-                               service='gas'),
+                               service=GAS),
                      supplier=self.utility_account.fb_supplier,
                      period_start=date(2000, 3, 1),
                      period_end=date(2000, 4, 1),
                      sha256_hexdigest='abc'),
             UtilBill(other_account, self.utility_account.fb_utility,
                      RateClass(name='RC2', utility=other_account.fb_utility,
-                               service='gas'),
+                               service=GAS),
                      supplier=other_account.fb_supplier,
                      period_start=date(2000, 3, 1), period_end=date(2000, 4, 1),
                      sha256_hexdigest='def'),
