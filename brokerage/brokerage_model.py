@@ -39,7 +39,7 @@ class CompanyPGSupplier(AltitudeBase):
     name = Column('Company', String, unique=True)
 
 class RateClass(AltitudeBase):
-    __tablename__ = 'Rate_Class1'
+    __tablename__ = 'Rate_Class_View'
     rate_class_id = Column('Rate_Class_ID', Integer, primary_key=True)
 
 class RateClassAlias(AltitudeBase):
@@ -47,7 +47,7 @@ class RateClassAlias(AltitudeBase):
     rate_class_alias_id = Column('Rate_Class_Alias_ID', Integer,
                                  primary_key=True)
     rate_class_id = Column('Rate_Class_ID', Integer,
-                           ForeignKey('Rate_Class1.Rate_Class_ID'))
+                           ForeignKey('Rate_Class_View.Rate_Class_ID'))
     rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
 
 
@@ -73,7 +73,7 @@ class Quote(AltitudeBase):
 
     rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
     rate_class_id = Column('Rate_Class_ID', Integer,
-                           ForeignKey('Rate_Class1.Rate_Class_ID'),
+                           ForeignKey('Rate_Class_View.Rate_Class_ID'),
                            nullable=True)
 
     # inclusive start and exclusive end of the period during which the
