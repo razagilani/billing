@@ -278,8 +278,8 @@ class UtilbillProcessor(object):
 
         # upload the file
         if bill_file is not None:
-            self.bill_file_handler.upload_file_for_utilbill(new_utilbill,
-                                                            bill_file)
+            self.bill_file_handler.upload_file_for_utilbill(
+                new_utilbill, bill_file)
 
         self._set_utilbill_data(new_utilbill)
 
