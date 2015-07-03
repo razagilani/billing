@@ -262,7 +262,7 @@ class ThermalBillDoc(BillDoc):
 
         backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
 
-        # section 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
+        # section 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope)
 
         billPeriodTableF = Frame(36, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=_showBoundaries)
 
