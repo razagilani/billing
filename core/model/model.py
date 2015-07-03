@@ -18,6 +18,8 @@ import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
     UniqueConstraint, MetaData, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.orm.interfaces import MapperExtension
 from sqlalchemy.orm import sessionmaker, scoped_session, object_session
 from sqlalchemy.orm import relationship, backref
@@ -26,12 +28,13 @@ from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.inspection import inspect
 import tsort
 from alembic.migration import MigrationContext
 
 from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
-    UnEditableBillError, NotProcessable, BillingError, NoSuchBillException, \
-    MissingFileError
+    UnEditableBillError, NotProcessable, BillingError, BillStateError, \
+    NoSuchBillException, MissingFileError
 from util.units import unit_registry
 
 __all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
@@ -102,6 +105,11 @@ class _Base(object):
         return hash((self.__class__.__name__,) + tuple(
             getattr(self, x) for x in self.column_names()))
 
+    def _get_primary_key_names(self):
+        """:return: set of names of primary key columns.
+        """
+        return {c.key for c in class_mapper(self.__class__).primary_key}
+
     def clone(self):
         """Return an object identical to this one except for primary keys and
         foreign keys.
@@ -111,14 +119,14 @@ class _Base(object):
         # https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg10895.html
         # (this code does not completely follow those instructions)
         cls = self.__class__
-        pk_keys = set(c.key for c in class_mapper(cls).primary_key)
         foreign_key_columns = chain.from_iterable(
             c.columns for c in self.__table__.constraints if
                 isinstance(c, ForeignKeyConstraint))
         foreign_keys = set(col.key for col in foreign_key_columns)
 
         relevant_attr_names = [x for x in self.column_names() if
-            x not in pk_keys and x not in foreign_keys]
+                               x not in self._get_primary_key_names() and
+                               x not in foreign_keys]
 
         # NOTE it is necessary to use __new__ to avoid calling the
         # constructor here (because the constructor arguments are not known,
@@ -149,6 +157,32 @@ class _Base(object):
                   attr_name, column_property in mapper.column_attrs.items()
                   if column_property.columns[ 0] not in mapper.primary_key
                   and attr_name not in exclude}
+                  
+    def _copy_data_from(self, other):
+        """Copy all column values from 'other' (except primary key),  replacing
+        existing values.
+        param other: object having same class as self.
+        """
+        assert other.__class__ == self.__class__
+        # all attributes are either columns or relationships (note that some
+        # relationship attributes, like charges, correspond to a foreign key
+        # in a different table)
+        for col_name in other.column_names():
+            setattr(self, col_name, getattr(other, col_name))
+        for name, property in inspect(self.__class__).relationships.items():
+            other_value = getattr(other, name)
+            # for a relationship attribute, use of copy of it or its
+            # contents. i doubt this is going to successfully copy an entire
+            # graph of SQLAlchemy objects but should work for at least one
+            # level, like UtilBill.charges.
+            # TODO: what about non-child relationships like UtilBill.utility?
+            # those should not be copied!
+            if isinstance(other_value, Base):
+                other_value = other_value.clone()
+            elif isinstance(other_value, InstrumentedList):
+                other_value = [element.clone() for element in other_value]
+            setattr(self, name, other_value)
+
 
 
 Base = declarative_base(cls=_Base)
@@ -1344,6 +1378,33 @@ class UtilBill(Base):
             return self.rate_class.service
         return None
 
+    def replace_estimated_with_complete(self, other, bill_file_handler):
+        """Convert an estimated bill, which has no file, into a real bill by
+        copying all data from another non-estimated bill to this one, and
+        deleting the other bill.
+        :param other: UtilBill
+        :param bill_file_handler: BillFileHandler
+        """
+        # validation
+        self.check_editable()
+        if self.state != self.Estimated:
+            raise BillStateError("Bill to replace must be estimated")
+        if other.state == self.Estimated:
+            raise BillStateError("Replacement bill must not be estimated")
+        assert self.sha256_hexdigest in ('', None)
+        bill_file_handler.check_file_exists(other)
+
+        # copy the data and update 'state'
+        self._copy_data_from(other)
+        assert self.sha256_hexdigest is not None
+        bill_file_handler.check_file_exists(self)
+        self.state = self.Complete
+
+        # delete the other bill
+        s = object_session(other)
+        if s is not None:
+            s.expunge(other)
+            
     def get_text(self, bill_file_handler, pdf_util):
         """Return text dump of the bill's PDF.
         :param bill_file_handler: used to get the PDF file (only if the text for

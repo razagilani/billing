@@ -1,4 +1,5 @@
 from mock import MagicMock, Mock
+from sqlalchemy.inspection import inspect
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -257,6 +258,46 @@ class UtilBillTest(TestCase):
         self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
         self.assertEqual(0, bfh.write_copy_to_file.call_count)
         self.assertEqual(0, pdf_util.get_pdf_text.call_count)
+
+    def test_replace_estimated_with_complete(self):
+        # estimated bill and real bill have different data
+        est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated,
+                            period_start=date(2000,1,1), target_total=12.34)
+        real_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Complete,
+                             period_start=date(2000,1,2), target_total=56.78,
+                             sha256_hexdigest='abc123')
+        real_bill.charges = [Charge('a', target_total=9.10)]
+
+        # these are the attributes that will be transferred from the real
+        # bill to the estimated one. must be saved in advance because some
+        # child objects will be moved from one to the other rather than copied.
+        attr_names = est_bill.column_names() + [
+            'utility_account',
+            'supplier',
+            'rate_class',
+            'billing_address',
+            'service_address',
+            'utility',
+            'charges',
+            '_registers',
+        ]
+        real_bill_data = {attr_name: getattr(real_bill, attr_name)
+                          for attr_name in attr_names}
+
+        bill_file_handler = Mock(autospec=BillFileHandler)
+        est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
+
+        # all attributes in estimated bill should match the other that were
+        # originally in real bill
+        for attr_name in attr_names:
+            self.assertEqual(real_bill_data[attr_name],
+                             getattr(est_bill, attr_name))
+
+        # make sure the values of certain attributes are not duplicated
+        self.assertIs(real_bill.utility, est_bill.utility)
+        self.assertIs(real_bill.rate_class, est_bill.rate_class)
+        self.assertIs(real_bill.supplier, est_bill.supplier)
+        self.assertIs(real_bill.supply_group, est_bill.supply_group)
 
 
 class UtilBillTestWithDB(TestCase):
@@ -759,4 +800,29 @@ class UtilBillTestWithDB(TestCase):
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
         self.assertEqual(3, len(utilbill.get_distribution_charges()))
+
+    def test_replace_estimated_with_complete_db(self):
+        """Test for the database aspect of
+        UtilBill.test_replace_estimated_with_complete: deleting the
+        non-estimated bill. (See UtilBillTest for the copying of data from
+        one bill to the other.)
+        """
+        est_bill = UtilBill(self.utility_account, None, None,
+                            state=UtilBill.Estimated)
+        real_bill = UtilBill(self.utility_account, None, None)
+        s = Session()
+        s.add_all([est_bill, real_bill])
+
+        # at first both bills are (going to be inserted in) the db
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).pending)
+
+        est_bill.replace_estimated_with_complete(
+            real_bill, Mock(autospec=BillFileHandler))
+
+        # real bill gets deleted (or in this case, is removed from the
+        # session before it gets inserted), estimated bill doesn't
+        self.assertNotIn(real_bill, s)
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).transient)
 
