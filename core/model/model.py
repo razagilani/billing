@@ -1401,6 +1401,14 @@ class UtilBill(Base):
 
         # copy the data and update 'state'
         self._copy_data_from(other)
+
+        # special case for the two Address objects which are technically
+        # parents but should be copied like children
+        # TODO: figure out how to handle this case correctly in
+        # Base._copy_data_from
+        self.billing_address = other.billing_address.clone()
+        self.service_address = other.service_address.clone()
+
         assert self.sha256_hexdigest is not None
         bill_file_handler.check_file_exists(self)
         self.state = self.Complete
