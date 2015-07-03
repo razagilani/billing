@@ -469,7 +469,7 @@ class UtilbillProcessor(object):
         passed as keyword arguments to the charge"""
         utilbill = self._utilbill_loader.get_utilbill_by_id(utilbill_id)
         utilbill.check_editable()
-        charge = utilbill.add_charge(**charge_kwargs)
+        charge = utilbill.add_charge(charge_kwargs)
         self.compute_utility_bill(utilbill_id)
         return charge
 
@@ -490,6 +490,16 @@ class UtilbillProcessor(object):
             if k not in Charge.column_names():
                 raise AttributeError("Charge has no attribute '%s'" % k)
             setattr(charge, k, v)
+
+        # auto-fill formula and date fields when "rsi_binding" is edited
+        # TODO: this is really slow
+        if 'rsi_binding' in fields:
+            other_charge = self.pricing_model.get_closest_occurrence_of_charge(
+                charge)
+            if other_charge is not None:
+                charge.quantity_formula = other_charge.quantity_formula
+                charge.rate = other_charge.rate
+
         session.flush()
         self.compute_utility_bill(charge.utilbill.id)
         return charge
@@ -557,7 +567,7 @@ class UtilbillProcessor(object):
 
     def create_supplier(self, name):
         # suppliers are identified in the client by name, rather than
-        # their primary key. "Unknown Supplier" is a name sent by the client
+        # their primary key. "Unknown" is a name sent by the client
         # to the server to identify the supplier that is identified by "null"
         # when sent from the server to the client.
         assert name != ''

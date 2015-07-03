@@ -16,7 +16,7 @@ from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, \
-    UniqueConstraint, MetaData
+    UniqueConstraint, MetaData, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.collections import InstrumentedList
@@ -188,7 +188,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '30597f9f53b9'
+_schema_revision = '49b8d9978d7e'
 
 
 def check_schema_revision(schema_revision=None):
@@ -829,6 +829,13 @@ class UtilBill(Base):
 
     __tablename__ = 'utilbill'
 
+    __table_args__ = (CheckConstraint('period_start > \'1900-01-01\''),
+                    CheckConstraint('period_end > \'1900-01-01\''),
+                    CheckConstraint('next_meter_read_date > \'1900-01-01\''),
+                    CheckConstraint('due_date > \'1900-01-01\''),
+                    CheckConstraint('date_received > \'1900-01-01\''),
+                    CheckConstraint('date_modified > \'1900-01-01\''),
+                    CheckConstraint('date_scraped > \'1900-01-01\''))
     __mapper_args__ = {'extension': UtilbillCallback(),
 
         # single-table inheritance
@@ -1108,7 +1115,14 @@ class UtilBill(Base):
                    self.utility_account.account, self.get_service(),
                    self.period_start, self.period_end, self.state)
 
-    def add_charge(self, **charge_kwargs):
+    def add_charge(self, charge_kwargs):
+        """
+        :param charge_kwargs: arguments to create a Charge object (this is
+        bad: pass a Charge object itself)
+        :param fuzzy_pricing_model: FuzzyPricingModel, needed to guess the
+        values of certain Charge attributes
+        :return: new Charge object
+        """
         self.check_editable()
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
@@ -1125,12 +1139,13 @@ class UtilBill(Base):
             type=charge_kwargs.get('type', Charge.DISTRIBUTION))
         self.charges.append(charge)
         session.add(charge)
-        registers = self._registers
-        charge.quantity_formula = '' if len(registers) == 0 else \
-            '%s.quantity' % Register.TOTAL if any(
-                [register.register_binding == Register.TOTAL for register in
-                 registers]) else \
-                registers[0].register_binding
+
+        # pre-fill a likely formula (Register.TOTAL now exists in every bill)
+        if 'formula' not in charge_kwargs:
+            charge.quantity_formula = Charge.get_simple_formula(Register.TOTAL)
+            # since 'rsi_binding' is not a real value yet, it doesn't make
+            # sense to try to pre-fill quantity and rate based on it
+
         session.flush()
         return charge
 
