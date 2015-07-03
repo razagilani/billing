@@ -27,6 +27,7 @@ from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, \
     Enum
+from sqlalchemy.util.langhelpers import symbol
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.inspection import inspect
 import tsort
@@ -171,16 +172,20 @@ class _Base(object):
             setattr(self, col_name, getattr(other, col_name))
         for name, property in inspect(self.__class__).relationships.items():
             other_value = getattr(other, name)
-            # for a relationship attribute, use of copy of it or its
-            # contents. i doubt this is going to successfully copy an entire
-            # graph of SQLAlchemy objects but should work for at least one
-            # level, like UtilBill.charges.
-            # TODO: what about non-child relationships like UtilBill.utility?
-            # those should not be copied!
-            if isinstance(other_value, Base):
-                other_value = other_value.clone()
-            elif isinstance(other_value, InstrumentedList):
-                other_value = [element.clone() for element in other_value]
+            # for a relationship attribute where this object is the parent
+            # (i.e. the other object's table contains the foreign key), copy the
+            # child object (or its contents, if it's a list).
+            # this only goes one level into the object graph but should be OK
+            # for most uses.
+            # i'm sure there's a much better way to do this buried in
+            # SQLAlchemy somewhere but this appears to work.
+            if property.direction == symbol('ONETOMANY'):
+                if isinstance(other_value, Base):
+                    other_value = other_value.clone()
+                elif isinstance(other_value, InstrumentedList):
+                    other_value = [element.clone() for element in other_value]
+            else:
+                assert property.direction == symbol('MANYTOONE')
             setattr(self, name, other_value)
 
 

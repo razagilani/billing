@@ -293,11 +293,27 @@ class UtilBillTest(TestCase):
             self.assertEqual(real_bill_data[attr_name],
                              getattr(est_bill, attr_name))
 
-        # make sure the values of certain attributes are not duplicated
+        # values of parent attributes should not be duplicated
+        # (parents in terms of foreign keys, not in terms of which classes
+        # contain have the SQLAlchemy relationship attributes defined in them)
         self.assertIs(real_bill.utility, est_bill.utility)
         self.assertIs(real_bill.rate_class, est_bill.rate_class)
         self.assertIs(real_bill.supplier, est_bill.supplier)
         self.assertIs(real_bill.supply_group, est_bill.supply_group)
+
+        # values of child attributes should be duplicated
+        self.assertEqual(len(est_bill.charges), len(real_bill.charges))
+        for c1, c2 in zip(est_bill.charges, real_bill.charges):
+            self.assertEqual(c1, c2)
+            self.assertIsNot(c1, c2)
+        self.assertEqual(len(est_bill._registers), len(real_bill._registers))
+        for r1, r2 in zip(est_bill._registers, real_bill._registers):
+            self.assertEqual(r1, r2)
+            self.assertIsNot(r1, r2)
+        self.assertEqual(est_bill.billing_address, real_bill.billing_address)
+        self.assertEqual(est_bill.service_address, real_bill.service_address)
+        self.assertIsNot(est_bill.billing_address, real_bill.billing_address)
+        self.assertIsNot(est_bill.service_address, real_bill.service_address)
 
 
 class UtilBillTestWithDB(TestCase):
