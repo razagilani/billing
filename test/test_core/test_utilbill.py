@@ -1,10 +1,21 @@
 from mock import MagicMock, Mock
 from sqlalchemy.inspection import inspect
+
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from test import init_test_config
+init_test_config()
+
 from core import init_model
 from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
-from core.pricing import PricingModel
+from core.pricing import PricingModel, FuzzyPricingModel
 from test import init_test_config, create_tables, clear_db
 
 from datetime import date
@@ -351,6 +362,34 @@ class UtilBillTestWithDB(TestCase):
         # charges, so 'b' is the only charge left in the database
         self.assertEqual(1, s.query(Charge).count())
 
+    def test_invalid_utilbill_dates(self):
+        supplier = Supplier(name='supplier', address=Address())
+        utility = Utility(name='utility', address=Address())
+        utility_account = UtilityAccount(
+            'someone', '98989', utility, supplier,
+            RateClass(name='FB Test Rate Class', utility=utility,
+                      service='gas'), Address(), Address())
+        utilbill = UtilBill(utility_account, utility,
+                            RateClass(name='rate class', utility=utility,
+                                      service='gas'),
+                            supplier=supplier,
+                            period_start=date(0215, 1, 1),
+                            period_end=date(0215, 2, 1))
+        utilbill.set_next_meter_read_date(date(0215, 1, 1))
+        Session().add(utilbill)
+        # flushing the changes should through integrity error as the dates
+        # entered for period_start, period_end and next_meter_read_date
+        # violates the defined column check constraint that checks date >
+        # 1900-01-01
+        self.assertRaises(IntegrityError, Session().flush)
+        utilbill.set_next_meter_read_date(date(2000,02,01))
+        utilbill.period_start = date(2000, 01, 01)
+        utilbill.period_end = date(2000, 02, 01)
+        # Since the dates entered for period_start, period_end and
+        # next_meter_read_date don't violate the check constraint, flushing
+        # changes should succeed
+        Session().flush()
+
     def test_processed_editable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
@@ -414,15 +453,13 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        charge = utilbill.add_charge()
-        self.assertEqual('%s.quantity' % Register.TOTAL,
-                         charge.quantity_formula)
+        formula = Charge.get_simple_formula(Register.TOTAL)
+        fpm = Mock(autospec=FuzzyPricingModel)
+        fpm.get_closest_occurrence_of_charge.return_value = Charge(
+            "rsi_binding does't matter", formula=formula, rate=1.234)
+        charge = utilbill.add_charge({})
+        self.assertEqual(formula, charge.quantity_formula)
 
-        session.delete(charge)
-
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula,
-                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
 
     def test_compute(self):

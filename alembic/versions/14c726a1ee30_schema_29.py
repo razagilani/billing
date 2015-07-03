@@ -36,6 +36,14 @@ def upgrade():
                     sa.Column('Company_ID', sa.Integer, primary_key=True),
                     sa.Column('Company', sa.String, unique=True))
 
+    op.create_table('Rate_Class_View',
+                    sa.Column('Rate_Class_ID', sa.Integer, primary_key=True))
+    op.create_table('Rate_Class_Alias',
+                    sa.Column('Rate_Class_Alias_ID', sa.Integer,
+                              primary_key=True),
+                    sa.Column('Rate_Class_ID', sa.Integer,
+                              sa.ForeignKey('Rate_Class_View.Rate_Class_ID')),
+                    sa.Column('Rate_Class_Alias', sa.String, nullable=False))
 
 def downgrade():
     raise NotImplementedError

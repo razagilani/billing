@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.Charges', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Charges', 'UtilityBills'
+        'Charges', 'UtilityBills', 'PreviousCharges'
     ],
     
     views:[
@@ -97,6 +97,20 @@ Ext.define('ReeBill.controller.Charges', {
 
         this.getChargesGrid().getSelectionModel().deselectAll();
         this.updateTextFields();
+
+        // Previous Bill
+        var utilbillStore = this.getUtilityBillsStore();
+        var previousBillIndex = utilbillStore.indexOf(selectedBill) + 1;
+        var previousBill = utilbillStore.getAt(previousBillIndex);
+        var prevStore = this.getPreviousChargesStore();
+        if(previousBill){
+            prevStore.getProxy().extraParams = {
+                utilbill_id: previousBill.get('id')
+            };
+            prevStore.reload();
+        }else{
+            prevStore.loadData([]);
+        }
     },
 
     /**

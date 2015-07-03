@@ -110,7 +110,7 @@ def create_charge_name_maps(s):
     }
 
 def upgrade():
-    alembic_upgrade('30597f9f53b9')
+    alembic_upgrade('49b8d9978d7e')
 
     init_model()
     init_altitude_db()
@@ -119,12 +119,12 @@ def upgrade():
     create_extractors(s)
     create_charge_name_maps(s)
 
+    a.bind.url.drivername
     insert_matrix_file_names(s)
     for supplier in a.query(CompanyPGSupplier).all():
         s.merge(supplier)
-
-    MatrixQuote.__table__.drop(checkfirst=True)
-    MatrixQuote.__table__.create()
+    if str(a.bind.url).startswith('mssql'):
+        a.execute('create view Rate_Class_View as select * from Rate_Class')
 
     s.commit()
     a.commit()
