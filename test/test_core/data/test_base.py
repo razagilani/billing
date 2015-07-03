@@ -52,14 +52,13 @@ class BaseTest(TestCase):
         self.assertEqual(a1, b.a)
         self.assertEqual(3, a1.x)
 
-    # TODO: remove this. it demonstrates that every object related to
-    # UtilBill is copied along with UtilBill, which we don't want.
-    def test_1(self):
-        from core.model import UtilBill, Utility, UtilityAccount
-        u1 = Utility(name='1')
-        u2 = Utility(name='2')
-        a = UtilityAccount('a', '111', None, None, None, None, None)
-        u = UtilBill(a, u1, None)
-        v = UtilBill(a, u2, None)
-        v._copy_data_from(u)
-        print id(u.utility_account), id(v.utility_account)
+        # child objects of the object whose _copy_data_from method was called
+        # get copied, so the original object still has them, and both objects
+        #  have equal ones but not literally the same
+        self.assertEqual([b], a2.bs)
+        self.assertIsNot(a1.bs[0], a2.bs[0])
+
+        # parent objects do not get copied
+        new_b = B(id=4)
+        new_b._copy_data_from(b)
+        self.assertIs(b.a, new_b.a)
