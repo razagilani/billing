@@ -119,12 +119,12 @@ def upgrade():
     create_extractors(s)
     create_charge_name_maps(s)
 
+    a.bind.url.drivername
     insert_matrix_file_names(s)
     for supplier in a.query(CompanyPGSupplier).all():
         s.merge(supplier)
-
-    MatrixQuote.__table__.drop(checkfirst=True)
-    MatrixQuote.__table__.create()
+    if str(a.bind.url).startswith('mssql'):
+        a.execute('create view Rate_Class_View as select * from Rate_Class')
 
     s.commit()
     a.commit()
