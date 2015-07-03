@@ -1252,10 +1252,12 @@ class UtilBill(Base):
 
     def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
-        errors.
+        errors and charges that have has_charge=False.
         """
         return sum(
-            charge.total for charge in self.charges if charge.total is not None)
+            charge.total for charge in self.charges if charge.total is not
+            None and charge.has_charge
+        )
 
     def get_total_energy(self):
         # NOTE: this may have been implemented already on another branch;
