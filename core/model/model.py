@@ -609,8 +609,8 @@ class UtilityAccount(Base):
         self.name, self.account)
 
     def get_utility(self):
-        """Return the service address (Address object) of any bill for this
-        account, or the value of 'fb_utility' if there are no bills.
+        """:return: the Utility of any bill for this account, or the value of
+        'fb_utility' if there are no bills.
         """
         # TODO: instead of having to do a database query when this is called,
         #  'fb_utility' should be replaced by an attribute that represents
