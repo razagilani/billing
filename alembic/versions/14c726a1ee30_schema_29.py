@@ -22,7 +22,7 @@ def upgrade():
     op.add_column('quote', sa.Column('limit_volume', sa.Float))
     op.add_column('quote', sa.Column('rate_class_alias', sa.String))
     op.alter_column('quote', 'supplier_id', nullable=True)
-    op.rename_table('quote', 'rate')
+    op.rename_table('quote', 'Rate_Matrix')
 
     op.add_column('supplier', sa.Column('matrix_file_name', sa.String))
     op.create_unique_constraint('uq_supplier_matrix_file_name', 'supplier',

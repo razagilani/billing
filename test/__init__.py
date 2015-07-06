@@ -71,7 +71,7 @@ def clear_db():
         # databases should be initialized, and tests should never be
         # configured to access a remote database
         s = S()
-        assert S.bind.url.host == 'localhost'
+        assert s.bind is None or S.bind.url.host == 'localhost'
 
         S.rollback()
 
