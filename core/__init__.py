@@ -21,9 +21,9 @@ config = None
 celery = None
 
 def init_config(filepath='settings.cfg', fp=None):
-    """Sets `billing.config` to an instance of 
+    """Sets `billing.config` to an instance of
     :class:`billing.lib.config.ValidatedConfigParser`.
-    
+
     :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
@@ -31,7 +31,7 @@ def init_config(filepath='settings.cfg', fp=None):
     import logging
 
     log = logging.getLogger(__name__)
-    
+
     global config
     config = ValidatedConfigParser(config_file_schema)
     if fp:
@@ -41,7 +41,7 @@ def init_config(filepath='settings.cfg', fp=None):
         absolute_path = path.join(ROOT_PATH, filepath)
         log.debug('Reading configuration file %s' % absolute_path)
         config.read(absolute_path)
-    
+
     if not config.has_section('main'):
         config.add_section('main')
     config.set('main', 'appdir', dirname(realpath(__file__)))
@@ -116,7 +116,7 @@ def get_scrub_sql():
         for c, v in get_scrub_columns().iteritems())
 
 def init_model(uri=None, schema_revision=None):
-    """Initializes the sqlalchemy data model. 
+    """Initializes the sqlalchemy data model.
     """
     from core.model import Session, Base, check_schema_revision
     from sqlalchemy import create_engine
@@ -187,6 +187,11 @@ def init_celery():
     # config dictionary with "celery.conf.update(app.config)".
     # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
     # celery.conf['BROKER_URL'] = celery_broker_url
+
+    # when individual tasks fail, the exceptions are forwarded to the callback.
+    # (by default, individual task failures cause the whole Chord to fail and
+    #  return a ChordError.)
+    celery.conf['CELERY_CHORD_PROPAGATES'] = False
 
 def initialize():
     init_logging()
