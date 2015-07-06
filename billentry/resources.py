@@ -285,7 +285,8 @@ class UtilBillResource(BaseResource):
         # the keys are None, 'un_enter' has to come before it and 'enter' has
         #  to come after it.
         if row['entered'] is False:
-            utilbill.un_enter()
+            with project_mgr_permission.require():
+                utilbill.un_enter()
 
         ub = self.utilbill_processor.update_utilbill_metadata(
             id,
@@ -341,9 +342,10 @@ class UploadUtilityBillResource(BaseResource):
         parser.add_argument('sa_state', type=str)
         parser.add_argument('sa_postal_code', type=str)
         args = parser.parse_args()
-        address = Address(addressee=args['sa_addressee'], street=args['sa_street'],
-                            city=args['sa_city'], state=args['sa_state'],
-                            postal_code=args['sa_postal_code'])
+        address = Address(addressee=args['sa_addressee'],
+                          street=args['sa_street'], city=args['sa_city'],
+                          state=args['sa_state'],
+                          postal_code=args['sa_postal_code'])
 
         utility = s.query(Utility).filter_by(id=args['utility']).one()
         try:
@@ -366,8 +368,7 @@ class UploadUtilityBillResource(BaseResource):
             raise MissingFileError()
         for hash_digest in session.get('hash-digest'):
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, hash_digest,
-                service_address=address)
+                utility_account, utility, hash_digest, service_address=address)
             s.add(ub)
         # remove the consumed hash-digest from session
         session.pop('hash-digest')

@@ -7,17 +7,27 @@ Create Date: 2015-05-22 13:20:06.676570
 """
 
 # revision identifiers, used by Alembic.
+import logging
+from sqlalchemy.exc import ProgrammingError
+
 revision = '30597f9f53b9'
-down_revision = '41bb5135c2b6'
+down_revision = '14c726a1ee30'
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
 
 
 def upgrade():
-    op.execute('create extension hstore')
+    log = logging.getLogger('alembic')
+
+    # create HSTORE extension if possible. only superusers can do this. if
+    # the user is not a superuser, this error will be ignored, but creation
+    # of columns with the type HSTORE below will fail instead.
+    try:
+        op.execute('create extension if not exists hstore')
+    except ProgrammingError:
+        log.info('failed to create extension HSTORE')
 
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),

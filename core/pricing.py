@@ -6,7 +6,7 @@ from logging import getLogger
 from sys import maxint
 
 from exc import NoSuchBillException
-from core.model import Charge, Utility, RateClass
+from core.model import Charge, Utility, RateClass, UtilBill
 
 
 class PricingModel(object):
@@ -63,7 +63,7 @@ class FuzzyPricingModel(PricingModel):
         charge name -> total weight of bills that contributed to its score
         (float >= 0)
         charge name -> highest-scoring occurrence of that charge and its
-        distance (tuple of Charge object, float)
+        distance (tuple of float, Charge object)
         """
         assert isinstance(period[0], date) and isinstance(period[1], date)
         assert charge_type in Charge.CHARGE_TYPES
@@ -175,9 +175,9 @@ class FuzzyPricingModel(PricingModel):
         """
         if None in (utilbill.utility, utilbill.rate_class):
             return []
-        return [u for u in self._utilbill_loader.load_real_utilbills(
-            utility=utilbill.utility, rate_class=utilbill.rate_class,
-            processed=True) if not ignore_func(u)]
+        return [u for u in self._utilbill_loader.load_utilbills(
+            rate_class=utilbill.rate_class, processed=True,
+            join=UtilBill.charges) if not ignore_func(u)]
 
     def _load_relevant_bills_supply(self, utilbill, ignore_func):
         """Return an iterable of UtilBills relevant for determining the
@@ -189,14 +189,14 @@ class FuzzyPricingModel(PricingModel):
         if utilbill.supplier is None:
             return []
         if utilbill.supply_group is None:
-            return [u for u in self._utilbill_loader.load_real_utilbills(
+            return [u for u in self._utilbill_loader.load_utilbills(
                 supplier=utilbill.supplier, processed=True) if
                     not ignore_func(u)]
         # any two bills with the same supply group should also have the same
         # supplier, so "supplier" is not used as one of the filtering criteria
-        return [u for u in self._utilbill_loader.load_real_utilbills(
-            supply_group=utilbill.supply_group, processed=True) if
-                not ignore_func(u)]
+        return [u for u in self._utilbill_loader.load_utilbills(
+            supply_group=utilbill.supply_group, processed=True,
+            join=UtilBill.charges) if not ignore_func(u)]
 
     def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -258,3 +258,27 @@ class FuzzyPricingModel(PricingModel):
 
         return result
 
+    def get_closest_occurrence_of_charge(self, charge):
+        """
+        :param charge: Charge (must be associated with a UtilBill)
+        :return: a charge with the same rsi_binding as the given charge, whose
+        bill's period is closest to the bill of the given one, or None if no
+        occurrences were found.
+        """
+        utilbill = charge.utilbill
+        assert charge.utilbill is not None
+        if charge.type == Charge.SUPPLY:
+            relevant_bills = self._load_relevant_bills_supply(
+                utilbill, ignore_func=lambda ub: ub.id == utilbill.id)
+        else:
+            relevant_bills = self._load_relevant_bills_distribution(
+                utilbill, ignore_func=lambda ub: ub.id == utilbill.id)
+
+        # gathering all this unused data is wasteful
+        _, _, closest_occurrence = self._get_charge_scores(
+            (utilbill.period_start, utilbill.period_end), relevant_bills,
+            charge.type)
+        if charge.rsi_binding not in closest_occurrence:
+            return None
+        _, charge = closest_occurrence[charge.rsi_binding]
+        return charge
