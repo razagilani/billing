@@ -560,7 +560,7 @@ class LayoutExtractor(Extractor):
         and checking if bill's PDF is misaligned.
         """
         #TODO set up kdtree for faster object lookup
-        pages = utilbill.get_layout(bill_file_handler)
+        pages = utilbill.get_layout(bill_file_handler, PDFUtil())
 
         dx = dy = 0
         if all(v is not None for v in
