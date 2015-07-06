@@ -1,8 +1,9 @@
 from datetime import datetime
-from os import path
+from os.path import join
 from unittest import TestCase
-from brokerage.brokerage_model import RateClass, RateClassAlias
-from core import ROOT_PATH, init_altitude_db
+from brokerage.brokerage_model import RateClass, RateClassAlias, \
+    get_rate_class_from_alias
+from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
     AEPMatrixParser
 from core.model import AltitudeSession
@@ -11,49 +12,55 @@ from test import create_tables, init_test_config, clear_db
 
 def setUpModule():
     init_test_config()
-    init_altitude_db()
     create_tables()
+    init_model()
+    init_altitude_db()
 
-class DirectEnergyParserTest(TestCase):
-    EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
-                                  'Matrix 1 Example - Direct Energy.xls')
+class MatrixQuoteParsersTest(TestCase):
+    # paths to example spreadsheet files from each supplier
+    DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage')
+    DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
+                                   'Matrix 1 Example - Direct Energy.xls')
+    USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
 
     def setUp(self):
         clear_db()
 
         self.rate_class = RateClass(rate_class_id=1)
 
+        # TODO: it would be better to mock 'get_rate_class_for_alias' than
+        # actually try to create a RateClassAlias for every one that might be
+        # checked in a test
         session = AltitudeSession()
         session.add(self.rate_class)
         session.flush()
         session.add_all([
-            RateClassAlias(
-                rate_class_id=self.rate_class.rate_class_id,
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
                 rate_class_alias='37'),
-            RateClassAlias(
-                rate_class_id=self.rate_class.rate_class_id,
-                rate_class_alias='R35')
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                rate_class_alias='R35'),
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                           rate_class_alias='Residential'),
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                           rate_class_alias='Commercial'),
         ])
         session.flush()
-
-        self.parser = DirectEnergyMatrixParser()
 
     def tearDown(self):
         clear_db()
 
-    def test_read_file(self):
-        """Load a real file and get quotes out of it.
-        """
-        self.assertEqual(0, self.parser.get_count())
+    def test_direct_energy(self):
+        parser = DirectEnergyMatrixParser()
+        self.assertEqual(0, parser.get_count())
 
-        with open(self.EXAMPLE_FILE_PATH, 'rb') as spreadsheet:
-            self.parser.load_file(spreadsheet)
-        self.parser.validate()
-        self.assertEqual(0, self.parser.get_count())
+        with open(self.DIRECT_ENERGY_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
 
-        quotes = list(self.parser.extract_quotes())
+        quotes = list(parser.extract_quotes())
         self.assertEqual(204474, len(quotes))
-        self.assertEqual(204474, self.parser.get_count())
+        self.assertEqual(204474, parser.get_count())
         for quote in quotes:
             quote.validate()
 
@@ -70,22 +77,16 @@ class DirectEnergyParserTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.7036, q1.price)
 
+    def test_usge(self):
+        parser = USGEMatrixParser()
+        self.assertEqual(0, parser.get_count())
 
-class USGEMatrixParserTest(TestCase):
-    EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
-                                  'Matrix 2a Example - USGE.xlsx')
+        with open(self.USGE_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
 
-    def setUp(self):
-        self.parser = USGEMatrixParser()
-
-    def test_read_file(self):
-        """Load a real file and get quotes out of it.
-        """
-        with open(self.EXAMPLE_FILE_PATH, 'rb') as spreadsheet:
-            self.parser.load_file(spreadsheet)
-        self.parser.validate()
-
-        quotes = list(self.parser.extract_quotes())
+        assert self.rate_class.rate_class_id == 1
+        quotes = list(parser.extract_quotes())
         self.assertEqual(2448, len(quotes))
 
         for quote in quotes:
@@ -97,7 +98,7 @@ class USGEMatrixParserTest(TestCase):
 
         # KY check
         q1 = quotes[0]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -110,7 +111,7 @@ class USGEMatrixParserTest(TestCase):
 
         # MD check
         q1 = quotes[96]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -123,7 +124,7 @@ class USGEMatrixParserTest(TestCase):
 
         # NJ check
         q1 = quotes[288]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 7, 1), q1.start_from)
         self.assertEqual(datetime(2015, 8, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -136,7 +137,7 @@ class USGEMatrixParserTest(TestCase):
 
         # NY check
         q1 = quotes[528]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -149,7 +150,7 @@ class USGEMatrixParserTest(TestCase):
 
         # OH check
         q1 = quotes[1776]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -162,7 +163,7 @@ class USGEMatrixParserTest(TestCase):
 
         # PA check
         q1 = quotes[1968]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -175,7 +176,7 @@ class USGEMatrixParserTest(TestCase):
 
 
 class AEPParserTest(TestCase):
-    EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
+    EXAMPLE_FILE_PATH = join(ROOT_PATH, 'test', 'test_brokerage',
                                   'Matrix 3 Example - AEP.xls')
 
     def setUp(self):
