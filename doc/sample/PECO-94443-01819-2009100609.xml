@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill id="2247634543" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+	<ub:car>
+		<ub:accountnumber>94443-01819</ub:accountnumber>
+		<ub:serviceaddress>
+			<ub:addressee>T C Commons</ub:addressee>
+			<ub:street>1103 West Chester PI, ST 12-A</ub:street>
+			<ub:city>West Chester</ub:city>
+			<ub:state>PA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode/>
+			<ub:telephonenumber>610-688-8985</ub:telephonenumber>
+			<ub:hours/>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee>T C Commons</ub:addressee>
+			<ub:street>C/O Family Laundry Mat</ub:street>
+			<ub:city>West Chester</ub:city>
+			<ub:state>PA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>19382-5004</ub:postalcode>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
+	<ub:uar>
+		<ub:tin/>
+		<ub:customerservice>
+			<ub:addressee>Business Account Services PECO</ub:addressee>
+			<ub:street>2301 Market St.</ub:street>
+			<ub:city>Philadelphia</ub:city>
+			<ub:state>PA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>19101</ub:postalcode>
+			<ub:telephonenumber>800-980-9655</ub:telephonenumber>
+			<ub:hours/>
+		</ub:customerservice>
+		<ub:paymentlocation>
+			<ub:addressee>PECO Energy - Payment Processing</ub:addressee>
+			<ub:street>PO Box 37629</ub:street>
+			<ub:city>Philadelphia</ub:city>
+			<ub:state>PA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>19101</ub:postalcode>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:paymentlocation>
+		<ub:paymentlocation>
+			<ub:addressee>PECO Energy</ub:addressee>
+			<ub:street>2301 Market St.</ub:street>
+			<ub:city>Philadelphia</ub:city>
+			<ub:state>PA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>19101</ub:postalcode>
+			<ub:telephonenumber>1-877-432-9384</ub:telephonenumber>
+			<ub:hours>M-F 8:30-5PM</ub:hours>
+		</ub:paymentlocation>
+		<ub:emergencycontact>
+			<ub:addressee>Emergency and Repairs</ub:addressee>
+			<ub:street/>
+			<ub:city/>
+			<ub:state/>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber>1-800-841-4141</ub:telephonenumber>
+			<ub:hours/>
+		</ub:emergencycontact>
+	</ub:uar>
+	<ub:unknownaddress description="Business Inquiry">
+		<ub:addressee/>
+		<ub:street/>
+		<ub:city/>
+		<ub:state/>
+		<ub:country/>
+		<ub:postalcode/>
+		<ub:telephonenumber>1-800-980-9655</ub:telephonenumber>
+		<ub:hours/>
+	</ub:unknownaddress>
+	<ub:summary>
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:previouspayment>
+			<ub:payee>PECO</ub:payee>
+			<ub:amount>2501.91</ub:amount>
+		</ub:previouspayment>
+		<ub:billperiodbegin>2009-09-03</ub:billperiodbegin>
+		<ub:billperiodend>2009-10-05</ub:billperiodend>
+		<ub:issuedate>2009-10-06</ub:issuedate>
+		<ub:currentcharges service="gas">1610.53</ub:currentcharges>
+		<ub:currentcharges service="electric">955.91</ub:currentcharges>
+		<ub:totaldue>2566.44</ub:totaldue>
+		<ub:duedate>2009-10-28</ub:duedate>
+		<ub:latepayment>
+			<ub:penalty/>
+			<ub:amount/>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:details service="gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Service</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Natural Gas Supply Charge</ub:description>
+					<ub:quantity units="CCF">1374</ub:quantity>
+					<ub:rate units="dollars">0.57779</ub:rate>
+					<ub:total>793.88</ub:total>
+					<ub:snubchargeid/>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Distribution">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>25.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Distribution Charges</ub:description>
+					<ub:quantity units="CCF">1374</ub:quantity>
+					<ub:rate units="dollars">0.37785</ub:rate>
+					<ub:total>519.17</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing Service Charges</ub:description>
+					<ub:quantity units="CCF">1374</ub:quantity>
+					<ub:rate units="dollars">0.04816</ub:rate>
+					<ub:total>66.17</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Gas Cost Adjustment Charge</ub:description>
+					<ub:quantity units="CCF">1374</ub:quantity>
+					<ub:rate units="dollars">0.08269</ub:rate>
+					<ub:total>113.62</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Tax">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Sales Tax Adjustment</ub:description>
+					<ub:total>1.52</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:total>91.17</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total>1610.53</ub:total>
+	</ub:details>
+	<ub:details service="electric">
+		<ub:rateschedule>
+			<ub:name>Commercial Service</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Generation Charges</ub:description>
+					<ub:quantity units="kWh">2120</ub:quantity>
+					<ub:rate units="dollars">0.12710</ub:rate>
+					<ub:total>269.45</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Generation Charges</ub:description>
+					<ub:quantity units="kWh">4080</ub:quantity>
+					<ub:rate units="dollars">0.05000</ub:rate>
+					<ub:total>204.00</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Distribution">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>23.94</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="kWh">2120</ub:quantity>
+					<ub:rate units="dollars">0.03640</ub:rate>
+					<ub:total>77.17</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="kWh">4080</ub:quantity>
+					<ub:rate units="dollars">0.01080</ub:rate>
+					<ub:total>44.06</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Transition Charge</ub:description>
+					<ub:quantity units="kWh">2120</ub:quantity>
+					<ub:rate units="dollars">0.07270</ub:rate>
+					<ub:total>154.12</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Transition Charge</ub:description>
+					<ub:quantity units="kWh">4080</ub:quantity>
+					<ub:rate units="dollars">0.02170</ub:rate>
+					<ub:total>88.54</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Transmission">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>Transmission Charge</ub:description>
+					<ub:quantity units="kWh">2120</ub:quantity>
+					<ub:rate units="dollars">0.01290</ub:rate>
+					<ub:total>27.35</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Transmission Charge</ub:description>
+					<ub:quantity units="kWh">4080</ub:quantity>
+					<ub:rate units="dollars">0.00380</ub:rate>
+					<ub:total>15.50</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Tax">
+			<ub:charges>
+				<ub:charge>
+					<ub:description>State Tax Adjustment</ub:description>
+					<ub:total>-2.33</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:total>54.11</ub:total>
+				</ub:charge>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total>955.91</ub:total>
+	</ub:details>
+	<ub:billableusage service="gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Service</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total CCF Used</ub:description>
+			<ub:quantity units="CCF">1374</ub:quantity>
+		</ub:usage>
+	</ub:billableusage>
+	<ub:billableusage service="electric">
+		<ub:rateschedule>
+			<ub:name>Commercial Service</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total kW Billed</ub:description>
+			<ub:quantity units="kW">26.5</ub:quantity>
+		</ub:usage>
+		<ub:usage>
+			<ub:description>Total kWh Used</ub:description>
+			<ub:quantity units="kWh">6200</ub:quantity>
+		</ub:usage>
+	</ub:billableusage>
+	<ub:measuredusage service="gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>027870434</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>027870434</ub:identifier>
+				<ub:description>Total CCF</ub:description>
+				<ub:units>CCF</ub:units>
+				<ub:priorreading>46654</ub:priorreading>
+				<ub:presentreading>47485</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>831</ub:total>
+			</ub:register>
+		</ub:meter>
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>028702956</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>028702956</ub:identifier>
+				<ub:description>Total CCF</ub:description>
+				<ub:units>CCF</ub:units>
+				<ub:priorreading>49159</ub:priorreading>
+				<ub:presentreading>49702</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>543</ub:total>
+			</ub:register>
+		</ub:meter>
+		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
+	</ub:measuredusage>
+	<ub:measuredusage service="electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>084010385</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>084010385-totalkwh</ub:identifier>
+				<ub:description>Total kWh</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>15421</ub:priorreading>
+				<ub:presentreading>15576</ub:presentreading>
+				<ub:factor>40</ub:factor>
+				<ub:total>6200</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>084010385-peakkwh</ub:identifier>
+				<ub:description>Peak kW</ub:description>
+				<ub:units>kW</ub:units>
+				<ub:priorreading>0.00</ub:priorreading>
+				<ub:presentreading>0.66</ub:presentreading>
+				<ub:factor>40</ub:factor>
+				<ub:total>26.48</ub:total>
+			</ub:register>
+		</ub:meter>
+		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
+	</ub:measuredusage>
+</ub:utilitybill>
