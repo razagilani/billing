@@ -3,7 +3,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine
 from core import import_all_model_modules, ROOT_PATH
-from core.model import Session, Base
+from core.model import Session, Base, AltitudeBase
 
 
 def init_test_config():
@@ -39,8 +39,15 @@ def create_tables():
 
     import_all_model_modules()
     Base.metadata.bind = engine
+    Base.metadata.reflect()
     Base.metadata.drop_all()
     Base.metadata.create_all(checkfirst=True)
+
+    altitude_uri = config.get('db', 'altitude_uri')
+    altitude_engine = create_engine(altitude_uri, echo=config.get('db', 'echo'))
+    AltitudeBase.metadata.bind = altitude_engine
+    AltitudeBase.metadata.drop_all()
+    AltitudeBase.metadata.create_all(checkfirst=True)
 
     cur_dir = os.getcwd()
     os.chdir(ROOT_PATH)
@@ -62,6 +69,8 @@ def clear_db():
     """
     session = Session()
     Session.rollback()
+    # because of the call to Base.metadata.reflect() in create_tables(),
+    # this now also deletes the "alembic_version" table
     for t in reversed(Base.metadata.sorted_tables):
         session.execute(t.delete())
     session.commit()

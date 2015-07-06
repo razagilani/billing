@@ -1,17 +1,45 @@
 from datetime import datetime
 from os import path
 from unittest import TestCase
-from core import ROOT_PATH
+from brokerage.brokerage_model import RateClass, RateClassAlias
+from core import ROOT_PATH, init_altitude_db
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
     AEPMatrixParser
+from core.model import AltitudeSession
+from test import create_tables, init_test_config, clear_db
 
+
+def setUpModule():
+    init_test_config()
+    init_altitude_db()
+    create_tables()
 
 class DirectEnergyParserTest(TestCase):
     EXAMPLE_FILE_PATH = path.join(ROOT_PATH, 'test', 'test_brokerage',
                                   'Matrix 1 Example - Direct Energy.xls')
 
     def setUp(self):
+        clear_db()
+
+        self.rate_class = RateClass(rate_class_id=1)
+
+        session = AltitudeSession()
+        session.add(self.rate_class)
+        session.flush()
+        session.add_all([
+            RateClassAlias(
+                rate_class_id=self.rate_class.rate_class_id,
+                rate_class_alias='37'),
+            RateClassAlias(
+                rate_class_id=self.rate_class.rate_class_id,
+                rate_class_alias='R35')
+        ])
+        session.flush()
+
         self.parser = DirectEnergyMatrixParser()
+
+    def tearDown(self):
+        clear_db()
 
     def test_read_file(self):
         """Load a real file and get quotes out of it.
@@ -38,7 +66,7 @@ class DirectEnergyParserTest(TestCase):
         self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual('37', q1.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.7036, q1.price)
 
