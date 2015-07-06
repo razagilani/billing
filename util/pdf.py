@@ -1,9 +1,10 @@
 from io import BytesIO
-from pdfminer.converter import TextConverter
+from pdfminer.converter import TextConverter, PDFPageAggregator
 from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFSyntaxError
+from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 from pyPdf import PdfFileWriter, PdfFileReader
 
 # TODO: no test coverage
@@ -34,6 +35,26 @@ class PDFUtil(object):
             text = unicode(text, errors='ignore')
         device.close()
         return text
+
+    def get_pdf_layout(self, pdf_file):
+        pdf_file.seek(0)
+        parser = PDFParser(pdf_file)
+        document = PDFDocument(parser)
+        rsrcmgr = PDFResourceManager()
+        laparams = LAParams()
+        device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        try:
+            pages = []
+            for page in PDFPage.create_pages(document):
+                interpreter.process_page(page)
+                pages.append(device.get_result())
+        except PDFSyntaxError as e:
+            pages = []
+            print e
+        device.close()
+
+        return pages
 
 
 class PDFConcatenator(object):
