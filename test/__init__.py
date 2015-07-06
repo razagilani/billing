@@ -3,7 +3,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine
 from core import import_all_model_modules, ROOT_PATH
-from core.model import Session, Base, AltitudeBase
+from core.model import Session, Base, AltitudeBase, AltitudeSession
 
 
 def init_test_config():
@@ -67,10 +67,16 @@ def clear_db():
     """Remove all data from the test database. This should be called before and
     after running any test that inserts data.
     """
-    session = Session()
-    Session.rollback()
-    # because of the call to Base.metadata.reflect() in create_tables(),
-    # this now also deletes the "alembic_version" table
-    for t in reversed(Base.metadata.sorted_tables):
-        session.execute(t.delete())
-    session.commit()
+    for S in [Session, AltitudeSession]:
+        # databases should be initialized, and tests should never be
+        # configured to access a remote database
+        s = S()
+        assert S.bind.url.host == 'localhost'
+
+        S.rollback()
+
+        # because of the call to Base.metadata.reflect() in create_tables(),
+        # this now also deletes the "alembic_version" table
+        for t in reversed(Base.metadata.sorted_tables):
+            s.execute(t.delete())
+        s.commit()
