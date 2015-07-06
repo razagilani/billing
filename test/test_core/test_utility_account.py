@@ -90,6 +90,10 @@ class UtilityAccountTest(TestCase):
         Session.remove()
 
     def test_get_service_address(self):
+        # TODO: this test can be moved to UtilityAccountUnitTest above,
+        # since the code does not require explicit database queries. it can
+        # look just like test_get_utility.
+
         session = Session()
 
         # Assert that the service address of the first bill is returned
