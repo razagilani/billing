@@ -558,7 +558,6 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
 
-        utility = s.query(Utility).first()
         utility_account = s.query(UtilityAccount).first()
         self.utilbill_processor.create_utility_bill_with_existing_file(
             utility_account, file_hash)
@@ -607,7 +606,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             utility_account, file_hash,
             # TODO: add due date
             #due_date=datetime(2000,1,1),
-            target_total=100, service_address=the_address)
+            target_total=100, service_address=the_address, skip_extraction=True)
         # the only one of these arguments that is visible in the UI is "total"
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
@@ -1055,3 +1054,4 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
