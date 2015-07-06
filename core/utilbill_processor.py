@@ -289,10 +289,9 @@ class UtilbillProcessor(object):
 
         return new_utilbill
 
-    def create_utility_bill_with_existing_file(self, utility_account, utility,
-                                               sha256_hexdigest, due_date=None,
-                                               target_total=None,
-                                               service_address=None):
+    def create_utility_bill_with_existing_file(
+            self, utility_account, sha256_hexdigest, due_date=None,
+            target_total=None, service_address=None):
         '''Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param utility_account: UtilityAccount to which the new bill will
@@ -305,7 +304,6 @@ class UtilbillProcessor(object):
         :param service_address: service address for new utility bill (Address).
         '''
         assert isinstance(utility_account, UtilityAccount)
-        assert isinstance(utility, Utility)
         assert isinstance(sha256_hexdigest, basestring) and len(
             sha256_hexdigest) == 64;
         assert isinstance(due_date, (date, type(None)))
@@ -316,8 +314,8 @@ class UtilbillProcessor(object):
             raise DuplicateFileError('Utility bill already exists with '
                                      'file hash %s' % sha256_hexdigest)
 
-        new_utilbill = self._create_utilbill_in_db(utility_account,
-                                                   utility=utility)
+        new_utilbill = self._create_utilbill_in_db(
+            utility_account, utility=utility_account.get_utility())
 
         # adding UtilBill should also add Charges and Registers due to cascade
         session = Session()
