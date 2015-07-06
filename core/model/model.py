@@ -1363,7 +1363,7 @@ class UtilBill(Base):
             self._text = text
         return self._text
 
-    def get_layout(self, bill_file_handler):
+    def get_layout(self, bill_file_handler, pdf_util):
         """
         Returns a list of LTPage objects, containing PDFMiner's layout
         information for the PDF
@@ -1378,22 +1378,5 @@ class UtilBill(Base):
         except MissingFileError as e:
             print e
         else:
-            # TODO: code for parsing PDF files probably doesn't belong in
-            # UtilBill; maybe in BillFileHandler or extraction
-            infile.seek(0)
-            parser = PDFParser(infile)
-            document = PDFDocument(parser)
-            rsrcmgr = PDFResourceManager()
-            laparams = LAParams()
-            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
-            interpreter = PDFPageInterpreter(rsrcmgr, device)
-            try:
-                for page in PDFPage.create_pages(document):
-                    interpreter.process_page(page)
-                    pages.append(device.get_result())
-            except PDFSyntaxError as e:
-                pages = []
-                print e
-            device.close()
-
+            pages = pdf_util.get_pdf_layout(infile)
         return pages
