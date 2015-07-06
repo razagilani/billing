@@ -367,8 +367,10 @@ class UploadUtilityBillResource(BaseResource):
         if not session.get('hash-digest'):
             raise MissingFileError()
         for hash_digest in session.get('hash-digest'):
+            # skip extracting data because it's currently slow
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, hash_digest, service_address=address)
+                utility_account, hash_digest, service_address=address,
+                skip_extraction=True)
             s.add(ub)
         # remove the consumed hash-digest from session
         session.pop('hash-digest')
