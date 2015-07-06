@@ -343,7 +343,7 @@ class UtilbillProcessor(object):
         if due_date is not None:
             new_utilbill.due_date = due_date
 
-        self._set_utilbill_data(new_utilbill, skip_extraction=True)
+        self._set_utilbill_data(new_utilbill, skip_extraction=skip_extraction)
 
         return new_utilbill
 
