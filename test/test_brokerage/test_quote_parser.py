@@ -19,6 +19,7 @@ def setUpModule():
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage')
+    AEP_FILE_PATH = join(DIRECTORY, 'Matrix 3 Example - AEP.xls')
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
@@ -174,27 +175,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.4621, q1.price)
 
+    def test_aep(self):
+        parser = AEPMatrixParser()
+        self.assertEqual(0, parser.get_count())
 
-class AEPParserTest(TestCase):
-    EXAMPLE_FILE_PATH = join(ROOT_PATH, 'test', 'test_brokerage',
-                                  'Matrix 3 Example - AEP.xls')
+        with open(self.AEP_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
 
-    def setUp(self):
-        self.parser = AEPMatrixParser()
-
-    def test_read_file(self):
-        """Load a real file and get quotes out of it.
-        """
-        self.assertEqual(0, self.parser.get_count())
-
-        with open(self.EXAMPLE_FILE_PATH, 'rb') as spreadsheet:
-            self.parser.load_file(spreadsheet)
-        self.parser.validate()
-        self.assertEqual(0, self.parser.get_count())
-
-        quotes = list(self.parser.extract_quotes())
+        quotes = list(parser.extract_quotes())
         self.assertEqual(21608, len(quotes))
-        self.assertEqual(21608, self.parser.get_count())
+        self.assertEqual(21608, parser.get_count())
         for quote in quotes:
             quote.validate()
 
@@ -211,3 +203,4 @@ class AEPParserTest(TestCase):
         self.assertEqual('GSLV ND', q1.rate_class_alias)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.09084478584241074, q1.price)
+
