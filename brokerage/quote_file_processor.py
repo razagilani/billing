@@ -3,7 +3,8 @@ import logging
 import os
 import traceback
 from brokerage.brokerage_model import Company
-from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser
+from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
+    AEPMatrixParser
 from core.model import AltitudeSession, Session, Supplier
 
 LOG_NAME = 'read_quotes'
@@ -16,7 +17,7 @@ class QuoteFileProcessor(object):
     # maps each supplier id to the class for parsing its quote file
     CLASSES_FOR_SUPPLIERS = {
         14: DirectEnergyMatrixParser,
-        # 95: AEP
+        95: AEPMatrixParser,
         199: USGEMatrixParser,
     }
 
