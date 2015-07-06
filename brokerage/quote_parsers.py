@@ -400,7 +400,7 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 100.
-                for rate_class,alias in izip(rate_classes,rate_class_aliases):
+                for rate_class, alias in izip(rate_classes,rate_class_aliases):
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,
@@ -487,8 +487,10 @@ class USGEMatrixParser(QuoteParser):
                 if utility is None:
                     continue
 
-                rate_class = self._reader.get(sheet, row, 2,
-                                              (basestring, type(None)))
+                rate_class_alias = self._reader.get(sheet, row, 2,
+                                                    (basestring, type(None)))
+                rate_class = get_rate_class_from_alias(rate_class_alias)
+
                 min_volume, limit_volume = self._extract_volume_range(
                     sheet, row, self.VOLUME_RANGE_COL)
 
@@ -508,13 +510,18 @@ class USGEMatrixParser(QuoteParser):
                         price = self._reader.get(sheet, row, i,
                                                  (float, type(None)))
 
-                        yield MatrixQuote(
+                        quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
-                            rate_class_alias=rate_class, price=price)
+                            rate_class=rate_class, price=price)
+                        # TODO: rate_class_id should be determined automatically
+                        # by setting rate_class
+                        if rate_class is not None:
+                            quote.rate_class_id = rate_class.rate_class_id
+                        yield quote
 
 
 class AEPMatrixParser(QuoteParser):
