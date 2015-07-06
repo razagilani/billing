@@ -1,7 +1,8 @@
 from datetime import datetime
 from os.path import join
 from unittest import TestCase
-from brokerage.brokerage_model import RateClass, RateClassAlias
+from brokerage.brokerage_model import RateClass, RateClassAlias, \
+    get_rate_class_from_alias
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser
 from core.model import AltitudeSession
@@ -26,6 +27,9 @@ class MatrixQuoteParsersTest(TestCase):
 
         self.rate_class = RateClass(rate_class_id=1)
 
+        # TODO: it would be better to mock 'get_rate_class_for_alias' than
+        # actually try to create a RateClassAlias for every one that might be
+        # checked in a test
         session = AltitudeSession()
         session.add(self.rate_class)
         session.flush()
@@ -33,7 +37,11 @@ class MatrixQuoteParsersTest(TestCase):
             RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
                 rate_class_alias='37'),
             RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                rate_class_alias='R35')
+                rate_class_alias='R35'),
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                           rate_class_alias='Residential'),
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                           rate_class_alias='Commercial'),
         ])
         session.flush()
 
@@ -76,6 +84,7 @@ class MatrixQuoteParsersTest(TestCase):
             parser.load_file(spreadsheet)
         parser.validate()
 
+        assert self.rate_class.rate_class_id == 1
         quotes = list(parser.extract_quotes())
         self.assertEqual(2448, len(quotes))
 
@@ -88,7 +97,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # KY check
         q1 = quotes[0]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -101,7 +110,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # MD check
         q1 = quotes[96]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -114,7 +123,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # NJ check
         q1 = quotes[288]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 7, 1), q1.start_from)
         self.assertEqual(datetime(2015, 8, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -127,7 +136,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # NY check
         q1 = quotes[528]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -140,7 +149,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # OH check
         q1 = quotes[1776]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -153,7 +162,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # PA check
         q1 = quotes[1968]
-        self.assertEqual('Residential', q1.rate_class_alias)
+        self.assertEqual(self.rate_class, q1.rate_class)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
