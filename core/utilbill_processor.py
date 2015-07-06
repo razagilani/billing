@@ -187,16 +187,22 @@ class UtilbillProcessor(object):
             state=state, supply_group=supply_group)
         return new_utilbill
 
-    def _set_utilbill_data(self, utilbill):
+    def _set_utilbill_data(self, utilbill, skip_extraction=False):
         """Set attributes of the given bill, using customer data, existing
         bills, and/or data extracted from the file to get the most accurate
         possible values. This should be called after uploading the bill's file
         and setting its file hash, because the file is used to get the values
         of some attributes.
         :param utilbill: UtilBill
+        :param skip_extraction: if True, do not extract data from the the
+        bill file (for speed)
         """
         # extract data from bill file
-        Main(self.bill_file_handler).extract(utilbill)
+        # TODO: this is too slow to do when uploading a bill; instead
+        # schedule it to be done in a separate process. then remove the
+        # skip_extraction argument.
+        if not skip_extraction:
+            Main(self.bill_file_handler).extract(utilbill)
 
         # 'period_end' may be None, in which case this is the last bill overall
         try:
@@ -291,8 +297,8 @@ class UtilbillProcessor(object):
 
     def create_utility_bill_with_existing_file(
             self, utility_account, sha256_hexdigest, due_date=None,
-            target_total=None, service_address=None):
-        '''Create a UtilBill in the database corresponding to a file that
+            target_total=None, service_address=None, skip_extraction=False):
+        """Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param utility_account: UtilityAccount to which the new bill will
         belong.
@@ -302,7 +308,7 @@ class UtilbillProcessor(object):
         determine which existing file goes with this bill.
         :param target_total: total of charges on the bill (float).
         :param service_address: service address for new utility bill (Address).
-        '''
+        """
         assert isinstance(utility_account, UtilityAccount)
         assert isinstance(sha256_hexdigest, basestring) and len(
             sha256_hexdigest) == 64;
@@ -337,7 +343,7 @@ class UtilbillProcessor(object):
         if due_date is not None:
             new_utilbill.due_date = due_date
 
-        self._set_utilbill_data(new_utilbill)
+        self._set_utilbill_data(new_utilbill, skip_extraction=True)
 
         return new_utilbill
 
