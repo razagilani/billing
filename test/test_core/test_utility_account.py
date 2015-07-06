@@ -45,6 +45,25 @@ class UtilityAccountUnitTest(TestCase):
         with self.assertRaises(NoSuchBillException):
             self.ua.get_last_bill()
 
+    def test_get_utility(self):
+        a = Utility(name='a')
+        b = Utility(name='b')
+
+        self.ua.fb_utility = a
+
+        # the account has 2 bills, so even though fb_utility is 'a',
+        # the bills with utility None override that
+        self.assertIsNone(self.ua.get_utility())
+
+        # any bill may be used to determine the utility
+        self.u1.set_utility(b)
+        self.u2.set_utility(b)
+        self.assertEqual(b, self.ua.get_utility())
+
+        # when there are no bills, fb_utility is used
+        self.ua.utilbills = []
+        self.assertEqual(a, self.ua.get_utility())
+
 
 class UtilityAccountTest(TestCase):
     """Integration test using the database."""
