@@ -256,8 +256,3 @@ class BEUtilBill(UtilBill):
         """Return True if the bill has been flagged. False otherwise"""
         return self.flagged is True
 
-    def editable(self):
-        if self.is_entered():
-            return False
-        return True
-

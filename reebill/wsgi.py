@@ -713,6 +713,13 @@ class ChargesResource(RESTResource):
         return True, {}
 
 
+class RSIBindingsResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        all_rsi_bindings = self.utilbill_views.get_all_rsi_bindings()
+        return True, {'rows': all_rsi_bindings,
+                'results': len(all_rsi_bindings)}
+
 class SuppliersResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
@@ -1016,7 +1023,7 @@ class ReebillWSGI(object):
         )
 
         # create a FuzzyPricingModel
-        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader,logger=logger)
+        fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
@@ -1132,6 +1139,12 @@ class ReebillWSGI(object):
             reebill_processor
         )
         wsgi.reebillversions = ReebillVersionsResource(
+            config, logger, nexus_util, user_dao, payment_dao, state_db,
+            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
+            reebill_processor
+        )
+        wsgi.rsibindings = RSIBindingsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
             bill_file_handler, journal_dao, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,

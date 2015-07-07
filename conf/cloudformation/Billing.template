@@ -72,6 +72,11 @@
       "Default" : "billing",
       "Description" : "name of host instance (default is billing)"
     },
+    "InternalDnsName" : {
+      "Type" : "String",
+      "Default" : "billing",
+      "Description" : "short name to use for Internal DNS (default is billing)"
+    },
     "InstanceSubnet" : {
       "Type" : "String",
       "Description" : "ID of subnet to create instance"
@@ -125,8 +130,8 @@
       "Properties" : {
         "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
           "#cloud-config",
-          {"Fn::Join" : ["", ["local-hostname: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
-          {"Fn::Join" : ["", ["fqdn: ", {"Ref":"InstanceName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["local-hostname: ", {"Ref":"InternalDnsName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", {"Ref":"InternalDnsName"}, "-", {"Ref":"Environment"}, ".nextility.net"]]},
           "manage_etc_hosts: true",
           "preserve_hostname: false",
           "packages:",
@@ -223,7 +228,7 @@
          "HostedZoneId" : { "Ref" : "HostedZoneId" },
          "Name" : {
             "Fn::Join" : [ "", [
-               {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, ".",
+               {"Ref": "InternalDnsName"}, "-", {"Ref": "Environment"}, ".",
                {"Ref" : "HostedZone"} ,"."
             ] ]
          },
@@ -233,7 +238,163 @@
             { "Fn::GetAtt" : [ "ApplicationInstance", "PrivateIp" ] }
          ]
       }
-   }
+    },
+    "Worker1" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
+          "#cloud-config",
+          {"Fn::Join" : ["", ["local-hostname: ", "billingworker1", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", "billingworker1", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          "manage_etc_hosts: true",
+          "preserve_hostname: false",
+          "packages:",
+          " - puppet"
+        ]]}},
+        "SubnetId" : {"Ref" : "InstanceSubnet"},
+        "InstanceType" : "t2.medium",
+        "SecurityGroupIds" : [{"Ref" : "ApplicationSecurityGroup"}, {"Ref": "SshSecurityGroup"}, {"Ref" : "RabbitMqSecurityGroup"}],
+        "Tags" : [
+          {"Key" : "Name", "Value" : "billingworker1"},
+          {"Key" : "Environment", "Value" : {"Ref" : "Environment"}}
+        ],
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs" : {
+              "DeleteOnTermination": true,
+              "VolumeSize": 8,
+              "VolumeType": "standard"
+            },
+            "VirtualName" : "/dev/xvda"
+          }
+        ],
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] }
+      }
+    },
+    "Worker1InternalDns" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneId" : { "Ref" : "HostedZoneId" },
+        "Name" : {
+          "Fn::Join" : [ "", [
+            "billingworker1", "-", {"Ref": "Environment"}, ".",
+            {"Ref" : "HostedZone"} ,"."
+          ] ]
+        },
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [
+          { "Fn::GetAtt" : [ "Worker1", "PrivateIp" ] }
+        ]
+      }
+    },
+    "Worker2" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
+          "#cloud-config",
+          {"Fn::Join" : ["", ["local-hostname: ", "billingworker2", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", "billingworker2", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          "manage_etc_hosts: true",
+          "preserve_hostname: false",
+          "packages:",
+          " - puppet"
+        ]]}},
+        "SubnetId" : {"Ref" : "InstanceSubnet"},
+        "InstanceType" : "t2.medium",
+        "SecurityGroupIds" : [{"Ref" : "ApplicationSecurityGroup"}, {"Ref": "SshSecurityGroup"}, {"Ref" : "RabbitMqSecurityGroup"}],
+        "Tags" : [
+          {"Key" : "Name", "Value" : "billingworker2"},
+          {"Key" : "Environment", "Value" : {"Ref" : "Environment"}}
+        ],
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs" : {
+              "DeleteOnTermination": true,
+              "VolumeSize": 8,
+              "VolumeType": "standard"
+            },
+            "VirtualName" : "/dev/xvda"
+          }
+        ],
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] }
+      }
+    },
+    "Worker2InternalDns" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneId" : { "Ref" : "HostedZoneId" },
+        "Name" : {
+          "Fn::Join" : [ "", [
+            "billingworker2", "-", {"Ref": "Environment"}, ".",
+            {"Ref" : "HostedZone"} ,"."
+          ] ]
+        },
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [
+          { "Fn::GetAtt" : [ "Worker2", "PrivateIp" ] }
+        ]
+      }
+    },
+    "Worker3" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "UserData": {"Fn::Base64" : {"Fn::Join" : ["\n",[
+          "#cloud-config",
+          {"Fn::Join" : ["", ["local-hostname: ", "billingworker3", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          {"Fn::Join" : ["", ["fqdn: ", "billingworker3", "-", {"Ref":"Environment"}, ".nextility.net"]]},
+          "manage_etc_hosts: true",
+          "preserve_hostname: false",
+          "packages:",
+          " - puppet"
+        ]]}},
+        "SubnetId" : {"Ref" : "InstanceSubnet"},
+        "InstanceType" : "t2.medium",
+        "SecurityGroupIds" : [{"Ref" : "ApplicationSecurityGroup"}, {"Ref": "SshSecurityGroup"}, {"Ref" : "RabbitMqSecurityGroup"}],
+        "Tags" : [
+          {"Key" : "Name", "Value" : "billingworker3"},
+          {"Key" : "Environment", "Value" : {"Ref" : "Environment"}}
+        ],
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs" : {
+              "DeleteOnTermination": true,
+              "VolumeSize": 8,
+              "VolumeType": "standard"
+            },
+            "VirtualName" : "/dev/xvda"
+          }
+        ],
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] }
+      }
+    },
+    "Worker3InternalDns" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneId" : { "Ref" : "HostedZoneId" },
+        "Name" : {
+          "Fn::Join" : [ "", [
+            "billingworker3", "-", {"Ref": "Environment"}, ".",
+            {"Ref" : "HostedZone"} ,"."
+          ] ]
+        },
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [
+          { "Fn::GetAtt" : [ "Worker3", "PrivateIp" ] }
+        ]
+      }
+    }
   },
   "Outputs" : {
     "InstanceId" : {
@@ -256,6 +417,21 @@
           [
             "Host ", {"Ref": "InstanceName"}, "-", {"Ref": "Environment"}, "\n",
             "HostName ", {"Fn::GetAtt": ["ApplicationInstance", "PrivateIp"]}, "\n",
+            "ProxyCommand ssh nat-internal-", {"Ref" : "Environment"}, " exec nc %h %p", "\n",
+            "IdentityFile ~/Dropbox/IT/ec2keys/", {"Ref" : "KeyName"}, ".pem", "\n",
+            "User ec2-user", "\n\n",
+            "Host ", "billingworker1", "-", {"Ref": "Environment"}, "\n",
+            "HostName ", {"Fn::GetAtt": ["Worker1", "PrivateIp"]}, "\n",
+            "ProxyCommand ssh nat-internal-", {"Ref" : "Environment"}, " exec nc %h %p", "\n",
+            "IdentityFile ~/Dropbox/IT/ec2keys/", {"Ref" : "KeyName"}, ".pem", "\n",
+            "User ec2-user", "\n\n",
+            "Host ", "billingworker2", "-", {"Ref": "Environment"}, "\n",
+            "HostName ", {"Fn::GetAtt": ["Worker2", "PrivateIp"]}, "\n",
+            "ProxyCommand ssh nat-internal-", {"Ref" : "Environment"}, " exec nc %h %p", "\n",
+            "IdentityFile ~/Dropbox/IT/ec2keys/", {"Ref" : "KeyName"}, ".pem", "\n",
+            "User ec2-user", "\n\n",
+            "Host ", "billingworker3", "-", {"Ref": "Environment"}, "\n",
+            "HostName ", {"Fn::GetAtt": ["Worker3", "PrivateIp"]}, "\n",
             "ProxyCommand ssh nat-internal-", {"Ref" : "Environment"}, " exec nc %h %p", "\n",
             "IdentityFile ~/Dropbox/IT/ec2keys/", {"Ref" : "KeyName"}, ".pem", "\n",
             "User ec2-user", "\n\n"

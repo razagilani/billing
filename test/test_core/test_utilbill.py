@@ -1,16 +1,30 @@
 from mock import MagicMock, Mock
+
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from test import init_test_config
+init_test_config()
+
 from core import init_model
+from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
-from core.pricing import PricingModel
+from core.pricing import PricingModel, FuzzyPricingModel
 from test import init_test_config, create_tables, clear_db
 
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
+    MissingFileError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from util.pdf import PDFUtil
 
 
 class UtilBillTest(TestCase):
@@ -184,6 +198,7 @@ class UtilBillTest(TestCase):
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
         self.assertEqual(1, utilbill.get_total_energy())
+        self.assertEqual('kWh', utilbill.get_total_energy_unit())
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
@@ -206,6 +221,7 @@ class UtilBillTest(TestCase):
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
         self.assertEqual(0, utilbill.get_total_energy())
+        self.assertEqual(None, utilbill.get_total_energy_unit())
 
         # utility and rate class can be set to None
         utilbill.set_utility(None)
@@ -215,6 +231,32 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class())
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
+
+    def test_get_text(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        bfh = Mock(autospec=BillFileHandler)
+        pdf_util = Mock(autospec=PDFUtil)
+        pdf_util.get_pdf_text.return_value = 'example text'
+
+        # if file is missing, text is empty (and is not cached)
+        bfh.write_copy_to_file.side_effect = MissingFileError
+        self.assertEqual('', utilbill.get_text(bfh, pdf_util))
+
+        # get the text
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        bfh.write_copy_to_file.side_effect = None
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(1, bfh.write_copy_to_file.call_count)
+        self.assertEqual(1, pdf_util.get_pdf_text.call_count)
+
+        # text is cached the 2nd time so methods to get the file and text are
+        # not called
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(0, bfh.write_copy_to_file.call_count)
+        self.assertEqual(0, pdf_util.get_pdf_text.call_count)
 
 
 class UtilBillTestWithDB(TestCase):
@@ -279,6 +321,34 @@ class UtilBillTestWithDB(TestCase):
         # charges, so 'b' is the only charge left in the database
         self.assertEqual(1, s.query(Charge).count())
 
+    def test_invalid_utilbill_dates(self):
+        supplier = Supplier(name='supplier', address=Address())
+        utility = Utility(name='utility', address=Address())
+        utility_account = UtilityAccount(
+            'someone', '98989', utility, supplier,
+            RateClass(name='FB Test Rate Class', utility=utility,
+                      service='gas'), Address(), Address())
+        utilbill = UtilBill(utility_account, utility,
+                            RateClass(name='rate class', utility=utility,
+                                      service='gas'),
+                            supplier=supplier,
+                            period_start=date(0215, 1, 1),
+                            period_end=date(0215, 2, 1))
+        utilbill.set_next_meter_read_date(date(0215, 1, 1))
+        Session().add(utilbill)
+        # flushing the changes should through integrity error as the dates
+        # entered for period_start, period_end and next_meter_read_date
+        # violates the defined column check constraint that checks date >
+        # 1900-01-01
+        self.assertRaises(IntegrityError, Session().flush)
+        utilbill.set_next_meter_read_date(date(2000,02,01))
+        utilbill.period_start = date(2000, 01, 01)
+        utilbill.period_end = date(2000, 02, 01)
+        # Since the dates entered for period_start, period_end and
+        # next_meter_read_date don't violate the check constraint, flushing
+        # changes should succeed
+        Session().flush()
+
     def test_processed_editable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
@@ -342,15 +412,13 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        charge = utilbill.add_charge()
-        self.assertEqual('%s.quantity' % Register.TOTAL,
-                         charge.quantity_formula)
+        formula = Charge.get_simple_formula(Register.TOTAL)
+        fpm = Mock(autospec=FuzzyPricingModel)
+        fpm.get_closest_occurrence_of_charge.return_value = Charge(
+            "rsi_binding does't matter", formula=formula, rate=1.234)
+        charge = utilbill.add_charge({})
+        self.assertEqual(formula, charge.quantity_formula)
 
-        session.delete(charge)
-
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula,
-                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
 
     def test_compute(self):
@@ -560,6 +628,8 @@ class UtilBillTestWithDB(TestCase):
             Charge('B', rate=3, formula='2'),
             # this has an error
             Charge('C', rate=0, formula='1/0'),
+            # the following should not be included in the total computation
+            Charge('D', rate=1, formula='REG_TOTAL.quantity', has_charge=False)
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
