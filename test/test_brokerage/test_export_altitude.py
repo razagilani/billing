@@ -4,6 +4,15 @@ from unittest import TestCase
 from uuid import uuid5, uuid4
 from uuid import NAMESPACE_DNS
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 from mock import Mock
 from core import altitude, init_model
 from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
@@ -11,7 +20,9 @@ from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
 
 from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier, Register
-from brokerage.export_altitude import PGAltitudeExporter
+from brokerage.brokerage_model import BrokerageAccount
+from brokerage.export_altitude import PGAltitudeExporter, \
+    _create_brokerage_accounts_for_utility_accounts, _load_pg_utilbills
 from test import init_test_config, clear_db, create_tables
 from util.dateutils import ISO_8601_DATETIME
 
@@ -20,6 +31,36 @@ def setUpModule():
     init_test_config()
     create_tables()
     init_model()
+
+class TestUtilityAccountLoaderMethods(TestCase):
+
+    def setUp(self):
+        clear_db()
+        self.utility = Utility('test utility')
+        self.supplier = Supplier(name='test supplier')
+        self.rate_class = RateClass(name='test rate class',
+                                    utility=self.utility)
+
+    def test_create_brokerage_accounts_for_utility_accounts(self):
+        ua1 = UtilityAccount('', '20022', self.utility, self.supplier,
+                             self.rate_class, Address(), Address())
+        ua2 = UtilityAccount('', '20023', self.utility, self.supplier,
+                             self.rate_class, Address(), Address())
+        Session().add_all([ua1, ua2])
+
+        _create_brokerage_accounts_for_utility_accounts()
+        ba1 = Session().query(BrokerageAccount).filter(
+            BrokerageAccount.utility_account==ua1).one()
+        ba2 = Session().query(BrokerageAccount).filter(
+            BrokerageAccount.utility_account==ua2).one()
+        self.assertEqual(ba1.utility_account, ua1)
+        self.assertEqual(ba2.utility_account, ua2)
+
+
+    def test_load_pg_utilbills(self):
+        # Just excecise the code
+        _load_pg_utilbills().all()
+
 
 class TestExportAltitude(TestCase):
     def setUp(self):
@@ -72,18 +113,20 @@ class TestExportAltitude(TestCase):
         altitude_converter = Mock()
         altitude_converter.get_guid_for_utility\
             .return_value = 'A' * 36
-        altitude_converter.get_guid_for_supplier\
-            .return_value = 'B' * 36
         altitude_converter.get_one_altitude_account_guid_for_utility_account\
             .side_effect = ['C' * 36, None]
         self.uuids = [str(uuid5(NAMESPACE_DNS, 'a')),
-                      str(uuid5(NAMESPACE_DNS, 'b'))]
+                      str(uuid5(NAMESPACE_DNS, 'b')),
+                      str(uuid5(NAMESPACE_DNS, 'c')),
+                      str(uuid5(NAMESPACE_DNS, 'd'))]
         def uuid_func(count=[0]):
             result = self.uuids[count[0]]
             count[0] += 1
             return result
         altitude_converter.get_or_create_guid_for_utilbill.side_effect = [
-            self.uuids[0], self.uuids[1]]
+            self.uuids[0], self.uuids[2]]
+        altitude_converter.get_or_create_guid_for_supplier\
+            .side_effect = [self.uuids[1], self.uuids[3]]
         self.pgae = PGAltitudeExporter(uuid_func, altitude_converter)
 
     def test_get_dataset(self):
@@ -94,7 +137,7 @@ class TestExportAltitude(TestCase):
                              '11111',
                              self.uuids[0],
                              'A' * 36,
-                             'B' * 36,
+                             self.uuids[1],
                              'electric',
                              '1',
                              '2000-01-01T00:00:00Z',
@@ -117,9 +160,9 @@ class TestExportAltitude(TestCase):
         self.assertEqual((
                              '',
                              '22222',
-                             self.uuids[1],
+                             self.uuids[2],
                              'A' * 36,
-                             'B' * 36,
+                             self.uuids[3],
                              '',
                              '2',
                              '2000-01-15T00:00:00Z',
@@ -219,5 +262,20 @@ class TestAltitudeBillStorage(TestCase):
 
         dataset_2 = self.pgae.get_dataset([self.utilbill])
         self.assertEqual(1, s.query(AltitudeBill).count())
+        self.assertEqual(dataset_1.csv, dataset_2.csv)
+
+    def test_altitude_supplier_consistency(self):
+        """Check that an AlititudeSupplier is created only once and reused
+        during repeated calls to get_dataset for the same supplier.
+        """
+        s = Session()
+        s.query(AltitudeSupplier).delete()
+        self.assertEqual(0, s.query(AltitudeSupplier).count())
+
+        dataset_1 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeSupplier).count())
+
+        dataset_2 = self.pgae.get_dataset([self.utilbill])
+        self.assertEqual(1, s.query(AltitudeSupplier).count())
         self.assertEqual(dataset_1.csv, dataset_2.csv)
 
