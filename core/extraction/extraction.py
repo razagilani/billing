@@ -272,6 +272,15 @@ class Extractor(model.Base):
         """
         good, errors = self._get_values(utilbill, bill_file_handler)
         success_count = 0
+
+        # hack to force field values to be applied in the order of Applier.KEYS,
+        # because of dependency of some values on others.
+        # TODO: probably Applier should get a whole Extractor passed to it
+        # and apply all the fields, so it can ensure they get applied in the
+        # right order. extraction results should not be ordered anyway.
+        good = sorted(good, key=(
+            lambda (applier_key, _): applier.get_keys().index(applier_key)))
+
         for applier_key, value in good:
             try:
                 applier.apply(applier_key, value, utilbill)

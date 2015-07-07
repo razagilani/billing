@@ -51,6 +51,7 @@ Ext.define('ReeBill.view.charges.Charges', {
         }
     },
 
+
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',

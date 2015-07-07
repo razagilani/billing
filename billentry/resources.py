@@ -9,7 +9,8 @@ from flask import session
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
 from flask.ext.restful import Resource, marshal, abort
-from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
+from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean,\
+    List
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload
@@ -367,8 +368,10 @@ class UploadUtilityBillResource(BaseResource):
         if not session.get('hash-digest'):
             raise MissingFileError()
         for hash_digest in session.get('hash-digest'):
+            # skip extracting data because it's currently slow
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, hash_digest, service_address=address)
+                utility_account, hash_digest, service_address=address,
+                skip_extraction=True)
             s.add(ub)
         # remove the consumed hash-digest from session
         session.pop('hash-digest')
@@ -442,6 +445,16 @@ class ChargeResource(BaseResource):
         self.utilbill_processor.delete_charge(id)
         Session().commit()
         return {}
+
+
+class RSIBindingsResource(BaseResource):
+
+    def get(self):
+        rsi_bindings = Session.query(Charge.rsi_binding).distinct().all()
+        rsi_bindings = [dict(name=rsi_binding[0]) for rsi_binding in rsi_bindings]
+        return {'rows': rsi_bindings,
+                'results': len(rsi_bindings)}
+
 
 
 class SuppliersResource(BaseResource):
