@@ -71,7 +71,7 @@ class Quote(AltitudeBase):
                          # foreign key to view is not allowed
                          ForeignKey('Company.Company_ID'), nullable=False)
 
-    rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
+    rate_class_alias = Column('rate_class_alias', String, nullable=False)
     rate_class_id = Column('Rate_Class_ID', Integer,
                            ForeignKey('Rate_Class_View.Rate_Class_ID'),
                            nullable=True)
