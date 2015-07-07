@@ -1,4 +1,5 @@
 from io import BytesIO
+import re
 from pdfminer.converter import TextConverter, PDFPageAggregator
 from pdfminer.layout import LAParams
 from pdfminer.pdfdocument import PDFDocument
@@ -6,6 +7,40 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 from pyPdf import PdfFileWriter, PdfFileReader
+import sys
+
+
+def fix_pdfminer_cid(text):
+    def sub_cid(match):
+        val = int(match.group(1))
+        return chr(val) if val < 128 else "!"
+    text = re.sub(r"\(cid:(\d+?)\)",
+        sub_cid, text)
+    return text
+
+class PDFPageAggregatorFixedCID(PDFPageAggregator):
+    """
+    Overrides the default 'PDFPageAggregator' class to better handle issues
+    with unicode fonts. Instead of returning (cid:###) when encountering an
+    unknown charater, the character is converted to ASCII and then returned,
+    if possible. Otherwise, a '!' is returned.
+    """
+    def handle_undefined_char(self, font, cid):
+        if self.debug:
+            print >>sys.stderr, 'undefined: %r, %r' % (font, cid)
+        return chr(cid) if cid < 128 else "!"
+
+class TextConverterFixedCID(TextConverter):
+    """
+    Overrides the default 'TextConverter' class to better handle issues
+    with unicode fonts. Instead of returning (cid:###) when encountering an
+    unknown charater, the character is converted to ASCII and then returned,
+    if possible. Otherwise, a '!' is returned.
+    """
+    def handle_undefined_char(self, font, cid):
+        if self.debug:
+            print >>sys.stderr, 'undefined: %r, %r' % (font, cid)
+        return chr(cid) if cid < 128 else "!"
 
 # TODO: no test coverage
 class PDFUtil(object):
@@ -20,7 +55,7 @@ class PDFUtil(object):
         outfile = BytesIO()
         laparams = LAParams()  # Use this to tell interpreter to capture newlines
         # laparams = None
-        device = TextConverter(rsrcmgr, outfile, codec='utf-8',
+        device = TextConverterFixedCID(rsrcmgr, outfile, codec='utf-8',
                                laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         try:
@@ -42,7 +77,7 @@ class PDFUtil(object):
         document = PDFDocument(parser)
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
-        device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+        device = PDFPageAggregatorFixedCID(rsrcmgr, laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         try:
             pages = []

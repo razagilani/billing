@@ -1,8 +1,6 @@
 import re
 from pdfminer.layout import LTTextLine
 
-from util.pdfminer_util import fix_pdfminer_cid
-
 # represents a two-dimensional, axis-aligned bounding box.
 class BoundingBox:
     def __init__(self, minx, miny, maxx, maxy):
@@ -44,8 +42,6 @@ def get_text_from_boundingbox(ltobject, boundingbox, corner):
     textlines = get_objects_from_bounding_box(ltobject,
         boundingbox, corner, objtype=LTTextLine)
     text = '\n'.join([tl.get_text() for tl in textlines])
-    # for pdfminer unicode issues, fixes occurences of (cid:<char code>)
-    text = fix_pdfminer_cid(text)
     return text
 
 
@@ -73,7 +69,7 @@ def get_text_line(page, regexstr):
     """
     regex = re.compile(regexstr, re.IGNORECASE)
     objs = get_all_objs(page, LTTextLine,
-        lambda o: regex.search(fix_pdfminer_cid(o.get_text())))
+        lambda o: regex.search(o.get_text()))
     if not objs:
         return None
     return objs[0]

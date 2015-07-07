@@ -23,7 +23,6 @@ from core.extraction.layout import tabulate_objects, BoundingBox
 from core.model import Address, Session
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
-from util.pdfminer_util import fix_pdfminer_cid
 
 __all__ = [
     'Main',
@@ -407,7 +406,7 @@ class LayoutExtractor(Extractor):
                     if textline is None:
                         raise MatchError('Could not find textline using '
                                               'regex "%s"' % self.bbregex)
-                    text = fix_pdfminer_cid(textline.get_text())
+                    text = textline.get_text()
                 else:
                     #if offset_regex is not None, then find the first block of
                     # text that it matches, and use that as the origin for
@@ -543,7 +542,7 @@ class LayoutExtractor(Extractor):
             # extract text from each table cell
             output_values = []
             for row in table_data:
-                out_row = [fix_pdfminer_cid(tl.get_text()).strip() for tl in
+                out_row = [tl.get_text().strip() for tl in
                     row]
                 #remove empty cells
                 out_row = filter(bool, out_row)
