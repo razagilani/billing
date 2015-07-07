@@ -13,6 +13,7 @@ env.roledefs.update({
     'billing-stage': ['billing-stage'],
     'billing-prod-01': ['billing-prod-01'],
     'billing-prod': ['billing-prod'],
+    'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev', 'billingworker3-dev'],
 })
 
 #
@@ -22,6 +23,33 @@ common.CommonFabTask.update_deployment_configs({
     "dev": {
         "deploy_version":"3", 
         "app_name":"reebill-dev", 
+        # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
+        "os_user":"reebill-dev", 
+        "os_group":"reebill-dev",
+        "default_deployment_dir":"/var/local/reebill-dev/billing",
+        # set up mappings between names and remote files so that a local file can be 
+        # associated and deployed to the value of the name below
+        "deployment_dirs": {
+            # package name:destination path
+            # package names are specified in tasks wrapper decorators
+            "app": "/var/local/reebill-dev/billing",
+            "www": "/var/local/reebill-dev/billing/www",
+            "skyliner": "/var/local/reebill-dev/billing/skyliner",
+            "doc": "/home/reebill-dev/doc",
+            "mydoc": "/tmp",
+        },
+        "config_files": [
+            ("conf/configs/settings-dev-template.cfg", "/var/local/reebill-dev/billing/settings.cfg"),
+            ("conf/configs/alembic-dev.ini", "/var/local/reebill-dev/billing/alembic.ini"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-dev/billing/skyliner/config.yaml"),
+            ("mq/conf/config-template-dev.yml", "/var/local/reebill-dev/billing/mq/config.yml"),
+        ],
+        "makefiles":[
+        ],
+    },
+    "extraction-worker-dev": {
+        "deploy_version":"3", 
+        "app_name":"extraction-worker-dev", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-dev", 
         "os_group":"reebill-dev",
