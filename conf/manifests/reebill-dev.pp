@@ -46,11 +46,13 @@ file { "/home/reebill-${env}/logs":
 }
 file { "/etc/httpd/conf.d/billing-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-shareddev.conf"
+    source => "puppet:///modules/conf/vhosts/billing-shareddev.conf",
+    require => Package['httpd']
 }
 file { "/etc/httpd/conf.d/billentry-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-shareddev.conf"
+    source => "puppet:///modules/conf/vhosts/billentry-shareddev.conf",
+    require => Package['httpd']
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
