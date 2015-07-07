@@ -57,11 +57,13 @@ file { "/home/reebill-${env}/logs":
 }
 file { "/etc/httpd/conf.d/billing-stage.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-stage.conf"
+    source => "puppet:///modules/conf/vhosts/billing-stage.conf",
+    require => Package['httpd']
 }
 file { "/etc/httpd/conf.d/billentry-stage.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-stage.conf"
+    source => "puppet:///modules/conf/vhosts/billentry-stage.conf",
+    require => Package['httpd']
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
