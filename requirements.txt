@@ -18,6 +18,8 @@ Flask-Login==0.2.11
 Flask-Bcrypt==0.6.2
 Flask-OAuth==0.12
 Flask-Principal==0.4.0
+Flask-KVSession==0.6.2
+Flask-SQLAlchemy==2.0
 greenlet==0.4.0
 # this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4)
 git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f

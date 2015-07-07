@@ -18,6 +18,8 @@ from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
 from celery.result import AsyncResult
+from flask.ext.kvsession import KVSessionExtension
+from simplekv.db.sql import SQLAlchemyStore
 from sqlalchemy import desc, func
 
 import xkcdpass.xkcd_password  as xp
@@ -25,6 +27,7 @@ from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
+from flask.ext.sqlalchemy import SQLAlchemy
 from flask import Flask, url_for, request, flash, session, redirect, \
     render_template, current_app, Response, jsonify
 from flask_oauth import OAuth, OAuthException
@@ -45,6 +48,7 @@ LOG_NAME = 'billentry'
 
 app = Flask(__name__, static_url_path="")
 bcrypt = get_bcrypt_object()
+
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -82,6 +86,14 @@ google = oauth.remote_app('google',
 
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry', 'disable_authentication')
+app.config['SQLALCHEMY_DATABASE_URI'] = config.get('db', 'uri')
+db = SQLAlchemy(app)
+
+############
+# KVSession
+############
+store = SQLAlchemyStore(db.engine, db.metadata, 'sessions')
+kvsession = KVSessionExtension(store, app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -92,6 +104,9 @@ app.permanent_session_lifetime = timedelta(
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
 
+@app.before_first_request
+def create_db():
+    db.create_all()
 
 @principals.identity_loader
 def load_identity_for_anonymous_user():
