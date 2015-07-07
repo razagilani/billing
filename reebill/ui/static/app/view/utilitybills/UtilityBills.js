@@ -9,7 +9,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     ],
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
-    store: 'UtilityBillsMemory',
+    store: 'UtilityBills',
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -247,14 +247,5 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
 //            text: 'Review',
 //            disabled: true
         }]
-    }],
-
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'UtilityBillsMemory',
-        refreshStore: 'UtilityBills',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}'
-    }
+    }]
 });
