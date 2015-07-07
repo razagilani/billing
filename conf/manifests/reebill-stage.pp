@@ -39,6 +39,12 @@ package { 'html2ps':
 package { 'libevent-devel':
     ensure  => installed
 }
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
+    ensure  => installed
+}
 file { "/var/local/${username}/www":
     ensure      => directory,
     owner       => $username,
