@@ -197,13 +197,6 @@ class UtilbillProcessor(object):
         :param skip_extraction: if True, do not extract data from the the
         bill file (for speed)
         """
-        # extract data from bill file
-        # TODO: this is too slow to do when uploading a bill; instead
-        # schedule it to be done in a separate process. then remove the
-        # skip_extraction argument.
-        if not skip_extraction:
-            Main(self.bill_file_handler).extract(utilbill)
-
         # 'period_end' may be None, in which case this is the last bill overall
         try:
             predecessor = utilbill.utility_account.get_last_bill(
