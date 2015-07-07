@@ -5,7 +5,7 @@ from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from sqlalchemy.orm import joinedload
 from core.model import Session, UtilBill, Register, UtilityAccount, \
-    Supplier, Utility, RateClass, SupplyGroup
+    Supplier, Utility, RateClass, SupplyGroup, Charge
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
@@ -144,6 +144,10 @@ class Views(object):
     def get_rate_class(self, name):
         session = Session()
         return session.query(RateClass).filter(RateClass.name == name).one()
+
+    def get_all_rsi_bindings(self):
+        rsi_bindings = Session.query(Charge.rsi_binding).distinct().all()
+        return [dict(name=rsi_binding[0]) for rsi_binding in rsi_bindings]
 
     def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
