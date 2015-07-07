@@ -510,6 +510,7 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.UtilityBillFileResource, '/utilitybills/uploadfile')
 api.add_resource(resources.UploadUtilityBillResource, '/utilitybills/uploadbill')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(resources.RSIBindingsResource, '/utilitybills/rsibindings')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResource,
