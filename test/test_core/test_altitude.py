@@ -23,9 +23,9 @@ class TestAltitudeModelClasses(TestCase):
     anything.
     '''
     def setUp(self):
-        self.utility = Mock(autospec=Utility)
+        self.utility = Utility()
         self.utility.id = 1
-        self.supplier = Mock(autospec=Supplier)
+        self.supplier = Supplier()
         self.supplier.id = 2
 
     def test_altitude_utility(self):

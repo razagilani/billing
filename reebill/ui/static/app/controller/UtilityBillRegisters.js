@@ -120,7 +120,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             description: 'Insert description',
             quantity: 0,
             reg_type: 'total',
-            register_binding: 'Insert register binding here',
+            register_binding: 'REG_TOTAL',
             unit: 'therms',
             utilbill_id: selectedBill[0].internalId
         });

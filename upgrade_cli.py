@@ -9,7 +9,7 @@ Use by calling ``$python upgrade_cli.py version_number``
 
 from argparse import ArgumentParser
 parser = ArgumentParser(description='Deploy a software version upgrade.')
-parser.add_argument('version', 
+parser.add_argument('version',
                     help='The version we are upgrading to.')
 args = parser.parse_args()
 

@@ -33,7 +33,11 @@ class AltitudeUtility(Base):
     utility_id = Column('utility_id', Integer(), ForeignKey('utility.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    utility = relationship('Utility')
+    utility = relationship(
+        'Utility',
+        # delete-orphan so AltitudeUtilities go away when their Utility is
+        # deleted, instead of preventing Utilities from being deleted.
+        backref=backref('altitude_utility', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
@@ -52,7 +56,11 @@ class AltitudeSupplier(Base):
     supplier_id = Column('supplier_id', Integer(), ForeignKey('supplier.id'),
                         nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    supplier = relationship('Supplier')
+    supplier = relationship(
+        'Supplier',
+        # delete-orphan so AltitudeSupplierss go away when their Supplier is
+        # deleted, instead of preventing Suppliers from being deleted.
+        backref=backref('altitude_supplier', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
@@ -73,7 +81,12 @@ class AltitudeAccount(Base):
     utility_account_id = Column('utility_account_id', Integer(),
                         ForeignKey('utility_account.id'), nullable=False)
     guid = Column('guid', AltitudeGUID, nullable=False)
-    utility_account = relationship('UtilityAccount')
+    utility_account = relationship(
+        'UtilityAccount',
+        # delete-orphan so AltitudeAccounts go away when their UtilityAccount
+        #  is  deleted, instead of preventing Utility Accounts from being
+        # deleted.
+        backref=backref('altitude_account', cascade='all, delete-orphan'))
 
     # compound primary key
     __table_args__ = (
@@ -134,9 +147,6 @@ def _billing_to_altitude(billing_class, altitude_class):
 def get_guid_for_utility(x):
     result = _billing_to_altitude(Utility, AltitudeUtility)(x)
     return None if result is None else result.guid
-def get_guid_for_supplier(x):
-    result = _billing_to_altitude(Supplier, AltitudeSupplier)(x)
-    return None if result is None else result.guid
 def get_guid_for_utilbill(x):
     result = _billing_to_altitude(UtilBill, AltitudeBill)(x)
     return None if result is None else result.guid
@@ -183,3 +193,16 @@ def get_or_create_guid_for_utilbill(utilbill, guid_func, session):
         session.add(altitude_bill)
 
     return altitude_bill.guid
+
+def get_or_create_guid_for_supplier(supplier, guid_func, session):
+    """Find and return a GUID string for the given Supplier, or if one does
+    not exist, generate one using 'guid_func', store a new AltitudeSupplier with
+    the GUID string, and return it.
+    """
+    if supplier is None:
+        return
+    altitude_supplier = _billing_to_altitude(Supplier, AltitudeSupplier)(supplier)
+    if altitude_supplier is None:
+        altitude_supplier = AltitudeSupplier(supplier, str(guid_func()))
+        session.add(altitude_supplier)
+    return altitude_supplier.guid
