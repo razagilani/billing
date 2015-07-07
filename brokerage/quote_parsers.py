@@ -2,16 +2,17 @@
 quotes.
 """
 from abc import ABCMeta, abstractmethod
-from itertools import chain
+from itertools import chain, izip
 import re
 from datetime import datetime, timedelta, date
 
 from tablib import Databook, formats
+from core.model import AltitudeSession
 
 from exc import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, date_to_datetime
 from util.monthmath import Month
-from brokerage.brokerage_model import MatrixQuote
+from brokerage.brokerage_model import MatrixQuote, get_rate_class_from_alias
 
 
 # TODO:
@@ -377,6 +378,8 @@ class DirectEnergyMatrixParser(QuoteParser):
             rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
+            rate_classes = [get_rate_class_from_alias(alias) for alias in
+                            rate_class_aliases]
 
             special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
                                                basestring)
@@ -385,15 +388,20 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 100.
-                for rate_class_alias in rate_class_aliases:
-                    yield MatrixQuote(
+                for rate_class, alias in izip(rate_classes,rate_class_aliases):
+                    quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,
                         valid_until=self._date + timedelta(days=1),
                         min_volume=min_vol, limit_volume=max_vol,
-                        rate_class_alias=rate_class_alias,
+                        rate_class_alias=alias,
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class is not None:
+                        quote.rate_class_id = rate_class.rate_class_id
+                    yield quote
 
 
 class USGEMatrixParser(QuoteParser):
@@ -467,8 +475,10 @@ class USGEMatrixParser(QuoteParser):
                 if utility is None:
                     continue
 
-                rate_class = self._reader.get(sheet, row, 2,
-                                              (basestring, type(None)))
+                rate_class_alias = self._reader.get(sheet, row, 2,
+                                                    (basestring, type(None)))
+                rate_class = get_rate_class_from_alias(rate_class_alias)
+
                 min_volume, limit_volume = self._extract_volume_range(
                     sheet, row, self.VOLUME_RANGE_COL)
 
@@ -488,10 +498,15 @@ class USGEMatrixParser(QuoteParser):
                         price = self._reader.get(sheet, row, i,
                                                  (float, type(None)))
 
-                        yield MatrixQuote(
+                        quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
-                            rate_class_alias=rate_class, price=price)
+                            rate_class=rate_class, price=price)
+                        # TODO: rate_class_id should be determined automatically
+                        # by setting rate_class
+                        if rate_class is not None:
+                            quote.rate_class_id = rate_class.rate_class_id
+                        yield quote

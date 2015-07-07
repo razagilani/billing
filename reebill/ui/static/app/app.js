@@ -61,6 +61,7 @@ Ext.Ajax.request({
                 'AccountsFilter',
                 'AccountsMemory',
                 'Charges',
+                'PreviousCharges',
                 'CustomerGroups',
                 'EstimatedRevenue',
                 'IssuableReebills',
@@ -72,6 +73,7 @@ Ext.Ajax.request({
                 'ReebillCharges',
                 'Reebills',
                 'ReeBillVersions',
+                'RSIBindings',
                 'RegisterBindings',
                 'ServiceTypes',
                 'Types',
@@ -79,7 +81,6 @@ Ext.Ajax.request({
                 'Utilities',
                 'UtilityBillRegisters',
                 'UtilityBills',
-                'UtilityBillsMemory',
                 'Timestamps'
             ],
 
