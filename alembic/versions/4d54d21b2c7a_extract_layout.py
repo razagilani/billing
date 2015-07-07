@@ -50,7 +50,7 @@ def upgrade():
     op.add_column('field', sa.Column('table_start_regex', sa.String))
     op.add_column('field', sa.Column('table_stop_regex', sa.String))
 
-    op.add_column('extractor_result', sa.Column('field_period_total', HSTORE()))
+    op.add_column('extractor_result', sa.Column('field_period_total', sa.Integer()))
     op.add_column('extractor_result',
                   sa.Column('period_total_by_month', HSTORE()))
 
