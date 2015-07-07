@@ -27,9 +27,13 @@ def upgrade():
     new_type_names = [
         'table charges',
     ]
-    import ipdb; ipdb.set_trace()
     for value in new_type_names:
         op.execute("alter type field_type add value '%s'" % value)
+    new_applier_keys = [
+        'period total',
+    ]
+    for value in new_applier_keys:
+        op.execute("alter type applier_key add value '%s'" % value)
 
     op.add_column('extractor', sa.Column('origin_regex', sa.String()))
     op.add_column('extractor', sa.Column('origin_x', sa.Float()))
