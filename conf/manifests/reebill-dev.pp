@@ -28,6 +28,12 @@ package { 'html2ps':
 package { 'libevent-dev':
     ensure  => installed
 }
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
+    ensure  => installed
+}
 file { "/var/local/${username}/www":
     ensure      => directory,
     owner       => $username,
@@ -66,7 +72,8 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@ip-10-0-0-158'
+    # TODO: either avoid using a specific host name here or ensure that host gets created and configured along with this one
+    cluster => 'rabbit@xbill-dev.nextility.net'
 }
 
 rabbit_mq::user_permission {'guest':
