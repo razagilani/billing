@@ -608,6 +608,17 @@ class UtilityAccount(Base):
         return '<utility_account(name=%s, account=%s)>' % (
         self.name, self.account)
 
+    def get_utility(self):
+        """:return: the Utility of any bill for this account, or the value of
+        'fb_utility' if there are no bills.
+        """
+        # TODO: instead of having to do a database query when this is called,
+        #  'fb_utility' should be replaced by an attribute that represents
+        # the current utility.
+        if len(self.utilbills) > 0:
+            return self.utilbills[0].get_utility()
+        return self.fb_utility
+
     def get_service_address(self):
         """Return the service address (Address object) of any bill for this
         account, or the value of 'fb_service_address' if there are no bills.
