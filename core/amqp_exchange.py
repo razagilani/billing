@@ -162,7 +162,7 @@ class ConsumeUtilbillFileHandler(MessageHandler):
             account_guids = message['account_guids']
 
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, sha256_hexdigest, target_total=total,
+                utility_account, sha256_hexdigest, target_total=total,
                 service_address=Address(street=service_address_street),
                 due_date=due_date)
             update_altitude_account_guids(utility_account, account_guids)
