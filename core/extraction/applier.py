@@ -504,6 +504,7 @@ def convert_address(text):
     # However, the last two lines are sometimes switched by PDF extractors
     # This especially happens with service addresses
     for line in lines:
+        line = line.strip()
         if not line:
             continue
         #if it a po box or starts with a number, this line is a street address
