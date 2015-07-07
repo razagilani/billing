@@ -130,7 +130,7 @@ def create_layout_extractors(s):
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)" % num_format, page_num=1, maxpage=3,
         offset_regex="total electric charges",
-        bbminx=0, bbminy=0, bbmaxx=318, bbmaxy=10,
+        bbminx=0, bbminy=-10, bbmaxx=318, bbmaxy=0,
         corner=0, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
 
@@ -180,7 +180,7 @@ def create_layout_extractors(s):
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)" % num_format, page_num=1,
         offset_regex="current charges this period",
-        bbminx=0, bbminy=0, bbmaxx=252, bbmaxy=10,
+        bbminx=0, bbminy=-10, bbmaxx=252, bbmaxy=0,
         corner=0, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
 
@@ -190,12 +190,14 @@ def create_layout_extractors(s):
         name='Layout Extractor BGE bills id 7657')
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(%s) - %s" % (date_format, date_format), page_num=2,
-        bbminx=25, bbminy=725, bbmaxx=195, bbmaxy=735,
+        offset_regex=r"billing period:",
+        bbminx=0, bbminy=-10, bbmaxx=175, bbmaxy=0,
         corner=0, type=Field.DATE,
         applier_key=Applier.START))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"%s - (%s)" % (date_format, date_format), page_num=2,
-        bbminx=25, bbminy=725, bbmaxx=195, bbmaxy=735,
+        offset_regex=r"billing period:",
+        bbminx=0, bbminy=-10, bbmaxx=175, bbmaxy=0,
         corner=0, type=Field.DATE,
         applier_key=Applier.END))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
@@ -214,9 +216,9 @@ def create_layout_extractors(s):
         corner=0, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
-        bbregex="(%s)" % num_format, page_num=1,
-        offset_regex="total charges this period",
-        bbminx=0, bbminy=0, bbmaxx=255, bbmaxy=10,
+        bbregex="\$(%s)" % num_format, page_num=1,
+        offset_regex="total charges this period|total new charges due",
+        bbminx=0, bbminy=-10, bbmaxx=255, bbmaxy=0,
         corner=0, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
 
