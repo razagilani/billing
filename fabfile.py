@@ -14,6 +14,7 @@ env.roledefs.update({
     'billing-prod-01': ['billing-prod-01'],
     'billing-prod': ['billing-prod'],
     'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev', 'billingworker3-dev'],
+    'billing-dev': ['billing-dev'],
 })
 
 #
