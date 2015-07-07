@@ -1,5 +1,5 @@
 # app level
-$username = "worker-dev"
+$username = "reebill-dev"
 $app = "billing"
 $env = "dev"
 
@@ -20,10 +20,20 @@ package { 'postgresql93-devel':
 package { 'libevent-devel':
     ensure  => installed
 }
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
+    ensure  => installed
+}
 file { "/home/${username}/logs":
     ensure      => directory,
     owner       => $username,
     group       => $username,
+}
+file { "/etc/init/billing-${env}-worker.conf":
+    ensure => file,
+    content => template('conf/billing-worker.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
