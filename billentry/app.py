@@ -10,6 +10,7 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
 -structure
 '''
 import logging
+from celery.worker.control import revoke
 import re
 import traceback
 import urllib
@@ -263,6 +264,13 @@ def test_status(task_id):
     result['state'] = task.state
     return jsonify(result)
 
+@app.route('/stop-task/<task_id>', methods=['POST'])
+def stop_task(task_id):
+    #TODO stop task
+    #init_celery()
+    #celery.control.revoke(task_id)
+    #TODO return some information, maybe whether task stopping succeeded?
+    return "", 204
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}

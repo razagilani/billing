@@ -18,6 +18,7 @@ $(document).ready(function() {
 			newRow(elem.task_id, elem.extractor_id, utility_name, "", 0);
 		});
 	});
+	updateStatus();
 });
 
 //Selects all checkboxes, unless all are already selected, in which case it unselects all
@@ -198,4 +199,18 @@ function runSelected(){
 
 function clamp(x, min, max){
 	return Math.max(Math.min(x, max), min);
+}
+
+function stopSelectedTask(){
+	if(!selected){
+		return;
+	}
+	else{
+		job_id = selected.find("td[header=job_id]").text(); 
+		task_id = tasks[job_id - 1].task_id;
+		$.post("/stop-task/" + task_id, function(data){
+			// once task is stopped, update the page.
+			updateStatus();
+		});
+	}
 }
