@@ -12,6 +12,7 @@ host::app_user {'appuser':
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
 require host::hosts_file
+include mongo::mongo_tools
 
 package { 'httpd':
     ensure  => installed
