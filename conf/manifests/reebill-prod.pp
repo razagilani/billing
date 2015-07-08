@@ -17,11 +17,8 @@ host::skyline_dropbox {"$env":
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
 include mongo::mongo_tools
-require host::hosts_file
+require httpd::httpd_server
 
-package { 'httpd':
-    ensure  => installed
-}
 package { 'postgresql93':
     ensure  => installed
 }
@@ -64,13 +61,11 @@ file { "/home/reebill-${env}/logs":
 }
 file { "/etc/httpd/conf.d/billing-prod.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-prod.conf",
-    require => Package['httpd']
+    source => "puppet:///modules/conf/vhosts/billing-prod.conf"
 }
 file { "/etc/httpd/conf.d/billentry-prod.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-prod.conf",
-    require => Package['httpd']
+    source => "puppet:///modules/conf/vhosts/billentry-prod.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":

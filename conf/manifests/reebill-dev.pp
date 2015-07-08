@@ -11,11 +11,9 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-require host::hosts_file
+require httpd::httpd_server
 
-package { 'httpd':
-    ensure  => installed
-}
+
 package { 'postgresql93':
     ensure  => installed
 }
@@ -52,13 +50,11 @@ file { "/home/reebill-${env}/logs":
 }
 file { "/etc/httpd/conf.d/billing-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-shareddev.conf",
-    require => Package['httpd']
+    source => "puppet:///modules/conf/vhosts/billing-shareddev.conf"
 }
 file { "/etc/httpd/conf.d/billentry-dev.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-shareddev.conf",
-    require => Package['httpd']
+    source => "puppet:///modules/conf/vhosts/billentry-shareddev.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
