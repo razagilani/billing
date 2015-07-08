@@ -11,6 +11,8 @@ from core import init_config, init_celery, init_model
 # init_model can't be called here because it will cause a circular import
 # with billentry
 from core import config
+from util.pdf import PDFUtil
+
 if not config:
     del config
     init_config()
@@ -103,9 +105,9 @@ def test_bill(self, extractor_id, bill_id):
     # Note: 'good' is of type [(field, value), ...]
     bill_end_date = None
     good, error = extractor._get_values(bill, bill_file_handler)
-    for field, value in good:
-        response['fields'][field.applier_key] = value
-        if field.applier_key == Applier.END:
+    for applier_key, value in good:
+        response['fields'][applier_key] = value
+        if applier_key == Applier.END:
             bill_end_date = value
 
     # get bill period end date from DB, or from extractor
@@ -119,7 +121,7 @@ def test_bill(self, extractor_id, bill_id):
         response['date'] = None
 
     # print out debug information in celery log
-    debug = True
+    debug = False
     if len(good) != len(extractor.fields) and debug:
         print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name
@@ -131,7 +133,8 @@ def test_bill(self, extractor_id, bill_id):
         #     if db_val and g[1] != db_val:
         #         print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
         print "ERRORS: " + str(len(error))
-        print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler)))
+        print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler,
+            PDFUtil())))
         print "*******\n"
     return response
 
