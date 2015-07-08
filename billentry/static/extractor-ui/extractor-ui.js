@@ -1,3 +1,4 @@
+
 tasks=[];
 selected = null;
 
@@ -7,6 +8,15 @@ $(document).ready(function() {
 		elem.onclick = function(){
 			runExtractor($(this).attr("name"));
 		}
+	});
+
+	// Loads currently running tasks from the server
+	$.post("/get-running-tests", function(data){
+		data.tasks.forEach(function(elem){
+			tasks.push(elem);
+			var utility_name = $("option[value="+elem.utility_id+"]:first").text();
+			newRow(elem.task_id, elem.extractor_id, utility_name, "", 0);
+		});
 	});
 });
 
@@ -120,7 +130,7 @@ function runExtractor(extractor_id){
 	$.post("/run-test", postParameters, function(data, status, request){
 		var bills_to_run = data.bills_to_run;
 		if(bills_to_run == 0){
-			newRow(null, job_id, extractor_id, utility_name, "No bills found.", bills_to_run);
+			newRow(null, extractor_id, utility_name, "No bills found.", bills_to_run);
 			return;
 		}
 		var task_id = data.task_id;
@@ -128,16 +138,17 @@ function runExtractor(extractor_id){
 			extractor_id: extractor_id,
 			utility_id: (utility_id=="" ? "None" : utility_id),
 			task_id:task_id, 
+			bills_to_run:bills_to_run,
 		});
 
 		// set up table row for this task
-		newRow(task_id, job_id, extractor_id, utility_name, "", bills_to_run);
+		newRow(task_id, extractor_id, utility_name, "", bills_to_run);
 	});
 }
 
 // Set up table row for a new task
 // If the task contains no bills (ie task_id is null), then set up a new "failed task" line.
-function newRow(task_id, job_id, extractor_id, utility_name, status, bills_to_run){
+function newRow(task_id, extractor_id, utility_name, status, bills_to_run){
 	var table_row;
 	if (task_id) {
 		table_row += '<tr id="'+task_id+'">\n' + 

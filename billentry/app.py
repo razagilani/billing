@@ -181,7 +181,7 @@ def test_extractors():
     the database.
     Provides the client a list of extractors, utilities, and bill fields.
     '''
-    s = Session();
+    s = Session()
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
     utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
@@ -190,6 +190,20 @@ def test_extractors():
                                nbills=nbills, utilities=utilities,
                                fields=fields)
 
+@app.route('/get-running-tests', methods=['POST'])
+def get_running_tests():
+    s = Session()
+    q = s.query(ExtractorResult.task_id, ExtractorResult.extractor_id,
+        ExtractorResult.utility_id).filter(
+        ExtractorResult.finished == None)
+    running_tasks = q.all()
+    tasks_dict = [{
+        'task_id' : rt.task_id,
+        'extractor_id' : rt.extractor_id,
+        'utility_id' : rt.utility_id,
+        'bills_to_run' : 0, #TODO store this in ExtractorResult table
+    } for rt in running_tasks]
+    return jsonify({'tasks' : tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
 def run_test():
@@ -214,7 +228,6 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
-    print filter_date, date_filter_type
     if filter_date and date_filter_type:
         if date_filter_type == 'before':
             q = q.filter(UtilBill.period_end <= filter_date)
