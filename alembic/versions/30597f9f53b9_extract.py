@@ -67,6 +67,7 @@ def upgrade():
     op.create_table('extractor_result',
         sa.Column('extractor_result_id', sa.Integer(), primary_key=True),
         sa.Column('task_id', sa.String(), nullable=False),
+        sa.Column('parent_id', sa.String(), nullable=False),
         sa.Column('extractor_id', sa.Integer(), sa.ForeignKey('extractor.extractor_id')),
         sa.Column('started', sa.DateTime(), nullable=False),
         sa.Column('finished', sa.DateTime()),
