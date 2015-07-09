@@ -338,9 +338,9 @@ class ExtractorResult(model.Base):
     # date when the test was started, and finished (if it has finished)
     started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
-
     # used when filtering bills by utility
     utility_id = Column(Integer, ForeignKey('utility.id'))
+    #bills_to_run = Column(Integer, nullable=False)
 
     # results to be filled in after the test has finished
     all_count = Column(Integer)
