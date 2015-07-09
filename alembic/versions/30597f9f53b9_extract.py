@@ -24,12 +24,10 @@ def upgrade():
     # create HSTORE extension if possible. only superusers can do this. if
     # the user is not a superuser, this error will be ignored, but creation
     # of columns with the type HSTORE below will fail instead.
-    # try:
-    #     op.execute('create extension if not exists hstore')
-    # except ProgrammingError:
-    #     log.info('failed to create extension HSTORE')
-    # TODO: on EC2 failing to excute the statement causes the transaction to be broken, with the error
-    # "sqlalchemy.exc.InternalError: (psycopg2.InternalError) current transaction is aborted, commands ignored until end of transaction block"
+    try:
+        op.execute('create extension if not exists hstore')
+    except ProgrammingError:
+        log.info('failed to create extension HSTORE')
 
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),
