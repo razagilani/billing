@@ -88,8 +88,6 @@ google = oauth.remote_app('google',
 
 app.secret_key = config.get('billentry', 'secret_key')
 app.config['LOGIN_DISABLED'] = config.get('billentry', 'disable_authentication')
-app.config['SQLALCHEMY_DATABASE_URI'] = config.get('db', 'uri')
-db = SQLAlchemy(app)
 
 ############
 # KVSession
@@ -104,10 +102,6 @@ app.permanent_session_lifetime = timedelta(
 
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
-
-@app.before_first_request
-def create_db():
-    Base.metadata.create_all(Session.bind)
 
 @principals.identity_loader
 def load_identity_for_anonymous_user():
