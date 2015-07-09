@@ -10,6 +10,8 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
 -structure
 '''
 import logging
+from celery.exceptions import ChordError, TaskRevokedError
+from celery.worker.control import revoke
 import re
 import traceback
 import urllib
@@ -195,7 +197,7 @@ def test_extractors():
     the database.
     Provides the client a list of extractors, utilities, and bill fields.
     '''
-    s = Session();
+    s = Session()
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
     utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
@@ -204,6 +206,20 @@ def test_extractors():
                                nbills=nbills, utilities=utilities,
                                fields=fields)
 
+@app.route('/get-running-tests', methods=['POST'])
+def get_running_tests():
+    s = Session()
+    q = s.query(ExtractorResult.task_id, ExtractorResult.extractor_id,
+        ExtractorResult.utility_id).filter(
+        ExtractorResult.finished == None)
+    running_tasks = q.all()
+    tasks_dict = [{
+        'task_id' : rt.task_id,
+        'extractor_id' : rt.extractor_id,
+        'utility_id' : rt.utility_id,
+        'bills_to_run' : 0, #TODO store this in ExtractorResult table
+    } for rt in running_tasks]
+    return jsonify({'tasks' : tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
 def run_test():
@@ -228,7 +244,6 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
-    print filter_date, date_filter_type
     if filter_date and date_filter_type:
         if date_filter_type == 'before':
             q = q.filter(UtilBill.period_end <= filter_date)
@@ -240,13 +255,14 @@ def run_test():
         return jsonify({'bills_to_run':0})
     job = group([test_bill.s(extractor_id, b.id) for b in q])
     result = chord(job)(reduce_bill_results.s())
-
+    result_parent = result.parent
+    result_parent.save()
     #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
                     task_id=result.id, started=datetime.utcnow())
     s.add(er)
     s.commit()
-    return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
+    return jsonify({'task_id': result_parent.id, 'bills_to_run': q.count()}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
@@ -257,13 +273,34 @@ def test_status(task_id):
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
     init_celery()
-    task = AsyncResult(task_id)
-    if not task.ready():
-        return jsonify({'state':task.state})
-    result = task.get()
-    result['state'] = task.state
-    return jsonify(result)
+    task = GroupResult.restore(task_id)
+    if isinstance(task, TaskRevokedError):
+        #Task was stopped manually
+        return jsonify({'state':"STOPPED"})
+    elif isinstance(task, ChordError):
+        #The task failed
+        return jsonify({'state':"FAILED"})
+    else:
+        #The task is running w/o any problems
+        subtask_results = [subtask.result for subtask in
+            task.results]
+        response = reduce_bill_results(subtask_results)
+        if response['nbills'] == response['total_count']:
+            # the task has finished, but for some reason has not been entered
+            #  into the database, e.g. if the reduce step failed.
+            response['state'] = "NOT IN DB"
+        else:
+            response['state'] = "IN PROGRESS"
+        return jsonify(response)
 
+
+@app.route('/stop-task/<task_id>', methods=['POST'])
+def stop_task(task_id):
+    #TODO stop task
+    res = AsyncResult(task_id)
+    AsyncResult(task_id).revoke(terminate=True)
+    #TODO return some information, maybe whether task stopping succeeded?
+    return "", 204
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
