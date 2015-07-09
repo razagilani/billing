@@ -69,6 +69,7 @@ def upgrade():
         sa.Column('task_id', sa.String(), nullable=False),
         sa.Column('parent_id', sa.String(), nullable=False),
         sa.Column('extractor_id', sa.Integer(), sa.ForeignKey('extractor.extractor_id')),
+        sa.Column('bills_to_run', sa.Integer(), nullable=False),
         sa.Column('started', sa.DateTime(), nullable=False),
         sa.Column('finished', sa.DateTime()),
         sa.Column('utility_id', sa.Integer(), sa.ForeignKey('utility.id')),
