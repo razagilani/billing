@@ -16,9 +16,9 @@ $(document).ready(function() {
 			tasks.push(elem);
 			var utility_name = $("option[value="+elem.utility_id+"]:first").text();
 			newRow(elem.task_id, elem.extractor_id, utility_name, "", 0);
+			updateStatus();
 		});
 	});
-	updateStatus();
 });
 
 //Selects all checkboxes, unless all are already selected, in which case it unselects all
@@ -58,7 +58,7 @@ function displayData(task, isDetailed){
 		return;
 	}
 	var task_data = task.data;
-	if (task_data.state != "SUCCESS"){
+	if (task_data.state == "FAILED" || task_data.state == "STOPPED"){
 		$("#results tr[id="+task.task_id+"] td[header=status]").text(task_data.state);
 		return;
 	}

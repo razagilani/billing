@@ -1,4 +1,5 @@
 from boto.s3.connection import S3Connection
+from celery.result import AsyncResult
 from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
@@ -222,8 +223,9 @@ def reduce_bill_results(self, results):
 
     s = Session()
     q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
-    extractor_result = q.one()
-    extractor_result.set_results(response)
+    if q.count():
+        extractor_result = q.one()
+        extractor_result.set_results(response)
     s.commit()
 
     return response
