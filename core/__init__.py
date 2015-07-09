@@ -130,7 +130,9 @@ def init_model(uri=None, schema_revision=None):
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
-                           pool_recycle=3600)
+                           pool_recycle=3600,
+                           isolation_level='REPEATABLE_READ'
+                           )
     if config.get('db', 'echo'):
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 

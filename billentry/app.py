@@ -40,7 +40,7 @@ from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility
+from core.model import Session, UtilBill, Utility, Base
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
@@ -92,8 +92,7 @@ db = SQLAlchemy(app)
 ############
 # KVSession
 ############
-store = SQLAlchemyStore(db.engine, db.metadata, 'sessions')
-kvsession = KVSessionExtension(store, app)
+kvsession = KVSessionExtension(Session.bind, app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -106,7 +105,7 @@ if app.config['LOGIN_DISABLED']:
 
 @app.before_first_request
 def create_db():
-    db.create_all()
+    Base.metadata.create_all(Session.bind)
 
 @principals.identity_loader
 def load_identity_for_anonymous_user():
