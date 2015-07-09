@@ -195,9 +195,7 @@ def test_extractors():
 @app.route('/get-running-tests', methods=['POST'])
 def get_running_tests():
     s = Session()
-    q = s.query(ExtractorResult.task_id,
-        ExtractorResult.parent_id, ExtractorResult.extractor_id,
-        ExtractorResult.utility_id).filter(
+    q = s.query(ExtractorResult).filter(
         ExtractorResult.finished == None)
     running_tasks = q.all()
     tasks_dict = [{
@@ -205,7 +203,7 @@ def get_running_tests():
         'parent_id' : rt.parent_id,
         'extractor_id' : rt.extractor_id,
         'utility_id' : rt.utility_id,
-        'bills_to_run' : 0, #TODO store this in ExtractorResult table
+        'bills_to_run' : rt.bills_to_run,
     } for rt in running_tasks]
     return jsonify({'tasks' : tasks_dict})
 
@@ -241,6 +239,7 @@ def run_test():
         q = q.limit(num_bills)
     if q.count() == 0:
         return jsonify({'bills_to_run':0})
+    #run celery chord
     job = group([test_bill.s(extractor_id, b.id) for b in q])
     result = chord(job)(reduce_bill_results.s())
     result_parent = result.parent
@@ -248,7 +247,7 @@ def run_test():
     #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
         task_id=result.id, parent_id=result_parent.id,
-        started=datetime.utcnow())
+        bills_to_run=q.count(), started=datetime.utcnow())
     s.add(er)
     s.commit()
     return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
@@ -298,8 +297,11 @@ def stop_task(task_id):
     s = Session()
     q = s.query(ExtractorResult.parent_id).filter(
         ExtractorResult.task_id == task_id)
-    parent_id = q.one().parent_id
+    ext_res = q.one()
+    parent_id = ext_res.parent_id
     GroupResult.restore(parent_id).revoke(terminate=True)
+    ext_res.finished = datetime.utcnow()
+    s.commit()
     return "", 204
 
 def create_user_in_db(access_token):

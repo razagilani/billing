@@ -15,7 +15,7 @@ $(document).ready(function() {
 		data.tasks.forEach(function(elem){
 			tasks.push(elem);
 			var utility_name = $("option[value="+elem.utility_id+"]:first").text();
-			newRow(elem.task_id, elem.extractor_id, utility_name, "", 0);
+			newRow(elem.task_id, elem.extractor_id, utility_name, "", elem.bills_to_run);
 			updateStatus();
 		});
 	});
