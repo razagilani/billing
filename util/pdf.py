@@ -9,15 +9,6 @@ from pdfminer.pdfparser import PDFSyntaxError, PDFParser
 from pyPdf import PdfFileWriter, PdfFileReader
 import sys
 
-
-def fix_pdfminer_cid(text):
-    def sub_cid(match):
-        val = int(match.group(1))
-        return chr(val) if val < 128 else "!"
-    text = re.sub(r"\(cid:(\d+?)\)",
-        sub_cid, text)
-    return text
-
 class PDFPageAggregatorFixedCID(PDFPageAggregator):
     """
     Overrides the default 'PDFPageAggregator' class to better handle issues
@@ -71,7 +62,7 @@ class PDFUtil(object):
         device.close()
         return text
 
-    def get_pdf_layout(self, pdf_file):
+    def get_pdfminer_layout(self, pdf_file):
         pdf_file.seek(0)
         parser = PDFParser(pdf_file)
         document = PDFDocument(parser)
@@ -91,6 +82,36 @@ class PDFUtil(object):
 
         return pages
 
+def get_all_pdfminer_objs(ltobject, objtype=None, predicate=None):
+    """
+    Obtains all the subobjects of a given PDFMiner layout object, including the
+    object itself, that are of the given type and satisfy the given predicate.
+    :param ltobject: The given layout object
+    :param objtype: Only return objects of this type
+    :param predicate: Only return objects that satisfay this predicate function.
+    :return: A list of layout objects that match the above criteria.
+    """
+    objs = []
+
+    def get_obj(obj):
+        if not objtype or isinstance(obj, objtype):
+            if not predicate or predicate(obj):
+                objs.append(obj)
+
+    apply_recursively_to_pdfminer_ltobj(ltobject, get_obj)
+    return objs
+
+
+def apply_recursively_to_pdfminer_ltobj(obj, func):
+    """
+    Applies the function 'func' recursively to the pdfminer layout object 'obj'
+    and all its sub-objects.
+    :return: No return value.
+    """
+    func(obj)
+    if hasattr(obj, "_objs"):
+        for child in obj._objs:
+            apply_recursively_to_pdfminer_ltobj(child, func)
 
 class PDFConcatenator(object):
     """Accumulates PDF files into one big PDF file.

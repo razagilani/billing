@@ -361,3 +361,4 @@ class TestIntegration(TestCase):
         self.assertEqual((0, 0, 1), result.get())
         self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
                          metadata)
+
