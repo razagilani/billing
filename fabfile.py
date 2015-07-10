@@ -47,6 +47,10 @@ common.CommonFabTask.update_deployment_configs({
         ],
         "makefiles":[
         ],
+        "services":[
+            'billing-dev-exchange',
+            'billentry-dev-exchange'
+        ],
     },
     "extraction-worker-dev": {
         "deploy_version":"3", 
@@ -73,6 +77,9 @@ common.CommonFabTask.update_deployment_configs({
             ("mq/conf/config-template-dev.yml", "/var/local/reebill-dev/billing/mq/config.yml"),
         ],
         "makefiles":[
+        ],
+        "services":[
+            'billing-dev-worker'
         ],
     },
     "stage": {
@@ -101,6 +108,10 @@ common.CommonFabTask.update_deployment_configs({
         ],
         "makefiles":[
         ],
+        "services":[
+            'billing-stage-exchange',
+            'billentry-stage-exchange'
+        ],
     },
     "prod": {
         "deploy_version":"3", 
@@ -127,6 +138,10 @@ common.CommonFabTask.update_deployment_configs({
             ("mq/conf/config-template-prod.yml", "/var/local/reebill-prod/billing/mq/config.yml"),
         ],
         "makefiles":[
+        ],
+        "services":[
+            'billing-prod-exchange',
+            'billentry-prod-exchange'
         ],
     },
 })
