@@ -2,7 +2,6 @@
 from utility bill files.
 """
 from datetime import datetime
-from pdfminer.layout import LTTextLine
 import re
 
 from dateutil import parser as dateutil_parser
@@ -21,6 +20,7 @@ from core.extraction.applier import Applier, convert_wg_charges_std, \
     convert_address, convert_table_charges
 from core.extraction.layout import tabulate_objects, BoundingBox
 from core.model import Address, Session
+from core.model.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
@@ -398,7 +398,7 @@ class LayoutExtractor(Extractor):
             text=""
             for page in pages[self.page_num-1:endpage]:
                 #if bounding box is None, instead of using geometry, return first
-                # LTTextLine object that matches bbregex.
+                # text line object that matches bbregex.
                 if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
                     self.bbmaxy]):
                     textline = layout.get_text_line(page,
@@ -406,7 +406,7 @@ class LayoutExtractor(Extractor):
                     if textline is None:
                         raise MatchError('Could not find textline using '
                                               'regex "%s"' % self.bbregex)
-                    text = textline.get_text()
+                    text = textline.text
                 else:
                     #if offset_regex is not None, then find the first block of
                     # text that it matches, and use that as the origin for
@@ -445,7 +445,6 @@ class LayoutExtractor(Extractor):
             #      self.applier_key, text)
             return text
 
-    #TODO
     class TableField(BoundingBoxField):
         """
         A field that represents tabular data, within a given bounding box.
@@ -515,7 +514,7 @@ class LayoutExtractor(Extractor):
                             maxy = self.nextpage_top + dy)
 
                 new_textlines = layout.get_objects_from_bounding_box(page,
-                    bbox, 0, LTTextLine)
+                    bbox, 0, LayoutElement.TEXTLINE)
 
                 #match regex at start of table.
                 if self.table_start_regex and i == self.page_num - 1:
@@ -542,7 +541,7 @@ class LayoutExtractor(Extractor):
             # extract text from each table cell
             output_values = []
             for row in table_data:
-                out_row = [tl.get_text().strip() for tl in
+                out_row = [tl.text.strip() for tl in
                     row]
                 #remove empty cells
                 out_row = filter(bool, out_row)
@@ -555,11 +554,24 @@ class LayoutExtractor(Extractor):
 
     def _prepare_input(self, utilbill, bill_file_handler):
         """
-        Prepares input for layout extractor by getting PDFMiner layout data
+        Prepares input for layout extractor by getting PDF layout data
         and checking if bill's PDF is misaligned.
         """
-        #TODO set up kdtree for faster object lookup
-        pages = utilbill.get_layout(bill_file_handler, PDFUtil())
+        bill_layout = utilbill.get_layout(bill_file_handler, PDFUtil())
+
+        #group layout elements by page number
+        pages_layout = {}
+        for layout_obj in bill_layout:
+            page_num = layout_obj.page_num
+            if not page_num in pages_layout:
+                pages_layout[page_num] = [layout_obj]
+            else:
+                pages_layout[page_num] += [layout_obj]
+        pages = [pages_layout[pnum] for pnum in sorted(pages_layout.keys())]
+
+        #sort elements in each page by position
+        for p in pages:
+            p.sort(key=lambda obj: (-obj.y0, obj.x0))
 
         dx = dy = 0
         if all(v is not None for v in

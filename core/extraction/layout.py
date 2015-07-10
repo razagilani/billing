@@ -1,5 +1,66 @@
+"""
+This file contains classes and functions used in layout analysis of PDFs
+"""
+from pdfminer.layout import LTTextLine, LTText, LTPage, LTTextBox, LTCurve, \
+    LTImage, LTChar, LTComponent
 import re
-from pdfminer.layout import LTTextLine
+
+from core import init_model
+from core.model.model import LayoutElement
+from util.pdf import get_all_pdfminer_objs
+
+
+def layout_elements_from_pdfminer(pages, utilbill_id):
+    """
+    Takes PDFMiner data and converts it to a list of LayoutElement's, as well as
+     adding them to the database.
+    :param pages: PDFMiner output
+    :return: A list of LayoutElement's
+    """
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+    s = Session()
+
+    layout_elements = []
+    for i in range(0, len(pages)):
+        # Right now only keep track of some object types.
+        # Scanned bills can have 100,000+ image/shape objects, one for each
+        # character, slowing down analysis.
+        page_objs = get_all_pdfminer_objs(pages[i], objtype=LTComponent,
+            predicate=lambda o: isinstance(o, (LTPage, LTTextLine, LTTextBox)))
+        for obj in page_objs:
+            #get object type
+            if isinstance(obj, LTPage):
+                objtype = LayoutElement.PAGE
+            elif isinstance(obj, LTTextLine):
+                objtype = LayoutElement.TEXTLINE
+            elif isinstance(obj, LTTextBox):
+                objtype = LayoutElement.TEXTBOX
+            elif isinstance(obj, LTCurve):
+                objtype = LayoutElement.SHAPE
+            elif isinstance(obj, LTImage):
+                objtype = LayoutElement.IMAGE
+            else:
+                objtype = LayoutElement.OTHER
+
+            #get text, if any
+            if isinstance(obj, LTText):
+                text = obj.get_text()
+            else:
+                text = None
+
+            layout_elt = LayoutElement(type=objtype, x0=obj.x0, y0=obj.y0,
+                x1=obj.x1, y1=obj.y1, width=obj.width, height=obj.height,
+                text=text, page_num=i, utilbill_id=utilbill_id)
+            s.add(layout_elt)
+            layout_elements.append(layout_elt)
+
+    s.commit()
+    return layout_elements
+
 
 # represents a two-dimensional, axis-aligned bounding box.
 class BoundingBox:
@@ -20,7 +81,6 @@ CORNERS = {
     'bottom right': 3,
 }
 
-
 def get_corner(obj, c):
     """
     Get a specific corner of an object as an (x, y) tuple.
@@ -31,81 +91,44 @@ def get_corner(obj, c):
     return (x, y)
 
 
-def get_text_from_boundingbox(ltobject, boundingbox, corner):
+def get_text_from_boundingbox(layout_objs, boundingbox, corner):
     """
     Gets all the text on a PDF page that is within the given bounding box.
-    Text from different LTTextLines is separated by a newline.
-    :param ltobject: The object, such as a page, within which to search.
-    :param boundingbox:
-    :return:
+    Text from different text lines is separated by a newline.
+    :param layout_objs the objects within which to search.
     """
-    textlines = get_objects_from_bounding_box(ltobject,
-        boundingbox, corner, objtype=LTTextLine)
-    text = '\n'.join([tl.get_text() for tl in textlines])
+    textlines = get_objects_from_bounding_box(layout_objs,
+        boundingbox, corner, objtype=LayoutElement.TEXTLINE)
+    text = '\n'.join([tl.text for tl in textlines])
     return text
 
 
-def get_objects_from_bounding_box(ltobject, boundingbox, corner, objtype=None):
+def get_objects_from_bounding_box(layout_objs, boundingbox, corner, objtype=None):
     """
     Returns alls objects of the given type within a boundingbox.
     If objtype is None, all objects are returned.
-    :param ltobject:
-    :param boundingbox:
-    :param corner:
-    :param objtype:
-    :return:
     """
-    return get_all_objs(ltobject,
-        objtype=objtype,
-        predicate=lambda o: in_bounds(o, boundingbox, corner))
+    search = lambda lo: (objtype is None or lo.type == objtype) and \
+                        in_bounds(lo, boundingbox, corner)
+    return filter(search, layout_objs)
 
 
-def get_text_line(page, regexstr):
+def get_text_line(layout_objs, regexstr):
     """
-    Returns the first LTTextLine object found whose text matches the regex.
+    Returns the first text line found whose text matches the regex.
     :param page: The page to search
     :param regex: The regular expression string to match
     :return: An LTTextLine object, or None
     """
     regex = re.compile(regexstr, re.IGNORECASE)
-    objs = get_all_objs(page, LTTextLine,
-        lambda o: regex.search(o.get_text()))
+    search = lambda lo: lo.type == LayoutElement.TEXTLINE and regex.search(
+        lo.text)
+    objs = filter(search, layout_objs)
+    #sort objects by position on page
+    # objs = sorted(objs, key=lambda o: (-o.y0, o.x0))
     if not objs:
         return None
     return objs[0]
-
-
-def get_all_objs(ltobject, objtype=None, predicate=None):
-    """
-    Obtains all the subobjects of a given object, including the object itself,
-    that are of the given type and satisfy the given predicate.
-    :param ltobject: The given layout object
-    :param objtype: Only return objects of this type
-    :param predicate: Only return objects that satisfay this predicate function.
-    :return: A list of layout objects that match the above criteria.
-    """
-    objs = []
-
-    def get_obj(obj):
-        if not objtype or isinstance(obj, objtype):
-            if not predicate or predicate(obj):
-                objs.append(obj)
-
-    apply_recursively_to_ltobj(ltobject, get_obj)
-    return objs
-
-
-def apply_recursively_to_ltobj(obj, func):
-    """
-    Applies the function 'func' recursively to the layout object 'obj' and all
-    its sub-objects.
-    :return: No return value.
-    """
-    func(obj)
-    if hasattr(obj, "_objs"):
-        for child in obj._objs:
-            apply_recursively_to_ltobj(child, func)
-
 
 def in_bounds(obj, bounds, corner):
     """

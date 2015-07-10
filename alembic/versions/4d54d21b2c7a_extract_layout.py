@@ -54,5 +54,26 @@ def upgrade():
     op.add_column('extractor_result',
                   sa.Column('period_total_by_month', HSTORE()))
 
+    op.create_table('layout_element',
+        sa.Column('layout_element_id', sa.Integer(), nullable=False),
+        sa.Column('utilbill_id', sa.Integer()),
+        sa.Column('type', sa.Enum("page", "textbox", "textline", "shape",
+            "image", "other", name='layout_type'), nullable=False),
+        sa.Column('page_num', sa.Integer(), nullable=False),
+        sa.Column('x0', sa.Float(), nullable=False),
+        sa.Column('y0', sa.Float(), nullable=False),
+        sa.Column('x1', sa.Float(), nullable=False),
+        sa.Column('y1', sa.Float(), nullable=False),
+        sa.Column('width', sa.Float(), nullable=False),
+        sa.Column('height', sa.Float(), nullable=False),
+        sa.Column('text', sa.String()),
+        sa.PrimaryKeyConstraint('layout_element_id'),
+        sa.ForeignKeyConstraint(['utilbill_id'], ['utilbill.id']),
+        sa.CheckConstraint('x1 >= x0'),
+        sa.CheckConstraint('y1 >= y0'),
+        sa.CheckConstraint('width = x1 - x0 '),
+        sa.CheckConstraint('height = y1 - y0 '),
+    )
+
 def downgrade():
     pass
