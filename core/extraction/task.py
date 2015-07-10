@@ -1,4 +1,5 @@
 from boto.s3.connection import S3Connection
+from celery.exceptions import TaskRevokedError
 from celery.result import AsyncResult
 from sqlalchemy import func
 
@@ -166,9 +167,15 @@ def reduce_bill_results(self, results):
     fields = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
     failed = 0
+    stopped = 0
     for r in results:
         # if task failed, then r is in fact an Error object
-        if not isinstance(r, dict):
+        if isinstance(r, TaskRevokedError):
+            # if task was manually stopped
+            stopped += 1
+            continue
+        elif isinstance(r, Exception):
+            # if task failed for some other reason
             failed += 1
             continue
 
@@ -211,6 +218,7 @@ def reduce_bill_results(self, results):
         'fields': fields,
         'dates': dates,
         'failed': failed,
+        'stopped': stopped,
         'nbills': nbills,
     }
 

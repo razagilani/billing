@@ -15,7 +15,7 @@ $(document).ready(function() {
 		data.tasks.forEach(function(elem){
 			tasks.push(elem);
 			var utility_name = $("option[value="+elem.utility_id+"]:first").text();
-			newRow(elem.task_id, elem.extractor_id, utility_name, "", 0);
+			newRow(elem.task_id, elem.extractor_id, utility_name, "", elem.bills_to_run);
 			updateStatus();
 		});
 	});
@@ -58,7 +58,7 @@ function displayData(task, isDetailed){
 		return;
 	}
 	var task_data = task.data;
-	if (task_data.state == "FAILED" || task_data.state == "STOPPED"){
+	if (task_data.total_count == undefined){
 		$("#results tr[id="+task.task_id+"] td[header=status]").text(task_data.state);
 		return;
 	}
@@ -129,12 +129,12 @@ function runExtractor(extractor_id){
 	};
 	var utility_name = $("option[value="+utility_id+"]:first").text()
 	$.post("/run-test", postParameters, function(data, status, request){
+		var task_id = data.task_id;
 		var bills_to_run = data.bills_to_run;
 		if(bills_to_run == 0){
 			newRow(null, extractor_id, utility_name, "No bills found.", bills_to_run);
 			return;
 		}
-		var task_id = data.task_id;
 		tasks.push({
 			extractor_id: extractor_id,
 			utility_id: (utility_id=="" ? "None" : utility_id),
