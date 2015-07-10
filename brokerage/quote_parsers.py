@@ -515,8 +515,7 @@ class USGEMatrixParser(QuoteParser):
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
-                            purchase_of_receivables=False,
-                            rate_class=rate_class, price=price)
+                            purchase_of_receivables=False, price=price)
                         # TODO: rate_class_id should be determined automatically
                         # by setting rate_class
                         if rate_class is not None:
