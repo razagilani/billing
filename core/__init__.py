@@ -1,5 +1,6 @@
 import os.path as path
 from os.path import dirname, realpath
+import re
 from celery import Celery
 from pint import UnitRegistry
 
@@ -63,6 +64,15 @@ def init_config(filepath='settings.cfg', fp=None):
         if value is not None:
             boto.config.set('Boto', key, str(value))
 
+def get_db_params():
+    """:return a dictionary of parameters for connecting to the main
+    database, taken from the URI in the config file."""
+    assert config is not None
+    db_uri = config.get('db', 'uri')
+    PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
+    m = re.match(PG_FORMAT, db_uri)
+    db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
+    return db_params
 
 def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
