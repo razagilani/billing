@@ -1,19 +1,19 @@
 from xml.sax.saxutils import escape
+from StringIO import StringIO
 import codecs
 import os.path
 import sys
 from pdfminer.layout import LTComponent, LTChar, LTTextBox, LTTextLine, \
     LTLayoutContainer, LTCurve, LTImage
-from core.extraction.layout import apply_recursively_to_ltobj
 
 from core import initialize
 from core.extraction.task import _create_bill_file_handler
 from sqlalchemy import desc, func
-from util.pdf import PDFUtil
+from util.pdf import PDFUtil, apply_recursively_to_pdfminer_ltobj
 
 initialize()
 
-from core.model import Charge, Session, UtilBill, Utility
+from core.model import Session, UtilBill, Utility
 
 s = Session()
 bfh = _create_bill_file_handler()
@@ -79,7 +79,7 @@ def bounding_boxes_to_svg(page, filename):
                         height, alpha)
             outfile.write(rect_fmt % rect_values)
 
-    apply_recursively_to_ltobj(page, write_bounding_box)
+    apply_recursively_to_pdfminer_ltobj(page, write_bounding_box)
     outfile.write("</svg>")
     outfile.close()
 
@@ -88,7 +88,10 @@ def print_bills_svg(bills, output_directory):
     for b in bills:
         fname = "%s_%s" % (b.id, b.sha256_hexdigest)
         fpath = os.path.join(output_directory, fname)
-        pages = b.get_layout(bfh, PDFUtil())
+
+        infile = StringIO()
+        bfh.write_copy_to_file(b, infile)
+        pages = PDFUtil().get_pdfminer_layout(infile)
         for p in pages:
             bounding_boxes_to_svg(p, "%s_%d.svg" % (fpath, p.pageid))
 

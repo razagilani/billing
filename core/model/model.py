@@ -858,6 +858,9 @@ class UtilBill(Base):
     # cached text taken from a PDF for use with TextExtractor
     _text = Column('text', String)
 
+    # cached layout info taken from PDF for use with LayoutExtractor
+    _layout = relationship('LayoutElement', backref='utilbill')
+
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
     # "Electric Choice ID" or "Gas Choice ID" (there is one for each service
@@ -1369,14 +1372,50 @@ class UtilBill(Base):
         information for the PDF
         :param bill_file_handler: used to get the PDF file
         """
-        #TODO cache layout info after retrieval
-        # maybe use 'PickleType' sqlalchemy column?
+        from core.extraction.layout import layout_elements_from_pdfminer
         pages = []
         infile = StringIO()
-        try:
-            bill_file_handler.write_copy_to_file(self, infile)
-        except MissingFileError as e:
-            print e
+        if len(self._layout):
+            return self._layout
         else:
-            pages = pdf_util.get_pdf_layout(infile)
-        return pages
+            try:
+                bill_file_handler.write_copy_to_file(self, infile)
+            except MissingFileError as e:
+                layout = []
+            else:
+                pages = pdf_util.get_pdfminer_layout(infile)
+                layout = layout_elements_from_pdfminer(pages, self.id)
+            self._layout = layout
+        return self._layout
+
+class LayoutElement(Base):
+    """
+    Represents a layout element in a PDF file. Used by core.extraction
+    """
+    __tablename__ = 'layout_element'
+    __table_args__ = (CheckConstraint('x1 >= x0'),
+                    CheckConstraint('y1 >= y0'),
+                    CheckConstraint('width = x1 - x0'),
+                    CheckConstraint('height = y1 - y0'))
+
+    layout_element_id = Column(Integer, primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
+
+    # the type of object this represents, e.g. a line of text, or an image, etc.
+    PAGE = "page"
+    TEXTBOX = "textbox"
+    TEXTLINE = "textline"
+    SHAPE = "shape"
+    IMAGE = "image"
+    OTHER = "other"
+    LAYOUT_TYPES = [PAGE, TEXTBOX, TEXTLINE, SHAPE, IMAGE, OTHER]
+    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
+
+    page_num = Column(Integer, nullable=False)
+    x0 = Column(Float, nullable=False)
+    y0 = Column(Float, nullable=False)
+    x1 = Column(Float, nullable=False)
+    y1 = Column(Float, nullable=False)
+    width = Column(Float, nullable=False)
+    height = Column(Float, nullable=False)
+    text = Column(String)
