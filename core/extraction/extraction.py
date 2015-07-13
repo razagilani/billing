@@ -349,6 +349,8 @@ class ExtractorResult(model.Base):
     all_count = Column(Integer)
     any_count = Column(Integer)
     total_count = Column(Integer)
+    processed_count = Column(Integer)
+
     #TODO should find a way to sync these with UtilBill's list of fields
     # field counts
     field_billing_address = Column(Integer)
@@ -359,6 +361,17 @@ class ExtractorResult(model.Base):
     field_rate_class = Column(Integer)
     field_start = Column(Integer)
     field_service_address = Column(Integer)
+
+    # field counts
+    field_billing_address_correct = Column(Integer)
+    field_charges_correct = Column(Integer)
+    field_end_correct = Column(Integer)
+    field_energy_correct = Column(Integer)
+    field_next_read_correct = Column(Integer)
+    field_rate_class_correct = Column(Integer)
+    field_start_correct = Column(Integer)
+    field_service_address_correct = Column(Integer)
+
     # field counts by month
     billing_address_by_month = Column(HSTORE)
     charges_by_month = Column(HSTORE)
