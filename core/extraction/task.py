@@ -1,4 +1,6 @@
 from boto.s3.connection import S3Connection
+from celery.exceptions import TaskRevokedError
+from celery.result import AsyncResult
 from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
@@ -121,7 +123,7 @@ def test_bill(self, extractor_id, bill_id):
         response['date'] = None
 
     # print out debug information in celery log
-    debug = True
+    debug = False
     if len(good) != len(extractor.fields) and debug:
         print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name
@@ -165,9 +167,15 @@ def reduce_bill_results(self, results):
     fields = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
     failed = 0
+    stopped = 0
     for r in results:
         # if task failed, then r is in fact an Error object
-        if not isinstance(r, dict):
+        if isinstance(r, TaskRevokedError):
+            # if task was manually stopped
+            stopped += 1
+            continue
+        elif isinstance(r, Exception):
+            # if task failed for some other reason
             failed += 1
             continue
 
@@ -210,6 +218,7 @@ def reduce_bill_results(self, results):
         'fields': fields,
         'dates': dates,
         'failed': failed,
+        'stopped': stopped,
         'nbills': nbills,
     }
 
@@ -222,8 +231,9 @@ def reduce_bill_results(self, results):
 
     s = Session()
     q = s.query(ExtractorResult).filter(ExtractorResult.task_id == reduce_bill_results.request.id)
-    extractor_result = q.one()
-    extractor_result.set_results(response)
+    if q.count():
+        extractor_result = q.one()
+        extractor_result.set_results(response)
     s.commit()
 
     return response
