@@ -685,6 +685,8 @@ class UtilBillTestWithDB(TestCase):
             Charge('B', rate=3, formula='2'),
             # this has an error
             Charge('C', rate=0, formula='1/0'),
+            # the following should not be included in the total computation
+            Charge('D', rate=1, formula='REG_TOTAL.quantity', has_charge=False)
         ]
         Session().add(utilbill)
         utilbill.compute_charges()

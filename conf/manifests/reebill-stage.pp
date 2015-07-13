@@ -12,6 +12,7 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
+require httpd::httpd_server
 
 host::skyline_dropbox {"$env":
     env    => $env,
@@ -19,7 +20,6 @@ host::skyline_dropbox {"$env":
 
 
 include mongo::mongo_tools
-include httpd::httpd_server 
 
 package { 'postgresql93':
     ensure  => installed
@@ -37,6 +37,12 @@ package { 'html2ps':
     ensure  => installed
 }
 package { 'libevent-devel':
+    ensure  => installed
+}
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
     ensure  => installed
 }
 file { "/var/local/${username}/www":
