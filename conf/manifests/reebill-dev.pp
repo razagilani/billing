@@ -11,11 +11,9 @@ host::app_user {'appuser':
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-require host::hosts_file
+require httpd::httpd_server
 
-package { 'httpd':
-    ensure  => installed
-}
+
 package { 'postgresql93':
     ensure  => installed
 }
@@ -26,6 +24,12 @@ package { 'html2ps':
     ensure  => installed
 }
 package { 'libevent-dev':
+    ensure  => installed
+}
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
     ensure  => installed
 }
 file { "/var/local/${username}/www":
@@ -64,7 +68,8 @@ content => template('conf/billentry-exchange.conf.erb')
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@ip-10-0-0-158'
+    # TODO: either avoid using a specific host name here or ensure that host gets created and configured along with this one
+    cluster => 'rabbit@xbill-dev.nextility.net'
 }
 
 rabbit_mq::user_permission {'guest':
