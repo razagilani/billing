@@ -10,7 +10,8 @@ from tablib import Databook, formats
 from core.model import AltitudeSession
 
 from exc import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime, date_to_datetime
+from util.dateutils import parse_date, parse_datetime, date_to_datetime, \
+    excel_number_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote, get_rate_class_from_alias
 
@@ -35,14 +36,6 @@ def _assert_match(regex, string):
     if not re.match(regex, string):
         raise ValidationError('No match for "%s" in "%s"' % (regex, string))
 
-
-def excel_number_to_date(number):
-    """Dates in some XLS spreadsheets will appear as numbers of days since
-    (apparently) December 30, 1899.
-    :param number: int or float
-    :return: date
-    """
-    return date(1899, 12, 30) + timedelta(days=number)
 
 def parse_number(string):
     """Convert number string into a number.
@@ -69,6 +62,22 @@ class SpreadsheetReader(object):
     spreadsheets.
     """
     LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
+
+    @classmethod
+    def column_range(cls, start, stop, step=1):
+        """Return a list of column numbers numbers between the given column
+        numbers or letters (like the built-in "range" function, but allows
+        letters).
+        :param start: inclusive start column letter or number (required
+        unlike in the "range" function)
+        :param end: exclusive end column letter or number
+        :param step: int
+        """
+        if isinstance(start, basestring):
+            start = cls._col_letter_to_index(start)
+        if isinstance(stop, basestring):
+            limit = cls._col_letter_to_index(stop)
+        return range(start, limit, step)
 
     @classmethod
     def _col_letter_to_index(cls, letter):
@@ -294,8 +303,11 @@ class QuoteParser(object):
         # extract the date using DATE_CELL
         sheet_number_or_title, row, col, regex = self.DATE_CELL
         if regex is None:
-            self._date = self._reader.get(sheet_number_or_title, row, col,
-                                          datetime)
+            cell_value = self._reader.get(sheet_number_or_title, row, col,
+                                          (datetime, int, float))
+            if isinstance(cell_value, (int, float)):
+                cell_value = excel_number_to_datetime(cell_value)
+            self._date = cell_value
         else:
             self._date = self._reader.get_matches(sheet_number_or_title, row,
                                                   col, regex, parse_datetime)
@@ -503,10 +515,123 @@ class USGEMatrixParser(QuoteParser):
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
-                            purchase_of_receivables=False,
-                            rate_class=rate_class, price=price)
+                            purchase_of_receivables=False, price=price,
+                            rate_class_alias=rate_class_alias)
                         # TODO: rate_class_id should be determined automatically
                         # by setting rate_class
                         if rate_class is not None:
                             quote.rate_class_id = rate_class.rate_class_id
                         yield quote
+
+
+class AEPMatrixParser(QuoteParser):
+    """Parser for AEP Energy spreadsheet.
+    """
+    FILE_FORMAT = formats.xls
+
+    EXPECTED_SHEET_TITLES = [
+        'Price Finder',
+        'Matrix Table',
+        # hidden sheets
+        'Base',
+        'RateReady'
+    ]
+    SHEET = 'Matrix Table'
+    EXPECTED_CELLS = [
+        (SHEET, 3, 'E', 'Matrix Pricing'),
+        (SHEET, 3, 'V', 'Date of Matrix:'),
+        (SHEET, 4, 'V', 'Pricing Valid Thru:'),
+        (SHEET, 7, 'C', r'Product: Fixed Price All-In \(FPAI\)'),
+        (SHEET, 8, 'C', 'Aggregate Size Max: 1,000 MWh/Yr'),
+        (SHEET, 9, 'C', r'Pricing Units: \$/kWh'),
+        (SHEET, 7, 'I',
+         r"1\) By utilizing AEP Energy's Matrix Pricing, you agree to follow "
+         "the  Matrix Pricing Information, Process, and Guidelines document"),
+        (SHEET, 8, 'I',
+         r"2\) Ensure sufficient time to enroll for selected start month; "
+         "enrollment times vary by LDC"),
+        (SHEET, 11, 'I', "Customer Size: 0-100 Annuals MWhs"),
+        (SHEET, 11, 'M', "Customer Size: 101-250 Annuals MWhs"),
+        (SHEET, 11, 'Q', "Customer Size: 251-500 Annuals MWhs"),
+        (SHEET, 11, 'U', "Customer Size: 501-1000 Annuals MWhs"),
+        (SHEET, 13, 'C', "State"),
+        (SHEET, 13, 'D', "Utility"),
+        (SHEET, 13, 'E', r"Rate Code\(s\)"),
+        (SHEET, 13, 'F', "Rate Codes/Description"),
+        (SHEET, 13, 'G', "Start Month"),
+    ]
+    DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
+    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
+    # below the date cell
+
+    VOLUME_RANGE_ROW = 11
+    HEADER_ROW = 13
+    QUOTE_START_ROW = 14
+    STATE_COL = 'C'
+    UTILITY_COL = 'D'
+    # TODO what is "rate code(s)" in col E?
+    RATE_CLASS_COL = 'F'
+    START_MONTH_COL = 'G'
+
+    # columns for headers like "Customer Size: 101-250 Annuals MWhs"
+    VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
+
+    def _extract_volume_range(self, row, col):
+        regex = r'Customer Size: (\d+)-(\d+) Annuals MWhs'
+        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
+                                             (int, int))
+        if low % 10 == 1:
+            low -= 1
+        return low, high
+
+    def _extract_quotes(self):
+        for row in xrange(self.QUOTE_START_ROW,
+                          self._reader.get_height(self.SHEET)):
+            state = self._reader.get(self.SHEET, row, self.STATE_COL,
+                                     basestring)
+            # blank line means end of sheet
+            if state == '':
+                continue
+
+            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
+                                       basestring)
+            rate_class_cell = self._reader.get(self.SHEET, row,
+                                              self.RATE_CLASS_COL, basestring)
+            rate_class_aliases = [s.strip() for s in rate_class_cell.split(',')]
+
+            # TODO use time zone here
+            start_from = excel_number_to_datetime(
+                self._reader.get(self.SHEET, row, self.START_MONTH_COL, float))
+            start_until = date_to_datetime((Month(start_from) + 1).first)
+
+            for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
+                min_volume, limit_volume = self._extract_volume_range(
+                    self.VOLUME_RANGE_ROW, vol_col)
+
+                # TODO: ugly
+                try:
+                    next_vol_col = self.VOLUME_RANGE_COLS[i + 1]
+                except IndexError:
+                    next_vol_col = 'Y'
+
+                for col in self._reader.column_range(vol_col, next_vol_col):
+                    # TODO: extracted unnecessarily many times
+                    term = self._reader.get(self.SHEET, self.HEADER_ROW,
+                                                   col, (int, float))
+
+                    price = self._reader.get(self.SHEET, row, col,
+                                              (float, basestring, type(None)))
+                    # skip blanks
+                    if price in (None, ""):
+                        continue
+                    _assert_true(type(price) is float)
+
+                    for alias in rate_class_aliases:
+                        yield MatrixQuote(
+                            start_from=start_from, start_until=start_until,
+                            term_months=term, valid_from=self._date,
+                            valid_until=self._date + timedelta(days=1),
+                            min_volume=min_volume, limit_volume=limit_volume,
+                            purchase_of_receivables=False,
+                            rate_class_alias=alias, price=price)
+
