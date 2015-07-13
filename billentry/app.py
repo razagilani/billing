@@ -10,39 +10,36 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
 -structure
 '''
 import logging
-from celery.exceptions import ChordError, TaskRevokedError
-from celery.worker.control import revoke
-import re
 import traceback
 import urllib
 import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
-from celery.result import AsyncResult
-from flask.ext.kvsession import KVSessionExtension
-from simplekv.db.sql import SQLAlchemyStore
-from sqlalchemy import desc, func
 
+from celery.exceptions import ChordError, TaskRevokedError
+import re
+from celery.result import AsyncResult
+from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
+from flask import Flask, url_for, request, flash, session, redirect, \
+    render_template, current_app, Response, jsonify
+from flask_oauth import OAuth, OAuthException
+from celery import chord, group
+from celery.result import GroupResult
+
+from flask.ext.kvsession import KVSessionExtension
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
-from flask.ext.sqlalchemy import SQLAlchemy
-from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app, Response, jsonify
-from flask_oauth import OAuth, OAuthException
-from celery import Celery, chord, group
-from celery.result import GroupResult
-
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility, Base
+from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
