@@ -73,25 +73,26 @@ class BoundingBox:
         self.maxx = maxx
         self.maxy = maxy
 
-
-CORNERS = {
-    'top left': 0,
-    'top right': 1,
-    'bottom left': 2,
-    'bottom right': 3,
-}
+class Corners:
+    """
+    Constants for the different corners of a rectangular layout object.
+    """
+    TOP_LEFT = 0
+    TOP_RIGHT = 1
+    BOTTOM_LEFT= 2
+    BOTTOM_RIGHT = 3
 
 def get_corner(obj, c):
     """
     Get a specific corner of an object as an (x, y) tuple.
-    :param: c an integer specifying the corner, as in :CORNERS
+    :param: c an integer specifying the corner, as in :Corners
     """
     x = obj.x1 if (c & 1) else obj.x0
     y = obj.y1 if (c & 2) else obj.y0
     return (x, y)
 
 
-def get_text_from_boundingbox(layout_objs, boundingbox, corner):
+def get_text_from_bounding_box(layout_objs, boundingbox, corner):
     """
     Gets all the text on a PDF page that is within the given bounding box.
     Text from different text lines is separated by a newline.
@@ -153,9 +154,9 @@ def tabulate_objects(objs):
     """
     sorted_objs = sorted(objs, key=lambda o: (-o.y0, o.x0))
     table_data = []
-    current_y = -1
+    current_y = None
     for obj in sorted_objs:
-        if obj.y0 != current_y or current_y < 0:
+        if obj.y0 != current_y:
             current_y = obj.y0
             current_row = []
             table_data.append(current_row)
