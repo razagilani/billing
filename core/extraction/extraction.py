@@ -280,6 +280,15 @@ class Extractor(model.Base):
         """
         good, errors = self._get_values(utilbill, bill_file_handler)
         success_count = 0
+
+        # hack to force field values to be applied in the order of Applier.KEYS,
+        # because of dependency of some values on others.
+        # TODO: probably Applier should get a whole Extractor passed to it
+        # and apply all the fields, so it can ensure they get applied in the
+        # right order. extraction results should not be ordered anyway.
+        good = sorted(good, key=(
+            lambda (applier_key, _): applier.get_keys().index(applier_key)))
+
         for applier_key, value in good:
             try:
                 applier.apply(applier_key, value, utilbill)
@@ -591,12 +600,15 @@ class ExtractorResult(model.Base):
     extractor_result_id = Column(Integer, primary_key=True)
     extractor_id = Column(Integer, ForeignKey('extractor.extractor_id'))
     task_id = Column(String, nullable=False)
+    #The ID of the 'parent' tasks, which contains info about the individual
+    # sub-tasks
+    parent_id = Column(String, nullable=False)
     # date when the test was started, and finished (if it has finished)
     started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
-
     # used when filtering bills by utility
     utility_id = Column(Integer, ForeignKey('utility.id'))
+    bills_to_run = Column(Integer, nullable=False)
 
     # results to be filled in after the test has finished
     all_count = Column(Integer)

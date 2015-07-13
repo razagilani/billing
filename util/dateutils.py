@@ -285,3 +285,11 @@ def get_end_of_day(date_or_datetime):
     else:
         d = date_or_datetime
     return date_to_datetime(d + timedelta(days=1))
+
+def excel_number_to_datetime(number):
+    """
+    :param number: int or float representing a datetime in the format used in
+    Excel spreadsheets.
+    :return: Python datetime
+    """
+    datetime(1899, 12, 30) + timedelta(days=number)

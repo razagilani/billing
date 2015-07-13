@@ -558,10 +558,9 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
 
-        utility = s.query(Utility).first()
         utility_account = s.query(UtilityAccount).first()
         self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, file_hash)
+            utility_account, file_hash)
 
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
@@ -584,12 +583,12 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # (regardless of other parameters)
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, file_hash)
+                utility_account, file_hash)
         other_account = Session().query(UtilityAccount).filter(
             UtilityAccount.id != utility_account.id).first()
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                other_account, utility, file_hash)
+                other_account, file_hash)
 
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
@@ -604,10 +603,10 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                               postal_code='20009')
         utilbill \
             = self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, file_hash,
+            utility_account, file_hash,
             # TODO: add due date
             #due_date=datetime(2000,1,1),
-            target_total=100, service_address=the_address)
+            target_total=100, service_address=the_address, skip_extraction=True)
         # the only one of these arguments that is visible in the UI is "total"
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
@@ -1055,3 +1054,4 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
