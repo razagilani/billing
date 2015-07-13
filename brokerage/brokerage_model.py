@@ -46,8 +46,7 @@ class RateClassAlias(AltitudeBase):
     __tablename__ = 'Rate_Class_Alias'
     rate_class_alias_id = Column('Rate_Class_Alias_ID', Integer,
                                  primary_key=True)
-    rate_class_id = Column('Rate_Class_ID', Integer,
-                           ForeignKey('Rate_Class_View.Rate_Class_ID'))
+    rate_class_id = Column('Rate_Class_ID', Integer)
     rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
 
 
@@ -56,7 +55,9 @@ def get_rate_class_from_alias(alias):
     found.
     """
     session = AltitudeSession()
-    rate_class = session.query(RateClass).join(RateClassAlias).filter_by(
+    rate_class = session.query(RateClass).join(
+        RateClassAlias, RateClass.rate_class_id ==
+                        RateClassAlias.rate_class_id).filter_by(
         rate_class_alias=alias).first()
     return rate_class
 
@@ -71,10 +72,8 @@ class Quote(AltitudeBase):
                          # foreign key to view is not allowed
                          ForeignKey('Company.Company_ID'), nullable=False)
 
-    rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
-    rate_class_id = Column('Rate_Class_ID', Integer,
-                           ForeignKey('Rate_Class_View.Rate_Class_ID'),
-                           nullable=True)
+    rate_class_alias = Column('rate_class_alias', String, nullable=False)
+    rate_class_id = Column('Rate_Class_ID', Integer, nullable=True)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
@@ -111,8 +110,6 @@ class Quote(AltitudeBase):
     percent_swing = Column('Percent_Swing_Allowable', Float)
 
     discriminator = Column(String(50), nullable=False)
-
-    rate_class = relationship('RateClass')
 
     __mapper_args__ = {
         'polymorphic_identity': 'quote',
