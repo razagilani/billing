@@ -74,6 +74,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
+        self.assertEqual('37', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.7036, q1.price)
@@ -99,6 +100,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # KY check
         q1 = quotes[0]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
@@ -112,6 +114,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # MD check
         q1 = quotes[96]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
@@ -125,6 +128,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # NJ check
         q1 = quotes[288]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 7, 1), q1.start_from)
         self.assertEqual(datetime(2015, 8, 1), q1.start_until)
@@ -138,6 +142,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # NY check
         q1 = quotes[528]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
@@ -151,6 +156,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # OH check
         q1 = quotes[1776]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
@@ -164,6 +170,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # PA check
         q1 = quotes[1968]
+        self.assertEqual('Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
