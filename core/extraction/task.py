@@ -2,6 +2,7 @@ from boto.s3.connection import S3Connection
 from celery.exceptions import TaskRevokedError
 from celery.result import AsyncResult
 from sqlalchemy import func
+from billentry.billentry_model import BEUtilBill
 
 from core.bill_file_handler import BillFileHandler
 from core.extraction import Main, Extractor, ExtractorResult, Applier
@@ -121,6 +122,14 @@ def test_bill(self, extractor_id, bill_id):
         response['date'] = bill_end_date
     else:
         response['date'] = None
+
+    # compare extracted values to those in DB
+    compare_to_db = False
+    if compare_to_db:
+        if isinstance(bill, BEUtilBill):
+            pass
+        else:
+            pass
 
     # print out debug information in celery log
     debug = False
