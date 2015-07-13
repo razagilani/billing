@@ -419,7 +419,7 @@ class LayoutExtractor(Extractor):
                             self.corner)
                         dx = offset_x
                         dy = offset_y
-                    text = layout.get_text_from_boundingbox(page,
+                    text = layout.get_text_from_bounding_box(page,
                         BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
                             maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
                         self.corner)
