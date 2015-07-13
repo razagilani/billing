@@ -1,3 +1,4 @@
+from cStringIO import StringIO
 from itertools import islice
 import logging
 import os
@@ -5,6 +6,7 @@ import traceback
 from brokerage.brokerage_model import Company
 from brokerage.quote_parsers import DirectEnergyMatrixParser
 from core.model import AltitudeSession, Session, Supplier
+from util.email_util import get_attachments
 
 # TODO: can't get log file to appear where it's supposed to
 LOG_NAME = 'read_quotes'
@@ -90,3 +92,64 @@ class QuoteFileProcessor(object):
                 self.logger.info('Read %s quotes from "%s"' % (count, path))
         Session.remove()
         AltitudeSession.remove()
+
+class QuoteEmailProcessor(object):
+    class QuoteFileProcessor(object):
+        """Checks for files containing matrix quotes in a particular directory,
+        transfers quotes from them into a database, and deletes them.
+        """
+        # maps each supplier id to the class for parsing its quote file
+        CLASSES_FOR_SUPPLIERS = {
+            14: quote_parsers.DirectEnergyMatrixParser,
+            95: quote_parsers.AEPMatrixParser,
+            199: quote_parsers.USGEMatrixParser,
+        }
+
+        # number of quotes to read and insert at once. larger is faster as long
+        # as it doesn't use up too much memory. (1000 is the maximum number of
+        # rows allowed per insert statement in pymssql.)
+        BATCH_SIZE = 1000
+
+        def __init__(self):
+            from core import config
+            self.logger = logging.getLogger(LOG_NAME)
+            self.quote_directory_path = config.get('brokerage', 'quote_directory')
+            self.altitude_session = AltitudeSession()
+
+    def process_email(self, email_file):
+        for supplier in Session().query(Supplier).filter(
+                        Supplier.matrix_file_name != None).order_by(
+            Supplier.name):
+
+            # match supplier in Altitude database by name--this means names
+            # for the same supplier must always be the same (will be None if
+            # not found)
+            altitude_supplier = self.altitude_session.query(Company).filter_by(
+                name=supplier.name).first()
+
+            # load quotes from the file into the database
+            try:
+                # TODO: get email address
+                email_text = email_file.read()
+                attachments = get_attachments(email_text)
+                assert len(attachments) == 1
+                name, content = attachments[0]
+                quote_file = StringIO()
+                quote_file.write(content)
+                quote_file.seek(0)
+                with open(path, 'rb') as quote_file:
+                    self.logger.info('Starting to read from "%s"' % path)
+                    for count in self._read_file(quote_file, supplier,
+                                                 altitude_supplier):
+                        self.logger.debug('%s quotes so far' % count)
+                    self.altitude_session.commit()
+            except Exception as e:
+                self.logger.error('Error when processing email:\n%s' % (
+                    traceback.format_exc()))
+                self.altitude_session.rollback()
+            else:
+                # total should be 106560 from Direct Energy spreadsheet
+                self.logger.info('Read %s quotes from "%s"' % (count, path))
+        Session.remove()
+        AltitudeSession.remove()
+
