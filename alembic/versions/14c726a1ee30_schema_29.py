@@ -22,7 +22,12 @@ def upgrade():
     op.add_column('quote', sa.Column('limit_volume', sa.Float))
     op.add_column('quote', sa.Column('rate_class_alias', sa.String))
     op.add_column('quote', sa.Column('Rate_Class_ID', sa.Integer))
+    op.add_column('quote', sa.Column('Zone', sa.String))
+    op.add_column('quote', sa.Column('Dual_Billing', sa.String))
+    op.add_column('quote', sa.Column('Percent_Swing_Allowable', sa.Float))
     op.alter_column('quote', 'supplier_id', nullable=True)
+    op.alter_column('quote', 'supplier_id',
+                    new_column_name='Supplier_Company_ID')
     op.alter_column('quote', 'quote_id', new_column_name='Rate_Matrix_ID')
     op.alter_column('quote', 'date_received', new_column_name='Created_On')
     op.alter_column('quote', 'start_from',
