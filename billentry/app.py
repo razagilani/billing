@@ -181,6 +181,10 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    if session.get('hash-digest'):
+        # remove the hash-digest from session as the uploaded files are
+        # irrelevant once the page is reloaded
+        session.pop('hash-digest')
     return response
 
 

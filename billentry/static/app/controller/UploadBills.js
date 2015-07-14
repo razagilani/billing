@@ -35,6 +35,16 @@ Ext.define('BillEntry.controller.UploadBills', {
          var form = this.getUploadBillsForm();
          form.getForm().reset();
          var dropzone = document.getElementById('dropzoneIFrame').contentDocument.getElementById('upload-files').dropzone;
+         var url = 'http://'+window.location.host+'/utilitybills/uploadbill';
+         Ext.Ajax.request({
+                              url: url,
+                              params: {},
+                              method: 'DELETE',
+                              failure: function (response) {
+                              },
+                              success: function (response) {
+                              }
+                          });
          dropzone.removeAllFiles();
      },
 
