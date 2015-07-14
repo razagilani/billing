@@ -41,7 +41,7 @@ def create_extractors(s):
     #pepco bills from 2015, with banner
     pep_start_regex = 'your electric bill for the period\s*(%s) to %s' % (date_format, date_format)
     pep_end_regex = 'your electric bill for the period\s*%s to (%s)' % (date_format, date_format)
-    pep_energy_regex = r'Use \(kWh\)\s+(%s)' % num_format
+    pep_energy_regex = r'(%s)\s+(your next meter|delivery charges)' % num_format
     pep_next_meter_read_regex = r'Your next meter reading is scheduled for (%s)' % date_format
     pep_charges_regex = r'(Distribution Services:.*?(?:Status of your Deferred|Page)(?:.*?)Transmission Services\:.*?Energy Usage History)'
     pep_rate_class_regex = r'Details of your electric charges\s*(' \

@@ -125,20 +125,10 @@ def test_bill(self, extractor_id, bill_id):
 
     # compare results to those in the db
     from billentry.billentry_model import BEUtilBill
-    if isinstance(bill, BEUtilBill):
+    if isinstance(bill, BEUtilBill) and bill.is_entered():
         response['processed'] = 1
         for applier_key, field_value in good:
             db_val = Applier.GETTERS[applier_key](bill)
-
-            #even bills that are labeled as BEUtilBills have null fields in
-            # them :-(. In this case just don't verify this bill
-            # TODO either store processed counts for each field, or only
-            # store counts of incorrect fields, so we can still get results
-            # when some of the bill's fields are null
-            if db_val is None:
-                response['processed'] = 0
-                response['fields_correct'] = {key: None for key in Applier.KEYS}
-                break
 
             # account for extra whitespace in database, but be more stringent
             #  with extracted fields, so we can remove whitespace if necessary.
