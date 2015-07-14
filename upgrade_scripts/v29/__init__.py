@@ -44,7 +44,8 @@ def create_extractors(s):
     pep_energy_regex = r'Use \(kWh\)\s+(%s)' % num_format
     pep_next_meter_read_regex = r'Your next meter reading is scheduled for (%s)' % date_format
     pep_charges_regex = r'(Distribution Services:.*?(?:Status of your Deferred|Page)(?:.*?)Transmission Services\:.*?Energy Usage History)'
-    pep_rate_class_regex = r'Details of your electric charges(.*?)\s+-\s+service number'
+    pep_rate_class_regex = r'Details of your electric charges\s*(' \
+                           r'.*?)\s+-\s+service number'
     pepco_2015 = TextExtractor(name="Extractor for Pepco bills in 2015 id 18541")
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_start_regex, type=Field.DATE, applier_key=Applier.START))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_end_regex, type=Field.DATE, applier_key=Applier.END))
@@ -71,7 +72,7 @@ def create_extractors(s):
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
     wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
-    wg_energy_regex = r"Distribution Charge\s+(%s)" % num_format
+    wg_energy_regex = r'(%s)\s+(?:Payments|Charges|Distribution)' % num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
     wg_charges_regex = r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))'
     wg_rate_class_regex = r'rate class:\s+meter number:\s+([^\n]+)'

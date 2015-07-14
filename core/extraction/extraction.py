@@ -307,7 +307,7 @@ class TextExtractor(Extractor):
             return Field.__table__.c.get('regex', Column(String,
                 nullable=False))
 
-        def __init__(self, *args, **kwargs):
+        def     __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
@@ -315,10 +315,14 @@ class TextExtractor(Extractor):
             # match any character except newlines
             m = re.search(self.regex, text,
                           re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None or len(m.groups()) != 1:
+            if m is None:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text.strip()[:20]))
+            elif len(m.groups()) != 1:
+                raise MatchError('Found %d matches for pattern "%s" in text '
+                                 'starting with "%s"' % (len(m.groups()),
+                self.regex, text.strip()[:20]))
             return m.groups()[0]
 
     #fields = relationship(TextField, backref='extractor')
@@ -390,12 +394,15 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
+        self.processed_count = metadata['processed_count']
 
         # update overall count and count by month for each field
         for field_name in Applier.KEYS.iterkeys():
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)
+            count_correct = metadata['fields_correct'][field_name]
+            setattr(self, "field_"+attr_name+"_correct", count_correct)
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
