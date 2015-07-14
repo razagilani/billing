@@ -99,7 +99,8 @@ def test_bill(self, extractor_id, bill_id):
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
     response = {'fields': {key: None for key in Applier.KEYS}}
-    response['fields_correct'] = {key: None for key in Applier.KEYS}
+    response['fields_correct'] = {key: 0 for key in Applier.KEYS}
+    response['fields_incorrect'] = {key: 0 for key in Applier.KEYS}
     response['extractor_id'] = extractor_id
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
@@ -135,7 +136,7 @@ def test_bill(self, extractor_id, bill_id):
             if str(db_val).strip() == str(field_value):
                 response['fields_correct'][applier_key] = 1
             else:
-                response['fields_correct'][applier_key] = 0
+                response['fields_incorrect'][applier_key] = 1
                 print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
                       "extracted value: %s, database value: %s" % (bill_id,
                 applier_key, field_value, db_val)
@@ -179,11 +180,14 @@ def reduce_bill_results(self, results):
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
+    processed_count = 0
     failed, stopped = 0, 0
-    processed = 0
     dates = {}
     fields = {key:0 for key in Applier.KEYS}
+    # used to compare accuracy of extractor vs what's in the database.
     fields_correct = {key:0 for key in Applier.KEYS}
+    fields_incorrect = {key:0 for key in Applier.KEYS}
+    fields_fraction = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
     for r in results:
         # if task failed, then r is in fact an Error object
@@ -196,6 +200,7 @@ def reduce_bill_results(self, results):
             failed += 1
             continue
 
+        # use this bill's period_end to add it to the correct date bucket. 
         bill_date = r['date']
         if bill_date is not None:
             bill_date_format = "%04d-%02d" % (bill_date.year, bill_date.month)
@@ -209,13 +214,19 @@ def reduce_bill_results(self, results):
                 'fields': {key: 0 for key in Applier.KEYS},
             }
 
+        processed_count += r['processed']
+
         # count number of successfully read fields
         success_fields = 0
-        for k in r['fields'].keys():
+        for k in Applier.KEYS:
             if r['fields'][k] is not None:
                 success_fields += 1
                 fields[k] += 1
                 dates[bill_date_format]['fields'][k] += 1
+
+            # check for each field whether it matches the database
+            fields_correct[k] += r['fields_correct'][k]
+            fields_incorrect[k] += r['fields_incorrect'][k]
 
         # Count success for this individual bill
         total_fields = r['num_fields']
@@ -228,23 +239,23 @@ def reduce_bill_results(self, results):
             all_count += 1
             dates[bill_date_format]['all_count'] += 1
 
-        # check for each field whether it matches the database
-        processed += r['processed']
-        for k in r['fields_correct'].keys():
-            if r['fields_correct'][k] is not None:
-                fields_correct[k] += r['fields_correct'][k]
-
+    #calculate percent accuracy for each field, relative to the values
+    # already in the database
+    for k in Applier.KEYS:
+        sum = fields_correct[k] + fields_incorrect[k]
+        if sum > 0:
+            fields_fraction[k] = float(fields_correct[k]) / sum
 
     response = {
         'nbills': nbills,
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
-        'processed_count': processed,
+        'processed_count': processed_count,
         'failed': failed,
         'stopped': stopped,
         'fields': fields,
-        'fields_correct': fields_correct,
+        'fields_fraction': fields_fraction,
         'dates': dates,
     }
 
