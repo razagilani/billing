@@ -290,7 +290,7 @@ def test_status(task_id):
         try:
             result = task.get()
             result['state'] = task.state
-        except (ChordError, TaskRevokedError) as e:
+        except Exception as e:
             result = {'state': "FAILURE"}
         return jsonify(result)
 

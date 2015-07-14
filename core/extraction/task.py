@@ -99,6 +99,7 @@ def test_bill(self, extractor_id, bill_id):
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
     response = {'fields': {key: None for key in Applier.KEYS}}
+    response['fields_correct'] = {key: None for key in Applier.KEYS}
     response['extractor_id'] = extractor_id
     response['bill_id'] = bill_id
     response['num_fields'] = len(extractor.fields)
@@ -122,6 +123,36 @@ def test_bill(self, extractor_id, bill_id):
     else:
         response['date'] = None
 
+    # compare results to those in the db
+    from billentry.billentry_model import BEUtilBill
+    if isinstance(bill, BEUtilBill):
+        response['processed'] = 1
+        for applier_key, field_value in good:
+            db_val = Applier.GETTERS[applier_key](bill)
+
+            #even bills that are labeled as BEUtilBills have null fields in
+            # them :-(. In this case just don't verify this bill
+            # TODO either store processed counts for each field, or only
+            # store counts of incorrect fields, so we can still get results
+            # when some of the bill's fields are null
+            if db_val is None:
+                response['processed'] = 0
+                response['fields_correct'] = {key: None for key in Applier.KEYS}
+                break
+
+            # account for extra whitespace in database, but be more stringent
+            #  with extracted fields, so we can remove whitespace if necessary.
+            if str(db_val).strip() == str(field_value):
+                response['fields_correct'][applier_key] = 1
+            else:
+                response['fields_correct'][applier_key] = 0
+                print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
+                      "extracted value: %s, database value: %s" % (bill_id,
+                applier_key, field_value, db_val)
+    else:
+        response['processed'] = 0
+
+
     # print out debug information in celery log
     debug = False
     if len(good) != len(extractor.fields) and debug:
@@ -129,11 +160,6 @@ def test_bill(self, extractor_id, bill_id):
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
-        # for g in good:
-        #     #Compare extracted value to that in the database, to check for false positives.
-        #     db_val = getters_map[g[0].applier_key](bill)
-        #     if db_val and g[1] != db_val:
-        #         print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
         print "ERRORS: " + str(len(error))
         print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler,
             PDFUtil())))
@@ -163,11 +189,12 @@ def reduce_bill_results(self, results):
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
+    failed, stopped = 0, 0
+    processed = 0
     dates = {}
     fields = {key:0 for key in Applier.KEYS}
+    fields_correct = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
-    failed = 0
-    stopped = 0
     for r in results:
         # if task failed, then r is in fact an Error object
         if isinstance(r, TaskRevokedError):
@@ -211,15 +238,24 @@ def reduce_bill_results(self, results):
             all_count += 1
             dates[bill_date_format]['all_count'] += 1
 
+        # check for each field whether it matches the database
+        processed += r['processed']
+        for k in r['fields_correct'].keys():
+            if r['fields_correct'][k] is not None:
+                fields_correct[k] += r['fields_correct'][k]
+
+
     response = {
+        'nbills': nbills,
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
-        'fields': fields,
-        'dates': dates,
+        'processed_count': processed,
         'failed': failed,
         'stopped': stopped,
-        'nbills': nbills,
+        'fields': fields,
+        'fields_correct': fields_correct,
+        'dates': dates,
     }
 
     from core.model import Session
