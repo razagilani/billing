@@ -3,6 +3,11 @@
 import deploy.fab_common as common
 from fabric.api import task as fabtask
 from fabric.api import env
+from fabric.api import execute
+import fabric.operations as fabops
+import os
+
+from core import init_config, get_db_params
 
 #
 # fab create_reebill_revision common.deploy_interactive -R skyline_internal_prod
@@ -147,13 +152,27 @@ common.CommonFabTask.update_deployment_configs({
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
-# TODO: 64357046 don't set the manifest file this way, pass it into the @fabtask
-# TODO: 64357530 this runs before promptconfig, so there is no way to determine the deploy env targeted
-class CreateReeBillRevision(common.CreateRevision):
+class CreatePgpassFile(common.CommonFabTask):
 
-    manifest_file = "reebill/ui/revision.txt"
+    def run(self, *args, **kwargs):
+        execute(common.prompt_config)
+        env_name = common.SelectDeploymentConfig.get_deployment_config_key()
+        env_cfg = common.SelectDeploymentConfig.get_deployment_config(env_name)
+        config_path = os.path.join('conf','configs','settings-%s-template.cfg' % env_name)
+        
+        init_config(filepath=config_path, fp=None)
+        params = get_db_params()
+        params.setdefault('port', '*')
 
+        path = os.path.join('/home',env_cfg['os_user'], '.pgpass')
+        params['path'] = path
 
-@fabtask(task_class=CreateReeBillRevision, alias='create_reebill_revision')
-def create_reebill_revision(task_instance, *args, **kwargs):
+        print params
+        fabops.sudo("echo %(host)s:%(port)s:*:%(user)s:%(password)s > %(path)s" % params, user=env_cfg["os_user"])
+        fabops.sudo("chmod 600 %(path)s" % params, user=env_cfg["os_user"])
+
+        return super(CreatePgpassFile, self).run(self.func, *args, **kwargs)
+
+@fabtask(task_class=CreatePgpassFile, alias='create_pgpass_file')
+def create_pgpass_file(task_instance, *args, **kwargs):
     pass
