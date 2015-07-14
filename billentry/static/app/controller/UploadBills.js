@@ -38,12 +38,7 @@ Ext.define('BillEntry.controller.UploadBills', {
          var url = 'http://'+window.location.host+'/utilitybills/uploadbill';
          Ext.Ajax.request({
                               url: url,
-                              params: {},
-                              method: 'DELETE',
-                              failure: function (response) {
-                              },
-                              success: function (response) {
-                              }
+                              method: 'DELETE'
                           });
          dropzone.removeAllFiles();
      },
