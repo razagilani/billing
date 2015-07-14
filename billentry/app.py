@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from celery.exceptions import ChordError, TaskRevokedError
 import re
 from celery.result import AsyncResult
+from dateutil import tz
 from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
 from flask import Flask, url_for, request, flash, session, redirect, \
@@ -35,6 +36,7 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
+from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
@@ -525,6 +527,20 @@ def locallogin():
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
+@app.route('/quote-status')
+def quote_status():
+    local_tz = tz.gettz('America/New_York')
+    date_format = '%a %Y-%m-%d %H:%M:%S %Z'
+    format_date = lambda d: None if d is None else d.replace(
+        tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
+
+    return render_template('quote-status.html', data=[{
+        'name': row.name,
+        'date_received': format_date(row.date_received),
+        'today_count': row.today_count,
+        'total_count': row.total_count,
+        'good': row.today_count > 0,
+    } for row in get_quote_status()])
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
