@@ -72,7 +72,8 @@ def create_extractors(s):
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
     wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
-    wg_energy_regex = r'(%s)\s+(?:Payments|Charges|Distribution)' % num_format
+    wg_energy_regex = r'(%s)\s+(?:Payments|Charges|Distribution Service)' % \
+                      num_format
     wg_next_meter_read_regex = r'Your next meter reading date is (%s)' % date_format
     wg_charges_regex = r'(DISTRIBUTION SERVICE.*?(?:Total Washington Gas Charges This Period|the easiest way to pay))'
     wg_rate_class_regex = r'rate class:\s+meter number:\s+([^\n]+)'
