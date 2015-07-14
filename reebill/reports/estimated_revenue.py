@@ -264,9 +264,12 @@ class EstimatedRevenue(object):
 
         # subtract energy for hours marked by unbillable annotations
         install = self.splinter.get_install_obj_for(olap_id)
-        unbillable_annos = [anno for anno in install.get_annotations() if
-                anno._from >= date_to_datetime(start) and anno._to <=
-                date_to_datetime(end) and anno.unbillable]
+        unbillable_annos = [
+            anno for anno in install.get_annotations(force_update=True)
+            if anno._from >= date_to_datetime(start) and
+                anno._to <= date_to_datetime(end) and
+                anno.unbillable
+        ]
         for anno in unbillable_annos:
             annotation_btu = 0
             for hour in sky_handlers.cross_range(anno._from, anno._to):
