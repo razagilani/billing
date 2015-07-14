@@ -105,6 +105,20 @@ class Applier(object):
     # supplier
     # utility (could be determined by layout itself)
 
+    # Getters for each applier key, to get the corresponding field value from
+    #  a utility bill.
+    GETTERS = {
+        BILLING_ADDRESS: lambda b: b.billing_address,
+        CHARGES: lambda b: b.charges,
+        END: lambda b: b.period_end,
+        ENERGY: lambda b: b.get_total_energy(),
+        NEXT_READ: lambda b: b.next_meter_read_date,
+        PERIOD_TOTAL: lambda b: b.target_total,
+        RATE_CLASS: lambda b: b.rate_class,
+        SERVICE_ADDRESS: lambda b: b.service_address,
+        START: lambda b: b.period_start,
+    }
+
     _instance = None
 
     @classmethod
