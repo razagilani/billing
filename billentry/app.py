@@ -181,6 +181,11 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    # If some utility bills files are uploaded, their hash-digests are
+    # stored in Flask's session variable named hash-digest. If the
+    # upload utility bills form is reset or the app is loaded again,
+    # we need to clear those hash-digests of previously uploaded files
+    # to prevent them from getting mixed with utility bills uploaded later
     if session.get('hash-digest'):
         # remove the hash-digest from session as the uploaded files are
         # irrelevant once the page is reloaded
