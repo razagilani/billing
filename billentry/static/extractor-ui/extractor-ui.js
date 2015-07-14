@@ -1,6 +1,7 @@
 
 tasks=[];
 selected = null;
+show_db_matches = false;
 
 $(document).ready(function() { 
 	//Assign id-specific function to each run button
@@ -90,9 +91,14 @@ function displayData(task, isDetailed){
 	} else {
 		//task summary for a single task
 		var task_table_row = $('#results tr[id='+ task.task_id +']');
-		var total_count = task_data.total_count;
 		var all_count = task_data.all_count;
 		var any_count = task_data.any_count;
+
+		if(show_db_matches){
+			var total_count = task_data.processed_count;
+		} else {
+			var total_count = task_data.total_count;
+		}
 
 		task_table_row.children("td[header=status]").text(task_data.state);
 		task_table_row.children("td[header=total_count]").text(total_count);
@@ -101,7 +107,13 @@ function displayData(task, isDetailed){
 		//update field values
 		task_table_row.children("td.field").each(function(index, elem){
 			var fieldname = $(elem).attr("header");
-			var val = task_data.fields[fieldname];
+			if(show_db_matches){
+				var frac = task_data.fields_fraction[fieldname];
+				var percentString = Math.floor(100.0 * frac);
+				var val = percentString + "%"
+			} else {
+				var val = task_data.fields[fieldname];
+			}
 			if(val != undefined){
 				$(elem).text(val);
 			}
@@ -213,4 +225,20 @@ function stopSelectedTask(){
 			updateStatus();
 		});
 	}
+}
+
+function toggleDBMatches(){
+	show_db_matches = !show_db_matches;
+
+	// <td id="total_count">Total so far</td>
+	total_header_cell = $("#results #total_count");
+	if (show_db_matches) {
+		total_header_cell.text("Bills entered in DB");
+	} else {
+		total_header_cell.text("Total so far");
+	}
+
+	tasks.forEach(function(elem){
+		displayData(elem, false);
+	});
 }

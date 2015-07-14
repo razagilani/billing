@@ -306,6 +306,9 @@ def stop_task(task_id):
         ExtractorResult.task_id == task_id)
     ext_res = q.one()
     parent_id = ext_res.parent_id
+    # revoke chord task (i.e. the reduce step)
+    AsyncResult(task_id).revoke(terminate=True)
+    # revoke group, (i.e. all the subtasks)
     GroupResult.restore(parent_id).revoke(terminate=True)
     ext_res.finished = datetime.utcnow()
     s.commit()

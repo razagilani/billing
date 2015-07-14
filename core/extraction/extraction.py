@@ -7,7 +7,7 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func
+    UniqueConstraint, DateTime, func, Float
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, \
@@ -367,14 +367,14 @@ class ExtractorResult(model.Base):
     field_service_address = Column(Integer)
 
     # field counts
-    field_billing_address_correct = Column(Integer)
-    field_charges_correct = Column(Integer)
-    field_end_correct = Column(Integer)
-    field_energy_correct = Column(Integer)
-    field_next_read_correct = Column(Integer)
-    field_rate_class_correct = Column(Integer)
-    field_start_correct = Column(Integer)
-    field_service_address_correct = Column(Integer)
+    field_billing_address_fraction = Column(Float)
+    field_charges_fraction = Column(Float)
+    field_end_fraction = Column(Float)
+    field_energy_fraction = Column(Float)
+    field_next_read_fraction = Column(Float)
+    field_rate_class_fraction = Column(Float)
+    field_start_fraction = Column(Float)
+    field_service_address_fraction = Column(Float)
 
     # field counts by month
     billing_address_by_month = Column(HSTORE)
@@ -401,8 +401,8 @@ class ExtractorResult(model.Base):
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)
-            count_correct = metadata['fields_correct'][field_name]
-            setattr(self, "field_"+attr_name+"_correct", count_correct)
+            correct_fraction = metadata['fields_fraction'][field_name]
+            setattr(self, "field_"+attr_name+"_fraction", correct_fraction)
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
