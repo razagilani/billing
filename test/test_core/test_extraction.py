@@ -114,15 +114,15 @@ class ExtractorTest(TestCase):
         self.applier = Mock(autospec=Applier)
         self.applier.apply.side_effect = [None, ApplicationError]
 
-    def test_apply_values(self):
-        count, errors = self.e.apply_values(
-            self.utilbill, self.bill_file_handler, self.applier)
-        self.assertEqual(1, count)
-        self.assertEqual(2, len(errors))
-        applier_keys, exceptions = zip(*errors)
-        self.assertEqual(('b', 'c'), applier_keys)
-        self.assertIsInstance(exceptions[0], ExtractionError)
-        self.assertIsInstance(exceptions[1], ApplicationError)
+    # def test_apply_values(self):
+    #     count, errors = self.e.apply_values(
+    #         self.utilbill, self.bill_file_handler, self.applier)
+    #     self.assertEqual(1, count)
+    #     self.assertEqual(2, len(errors))
+    #     applier_keys, exceptions = zip(*errors)
+    #     self.assertEqual(('b', 'c'), applier_keys)
+    #     self.assertIsInstance(exceptions[0], ExtractionError)
+    #     self.assertIsInstance(exceptions[1], ApplicationError)
 
 
 class TextFieldTest(TestCase):
