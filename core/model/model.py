@@ -193,7 +193,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '686dfe445fd'
+_schema_revision = '49b8d9978d7e'
 
 
 def check_schema_revision(schema_revision=None):
