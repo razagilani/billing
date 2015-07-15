@@ -293,7 +293,7 @@ def test_status(task_id):
         if response['stopped'] > 0:
             response['state'] = "STOPPPED"
         elif response['failed'] > 0:
-            response['state'] = "FAILURE"
+            response['state'] = "SOME SUBTASKS FAILED, IN PROGRESS"
         else:
             response['state'] = "IN PROGRESS"
         return jsonify(response)
@@ -301,7 +301,9 @@ def test_status(task_id):
         try:
             result = task.get()
             result['state'] = task.state
-        except (ChordError, TaskRevokedError) as e:
+        except ChordError as tre:
+            result = {'state': "STOPPED"}
+        except Exception as e:
             result = {'state': "FAILURE"}
         return jsonify(result)
 
@@ -311,10 +313,13 @@ def stop_task(task_id):
     #get child tasks and revoke them
     init_celery()
     s = Session()
-    q = s.query(ExtractorResult.parent_id).filter(
+    q = s.query(ExtractorResult).filter(
         ExtractorResult.task_id == task_id)
     ext_res = q.one()
     parent_id = ext_res.parent_id
+    # revoke chord task (i.e. the reduce step)
+    AsyncResult(task_id).revoke(terminate=True)
+    # revoke group, (i.e. all the subtasks)
     GroupResult.restore(parent_id).revoke(terminate=True)
     ext_res.finished = datetime.utcnow()
     s.commit()

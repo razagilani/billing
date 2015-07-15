@@ -60,6 +60,10 @@
 	<h3>There are {{ nbills }} total bills.</h3>
 	<h3>Results:</h3>
 	
+ 	<button type="button" onclick="updateStatus()">Refresh</button>
+ 	<button type="button" onclick="stopSelectedTask()">Stop Task</button>
+ 	<button type="button" onclick="toggleDBMatches()">Toggle DB Matches</button>
+ 	<br><br>
 	<div id="resultpane">
 		<table id="results">
 			<thead>
@@ -104,9 +108,6 @@
 			</table>
 		</div>
 	</span>
-	<br>
- 	<button type="button" onclick="updateStatus()">Refresh</button>
- 	<button type="button" onclick="stopSelectedTask()">Stop Task</button>
 </body>
 
 </html>
