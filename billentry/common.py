@@ -7,7 +7,8 @@ If it gets big, it should become a multi-file module as shown there.
 from flask.ext.bcrypt import Bcrypt
 from sqlalchemy.orm import make_transient
 from billentry.billentry_model import BEUtilBill
-from core.model import UtilBill, Session
+from core.model import Session
+from core.model.utilbill import UtilBill
 
 
 def replace_utilbill_with_beutilbill(utilbill):
