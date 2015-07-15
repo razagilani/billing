@@ -1,8 +1,9 @@
 from datetime import date
 from mock import Mock
 
-from core.model import Charge, UtilBill, Address, \
+from core.model import Charge, Address, \
     ChargeEvaluation, UtilityAccount, Utility
+from core.model.utilbill import UtilBill
 from exc import FormulaError
 from test import testing_utils
 

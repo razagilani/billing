@@ -5,8 +5,9 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main
 
-from core.model import UtilBill, Address, Charge, Register, Session, Supplier, \
+from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
+from core.model.utilbill import UtilBill
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
