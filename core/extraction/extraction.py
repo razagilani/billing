@@ -319,10 +319,10 @@ class TextExtractor(Extractor):
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text.strip()[:20]))
-            elif len(m.groups()) != 1:
-                raise MatchError('Found %d matches for pattern "%s" in text '
-                                 'starting with "%s"' % (len(m.groups()),
-                self.regex, text.strip()[:20]))
+            # elif len(m.groups()) != 1:
+            #     raise MatchError('Found %d matches for pattern "%s" in text '
+            #                      'starting with "%s"' % (len(m.groups()),
+            #     self.regex, text.strip()[:20]))
             return m.groups()[0]
 
     #fields = relationship(TextField, backref='extractor')
