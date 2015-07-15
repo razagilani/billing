@@ -489,7 +489,6 @@ class UtilbillProcessor(object):
             setattr(charge, k, v)
 
         # auto-fill formula and date fields when "rsi_binding" is edited
-        # TODO: this is really slow
         if 'rsi_binding' in fields:
             other_charge = self.pricing_model.get_closest_occurrence_of_charge(
                 charge)
