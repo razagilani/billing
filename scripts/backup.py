@@ -17,10 +17,10 @@ import zlib
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from core import init_config, init_model, get_scrub_sql
+from core import init_config, init_model, get_scrub_sql, get_db_params
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
-
+from util.shell import run_command
 
 init_config()
 from core import config
@@ -47,11 +47,7 @@ MONGO_COLLECTIONS = ['journal']
 ACCOUNTS_LIST = [1737]
 
 # extract database connection parameters from URI in config file
-# eg mysql://root:root@localhost:3306/skyline_dev
-db_uri = config.get('db', 'uri')
-PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
-m = re.match(PG_FORMAT, db_uri)
-db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
+db_params = get_db_params()
 
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
@@ -155,22 +151,8 @@ def write_gzipped_to_file(in_file, out_file):
                 S3_MULTIPART_CHUNK_SIZE_BYTES)
 
         # upload the contents of 'chunk_buffer' to S3
-        count += 1 
-    
+        count += 1
 
-def run_command(command):
-    '''Run 'command' (shell command string) as a subprocess. Return stdin of
-    the subprocess (file), stdout of the subprocess (file), and function that
-    raises a CalledProcessError if the process exited with non-0 status.
-    stderr of the subprocess is redirected to this script's stderr.
-    '''
-    process = Popen(shlex.split(command), stdin=PIPE, stdout=PIPE,
-                    stderr=sys.stderr)
-    def check_exit_status():
-        status = process.wait()
-        if status != 0:
-            raise CalledProcessError(status, command)
-    return process.stdin, process.stdout, check_exit_status
 
 def _refresh_s3_key(key):
     '''Return a new boto.s3.key.Key object so it reflects what is actually in
