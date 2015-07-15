@@ -7,7 +7,7 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func
+    UniqueConstraint, DateTime, func, Float
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
@@ -307,7 +307,7 @@ class TextExtractor(Extractor):
             return Field.__table__.c.get('regex', Column(String,
                 nullable=False))
 
-        def __init__(self, *args, **kwargs):
+        def     __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
@@ -315,10 +315,14 @@ class TextExtractor(Extractor):
             # match any character except newlines
             m = re.search(self.regex, text,
                           re.IGNORECASE | re.DOTALL | re.MULTILINE)
-            if m is None or len(m.groups()) != 1:
+            if m is None:
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text.strip()[:20]))
+            # elif len(m.groups()) != 1:
+            #     raise MatchError('Found %d matches for pattern "%s" in text '
+            #                      'starting with "%s"' % (len(m.groups()),
+            #     self.regex, text.strip()[:20]))
             return m.groups()[0]
 
     #fields = relationship(TextField, backref='extractor')
@@ -349,6 +353,8 @@ class ExtractorResult(model.Base):
     all_count = Column(Integer)
     any_count = Column(Integer)
     total_count = Column(Integer)
+    processed_count = Column(Integer)
+
     #TODO should find a way to sync these with UtilBill's list of fields
     # field counts
     field_billing_address = Column(Integer)
@@ -359,6 +365,17 @@ class ExtractorResult(model.Base):
     field_rate_class = Column(Integer)
     field_start = Column(Integer)
     field_service_address = Column(Integer)
+
+    # field counts
+    field_billing_address_fraction = Column(Float)
+    field_charges_fraction = Column(Float)
+    field_end_fraction = Column(Float)
+    field_energy_fraction = Column(Float)
+    field_next_read_fraction = Column(Float)
+    field_rate_class_fraction = Column(Float)
+    field_start_fraction = Column(Float)
+    field_service_address_fraction = Column(Float)
+
     # field counts by month
     billing_address_by_month = Column(HSTORE)
     charges_by_month = Column(HSTORE)
@@ -377,12 +394,15 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
+        self.processed_count = metadata['processed_count']
 
         # update overall count and count by month for each field
         for field_name in Applier.KEYS.iterkeys():
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)
+            correct_fraction = metadata['fields_fraction'][field_name]
+            setattr(self, "field_"+attr_name+"_fraction", correct_fraction)
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
