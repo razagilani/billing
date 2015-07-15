@@ -10,13 +10,13 @@ from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
     UniqueConstraint, DateTime, func
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import relationship, object_session, \
-    MapperExtension
+from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier, convert_wg_charges_std, \
-    convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges
-from core.model import Address, Session
+from core.extraction.applier import Applier
+from core.extraction.type_conversion import \
+    convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
+    convert_wg_charges_std
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
