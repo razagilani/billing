@@ -62,12 +62,10 @@ class ReeBill(Base):
     reebill_customer = relationship(
         "ReeBillCustomer", backref=backref('reebills', order_by=id))
     billing_address = relationship(
-        'Address', uselist=False, cascade='all, delete-orphan',
-        single_parent=True,
+        'Address', uselist=False, cascade='all',
         primaryjoin='ReeBill.billing_address_id==Address.id')
     service_address = relationship(
-        'Address', uselist=False, cascade='all, delete-orphan',
-        single_parent=True,
+        'Address', uselist=False, cascade='all',
         primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
