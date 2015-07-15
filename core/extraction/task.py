@@ -98,12 +98,15 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    response = {'fields': {key: None for key in Applier.KEYS}}
-    response['fields_correct'] = {key: 0 for key in Applier.KEYS}
-    response['fields_incorrect'] = {key: 0 for key in Applier.KEYS}
-    response['extractor_id'] = extractor_id
-    response['bill_id'] = bill_id
-    response['num_fields'] = len(extractor.fields)
+    fields = [field.applier_key for field in extractor.fields]
+    response = {
+        'extractor_id': extractor_id,
+        'bill_id': bill_id,
+        'num_fields': len(fields),
+        'fields': {f:None for f in fields},
+        'fields_correct': {f: 0 for f in fields},
+        'fields_incorrect': {f: 0 for f in fields},
+    }
 
     # Store field values for each successful result
     # Note: 'good' is of type [(field, value), ...]
@@ -126,7 +129,8 @@ def test_bill(self, extractor_id, bill_id):
 
     # compare results to those in the db
     from billentry.billentry_model import BEUtilBill
-    if isinstance(bill, BEUtilBill) and bill.is_entered():
+    if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
+            bill.processed:
         response['processed'] = 1
         for applier_key, field_value in good:
             db_val = Applier.GETTERS[applier_key](bill)
@@ -181,12 +185,12 @@ def reduce_bill_results(self, results):
     all_count, any_count, total_count = 0, 0, 0
     processed_count = 0
     failed, stopped = 0, 0
-    dates = {}
-    fields = {key:0 for key in Applier.KEYS}
+    fields = None
     # used to compare accuracy of extractor vs what's in the database.
-    fields_correct = {key:0 for key in Applier.KEYS}
-    fields_incorrect = {key:0 for key in Applier.KEYS}
-    fields_fraction = {key:0 for key in Applier.KEYS}
+    fields_correct = None
+    fields_incorrect = None
+    fields_fraction = None
+    dates = {}
     results = filter(None, results)
     for r in results:
         # if task failed, then r is in fact an Error object
@@ -199,6 +203,13 @@ def reduce_bill_results(self, results):
             failed += 1
             continue
 
+        # initialize fields hashes with field names
+        if fields is None:
+            fields = {k:0 for k in r['fields'].keys()}
+            fields_correct = {k:0 for k in r['fields'].keys()}
+            fields_incorrect = {k:0 for k in r['fields'].keys()}
+            fields_fraction = {k:0 for k in r['fields'].keys()}
+
         # use this bill's period_end to add it to the correct date bucket. 
         bill_date = r['date']
         if bill_date is not None:
@@ -210,14 +221,14 @@ def reduce_bill_results(self, results):
                 'all_count': 0,
                 'any_count': 0,
                 'total_count': 0,
-                'fields': {key: 0 for key in Applier.KEYS},
+                'fields': {key: 0 for key in fields.keys()},
             }
 
         processed_count += r['processed']
 
         # count number of successfully read fields
         success_fields = 0
-        for k in Applier.KEYS:
+        for k in fields.keys():
             if r['fields'][k] is not None:
                 success_fields += 1
                 fields[k] += 1
@@ -240,7 +251,7 @@ def reduce_bill_results(self, results):
 
     #calculate percent accuracy for each field, relative to the values
     # already in the database
-    for k in Applier.KEYS:
+    for k in fields.keys():
         sum = fields_correct[k] + fields_incorrect[k]
         if sum > 0:
             fields_fraction[k] = float(fields_correct[k]) / sum
@@ -259,7 +270,6 @@ def reduce_bill_results(self, results):
     }
 
     from core.model import Session
-
     if Session.bind is None:
         del Session
         init_model()
