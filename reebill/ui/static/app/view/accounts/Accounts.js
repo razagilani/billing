@@ -1,12 +1,10 @@
 Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
     requires: [
-        'ReeBill.store.AccountsMemory',
-        'ReeBill.store.AccountsFilter',
-        'Ext.toolbar.PagingMemoryToolbar'],
+        'ReeBill.store.AccountsFilter'],
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
-    store: 'AccountsMemory',
+    store: 'Accounts',
 
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -84,27 +82,23 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         minWidth: 350,
         flex:1
     }],
-
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'AccountsMemory',
-        refreshStore: 'Accounts',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}',
-        items: ['->',{
+    dockedItems: [
+    {
+        xtype: 'toolbar',
+        dock: 'bottom',
+        items: ['->', {
             xtype: 'combo',
             name: 'accountsFilter',
             fieldLabel: 'Filter',
             labelWidth: 50,
             width: 400,
-            value: '',
+            value: 'none',
             editable: false,
             store: 'AccountsFilter',
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',
             forceSelection: true
-        }]
-    }
+            }, '->']
+    }]
 });
