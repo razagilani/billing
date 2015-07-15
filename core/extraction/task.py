@@ -98,10 +98,15 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    response = {'fields': {key: None for key in Applier.KEYS}}
-    response['extractor_id'] = extractor_id
-    response['bill_id'] = bill_id
-    response['num_fields'] = len(extractor.fields)
+    fields = [field.applier_key for field in extractor.fields]
+    response = {
+        'extractor_id': extractor_id,
+        'bill_id': bill_id,
+        'num_fields': len(fields),
+        'fields': {f:None for f in fields},
+        'fields_correct': {f: 0 for f in fields},
+        'fields_incorrect': {f: 0 for f in fields},
+    }
 
     # Store field values for each successful result
     # Note: 'good' is of type [(field, value), ...]
@@ -122,6 +127,26 @@ def test_bill(self, extractor_id, bill_id):
     else:
         response['date'] = None
 
+    # compare results to those in the db
+    from billentry.billentry_model import BEUtilBill
+    if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
+            bill.processed:
+        response['processed'] = 1
+        for applier_key, field_value in good:
+            db_val = Applier.GETTERS[applier_key](bill)
+
+            # account for extra whitespace in database, but be more stringent
+            #  with extracted fields, so we can remove whitespace if necessary.
+            if str(db_val).strip() == str(field_value):
+                response['fields_correct'][applier_key] = 1
+            else:
+                response['fields_incorrect'][applier_key] = 1
+                print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
+                      "extracted value: %s, database value: %s" % (bill_id,
+                applier_key, field_value, db_val)
+    else:
+        response['processed'] = 0
+
     # print out debug information in celery log
     debug = False
     if len(good) != len(extractor.fields) and debug:
@@ -129,11 +154,6 @@ def test_bill(self, extractor_id, bill_id):
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
-        # for g in good:
-        #     #Compare extracted value to that in the database, to check for false positives.
-        #     db_val = getters_map[g[0].applier_key](bill)
-        #     if db_val and g[1] != db_val:
-        #         print "*** VERIFICATION FAILED ***\t%s **** %s **** %s\n" % (g[0].applier_key, g[1], db_val)
         print "ERRORS: " + str(len(error))
         print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler,
             PDFUtil())))
@@ -163,11 +183,15 @@ def reduce_bill_results(self, results):
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
+    processed_count = 0
+    failed, stopped = 0, 0
+    fields = None
+    # used to compare accuracy of extractor vs what's in the database.
+    fields_correct = None
+    fields_incorrect = None
+    fields_fraction = None
     dates = {}
-    fields = {key:0 for key in Applier.KEYS}
     results = filter(None, results)
-    failed = 0
-    stopped = 0
     for r in results:
         # if task failed, then r is in fact an Error object
         if isinstance(r, TaskRevokedError):
@@ -179,6 +203,14 @@ def reduce_bill_results(self, results):
             failed += 1
             continue
 
+        # initialize fields hashes with field names
+        if fields is None:
+            fields = {k:0 for k in r['fields'].keys()}
+            fields_correct = {k:0 for k in r['fields'].keys()}
+            fields_incorrect = {k:0 for k in r['fields'].keys()}
+            fields_fraction = {k:0 for k in r['fields'].keys()}
+
+        # use this bill's period_end to add it to the correct date bucket. 
         bill_date = r['date']
         if bill_date is not None:
             bill_date_format = "%04d-%02d" % (bill_date.year, bill_date.month)
@@ -189,16 +221,22 @@ def reduce_bill_results(self, results):
                 'all_count': 0,
                 'any_count': 0,
                 'total_count': 0,
-                'fields': {key: 0 for key in Applier.KEYS},
+                'fields': {key: 0 for key in fields.keys()},
             }
+
+        processed_count += r['processed']
 
         # count number of successfully read fields
         success_fields = 0
-        for k in r['fields'].keys():
+        for k in fields.keys():
             if r['fields'][k] is not None:
                 success_fields += 1
                 fields[k] += 1
                 dates[bill_date_format]['fields'][k] += 1
+
+            # check for each field whether it matches the database
+            fields_correct[k] += r['fields_correct'][k]
+            fields_incorrect[k] += r['fields_incorrect'][k]
 
         # Count success for this individual bill
         total_fields = r['num_fields']
@@ -211,19 +249,27 @@ def reduce_bill_results(self, results):
             all_count += 1
             dates[bill_date_format]['all_count'] += 1
 
+    #calculate percent accuracy for each field, relative to the values
+    # already in the database
+    for k in fields.keys():
+        sum = fields_correct[k] + fields_incorrect[k]
+        if sum > 0:
+            fields_fraction[k] = float(fields_correct[k]) / sum
+
     response = {
+        'nbills': nbills,
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
-        'fields': fields,
-        'dates': dates,
+        'processed_count': processed_count,
         'failed': failed,
         'stopped': stopped,
-        'nbills': nbills,
+        'fields': fields,
+        'fields_fraction': fields_fraction,
+        'dates': dates,
     }
 
     from core.model import Session
-
     if Session.bind is None:
         del Session
         init_model()
