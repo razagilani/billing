@@ -13,10 +13,9 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import physical_unit_type
 
-from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
-    NoSuchBillException
-from core.model import Base, Address, Register, Session, Evaluation, Charge
-from core.model.utilbill import UtilBill
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable
+from core.model import Base, Address, Register, Session
+from core.model.utilbill import UtilBill, Evaluation, Charge
 from util.units import unit_registry, convert_to_therms
 
 

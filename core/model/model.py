@@ -2,7 +2,6 @@
 SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
-import ast
 from datetime import datetime
 from itertools import chain
 import json
@@ -22,14 +21,14 @@ from sqlalchemy.types import Integer, String, Float, Boolean, \
 from sqlalchemy.util.langhelpers import symbol
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.inspection import inspect
+
 from alembic.migration import MigrationContext
 
-from exc import FormulaSyntaxError, FormulaError, DatabaseError, \
+from exc import DatabaseError, \
     NoSuchBillException
 from util.units import unit_registry
 
-__all__ = ['Address', 'Base', 'AltitudeBase', 'Charge', 'ChargeEvaluation',
-           'Evaluation', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
+__all__ = ['Address', 'Base', 'AltitudeBase', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
            'AltitudeSession', 'altitude_metadata', 'Supplier', 'SupplyGroup',
            'RateClass', 'Utility', 'UtilityAccount',
            'check_schema_revision', ]
@@ -212,39 +211,6 @@ class UtilbillCallback(MapperExtension):
         if object_session(instance).is_modified(instance,
                 include_collections=False):
             instance.date_modified = datetime.utcnow()
-
-
-class Evaluation(object):
-    """A data structure to hold inputs for calculating charges. It can hold
-    the value of a `Register` or the result of evaluating a `Charge`.
-    """
-
-    def __init__(self, quantity):
-        self.quantity = quantity
-
-
-class ChargeEvaluation(Evaluation):
-    """An `Evaluation to store the result of evaluating a `Charge`.
-    """
-
-    def __init__(self, quantity=None, rate=None, exception=None):
-        super(ChargeEvaluation, self).__init__(quantity)
-        assert quantity is None or isinstance(quantity, (float, int))
-        assert rate is None or isinstance(rate, (float, int))
-
-        # when there's an error, quantity and rate should both be None
-        if None in (quantity, rate):
-            assert exception is not None
-            quantity = rate = None
-            self.total = None
-        else:
-            assert exception is None
-            # round to nearest cent
-            self.total = round(quantity * rate, 2)
-
-        self.quantity = quantity
-        self.rate = rate
-        self.exception = exception
 
 
 class Address(Base):
@@ -669,164 +635,5 @@ class UtilityAccount(Base):
             return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
             raise NoSuchBillException
-
-
-class Charge(Base):
-    """Represents a specific charge item on a utility bill.
-    """
-    __tablename__ = 'charge'
-
-    # allowed units for "quantity" field of charges
-    CHARGE_UNITS = PHYSICAL_UNITS.keys() + ['dollars']
-    charge_unit_type = Enum(*CHARGE_UNITS, name='charge_unit')
-
-    # allowed values for "type" field of charges
-    SUPPLY, DISTRIBUTION = 'supply', 'distribution'
-    CHARGE_TYPES = [SUPPLY, DISTRIBUTION]
-    charge_type_type = Enum(*CHARGE_TYPES, name='charge_type')
-
-    id = Column(Integer, primary_key=True)
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
-
-    description = Column(String(255), nullable=False)
-    quantity = Column(Float)
-
-    unit = Column(charge_unit_type, nullable=False)
-    rsi_binding = Column(String(255), nullable=False)
-
-    # optional human-readable name of the charge as displayed on the bill
-    name = Column(String(1000))
-
-    quantity_formula = Column(String(1000), nullable=False)
-    rate = Column(Float, nullable=False)
-
-    # amount of the charge calculated from the quantity formula and rate
-    total = Column(Float)
-
-    # description of error in computing the quantity and/or rate formula.
-    # either this or quantity and rate should be null at any given time,
-    # never both or neither.
-    error = Column(String(255))
-
-    # actual charge amount shown on the bill, if known
-    target_total = Column(Float)
-
-    has_charge = Column(Boolean, nullable=False)
-    shared = Column(Boolean, nullable=False)
-    roundrule = Column(String(1000))
-    type = Column(charge_type_type, nullable=False)
-
-    @staticmethod
-    def _is_builtin(var):
-        """Checks whether the string `var` is a builtin variable or method
-        :param var: the string to check being a builtin.
-        """
-        try:
-            return eval(
-                'type(%s)' % var).__name__ == 'builtin_function_or_method'
-        except NameError:
-            return False
-
-    @staticmethod
-    def _get_variable_names(formula, filter_builtins=True):
-        """Yields Python language variable names contained within the
-        specified formula.
-        :param formula: the Python formula parse
-        :param filter_builtins: remove variables which are builtin identifiers
-        """
-        t = ast.parse(formula)
-        var_names = (n.id for n in ast.walk(t) if isinstance(n, ast.Name))
-        if filter_builtins:
-            return [var for var in var_names if not Charge._is_builtin(var)]
-        return list(var_names)
-
-    @staticmethod
-    def get_simple_formula(register_binding):
-        """
-        :param register_binding: one of the register binding values in
-        Register.REGISTER_BINDINGS.
-        :return: a formula for a charge that is directly proportional to the
-        value of the register, such as "REG_TOTAL.quantity". Most charge
-        formulas are like this.
-        """
-        assert register_binding in Register.REGISTER_BINDINGS
-        return register_binding + '.quantity'
-
-    def __init__(self, rsi_binding, name=None, formula='', rate=0,
-                 target_total=None, description='', unit='', has_charge=True,
-                 shared=False, roundrule="", type=DISTRIBUTION):
-        """Construct a new :class:`.Charge`.
-
-        :param utilbill: A :class:`.UtilBill` instance.
-        :param description: A description of the charge.
-        :param unit: The units of the quantity (i.e. Therms/kWh)
-        :param rsi_binding: The rate structure item corresponding to the charge
-        :param quantity_formula: The RSI quantity formula
-        :param has_charge:
-        :param shared:
-        :param roundrule:
-        """
-        assert unit is not None
-        self.description = description
-        self.unit = unit
-        self.rsi_binding = rsi_binding
-        self.name = name
-        self.quantity_formula = formula
-        self.target_total = target_total
-        self.has_charge = has_charge
-        self.shared = shared
-        self.rate = rate
-        self.roundrule = roundrule
-        if type not in self.CHARGE_TYPES:
-            raise ValueError('Invalid charge type "%s"' % type)
-        self.type = type
-
-    @staticmethod
-    def _evaluate_formula(formula, context):
-        """Evaluates the formula in the specified context
-        :param formula: a `quantity_formula`
-        :param context: map of binding name to `Evaluation`
-        """
-        if formula == '':
-            return 0
-        try:
-            return eval(formula, {}, context)
-        except SyntaxError:
-            raise FormulaSyntaxError('Syntax error')
-        except Exception as e:
-            message = 'Error: '
-            message += 'division by zero' if type(e) == ZeroDivisionError \
-                else e.message
-            raise FormulaError(message)
-
-    def __repr__(self):
-        return 'Charge<(%s, "%s" * %s = %s, %s)>' % (
-            self.rsi_binding, self.quantity_formula, self.rate, self.total,
-            self.target_total)
-
-    def formula_variables(self):
-        """Returns the full set of non built-in variable names referenced
-         in `quantity_formula` as parsed by Python"""
-        return set(Charge._get_variable_names(self.quantity_formula))
-
-    def evaluate(self, context, update=False):
-        """Evaluates the quantity and rate formulas and returns a
-        `Evaluation` instance
-        :param context: map of binding name to `Evaluation`
-        :param update: if true, set charge attributes to formula evaluations
-        :returns: a `Evaluation`
-        """
-        try:
-            quantity = self._evaluate_formula(self.quantity_formula, context)
-        except FormulaError as exception:
-            evaluation = ChargeEvaluation(exception=exception)
-        else:
-            evaluation = ChargeEvaluation(quantity, self.rate)
-        if update:
-            self.quantity = evaluation.quantity
-            self.total = evaluation.total
-            self.error = None if evaluation.exception is None else \
-                evaluation.exception.message
-        return evaluation
 
 

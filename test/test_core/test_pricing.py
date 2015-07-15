@@ -17,7 +17,7 @@ init_test_config()
 from core.pricing import FuzzyPricingModel, PricingModel
 from core.model import Charge, RateClass, Utility, Address, Supplier, SupplyGroup
 
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException
 
 class PricingModelTest(unittest.TestCase):

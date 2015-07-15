@@ -7,7 +7,7 @@ from core.extraction.extraction import Main
 
 from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
