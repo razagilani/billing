@@ -8,7 +8,7 @@ from core import init_model
 
 from core.model import Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, Charge
 from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading

@@ -16,7 +16,7 @@ import logging
 from core import init_model
 from core.model.model import Session,UtilityAccount, Charge, RateClass, \
     Address, Supplier, RateClass, UtilityAccount, Charge, Register
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, Charge
 from brokerage.brokerage_model import BrokerageAccount
 
 log = logging.getLogger(__name__)
