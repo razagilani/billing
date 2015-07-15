@@ -10,39 +10,38 @@ http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
 -structure
 '''
 import logging
-from celery.exceptions import ChordError, TaskRevokedError
-from celery.worker.control import revoke
-import re
 import traceback
 import urllib
 import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
-from celery.result import AsyncResult
-from flask.ext.kvsession import KVSessionExtension
-from simplekv.db.sql import SQLAlchemyStore
-from sqlalchemy import desc, func
 
+from celery.exceptions import ChordError, TaskRevokedError
+import re
+from celery.result import AsyncResult
+from dateutil import tz
+from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
+from flask import Flask, url_for, request, flash, session, redirect, \
+    render_template, current_app, Response, jsonify
+from flask_oauth import OAuth, OAuthException
+from celery import chord, group
+from celery.result import GroupResult
+
+from flask.ext.kvsession import KVSessionExtension
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
-from flask.ext.sqlalchemy import SQLAlchemy
-from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app, Response, jsonify
-from flask_oauth import OAuth, OAuthException
-from celery import Celery, chord, group
-from celery.result import GroupResult
-
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
+from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility, Base
+from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
@@ -212,15 +211,15 @@ def test_extractors():
 @app.route('/get-running-tests', methods=['POST'])
 def get_running_tests():
     s = Session()
-    q = s.query(ExtractorResult.task_id, ExtractorResult.extractor_id,
-        ExtractorResult.utility_id).filter(
+    q = s.query(ExtractorResult).filter(
         ExtractorResult.finished == None)
     running_tasks = q.all()
     tasks_dict = [{
         'task_id' : rt.task_id,
+        'parent_id' : rt.parent_id,
         'extractor_id' : rt.extractor_id,
         'utility_id' : rt.utility_id,
-        'bills_to_run' : 0, #TODO store this in ExtractorResult table
+        'bills_to_run' : rt.bills_to_run,
     } for rt in running_tasks]
     return jsonify({'tasks' : tasks_dict})
 
@@ -256,16 +255,18 @@ def run_test():
         q = q.limit(num_bills)
     if q.count() == 0:
         return jsonify({'bills_to_run':0})
+    #run celery chord
     job = group([test_bill.s(extractor_id, b.id) for b in q])
     result = chord(job)(reduce_bill_results.s())
     result_parent = result.parent
     result_parent.save()
     #add task to db
     er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
-                    task_id=result.id, started=datetime.utcnow())
+        task_id=result.id, parent_id=result_parent.id,
+        bills_to_run=q.count(), started=datetime.utcnow())
     s.add(er)
     s.commit()
-    return jsonify({'task_id': result_parent.id, 'bills_to_run': q.count()}), 202
+    return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
 
 @app.route('/test-status/<task_id>', methods=['POST'])
 def test_status(task_id):
@@ -276,33 +277,47 @@ def test_status(task_id):
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
     '''
     init_celery()
-    task = GroupResult.restore(task_id)
-    if isinstance(task, TaskRevokedError):
-        #Task was stopped manually
-        return jsonify({'state':"STOPPED"})
-    elif isinstance(task, ChordError):
-        #The task failed
-        return jsonify({'state':"FAILED"})
-    else:
-        #The task is running w/o any problems
+
+    task = AsyncResult(task_id)
+    if not task.ready():
+        #if task is not finished, get intermediate results:
+        s = Session()
+        q = s.query(ExtractorResult.parent_id).filter(
+            ExtractorResult.task_id == task_id)
+        parent_id = q.one().parent_id
+        parent_task = GroupResult.restore(parent_id)
+
         subtask_results = [subtask.result for subtask in
-            task.results]
+        parent_task.results]
         response = reduce_bill_results(subtask_results)
-        if response['nbills'] == response['total_count']:
-            # the task has finished, but for some reason has not been entered
-            #  into the database, e.g. if the reduce step failed.
-            response['state'] = "NOT IN DB"
+        if response['stopped'] > 0:
+            response['state'] = "STOPPPED"
+        elif response['failed'] > 0:
+            response['state'] = "FAILURE"
         else:
             response['state'] = "IN PROGRESS"
         return jsonify(response)
+    else:
+        try:
+            result = task.get()
+            result['state'] = task.state
+        except (ChordError, TaskRevokedError) as e:
+            result = {'state': "FAILURE"}
+        return jsonify(result)
 
 
 @app.route('/stop-task/<task_id>', methods=['POST'])
 def stop_task(task_id):
-    #TODO stop task
-    res = AsyncResult(task_id)
-    AsyncResult(task_id).revoke(terminate=True)
-    #TODO return some information, maybe whether task stopping succeeded?
+    #get child tasks and revoke them
+    init_celery()
+    s = Session()
+    q = s.query(ExtractorResult.parent_id).filter(
+        ExtractorResult.task_id == task_id)
+    ext_res = q.one()
+    parent_id = ext_res.parent_id
+    GroupResult.restore(parent_id).revoke(terminate=True)
+    ext_res.finished = datetime.utcnow()
+    s.commit()
     return "", 204
 
 def create_user_in_db(access_token):
@@ -521,6 +536,20 @@ def locallogin():
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
+@app.route('/quote-status')
+def quote_status():
+    local_tz = tz.gettz('America/New_York')
+    date_format = '%a %Y-%m-%d %H:%M:%S %Z'
+    format_date = lambda d: None if d is None else d.replace(
+        tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
+
+    return render_template('quote-status.html', data=[{
+        'name': row.name,
+        'date_received': format_date(row.date_received),
+        'today_count': row.today_count,
+        'total_count': row.total_count,
+        'good': row.today_count > 0,
+    } for row in get_quote_status()])
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
