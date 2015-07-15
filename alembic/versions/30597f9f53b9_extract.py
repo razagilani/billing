@@ -28,8 +28,6 @@ def upgrade():
         op.execute('create extension if not exists hstore')
     except ProgrammingError:
         log.info('failed to create extension HSTORE')
-    # TODO: on EC2 failing to excute the statement causes the transaction to be broken, with the error
-    # "sqlalchemy.exc.InternalError: (psycopg2.InternalError) current transaction is aborted, commands ignored until end of transaction block"
 
     op.create_table('extractor',
         sa.Column('extractor_id', sa.Integer(), nullable=False),
@@ -67,7 +65,9 @@ def upgrade():
     op.create_table('extractor_result',
         sa.Column('extractor_result_id', sa.Integer(), primary_key=True),
         sa.Column('task_id', sa.String(), nullable=False),
+        sa.Column('parent_id', sa.String(), nullable=False),
         sa.Column('extractor_id', sa.Integer(), sa.ForeignKey('extractor.extractor_id')),
+        sa.Column('bills_to_run', sa.Integer(), nullable=False),
         sa.Column('started', sa.DateTime(), nullable=False),
         sa.Column('finished', sa.DateTime()),
         sa.Column('utility_id', sa.Integer(), sa.ForeignKey('utility.id')),

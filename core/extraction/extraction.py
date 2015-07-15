@@ -335,12 +335,15 @@ class ExtractorResult(model.Base):
     extractor_result_id = Column(Integer, primary_key=True)
     extractor_id = Column(Integer, ForeignKey('extractor.extractor_id'))
     task_id = Column(String, nullable=False)
+    #The ID of the 'parent' tasks, which contains info about the individual
+    # sub-tasks
+    parent_id = Column(String, nullable=False)
     # date when the test was started, and finished (if it has finished)
     started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
     # used when filtering bills by utility
     utility_id = Column(Integer, ForeignKey('utility.id'))
-    #bills_to_run = Column(Integer, nullable=False)
+    bills_to_run = Column(Integer, nullable=False)
 
     # results to be filled in after the test has finished
     all_count = Column(Integer)
