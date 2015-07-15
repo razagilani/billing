@@ -172,6 +172,29 @@ class Applier(object):
         finally:
             s.flush()
 
+    def apply_values(self, extractor, utilbill, bill_file_handler):
+        """Update attributes of the given bill with data extracted from its
+        file. Return value can be used to compare success rates of different
+        Extractors.
+        :param extractor: Extractor
+        :param utilbill: UtilBill
+        :param bill_file_handler: BillFileHandler to get files for UtilBills.
+        :return number of fields successfully extracted (integer), list of
+        ExtractionErrors
+        """
+        # TODO: use of private method
+        good, errors = extractor._get_values(utilbill, bill_file_handler)
+        success_count = 0
+        for key in self.get_keys():
+            if key in good:
+                value = good[key]
+                try:
+                    self.apply(key, value, utilbill)
+                except ApplicationError as error:
+                    errors.append((key, error))
+                else:
+                    success_count += 1
+        return success_count, errors
 
 
 def convert_wg_charges_std(text):
