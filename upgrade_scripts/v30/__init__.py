@@ -11,8 +11,7 @@ from sqlalchemy.orm import joinedload
 from core import init_model, init_altitude_db
 from core.model import Session, UtilBill
 from reebill.reebill_model import ReeBill
-from upgrade_scripts import alembic_upgrade
-
+from upgrade_scripts import alembic_upgrade, log
 
 
 def upgrade():
@@ -20,12 +19,22 @@ def upgrade():
 
     init_model()
     s = Session()
+
+    log.info('Updating reebill.utilbill_id')
+    # TODO: this sets reebill.utilbill_id to the same value in all rows. not
+    # sure what is wrong with it.
     s.execute('''update reebill as r
-    set utilbill_id = utilbill.id
-    from reebill join utilbill_reebill on r.id = utilbill_reebill.reebill_id
+    set utilbill_id = utilbill_reebill.utilbill_id
+    from reebill
+    join utilbill_reebill on reebill.id = utilbill_reebill.reebill_id
     join utilbill on utilbill_reebill.utilbill_id = utilbill.id''')
 
     # just to check that the above update worked
-    s.query(ReeBill).options(joinedload('utilbill')).all()
+    log.info('Checking reebill.utilbill_id')
+    s.query(ReeBill).join(UtilBill).all()
 
     s.commit()
+
+    # to do later:
+    # - set reebill.utilbill_id to not null
+    # - drop the utilbill_reebill table

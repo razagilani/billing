@@ -54,6 +54,7 @@ class ReeBill(Base):
 
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'),
                                  nullable=False)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
     billing_address_id = Column(Integer, ForeignKey('address.id'),
                                 nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
@@ -67,43 +68,7 @@ class ReeBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='ReeBill.service_address_id==Address.id')
 
-    _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
-        # NOTE: the "utilbill_reebill" table also has ON DELETE CASCADE in
-        # the db
-        cascade='delete')
-
-    # NOTE on why there is no corresponding 'UtilBill.reebills' attribute: each
-    # 'AssociationProxy' has a 'creator', which is a callable that creates a
-    # new instance of the intermediate class whenever an instance of the
-    # "target" class is appended to the list (in this case, a new instance of
-    # 'UtilbillReebill' to hold each UtilBill). the default 'creator' is just
-    # the intermediate class itself, which works when that class' constructor
-    # has only one argument and that argument is the target class instance. in
-    # this case the 'creator' is 'UtilbillReebill' and its __init__ takes one
-    # UtilBill as its argument. if there were a bidirectional relationship
-    # where 'UtilBill' also had a 'reebills' attribute,
-    # UtilbillReebill.__init__ would have to take both a UtilBill and a ReeBill
-    # as arguments, so a 'creator' would have to be explicitly specified. for
-    # ReeBill it would be something like
-    #     creator=lambda u: UtilbillReebill(u, self)
-    # and for UtilBill,
-    #     creator=lambda r: UtilbillReebill(self, r)
-    # but this will not actually work because 'self' is not available in class
-    # scope; there is no instance of UtilBill or ReeBill at the time this
-    # code is executed. it also does not work to move the code into __init__
-    # and assign the 'utilbills' attribute to a particular ReeBill instance
-    # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
-    # switching to "classical" class-definition style?) but i decided it was
-    # sufficient to have only a one-directional relationship from ReeBill to
-    # UtilBill.
-    utilbills = association_proxy('_utilbill_reebills', 'utilbill')
-
-    @property
-    def utilbill(self):
-        # there should only be one, but some early bills had more than one
-        if self.utilbills == []:
-            return None
-        return self.utilbills[0]
+    utilbill = relationship('UtilBill')
 
     # see the following documentation for delete cascade behavior
     charges = relationship('ReeBillCharge', backref='reebill',
@@ -539,28 +504,6 @@ class ReeBill(Base):
         # register, which may not be correct)
         new_reebill.readings = [r.clone() for r in self.readings]
         return new_reebill
-
-class UtilbillReebill(Base):
-    '''Class corresponding to the "utilbill_reebill" table which represents the
-    many-to-many relationship between "utilbill" and "reebill".'''
-    __tablename__ = 'utilbill_reebill'
-
-    reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
-
-    # there is no delete cascade in this 'relationship' because a UtilBill
-    # should not be deleted when a UtilbillReebill is deleted.
-    utilbill = relationship('UtilBill', backref='_utilbill_reebills')
-
-    def __init__(self, utilbill):
-        # UtilbillReebill has only 'utilbill' in its __init__ because the
-        # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
-        # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
-        # UtilbillReebill will cause a stack overflow in SQLAlchemy code
-        # (without this check).
-        assert isinstance(utilbill, UtilBill)
-
-        self.utilbill = utilbill
 
 # intermediate table for many-to-many relationship. should not be used
 # outside this file.
