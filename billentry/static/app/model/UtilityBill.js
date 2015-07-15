@@ -51,6 +51,7 @@ Ext.define('BillEntry.model.UtilityBill', {
         {name: 'entered'},
         {name: 'meter_identifier'},
         {name: 'flagged'},
+        {name: 'flagged_by'},
         {name: 'tou'}
     ]
 });
