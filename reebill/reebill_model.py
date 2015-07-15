@@ -61,10 +61,13 @@ class ReeBill(Base):
 
     reebill_customer = relationship(
         "ReeBillCustomer", backref=backref('reebills', order_by=id))
-    billing_address = relationship('Address', uselist=False,
-        cascade='all',
+    billing_address = relationship(
+        'Address', uselist=False, cascade='all, delete-orphan',
+        single_parent=True,
         primaryjoin='ReeBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False, cascade='all',
+    service_address = relationship(
+        'Address', uselist=False, cascade='all, delete-orphan',
+        single_parent=True,
         primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
@@ -360,7 +363,7 @@ class ReeBill(Base):
         if self.sequence == 1:
             assert predecessor is None
             self.total_adjustment = 0
-        elif self.version == 0 and predecessor.issued:
+        elif self.version == 0 and predecessor.processed:
             self.total_adjustment = reebill_processor.get_total_adjustment(
                 self.get_account())
         else:
