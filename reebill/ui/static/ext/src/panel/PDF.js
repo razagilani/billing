@@ -169,7 +169,7 @@ Ext.define('Ext.panel.PDF',{
             var cacheparam;
             if(!me.cache){
                 if(me._bustCache === undefined || regenBustCache === true){
-                    this._bustCache = Math.random()*100000000000000000;
+                    me._bustCache = Math.random()*100000000000000000;
                 }
                 cacheparam = '?_bc=' + me._bustCache;
             }else{
