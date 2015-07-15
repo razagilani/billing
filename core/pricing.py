@@ -6,8 +6,8 @@ from logging import getLogger
 from sys import maxint
 
 from exc import NoSuchBillException
-from core.model import Charge, Utility, RateClass
-from core.model.utilbill import UtilBill
+from core.model import Utility
+from core.model.utilbill import UtilBill, Charge
 
 
 class PricingModel(object):

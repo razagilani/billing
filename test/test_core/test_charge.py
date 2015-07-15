@@ -3,7 +3,7 @@ from mock import Mock
 
 from core.model import Charge, Address, \
     ChargeEvaluation, UtilityAccount, Utility
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, ChargeEvaluation, Charge
 from exc import FormulaError
 from test import testing_utils
 

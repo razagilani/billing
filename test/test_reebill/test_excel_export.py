@@ -9,7 +9,7 @@ import mock
 from core import init_config, init_model
 from core.model import Register, Charge, Session, Utility, Address,\
     Supplier, RateClass, UtilityAccount
-from core.model.utilbill import UtilBill
+from core.model.utilbill import UtilBill, Charge
 from reebill.reports.excel_export import Exporter
 from reebill.reebill_model import ReeBill, Payment
 from reebill.reebill_dao import ReeBillDAO
