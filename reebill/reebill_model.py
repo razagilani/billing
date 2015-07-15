@@ -15,8 +15,8 @@ from core.model.model import physical_unit_type
 
 from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
     NoSuchBillException
-from core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Charge
+from core.model import Base, Address, Register, Session, Evaluation, Charge
+from core.model.utilbill import UtilBill
 from util.units import unit_registry, convert_to_therms
 
 

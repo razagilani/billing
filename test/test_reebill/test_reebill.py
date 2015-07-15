@@ -6,8 +6,9 @@ from datetime import date, datetime, timedelta
 from mock import Mock
 from core import init_model
 
-from core.model import UtilBill, Address, \
+from core.model import Address, \
     Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
+from core.model.utilbill import UtilBill
 from core.model.model import RegisterTemplate
 from exc import NoSuchBillException, NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading

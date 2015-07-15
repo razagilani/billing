@@ -9,6 +9,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 from core import model
 from core.model import Session, RateClass, Utility, Charge, Address
+import core.model.utilbill
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from exc import ApplicationError
@@ -87,11 +88,11 @@ class Applier(object):
     # values must be applied in a certain order because some are needed in
     # order to apply others (e.g. rate class is needed for energy and charges)
     KEYS = OrderedDict([
-        (START, model.UtilBill.period_start),
-        (END, model.UtilBill.period_end),
-        (NEXT_READ, model.UtilBill.set_next_meter_read_date),
+        (START, core.model.utilbill.UtilBill.period_start),
+        (END, core.model.utilbill.UtilBill.period_end),
+        (NEXT_READ, core.model.utilbill.UtilBill.set_next_meter_read_date),
         (RATE_CLASS, set_rate_class.__func__),
-        (ENERGY, model.UtilBill.set_total_energy),
+        (ENERGY, core.model.utilbill.UtilBill.set_total_energy),
         (CHARGES, set_charges.__func__),
     ])
     # TODO:
