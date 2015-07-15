@@ -72,8 +72,6 @@ def create_extractors(s):
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
     wg_end_regex = r'%s-(%s)\s*\(\d+ Days\)' % (date_format, date_format)
-    wg_energy_regex = r'(%s)\s+(?:Payments|Charges|Distribution Service)' % \
-                      num_format
     # looks for a number with one decimal place, and then ignores integers
     # which represent other CCF amounts.
     wg_energy_regex = r'([\d,]+\.\d)\n+(?:\d+\n+)*(' \
