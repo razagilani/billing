@@ -1,5 +1,6 @@
 from boto.s3.connection import S3Connection
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
+
 
 def check_s3_files_in_db(session):
     s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),

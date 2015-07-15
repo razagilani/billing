@@ -24,7 +24,9 @@ from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader

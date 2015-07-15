@@ -5,7 +5,7 @@ from sqlalchemy import desc
 import tablib
 
 from reebill import reebill_model
-from reebill.reebill_model import UtilBill
+from core.model.utilbill import UtilBill
 from util import dateutils
 from util.monthmath import approximate_month
 from exc import *

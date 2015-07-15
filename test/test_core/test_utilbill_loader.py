@@ -12,8 +12,9 @@ init_test_config()
 
 from test import create_tables, clear_db
 from core import init_model
-from core.model import UtilBill, Session, \
+from core.model import Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount, SupplyGroup
+from core.model.utilbill import UtilBill
 from core.utilbill_loader import UtilBillLoader
 from exc import NoSuchBillException
 
