@@ -143,7 +143,6 @@ def test_bill(self, extractor_id, bill_id):
     else:
         response['processed'] = 0
 
-
     # print out debug information in celery log
     debug = False
     if len(good) != len(extractor.fields) and debug:
