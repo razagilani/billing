@@ -164,8 +164,6 @@ class BEUtilBill(UtilBill):
     billentry_user_id = Column(Integer, ForeignKey('billentry_user.id'))
     billentry_user = relationship(BillEntryUser, foreign_keys='BEUtilBill.billentry_user_id')
     flagged = Column(Boolean)
-    flagged_by_id = Column(Integer, ForeignKey('billentry_user.id'))
-    flagged_by = relationship(BillEntryUser, lazy='subquery', foreign_keys='BEUtilBill.flagged_by_id')
 
     # TODO remove--no longer necessary
     @classmethod
@@ -245,7 +243,6 @@ class BEUtilBill(UtilBill):
         """ 'Flag' a utility bill, i.e. mark a bill as difficult to process
         """
         assert not self.is_flagged()
-        self.flagged_by = user
         self.flagged = True
 
     def un_flag(self):
@@ -254,13 +251,8 @@ class BEUtilBill(UtilBill):
         """
         assert self.is_flagged()
         self.flagged = False
-        self.flagged_by = None
 
     def is_flagged(self):
         """Return True if the bill has been flagged. False otherwise"""
         return self.flagged is True
-
-    def get_flagged_by_user(self):
-        if self.flagged_by:
-            return self.flagged_by.email
 
