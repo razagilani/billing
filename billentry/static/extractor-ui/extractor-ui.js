@@ -96,7 +96,7 @@ function displayData(task, isDetailed){
 		var any_count = task_data.any_count;
 
 		if(show_db_matches){
-			var total_count = task_data.processed_count;
+			var total_count = task_data.verified_count;
 		} else {
 			var total_count = task_data.total_count;
 		}

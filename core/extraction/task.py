@@ -129,9 +129,13 @@ def test_bill(self, extractor_id, bill_id):
 
     # compare results to those in the db
     from billentry.billentry_model import BEUtilBill
+    response['verified'] = 0
     if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
             bill.processed:
-        response['processed'] = 1
+
+        if good:
+            response['verified'] = 1
+
         for applier_key, field_value in good:
             db_val = Applier.GETTERS[applier_key](bill)
 
@@ -144,8 +148,6 @@ def test_bill(self, extractor_id, bill_id):
                 print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
                       "extracted value: %s, database value: %s" % (bill_id,
                 applier_key, field_value, db_val)
-    else:
-        response['processed'] = 0
 
     # print out debug information in celery log
     debug = False
@@ -172,24 +174,27 @@ def reduce_bill_results(self, results):
     :return: response {
         'all_count': number of bills with all fields,
         'any_count': number of bills with at least one field,
-        'total_count': total number of bills processed,
-        'fields': success counts for each field, in a dictionary {name1:{'count', 'db_conflict'}, name2:{...}, ...}
-                    'count' stores the number of bills that retrieved the specific field
-                    'db_conflict' stores the number of times the retrieved field did *not* match what was in the database
-        'dates' : dictionary of year-month, each mapping to a copy of 'fields' for all bills in the given time year & month,
+        'total_count': total number of bills extracted,
+        'fields': success counts for each field, in a dictionary of the form
+            { applier_key1: count, ...}
+        'fields_fraction': accuracy for each field, in a dictionary of the
+            form { applier_key1: count, ...}
+        'dates' : dictionary of year-month, each mapping to a copy of 'fields'
+            for all bills in the given year & month,
         'failed': number of tasks failed,
-        'nbills': number of total bills to be processed (including ones not yet finished)
+        'nbills': number of total bills to be extracted (including ones not yet
+        finished)
     }
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
-    processed_count = 0
+    verified_count = 0
     failed, stopped = 0, 0
-    fields = None
+    fields = {}
     # used to compare accuracy of extractor vs what's in the database.
-    fields_correct = None
-    fields_incorrect = None
-    fields_fraction = None
+    fields_correct = {}
+    fields_incorrect = {}
+    fields_fraction = {}
     dates = {}
     results = filter(None, results)
     for r in results:
@@ -204,7 +209,7 @@ def reduce_bill_results(self, results):
             continue
 
         # initialize fields hashes with field names
-        if fields is None:
+        if not fields.keys():
             fields = {k:0 for k in r['fields'].keys()}
             fields_correct = {k:0 for k in r['fields'].keys()}
             fields_incorrect = {k:0 for k in r['fields'].keys()}
@@ -224,7 +229,7 @@ def reduce_bill_results(self, results):
                 'fields': {key: 0 for key in fields.keys()},
             }
 
-        processed_count += r['processed']
+        verified_count += r['verified']
 
         # count number of successfully read fields
         success_fields = 0
@@ -251,6 +256,7 @@ def reduce_bill_results(self, results):
 
     #calculate percent accuracy for each field, relative to the values
     # already in the database
+
     for k in fields.keys():
         sum = fields_correct[k] + fields_incorrect[k]
         if sum > 0:
@@ -261,7 +267,7 @@ def reduce_bill_results(self, results):
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
-        'processed_count': processed_count,
+        'verified_count': verified_count,
         'failed': failed,
         'stopped': stopped,
         'fields': fields,
