@@ -18,7 +18,8 @@ env.roledefs.update({
     'billing-stage': ['billing-stage'],
     'billing-prod-01': ['billing-prod-01'],
     'billing-prod': ['billing-prod'],
-    'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev', 'billingworker3-dev'],
+    'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev'],
+    'billingworker-stage': ['billingworker1-stage', 'billingworker2-stage'],
     'billing-dev': ['billing-dev'],
 })
 
@@ -85,6 +86,36 @@ common.CommonFabTask.update_deployment_configs({
         ],
         "services":[
             'billing-dev-worker'
+        ],
+    },
+    "extraction-worker-stage": {
+        "deploy_version":"3", 
+        "app_name":"extraction-worker-stage", 
+        # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
+        "os_user":"reebill-stage", 
+        "os_group":"reebill-stage",
+        "default_deployment_dir":"/var/local/reebill-stage/billing",
+        # set up mappings between names and remote files so that a local file can be 
+        # associated and deployed to the value of the name below
+        "deployment_dirs": {
+            # package name:destination path
+            # package names are specified in tasks wrapper decorators
+            "app": "/var/local/reebill-stage/billing",
+            "www": "/var/local/reebill-stage/billing/www",
+            "skyliner": "/var/local/reebill-stage/billing/skyliner",
+            "doc": "/home/reebill-stage/doc",
+            "mydoc": "/tmp",
+        },
+        "config_files": [
+            ("conf/configs/settings-stage-template.cfg", "/var/local/reebill-stage/billing/settings.cfg"),
+            ("conf/configs/alembic-stage.ini", "/var/local/reebill-stage/billing/alembic.ini"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-stage/billing/skyliner/config.yaml"),
+            ("mq/conf/config-template-stage.yml", "/var/local/reebill-stage/billing/mq/config.yml"),
+        ],
+        "makefiles":[
+        ],
+        "services":[
+            'billing-stage-worker'
         ],
     },
     "stage": {
