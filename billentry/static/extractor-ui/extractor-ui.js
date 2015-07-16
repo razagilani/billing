@@ -234,7 +234,7 @@ function toggleDBMatches(){
 	// <td id="total_count">Total so far</td>
 	total_header_cell = $("#results #total_count");
 	if (show_db_matches) {
-		total_header_cell.text("Bills entered in DB");
+		total_header_cell.text("Bills verified");
 	} else {
 		total_header_cell.text("Total so far");
 	}
