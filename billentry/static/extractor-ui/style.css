@@ -4,7 +4,7 @@ thead { font-weight:bold;}
 
 #results tbody tr.selected { background-color:#CCC; }
 #results tbody tr:hover { border: 1px solid #000; }
-tr.failed { background-color:#FAA; }
+tr.failed { background-color:#FCC; }
 tr.zero { color:#999999; }
 td.field { font-style: italic; }
 td { padding-right:20px; }
@@ -15,6 +15,6 @@ td { padding-right:20px; }
 	padding:5px; 
 	background:#FFFFFF;
 
-	font-size:0.8em;
+	font-size:0.9em;
 	font-family:monospace;
 }
