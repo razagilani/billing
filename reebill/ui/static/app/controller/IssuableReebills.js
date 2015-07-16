@@ -102,13 +102,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },
 
     makeCheckCorrectionsRequest: function(bills, success_callback, failure_callback){
-        console.log(bills)
         Ext.Ajax.request({
             url: window.location.origin + '/reebill/issuable/check_corrections',
             params: {reebills: bills},
             method: 'POST',
             success: function(response){
-                //waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections) {
                     var reebill_corrections = '';
@@ -129,6 +127,8 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         function (answer) {
                             if (answer == 'yes') {
                                 success_callback();
+                            }else{
+                                Ext.getBody().unmask();
                             }
                     });
                 } else {
@@ -145,7 +145,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
 
         var failureFunc = function(response){
-            Ext.getBody().unmask()
+            Ext.getBody().unmask();
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,
@@ -243,7 +243,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         });
 
         var failureFunc = function(response){
-            Ext.getBody().unmask()
+            Ext.getBody().unmask();
             Ext.MessageBox.show({
                 title: "Server error - " + response.status + " - " + response.statusText,
                 msg:  response.responseText,

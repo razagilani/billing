@@ -16,6 +16,7 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
     viewConfig: {
         trackOver: false,
         stripeRows: true,
+        enableTextSelection: true,
     },
 
     forceFit: true,
@@ -38,7 +39,8 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
         header: 'Shared',
         dataIndex: 'shared',
         sortable: true,
-        width: 65
+        width: 65,
+        disabled:true
     },{
         header: 'RSI Binding',
         sortable: true,
@@ -47,7 +49,6 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             xtype: 'combo',
             store: 'RSIBindings',
             allowBlank: false,
-            selectOnFocus: true,
             minChars: 1,
             typeAhead: true,
             triggerAction: 'all',
@@ -56,7 +57,8 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             forceSelection: true,
             selectOnFocus: true
         },
-        width: 180
+        width: 180,
+        disabled:true
     },{
         header: 'Description',
         sortable: true,
@@ -65,20 +67,23 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 150
+        width: 150,
+        disabled:true
     },{
-        xtype: 'templatecolumn',
+        header: 'Quantity Formula',
+        itemId: 'quantityFormula',
+        sortable: true,
+        dataIndex: 'quantity_formula',
+        flex: 1,
+        width: 250,
+        disabled:true
+    },{
         header: 'Quantity',
         itemId: 'quantity',
         sortable: true,
-        dataIndex: 'quantity_formula',
-        editor: {
-            xtype: 'textfield',
-            allowBlank: true
-        },
-        flex: 1,
-        width: 250,
-        tpl: '{[values.error ? values.error : values.quantity]}'
+        dataIndex: 'quantity',
+        width: 100,
+        disabled:true
     },{
         header: 'Units',
         sortable: true,
@@ -96,7 +101,8 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             forceSelection: true,
             selectOnFocus: true
         },
-        width: 70
+        width: 70,
+        disabled:true
     },{
         header: 'Rate',
         sortable: true,
@@ -105,15 +111,16 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             xtype: 'textfield',
             allowBlank: false
         },
-        flex: 1,
-        width: 250,
-        allowBlank: false
+        width: 100,
+        allowBlank: false,
+        disabled:true
     },{
         xtype: 'checkcolumn',
         header: 'Has Charge',
         dataIndex: 'has_charge',
         sortable: true,
-        width: 100
+        width: 100,
+        disabled:true
     },{
         header: 'Type',
         dataIndex: 'type',
@@ -130,7 +137,8 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             queryMode: 'local',
             forceSelection: true
         },
-        width: 90
+        width: 90,
+        disabled:true
     },{
         header: 'Total',
         width: 110,
@@ -146,6 +154,7 @@ Ext.define('ReeBill.view.charges.PreviousCharges', {
             return Ext.util.Format.usMoney(sum);
         },
         align: 'right',
-        renderer: Ext.util.Format.usMoney
+        renderer: Ext.util.Format.usMoney,
+        disabled:true
     }]
 });

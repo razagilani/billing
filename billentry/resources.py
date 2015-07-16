@@ -381,6 +381,11 @@ class UploadUtilityBillResource(BaseResource):
         # send a {'success', 'true'} parameter
         return {'success': 'true'}
 
+    @admin_permission.require()
+    def delete(self):
+        if session.get('hash-digest'):
+            session.pop('hash-digest')
+
 
 class ChargeListResource(BaseResource):
     def get(self):
