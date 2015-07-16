@@ -201,6 +201,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
@@ -214,6 +216,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Other Rate Class',
             'fb_utility_name': 'Other Utility',
             'casualname': 'Example 4',
@@ -227,6 +231,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 3',
@@ -245,6 +251,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
