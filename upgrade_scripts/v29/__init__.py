@@ -7,10 +7,11 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
+from sqlalchemy import select
 from brokerage.brokerage_model import MatrixQuote, CompanyPGSupplier
 from core.extraction import Field, TextExtractor
 from core.extraction.applier import Applier
-from core.model import Supplier, Utility, AltitudeSession
+from core.model import Supplier, Utility, AltitudeSession, AltitudeBase
 
 from core import init_model, init_altitude_db
 from core.model import Session
@@ -128,7 +129,12 @@ def upgrade():
     for supplier in a.query(CompanyPGSupplier).all():
         s.merge(supplier)
     if str(a.bind.url).startswith('mssql'):
+        if a.execute("SELECT count(*) FROM INFORMATION_SCHEMA.VIEWS "
+                     "WHERE TABLE_NAME = 'Rate_Class_View'").scalar() > 0:
+            a.execute('DROP VIEW Rate_Class_View')
         a.execute('create view Rate_Class_View as select * from Rate_Class')
+        AltitudeBase.metadata.tables['Rate_Matrix'].drop(checkfirst=True)
+        AltitudeBase.metadata.tables['Rate_Matrix'].create()
 
     s.commit()
     a.commit()
