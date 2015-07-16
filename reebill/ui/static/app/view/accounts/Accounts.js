@@ -107,7 +107,18 @@ Ext.define('ReeBill.view.accounts.Accounts', {
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',
-            forceSelection: true
+            forceSelection: true,
+            listeners:{
+                scope: this,
+                'select': function(combo, record, index) {
+                    var g = combo.findParentByType('grid');
+                    g.getStore().clearFilter();
+                    if (combo.getValue() == 'reebillcustomers')
+                        g.getStore().filter('reebill_customer', true);
+                    else if(combo.getValue() == 'brokeragecustomers')
+                        g.getStore().filter('brokerage_account', true);
+                }
+            }
             }, '->']
     }]
 });
