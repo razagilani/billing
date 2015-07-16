@@ -1,3 +1,4 @@
+import re
 from boto.s3.connection import S3Connection
 from celery.exceptions import TaskRevokedError
 from celery.result import AsyncResult
@@ -98,14 +99,14 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    fields = [field.applier_key for field in extractor.fields]
+    applier_keys = [field.applier_key for field in extractor.fields]
     response = {
         'extractor_id': extractor_id,
         'bill_id': bill_id,
-        'num_fields': len(fields),
-        'fields': {f:None for f in fields},
-        'fields_correct': {f: 0 for f in fields},
-        'fields_incorrect': {f: 0 for f in fields},
+        'num_fields': len(applier_keys),
+        'fields': {f:None for f in applier_keys},
+        'fields_correct': {f: 0 for f in applier_keys},
+        'fields_incorrect': {f: 0 for f in applier_keys},
     }
 
     # Store field values for each successful result
@@ -132,16 +133,15 @@ def test_bill(self, extractor_id, bill_id):
     response['verified'] = 0
     if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
             bill.processed:
-
         if good:
             response['verified'] = 1
-
         for applier_key, field_value in good:
             db_val = Applier.GETTERS[applier_key](bill)
+            if not db_val:
+                continue
 
-            # account for extra whitespace in database, but be more stringent
-            #  with extracted fields, so we can remove whitespace if necessary.
-            if str(db_val).strip() == str(field_value):
+            is_match = verify_field(applier_key, field_value, db_val)
+            if is_match:
                 response['fields_correct'][applier_key] = 1
             else:
                 response['fields_incorrect'][applier_key] = 1
@@ -157,8 +157,8 @@ def test_bill(self, extractor_id, bill_id):
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
         print "ERRORS: " + str(len(error))
-        print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler,
-            PDFUtil())))
+        print "TEXT LENGTH: ", len(bill.get_text(bill_file_handler,
+            PDFUtil()))
         print "*******\n"
     return response
 
@@ -175,6 +175,7 @@ def reduce_bill_results(self, results):
         'all_count': number of bills with all fields,
         'any_count': number of bills with at least one field,
         'total_count': total number of bills extracted,
+        'verified_count': number of bills verified against DB.
         'fields': success counts for each field, in a dictionary of the form
             { applier_key1: count, ...}
         'fields_fraction': accuracy for each field, in a dictionary of the
@@ -198,7 +199,7 @@ def reduce_bill_results(self, results):
     dates = {}
     results = filter(None, results)
     for r in results:
-        # if task failed, then r is in fact an Error object
+        # if task failed, then r is in fact an Exception object
         if isinstance(r, TaskRevokedError):
             # if task was manually stopped
             stopped += 1
@@ -289,3 +290,23 @@ def reduce_bill_results(self, results):
     s.commit()
 
     return response
+
+def verify_field(applier_key, extracted_value, db_value):
+    """
+    Compares an extracted value of a field to the corresponding value in the
+    database
+    :param applier_key: The applier key of the field
+    :param extracted_value: The value extracted from the PDF
+    :param db_value: The value already in the database
+    :return: Whether these values match.
+    """
+    if applier_key == Applier.RATE_CLASS:
+        subregex = r"[\s\-_]+"
+        exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
+        exc_string = re.sub(r"pepco_", "", exc_string)
+        db_string = re.sub(subregex, "_", db_value.name.lower().strip())
+    else:
+        # don't strip extracted value, so we can catch extra whitespace
+        exc_string = str(extracted_value)
+        db_string = str(db_value).strip()
+    return exc_string == db_string
