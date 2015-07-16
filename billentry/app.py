@@ -237,6 +237,8 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
+    else:
+        utility_id = None
     if filter_date and date_filter_type:
         if date_filter_type == 'before':
             q = q.filter(UtilBill.period_end <= filter_date)

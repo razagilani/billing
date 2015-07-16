@@ -252,7 +252,7 @@ function failedRequest(action){
 	    if (xhr.status == 404) {
 	        error_msg = '404: page not found';
 	    } else if (xhr.status == 500) {
-	        error_msg = xhr.responseText;
+	        error_msg = "500: server error";
 	    } else if (err == 'parsererror') {
 	        error_msg = 'parse error';
 	    } else if (err == 'timeout') {
