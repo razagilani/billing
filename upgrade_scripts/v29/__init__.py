@@ -61,7 +61,8 @@ def create_extractors(s):
     pep_old_energy_regex = r'(?:Total KWH Billed:|KWH\s*Used)\s+(\d+)'
     pep_old_next_meter_read_regex = r'.Your next scheduled meter reading is (%s)' % date_format
     pep_old_charges_regex = r'(distribution services.*?current charges this period)'
-    pep_old_rate_class_regex = r'Multi-\s*plier\s+[a-z0-9]+\s+([^0-9].*)$|^([^\n\d][^\n]+)\n\nThe present reading'
+    pep_old_rate_class_regex = r'Multi-\s*plier\s+[a-z0-9]+\s+([^0-9].*?)$|' \
+                               r'^([^\n\d][^\n]+)\n\nThe present reading'
     pepco_old = TextExtractor(name='Pepco bills from before 2015 with blue logo id 2631')
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_start_regex, type=Field.DATE, applier_key=Applier.START))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_end_regex, type=Field.DATE, applier_key=Applier.END))
