@@ -69,6 +69,7 @@ def check_authentication():
     if not config.get('reebill', 'authenticate'):
         if 'user' not in cherrypy.session:
             cherrypy.session['user'] = UserDAO.default_user
+            return True
 
     user_dao = UserDAO()
     if 'reebill_session' in cherrypy.request.cookie:
