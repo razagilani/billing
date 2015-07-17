@@ -1384,7 +1384,6 @@ class UtilBill(Base):
         :param bill_file_handler: used to get the PDF file
         """
         from core.extraction.layout import layout_elements_from_pdfminer
-        pages = []
         infile = StringIO()
         if len(self._layout):
             return self._layout
