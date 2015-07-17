@@ -30,6 +30,7 @@ pika==0.9.14
 psycopg2==2.6
 py-bcrypt==0.4
 pyPdf==1.13            # requires --allow-external with pip 1.4.1
+pypdfocr==0.8.2
 pycrypto==2.6.1
 pymongo==2.7.2
 # TODO: replace with link to actual pymssql or version number
