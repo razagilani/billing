@@ -1,3 +1,4 @@
+import re
 from boto.s3.connection import S3Connection
 from celery.exceptions import TaskRevokedError
 from celery.result import AsyncResult
@@ -98,14 +99,14 @@ def test_bill(self, extractor_id, bill_id):
     s = Session()
     extractor = s.query(Extractor).filter_by(extractor_id=extractor_id).one()
     bill = s.query(UtilBill).filter_by(id=bill_id).one()
-    fields = [field.applier_key for field in extractor.fields]
+    applier_keys = [field.applier_key for field in extractor.fields]
     response = {
         'extractor_id': extractor_id,
         'bill_id': bill_id,
-        'num_fields': len(fields),
-        'fields': {f:None for f in fields},
-        'fields_correct': {f: 0 for f in fields},
-        'fields_incorrect': {f: 0 for f in fields},
+        'num_fields': len(applier_keys),
+        'fields': {f:None for f in applier_keys},
+        'fields_correct': {f: 0 for f in applier_keys},
+        'fields_incorrect': {f: 0 for f in applier_keys},
     }
 
     # Store field values for each successful result
@@ -129,23 +130,24 @@ def test_bill(self, extractor_id, bill_id):
 
     # compare results to those in the db
     from billentry.billentry_model import BEUtilBill
+    response['verified'] = 0
     if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
             bill.processed:
-        response['processed'] = 1
+        if good:
+            response['verified'] = 1
         for applier_key, field_value in good:
             db_val = Applier.GETTERS[applier_key](bill)
+            if not db_val:
+                continue
 
-            # account for extra whitespace in database, but be more stringent
-            #  with extracted fields, so we can remove whitespace if necessary.
-            if str(db_val).strip() == str(field_value):
+            is_match = verify_field(applier_key, field_value, db_val)
+            if is_match:
                 response['fields_correct'][applier_key] = 1
             else:
                 response['fields_incorrect'][applier_key] = 1
                 print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
                       "extracted value: %s, database value: %s" % (bill_id,
                 applier_key, field_value, db_val)
-    else:
-        response['processed'] = 0
 
     # print out debug information in celery log
     debug = False
@@ -155,8 +157,8 @@ def test_bill(self, extractor_id, bill_id):
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
         print "ERRORS: " + str(len(error))
-        print "TEXT LENGTH: " + str(len(bill.get_text(bill_file_handler,
-            PDFUtil())))
+        print "TEXT LENGTH: ", len(bill.get_text(bill_file_handler,
+            PDFUtil()))
         print "*******\n"
     return response
 
@@ -172,28 +174,32 @@ def reduce_bill_results(self, results):
     :return: response {
         'all_count': number of bills with all fields,
         'any_count': number of bills with at least one field,
-        'total_count': total number of bills processed,
-        'fields': success counts for each field, in a dictionary {name1:{'count', 'db_conflict'}, name2:{...}, ...}
-                    'count' stores the number of bills that retrieved the specific field
-                    'db_conflict' stores the number of times the retrieved field did *not* match what was in the database
-        'dates' : dictionary of year-month, each mapping to a copy of 'fields' for all bills in the given time year & month,
+        'total_count': total number of bills extracted,
+        'verified_count': number of bills verified against DB.
+        'fields': success counts for each field, in a dictionary of the form
+            { applier_key1: count, ...}
+        'fields_fraction': accuracy for each field, in a dictionary of the
+            form { applier_key1: count, ...}
+        'dates' : dictionary of year-month, each mapping to a copy of 'fields'
+            for all bills in the given year & month,
         'failed': number of tasks failed,
-        'nbills': number of total bills to be processed (including ones not yet finished)
+        'nbills': number of total bills to be extracted (including ones not yet
+        finished)
     }
     '''
     nbills = len(results)
     all_count, any_count, total_count = 0, 0, 0
-    processed_count = 0
+    verified_count = 0
     failed, stopped = 0, 0
-    fields = None
+    fields = {}
     # used to compare accuracy of extractor vs what's in the database.
-    fields_correct = None
-    fields_incorrect = None
-    fields_fraction = None
+    fields_correct = {}
+    fields_incorrect = {}
+    fields_fraction = {}
     dates = {}
     results = filter(None, results)
     for r in results:
-        # if task failed, then r is in fact an Error object
+        # if task failed, then r is in fact an Exception object
         if isinstance(r, TaskRevokedError):
             # if task was manually stopped
             stopped += 1
@@ -204,7 +210,7 @@ def reduce_bill_results(self, results):
             continue
 
         # initialize fields hashes with field names
-        if fields is None:
+        if not fields.keys():
             fields = {k:0 for k in r['fields'].keys()}
             fields_correct = {k:0 for k in r['fields'].keys()}
             fields_incorrect = {k:0 for k in r['fields'].keys()}
@@ -224,7 +230,7 @@ def reduce_bill_results(self, results):
                 'fields': {key: 0 for key in fields.keys()},
             }
 
-        processed_count += r['processed']
+        verified_count += r['verified']
 
         # count number of successfully read fields
         success_fields = 0
@@ -251,6 +257,7 @@ def reduce_bill_results(self, results):
 
     #calculate percent accuracy for each field, relative to the values
     # already in the database
+
     for k in fields.keys():
         sum = fields_correct[k] + fields_incorrect[k]
         if sum > 0:
@@ -261,7 +268,7 @@ def reduce_bill_results(self, results):
         'all_count': all_count,
         'any_count': any_count,
         'total_count': total_count,
-        'processed_count': processed_count,
+        'verified_count': verified_count,
         'failed': failed,
         'stopped': stopped,
         'fields': fields,
@@ -283,3 +290,23 @@ def reduce_bill_results(self, results):
     s.commit()
 
     return response
+
+def verify_field(applier_key, extracted_value, db_value):
+    """
+    Compares an extracted value of a field to the corresponding value in the
+    database
+    :param applier_key: The applier key of the field
+    :param extracted_value: The value extracted from the PDF
+    :param db_value: The value already in the database
+    :return: Whether these values match.
+    """
+    if applier_key == Applier.RATE_CLASS:
+        subregex = r"[\s\-_]+"
+        exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
+        exc_string = re.sub(r"pepco_", "", exc_string)
+        db_string = re.sub(subregex, "_", db_value.name.lower().strip())
+    else:
+        # don't strip extracted value, so we can catch extra whitespace
+        exc_string = str(extracted_value)
+        db_string = str(db_value).strip()
+    return exc_string == db_string
