@@ -408,7 +408,7 @@ class ExtractorResult(model.Base):
         self.verified_count = metadata['verified_count']
 
         # update overall count and count by month for each field
-        for field_name in metadata.fields.keys():
+        for field_name in metadata['fields'].keys():
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)
