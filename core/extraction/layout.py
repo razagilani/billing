@@ -58,9 +58,20 @@ def layout_elements_from_pdfminer(pages, utilbill_id):
             s.add(layout_elt)
             layout_elements.append(layout_elt)
 
-    s.commit()
     return layout_elements
 
+def group_layout_elements_by_page(layout_elements):
+    #group layout elements by page number
+    pages_layout = {}
+    for layout_obj in layout_elements:
+        page_num = layout_obj.page_num
+        if not page_num in pages_layout:
+            pages_layout[page_num] = [layout_obj]
+        else:
+            pages_layout[page_num] += [layout_obj]
+    pages = [pages_layout[pnum] for pnum in sorted(pages_layout.keys())]
+
+    return pages
 
 # represents a two-dimensional, axis-aligned bounding box.
 class BoundingBox:
@@ -84,7 +95,7 @@ class Corners:
 
 def get_corner(obj, c):
     """
-    Get a specific corner of an object as an (x, y) tuple.
+    Get a specific corner of a layout element as an (x, y) tuple.
     :param: c an integer specifying the corner, as in :Corners
     """
     x = obj.x1 if (c & 1) else obj.x0

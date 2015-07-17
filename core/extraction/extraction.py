@@ -18,7 +18,8 @@ from core.extraction import layout
 from core.extraction.applier import Applier, convert_wg_charges_std, \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges
-from core.extraction.layout import tabulate_objects, BoundingBox
+from core.extraction.layout import tabulate_objects, BoundingBox, \
+    group_layout_elements_by_page
 from core.model import Address, Session
 from core.model.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
@@ -394,7 +395,7 @@ class LayoutExtractor(Extractor):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
 
         def _extract(self, layoutdata):
-            pages = layoutdata[0]
+            (pages, dx, dy) = layoutdata
             if self.page_num > len(pages):
                 raise ExtractionError('Not enough pages. Could not get page '
                                       '%d out of %d.' % (self.page_num,
@@ -403,10 +404,6 @@ class LayoutExtractor(Extractor):
                 endpage = min(self.maxpage, len(pages))
             else:
                 endpage = self.page_num
-
-            #used to shift coordinates for misaligned bills
-            dx = layoutdata[1]
-            dy = layoutdata[2]
 
             text=""
             for page in pages[self.page_num-1:endpage]:
@@ -491,10 +488,7 @@ class LayoutExtractor(Extractor):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
 
         def _extract(self, layoutdata):
-            pages = layoutdata[0]
-            # used to shift coordinates for misaligned bills
-            dx = layoutdata[1]
-            dy = layoutdata[2]
+            pages, dx, dy = layoutdata
             if self.page_num > len(pages):
                 raise ExtractionError('Not enough pages. Could not get page '
                                       '%d out of %d.' % (self.page_num,
@@ -570,17 +564,8 @@ class LayoutExtractor(Extractor):
         Prepares input for layout extractor by getting PDF layout data
         and checking if bill's PDF is misaligned.
         """
-        bill_layout = utilbill.get_layout(bill_file_handler, PDFUtil())
-
-        #group layout elements by page number
-        pages_layout = {}
-        for layout_obj in bill_layout:
-            page_num = layout_obj.page_num
-            if not page_num in pages_layout:
-                pages_layout[page_num] = [layout_obj]
-            else:
-                pages_layout[page_num] += [layout_obj]
-        pages = [pages_layout[pnum] for pnum in sorted(pages_layout.keys())]
+        layout_elements = utilbill.get_layout(bill_file_handler, PDFUtil())
+        pages = group_layout_elements_by_page(layout_elements)
 
         #sort elements in each page by position
         for p in pages:
