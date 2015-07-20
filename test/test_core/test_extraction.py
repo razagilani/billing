@@ -202,13 +202,16 @@ class BoundingBoxFieldTest(TestCase):
             x1=100, y1=200, type=LayoutElement.TEXTLINE)
         self.le5 = LayoutElement(text='', page_num=1, x0=50, y0=50,
             x1=70, y1=70, type=LayoutElement.TEXTLINE)
-        self.layout_elts = [self.le1, self.le2, self.le3, self.le4, self.le5]
-        # note that input is mis-aligned
-        self.input = ([[self.le3, self.le1], [self.le4, self.le5], [self.le2]],
-                        5, 5)
+        self.le6 = LayoutElement(text='woo', page_num=2, x0=50, y0=50,
+            x1=70, y1=70, type=LayoutElement.TEXTLINE)
+        self.layout_elts = [self.le1, self.le2, self.le3, self.le4, self.le5,
+            self.le6]
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elts
+        self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
+        #add a mis-alignment for testing
+        self.input = (self.input[0], 5, 5)
 
     def test_not_enough_pages(self):
         bb_field = LayoutExtractor.BoundingBoxField(page_num=44)
@@ -253,14 +256,21 @@ class BoundingBoxFieldTest(TestCase):
         self.assertEqual('sample', bb_multipage_field.get_value(self.input))
 
     def test_offset_regex(self):
-        pass
+        """ Tests using a piece of text as a reference for the actual field.
+        In this case, bounding box coordinates are relative to the text that
+        matches offset_regex.
+        """
+        bb_offset = LayoutExtractor.BoundingBoxField(page_num=1, maxpage=3,
+            offset_regex=r'text', corner=0, bbminx=50, bbminy=50,
+            bbmaxx=60, bbmaxy=60)
+        self.assertEqual('woo', bb_offset.get_value(self.input))
 
-    def match_empty_text(self):
+    def test_match_empty_text(self):
         """ Test match for an empty string, e.g. in the case of an empty
         layout element or a regex returning an empty string
         """
-        bb_field_fail = LayoutExtractor.BoundingBoxField(bbminx=50,
-            bbminy=50, bbmaxx=60, bbmaxy=60, page_num=2, corner=0)
+        bb_field_fail = LayoutExtractor.BoundingBoxField(bbminx=50-5,
+            bbminy=50-5, bbmaxx=60-5, bbmaxy=60-5, page_num=2, corner=0)
         with self.assertRaises(ExtractionError):
             bb_field_fail.get_value(self.input)
 
