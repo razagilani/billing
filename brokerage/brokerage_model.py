@@ -2,11 +2,13 @@
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float
+    Float, Table, func, desc
 from sqlalchemy.orm import relationship
 
-from core.model import Base, UtilityAccount
+from core.model import UtilityAccount, Base, AltitudeSession
+from core.model.model import AltitudeBase
 from exc import ValidationError
+from util.dateutils import date_to_datetime
 
 
 class BrokerageAccount(Base):
@@ -23,40 +25,116 @@ class BrokerageAccount(Base):
     def __init__(self, utility_account):
         self.utility_account = utility_account
 
+class Company(AltitudeBase):
+    __tablename__ = 'Company'
+    company_id = Column('Company_ID', Integer, primary_key=True)
+    name = Column('Company', String, unique=True)
 
-class Quote(Base):
+
+class CompanyPGSupplier(AltitudeBase):
+    """View based on the Company table that includes only companies that are
+    suppliers.
+    """
+    __tablename__ = 'Company_PG_Supplier'
+    company_id = Column('Company_ID', Integer, primary_key=True)
+    name = Column('Company', String, unique=True)
+
+class RateClass(AltitudeBase):
+    __tablename__ = 'Rate_Class_View'
+    rate_class_id = Column('Rate_Class_ID', Integer, primary_key=True)
+
+class RateClassAlias(AltitudeBase):
+    __tablename__ = 'Rate_Class_Alias'
+    rate_class_alias_id = Column('Rate_Class_Alias_ID', Integer,
+                                 primary_key=True)
+    rate_class_id = Column('Rate_Class_ID', Integer)
+    rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
+
+
+def get_rate_class_from_alias(alias):
+    """Return the RateClass for the given alias, or None if it could not be
+    found.
+    """
+    session = AltitudeSession()
+    rate_class = session.query(RateClass).join(
+        RateClassAlias, RateClass.rate_class_id ==
+                        RateClassAlias.rate_class_id).filter_by(
+        rate_class_alias=alias).first()
+    return rate_class
+
+
+def get_quote_status():
+    """Return data about how many quotes were received for each supplier.
+    """
+    s = AltitudeSession()
+    today = date_to_datetime(datetime.utcnow().date())
+    join_condition = CompanyPGSupplier.company_id == MatrixQuote.supplier_id
+    q = s.query(CompanyPGSupplier.name.label('name'),
+                MatrixQuote.supplier_id.label(
+                    'supplier_id').label('supplier_id'),
+                func.max(MatrixQuote.date_received).label('date_received'),
+                func.count(MatrixQuote.rate_id).label('total_count')).outerjoin(
+        MatrixQuote, join_condition).group_by(
+        CompanyPGSupplier.name, MatrixQuote.supplier_id).subquery()
+    today = s.query(CompanyPGSupplier.company_id.label('supplier_id'),
+                    func.count(MatrixQuote.supplier_id).label('today_count')
+                    ).outerjoin(MatrixQuote, join_condition).filter(
+        MatrixQuote.date_received >= today).group_by(
+        CompanyPGSupplier.company_id, MatrixQuote.supplier_id).subquery()
+    return s.query(q.c.name, q.c.supplier_id, q.c.date_received,
+                   q.c.total_count, today.c.today_count).select_from(
+        q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
+        desc(q.c.total_count))
+
+class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
-    __tablename__ = 'quote'
+    __tablename__ = 'Rate_Matrix'
 
-    quote_id = Column(Integer, primary_key=True)
-    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    rate_id = Column('Rate_Matrix_ID', Integer, primary_key=True)
+    supplier_id = Column('Supplier_Company_ID', Integer,
+                         # foreign key to view is not allowed
+                         ForeignKey('Company.Company_ID'), nullable=False)
+
+    rate_class_alias = Column('rate_class_alias', String, nullable=False)
+    rate_class_id = Column('Rate_Class_ID', Integer, nullable=True)
 
     # inclusive start and exclusive end of the period during which the
     # customer can start receiving energy from this supplier
-    start_from = Column(DateTime, nullable=False)
-    start_until = Column(DateTime, nullable=False)
+    start_from = Column('Earliest_Contract_Start_Date', DateTime, nullable=False)
+    start_until = Column('Latest_Contract_Start_Date', DateTime, nullable=False)
 
     # term length in number of utility billing periods
-    term_months = Column(Integer, nullable=False)
+    term_months = Column('Contract_Term_Months', Integer, nullable=False)
 
     # when this quote was received
-    date_received = Column(DateTime, nullable=False)
+    date_received = Column('Created_On', DateTime, nullable=False)
 
     # inclusive start and exclusive end of the period during which this quote
     # is valid
-    valid_from = Column(DateTime, nullable=False)
-    valid_until = Column(DateTime, nullable=False)
+    valid_from = Column('valid_from', DateTime, nullable=False)
+    valid_until = Column('valid_until', DateTime, nullable=False)
 
-    # fixed price for energy in dollars/kWh
-    price = Column(Float, nullable=False)
+    # whether this quote involves "POR" (supplier is offering a discount
+    # because credit risk is transferred to the utility)
+    purchase_of_receivables = Column('Purchase_Of_Receivables', Boolean,
+                                     nullable=False, server_default='0')
 
-    # other attributes that may need to be added
-    # swing_range (%)
-    # swing_penalty_rate (is there just one? how do we determine what it is?)
+    # fixed price for energy in dollars/energy unit
+    price = Column('Supplier_Price_Dollars_KWH_Therm', Float, nullable=False)
 
-    # joined-table inheritance
+    # zone
+    zone = Column('Zone', String)
+
+    # dual billing
+    dual_billing = Column('Dual_Billing', Boolean, nullable=False,
+                          server_default='1')
+
+    # Percent Swing Allowable
+    percent_swing = Column('Percent_Swing_Allowable', Float)
+
     discriminator = Column(String(50), nullable=False)
+
     __mapper_args__ = {
         'polymorphic_identity': 'quote',
         'polymorphic_on': discriminator,
@@ -67,17 +145,12 @@ class Quote(Base):
     MIN_PRICE = .01
     MAX_PRICE = 2.0
 
-    def __init__(self, start_from=None, start_until=None, term_months=None,
-                 date_received=None, valid_from=None, valid_until=None,
-                 price=None):
-        self.start_from = start_from
-        self.start_until = start_until
-        self.term_months = term_months
-        self.date_received = date_received or datetime.utcnow()
-        self.valid_from = valid_from
-        self.valid_until = valid_until
-        self.price = price
+    def __init__(self, **kwargs):
+        super(Quote, self).__init__(**kwargs)
+        if self.date_received is None:
+            self.date_received = datetime.utcnow()
 
+    # TODO: validation needs to be extensible for subclasses
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
         """
@@ -103,29 +176,21 @@ class MatrixQuote(Quote):
     a particular utility, rate class, and annual total energy usage, taken
     from a daily "matrix" spreadsheet.
     """
-    __tablename__ = 'matrix_quote'
+    __mapper_args__ = {
+        'polymorphic_identity': 'matrixquote',
+    }
 
     # lower and upper limits on annual total energy consumption for customers
     # that this quote applies to. nullable because there might be no
     # restrictions on energy usage.
     # (min_volume <= customer's energy consumption < limit_volume)
-    min_volume = Column(Float)
-    limit_volume = Column(Float)
+    min_volume = Column('Minimum_Annual_Volume_KWH_Therm', Float)
+    limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
-    quote_id = Column(Integer, ForeignKey('quote.quote_id'), primary_key=True)
-    __mapper_args__ = {
-        'polymorphic_identity': 'matrixquote',
-    }
-
-    def __init__(self, start_from=None, start_until=None, term_months=None,
-                 date_received=None, valid_from=None, valid_until=None,
-                 price=None, min_volume=None, limit_volume=None):
-        super(MatrixQuote, self).__init__(
-            start_from=start_from, start_until=start_until,
-            term_months=term_months, date_received=date_received,
-            valid_from=valid_from, valid_until=valid_until, price=price)
-        self.min_volume = min_volume
-        self.limit_volume = limit_volume
+    MIN_MIN_VOLUME = 0
+    MAX_MIN_VOLUME = 2000
+    MIN_LIMIT_VOLUME = 25
+    MAX_LIMIT_VOLUME = 2000
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +

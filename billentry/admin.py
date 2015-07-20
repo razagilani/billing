@@ -3,6 +3,11 @@ This lets people view or edit anythihg in the database and has nothing to do
 with Bill Entry, but it's part of Bill Entry because that is currently the
 only application that uses Flask.
 """
+# TODO: this import causes weird problems, in part because
+# import_all_model_modules() imports billentry which causes this file to get
+# imported (unnecessarily)
+#:
+# from core.extraction import TextExtractor
 from flask import session, url_for, redirect, request
 from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
@@ -69,7 +74,7 @@ class LoginModelView(ModelView):
 
 
 class SupplierModelView(LoginModelView):
-    form_columns = ('name',)
+    form_columns = ('name', 'matrix_file_name')
 
     def __init__(self, session, **kwargs):
         super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
@@ -123,7 +128,6 @@ class UserModelView(LoginModelView):
         #   (Using bcrypt, the salt is saved into the hash itself)
         return bcrypt.generate_password_hash(plain_text_password)
 
-
 def make_admin(app):
     '''Return a new Flask 'Admin' object associated with 'app' representing
     the admin UI.
@@ -137,8 +141,14 @@ def make_admin(app):
     admin.add_view(RateClassModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
     admin.add_view(LoginModelView(Role, Session, name= 'BillEntry Role'))
-    admin.add_view(LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
+    admin.add_view(
+        LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
     admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
     admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
     admin.add_view(customer_group_model_view)
+    # it seems that flask-admin doesn't really work with inheritance
+    # from core.extraction import TextExtractor, Field, Extractor
+    # class TextExtractorModelView(ModelView):
+    #      inline_models = (TextExtractor.TextField,)
+    # admin.add_view(TextExtractorModelView(TextExtractor, Session))
     return admin

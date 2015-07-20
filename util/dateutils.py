@@ -2,7 +2,7 @@
 test/test_dateutil.py (remember to move it if this goes outside billing).'''
 import calendar
 from datetime import date, datetime, timedelta
-import unittest
+from dateutil import parser
 import math
 
 # convenient format strings
@@ -254,11 +254,42 @@ def nth_weekday(n, weekday_number, month):
         return date(year, month, days[-1 if n == 'last' else n-1])
     return result
 
+def parse_datetime(string):
+    """Use dateutil.parser to parse 'string' as a datetime. if it's a date,
+    it will be converted into a datetime.
+    :param string: date string
+    :return: date
+    """
+    result = parser.parse(string)
+    if isinstance(result, date):
+        return date_to_datetime(result)
+    return result
 
+def parse_date(string):
+    """Use dateutil.parser to parse 'string' as a date (datetime not allowed).
+    :param string: date string
+    :return: date
+    """
+    result = parser.parse(string)
+    # datetime must be on a day boundary (no hours, minutes, seconds, etc.)
+    assert result == date_to_datetime(result)
+    return result.date()
 
-if __name__ == '__main__':
-    unittest.main()
+def get_end_of_day(date_or_datetime):
+    """
+    :param date_or_datetime: date or datetime
+    :return: datetime representing the end of the day
+    """
+    if isinstance(date_or_datetime, datetime):
+        d = date_to_datetime(date_or_datetime).date()
+    else:
+        d = date_or_datetime
+    return date_to_datetime(d + timedelta(days=1))
 
-    #import pprint
-    #pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in FEDERAL_HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
-    # TODO unit-test the holiday code
+def excel_number_to_datetime(number):
+    """
+    :param number: int or float representing a datetime in the format used in
+    Excel spreadsheets.
+    :return: Python datetime
+    """
+    datetime(1899, 12, 30) + timedelta(days=number)

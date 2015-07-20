@@ -1,16 +1,31 @@
 from mock import MagicMock, Mock
+from sqlalchemy.inspection import inspect
+
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from test import init_test_config
+init_test_config()
+
 from core import init_model
+from core.bill_file_handler import BillFileHandler
 
 from core.model.model import RegisterTemplate, SupplyGroup, ELECTRIC
-from core.pricing import PricingModel
+from core.pricing import PricingModel, FuzzyPricingModel
 from test import init_test_config, create_tables, clear_db
 
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable, BillingError
+from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
+    MissingFileError
 from core.model import UtilBill, Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from util.pdf import PDFUtil
 
 
 class UtilBillTest(TestCase):
@@ -184,6 +199,7 @@ class UtilBillTest(TestCase):
         # when there's a rate class, you can get/set total energy
         utilbill.set_total_energy(1)
         self.assertEqual(1, utilbill.get_total_energy())
+        self.assertEqual('kWh', utilbill.get_total_energy_unit())
 
         # when the same utility is set again, rate class is unchanged
         utilbill.set_utility(utility)
@@ -206,6 +222,7 @@ class UtilBillTest(TestCase):
         with self.assertRaises(StopIteration):
             utilbill.set_total_energy(1)
         self.assertEqual(0, utilbill.get_total_energy())
+        self.assertEqual(None, utilbill.get_total_energy_unit())
 
         # utility and rate class can be set to None
         utilbill.set_utility(None)
@@ -215,6 +232,88 @@ class UtilBillTest(TestCase):
         self.assertIsNone(utilbill.get_rate_class())
         self.assertIsNone(utilbill.get_rate_class_name())
         self.assertIsNone(utilbill.get_service())
+
+    def test_get_text(self):
+        utilbill = UtilBill(MagicMock(), None, None)
+        bfh = Mock(autospec=BillFileHandler)
+        pdf_util = Mock(autospec=PDFUtil)
+        pdf_util.get_pdf_text.return_value = 'example text'
+
+        # if file is missing, text is empty (and is not cached)
+        bfh.write_copy_to_file.side_effect = MissingFileError
+        self.assertEqual('', utilbill.get_text(bfh, pdf_util))
+
+        # get the text
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        bfh.write_copy_to_file.side_effect = None
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(1, bfh.write_copy_to_file.call_count)
+        self.assertEqual(1, pdf_util.get_pdf_text.call_count)
+
+        # text is cached the 2nd time so methods to get the file and text are
+        # not called
+        bfh.reset_mock()
+        pdf_util.reset_mock()
+        self.assertEqual('example text', utilbill.get_text(bfh, pdf_util))
+        self.assertEqual(0, bfh.write_copy_to_file.call_count)
+        self.assertEqual(0, pdf_util.get_pdf_text.call_count)
+
+    def test_replace_estimated_with_complete(self):
+        # estimated bill and real bill have different data
+        est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated,
+                            period_start=date(2000,1,1), target_total=12.34)
+        real_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Complete,
+                             period_start=date(2000,1,2), target_total=56.78,
+                             sha256_hexdigest='abc123')
+        real_bill.charges = [Charge('a', target_total=9.10)]
+
+        # these are the attributes that will be transferred from the real
+        # bill to the estimated one. must be saved in advance because some
+        # child objects will be moved from one to the other rather than copied.
+        attr_names = est_bill.column_names() + [
+            'utility_account',
+            'supplier',
+            'rate_class',
+            'billing_address',
+            'service_address',
+            'utility',
+            'charges',
+            '_registers',
+        ]
+        real_bill_data = {attr_name: getattr(real_bill, attr_name)
+                          for attr_name in attr_names}
+
+        bill_file_handler = Mock(autospec=BillFileHandler)
+        est_bill.replace_estimated_with_complete(real_bill, bill_file_handler)
+
+        # all attributes in estimated bill should match the other that were
+        # originally in real bill
+        for attr_name in attr_names:
+            self.assertEqual(real_bill_data[attr_name],
+                             getattr(est_bill, attr_name))
+
+        # values of parent attributes should not be duplicated
+        # (parents in terms of foreign keys, not in terms of which classes
+        # contain have the SQLAlchemy relationship attributes defined in them)
+        self.assertIs(real_bill.utility, est_bill.utility)
+        self.assertIs(real_bill.rate_class, est_bill.rate_class)
+        self.assertIs(real_bill.supplier, est_bill.supplier)
+        self.assertIs(real_bill.supply_group, est_bill.supply_group)
+
+        # values of child attributes should be duplicated
+        self.assertEqual(len(est_bill.charges), len(real_bill.charges))
+        for c1, c2 in zip(est_bill.charges, real_bill.charges):
+            self.assertEqual(c1, c2)
+            self.assertIsNot(c1, c2)
+        self.assertEqual(len(est_bill._registers), len(real_bill._registers))
+        for r1, r2 in zip(est_bill._registers, real_bill._registers):
+            self.assertEqual(r1, r2)
+            self.assertIsNot(r1, r2)
+        self.assertEqual(est_bill.billing_address, real_bill.billing_address)
+        self.assertEqual(est_bill.service_address, real_bill.service_address)
+        self.assertIsNot(est_bill.billing_address, real_bill.billing_address)
+        self.assertIsNot(est_bill.service_address, real_bill.service_address)
 
 
 class UtilBillTestWithDB(TestCase):
@@ -279,6 +378,34 @@ class UtilBillTestWithDB(TestCase):
         # charges, so 'b' is the only charge left in the database
         self.assertEqual(1, s.query(Charge).count())
 
+    def test_invalid_utilbill_dates(self):
+        supplier = Supplier(name='supplier', address=Address())
+        utility = Utility(name='utility', address=Address())
+        utility_account = UtilityAccount(
+            'someone', '98989', utility, supplier,
+            RateClass(name='FB Test Rate Class', utility=utility,
+                      service='gas'), Address(), Address())
+        utilbill = UtilBill(utility_account, utility,
+                            RateClass(name='rate class', utility=utility,
+                                      service='gas'),
+                            supplier=supplier,
+                            period_start=date(0215, 1, 1),
+                            period_end=date(0215, 2, 1))
+        utilbill.set_next_meter_read_date(date(0215, 1, 1))
+        Session().add(utilbill)
+        # flushing the changes should through integrity error as the dates
+        # entered for period_start, period_end and next_meter_read_date
+        # violates the defined column check constraint that checks date >
+        # 1900-01-01
+        self.assertRaises(IntegrityError, Session().flush)
+        utilbill.set_next_meter_read_date(date(2000,02,01))
+        utilbill.period_start = date(2000, 01, 01)
+        utilbill.period_end = date(2000, 02, 01)
+        # Since the dates entered for period_start, period_end and
+        # next_meter_read_date don't violate the check constraint, flushing
+        # changes should succeed
+        Session().flush()
+
     def test_processed_editable(self):
         utility_account = UtilityAccount(
             'someone', '98989', self.utility, self.supplier,
@@ -342,15 +469,13 @@ class UtilBillTestWithDB(TestCase):
         session.add(utilbill)
         session.flush()
 
-        charge = utilbill.add_charge()
-        self.assertEqual('%s.quantity' % Register.TOTAL,
-                         charge.quantity_formula)
+        formula = Charge.get_simple_formula(Register.TOTAL)
+        fpm = Mock(autospec=FuzzyPricingModel)
+        fpm.get_closest_occurrence_of_charge.return_value = Charge(
+            "rsi_binding does't matter", formula=formula, rate=1.234)
+        charge = utilbill.add_charge({})
+        self.assertEqual(formula, charge.quantity_formula)
 
-        session.delete(charge)
-
-        charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula,
-                         Charge.get_simple_formula(Register.TOTAL)),
         session.delete(charge)
 
     def test_compute(self):
@@ -693,4 +818,29 @@ class UtilBillTestWithDB(TestCase):
         # TODO: test methods that use other charge types (distribution,
         # other) here when they are added.
         self.assertEqual(3, len(utilbill.get_distribution_charges()))
+
+    def test_replace_estimated_with_complete_db(self):
+        """Test for the database aspect of
+        UtilBill.test_replace_estimated_with_complete: deleting the
+        non-estimated bill. (See UtilBillTest for the copying of data from
+        one bill to the other.)
+        """
+        est_bill = UtilBill(self.utility_account, None, None,
+                            state=UtilBill.Estimated)
+        real_bill = UtilBill(self.utility_account, None, None)
+        s = Session()
+        s.add_all([est_bill, real_bill])
+
+        # at first both bills are (going to be inserted in) the db
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).pending)
+
+        est_bill.replace_estimated_with_complete(
+            real_bill, Mock(autospec=BillFileHandler))
+
+        # real bill gets deleted (or in this case, is removed from the
+        # session before it gets inserted), estimated bill doesn't
+        self.assertNotIn(real_bill, s)
+        self.assertTrue(inspect(est_bill).pending)
+        self.assertTrue(inspect(real_bill).transient)
 
