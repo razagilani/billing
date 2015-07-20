@@ -7,7 +7,7 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Boolean, Float
+    UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, \
@@ -21,7 +21,6 @@ from core.extraction.applier import Applier, convert_wg_charges_std, \
 from core.extraction.layout import tabulate_objects, BoundingBox, \
     group_layout_elements_by_page
 from core.model import Address, Session
-from core.model.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
@@ -414,8 +413,7 @@ class LayoutExtractor(Extractor):
                     textline = layout.get_text_line(page,
                         self.bbregex)
                     if textline is None:
-                        raise MatchError('Could not find textline using '
-                                              'regex "%s"' % self.bbregex)
+                        continue
                     text = textline.text
                 else:
                     #if offset_regex is not None, then find the first block of
@@ -451,8 +449,6 @@ class LayoutExtractor(Extractor):
             text = text.strip()
             if not text:
                 raise ExtractionError('Bounding box returned no text.')
-            # print "------ APPLIER_KEY: %s RESULT: %s ----" % (
-            #      self.applier_key, text)
             return text
 
     class TableField(BoundingBoxField):
@@ -658,4 +654,3 @@ class ExtractorResult(model.Base):
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
-
