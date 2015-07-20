@@ -7,10 +7,11 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
+from sqlalchemy import select
 from brokerage.brokerage_model import MatrixQuote, CompanyPGSupplier
 from core.extraction import Field, TextExtractor
 from core.extraction.applier import Applier
-from core.model import Supplier, Utility, AltitudeSession
+from core.model import Supplier, Utility, AltitudeSession, AltitudeBase
 
 from core import init_model, init_altitude_db
 from core.model import Session
@@ -60,7 +61,8 @@ def create_extractors(s):
     pep_old_energy_regex = r'(?:Total KWH Billed:|KWH\s*Used)\s+(\d+)'
     pep_old_next_meter_read_regex = r'.Your next scheduled meter reading is (%s)' % date_format
     pep_old_charges_regex = r'(distribution services.*?current charges this period)'
-    pep_old_rate_class_regex = r'^([^\n\d][^\n]+)\n\nThe present reading'
+    pep_old_rate_class_regex = r'Multi-\s*plier\s+[a-z0-9]+\s+([^0-9].*?)$|' \
+                               r'^([^\n\d][^\n]+)\n\nThe present reading'
     pepco_old = TextExtractor(name='Pepco bills from before 2015 with blue logo id 2631')
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_start_regex, type=Field.DATE, applier_key=Applier.START))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_end_regex, type=Field.DATE, applier_key=Applier.END))
@@ -128,7 +130,12 @@ def upgrade():
     for supplier in a.query(CompanyPGSupplier).all():
         s.merge(supplier)
     if str(a.bind.url).startswith('mssql'):
+        if a.execute("SELECT count(*) FROM INFORMATION_SCHEMA.VIEWS "
+                     "WHERE TABLE_NAME = 'Rate_Class_View'").scalar() > 0:
+            a.execute('DROP VIEW Rate_Class_View')
         a.execute('create view Rate_Class_View as select * from Rate_Class')
+        AltitudeBase.metadata.tables['Rate_Matrix'].drop(checkfirst=True)
+        AltitudeBase.metadata.tables['Rate_Matrix'].create()
 
     s.commit()
     a.commit()

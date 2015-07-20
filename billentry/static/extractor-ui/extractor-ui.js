@@ -19,7 +19,7 @@ $(document).ready(function() {
 			newRow(elem.task_id, elem.extractor_id, utility_name, "", elem.bills_to_run);
 			updateStatus();
 		});
-	});
+	}).fail(failedRequest("get running tests"));
 });
 
 //Selects all checkboxes, unless all are already selected, in which case it unselects all
@@ -46,7 +46,7 @@ function updateStatus(){
 			if($(selected).attr('id') == elem.task_id){
 				displayData(elem, true);
 			}
-		});
+		}).fail(failedRequest("update status"));
 	});
 }
 
@@ -61,6 +61,7 @@ function displayData(task, isDetailed){
 	var task_data = task.data;
 	if (task_data.total_count == undefined){
 		$("#results tr[id="+task.task_id+"] td[header=status]").text(task_data.state);
+		$("#results tr[id="+task.task_id+"]").addClass("failed");
 		return;
 	}
 	if(isDetailed){
@@ -95,7 +96,7 @@ function displayData(task, isDetailed){
 		var any_count = task_data.any_count;
 
 		if(show_db_matches){
-			var total_count = task_data.processed_count;
+			var total_count = task_data.verified_count;
 		} else {
 			var total_count = task_data.total_count;
 		}
@@ -156,7 +157,7 @@ function runExtractor(extractor_id){
 
 		// set up table row for this task
 		newRow(task_id, extractor_id, utility_name, "", bills_to_run);
-	});
+	}).fail(failedRequest("run test"));
 }
 
 // Set up table row for a new task
@@ -223,7 +224,7 @@ function stopSelectedTask(){
 		$.post("/stop-task/" + task_id, function(data){
 			// once task is stopped, update the page.
 			updateStatus();
-		});
+		}).fail(failedRequest("stop task"));
 	}
 }
 
@@ -233,7 +234,7 @@ function toggleDBMatches(){
 	// <td id="total_count">Total so far</td>
 	total_header_cell = $("#results #total_count");
 	if (show_db_matches) {
-		total_header_cell.text("Bills entered in DB");
+		total_header_cell.text("Bills verified");
 	} else {
 		total_header_cell.text("Total so far");
 	}
@@ -241,4 +242,32 @@ function toggleDBMatches(){
 	tasks.forEach(function(elem){
 		displayData(elem, false);
 	});
+}
+function failedRequest(action){
+	return function (xhr, textStatus, errorThrown){
+		var error_msg;
+	   	if (xhr.status == 0) {
+	       error_msg = "Could not connect to server.";
+	   	} else 
+	    if (xhr.status == 404) {
+	        error_msg = '404: page not found';
+	    } else if (xhr.status == 500) {
+	        error_msg = "500: server error";
+	    } else if (err == 'parsererror') {
+	        error_msg = 'parse error';
+	    } else if (err == 'timeout') {
+	        error_msg = 'timeout';
+	    } else {
+	       error_msg = 'unhandled exception: ' + xhr.responseText;
+	    }
+
+	    var error_header = "Error: Could not "+action+": ";
+	    var error_text = '<span style="color:#FF0000">'+error_header+error_msg+'</span>';
+		$("#console").html(error_text + " (click to hide)");
+		$("#console").css('display', 'inherit');
+	};
+}
+
+function hideConsole(){
+	$("#console").css('display', 'none');
 }
