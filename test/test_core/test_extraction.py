@@ -275,6 +275,68 @@ class BoundingBoxFieldTest(TestCase):
             bb_field_fail.get_value(self.input)
 
 
+class TableFieldTest(TestCase):
+    """
+    Tests for layout extractor of bounding box fields
+    """
+    def setUp(self):
+        # generate of table of elements
+        self.layout_elements = []
+        for y in range(100, 10, -10):
+            for x in range(20, 50, 10):
+                elt = LayoutElement(x0=x, y0=y, x1=x+5,
+                    y1=y+5, text="%d %d text" % (x, y),
+                    type=LayoutElement.TEXTLINE)
+                self.layout_elements.append(elt)
+        self.layout_elements.append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
+            text="not in table", type=LayoutElement.TEXTLINE))
+        self.bfh = Mock(autospec=BillFileHandler)
+        self.bill = Mock(autospec=UtilBill)
+        self.bill.get_layout.return_value = self.layout_elements
+        self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
+        #create a second page by copying the first
+        self.input[0].extend(self.input[0])
+
+    def test_get_table_boundingbox(self):
+        """ Test getting tabular data wihtin a bounding box
+        """
+        tablefield = LayoutExtractor.TableField(page_num=1, bbminx=30,
+            bbminy=30, bbmaxx=45, bbmaxy=45)
+        expected_output = [["30 40 text", "40 40 text"],
+                            ["30 30 text", "40 30 text"]]
+        self.assertEqual(expected_output, tablefield._extract(self.input))
+
+    def test_start_stop_regex(self):
+        regex_tablefield = LayoutExtractor.TableField(page_num=1,
+            bbminx=30, bbminy=20, bbmaxx=45, bbmaxy=55,
+            table_start_regex="30 50 text", table_stop_regex="30 20 text")
+        expected_output = [["30 40 text", "40 40 text"],
+                            ["30 30 text", "40 30 text"]]
+        actual_output = regex_tablefield._extract(self.input)
+        self.assertEqual(expected_output, actual_output)
+
+    def test_not_enough_pages(self):
+        table_field = LayoutExtractor.TableField(page_num=44)
+        with self.assertRaises(ExtractionError):
+            table_field.get_value(self.input)
+
+    def test_multipage_table(self):
+        multipage_tablefield= LayoutExtractor.TableField(page_num=1,
+            bbminx=30, bbminy=30, bbmaxx=45, bbmaxy=45, multipage_table=True,
+            nextpage_top=35, maxpage=2)
+        expected_output = [["30 40 text", "40 40 text"],
+                            ["30 30 text", "40 30 text"],
+                            ["30 30 text", "40 30 text"]]
+        actual_output = multipage_tablefield._extract(self.input)
+        self.assertEqual(expected_output, actual_output)
+
+    def test_no_values_found(self):
+        tablefield= LayoutExtractor.TableField(page_num=1,
+            bbminx=30, bbminy=30, bbmaxx=45, bbmaxy=45)
+        with self.assertRaises(ExtractionError):
+            # give tablefield data representing a single empty page.
+            tablefield._extract(([[]], 0, 0))
+
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
     database.

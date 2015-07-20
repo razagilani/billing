@@ -21,6 +21,7 @@ from core.extraction.applier import Applier, convert_wg_charges_std, \
 from core.extraction.layout import tabulate_objects, BoundingBox, \
     group_layout_elements_by_page
 from core.model import Address, Session
+from core.model.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
@@ -464,7 +465,7 @@ class LayoutExtractor(Extractor):
 
         #An (optional) regex that matches a text object that delimits the
         # start of the table. (in addition to limiting text within the
-        # bounding box)
+        # bounding box). This is exclusive.
         table_start_regex = Column(String)
         # An (optional) regex that matches a text object that comes at the
         # end of the table (exclusive). (in addition to limiting text within the
