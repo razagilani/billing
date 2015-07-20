@@ -81,8 +81,8 @@ def test_bill(self, extractor_id, bill_id):
     :return: {
         extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
-        fields : {name:value, ...} for each field name in Applier.KEYS.
-                Value is None if it could not be recovered
+        fields : {name:0/1, ...} for each field name in Applier.KEYS.
+                Value is 1 if it could be recovered, 0 otherwise
         date : The bill's period end date, read from the database, or if not
         in the database, from the bill.
                 If neither succeeds, this is None. 'date' is used to group
@@ -105,17 +105,17 @@ def test_bill(self, extractor_id, bill_id):
         'extractor_id': extractor_id,
         'bill_id': bill_id,
         'num_fields': len(applier_keys),
-        'fields': {f:None for f in applier_keys},
+        'fields': {f:0 for f in applier_keys},
         'fields_correct': {f: 0 for f in applier_keys},
         'fields_incorrect': {f: 0 for f in applier_keys},
     }
 
     # Store field values for each successful result
-    # Note: 'good' is of type [(field, value), ...]
+    # Note: 'good' is of type [(applier_key, value), ...]
     bill_end_date = None
     good, error = extractor._get_values(bill, bill_file_handler)
     for applier_key, value in good:
-        response['fields'][applier_key] = value
+        response['fields'][applier_key] = 1
         if applier_key == Applier.END:
             bill_end_date = value
 
@@ -236,7 +236,7 @@ def reduce_bill_results(self, results):
         # count number of successfully read fields
         success_fields = 0
         for k in fields.keys():
-            if r['fields'][k] is not None:
+            if r['fields'][k]:
                 success_fields += 1
                 fields[k] += 1
                 dates[bill_date_format]['fields'][k] += 1
@@ -258,7 +258,6 @@ def reduce_bill_results(self, results):
 
     #calculate percent accuracy for each field, relative to the values
     # already in the database
-
     for k in fields.keys():
         sum = fields_correct[k] + fields_incorrect[k]
         if sum > 0:
@@ -288,7 +287,6 @@ def reduce_bill_results(self, results):
     if q.count():
         extractor_result = q.one()
         extractor_result.set_results(response)
-    s.commit()
 
     return response
 
