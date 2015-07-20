@@ -6,7 +6,8 @@ application as a whole, such as authentication.
 Here are some recommendations on how to structure a Python/Flask project.
 http://as.ynchrono.us/2007/12/filesystem-structure-of-python-project_21.html
 http://flask.pocoo.org/docs/0.10/patterns/packages/
-http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project-structure
+http://flask-restful.readthedocs.org/en/0.3.1/intermediate-usage.html#project
+-structure
 '''
 import logging
 import traceback
@@ -15,29 +16,40 @@ import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
-from sqlalchemy import desc
 
+from celery.exceptions import ChordError, TaskRevokedError
+import re
+from celery.result import AsyncResult
+from dateutil import tz
+from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
+from flask import Flask, url_for, request, flash, session, redirect, \
+    render_template, current_app, Response, jsonify
+from flask_oauth import OAuth, OAuthException
+from celery import chord, group
+from celery.result import GroupResult
+
+from flask.ext.kvsession import KVSessionExtension
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
-from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app, Response
-from flask_oauth import OAuth, OAuthException
-
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
-from core import init_config
-from core.model import Session
+from brokerage.brokerage_model import get_quote_status
+from core import init_config, init_celery
+from core.extraction import Extractor, ExtractorResult
+from core.extraction.applier import Applier
+from core.extraction.task import test_bill, reduce_bill_results
+from core.model import Session, UtilBill, Utility
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
 LOG_NAME = 'billentry'
 
-
 app = Flask(__name__, static_url_path="")
 bcrypt = get_bcrypt_object()
+
 
 # Google OAuth URL parameters MUST be configurable because the
 # 'consumer_key' and 'consumer_secret' are exclusive to a particular URL,
@@ -46,6 +58,7 @@ bcrypt = get_bcrypt_object()
 # at module scope (an import-time side effect, and also means that
 # init_test_config can't be used to provide different values instead of these).
 from core import config
+
 if config is None:
     # initialize 'config' only if it has not been initialized already (which
     # requires un-importing it and importing it again). this prevents
@@ -56,8 +69,7 @@ if config is None:
     from core import config
 
 oauth = OAuth()
-google = oauth.remote_app(
-    'google',
+google = oauth.remote_app('google',
     base_url=config.get('billentry', 'base_url'),
     authorize_url=config.get('billentry', 'authorize_url'),
     request_token_url=config.get('billentry', 'request_token_url'),
@@ -65,27 +77,30 @@ google = oauth.remote_app(
         'scope': config.get('billentry', 'request_token_params_scope'),
         'response_type': config.get('billentry',
                                     'request_token_params_resp_type'),
-        'hd': config.get('billentry', 'authorized_domain')
-        },
+        'hd': config.get('billentry', 'authorized_domain')},
     access_token_url=config.get('billentry', 'access_token_url'),
     access_token_method=config.get('billentry', 'access_token_method'),
-    access_token_params={
-        'grant_type':config.get('billentry', 'access_token_params_grant_type')},
+    access_token_params={'grant_type': config.get('billentry',
+                                                  'access_token_params_grant_type')},
     consumer_key=config.get('billentry', 'google_client_id'),
     consumer_secret=config.get('billentry', 'google_client_secret'))
 
 app.secret_key = config.get('billentry', 'secret_key')
-app.config['LOGIN_DISABLED'] = config.get('billentry',
-                                          'disable_authentication')
+app.config['LOGIN_DISABLED'] = config.get('billentry', 'disable_authentication')
+
+############
+# KVSession
+############
+kvsession = KVSessionExtension(Session.bind, app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 principals = Principal(app)
-app.permanent_session_lifetime = timedelta(seconds=config.get('billentry', 'timeout'))
+app.permanent_session_lifetime = timedelta(
+    seconds=config.get('billentry', 'timeout'))
 
 if app.config['LOGIN_DISABLED']:
     login_manager.anonymous_user = BillEntryUser.get_anonymous_user
-
 
 @principals.identity_loader
 def load_identity_for_anonymous_user():
@@ -116,6 +131,7 @@ def load_user(id):
     user = Session().query(BillEntryUser).filter_by(id=id).first()
     return user
 
+
 @app.route('/logout')
 def logout():
     current_user.authenticated = False
@@ -129,6 +145,7 @@ def logout():
                           identity=AnonymousIdentity())
     flash('You Logged out successfully')
     return redirect(url_for('login_page'))
+
 
 @app.route('/oauth2callback')
 @google.authorized_handler
@@ -150,6 +167,7 @@ def oauth2callback(resp):
     start_user_session(user)
     return redirect(next_url)
 
+
 @app.route('/')
 def index():
     '''this displays the home page if user is logged in
@@ -162,12 +180,157 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    # If some utility bills files are uploaded, their hash-digests are
+    # stored in Flask's session variable named hash-digest. If the
+    # upload utility bills form is reset or the app is loaded again,
+    # we need to clear those hash-digests of previously uploaded files
+    # to prevent them from getting mixed with utility bills uploaded later
+    if session.get('hash-digest'):
+        # remove the hash-digest from session as the uploaded files are
+        # irrelevant once the page is reloaded
+        session.pop('hash-digest')
     return response
 
+
+@app.route('/test-extractors')
+def test_extractors():
+    '''
+    Displays a user interface for testing different bill data extractors on
+    the database.
+    Provides the client a list of extractors, utilities, and bill fields.
+    '''
+    s = Session()
+    extractors = s.query(Extractor).all()
+    nbills = s.query(UtilBill).count()
+    utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
+    fields = Applier.KEYS.keys()
+    return render_template('test-extractors.html', extractors=extractors,
+                               nbills=nbills, utilities=utilities,
+                               fields=fields)
+
+@app.route('/get-running-tests', methods=['POST'])
+def get_running_tests():
+    s = Session()
+    q = s.query(ExtractorResult).filter(
+        ExtractorResult.finished == None)
+    running_tasks = q.all()
+    tasks_dict = [{
+        'task_id' : rt.task_id,
+        'parent_id' : rt.parent_id,
+        'extractor_id' : rt.extractor_id,
+        'utility_id' : rt.utility_id,
+        'bills_to_run' : rt.bills_to_run,
+    } for rt in running_tasks]
+    return jsonify({'tasks' : tasks_dict})
+
+@app.route('/run-test', methods=['POST'])
+def run_test():
+    '''
+    Runs a test of bill data extractors as an asynchronous Celery task.
+    Also creates a database row in the ExtractorResult table for this test.
+    :return the ID of the task being run, as well as the total number of bills
+    '''
+    extractor_id = request.form.get('extractor_id')
+    utility_id = request.form.get('utility_id')
+    num_bills = int(request.form.get('num_bills'))
+    date_filter_type = request.form.get('date_filter_type')
+    filter_date = request.form.get('filter_date')
+    #if date is just a 4-digit year, add 'january 1st' to make a full date.
+    if re.match(r'\d{4}$', filter_date):
+        filter_date = filter_date + "-01-01"
+
+    s = Session();
+    #get bills with valid PDF addresses, and filter by utility if necessary
+    q = s.query(UtilBill.id).filter(UtilBill.sha256_hexdigest != None,
+        UtilBill.sha256_hexdigest != '').order_by(
+        func.random())
+    if utility_id:
+        q = q.filter(UtilBill.utility_id == utility_id)
+    else:
+        utility_id = None
+    if filter_date and date_filter_type:
+        if date_filter_type == 'before':
+            q = q.filter(UtilBill.period_end <= filter_date)
+        elif date_filter_type == 'after':
+            q = q.filter(UtilBill.period_end >= filter_date)
+    if num_bills > 0:
+        q = q.limit(num_bills)
+    if q.count() == 0:
+        return jsonify({'bills_to_run':0})
+    #run celery chord
+    job = group([test_bill.s(extractor_id, b.id) for b in q])
+    result = chord(job)(reduce_bill_results.s())
+    result_parent = result.parent
+    result_parent.save()
+    #add task to db
+    er = ExtractorResult(extractor_id=extractor_id, utility_id=utility_id,
+        task_id=result.id, parent_id=result_parent.id,
+        bills_to_run=q.count(), started=datetime.utcnow())
+    s.add(er)
+    s.commit()
+    return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
+
+@app.route('/test-status/<task_id>', methods=['POST'])
+def test_status(task_id):
+    '''
+    Returns the status for a given task.
+    This is done by calling reduce_bill_results on all the sub-tasks for a given task.
+    :param task_id: The id of the current task
+    :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
+    '''
+    init_celery()
+
+    task = AsyncResult(task_id)
+    if not task.ready():
+        #if task is not finished, get intermediate results:
+        s = Session()
+        q = s.query(ExtractorResult.parent_id).filter(
+            ExtractorResult.task_id == task_id)
+        parent_id = q.one().parent_id
+        parent_task = GroupResult.restore(parent_id)
+
+        subtask_results = [subtask.result for subtask in
+        parent_task.results]
+        response = reduce_bill_results(subtask_results)
+        if response['stopped'] > 0:
+            response['state'] = "STOPPPED"
+        elif response['failed'] > 0:
+            response['state'] = "SOME SUBTASKS FAILED, IN PROGRESS"
+        else:
+            response['state'] = "IN PROGRESS"
+        return jsonify(response)
+    else:
+        try:
+            result = task.get()
+            result['state'] = task.state
+        except ChordError as tre:
+            result = {'state': "STOPPED"}
+        except Exception as e:
+            result = {'state': "FAILURE"}
+        return jsonify(result)
+
+
+@app.route('/stop-task/<task_id>', methods=['POST'])
+def stop_task(task_id):
+    #get child tasks and revoke them
+    init_celery()
+    s = Session()
+    q = s.query(ExtractorResult).filter(
+        ExtractorResult.task_id == task_id)
+    ext_res = q.one()
+    parent_id = ext_res.parent_id
+    # revoke chord task (i.e. the reduce step)
+    AsyncResult(task_id).revoke(terminate=True)
+    # revoke group, (i.e. all the subtasks)
+    GroupResult.restore(parent_id).revoke(terminate=True)
+    ext_res.finished = datetime.utcnow()
+    s.commit()
+    return "", 204
+
 def create_user_in_db(access_token):
-    headers = {'Authorization': 'OAuth '+access_token}
-    req = Request(config.get('billentry', 'google_user_info_url'),
-                  None, headers)
+    headers = {'Authorization': 'OAuth ' + access_token}
+    req = Request(config.get('billentry', 'google_user_info_url'), None,
+                  headers)
     try:
         # get info about currently logged in user
         res = urlopen(req)
@@ -176,7 +339,7 @@ def create_user_in_db(access_token):
             # Unauthorized - bad token
             session.pop('access_token', None)
             return redirect(url_for('oauth_login'))
-    #TODO: display googleEmail as Username in the bottom panel
+    # TODO: display googleEmail as Username in the bottom panel
     userInfoFromGoogle = res.read()
     userInfo = json.loads(userInfoFromGoogle)
     s = Session()
@@ -191,8 +354,7 @@ def create_user_in_db(access_token):
         wordfile = xp.locate_wordfile()
         mywords = xp.generate_wordlist(wordfile=wordfile, min_length=6,
                                        max_length=8)
-        user = BillEntryUser(
-            email=session['email'],
+        user = BillEntryUser(email=session['email'],
             password=get_hashed_password(
                 xp.generate_xkcdpassword(mywords, acrostic="face")))
         # add user to the admin role
@@ -205,8 +367,9 @@ def create_user_in_db(access_token):
     # Tell Flask-Principal the identity changed
     login_user(user)
     identity_changed.send(current_app._get_current_object(),
-        identity=Identity(user.id))
+                          identity=Identity(user.id))
     return userInfo['email']
+
 
 @app.before_request
 def before_request():
@@ -216,40 +379,35 @@ def before_request():
     user = current_user
     # this is for diaplaying the nextility logo on the
     # login_page when user is not logged in
-    ALLOWED_ENDPOINTS = [
-        'oauth_login',
-        'oauth2callback',
-        'logout',
-        'login_page',
-        'locallogin',
+    ALLOWED_ENDPOINTS = ['oauth_login', 'oauth2callback', 'logout',
+        'login_page', 'locallogin',
         # special endpoint name for all static files--not a URL
-        'static'
-    ]
-    NON_REST_ENDPOINTS = [
-        'admin',
-        'index'
-    ]
+        'static']
+    NON_REST_ENDPOINTS = ['admin', 'index']
 
     if not user.is_authenticated():
         if request.endpoint in ALLOWED_ENDPOINTS:
             return
-        if (request.endpoint in NON_REST_ENDPOINTS or 'admin' in
-            request.path or 'index' in request.path):
+        if (
+                    request.endpoint in NON_REST_ENDPOINTS or 'admin' in
+                        request.path or 'index' in request.path):
             set_next_url()
             return redirect(url_for('login_page'))
         return Response('Could not verify your access level for that URL', 401)
     if user.is_authenticated():
         update_user_session_last_request_time(user)
 
+
 def update_user_session_last_request_time(user):
     """ This is called to update the last_request field of BEUserSession
     every time user makes a request for a resource
     """
-    recent_session = Session.query(BEUserSession).filter_by(beuser=user).\
-        order_by(desc(BEUserSession.session_start)).first()
+    recent_session = Session.query(BEUserSession).filter_by(
+        beuser=user).order_by(desc(BEUserSession.session_start)).first()
     if recent_session:
         recent_session.last_request = datetime.utcnow()
         Session.commit()
+
 
 def set_next_url():
     next_path = request.args.get('next') or request.path
@@ -257,16 +415,17 @@ def set_next_url():
         # Since passing along the "next" URL as a GET param requires
         # a different callback for each page, and Google requires
         # whitelisting each allowed callback page, therefore, it can't pass it
-        # as a GET param. Instead, the url is sanitized and put into the session.
+        # as a GET param. Instead, the url is sanitized and put into the
+        # session.
         path = urllib.unquote(next_path)
         if path[0] == '/':
             # This first slash is unnecessary since we force it in when we
             # format next_url.
             path = path[1:]
 
-        next_url = "{path}".format(
-            path=path,)
+        next_url = "{path}".format(path=path, )
         session['next_url'] = next_url
+
 
 @app.after_request
 def db_commit(response):
@@ -280,13 +439,14 @@ def db_commit(response):
         Session.commit()
     return response
 
+
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     """This is called after every request (after the "after_request" callback).
     The database session is closed here following the example here:
     http://flask.pocoo.org/docs/0.10/patterns/sqlalchemy/#declarative
     """
-    #The Session.remove() method first calls Session.close() on the
+    # The Session.remove() method first calls Session.close() on the
     # current Session, which has the effect of releasing any
     # connection/transactional resources owned by the Session first,
     # then discarding the Session itself. Releasing here means that
@@ -298,15 +458,18 @@ def shutdown_session(exception=None):
     if app.config['TESTING'] is not True:
         Session.remove()
 
+
 @app.route('/login')
 def oauth_login():
     callback_url = url_for('oauth2callback', _external=True)
     result = google.authorize(callback=callback_url)
     return result
 
+
 @app.route('/login-page')
 def login_page():
     return render_template('login_page.html')
+
 
 @app.errorhandler(PermissionDenied)
 @app.errorhandler(OAuthException)
@@ -319,8 +482,8 @@ def uneditable_bill_error(e):
     # Flask is not supposed to run error handler functions
     # if these are true, but it does (even if they are set
     # before the "errorhandler" decorator is called).
-    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
-        app.config['PROPAGATE_EXCEPTIONS']):
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or app.config[
+        'PROPAGATE_EXCEPTIONS']):
         raise
     if isinstance(e, MissingFileError):
         error_message = log_error('MissingFileError', traceback)
@@ -328,17 +491,19 @@ def uneditable_bill_error(e):
         error_message = log_error('UnProcessedBillError', traceback)
     return error_message, 400
 
+
 @app.errorhandler(Exception)
 def internal_server_error(e):
     # Flask is not supposed to run error handler functions
     # if these are true, but it does (even if they are set
     # before the "errorhandler" decorator is called).
-    if (app.config['TRAP_HTTP_EXCEPTIONS'] or
-        app.config['PROPAGATE_EXCEPTIONS']):
+    if (app.config['TRAP_HTTP_EXCEPTIONS'] or app.config[
+        'PROPAGATE_EXCEPTIONS']):
         raise
     error_message = log_error('Internal Server Error', traceback)
 
     return error_message, 500
+
 
 def log_error(exception_name, traceback):
     from core import config
@@ -353,20 +518,21 @@ def log_error(exception_name, traceback):
         error_message += "<br><br><pre>" + traceback.format_exc() + "</pre>"
     return error_message
 
-@app.route('/userlogin', methods=['GET','POST'])
+
+@app.route('/userlogin', methods=['GET', 'POST'])
 def locallogin():
     email = request.form['email']
     password = request.form['password']
     user = Session().query(BillEntryUser).filter_by(email=email).first()
     if user is None:
-        flash('Username or Password is invalid' , 'error')
+        flash('Username or Password is invalid', 'error')
         return redirect(url_for('login_page'))
     if not check_password(password, user.password):
-        flash('Username or Password is invalid' , 'error')
+        flash('Username or Password is invalid', 'error')
         return redirect(url_for('login_page'))
     user.authenticated = True
     if 'rememberme' in request.form:
-        login_user(user,remember=True)
+        login_user(user, remember=True)
     else:
         login_user(user)
     # Tell Flask-Principal the identity changed
@@ -377,10 +543,26 @@ def locallogin():
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
+@app.route('/quote-status')
+def quote_status():
+    local_tz = tz.gettz('America/New_York')
+    date_format = '%a %Y-%m-%d %H:%M:%S %Z'
+    format_date = lambda d: None if d is None else d.replace(
+        tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
+
+    return render_template('quote-status.html', data=[{
+        'name': row.name,
+        'date_received': format_date(row.date_received),
+        'today_count': row.today_count,
+        'total_count': row.total_count,
+        'good': row.today_count > 0,
+    } for row in get_quote_status()])
+
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
     #   (Using bcrypt, the salt is saved into the hash itself)
     return bcrypt.generate_password_hash(plain_text_password)
+
 
 def start_user_session(beuser):
     """ This method should be called after user has logged in
@@ -394,11 +576,12 @@ def start_user_session(beuser):
     s.add(be_user_session)
     s.commit()
 
+
 def check_password(plain_text_password, hashed_password):
     # Check hased password. Using bcrypt, the salt is saved into the hash itself
     return bcrypt.check_password_hash(hashed_password, plain_text_password)
 
-# Class to raise the exceptions to fall through to the normal Flask error handling
+
 class MyApi(Api):
     def handle_error(self, e):
         raise
@@ -417,6 +600,7 @@ api.add_resource(resources.ChargeListResource, '/utilitybills/charges')
 api.add_resource(resources.UtilityBillFileResource, '/utilitybills/uploadfile')
 api.add_resource(resources.UploadUtilityBillResource, '/utilitybills/uploadbill')
 api.add_resource(resources.ChargeResource, '/utilitybills/charges/<int:id>')
+api.add_resource(resources.RSIBindingsResource, '/utilitybills/rsibindings')
 api.add_resource(resources.UtilBillCountForUserResource,
                  '/utilitybills/users_counts')
 api.add_resource(resources.UtilBillListForUserResource,

@@ -1,9 +1,10 @@
 import os.path as path
 from os.path import dirname, realpath
+import re
+from celery import Celery
 from pint import UnitRegistry
 
 import configuration as config_file_schema
-
 
 __version__ = '23'
 
@@ -12,7 +13,13 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 
 ROOT_PATH = dirname(dirname(realpath(__file__)))
 
+# import this object after calling 'init_config' to get values from the
+# config file
 config = None
+
+# import this object after calling 'init_celery' to use Celery.
+# (dont confuse this object with the 'celery' module itself.)
+celery = None
 
 def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
@@ -57,6 +64,15 @@ def init_config(filepath='settings.cfg', fp=None):
         if value is not None:
             boto.config.set('Boto', key, str(value))
 
+def get_db_params():
+    """:return a dictionary of parameters for connecting to the main
+    database, taken from the URI in the config file."""
+    assert config is not None
+    db_uri = config.get('db', 'uri')
+    PG_FORMAT = r'^\S+://(\S+):(\S+)@(\S+)/(\S+)$'
+    m = re.match(PG_FORMAT, db_uri)
+    db_params = dict(zip(['user', 'password', 'host', 'db'], m.groups()))
+    return db_params
 
 def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
@@ -74,6 +90,7 @@ def import_all_model_modules():
     """
     import core.model
     import core.altitude
+    import core.extraction
     import reebill.reebill_model
     import brokerage.brokerage_model
     import billentry.billentry_model
@@ -119,12 +136,15 @@ def init_model(uri=None, schema_revision=None):
     import_all_model_modules()
 
     uri = uri if uri else config.get('db', 'uri')
-    log.debug('Intializing sqlalchemy model with uri %s' % uri)
-    engine = create_engine(uri, echo=config.get('db', 'echo'),
+    engine = create_engine(uri, #echo=config.get('db', 'echo'),
                            # recreate database connections every hour, to avoid
                            # "MySQL server has gone away" error when they get
                            # closed due to inactivity
-                           pool_recycle=3600)
+                           pool_recycle=3600,
+                           isolation_level='REPEATABLE_READ'
+                           )
+    if config.get('db', 'echo'):
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     Session.configure(bind=engine)
     # TODO: unclear why the above does not work and Session.bind must be
@@ -134,9 +154,55 @@ def init_model(uri=None, schema_revision=None):
     check_schema_revision(schema_revision=schema_revision)
     Session.remove()
 
-    log.debug('Initialized sqlalchemy model')
+    log.debug('Initialized database: ' + uri)
+
+def init_altitude_db(uri=None):
+    """Initialize the Altitude SQL Server database. This is a separate function
+    from init_model because the two databases are not necessarily used at the
+    same time.
+    """
+    from core.model import AltitudeSession, AltitudeBase, altitude_metadata
+    from sqlalchemy import create_engine
+    import logging
+    log = logging.getLogger(__name__)
+
+    import_all_model_modules()
+
+    uri = uri if uri else config.get('db', 'altitude_uri')
+    engine = create_engine(uri, echo=config.get('db', 'echo'),
+                           pool_recycle=3600)
+
+    altitude_metadata.bind = engine
+    AltitudeSession.configure(bind=engine)
+    AltitudeSession.bind = engine
+    AltitudeBase.metadata.bind = engine
+    AltitudeSession.remove()
+
+    log.debug('Initialized database: ' + uri)
+
+def init_celery():
+    from core import config
+    # since celery is using the database as its back end, no additional
+    # config keys are needed. for a different back end, these would have to
+    # be added to the config file.
+    #uri = config.get('db', 'uri')
+    uri = 'mongodb://%(host)s:%(port)s/%(database)s' % dict(
+        host=config.get('mongodb', 'host'), port=config.get('mongodb', 'port'),
+        database=config.get('mongodb', 'database'))
+    celery_broker_url = celery_result_backend = uri
+
+    global celery
+    celery = Celery(broker=celery_broker_url, backend=celery_result_backend)
+
+    # if you're using a Python dictionary for configuration (as is usual with
+    # Flask), you can set celery's "conf" directly from the application's
+    # config dictionary with "celery.conf.update(app.config)".
+    # celery.conf['CELERY_RESULT_BACKEND'] = celery_result_backend
+    # celery.conf['BROKER_URL'] = celery_broker_url
 
 def initialize():
     init_logging()
     init_config()
     init_model()
+    init_altitude_db()
+    init_celery()
