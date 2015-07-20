@@ -7,7 +7,7 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Float
+    UniqueConstraint, DateTime, func, Float, Boolean
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
@@ -148,6 +148,9 @@ class Field(model.Base):
     # string determining how the extracted value gets applied to a UtilBill
     applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
 
+    # if enabled is false, then this field is skipped during extraction.
+    enabled = Column(Boolean, default=True, nullable=False)
+
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
         'extension': FieldExtension(),
@@ -243,6 +246,9 @@ class Extractor(model.Base):
         self._input = self._prepare_input(utilbill, bill_file_handler)
         good, errors = [], []
         for field in self.fields:
+            # still extract data run if field.enabled is None
+            if field.enabled is False:
+                continue
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
