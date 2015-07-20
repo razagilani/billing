@@ -293,7 +293,7 @@ def test_status(task_id):
         parent_task.results]
         response = reduce_bill_results(subtask_results)
         if response['stopped'] > 0:
-            response['state'] = "STOPPPED"
+            response['state'] = "STOPPED"
         elif response['failed'] > 0:
             response['state'] = "SOME SUBTASKS FAILED, IN PROGRESS"
         else:
@@ -320,9 +320,9 @@ def stop_task(task_id):
     ext_res = q.one()
     parent_id = ext_res.parent_id
     # revoke chord task (i.e. the reduce step)
-    AsyncResult(task_id).revoke(terminate=True)
+    AsyncResult(task_id).revoke(terminate=True, signal='SIGKILL')
     # revoke group, (i.e. all the subtasks)
-    GroupResult.restore(parent_id).revoke(terminate=True)
+    GroupResult.restore(parent_id).revoke(terminate=True, signal='SIGKILL')
     ext_res.finished = datetime.utcnow()
     s.commit()
     return "", 204
