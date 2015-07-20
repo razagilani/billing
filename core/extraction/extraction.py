@@ -362,9 +362,9 @@ class ExtractorResult(model.Base):
     any_count = Column(Integer)
     # total number of bills run so far
     total_count = Column(Integer)
-    # number of bills that have been processed in the database. (i.e. already
-    #  have results entered)
-    processed_count = Column(Integer)
+    # number of bills that have been processed in the database, and had at
+    # least one field extracted.
+    verified_count = Column(Integer)
 
     #TODO should find a way to sync these with UtilBill's list of fields
     # total counts for each field
@@ -405,10 +405,10 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
-        self.processed_count = metadata['processed_count']
+        self.verified_count = metadata['verified_count']
 
         # update overall count and count by month for each field
-        for field_name in Applier.KEYS.iterkeys():
+        for field_name in metadata['fields'].keys():
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)

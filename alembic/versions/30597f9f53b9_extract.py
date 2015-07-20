@@ -91,7 +91,7 @@ def upgrade():
         sa.Column('service_address_by_month', postgresql.HSTORE()),
         sa.Column('start_by_month', postgresql.HSTORE()),
 
-        sa.Column('processed_count', sa.Integer()),
+        sa.Column('verified_count', sa.Integer()),
         sa.Column('field_billing_address_fraction', sa.Float()),
         sa.Column('field_charges_fraction', sa.Float()),
         sa.Column('field_end_fraction', sa.Float()),
