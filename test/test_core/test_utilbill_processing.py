@@ -5,6 +5,15 @@ from os.path import join, dirname, realpath
 import unittest
 from mock import MagicMock, Mock
 
+# init_test_config has to be called first in every test module, because
+# otherwise any module that imports billentry (directly or indirectly) causes
+# app.py to be initialized with the regular config  instead of the test
+# config. Simply calling init_test_config in a module that uses billentry
+# does not work because test are run in a indeterminate order and an indirect
+# dependency might cause the wrong config to be loaded.
+from test import init_test_config
+init_test_config()
+
 import requests
 from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
@@ -13,7 +22,7 @@ from billentry.common import replace_utilbill_with_beutilbill
 from core import init_model
 
 from reebill.views import column_dict
-from test import init_test_config, create_tables, clear_db
+from test import create_tables, clear_db
 from exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
@@ -544,15 +553,14 @@ class UtilbillProcessingTest(testing_utils.TestCase):
 
         # file is assumed to already exist in S3, so put it there
         file = StringIO('example')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
 
-        utility = s.query(Utility).first()
         utility_account = s.query(UtilityAccount).first()
         self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, file_hash)
+            utility_account, file_hash)
 
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
@@ -575,17 +583,17 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         # (regardless of other parameters)
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, utility, file_hash)
+                utility_account, file_hash)
         other_account = Session().query(UtilityAccount).filter(
             UtilityAccount.id != utility_account.id).first()
         with self.assertRaises(DuplicateFileError):
             self.utilbill_processor.create_utility_bill_with_existing_file(
-                other_account, utility, file_hash)
+                other_account, file_hash)
 
         # here's another bill for the same account. this time more than the
         # minimal set of arguments is given.
         file = StringIO('example 2')
-        file_hash = self.utilbill_processor.bill_file_handler._compute_hexdigest(file)
+        file_hash = self.utilbill_processor.bill_file_handler.compute_hexdigest(file)
         s = Session()
         customer = s.query(UtilityAccount).filter_by(account=account).one()
         self.utilbill_processor.bill_file_handler.upload_file(file)
@@ -595,10 +603,10 @@ class UtilbillProcessingTest(testing_utils.TestCase):
                               postal_code='20009')
         utilbill \
             = self.utilbill_processor.create_utility_bill_with_existing_file(
-            utility_account, utility, file_hash,
+            utility_account, file_hash,
             # TODO: add due date
             #due_date=datetime(2000,1,1),
-            target_total=100, service_address=the_address)
+            target_total=100, service_address=the_address, skip_extraction=True)
         # the only one of these arguments that is visible in the UI is "total"
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
@@ -1046,3 +1054,4 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         self.assertRaises(BillingError,
                           self.utilbill_processor.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
