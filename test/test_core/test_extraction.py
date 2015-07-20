@@ -101,9 +101,10 @@ class ExtractorTest(TestCase):
         f2.get_value = Mock(side_effect=ExtractionError)
         f3 = Field(applier_key='c')
         f3.get_value = Mock(return_value=date(2000,1,1))
+        f4 = Field(applier_key='c', enabled=False)
 
         self.e = Extractor()
-        self.e.fields = [f1, f2, f3]
+        self.e.fields = [f1, f2, f3, f4]
         self.e._prepare_input = Mock(return_value='input string')
 
         self.utilbill = Mock(autospec=UtilBill)
