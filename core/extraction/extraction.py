@@ -445,10 +445,10 @@ class LayoutExtractor(Extractor):
                 text = "\n".join(m.groups())
 
             # this is done after regex matching, in case a capture group
-            # matched an empty string
+            # matches an empty string
             text = text.strip()
             if not text:
-                raise ExtractionError('Bounding box returned no text.')
+                raise ExtractionError('No text found.')
             return text
 
     class TableField(BoundingBoxField):
