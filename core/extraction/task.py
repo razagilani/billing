@@ -6,6 +6,7 @@ from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
 from core.extraction import Main, Extractor, ExtractorResult, Applier
+from core.extraction.extraction import verify_field
 from core.model import Session, UtilBill
 from core.utilbill_loader import UtilBillLoader
 from core import init_config, init_celery, init_model
@@ -291,22 +292,3 @@ def reduce_bill_results(self, results):
 
     return response
 
-def verify_field(applier_key, extracted_value, db_value):
-    """
-    Compares an extracted value of a field to the corresponding value in the
-    database
-    :param applier_key: The applier key of the field
-    :param extracted_value: The value extracted from the PDF
-    :param db_value: The value already in the database
-    :return: Whether these values match.
-    """
-    if applier_key == Applier.RATE_CLASS:
-        subregex = r"[\s\-_]+"
-        exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
-        exc_string = re.sub(r"pepco_", "", exc_string)
-        db_string = re.sub(subregex, "_", db_value.name.lower().strip())
-    else:
-        # don't strip extracted value, so we can catch extra whitespace
-        exc_string = str(extracted_value)
-        db_string = str(db_value).strip()
-    return exc_string == db_string
