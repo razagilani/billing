@@ -12,12 +12,14 @@ from mock import Mock, NonCallableMock
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from core.model.model import LayoutElement
 from test import init_test_config
 init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Field, Extractor, Main, TextExtractor
+from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
+    LayoutExtractor
 from core.extraction.applier import Applier
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
@@ -153,6 +155,114 @@ class TextExtractorTest(TestCase):
 
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
+
+class LayoutExtractorTest(TestCase):
+    def setUp(self):
+        self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.layout_elts = [self.le1, self.le2, self.le3, self.le4]
+
+        self.bfh = Mock(autospec=BillFileHandler)
+        self.le = LayoutExtractor()
+        self.le_with_align = LayoutExtractor(origin_regex='wot', origin_x=10,
+            origin_y=10)
+        self.bill = Mock(autospec=UtilBill)
+        self.bill.get_layout.return_value = self.layout_elts
+
+    def test_prepare_input(self):
+        # layout elements, sorted by page and position
+        pages = [[self.le3, self.le1], [self.le4], [self.le2]]
+        le_input = self.le._prepare_input(self.bill,
+            self.bfh)
+        self.assertEqual((pages, 0, 0), le_input)
+
+        # check prepare_input with alignment
+        aligned_input = self.le_with_align._prepare_input(
+            self.bill, self.bfh)
+        self.assertEqual((pages, -10, 190), aligned_input)
+
+class BoundingBoxFieldTest(TestCase):
+    """
+    Tests for layout extractor of bounding box fields
+    """
+    def setUp(self):
+        self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
+            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+        self.le5 = LayoutElement(text='', page_num=1, x0=50, y0=50,
+            x1=70, y1=70, type=LayoutElement.TEXTLINE)
+        self.layout_elts = [self.le1, self.le2, self.le3, self.le4, self.le5]
+        # note that input is mis-aligned
+        self.input = ([[self.le3, self.le1], [self.le4, self.le5], [self.le2]],
+                        5, 5)
+        self.bfh = Mock(autospec=BillFileHandler)
+        self.bill = Mock(autospec=UtilBill)
+        self.bill.get_layout.return_value = self.layout_elts
+
+    def test_not_enough_pages(self):
+        bb_field = LayoutExtractor.BoundingBoxField(page_num=44)
+        with self.assertRaises(ExtractionError):
+            bb_field.get_value(self.input)
+
+    def test_get_bounding_box(self):
+        bb_field = LayoutExtractor.BoundingBoxField(bbminx=0-5, bbminy=0-5,
+            bbmaxx=100-5, bbmaxy=200-5, page_num=2, bbregex='([a-z]ampl[a-z])',
+            corner=0)
+        self.assertEqual('sample', bb_field.get_value(self.input))
+
+    def test_bbox_alignment_error(self):
+        # in this test, forget to align by 5 pixels
+        bb_field = LayoutExtractor.BoundingBoxField(bbminx=0, bbminy=0,
+        bbmaxx=100, bbmaxy=200, page_num=2, bbregex='([a-z]ampl[a-z])',
+        corner=0)
+        with self.assertRaises(ExtractionError):
+            bb_field.get_value(self.input)
+
+    def test_get_without_bbox(self):
+        """
+        Test extraction with only a regular expression, instead of a bounding box
+        """
+        bb_field = LayoutExtractor.BoundingBoxField(page_num=2,
+            bbregex='([a-z]ampl[a-z])')
+        self.assertEqual('sample', bb_field.get_value(self.input))
+
+        #This should fail with a MatchError, since no layout element matches
+        # the regex
+        bb_field_fail = LayoutExtractor.BoundingBoxField(page_num=2,
+            bbregex='fail',
+        corner=0)
+        with self.assertRaises(MatchError):
+            bb_field_fail.get_value(self.input)
+
+    def test_multipage_search(self):
+        """ Test searching through multiple pages for a field
+        """
+        bb_multipage_field = LayoutExtractor.BoundingBoxField(page_num=1,
+            maxpage=3, bbregex='([a-z]ampl[a-z])')
+        self.assertEqual('sample', bb_multipage_field.get_value(self.input))
+
+    def test_offset_regex(self):
+        pass
+
+    def match_empty_text(self):
+        """ Test match for an empty string, e.g. in the case of an empty
+        layout element or a regex returning an empty string
+        """
+        bb_field_fail = LayoutExtractor.BoundingBoxField(bbminx=50,
+            bbminy=50, bbmaxx=60, bbmaxy=60, page_num=2, corner=0)
+        with self.assertRaises(ExtractionError):
+            bb_field_fail.get_value(self.input)
 
 
 class TestIntegration(TestCase):
