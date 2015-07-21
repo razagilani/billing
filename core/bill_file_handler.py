@@ -1,7 +1,7 @@
 import hashlib
 import string
 
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
 from exc import MissingFileError, DuplicateFileError
 
 class BillFileHandler(object):

@@ -41,7 +41,8 @@ from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility
+from core.model import Session, Utility
+from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
@@ -180,6 +181,15 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    # If some utility bills files are uploaded, their hash-digests are
+    # stored in Flask's session variable named hash-digest. If the
+    # upload utility bills form is reset or the app is loaded again,
+    # we need to clear those hash-digests of previously uploaded files
+    # to prevent them from getting mixed with utility bills uploaded later
+    if session.get('hash-digest'):
+        # remove the hash-digest from session as the uploaded files are
+        # irrelevant once the page is reloaded
+        session.pop('hash-digest')
     return response
 
 
@@ -237,6 +247,8 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
+    else:
+        utility_id = None
     if filter_date and date_filter_type:
         if date_filter_type == 'before':
             q = q.filter(UtilBill.period_end <= filter_date)
@@ -284,7 +296,7 @@ def test_status(task_id):
         if response['stopped'] > 0:
             response['state'] = "STOPPPED"
         elif response['failed'] > 0:
-            response['state'] = "FAILURE"
+            response['state'] = "SOME SUBTASKS FAILED, IN PROGRESS"
         else:
             response['state'] = "IN PROGRESS"
         return jsonify(response)
@@ -292,7 +304,9 @@ def test_status(task_id):
         try:
             result = task.get()
             result['state'] = task.state
-        except (ChordError, TaskRevokedError) as e:
+        except ChordError as tre:
+            result = {'state': "STOPPED"}
+        except Exception as e:
             result = {'state': "FAILURE"}
         return jsonify(result)
 
@@ -302,10 +316,13 @@ def stop_task(task_id):
     #get child tasks and revoke them
     init_celery()
     s = Session()
-    q = s.query(ExtractorResult.parent_id).filter(
+    q = s.query(ExtractorResult).filter(
         ExtractorResult.task_id == task_id)
     ext_res = q.one()
     parent_id = ext_res.parent_id
+    # revoke chord task (i.e. the reduce step)
+    AsyncResult(task_id).revoke(terminate=True)
+    # revoke group, (i.e. all the subtasks)
     GroupResult.restore(parent_id).revoke(terminate=True)
     ext_res.finished = datetime.utcnow()
     s.commit()

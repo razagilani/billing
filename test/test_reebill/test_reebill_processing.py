@@ -10,8 +10,9 @@ from testfixtures.tempdirectory import TempDirectory
 from core import init_model
 from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+from reebill.reebill_model import ReeBill, ReeBillCustomer, \
     CustomerGroup
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util
@@ -201,6 +202,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
@@ -214,6 +217,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Other Rate Class',
             'fb_utility_name': 'Other Utility',
             'casualname': 'Example 4',
@@ -227,6 +232,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 3',
@@ -245,6 +252,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',

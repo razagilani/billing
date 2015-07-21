@@ -13,10 +13,9 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import physical_unit_type
 
-from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
-    NoSuchBillException
-from core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Charge
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable
+from core.model import Base, Address, Register, Session
+from core.model.utilbill import UtilBill, Evaluation, Charge
 from util.units import unit_registry, convert_to_therms
 
 
@@ -921,7 +920,9 @@ class User(Base):
     session_token = Column(String(1000))
 
     def __repr__(self):
-        return '<User %s %s %s>' % (self.id, self.identifier, self.username)
+        return '<User %s %s %s>' % (
+            self.reebill_user_id, self.identifier, self.username
+        )
 
     def get_preferences(self):
         pref_str = self._preferences

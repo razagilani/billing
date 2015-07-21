@@ -1,12 +1,10 @@
 Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
     requires: [
-        'ReeBill.store.AccountsMemory',
-        'ReeBill.store.AccountsFilter',
-        'Ext.toolbar.PagingMemoryToolbar'],
+        'ReeBill.store.AccountsFilter'],
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
-    store: 'AccountsMemory',
+    store: 'Accounts',
 
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -26,7 +24,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     columns: [{
         header: 'Account',
         dataIndex: 'account',
-        width: 100
+        width: 100,
+        items: utils.makeGridFilterTextField('account')
     },{
         header: 'Tags',
         dataIndex: 'tags',
@@ -36,6 +35,7 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         },
         tdCls: 'grid-cell-wrap-text',
         width: 150,
+        items: utils.makeGridFilterTextField('tags'),
         renderer: function(value){
             var rtn = [];
             Ext.Array.each(value.split(','), function(tag){
@@ -54,57 +54,71 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         editor: {
             xtype: 'textfield'
         },
-        width: 100
+        width: 100,
+        items: utils.makeGridFilterTextField('utility_account_number')
     },{
         header: 'Remit To',
         dataIndex: 'payee',
         editor:{
             xtype: 'textfield'
         },
-        width: 120
+        width: 120,
+        items: utils.makeGridFilterTextField('payee')
     },{
         header: 'Codename',
         dataIndex: 'codename',
-        width: 120
+        width: 120,
+        items: utils.makeGridFilterTextField('codename')
     },{
         header: 'Casual Name',
         dataIndex: 'casualname',
-        width: 200
+        width: 200,
+        items: utils.makeGridFilterTextField('casualname')
     },{
         header: 'Primus Name',
         dataIndex: 'primusname',
-        width: 120
+        width: 120,
+        items: utils.makeGridFilterTextField('primusname')
     },{
         header: 'Utility Service Address',
         dataIndex: 'utilityserviceaddress',
-        width: 200
+        width: 200,
+        items: utils.makeGridFilterTextField('utilityserviceaddress')
     },{
         header: 'Last Event',
         dataIndex: 'lastevent',
         minWidth: 350,
-        flex:1
+        flex:1,
+        items: utils.makeGridFilterTextField('lastevent')
     }],
-
-    bbar: {
-        xtype: 'pagingmemorytoolbar',
-        pageSize: 25,
-        store: 'AccountsMemory',
-        refreshStore: 'Accounts',
-        displayInfo: true,
-        displayMsg: 'Displaying {0} - {1} of {2}',
-        items: ['->',{
+    dockedItems: [
+    {
+        xtype: 'toolbar',
+        dock: 'bottom',
+        items: ['->', {
             xtype: 'combo',
             name: 'accountsFilter',
             fieldLabel: 'Filter',
             labelWidth: 50,
             width: 400,
-            value: '',
+            value: 'none',
             editable: false,
             store: 'AccountsFilter',
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',
-            forceSelection: true
-        }]
-    }
+            forceSelection: true,
+            listeners:{
+                scope: this,
+                'select': function(combo, record, index) {
+                    var g = combo.findParentByType('grid');
+                    g.getStore().clearFilter();
+                    if (combo.getValue() == 'reebillcustomers')
+                        g.getStore().filter('reebill_customer', true);
+                    else if(combo.getValue() == 'brokeragecustomers')
+                        g.getStore().filter('brokerage_account', true);
+                }
+            }
+            }, '->']
+    }]
 });
