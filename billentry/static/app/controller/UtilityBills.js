@@ -321,20 +321,31 @@ Ext.define('BillEntry.controller.UtilityBills', {
             var utilBillsStore = this.getUtilityBillsStore();
             utilBillsStore.suspendAutoSync();
             supplierStore.suspendAutoSync();
-            supplierStore.add({name: combo.getRawValue()});
-            supplierStore.sync({
-                success: function(batch, options){
-                    this.getUtilityBillsStore().resumeAutoSync();
-                    selected.set('supplier_id', batch.operations[0].records[0].get('id'));
-                },
-                failure: function(){
-                    this.getUtilityBillsStore().resumeAutoSync();
-                },
-                scope: this
-            });
-            supplierStore.resumeAutoSync();
+            Ext.MessageBox.confirm("Confirmation", "Do you want to create a new supplier named "+ combo.getRawValue() + "?",
+                   function(btnText){
+                        if(btnText === "yes"){
+                            supplierStore.add({name: combo.getRawValue()});
+                            supplierStore.sync({
+                                success: function(batch, options){
+                                    utilBillsStore.resumeAutoSync();
+                                    selected.set('supplier_id', batch.operations[0].records[0].get('id'));
+                                },
+                                failure: function(){
+                                    utilBillsStore.resumeAutoSync();
+                                },
+                            scope: this});
+                            supplierStore.resumeAutoSync();
+                        }
+                        else{
+                            combo.reset();
+                            utilBillsStore.rejectChanges();
+                            utilBillsStore.resumeAutoSync();
+                            supplierStore.resumeAutoSync();
+                        }
+                   });
         }
     },
+
 
     /**
      * Finds the store index of the record that is offset by 'offset' from
