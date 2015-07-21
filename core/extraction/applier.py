@@ -204,7 +204,7 @@ class Applier(object):
                 try:
                     self.apply(key, value, utilbill)
                 except ApplicationError as error:
-                    errors.append((key, error))
+                    errors[key] = error
                 else:
                     success_count += 1
         return success_count, errors
