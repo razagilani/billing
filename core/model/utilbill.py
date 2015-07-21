@@ -2,7 +2,8 @@ from StringIO import StringIO
 import ast
 from datetime import datetime, date
 from pdfminer.converter import PDFPageAggregator
-from pdfminer.layout import LAParams
+from pdfminer.layout import LAParams, LTComponent, LTTextLine, LTTextBox, LTPage, \
+    LTCurve, LTImage, LTText
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
@@ -15,6 +16,7 @@ from core.model import Base, Address, Session, Register
 from core.model.model import UtilbillCallback, PHYSICAL_UNITS
 from exc import NotProcessable, UnEditableBillError, BillingError, \
     BillStateError, MissingFileError, FormulaSyntaxError, FormulaError
+from util.pdf import get_all_pdfminer_objs
 
 
 class UtilBill(Base):
@@ -628,6 +630,7 @@ class UtilBill(Base):
             self._text = text
         return self._text
 
+    # TODO: no test coverage
     def get_layout(self, bill_file_handler, pdf_util):
         """
         :param bill_file_handler: used to get the PDF file
@@ -635,9 +638,7 @@ class UtilBill(Base):
         :return: list of lists of LayoutElements, where each inner list
         represents the elements on each page
         """
-        # TODO: fix circular import and move to top of file
-        from core.extraction.layout import layout_elements_from_pdfminer, \
-            group_layout_elements_by_page
+        from core.extraction.layout import group_layout_elements_by_page
         infile = StringIO()
 
         # _layout is an empty list if and only if get_layout has never been
@@ -652,7 +653,7 @@ class UtilBill(Base):
                 layout = []
             else:
                 pages = pdf_util.get_pdfminer_layout(infile)
-                layout = layout_elements_from_pdfminer(pages, self.id)
+                layout = LayoutElement.create_from_ltpages(pages)
             self._layout = layout
 
         # sort elements in each page by position: top to bottom, left to
@@ -660,6 +661,7 @@ class UtilBill(Base):
         pages = [sorted(p, key=lambda obj: (-obj.y0, obj.x0)) for p in
                  group_layout_elements_by_page(layout)]
         return pages
+
 
 class LayoutElement(Base):
     """
@@ -693,6 +695,48 @@ class LayoutElement(Base):
     height = Column(Float, nullable=False)
     text = Column(String)
 
+    @classmethod
+    def create_from_ltpages(cls, pages):
+        """
+        Takes PDFMiner data and converts it to a list of LayoutElement's, as well as
+         adding them to the database.
+        :param pages: list of LTPage objects
+        :return: A list of LayoutElement's
+        """
+        layout_elements = []
+        for i in range(0, len(pages)):
+            # Right now only keep track of some object types.
+            # Scanned bills can have 100,000+ image/shape objects, one for each
+            # character, slowing down analysis.
+            page_objs = get_all_pdfminer_objs(pages[i], objtype=LTComponent,
+                predicate=lambda o: isinstance(o, (LTPage, LTTextLine, LTTextBox)))
+            for obj in page_objs:
+                #get object type
+                if isinstance(obj, LTPage):
+                    objtype = LayoutElement.PAGE
+                elif isinstance(obj, LTTextLine):
+                    objtype = LayoutElement.TEXTLINE
+                elif isinstance(obj, LTTextBox):
+                    objtype = LayoutElement.TEXTBOX
+                elif isinstance(obj, LTCurve):
+                    objtype = LayoutElement.SHAPE
+                elif isinstance(obj, LTImage):
+                    objtype = LayoutElement.IMAGE
+                else:
+                    objtype = LayoutElement.OTHER
+
+                #get text, if any
+                if isinstance(obj, LTText):
+                    text = obj.get_text()
+                else:
+                    text = None
+
+                layout_elt = LayoutElement(type=objtype, x0=obj.x0, y0=obj.y0,
+                    x1=obj.x1, y1=obj.y1, width=obj.width, height=obj.height,
+                    text=text, page_num=i+1)
+                layout_elements.append(layout_elt)
+
+        return layout_elements
 
 
 class Evaluation(object):

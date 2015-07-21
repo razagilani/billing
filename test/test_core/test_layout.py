@@ -7,8 +7,8 @@ from pdfminer.layout import LTPage, LTImage, LTTextBox, LTTextLine, LTCurve, \
 from pdfminer.pdftypes import PDFStream
 from core import init_model
 from core.extraction.layout import BoundingBox, get_corner, \
-    get_objects_from_bounding_box, Corners, in_bounds, get_text_from_bounding_box, \
-    get_text_line, tabulate_objects, layout_elements_from_pdfminer, \
+    get_objects_from_bounding_box, Corners, in_bounds, \
+    get_text_from_bounding_box, get_text_line, tabulate_objects, \
     group_layout_elements_by_page
 
 # init_test_config has to be called first in every test module, because
@@ -20,7 +20,8 @@ from core.extraction.layout import BoundingBox, get_corner, \
 from core.model import LayoutElement
 from test import init_test_config, create_tables, clear_db
 
-init_test_config()
+def setUpModule():
+    init_test_config()
 
 class BoundingBoxTest(TestCase):
     def test_boundingbox_init(self):
@@ -165,34 +166,6 @@ class PDFMinerToLayoutElementTest(TestCase):
         self.page2._objs = [self.line2, self.ltcont2]
         self.pdfminer_pages = [self.page1, self.page2]
 
-    def test_pdfminer_to_layoutelement(self):
-        le_pg1 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
-            y1=1000, width=1000, height=1000, text=None, page_num=1,
-            utilbill_id=123)
-        le_pg2 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
-            y1=1000, width=1000, height=1000, text=None, page_num=2,
-            utilbill_id=123)
-        le_textbox1 = LayoutElement(type=LayoutElement.TEXTBOX, x0=200,
-            y0=300, x1=600, y1=700, page_num=1, text='textbox1',
-            utilbill_id=123)
-        le_textline1 = LayoutElement(type=LayoutElement.TEXTLINE, x0=200,
-            y0=300, x1=500, y1=600, page_num=1, text='textline1',
-            utilbill_id=123)
-
-        expected_elts = [le_pg1, le_textbox1, le_textline1, le_pg2]
-        layout_elts = layout_elements_from_pdfminer(self.pdfminer_pages, 123)
-
-        for le, exp_le in zip(layout_elts, expected_elts):
-            self.assertEqual(le.type, exp_le.type)
-            self.assertEqual(le.page_num, exp_le.page_num)
-            self.assertEqual(le.text, exp_le.text)
-            self.assertEqual(le.utilbill_id, exp_le.utilbill_id)
-
-            self.assertEqual(le.x0, exp_le.x0)
-            self.assertEqual(le.y0, exp_le.y0)
-            self.assertEqual(le.x1, exp_le.x1)
-            self.assertEqual(le.y1, exp_le.y1)
-
     def test_group_elements_by_page(self):
         le1 = LayoutElement(page_num=1)
         le2 = LayoutElement(page_num=3)
@@ -202,3 +175,63 @@ class PDFMinerToLayoutElementTest(TestCase):
         le_pages = group_layout_elements_by_page(le_list)
         le_pages_expected = [[le1, le3], [le4], [le2]]
         self.assertEqual(le_pages, le_pages_expected)
+
+
+class LayoutElementTest(TestCase):
+    def setUp(self):
+        # set up PDFMiner output
+        # Can't use Mock since layout_elements_from_pdfminer uses isinstance
+        self.page1 = LTPage(1, bbox=(0, 0, 1000, 1000))
+
+        self.img1 = LTImage("img", Mock(autospec=PDFStream), bbox=(100, 200,
+                                                                   500, 600))
+
+        self.textbox1 = LTTextBox()
+        self.textbox1.x0 = 200
+        self.textbox1.y0 = 300
+        self.textbox1.x1 = 600
+        self.textbox1.y1 = 700
+        self.textbox1.get_text = Mock(return_value="textbox1")
+
+        self.textline1 = LTTextLine(0)
+        self.textline1.x0 = 200
+        self.textline1.y0 = 300
+        self.textline1.x1 = 500
+        self.textline1.y1 = 600
+        self.textline1.get_text = Mock(return_value="textline1")
+
+        self.page1._objs = [self.img1, self.textbox1, self.textline1]
+
+        self.page2 = LTPage(2, bbox=(0, 0, 1000, 1000))
+        self.line2 = LTLine(1, (200, 300), (500, 600))
+        self.ltcont2 = LTLayoutContainer(bbox=(300, 400, 700, 800))
+        self.page2._objs = [self.line2, self.ltcont2]
+        self.pdfminer_pages = [self.page1, self.page2]
+
+    def test_pdfminer_to_layoutelement(self):
+        le_pg1 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
+                               y1=1000, width=1000, height=1000, text=None,
+                               page_num=1, utilbill_id=123)
+        le_pg2 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
+                               y1=1000, width=1000, height=1000, text=None,
+                               page_num=2, utilbill_id=123)
+        le_textbox1 = LayoutElement(type=LayoutElement.TEXTBOX, x0=200, y0=300,
+                                    x1=600, y1=700, page_num=1, text='textbox1',
+                                    utilbill_id=123)
+        le_textline1 = LayoutElement(type=LayoutElement.TEXTLINE, x0=200,
+                                     y0=300, x1=500, y1=600, page_num=1,
+                                     text='textline1', utilbill_id=123)
+
+        expected_elts = [le_pg1, le_textbox1, le_textline1, le_pg2]
+        layout_elts = LayoutElement.create_from_ltpages(
+            self.pdfminer_pages)
+
+        for le, exp_le in zip(layout_elts, expected_elts):
+            self.assertEqual(le.type, exp_le.type)
+            self.assertEqual(le.page_num, exp_le.page_num)
+            self.assertEqual(le.text, exp_le.text)
+
+            self.assertEqual(le.x0, exp_le.x0)
+            self.assertEqual(le.y0, exp_le.y0)
+            self.assertEqual(le.x1, exp_le.x1)
+            self.assertEqual(le.y1, exp_le.y1)
