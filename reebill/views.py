@@ -5,8 +5,9 @@ from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from sqlalchemy.orm import joinedload
 from brokerage.brokerage_model import BrokerageAccount
-from core.model import Session, UtilBill, Register, UtilityAccount, \
+from core.model import Session, Register, UtilityAccount, \
     Supplier, Utility, RateClass, SupplyGroup, Charge
+from core.model.utilbill import UtilBill, Charge
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 

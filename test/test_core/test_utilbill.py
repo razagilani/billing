@@ -23,8 +23,9 @@ from unittest import TestCase
 
 from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
     MissingFileError
-from core.model import UtilBill, Session, Charge,\
+from core.model import Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from core.model.utilbill import UtilBill, Charge
 from util.pdf import PDFUtil
 
 
