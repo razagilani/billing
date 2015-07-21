@@ -195,8 +195,7 @@ class Applier(object):
         :return number of fields successfully extracted (integer), list of
         ExtractionErrors
         """
-        # TODO: use of private method
-        good, errors = extractor._get_values(utilbill, bill_file_handler)
+        good, errors = extractor.get_values(utilbill, bill_file_handler)
         success_count = 0
         for key in self.get_keys():
             if key in good:
