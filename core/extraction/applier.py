@@ -192,8 +192,9 @@ class Applier(object):
         :param extractor: Extractor
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler to get files for UtilBills.
-        :return number of fields successfully extracted (integer), list of
-        ExtractionErrors
+        :return number of fields successfully extracted and applied (integer),
+        dictionary of key -> Exceptions (which can be either ExtractionErrors or
+        ApplicationErrors)
         """
         good, errors = extractor.get_values(utilbill, bill_file_handler)
         success_count = 0
@@ -206,5 +207,8 @@ class Applier(object):
                     errors[key] = error
                 else:
                     success_count += 1
+        # an unrecognized key is an error
+        for key in set(good.iterkeys()) - set(self.get_keys()) :
+            errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
 

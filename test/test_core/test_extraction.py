@@ -76,6 +76,23 @@ class ApplierTest(TestCase):
         self.applier.apply(Applier.ENERGY, 123.456, self.bill)
         self.bill.set_total_energy.assert_called_once_with(123.456)
 
+    def test_apply_values(self):
+        # TODO: maybe make this independent of UtilBill; it should be in a
+        # test for the generic Applier when that is separated from utilbill
+        extractor = Mock(autospec=Extractor)
+        good = {Applier.START: date(2000,1,1), Applier.CHARGES: 'wrong type',
+                'wrong key': 1}
+        extractor_errors = {Applier.END: ExtractionError('an error')}
+        extractor.get_values.return_value = (good, extractor_errors)
+        bfh = Mock(autospec=BillFileHandler)
+
+        success_count, applier_errors = self.applier.apply_values(
+            extractor, self.bill, bfh)
+        self.assertEqual(1, success_count)
+        self.assertEqual(3, len(applier_errors))
+        self.assertIsInstance(applier_errors['wrong key'], ApplicationError)
+        self.assertIsInstance(applier_errors[Applier.CHARGES], ApplicationError)
+
     def test_errors(self):
         # wrong key
         with self.assertRaises(ApplicationError):
