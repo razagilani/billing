@@ -1,13 +1,7 @@
 """
 This file contains classes and functions used in layout analysis of PDFs
 """
-from pdfminer.layout import LTTextLine, LTText, LTPage, LTTextBox, LTCurve, \
-    LTImage, LTChar, LTComponent
 import re
-
-from core import init_model
-from core.model import LayoutElement
-from util.pdf import get_all_pdfminer_objs
 
 
 def group_layout_elements_by_page(layout_elements):
@@ -59,21 +53,13 @@ def get_text_from_bounding_box(layout_objs, boundingbox, corner):
     Text from different text lines is separated by a newline.
     :param layout_objs the objects within which to search.
     """
-    textlines = get_objects_from_bounding_box(layout_objs,
-        boundingbox, corner, objtype=LayoutElement.TEXTLINE)
+    # TODO: fix circular import so this can be moved to top of file
+    from core.model import LayoutElement
+    search = lambda lo: lo.type == LayoutElement.TEXTLINE and \
+                        in_bounds(lo, boundingbox, corner)
+    textlines = filter(search, layout_objs)
     text = '\n'.join([tl.text for tl in textlines])
     return text
-
-
-def get_objects_from_bounding_box(layout_objs, boundingbox, corner, objtype=None):
-    """
-    Returns alls objects of the given type within a boundingbox.
-    If objtype is None, all objects are returned.
-    """
-    search = lambda lo: (objtype is None or lo.type == objtype) and \
-                        in_bounds(lo, boundingbox, corner)
-    return filter(search, layout_objs)
-
 
 def get_text_line(layout_objs, regexstr):
     """
@@ -82,6 +68,8 @@ def get_text_line(layout_objs, regexstr):
     :param regex: The regular expression string to match
     :return: An LTTextLine object, or None
     """
+    # TODO: fix circular import so this can be moved to top of file
+    from core.model import LayoutElement
     regex = re.compile(regexstr, re.IGNORECASE)
     search = lambda lo: lo.type == LayoutElement.TEXTLINE and regex.search(
         lo.text)

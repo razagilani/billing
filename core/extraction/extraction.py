@@ -20,7 +20,7 @@ from core.extraction.type_conversion import \
     convert_address, convert_table_charges, \
     convert_wg_charges_std
 from core.extraction.layout import tabulate_objects, BoundingBox, \
-    group_layout_elements_by_page
+    group_layout_elements_by_page, in_bounds
 from core.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
@@ -519,8 +519,9 @@ class LayoutExtractor(Extractor):
                             maxx = self.bbmaxx + dx,
                             maxy = self.nextpage_top + dy)
 
-                new_textlines = layout.get_objects_from_bounding_box(page,
-                    bbox, 0, LayoutElement.TEXTLINE)
+                search = lambda lo: (lo.type == LayoutElement.TEXTLINE) and \
+                                    in_bounds(lo, bbox, 0)
+                new_textlines = filter(search, page)
 
                 #match regex at start of table.
                 if self.table_start_regex and i == self.page_num - 1:
