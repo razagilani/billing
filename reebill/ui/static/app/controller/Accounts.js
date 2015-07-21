@@ -22,7 +22,10 @@ Ext.define('ReeBill.controller.Accounts', {
     },{
         ref: 'accountsFilter',
         selector: 'combo[name=accountsFilter]'
-    }],    
+    },{
+        ref: 'mergeBtn',
+        selector: 'button#mergeAccountRecord'
+    }],
     
     init: function() {
         this.application.on({
@@ -44,6 +47,9 @@ Ext.define('ReeBill.controller.Accounts', {
             },
             'combo[name=accountsFilter]': {
                 change: this.handleFilter
+            },
+            '[action=mergeRecords]': {
+                click: this.handleMerge
             }
         });
 
@@ -219,7 +225,21 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the account selection.
      */
     handleAccountSelect: function() {
+        var selected = this.getAccountsGrid().getSelectionModel().getSelection();
+        this.getMergeBtn().setDisabled(selected.length < 2);
+    },
 
+    /**
+     * handle merge records button
+     */
+    handleMerge: function () {
+        var records = this.getAccountsGrid().getSelectionModel().getSelection();
+        Ext.create('ReeBill.view.accounts.MergeDialog', {
+            records: records,
+            basedOn: 'ReeBill.view.accounts.Accounts',
+            store: this.getAccountsStore(),
+            exclude: ['modified', 'created']
+        }).show();
     }
 
 });
