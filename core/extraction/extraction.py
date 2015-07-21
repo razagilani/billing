@@ -245,7 +245,7 @@ class Extractor(model.Base):
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
-                errors[field.applier_key] = value
+                errors[field.applier_key] = error
             else:
                 good[field.applier_key] = value
         return good, errors
