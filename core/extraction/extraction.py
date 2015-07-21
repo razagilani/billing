@@ -231,8 +231,7 @@ class Extractor(model.Base):
         """
         raise NotImplementedError
 
-    #TODO right now this is a private method, we should make it public
-    def _get_values(self, utilbill, bill_file_handler):
+    def get_values(self, utilbill, bill_file_handler):
         """
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler
@@ -257,38 +256,8 @@ class Extractor(model.Base):
         :param bill_file_handler: BillFileHandler
         :return: number of fields that could be extracted (int)
         """
-        good, _ = self._get_values(utilbill, bill_file_handler)
+        good, _ = self.get_values(utilbill, bill_file_handler)
         return len(good)
-
-    # def apply_values(self, utilbill, bill_file_handler, applier):
-    #     """Update attributes of the given bill with data extracted from its
-    #     file. Return value can be used to compare success rates of different
-    #     Extractors.
-    #     :param utilbill: UtilBill
-    #     :param bill_file_handler: BillFileHandler to get files for UtilBills.
-    #     :param applier: Applier that determines how values are applied
-    #     :return number of fields successfully extracted (integer), list of
-    #     ExtractionErrors
-    #     """
-    #     good, errors = self._get_values(utilbill, bill_file_handler)
-    #     success_count = 0
-    #
-    #     # hack to force field values to be applied in the order of Applier.KEYS,
-    #     # because of dependency of some values on others.
-    #     # TODO: probably Applier should get a whole Extractor passed to it
-    #     # and apply all the fields, so it can ensure they get applied in the
-    #     # right order. extraction results should not be ordered anyway.
-    #     good = sorted(good, key=(
-    #         lambda (applier_key, _): applier.get_keys().index(applier_key)))
-    #
-    #     for applier_key, value in good:
-    #         try:
-    #             applier.apply(applier_key, value, utilbill)
-    #         except ApplicationError as error:
-    #             errors.append((applier_key, error))
-    #         else:
-    #             success_count += 1
-    #     return success_count, errors
 
 
 class TextExtractor(Extractor):
