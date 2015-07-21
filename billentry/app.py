@@ -215,21 +215,21 @@ def get_running_tests():
         ExtractorResult.finished == None)
     running_tasks = q.all()
     tasks_dict = [{
-        'task_id' : rt.task_id,
-        'parent_id' : rt.parent_id,
-        'extractor_id' : rt.extractor_id,
-        'utility_id' : rt.utility_id,
-        'bills_to_run' : rt.bills_to_run,
+        'task_id': rt.task_id,
+        'parent_id': rt.parent_id,
+        'extractor_id': rt.extractor_id,
+        'utility_id': rt.utility_id,
+        'bills_to_run': rt.bills_to_run,
     } for rt in running_tasks]
-    return jsonify({'tasks' : tasks_dict})
+    return jsonify({'tasks': tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
 def run_test():
-    '''
+    """
     Runs a test of bill data extractors as an asynchronous Celery task.
     Also creates a database row in the ExtractorResult table for this test.
     :return the ID of the task being run, as well as the total number of bills
-    '''
+    """
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
     num_bills = int(request.form.get('num_bills'))

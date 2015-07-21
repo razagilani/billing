@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from celery.exceptions import TaskRevokedError
 import os
 from unittest import TestCase, skip
 
@@ -12,13 +13,14 @@ from mock import Mock, NonCallableMock
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from core.extraction.task import test_bill, reduce_bill_results
 from test import init_test_config
 init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
-    verify_field
+    verify_field, ExtractorResult
 from core.extraction.applier import Applier
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
@@ -143,6 +145,13 @@ class TextFieldTest(TestCase):
         # matched a string but couldn't convert to a date
         with self.assertRaises(ConversionError):
             print self.field.get_value('Somemonth 0, 7689')
+
+        # multiple matches
+        with self.assertRaises(MatchError):
+            field_multiple_matches = TextExtractor.TextField(regex=r'(\d+) ('
+                                                                   r'\d+)',
+                type=Field.FLOAT)
+            print self.field.get_value('3342 2321')
 
 
 class TextExtractorTest(TestCase):
@@ -359,8 +368,11 @@ class TestIntegration(TestCase):
         s.flush()
         self.assertGreater(self.e1.modified, last_modified)
 
-    @skip('this task was deleted, might come back')
-    def test_test_extractor(self):
+    def test_test_bill_tasks(self):
+        """ Tests the functions in task.py, such as test_bill and
+        reduce_bill_results
+        """
+
         # TODO: it might be possible to write this as a unit test, without the
         # database. database queries in tasks would be moved to a DAO like
         # UtilbillLoader, which could be mocked.
@@ -373,19 +385,68 @@ class TestIntegration(TestCase):
         # primary keys need to be set so they can be queried. also,
         # the transaction needs to be committed because the task is a
         # separate thread so it has a different transaction
-        Session().commit()
+        s = Session()
+        s.commit()
         # TODO: session is gone after committing here, so we would have to
         # create a new session and re-load all the objects that are used in
         # the assertions below.
 
-        result = test_extractor.apply(args=[self.e1.extractor_id])
-        metadata = AsyncResult(result.task_id).info
-        self.assertEqual((1, 1, 1), result.get())
-        self.assertEqual({'all_count': 1, 'any_count': 1, 'total_count': 1},
-            metadata)
+        results = [test_bill(self.e1.extractor_id, self.bill.id),
+            TaskRevokedError("Representing a stopped task"),
+            Exception("Representing a failed task"), None]
+        total_result = reduce_bill_results(results)
 
-        result = test_extractor.apply(args=[self.e2.extractor_id])
-        metadata = AsyncResult(result.task_id).info
-        self.assertEqual((0, 0, 1), result.get())
-        self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
-                         metadata)
+        expected_fields = {'end': 1,
+                           'charges': 1,
+                           'energy': 1,
+                           'start': 1,
+                           'rate class': 1,
+                           'next read': 1}
+        expected_dates = {'2014-04':
+                               {'all_count': 1,
+                                'total_count': 1,
+                                'any_count': 1,
+                                'fields': expected_fields}}
+        expected_result = {'total_count': 1,
+                           'any_count': 1,
+                           'all_count': 1,
+                           'nbills': 4,
+                           'failed': 1,
+                           'stopped': 1,
+                           'dates': expected_dates,
+                           'fields_fraction': {'end': 0,
+                                               'charges': 0,
+                                               'energy': 0,
+                                               'start': 0,
+                                               'rate class': 0,
+                                               'next read': 0},
+                            'verified_count': 0,
+                            'fields': expected_fields}
+        self.assertEqual(total_result,expected_result)
+
+        #set up extractor result with non-nullable fields
+        er = ExtractorResult(task_id="", parent_id="",
+            bills_to_run=4, started=datetime.utcnow())
+        #apply results to extractor result
+        er.set_results(total_result)
+        self.assertGreater(er.finished, er.started)
+        self.assertEqual(er.total_count, total_result['total_count'])
+        self.assertEqual(er.any_count, total_result['any_count'])
+        self.assertEqual(er.all_count, total_result['all_count'])
+        self.assertEqual(er.verified_count, total_result['verified_count'])
+
+        for fname in expected_fields.keys():
+            attr_name = fname.replace(" ", "_")
+
+            #check that field counts are the same
+            self.assertEqual(er.__getattribute__("field_"+attr_name),
+                expected_fields[fname])
+            # check taht field accuracies
+            self.assertEqual(er.__getattribute__(
+                "field_"+attr_name+"_fraction"), expected_result[
+                'fields_fraction'][fname])
+            #check that monthly field counts are the same
+            for date in expected_dates.keys():
+                self.assertEqual(er.__getattribute__(
+                    "field_"+attr_name+"_by_month")[date], expected_dates[
+                    date][fname])
