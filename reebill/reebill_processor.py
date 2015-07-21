@@ -9,9 +9,10 @@ from sqlalchemy.sql import desc
 from sqlalchemy import not_, func
 from sqlalchemy.orm.exc import NoResultFound
 
-from core.model import (UtilBill, Address, Session,
+from core.model import (Address, Session,
                            MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass,
                            Register)
+from core.model.utilbill import UtilBill
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
                                    CustomerGroup)

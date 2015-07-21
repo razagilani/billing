@@ -10,17 +10,17 @@ from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
     UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import relationship, object_session, \
-    MapperExtension
+from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
+from core.extraction.applier import Applier
 from core.extraction import layout
-from core.extraction.applier import Applier, convert_wg_charges_std, \
+from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
-    convert_address, convert_table_charges
+    convert_address, convert_table_charges, \
+    convert_wg_charges_std
 from core.extraction.layout import tabulate_objects, BoundingBox, \
     group_layout_elements_by_page
-from core.model import Address, Session
 from core.model.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
@@ -328,11 +328,15 @@ class TextExtractor(Extractor):
                 raise MatchError(
                     'No match for pattern "%s" in text starting with "%s"' % (
                         self.regex, text.strip()[:20]))
-            elif len(m.groups()) != 1:
+            # In case of a | in the regex, in which there are multiple
+            # capture groups, remove the matches which are None
+            # e.g. r'(either this)|(or this)'
+            match_groups = filter(None, m.groups())
+            if len(match_groups) != 1:
                 raise MatchError('Found %d matches for pattern "%s" in text '
-                                 'starting with "%s"' % (len(m.groups()),
+                                 'starting with "%s"' % (len(match_groups),
                 self.regex, text.strip()[:20]))
-            return m.groups()[0]
+            return match_groups[0]
 
     #fields = relationship(TextField, backref='extractor')
 
@@ -585,25 +589,32 @@ class ExtractorResult(model.Base):
 
     extractor_result_id = Column(Integer, primary_key=True)
     extractor_id = Column(Integer, ForeignKey('extractor.extractor_id'))
+
+    # id of task in celery
     task_id = Column(String, nullable=False)
-    #The ID of the 'parent' tasks, which contains info about the individual
-    # sub-tasks
+    # id of task group in celery, used to get individual sub-tasks
     parent_id = Column(String, nullable=False)
-    # date when the test was started, and finished (if it has finished)
+    # when the task was started and finished
     started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
     # used when filtering bills by utility
     utility_id = Column(Integer, ForeignKey('utility.id'))
+    # total bills to run in the task
     bills_to_run = Column(Integer, nullable=False)
 
     # results to be filled in after the test has finished
+    # num. of bills with all fields enterred
     all_count = Column(Integer)
+    # num. of bills with any fields enterred
     any_count = Column(Integer)
+    # total number of bills run so far
     total_count = Column(Integer)
-    processed_count = Column(Integer)
+    # number of bills that have been processed in the database, and had at
+    # least one field extracted.
+    verified_count = Column(Integer)
 
     #TODO should find a way to sync these with UtilBill's list of fields
-    # field counts
+    # total counts for each field
     field_billing_address = Column(Integer)
     field_charges = Column(Integer)
     field_end = Column(Integer)
@@ -614,7 +625,7 @@ class ExtractorResult(model.Base):
     field_start = Column(Integer)
     field_service_address = Column(Integer)
 
-    # field counts
+    # accuracy of results when compared to fields in the database.
     field_billing_address_fraction = Column(Float)
     field_charges_fraction = Column(Float)
     field_end_fraction = Column(Float)
@@ -643,10 +654,10 @@ class ExtractorResult(model.Base):
         self.all_count = metadata['all_count']
         self.any_count = metadata['any_count']
         self.total_count = metadata['total_count']
-        self.processed_count = metadata['processed_count']
+        self.verified_count = metadata['verified_count']
 
         # update overall count and count by month for each field
-        for field_name in Applier.KEYS.iterkeys():
+        for field_name in metadata['fields'].keys():
             attr_name = field_name.replace(" ", "_")
             count_for_field = metadata['fields'][field_name]
             setattr(self, "field_" + attr_name, count_for_field)

@@ -27,8 +27,8 @@ class RenewableEnergyGetter(object):
         unbillable annotations are removed. If 'skip_missing' is True, missing OLAP
         documents or documents without the "energy_sold" measure are treated as
         0s.'''
-        unbillable_annotations = [a for a in install.get_annotations() if
-                a.unbillable]
+        unbillable_annotations = [a for a in install.get_annotations(
+            force_update=True) if a.unbillable]
         monguru = self._splinter._guru
         result = []
         for hour in cross_range(start, end):

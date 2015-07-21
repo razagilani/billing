@@ -2,12 +2,13 @@
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float, Table
+    Float, Table, func, desc
 from sqlalchemy.orm import relationship
 
 from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
 from exc import ValidationError
+from util.dateutils import date_to_datetime
 
 
 class BrokerageAccount(Base):
@@ -61,6 +62,29 @@ def get_rate_class_from_alias(alias):
         rate_class_alias=alias).first()
     return rate_class
 
+
+def get_quote_status():
+    """Return data about how many quotes were received for each supplier.
+    """
+    s = AltitudeSession()
+    today = date_to_datetime(datetime.utcnow().date())
+    join_condition = CompanyPGSupplier.company_id == MatrixQuote.supplier_id
+    q = s.query(CompanyPGSupplier.name.label('name'),
+                MatrixQuote.supplier_id.label(
+                    'supplier_id').label('supplier_id'),
+                func.max(MatrixQuote.date_received).label('date_received'),
+                func.count(MatrixQuote.rate_id).label('total_count')).outerjoin(
+        MatrixQuote, join_condition).group_by(
+        CompanyPGSupplier.name, MatrixQuote.supplier_id).subquery()
+    today = s.query(CompanyPGSupplier.company_id.label('supplier_id'),
+                    func.count(MatrixQuote.supplier_id).label('today_count')
+                    ).outerjoin(MatrixQuote, join_condition).filter(
+        MatrixQuote.date_received >= today).group_by(
+        CompanyPGSupplier.company_id, MatrixQuote.supplier_id).subquery()
+    return s.query(q.c.name, q.c.supplier_id, q.c.date_received,
+                   q.c.total_count, today.c.today_count).select_from(
+        q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
+        desc(q.c.total_count))
 
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
