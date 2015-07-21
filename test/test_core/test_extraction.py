@@ -19,8 +19,9 @@ from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor
 from core.extraction.applier import Applier
-from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
+from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
+from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables

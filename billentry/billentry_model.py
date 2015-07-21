@@ -8,7 +8,8 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, backref
 
-from core.model import Base, UtilBill, Session
+from core.model import Base, Session
+from core.model.utilbill import UtilBill
 
 
 class BillEntryUser(Base, UserMixin):
