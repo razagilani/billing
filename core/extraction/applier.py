@@ -2,14 +2,14 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
+from abc import ABCMeta
 from collections import OrderedDict
-import re
+
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
-from core import model
-from core.model import Session, RateClass, Utility, Address
-from core.model.utilbill import Charge
+
+from core.model import Session, RateClass
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -17,6 +17,22 @@ from exc import ApplicationError
 
 
 class Applier(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, keys):
+        self.keys = keys
+
+    def apply(self, extractor, *args):
+        raise NotImplementedError
+
+    def get_keys(self):
+        """:return: list of keys (strings) in the order they should be
+        applied. (Not necessarily the 'KEYS' of the default Applier.)
+        """
+        return self.keys.keys()
+
+
+class UtilBillApplier(Applier):
     """Applies extracted values to attributes of UtilBill. There's no
     instance-specific state so only one instance is needed.
 
@@ -27,9 +43,10 @@ class Applier(object):
     @staticmethod
     def set_rate_class(bill, rate_class_name):
         """
-        Given a bill and a rate class name, this function sets the rate class of the bill.
-        If the name corresponds to an existing rate class in the database, then the existing rate class is used.
-        Otherwise, a new rate class object is created.
+        Given a bill and a rate class name, this function sets the rate class
+        of the bill. If the name corresponds to an existing rate class in the
+        database, then the existing rate class is used. Otherwise, a new rate
+        class object is created.
         Note: This function uses the default service for all bills.
         :param bill: A UtilBill object
         :param rate_class_name:  A string, the name of the rate class
@@ -38,8 +55,11 @@ class Applier(object):
         s = Session()
         bill_util = bill.get_utility()
         if bill_util is None:
-            raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
-        q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
+            raise ApplicationError(
+                "Unable to set rate class for bill id %s: utility is unknown" %
+                bill_util.id)
+        q = s.query(RateClass).filter(RateClass.name == rate_class_name,
+                                      RateClass.utility == bill_util)
         try:
             rate_class = q.one()
         except NoResultFound:
@@ -102,7 +122,7 @@ class Applier(object):
     # utility (could be determined by layout itself)
 
     # Getters for each applier key, to get the corresponding field value from
-    #  a utility bill.
+    # a utility bill.
     GETTERS = {
         CHARGES: lambda b: b.charges,
         END: lambda b: b.period_end,
@@ -119,15 +139,6 @@ class Applier(object):
         if cls._instance is None:
             cls._instance = cls(cls.KEYS)
         return cls._instance
-
-    def __init__(self, keys):
-        self.keys = keys
-
-    def get_keys(self):
-        """:return: list of keys (strings) in the order they should be
-        applied. (Not necessarily the 'KEYS' of the default Applier.)
-        """
-        return self.keys.keys()
 
     def apply(self, key, value, utilbill):
         """Set the value of a UtilBill attribute. Raise ApplicationError if
@@ -146,15 +157,15 @@ class Applier(object):
             if hasattr(self.__class__, attr.__name__):
                 # method of this class (takes precedence over UtilBill method
                 # with the same name)
-                apply = lambda: attr(utilbill, value)
+                execute = lambda: attr(utilbill, value)
             elif hasattr(utilbill, attr.__name__):
                 method = getattr(utilbill, attr.__name__)
                 # method of UtilBill
-                apply = lambda: method(value)
+                execute = lambda: method(value)
             else:
                 # other callable. it must take a UtilBill and the value to
                 # apply.
-                apply = lambda: attr(utilbill, value)
+                execute = lambda: attr(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
@@ -172,12 +183,12 @@ class Applier(object):
                 raise ApplicationError(
                     "Can't apply %s to %s: unknown attribute type %s" % (
                         value, attr, type(attr)))
-            apply = lambda: setattr(utilbill, attr_name, value)
+            execute = lambda: setattr(utilbill, attr_name, value)
 
         # do it
         s = Session()
         try:
-            apply()
+            execute()
             # catch database errors here too
             s.flush()
         except Exception as e:
@@ -210,8 +221,7 @@ class Applier(object):
                 errors[key] = error
             else:
                 success_count += 1
-        for key in set(good.iterkeys()) - set(self.get_keys()) :
+        for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
-
 

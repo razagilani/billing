@@ -13,7 +13,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_wg_charges_std
@@ -51,7 +51,7 @@ class Main(object):
             utilbill, self._bill_file_handler))
 
         # values are cached so it's OK to call this repeatedly
-        success_count, errors = Applier.get_instance().apply_values(
+        success_count, errors = UtilBillApplier.get_instance().apply_values(
             best_extractor, utilbill, self._bill_file_handler)
         utilbill.date_extracted = datetime.utcnow()
         error_list_str = '\n'.join(('Field "%s": %s: %s' % (
@@ -146,7 +146,7 @@ class Field(model.Base):
     type = Column(Enum(*TYPES.keys(), name='field_type'))
 
     # string determining how the extracted value gets applied to a UtilBill
-    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
+    applier_key = Column(Enum(*UtilBillApplier.KEYS.keys(), name='applier_key'))
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {

@@ -17,7 +17,7 @@ from test import init_test_config
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
 from core.model.utilbill import UtilBill, Charge
@@ -55,35 +55,35 @@ class FieldTest(TestCase):
 
 class ApplierTest(TestCase):
     def setUp(self):
-        self.applier = Applier.get_instance()
+        self.applier = UtilBillApplier.get_instance()
         self.bill = NonCallableMock()
         self.bill.set_total_energy = Mock()
         self.bill.set_next_meter_read_date = Mock()
 
     def test_default_applier(self):
         d = date(2000,1,1)
-        self.applier.apply(Applier.START, d, self.bill)
+        self.applier.apply(UtilBillApplier.START, d, self.bill)
         self.assertEqual(d, self.bill.period_start)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.END, d, self.bill)
+        self.applier.apply(UtilBillApplier.END, d, self.bill)
         self.assertEqual(d, self.bill.period_end)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.NEXT_READ, d, self.bill)
+        self.applier.apply(UtilBillApplier.NEXT_READ, d, self.bill)
         self.bill.set_next_meter_read_date.assert_called_once_with(d)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+        self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
         self.bill.set_total_energy.assert_called_once_with(123.456)
 
     def test_apply_values(self):
         # one field is good, 2 have ApplicationErrors (one with wrong value
         # type, one with unknown key)
         extractor = Mock(autospec=Extractor)
-        good = {Applier.START: date(2000,1,1), Applier.CHARGES: 'wrong type',
-                'wrong key': 1}
-        extractor_errors = {Applier.END: ExtractionError('an error')}
+        good = {UtilBillApplier.START: date(2000, 1, 1),
+                UtilBillApplier.CHARGES: 'wrong type', 'wrong key': 1}
+        extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
         extractor.get_values.return_value = (good, extractor_errors)
         bfh = Mock(autospec=BillFileHandler)
 
@@ -92,7 +92,8 @@ class ApplierTest(TestCase):
         self.assertEqual(1, success_count)
         self.assertEqual(3, len(applier_errors))
         self.assertIsInstance(applier_errors['wrong key'], ApplicationError)
-        self.assertIsInstance(applier_errors[Applier.CHARGES], ApplicationError)
+        self.assertIsInstance(applier_errors[UtilBillApplier.CHARGES],
+                              ApplicationError)
 
     def test_errors(self):
         # wrong key
@@ -101,13 +102,13 @@ class ApplierTest(TestCase):
 
         # wrong value type
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.START, 1, self.bill)
+            self.applier.apply(UtilBillApplier.START, 1, self.bill)
 
         # exception in target method
         self.bill.reset_mock()
         self.bill.set_total_energy.side_effect = Exception
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+            self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
 
 
 class ExtractorTest(TestCase):
@@ -244,20 +245,20 @@ class TestIntegration(TestCase):
         tf = TextExtractor.TextField
         e1.fields = [
             TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE,
-                                    applier_key=Applier.START),
+                                    applier_key=UtilBillApplier.START),
             TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE,
-                                    applier_key=Applier.END),
+                                    applier_key=UtilBillApplier.END),
             TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT,
-                                    applier_key=Applier.ENERGY),
+                                    applier_key=UtilBillApplier.ENERGY),
             TextExtractor.TextField(regex=wg_next_meter_read_regex,
                                     type=Field.DATE,
-                                    applier_key=Applier.NEXT_READ),
+                                    applier_key=UtilBillApplier.NEXT_READ),
             TextExtractor.TextField(regex=wg_charges_regex,
                                     type=Field.WG_CHARGES,
-                                    applier_key=Applier.CHARGES),
+                                    applier_key=UtilBillApplier.CHARGES),
             TextExtractor.TextField(regex=wg_rate_class_regex,
                                     type=Field.STRING,
-                                    applier_key=Applier.RATE_CLASS),
+                                    applier_key=UtilBillApplier.RATE_CLASS),
         ]
 
         e2 = TextExtractor(name='Another')
