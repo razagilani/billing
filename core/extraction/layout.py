@@ -54,7 +54,7 @@ def layout_elements_from_pdfminer(pages, utilbill_id):
 
             layout_elt = LayoutElement(type=objtype, x0=obj.x0, y0=obj.y0,
                 x1=obj.x1, y1=obj.y1, width=obj.width, height=obj.height,
-                text=text, page_num=i, utilbill_id=utilbill_id)
+                text=text, page_num=i+1, utilbill_id=utilbill_id)
             s.add(layout_elt)
             layout_elements.append(layout_elt)
 
