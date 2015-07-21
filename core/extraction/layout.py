@@ -10,56 +10,6 @@ from core.model import LayoutElement
 from util.pdf import get_all_pdfminer_objs
 
 
-def layout_elements_from_pdfminer(pages, utilbill_id):
-    """
-    Takes PDFMiner data and converts it to a list of LayoutElement's, as well as
-     adding them to the database.
-    :param pages: PDFMiner output
-    :return: A list of LayoutElement's
-    """
-    from core.model import Session
-    if Session.bind is None:
-        del Session
-        init_model()
-        from core.model import Session
-    s = Session()
-
-    layout_elements = []
-    for i in range(0, len(pages)):
-        # Right now only keep track of some object types.
-        # Scanned bills can have 100,000+ image/shape objects, one for each
-        # character, slowing down analysis.
-        page_objs = get_all_pdfminer_objs(pages[i], objtype=LTComponent,
-            predicate=lambda o: isinstance(o, (LTPage, LTTextLine, LTTextBox)))
-        for obj in page_objs:
-            #get object type
-            if isinstance(obj, LTPage):
-                objtype = LayoutElement.PAGE
-            elif isinstance(obj, LTTextLine):
-                objtype = LayoutElement.TEXTLINE
-            elif isinstance(obj, LTTextBox):
-                objtype = LayoutElement.TEXTBOX
-            elif isinstance(obj, LTCurve):
-                objtype = LayoutElement.SHAPE
-            elif isinstance(obj, LTImage):
-                objtype = LayoutElement.IMAGE
-            else:
-                objtype = LayoutElement.OTHER
-
-            #get text, if any
-            if isinstance(obj, LTText):
-                text = obj.get_text()
-            else:
-                text = None
-
-            layout_elt = LayoutElement(type=objtype, x0=obj.x0, y0=obj.y0,
-                x1=obj.x1, y1=obj.y1, width=obj.width, height=obj.height,
-                text=text, page_num=i+1, utilbill_id=utilbill_id)
-            s.add(layout_elt)
-            layout_elements.append(layout_elt)
-
-    return layout_elements
-
 def group_layout_elements_by_page(layout_elements):
     #group layout elements by page number
     pages_layout = {}
