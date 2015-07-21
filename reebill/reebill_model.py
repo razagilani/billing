@@ -921,7 +921,9 @@ class User(Base):
     session_token = Column(String(1000))
 
     def __repr__(self):
-        return '<User %s %s %s>' % (self.id, self.identifier, self.username)
+        return '<User %s %s %s>' % (
+            self.reebill_user_id, self.identifier, self.username
+        )
 
     def get_preferences(self):
         pref_str = self._preferences
