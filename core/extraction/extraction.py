@@ -563,16 +563,10 @@ class LayoutExtractor(Extractor):
         Prepares input for layout extractor by getting PDF layout data
         and checking if bill's PDF is misaligned.
         """
-        layout_elements = utilbill.get_layout(bill_file_handler, PDFUtil())
-        pages = group_layout_elements_by_page(layout_elements)
-
-        #sort elements in each page by position
-        for p in pages:
-            p.sort(key=lambda obj: (-obj.y0, obj.x0))
-
+        pages = utilbill.get_layout(bill_file_handler, PDFUtil())
         dx = dy = 0
         if all(v is not None for v in
-                [self.origin_regex, self.origin_x, self.origin_y]):
+               [self.origin_regex, self.origin_x, self.origin_y]):
             #get textbox used to align the page
             alignment_box = layout.get_text_line(pages[0], self.origin_regex)
             if alignment_box is not None:
