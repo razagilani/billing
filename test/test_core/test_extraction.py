@@ -17,7 +17,8 @@ init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Field, Extractor, Main, TextExtractor
+from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
+    verify_field
 from core.extraction.applier import Applier
 from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
@@ -155,6 +156,32 @@ class TextExtractorTest(TestCase):
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
 
+class VerifyFieldTest(TestCase):
+    def setUp(self):
+        self.rate_class = Mock(autospec=RateClass)
+        self.rate_class.name = "Some Rate Class"
+
+    def test_verify_field(self):
+        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+            date(2015, 07, 04)))
+        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+            '2015-07-04'))
+        # whitespace in DB is ok
+        self.assertTrue(verify_field(Applier.START, '2015-07-04',
+            '2015-07-04 '))
+        # whitespace in extracted value is not ok
+        self.assertFalse(verify_field(Applier.START, '2015-07-04 ',
+            '2015-07-04'))
+        self.assertFalse(verify_field(Applier.START, '2014-07-04',
+            '2015-07-04'))
+        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some Rate Class",
+            self.rate_class))
+        # allowances for capitalization, formatting of spaces
+        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some_rate-class",
+            self.rate_class))
+        self.assertFalse(verify_field(Applier.RATE_CLASS, "Different rate "
+                                                          "class",
+            self.rate_class))
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
