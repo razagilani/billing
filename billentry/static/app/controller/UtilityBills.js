@@ -338,6 +338,7 @@ Ext.define('BillEntry.controller.UtilityBills', {
                         }
                         else{
                             combo.reset();
+                            utilBillsStore.rejectChanges();
                             utilBillsStore.resumeAutoSync();
                             supplierStore.resumeAutoSync();
                         }
