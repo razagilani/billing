@@ -167,7 +167,7 @@ class LayoutExtractorTest(TestCase):
             x1=100, y1=200, type=LayoutElement.TEXTLINE)
         self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
             x1=100, y1=200, type=LayoutElement.TEXTLINE)
-        self.layout_elts = [self.le1, self.le2, self.le3, self.le4]
+        self.layout_elts = [[self.le3, self.le1], [self.le4], [self.le2]]
 
         self.bfh = Mock(autospec=BillFileHandler)
         self.le = LayoutExtractor()
@@ -178,15 +178,13 @@ class LayoutExtractorTest(TestCase):
 
     def test_prepare_input(self):
         # layout elements, sorted by page and position
-        pages = [[self.le3, self.le1], [self.le4], [self.le2]]
-        le_input = self.le._prepare_input(self.bill,
-            self.bfh)
-        self.assertEqual((pages, 0, 0), le_input)
+        le_input = self.le._prepare_input(self.bill, self.bfh)
+        self.assertEqual((self.layout_elts, 0, 0), le_input)
 
         # check prepare_input with alignment
         aligned_input = self.le_with_align._prepare_input(
             self.bill, self.bfh)
-        self.assertEqual((pages, -10, 190), aligned_input)
+        self.assertEqual((self.layout_elts, -10, 190), aligned_input)
 
 
 class BoundingBoxFieldTest(TestCase):
@@ -206,8 +204,8 @@ class BoundingBoxFieldTest(TestCase):
             x1=70, y1=70, type=LayoutElement.TEXTLINE)
         self.le6 = LayoutElement(text='woo', page_num=2, x0=50, y0=50,
             x1=70, y1=70, type=LayoutElement.TEXTLINE)
-        self.layout_elts = [self.le1, self.le2, self.le3, self.le4, self.le5,
-            self.le6]
+        self.layout_elts = [[self.le1, self.le3], [self.le4, self.le5],
+                            [self.le2, self.le6]]
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elts
@@ -286,14 +284,14 @@ class TableFieldTest(TestCase):
     """
     def setUp(self):
         # generate of table of elements
-        self.layout_elements = []
+        self.layout_elements = [[]]
         for y in range(100, 10, -10):
             for x in range(20, 50, 10):
                 elt = LayoutElement(x0=x, y0=y, x1=x+5,
                     y1=y+5, text="%d %d text" % (x, y),
                     type=LayoutElement.TEXTLINE)
-                self.layout_elements.append(elt)
-        self.layout_elements.append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
+                self.layout_elements[0].append(elt)
+        self.layout_elements[0].append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
             text="not in table", type=LayoutElement.TEXTLINE))
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)

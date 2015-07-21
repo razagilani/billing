@@ -630,14 +630,21 @@ class UtilBill(Base):
 
     def get_layout(self, bill_file_handler, pdf_util):
         """
-        Returns a list of LTPage objects, containing PDFMiner's layout
-        information for the PDF
         :param bill_file_handler: used to get the PDF file
+        :param pdf_util: PDFUtil
+        :return: list of lists of LayoutElements, where each inner list
+        represents the elements on each page
         """
-        from core.extraction.layout import layout_elements_from_pdfminer
+        # TODO: fix circular import and move to top of file
+        from core.extraction.layout import layout_elements_from_pdfminer, \
+            group_layout_elements_by_page
         infile = StringIO()
-        if len(self._layout):
-            return self._layout
+
+        # _layout is an empty list if and only if get_layout has never been
+        # called before, because if there are no layout elements, there will
+        # at least be empty pages
+        if len(self._layout) > 0:
+            layout = self._layout
         else:
             try:
                 bill_file_handler.write_copy_to_file(self, infile)
@@ -647,7 +654,12 @@ class UtilBill(Base):
                 pages = pdf_util.get_pdfminer_layout(infile)
                 layout = layout_elements_from_pdfminer(pages, self.id)
             self._layout = layout
-        return self._layout
+
+        # sort elements in each page by position: top to bottom, left to
+        # right (origin is at lower left)
+        pages = [sorted(p, key=lambda obj: (-obj.y0, obj.x0)) for p in
+                 group_layout_elements_by_page(layout)]
+        return pages
 
 class LayoutElement(Base):
     """
