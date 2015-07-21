@@ -199,16 +199,19 @@ class Applier(object):
         good, errors = extractor.get_values(utilbill, bill_file_handler)
         success_count = 0
         for key in self.get_keys():
-            if key in good:
+            try:
                 value = good[key]
-                try:
-                    self.apply(key, value, utilbill)
-                except ApplicationError as error:
-                    errors[key] = error
-                else:
-                    success_count += 1
-        # an unrecognized key is an error
+            except KeyError:
+                # missing key is OK (but unrecognized key is an error)
+                continue
+            try:
+                self.apply(key, value, utilbill)
+            except ApplicationError as error:
+                errors[key] = error
+            else:
+                success_count += 1
         for key in set(good.iterkeys()) - set(self.get_keys()) :
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
+
 

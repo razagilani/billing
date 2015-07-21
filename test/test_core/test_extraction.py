@@ -77,8 +77,8 @@ class ApplierTest(TestCase):
         self.bill.set_total_energy.assert_called_once_with(123.456)
 
     def test_apply_values(self):
-        # TODO: maybe make this independent of UtilBill; it should be in a
-        # test for the generic Applier when that is separated from utilbill
+        # one field is good, 2 have ApplicationErrors (one with wrong value
+        # type, one with unknown key)
         extractor = Mock(autospec=Extractor)
         good = {Applier.START: date(2000,1,1), Applier.CHARGES: 'wrong type',
                 'wrong key': 1}
