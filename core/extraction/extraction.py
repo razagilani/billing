@@ -467,16 +467,13 @@ class LayoutExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'tablefield'}
 
-        #An (optional) regex that matches a text object that delimits the
-        # start of the table. (in addition to limiting text within the
-        # bounding box). This is exclusive.
+        # Optional regexes that match text objects that delimit the vertical
+        # start and end of the table. (in addition to limiting text within the
+        # bounding box). The matched text is not part of the table.
+        # Vertical boundaries are used rather than horizontal because tables
+        # often move up and down between different bills but tend not to move
+        # horizontally.
         table_start_regex = Column(String)
-        # An (optional) regex that matches a text object that comes at the
-        # end of the table (exclusive). (in addition to limiting text within the
-        # bounding box).
-        # This is for tables whose ending y-value varies.
-        # Once the pattern is matched (on any page), no further text is
-        # returned, even if maxpage has not yet been reached.
         table_stop_regex = Column(String)
 
         # whether this table extends across multiple pages.
@@ -486,7 +483,8 @@ class LayoutExtractor(Extractor):
         nextpage_top = Column(Float)
 
         def __init__(self, *args, **kwargs):
-            super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
+            super(LayoutExtractor.BoundingBoxField, self).__init__(
+                *args, **kwargs)
 
         def _extract(self, layoutdata):
             pages, dx, dy = layoutdata
@@ -583,6 +581,7 @@ class LayoutExtractor(Extractor):
                 dx = alignment_box.x0 - self.origin_x
                 dy = alignment_box.y0 - self.origin_y
         return (pages, dx, dy)
+
 
 class ExtractorResult(model.Base):
     __tablename__ = 'extractor_result'
