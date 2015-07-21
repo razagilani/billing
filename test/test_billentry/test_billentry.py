@@ -37,8 +37,9 @@ from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
 from core import init_model, altitude
-from core.model import Session, UtilityAccount, Address, UtilBill, Utility,\
+from core.model import Session, UtilityAccount, Address, Utility,\
     Charge, Register, RateClass
+from core.model.utilbill import UtilBill, Charge
 from brokerage.brokerage_model import BrokerageAccount
 with FixMQ():
     from mq import IncomingMessage

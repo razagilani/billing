@@ -34,5 +34,8 @@ Ext.define('ReeBill.store.Charges', {
     sorters: [{
         property: 'group',
         direction: 'ASC'
+    }, {
+        property: 'rsi_binding',
+        direction: 'ASC'
     }]
 });

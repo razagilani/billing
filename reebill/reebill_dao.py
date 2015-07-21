@@ -5,7 +5,8 @@ from sqlalchemy import func, and_
 from sqlalchemy.sql.expression import desc
 
 from exc import IssuedBillError
-from core.model import Address, Session, UtilBill, UtilityAccount
+from core.model import Address, Session, UtilityAccount
+from core.model.utilbill import UtilBill
 from reebill.reebill_model import ReeBill, UtilbillReebill
 from reebill.reebill_model import ReeBillCustomer
 

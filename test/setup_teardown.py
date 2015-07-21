@@ -18,8 +18,8 @@ from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount, Base, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
-from reebill.reebill_model import Session, UtilBill, \
-    Register, Address, ReeBillCustomer
+from reebill.reebill_model import Session, Register, Address, ReeBillCustomer
+from core.model.utilbill import UtilBill
 from core.model import Utility
 from core.bill_file_handler import BillFileHandler
 from reebill.fetch_bill_data import RenewableEnergyGetter
