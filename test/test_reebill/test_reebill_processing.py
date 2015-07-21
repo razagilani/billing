@@ -10,8 +10,9 @@ from testfixtures.tempdirectory import TempDirectory
 from core import init_model
 from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+from reebill.reebill_model import ReeBill, ReeBillCustomer, \
     CustomerGroup
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util
