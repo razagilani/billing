@@ -39,7 +39,6 @@ def create_tables():
 
     import_all_model_modules()
     Base.metadata.bind = engine
-    Base.metadata.reflect()
     Base.metadata.drop_all()
     Base.metadata.create_all(checkfirst=True)
 

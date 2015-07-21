@@ -157,6 +157,7 @@ class BaseResource(Resource):
             'supply_choice_id': String,
             'processed': Boolean,
             'flagged': CallableField(Boolean(), attribute='is_flagged'),
+            'flagged_by': CallableField(String(), attribute='get_flagged_by_user'),
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField, 'tou': Boolean,
             'meter_identifier': CallableField(
@@ -313,7 +314,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.compute_utility_bill(id)
 
         if row['flagged'] is True:
-            utilbill.flag()
+            utilbill.flag(current_user)
         elif row['flagged'] is False:
             utilbill.un_flag()
 
@@ -582,7 +583,7 @@ class UtilBillListForUserResource(BaseResource):
 
         s = Session()
         utilbills = s.query(BEUtilBill)\
-            .join(BillEntryUser)\
+            .join(BillEntryUser, BillEntryUser.id==BEUtilBill.billentry_user_id)\
             .filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                 BEUtilBill.billentry_date < args['end'],

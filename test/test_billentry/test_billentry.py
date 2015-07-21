@@ -323,6 +323,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
               'flagged': False,
+              'flagged_by': None,
               'meter_identifier': 'GHIJKL',
               'tou': False
              },
@@ -353,6 +354,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'flagged': False,
+              'flagged_by': None,
               'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
@@ -437,6 +439,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'entered': True,
               'meter_identifier': 'GHIJKL',
               'flagged': False,
+              'flagged_by': None,
               'tou': False
               },
          'results': 1}
@@ -481,6 +484,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 200)
         expected['rows']['flagged'] = True
+        expected['rows']['flagged_by'] = 'user1@test.com'
         self.assertJson(expected, rv.data)
 
         rv = self.app.put(
@@ -493,6 +497,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
         )
         self.assertEqual(rv.status_code, 200)
         expected['rows']['flagged'] = False
+        expected['rows']['flagged_by'] = None
         self.assertJson(expected, rv.data)
 
         # TODO: why aren't there tests for editing all the other fields?
@@ -527,6 +532,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'wiki_url': 'http://example.com/utility:Example Utility',
               'entered': False,
               'flagged': False,
+              'flagged_by': None,
               'meter_identifier': 'GHIJKL',
               'tou': False
              },
@@ -557,6 +563,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
               'utility_account_id': 1,
               'wiki_url': 'http://example.com/utility:Example Utility',
               'flagged': False,
+              'flagged_by': None,
               'meter_identifier': 'GHIJKL',
               'tou': False}
          ], }
@@ -602,6 +609,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                 'utility_account_id': 1,
                 'wiki_url': 'http://example.com/utility:Example Utility',
                 'flagged': False,
+                'flagged_by': None,
                 'meter_identifier': 'GHIJKL',
                 'tou': False
             }}, rv.data
@@ -646,6 +654,7 @@ class TestBillEntryMain(BillEntryIntegrationTest, unittest.TestCase):
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': False,
                   'flagged': False,
+                  'flagged_by': None,
                   'meter_identifier': 'GHIJKL',
                   'tou': False
             },
@@ -818,8 +827,8 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
         self.assertJson(self.response_no_flagged_bills, rv.data)
 
         # flag two bills
-        self.ub1.flag()
-        self.ub2.flag()
+        self.ub1.flag(self.user1)
+        self.ub2.flag(self.user1)
         rv = self.app.get(url_format)
         self.assertJson({
             "results": 2,
@@ -852,6 +861,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'wiki_url': 'http://example.com/utility:Example Utility',
                 'entered': False,
                 'flagged': True,
+                'flagged_by': '1@example.com',
                 'tou': False
             }, {
                 'computed_total': 0,
@@ -882,6 +892,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'wiki_url': 'http://example.com/utility:Example Utility',
                 'entered': False,
                 'flagged': True,
+                'flagged_by': '1@example.com',
                 'tou': False
             }]}, rv.data)
 
@@ -919,6 +930,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                 'wiki_url': 'http://example.com/utility:Example Utility',
                 'entered': False,
                 'flagged': True,
+                'flagged_by': '1@example.com',
                 'tou': False
             }]}, rv.data)
 
@@ -968,6 +980,7 @@ class TestBillEntryReport(BillEntryIntegrationTest, unittest.TestCase):
                   'wiki_url': 'http://example.com/utility:Example Utility',
                   'entered': True,
                   'flagged': False,
+                  'flagged_by': None,
                   'meter_identifier': 'GHIJKL',
                   'tou': False
                  }],
@@ -1342,7 +1355,8 @@ class TestBillEnrtyAuthentication(BillEntryIntegrationTest, unittest.TestCase):
             "computed_total": 0.0,
             "processed": False,
             "utility_account_number": "1",
-            "flagged": False
+            "flagged": False,
+            "flagged_by": None
             },
             "results": 1
         }
