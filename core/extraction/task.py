@@ -111,7 +111,7 @@ def test_bill(self, extractor_id, bill_id):
     }
 
     # Store field values for each successful result
-    # Note: 'good' is of type [(field, value), ...]
+    # Note: 'good' is of type [(applier_key, value), ...]
     bill_end_date = None
     good, error = extractor.get_values(bill, bill_file_handler)
     for applier_key, value in good.iteritems():
