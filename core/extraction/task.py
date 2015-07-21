@@ -114,7 +114,7 @@ def test_bill(self, extractor_id, bill_id):
     # Note: 'good' is of type [(field, value), ...]
     bill_end_date = None
     good, error = extractor._get_values(bill, bill_file_handler)
-    for applier_key, value in good:
+    for applier_key, value in good.iteritems():
         response['fields'][applier_key] = value
         if applier_key == Applier.END:
             bill_end_date = value

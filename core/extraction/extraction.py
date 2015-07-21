@@ -56,7 +56,7 @@ class Main(object):
         utilbill.date_extracted = datetime.utcnow()
         error_list_str = '\n'.join(('Field "%s": %s: %s' % (
             key, exception.__class__.__name__, exception.message)) for
-                                   (key, exception) in errors)
+                                   (key, exception) in errors.iteritems())
         self.log.info(
             'Applied extractor %(eid)s "%(ename)s" to bill %(bid)s from %('
             'utility)s %(start)s - %(end)s received %(received)s: '
@@ -236,19 +236,19 @@ class Extractor(model.Base):
         """
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler
-        :return: list of (applier key, extracted value) pairs for fields that
-        succeeded in extracted values, and list of (applier key,
-        ExtractionError) pairs for fields that failed.
+        :return: dictionary of applier key -> extracted value for fields that
+        succeeded in extracted values, and dictionary of applier key ->
+        ExtractionError for fields that failed.
         """
         self._input = self._prepare_input(utilbill, bill_file_handler)
-        good, errors = [], []
+        good, errors = {}, {}
         for field in self.fields:
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
-                errors.append((field.applier_key, error))
+                errors[field.applier_key] = value
             else:
-                good.append((field.applier_key, value))
+                good[field.applier_key] = value
         return good, errors
 
     def get_success_count(self, utilbill, bill_file_handler):
