@@ -13,6 +13,10 @@ Ext.define('BillEntry.view.reports.BillDetails', {
             header: 'Acc ID',
             dataIndex: 'utility_account_id',
             width: 50
+        },{
+            header: 'Flagged By',
+            dataIndex: 'flagged_by',
+            width: 100
         }];
 
         // Ommiting columns in this.omitColumns
