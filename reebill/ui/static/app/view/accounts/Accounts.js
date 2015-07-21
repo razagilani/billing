@@ -109,5 +109,19 @@ Ext.define('ReeBill.view.accounts.Accounts', {
             displayField: 'label',
             forceSelection: true
         }]
-    }
+    },
+    dockedItems: [{
+        dock: 'top',
+        xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
+        items: [{
+            xtype: 'button',
+            action: 'mergeRecords',
+            text: 'Merge',
+            iconCls: 'silk-merge',
+            disabled: true
+        }]
+    }]
 });
