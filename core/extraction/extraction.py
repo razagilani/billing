@@ -7,16 +7,21 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Float
+    UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
 from core.extraction.applier import Applier
+from core.extraction import layout
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
-    convert_wg_charges_std
+    convert_address, convert_table_charges, \
+    convert_wg_charges_std, convert_supplier
+from core.extraction.layout import tabulate_objects, BoundingBox, \
+    group_layout_elements_by_page, in_bounds
+from core.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 
@@ -117,17 +122,23 @@ class Field(model.Base):
 
     # various functions can be used to convert strings into other types. each
     #  one has a name so it can be stored in the database.
+    ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
     STRING = 'string'
+    SUPPLIER = 'supplier'
+    TABLE_CHARGES = 'table charges'
     WG_CHARGES = 'wg charges'
     WG_CHARGES_WGL = 'wg charges wgl'
     PEPCO_OLD_CHARGES = 'pepco old charges'
     PEPCO_NEW_CHARGES = 'pepco new charges'
     TYPES = {
+        ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
         STRING: unicode,
+        SUPPLIER: convert_supplier,
+        TABLE_CHARGES: convert_table_charges,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,
         PEPCO_OLD_CHARGES: pep_old_convert_charges,
@@ -276,7 +287,7 @@ class TextExtractor(Extractor):
             return Field.__table__.c.get('regex', Column(String,
                 nullable=False))
 
-        def     __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
 
         def _extract(self, text):
@@ -304,6 +315,238 @@ class TextExtractor(Extractor):
         """Return text dumped from the given bill's PDF file.
         """
         return utilbill.get_text(bill_file_handler, PDFUtil())
+
+
+class LayoutExtractor(Extractor):
+    """
+    Extracts data about a bill based on the layout of text in the PDF
+    """
+    __mapper_args__ = {'polymorphic_identity': 'layoutextractor'}
+
+    #used to align bills of the same format that are shifted slightly:
+    #A regular expression used to match a text box used to align the bill.
+    origin_regex = Column(String)
+    # The coordinates that the layout object should have, if the bill is aligned
+    origin_x = Column(Float)
+    origin_y = Column(Float)
+
+    class BoundingBoxField(Field):
+        """
+        A field that extracts text that is within a given bounding box on the PDF.
+
+        """
+        __mapper_args__ = {'polymorphic_identity': 'boundingboxfield'}
+
+        # First page is numbered 1, not 0
+        # The first (or only) page to search for
+        page_num = Column(Integer)
+        # The last page to search for. If maxpage is None, then only page_num
+        #  is used.
+        maxpage = Column(Integer)
+        # regex to apply to text after it has been recovered.
+        # If bounding box is null, then the first textline matching bbregex
+        # is returned from the page.
+        bbregex = Column(String)
+        # If not null, offset_regex is used to find a text object that served
+        #  as the origin for the bounding box. This is used when a certain
+        # region on a bill has different locations on different PDFs, but the
+        #  same content.
+        offset_regex = Column(String)
+
+        # bounding box coordinates.
+        # If these are None, then the first textbox that matches the bbregex
+        # is used.
+        bbminx = Column(Float)
+        bbminy = Column(Float)
+        bbmaxx = Column(Float)
+        bbmaxy = Column(Float)
+
+        # represents which corner of textboxes to consider when checking if
+        # they are within a bounding box.
+        # This uses the values in core.extraction.layout.CORNERS
+        corner = Column(Integer)
+
+        def __init__(self, *args, **kwargs):
+            super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
+
+        def _extract(self, layoutdata):
+            (pages, dx, dy) = layoutdata
+            if self.page_num > len(pages):
+                raise ExtractionError('Not enough pages. Could not get page '
+                                      '%d out of %d.' % (self.page_num,
+                len(pages)))
+            if self.maxpage:
+                endpage = min(self.maxpage, len(pages))
+            else:
+                endpage = self.page_num
+
+            text=""
+            for page in pages[self.page_num-1:endpage]:
+                #if bounding box is None, instead of using geometry, return first
+                # text line object that matches bbregex.
+                if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
+                    self.bbmaxy]):
+                    textline = layout.get_text_line(page,
+                        self.bbregex)
+                    if textline is None:
+                        continue
+                    text = textline.text
+                else:
+                    #if offset_regex is not None, then find the first block of
+                    # text that it matches, and use that as the origin for
+                    # the bounding box's coordiantes.
+                    if self.offset_regex:
+                        textline = layout.get_text_line(page, self.offset_regex)
+                        if textline is None:
+                            continue
+                        offset_x, offset_y = layout.get_corner(textline,
+                            self.corner)
+                        dx = offset_x
+                        dy = offset_y
+                    text = layout.get_text_from_bounding_box(page,
+                        BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
+                            maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
+                        self.corner)
+                #exit on first match found
+                if text:
+                    break
+
+            if self.bbregex:
+                m = re.search(self.bbregex, text, re.IGNORECASE | re.DOTALL |
+                                                 re.MULTILINE)
+                if m is None:
+                    raise MatchError(
+                        'No match for pattern "%s" in text starting with "%s"' % (
+                            self.bbregex, text[:20]))
+                text = "\n".join(m.groups())
+
+            # this is done after regex matching, in case a capture group
+            # matches an empty string
+            text = text.strip()
+            if not text:
+                raise ExtractionError('No text found.')
+            return text
+
+    class TableField(BoundingBoxField):
+        """
+        A field that represents tabular data, within a given bounding box.
+
+        For multi-page tables, in addition to the initial bounding box,
+        one specifies a max page number and top margin for the
+        subsequent pages. One can also specifiy a regex to find a text object
+        that marks the end or start of the table (inclusive).
+        """
+        __mapper_args__ = {'polymorphic_identity': 'tablefield'}
+
+        # Optional regexes that match text objects that delimit the vertical
+        # start and end of the table. (in addition to limiting text within the
+        # bounding box). The matched text is not part of the table.
+        # Vertical boundaries are used rather than horizontal because tables
+        # often move up and down between different bills but tend not to move
+        # horizontally.
+        table_start_regex = Column(String)
+        table_stop_regex = Column(String)
+
+        # whether this table extends across multiple pages.
+        multipage_table = Column(Boolean)
+        # For multi-page tables, the y-value at which the table starts,
+        # on subsequent pages. i.e. the top margin.
+        nextpage_top = Column(Float)
+
+        def __init__(self, *args, **kwargs):
+            super(LayoutExtractor.BoundingBoxField, self).__init__(
+                *args, **kwargs)
+
+        def _extract(self, layoutdata):
+            pages, dx, dy = layoutdata
+            if self.page_num > len(pages):
+                raise ExtractionError('Not enough pages. Could not get page '
+                                      '%d out of %d.' % (self.page_num,
+                len(pages)))
+
+            table_data = []
+
+            #determine last page to search
+            if self.multipage_table:
+                endpage = min(self.maxpage, len(pages))
+            else:
+                endpage = self.page_num
+
+            for i in range(self.page_num-1, endpage):
+                page = pages[i]
+
+                #Either use initial bounding box for first page,
+                # or use bounding box with the top y value of 'nextpage_top'
+                if i == self.page_num - 1:
+                    bbox = BoundingBox(
+                            minx=self.bbminx + dx,
+                            miny=self.bbminy + dy,
+                            maxx=self.bbmaxx + dx,
+                            maxy=self.bbmaxy + dy)
+                else:
+                    bbox = BoundingBox(
+                            minx = self.bbminx + dx,
+                            miny = self.bbminy + dy,
+                            maxx = self.bbmaxx + dx,
+                            maxy = self.nextpage_top + dy)
+
+                search = lambda lo: (lo.type == LayoutElement.TEXTLINE) and \
+                                    in_bounds(lo, bbox, 0)
+                new_textlines = filter(search, page)
+
+                #match regex at start of table.
+                if self.table_start_regex and i == self.page_num - 1:
+                    top_object = layout.get_text_line(page,
+                        self.table_start_regex)
+                    if top_object:
+                        new_textlines = filter(
+                            lambda tl: tl.y0 < top_object.y0,
+                            new_textlines)
+
+                # if table_stop_regex matches, do not search further pages.
+                if self.table_stop_regex:
+                    bottom_object = layout.get_text_line(page,
+                        self.table_stop_regex)
+                    if bottom_object:
+                        new_textlines = filter(
+                            lambda tl: tl.y0 > bottom_object.y0,
+                            new_textlines)
+                        table_data.extend(tabulate_objects(new_textlines))
+                        break
+
+                table_data.extend(tabulate_objects(new_textlines))
+
+            # extract text from each table cell
+            output_values = []
+            for row in table_data:
+                out_row = [tl.text.strip() for tl in
+                    row]
+                #remove empty cells
+                out_row = filter(bool, out_row)
+                if out_row:
+                    output_values.append(out_row)
+
+            if not output_values:
+                raise ExtractionError("No values found in table.")
+            return output_values
+
+    def _prepare_input(self, utilbill, bill_file_handler):
+        """
+        Prepares input for layout extractor by getting PDF layout data
+        and checking if bill's PDF is misaligned.
+        """
+        pages = utilbill.get_layout(bill_file_handler, PDFUtil())
+        dx = dy = 0
+        if all(v is not None for v in
+               [self.origin_regex, self.origin_x, self.origin_y]):
+            #get textbox used to align the page
+            alignment_box = layout.get_text_line(pages[0], self.origin_regex)
+            if alignment_box is not None:
+                #set the bill's dx and dy so the textbox matches the expected
+                # coordinates.
+                dx = alignment_box.x0 - self.origin_x
+                dy = alignment_box.y0 - self.origin_y
+        return (pages, dx, dy)
 
 
 class ExtractorResult(model.Base):
@@ -342,6 +585,7 @@ class ExtractorResult(model.Base):
     field_end = Column(Integer)
     field_energy = Column(Integer)
     field_next_read = Column(Integer)
+    field_period_total = Column(Integer)
     field_rate_class = Column(Integer)
     field_start = Column(Integer)
     field_service_address = Column(Integer)
@@ -362,6 +606,7 @@ class ExtractorResult(model.Base):
     end_by_month = Column(HSTORE)
     energy_by_month = Column(HSTORE)
     next_read_by_month = Column(HSTORE)
+    period_total_by_month = Column(HSTORE)
     rate_class_by_month = Column(HSTORE)
     service_address_by_month = Column(HSTORE)
     start_by_month = Column(HSTORE)
@@ -386,4 +631,3 @@ class ExtractorResult(model.Base):
             date_count_dict = {str(date): str(counts.get(field_name, 0)) for
                                date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
-
