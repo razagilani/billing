@@ -7,6 +7,9 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
     store: 'AccountsMemory',
+    selModel: {
+      mode: 'MULTI'
+    },
 
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
