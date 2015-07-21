@@ -118,7 +118,7 @@ class ExtractorTest(TestCase):
         f2 = Field(applier_key='b')
         f2.get_value = Mock(side_effect=ExtractionError)
         f3 = Field(applier_key='c')
-        f3.get_value = Mock(return_value=date(2000,1,1))
+        f3.get_value = Mock(return_value=date(2000, 1, 1))
 
         self.e = Extractor()
         self.e.fields = [f1, f2, f3]
@@ -132,15 +132,11 @@ class ExtractorTest(TestCase):
         self.applier = Mock(autospec=Applier)
         self.applier.apply.side_effect = [None, ApplicationError]
 
-    # def test_apply_values(self):
-    #     count, errors = self.e.apply_values(
-    #         self.utilbill, self.bill_file_handler, self.applier)
-    #     self.assertEqual(1, count)
-    #     self.assertEqual(2, len(errors))
-    #     applier_keys, exceptions = zip(*errors)
-    #     self.assertEqual(('b', 'c'), applier_keys)
-    #     self.assertIsInstance(exceptions[0], ExtractionError)
-    #     self.assertIsInstance(exceptions[1], ApplicationError)
+    def test_get_values(self):
+        good, errors = self.e.get_values(self.utilbill, self.bill_file_handler)
+        self.assertEqual({'a': 123, 'c': date(2000, 1, 1)}, good)
+        self.assertEqual(['b'], errors.keys())
+        self.assertIsInstance(errors['b'], ExtractionError)
 
 
 class TextFieldTest(TestCase):
