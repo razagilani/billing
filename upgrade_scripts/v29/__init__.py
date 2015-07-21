@@ -118,7 +118,8 @@ def create_charge_name_maps(s):
 def upgrade():
     alembic_upgrade('49b8d9978d7e')
 
-    init_model()
+    # current revision number on default branch
+    init_model(schema_revision='49b8d9978d7e')
     init_altitude_db()
     s, a = Session(), AltitudeSession()
 
