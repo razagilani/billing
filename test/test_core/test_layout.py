@@ -6,9 +6,8 @@ from pdfminer.layout import LTPage, LTImage, LTTextBox, LTTextLine, LTCurve, \
     LTFigure, LTLine, LTLayoutContainer
 from pdfminer.pdftypes import PDFStream
 from core import init_model
-from core.extraction.layout import BoundingBox, get_corner, \
-    get_objects_from_bounding_box, Corners, in_bounds, \
-    get_text_from_bounding_box, get_text_line, tabulate_objects, \
+from core.extraction.layout import BoundingBox, get_corner, Corners, \
+    in_bounds, get_text_from_bounding_box, get_text_line, tabulate_objects, \
     group_layout_elements_by_page
 
 # init_test_config has to be called first in every test module, because
@@ -74,26 +73,6 @@ class LayoutTest(TestCase):
         self.assertFalse(in_bounds(self.out_of_bounds_obj, self.bbox,
             Corners.TOP_LEFT))
 
-    def test_layout(self):
-        objects_in_bounds = get_objects_from_bounding_box(self.layout_objects,
-            self.bbox,
-            Corners.TOP_LEFT, LayoutElement.TEXTLINE)
-        self.assertIn(self.in_bounds_obj, objects_in_bounds)
-        self.assertNotIn(self.overlap_obj, objects_in_bounds)
-        self.assertNotIn(self.out_of_bounds_obj, objects_in_bounds)
-        self.assertNotIn(self.image_obj, objects_in_bounds)
-
-        text_in_bounds = get_text_from_bounding_box(self.layout_objects,
-            self.bbox, Corners.TOP_LEFT)
-        self.assertEqual(text_in_bounds, "I'm in bounds!")
-
-        first_text_line = get_text_line(self.layout_objects, r"I'm [a-z ]+ "
-                                                             r"bounds!")
-        self.assertEqual(first_text_line, self.out_of_bounds_obj)
-
-        failed_search = get_text_line(self.layout_objects,
-            r"There is no text box that matches")
-        self.assertIsNone(failed_search)
 
 class TableTest(TestCase):
     def setUp(self):
