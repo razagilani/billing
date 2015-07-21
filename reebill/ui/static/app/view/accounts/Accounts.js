@@ -118,6 +118,7 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         },
         items: [{
             xtype: 'button',
+            itemId: 'mergeAccountRecord',
             action: 'mergeRecords',
             text: 'Merge',
             iconCls: 'silk-merge',
