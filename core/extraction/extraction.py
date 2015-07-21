@@ -213,7 +213,7 @@ class Extractor(model.Base):
     discriminator = Column(String, nullable=False)
     name = Column(String, nullable=False)
     representative_bill_id = Column(Integer,
-        ForeignKey('utilbill.id'), nullable=False)
+        ForeignKey('utilbill.id'))
     representative_bill = relationship('UtilBill')
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(),
@@ -249,7 +249,7 @@ class Extractor(model.Base):
         self._input = self._prepare_input(utilbill, bill_file_handler)
         good, errors = [], []
         for field in self.fields:
-            # still extract data run if field.enabled is None
+            # still extract data if field.enabled is None
             if field.enabled is False:
                 continue
             try:
