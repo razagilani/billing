@@ -18,7 +18,7 @@ from core.extraction import layout
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
-    convert_wg_charges_std
+    convert_wg_charges_std, convert_supplier
 from core.extraction.layout import tabulate_objects, BoundingBox, \
     group_layout_elements_by_page, in_bounds
 from core.model import LayoutElement
@@ -126,6 +126,7 @@ class Field(model.Base):
     DATE = 'date'
     FLOAT = 'float'
     STRING = 'string'
+    SUPPLIER = 'supplier'
     TABLE_CHARGES = 'table charges'
     WG_CHARGES = 'wg charges'
     WG_CHARGES_WGL = 'wg charges wgl'
@@ -136,6 +137,7 @@ class Field(model.Base):
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
         STRING: unicode,
+        SUPPLIER: convert_supplier,
         TABLE_CHARGES: convert_table_charges,
         WG_CHARGES: convert_wg_charges_std,
         WG_CHARGES_WGL: convert_wg_charges_wgl,

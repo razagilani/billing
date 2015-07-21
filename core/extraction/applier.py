@@ -88,6 +88,7 @@ class Applier(object):
     RATE_CLASS = 'rate class'
     SERVICE_ADDRESS = 'service address'
     START = 'start'
+    SUPPLIER = 'supplier'
 
     # values must be applied in a certain order because some are needed in
     # order to apply others (e.g. rate class is needed for energy and charges)
@@ -97,6 +98,7 @@ class Applier(object):
         (NEXT_READ, core.model.utilbill.UtilBill.set_next_meter_read_date),
         (BILLING_ADDRESS, model.UtilBill.billing_address),
         (SERVICE_ADDRESS, model.UtilBill.service_address),
+        (SUPPLIER, core.model.utilbill.UtilBill.set_supplier),
         (PERIOD_TOTAL, model.UtilBill.target_total),
         (RATE_CLASS, set_rate_class.__func__),
         (ENERGY, core.model.utilbill.UtilBill.set_total_energy),
@@ -119,6 +121,7 @@ class Applier(object):
         RATE_CLASS: lambda b: b.rate_class,
         SERVICE_ADDRESS: lambda b: b.service_address,
         START: lambda b: b.period_start,
+        SUPPLIER: lambda b: b.supplier
     }
 
     _instance = None

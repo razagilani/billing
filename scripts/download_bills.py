@@ -37,9 +37,11 @@ def bounding_boxes_to_svg(page, filename):
 
         if isinstance(obj, LTComponent):
             if isinstance(obj, LTChar):
+                return
+
+            if isinstance(obj, LTTextLine):
                 text_baseline = page.height - obj.y0 - 2
                 text_chars = obj.get_text()
-                # replace (cid:###), and replace non-ascii chars with "!"
                 text_chars = escape(text_chars)
 
                 text_fmt = '<text x="%f" y="%f" fill="black" ' \
@@ -48,7 +50,6 @@ def bounding_boxes_to_svg(page, filename):
                             text_chars)
                 out_text = text_fmt % text_values
                 outfile.write(out_text)
-                return
 
             alpha = 1
             if isinstance(obj, LTTextBox):
