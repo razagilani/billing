@@ -33,7 +33,7 @@ from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments, BillingError
 from reebill.reports.excel_export import Exporter
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
 from reebill.reebill_model import CustomerGroup
 
 
@@ -58,34 +58,31 @@ cherrypy.tools.authenticate_ajax = cherrypy.Tool(
 
 
 def check_authentication():
+    """
+    Checks if a user can be loaded from the database via the value of the
+    'reebill_session' cookie.
+    Note: We cannot use cherrypy's session to look up a user, since the
+    session is not shared across python interpreters (for production). This
+    is also the reason why we reset the session here
+    """
     from core import config
-    logger = logging.getLogger('reebill')
     if not config.get('reebill', 'authenticate'):
         if 'user' not in cherrypy.session:
             cherrypy.session['user'] = UserDAO.default_user
-    if 'user' not in cherrypy.session:
-        # the server did not have the user in session
-        # log that user back in automatically based on
-        # the credentials value found in the cookie
-        # if this user is remembered?
-        cookie = cherrypy.request.cookie
-        credentials = cookie['c'].value if 'c' in cookie else None
-        username = cookie['username'].value if 'username' in cookie else None
+            return True
 
-        # load users database
-        user_dao = UserDAO()
-        user = user_dao.load_by_session_token(
-            credentials) if credentials else None
-        if user is None:
-            logger.info('Remember Me login attempt failed:'
-                        ' username "%s"' % username)
-        else:
-            logger.info('Remember Me login attempt'
-                        ' success: username "%s"' % username)
+    user_dao = UserDAO()
+    if 'reebill_session' in cherrypy.request.cookie:
+        token = cherrypy.request.cookie['reebill_session'].value
+        user = user_dao.load_by_session_token(token)
+
+        if user is not None:
+            # Reset the session since we may not have the user in this
+            # interpreter process's session yet
             cherrypy.session['user'] = user
             return True
-        raise Unauthenticated("No Session")
-    return True
+
+    raise Unauthenticated("No Session")
 
 
 def db_commit(method):
@@ -1217,7 +1214,14 @@ class ReebillWSGI(object):
         raise cherrypy.HTTPRedirect('index.html')
 
     @cherrypy.expose
+    @db_commit
     def login(self, username=None, password=None, rememberme='off', **kwargs):
+        """
+        GET: Redirects to login.html
+        POST: Checks username and enxrypted password. If they match what is in
+        the database, this sets the 'reebill_session' cookie, so the user can be
+        identified across multiple processes.
+        """
         if cherrypy.request.method == "GET":
             raise cherrypy.HTTPRedirect('login.html')
 
@@ -1233,18 +1237,21 @@ class ReebillWSGI(object):
                 'error': 'Incorrect username or password'
             })
 
+
         cherrypy.session['user'] = user
+        # Create a random session token
+        token = ''.join('%02x' % ord(x) for x in os.urandom(16))
+        cherrypy.response.cookie['reebill_session'] = token
+        # Save the session to the database
+        self.user_dao.set_session_token_for_user(user, token)
 
         if rememberme == 'on':
-            # Create a random session string
-            credentials = ''.join('%02x' % ord(x) for x in os.urandom(16))
-
-            user.session_token = credentials
-
+            # This cookie should last a week
+            cherrypy.response.cookie['reebill_session']['expires'] = 604800
+        else:
             # this cookie has no expiration,
-            # so lasts as long as the browser is open
-            cherrypy.response.cookie['username'] = user.username
-            cherrypy.response.cookie['c'] = credentials
+            # so it lasts as long as the browser is open
+            cherrypy.response.cookie['reebill_session']['expires'] = ''
 
         self.logger.info(
             'user "%s" logged in: remember me: "%s"' % (username, rememberme))
@@ -1253,19 +1260,11 @@ class ReebillWSGI(object):
     @cherrypy.expose
     def logout(self):
         # delete remember me
-        # The key in the response cookie must be set before expires can be set
-        cherrypy.response.cookie['username'] = ""
-        cherrypy.response.cookie['username'].expires = 0
-        cherrypy.response.cookie['c'] = ""
-        cherrypy.response.cookie['c'].expires = 0
+        # and reset the cookie
+        cherrypy.response.cookie['reebill_session'] = ""
+        cherrypy.response.cookie['reebill_session']['expires'] = 0
 
-        # delete the current server session
-        if 'user' in cherrypy.session:
-            self.logger.info(
-                'user "%s" logged out' % cherrypy.session['user'].username)
-            del cherrypy.session['user']
-
-        raise cherrypy.HTTPRedirect('login')
+        raise cherrypy.HTTPRedirect('index')
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()

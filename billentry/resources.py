@@ -24,7 +24,9 @@ from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -155,6 +157,7 @@ class BaseResource(Resource):
             'supply_choice_id': String,
             'processed': Boolean,
             'flagged': CallableField(Boolean(), attribute='is_flagged'),
+            'flagged_by': CallableField(String(), attribute='get_flagged_by_user'),
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField, 'tou': Boolean,
             'meter_identifier': CallableField(
@@ -311,7 +314,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.compute_utility_bill(id)
 
         if row['flagged'] is True:
-            utilbill.flag()
+            utilbill.flag(current_user)
         elif row['flagged'] is False:
             utilbill.un_flag()
 
@@ -380,6 +383,11 @@ class UploadUtilityBillResource(BaseResource):
         # Since this is initiated by an Ajax request, we will still have to
         # send a {'success', 'true'} parameter
         return {'success': 'true'}
+
+    @admin_permission.require()
+    def delete(self):
+        if session.get('hash-digest'):
+            session.pop('hash-digest')
 
 
 class ChargeListResource(BaseResource):
@@ -575,7 +583,7 @@ class UtilBillListForUserResource(BaseResource):
 
         s = Session()
         utilbills = s.query(BEUtilBill)\
-            .join(BillEntryUser)\
+            .join(BillEntryUser, BillEntryUser.id==BEUtilBill.billentry_user_id)\
             .filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                 BEUtilBill.billentry_date < args['end'],
