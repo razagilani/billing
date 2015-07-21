@@ -13,7 +13,6 @@ from mock import Mock, NonCallableMock
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
 from test import init_test_config
-init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
@@ -27,6 +26,8 @@ from exc import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
 
+def setUpModule():
+    init_test_config()
 
 class FieldTest(TestCase):
     def setUp(self):
