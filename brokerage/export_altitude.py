@@ -5,7 +5,8 @@ from datetime import timedelta
 from tablib import Dataset
 from sqlalchemy.sql.expression import cast
 from sqlalchemy.orm import joinedload
-from core.model import Session, UtilBill, UtilityAccount
+from core.model import Session, UtilityAccount
+from core.model.utilbill import UtilBill
 from util.dateutils import ISO_8601_DATETIME
 from brokerage.brokerage_model import BrokerageAccount
 

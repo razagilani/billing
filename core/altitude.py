@@ -17,7 +17,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 
-from core.model import Base, Session, Utility, UtilityAccount, Supplier, UtilBill
+from core.model import Base, Session, Utility, UtilityAccount, Supplier
+from core.model.utilbill import UtilBill
 
 
 class AltitudeGUID(String):

@@ -2,9 +2,10 @@
 """
 from unittest import TestCase
 from core import init_model
+from core.model import Session
 from reebill.reebill_model import User
 from reebill.users import UserDAO
-from test import init_test_config, create_tables
+from test import init_test_config, create_tables, clear_db
 
 
 class TestUser(TestCase):
@@ -33,6 +34,7 @@ class TestUserDAO(TestCase):
         init_test_config()
         create_tables()
         init_model()
+        clear_db()
 
     def setUp(self):
         self.dao = UserDAO()
@@ -60,3 +62,13 @@ class TestUserDAO(TestCase):
         with self.assertRaises(ValueError):
             self.dao.create_user('someone@example.com', 'secret',
                                  name='someone')
+
+    def test_set_load_by_session_token(self):
+        u = self.dao.create_user('someone@example.com', 'secret',
+                                 name='someone')
+        Session().flush()
+        self.dao.set_session_token_for_user(u, 'sessiontoken')
+
+        u2 = self.dao.load_by_session_token('sessiontoken')
+        self.assertEqual(u, u2)
+        self.assertEqual(u2.session_token, 'sessiontoken')

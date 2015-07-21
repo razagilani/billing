@@ -89,7 +89,17 @@ def upgrade():
         sa.Column('next_read_by_month', postgresql.HSTORE()),
         sa.Column('rate_class_by_month', postgresql.HSTORE()),
         sa.Column('service_address_by_month', postgresql.HSTORE()),
-        sa.Column('start_by_month', postgresql.HSTORE()))
+        sa.Column('start_by_month', postgresql.HSTORE()),
+
+        sa.Column('verified_count', sa.Integer()),
+        sa.Column('field_billing_address_fraction', sa.Float()),
+        sa.Column('field_charges_fraction', sa.Float()),
+        sa.Column('field_end_fraction', sa.Float()),
+        sa.Column('field_energy_fraction', sa.Float()),
+        sa.Column('field_next_read_fraction', sa.Float()),
+        sa.Column('field_rate_class_fraction', sa.Float()),
+        sa.Column('field_service_address_fraction', sa.Float()),
+        sa.Column('field_start_fraction', sa.Float()),)
 
 def downgrade():
     raise NotImplementedError

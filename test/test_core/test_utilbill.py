@@ -23,8 +23,9 @@ from unittest import TestCase
 
 from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
     MissingFileError
-from core.model import UtilBill, Session, Charge,\
+from core.model import Session, Charge,\
     Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from core.model.utilbill import UtilBill, Charge
 from util.pdf import PDFUtil
 
 
@@ -389,9 +390,9 @@ class UtilBillTestWithDB(TestCase):
                             RateClass(name='rate class', utility=utility,
                                       service='gas'),
                             supplier=supplier,
-                            period_start=date(0215, 1, 1),
-                            period_end=date(0215, 2, 1))
-        utilbill.set_next_meter_read_date(date(0215, 1, 1))
+                            period_start=date(0215, 01, 01),
+                            period_end=date(0215, 02, 01))
+        utilbill.set_next_meter_read_date(date(0215, 01, 01))
         Session().add(utilbill)
         # flushing the changes should through integrity error as the dates
         # entered for period_start, period_end and next_meter_read_date
