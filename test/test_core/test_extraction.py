@@ -156,6 +156,7 @@ class TextExtractorTest(TestCase):
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
 
+
 class LayoutExtractorTest(TestCase):
     def setUp(self):
         self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
@@ -187,6 +188,7 @@ class LayoutExtractorTest(TestCase):
             self.bill, self.bfh)
         self.assertEqual((pages, -10, 190), aligned_input)
 
+
 class BoundingBoxFieldTest(TestCase):
     """
     Tests for layout extractor of bounding box fields
@@ -209,7 +211,11 @@ class BoundingBoxFieldTest(TestCase):
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elts
+
+        # TODO: explicitly create this rather than using LayoutExtractor to
+        # do it, so this test doesn't depend on LayoutExtractor
         self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
+
         #add a mis-alignment for testing
         self.input = (self.input[0], 5, 5)
 
@@ -242,17 +248,16 @@ class BoundingBoxFieldTest(TestCase):
 
         #This should fail with a MatchError, since no layout element matches
         # the regex
-        bb_field_fail = LayoutExtractor.BoundingBoxField(page_num=2,
-            bbregex='fail',
-        corner=0)
+        bb_field_fail = LayoutExtractor.BoundingBoxField(
+            page_num=2, bbregex='fail', corner=0)
         with self.assertRaises(MatchError):
             bb_field_fail.get_value(self.input)
 
     def test_multipage_search(self):
         """ Test searching through multiple pages for a field
         """
-        bb_multipage_field = LayoutExtractor.BoundingBoxField(page_num=1,
-            maxpage=3, bbregex='([a-z]ampl[a-z])')
+        bb_multipage_field = LayoutExtractor.BoundingBoxField(
+            page_num=1, maxpage=3, bbregex='([a-z]ampl[a-z])')
         self.assertEqual('sample', bb_multipage_field.get_value(self.input))
 
     def test_offset_regex(self):
@@ -293,7 +298,10 @@ class TableFieldTest(TestCase):
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elements
+
+        # TODO: don't use LayoutExtractor to create this
         self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
+
         #create a second page by copying the first
         self.input[0].extend(self.input[0])
 
@@ -324,6 +332,7 @@ class TableFieldTest(TestCase):
         multipage_tablefield= LayoutExtractor.TableField(page_num=1,
             bbminx=30, bbminy=30, bbmaxx=45, bbmaxy=45, multipage_table=True,
             nextpage_top=35, maxpage=2)
+        # 1st and 2nd rows come from 1st page, 3rd row from 2nd page
         expected_output = [["30 40 text", "40 40 text"],
                             ["30 30 text", "40 30 text"],
                             ["30 30 text", "40 30 text"]]
@@ -336,6 +345,7 @@ class TableFieldTest(TestCase):
         with self.assertRaises(ExtractionError):
             # give tablefield data representing a single empty page.
             tablefield._extract(([[]], 0, 0))
+
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
