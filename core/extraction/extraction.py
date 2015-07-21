@@ -212,6 +212,9 @@ class Extractor(model.Base):
     extractor_id = Column(Integer, primary_key=True)
     discriminator = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    representative_bill_id = Column(Integer,
+        ForeignKey('utilbill.id'), nullable=False)
+    representative_bill = relationship('UtilBill')
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(),
                       onupdate=func.now())

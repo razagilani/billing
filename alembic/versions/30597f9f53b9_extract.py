@@ -33,12 +33,15 @@ def upgrade():
         sa.Column('extractor_id', sa.Integer(), nullable=False),
                     sa.Column('discriminator', sa.String(), nullable=False),
                     sa.Column('name', sa.String(), nullable=False),
+                    sa.Column('representative_bill_id', sa.Integer(),
+                        nullable=False),
                     sa.Column('created', sa.DateTime(), nullable=False,
                               server_default=sa.func.now()),
                     sa.Column('modified', sa.DateTime(), nullable=False,
                               server_default=sa.func.now(),
                               onupdate=sa.func.now()),
-        sa.PrimaryKeyConstraint('extractor_id')
+        sa.PrimaryKeyConstraint('extractor_id'),
+        sa.ForeignKeyConstraint(['representative_bill_id'], ['utilbill.id'])
     )
     op.create_table('field',
         sa.Column('field_id', sa.Integer(), nullable=False),
