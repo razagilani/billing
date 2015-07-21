@@ -75,6 +75,11 @@ def create_layout_extractors(s):
         bbminx=0, bbminy=0, bbmaxx=170, bbmaxy=10,
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
+    washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="Your gas is supplied(?: and distributed)? by\s+(.+?)\.",
+        page_num=2, corner=Corners.TOP_LEFT,
+        bbminx=413, bbminy=725, bbmaxx=595, bbmaxy=750,
+        type=Field.SUPPLIER, applier_key=Applier.SUPPLIER))
 
     pepco_2015_layout = LayoutExtractor(
         name='Layout Extractor for Pepco bills in 2015 id 18541',
@@ -117,6 +122,11 @@ def create_layout_extractors(s):
         bbminx=35, bbminy=671, bbmaxx=280, bbmaxy=681,
         corner=Corners.TOP_LEFT, type=Field.STRING,
         applier_key=Applier.RATE_CLASS))
+    pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex=r"Your electricity is supplied by (?:the)?(.*?)(?: "
+                r"administered by pepco|[.-])",
+        page_num=2, maxpage=4,
+        type=Field.SUPPLIER, applier_key=Applier.SUPPLIER))
     # TODO position of pepco 2015 charges changes with each bill, and spans
     # multiple pages
     pepco_2015_layout.fields.append(LayoutExtractor.TableField(
@@ -184,7 +194,9 @@ def create_layout_extractors(s):
         bbminx=0, bbminy=-10, bbmaxx=252, bbmaxy=0,
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
-
+    pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
+        bbregex="Services by (.*?) for %s" % date_format, page_num=3,
+        type=Field.SUPPLIER, applier_key=Applier.SUPPLIER))
 
     #TODO determine how to tell if we want gas or electric info
     bge_layout = LayoutExtractor(
@@ -222,6 +234,10 @@ def create_layout_extractors(s):
         bbminx=0, bbminy=-10, bbmaxx=255, bbmaxy=0,
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
         applier_key=Applier.PERIOD_TOTAL))
+    bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
+
+        type=Field.SUPPLIER, applier_key=Field.SUPPLIER
+    ))
 
     s.add_all([washington_gas_layout, pepco_2015_layout, pepco_old_layout,
                bge_layout])

@@ -8,7 +8,7 @@ from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 from core import model
-from core.model import Session, RateClass, Utility, Address
+from core.model import Session, RateClass, Utility, Address, Supplier
 from core.model.utilbill import Charge
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
@@ -341,15 +341,18 @@ def pep_new_convert_charges(text):
 
     return charges
 
+# Currently rate class is extracted as string, and passed to
+# Applier.set_rate_class(bill, name). Not sure if we still need this
+# function, which does not take into account bill utility id
 
-def convert_rate_class(text):
-    s = Session()
-    q = s.query(RateClass).filter(RateClass.name == text)
-    try:
-        return q.one()
-    except NoResultFound:
-        #TODO fill in fields correctly
-        return RateClass(name=text)
+# def convert_rate_class(text):
+#     s = Session()
+#     q = s.query(RateClass).filter(RateClass.name == text)
+#     try:
+#         return q.one()
+#     except NoResultFound:
+#         #TODO fill in fields correctly
+#         return RateClass(name=text)
 
 def convert_address(text):
     '''
@@ -405,3 +408,12 @@ def convert_address(text):
         addressee += line + " "
     return Address(addressee=addressee, street=street, city=city, state=state,
         postal_code=postal_code)
+
+def convert_supplier(text):
+    s = Session()
+    q = s.query(Supplier).filter(Supplier.name == text)
+    try:
+        return q.one()
+    except NoResultFound:
+        #TODO fill in fields correctly
+        raise ConversionError('Could not find supplier with name "%s"' % text)
