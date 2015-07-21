@@ -13,8 +13,9 @@ import os.path
 
 from testfixtures import TempDirectory
 
-from core.model import Address, UtilBill, \
-    Register, UtilityAccount, Utility, Supplier, RateClass
+from core.model import Address, Register, UtilityAccount, Utility, Supplier, RateClass
+
+from core.model.utilbill import UtilBill
 from reebill.reebill_model import ReeBill, ReeBillCharge, ReeBillCustomer
 from reebill.reebill_file_handler import ReebillFileHandler, \
     SummaryFileGenerator

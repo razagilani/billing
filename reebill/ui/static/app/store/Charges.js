@@ -21,6 +21,10 @@ Ext.define('ReeBill.store.Charges', {
 			totalProperty: 'results'
 		},
 
+        writer: {
+            writeAllFields: false
+        },
+
         listeners:{
             exception: utils.makeProxyExceptionHandler('Charges'),
             scope: this
@@ -29,6 +33,9 @@ Ext.define('ReeBill.store.Charges', {
 
     sorters: [{
         property: 'group',
+        direction: 'ASC'
+    }, {
+        property: 'rsi_binding',
         direction: 'ASC'
     }]
 });

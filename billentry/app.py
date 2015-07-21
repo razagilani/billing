@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from celery.exceptions import ChordError, TaskRevokedError
 import re
 from celery.result import AsyncResult
+from dateutil import tz
 from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
 from flask import Flask, url_for, request, flash, session, redirect, \
@@ -35,11 +36,13 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
+from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility
+from core.model import Session, Utility
+from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 
@@ -178,6 +181,15 @@ def index():
     # redirects to the login page, causing the login page to be shown in an
     # error message window.
     response.headers['Cache-Control'] = 'no-cache'
+    # If some utility bills files are uploaded, their hash-digests are
+    # stored in Flask's session variable named hash-digest. If the
+    # upload utility bills form is reset or the app is loaded again,
+    # we need to clear those hash-digests of previously uploaded files
+    # to prevent them from getting mixed with utility bills uploaded later
+    if session.get('hash-digest'):
+        # remove the hash-digest from session as the uploaded files are
+        # irrelevant once the page is reloaded
+        session.pop('hash-digest')
     return response
 
 
@@ -235,6 +247,8 @@ def run_test():
         func.random())
     if utility_id:
         q = q.filter(UtilBill.utility_id == utility_id)
+    else:
+        utility_id = None
     if filter_date and date_filter_type:
         if date_filter_type == 'before':
             q = q.filter(UtilBill.period_end <= filter_date)
@@ -530,6 +544,20 @@ def locallogin():
     next_url = session.pop('next_url', url_for('index'))
     return redirect(next_url)
 
+@app.route('/quote-status')
+def quote_status():
+    local_tz = tz.gettz('America/New_York')
+    date_format = '%a %Y-%m-%d %H:%M:%S %Z'
+    format_date = lambda d: None if d is None else d.replace(
+        tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
+
+    return render_template('quote-status.html', data=[{
+        'name': row.name,
+        'date_received': format_date(row.date_received),
+        'today_count': row.today_count,
+        'total_count': row.total_count,
+        'good': row.today_count > 0,
+    } for row in get_quote_status()])
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time

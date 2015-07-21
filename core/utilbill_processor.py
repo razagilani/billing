@@ -5,8 +5,9 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main
 
-from core.model import UtilBill, Address, Charge, Register, Session, Supplier, \
+from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
+from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
@@ -489,7 +490,6 @@ class UtilbillProcessor(object):
             setattr(charge, k, v)
 
         # auto-fill formula and date fields when "rsi_binding" is edited
-        # TODO: this is really slow
         if 'rsi_binding' in fields:
             other_charge = self.pricing_model.get_closest_occurrence_of_charge(
                 charge)
