@@ -10,7 +10,7 @@ Create Date: 2015-07-06 17:22:56.906735
 from sqlalchemy.dialects.postgresql import HSTORE
 
 revision = '4d54d21b2c7a'
-down_revision = '49b8d9978d7e'
+down_revision = '686dfe445fd'
 
 from alembic import op
 import sqlalchemy as sa
