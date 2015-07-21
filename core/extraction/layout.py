@@ -6,7 +6,7 @@ from pdfminer.layout import LTTextLine, LTText, LTPage, LTTextBox, LTCurve, \
 import re
 
 from core import init_model
-from core.model.model import LayoutElement
+from core.model import LayoutElement
 from util.pdf import get_all_pdfminer_objs
 
 

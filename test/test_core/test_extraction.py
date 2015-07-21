@@ -12,7 +12,6 @@ from mock import Mock, NonCallableMock
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
-from core.model.model import LayoutElement
 from test import init_test_config
 init_test_config()
 
@@ -22,7 +21,7 @@ from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     LayoutExtractor
 from core.extraction.applier import Applier
 from core.model import UtilityAccount, Utility, Session, Address, \
-    RateClass, Charge
+    RateClass, Charge, LayoutElement
 from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError

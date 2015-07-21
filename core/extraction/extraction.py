@@ -21,7 +21,7 @@ from core.extraction.type_conversion import \
     convert_wg_charges_std
 from core.extraction.layout import tabulate_objects, BoundingBox, \
     group_layout_elements_by_page
-from core.model.model import LayoutElement
+from core.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.pdf import PDFUtil
 

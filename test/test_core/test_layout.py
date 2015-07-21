@@ -10,7 +10,6 @@ from core.extraction.layout import BoundingBox, get_corner, \
     get_objects_from_bounding_box, Corners, in_bounds, get_text_from_bounding_box, \
     get_text_line, tabulate_objects, layout_elements_from_pdfminer, \
     group_layout_elements_by_page
-from core.model.model import LayoutElement
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -18,6 +17,7 @@ from core.model.model import LayoutElement
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from core.model import LayoutElement
 from test import init_test_config, create_tables, clear_db
 
 init_test_config()
