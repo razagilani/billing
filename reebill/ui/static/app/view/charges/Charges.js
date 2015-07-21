@@ -26,6 +26,40 @@ Ext.define('ReeBill.view.charges.Charges', {
         ftype: 'summary'
     }],
 
+    initComponent: function(){
+        // Combine the quantity_formula & formula columns into on single column
+        var newColumns = [];
+        for(var i =0; i<this.columns.length; i++){
+            if (this.columns[i]['dataIndex'] === 'quantity_formula') {
+                newColumns.push({
+                    xtype: 'templatecolumn',
+                    header: 'Quantity',
+                    itemId: 'quantity',
+                    sortable: true,
+                    dataIndex: 'quantity_formula',
+                    editor: {
+                        xtype: 'textfield',
+                        allowBlank: true
+                    },
+                    flex: 1,
+                    width: 250,
+                    tpl: '{[values.error ? values.error : values.quantity]}'
+                });
+            }else if(this.columns[i]['dataIndex'] !== 'quantity'){
+                // Fastest way to deep copy
+                newColumns.push(JSON.parse(JSON.stringify(this.columns[i])));
+            }
+        }
+
+        // Enable all columns
+        for (var i = 0; i < newColumns.length; i++) {
+            newColumns[i].disabled = false;
+        }
+
+        this.columns = newColumns;
+        this.callParent(arguments);
+    },
+
     viewConfig: {
         trackOver: false,
         stripeRows: true,
