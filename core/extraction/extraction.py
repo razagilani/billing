@@ -14,15 +14,15 @@ from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
 from core.extraction.applier import Applier
-from core.extraction import layout
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.extraction.layout import tabulate_objects, BoundingBox, \
-    group_layout_elements_by_page, in_bounds
 from core.model import LayoutElement
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
+from util.layout import tabulate_objects, BoundingBox, \
+    group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
+    get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil
 
 __all__ = [
@@ -386,7 +386,7 @@ class LayoutExtractor(Extractor):
                 # text line object that matches bbregex.
                 if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
                     self.bbmaxy]):
-                    textline = layout.get_text_line(page,
+                    textline = get_text_line(page,
                         self.bbregex)
                     if textline is None:
                         continue
@@ -396,14 +396,14 @@ class LayoutExtractor(Extractor):
                     # text that it matches, and use that as the origin for
                     # the bounding box's coordiantes.
                     if self.offset_regex:
-                        textline = layout.get_text_line(page, self.offset_regex)
+                        textline = get_text_line(page, self.offset_regex)
                         if textline is None:
                             continue
-                        offset_x, offset_y = layout.get_corner(textline,
+                        offset_x, offset_y = get_corner(textline,
                             self.corner)
                         dx = offset_x
                         dy = offset_y
-                    text = layout.get_text_from_bounding_box(page,
+                    text = get_text_from_bounding_box(page,
                         BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
                             maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
                         self.corner)
@@ -490,13 +490,13 @@ class LayoutExtractor(Extractor):
                             maxx = self.bbmaxx + dx,
                             maxy = self.nextpage_top + dy)
 
-                search = lambda lo: (lo.type == LayoutElement.TEXTLINE) and \
+                search = lambda lo: (lo.type == TEXTLINE) and \
                                     in_bounds(lo, bbox, 0)
                 new_textlines = filter(search, page)
 
                 #match regex at start of table.
                 if self.table_start_regex and i == self.page_num - 1:
-                    top_object = layout.get_text_line(page,
+                    top_object = get_text_line(page,
                         self.table_start_regex)
                     if top_object:
                         new_textlines = filter(
@@ -505,7 +505,7 @@ class LayoutExtractor(Extractor):
 
                 # if table_stop_regex matches, do not search further pages.
                 if self.table_stop_regex:
-                    bottom_object = layout.get_text_line(page,
+                    bottom_object = get_text_line(page,
                         self.table_stop_regex)
                     if bottom_object:
                         new_textlines = filter(
@@ -540,7 +540,7 @@ class LayoutExtractor(Extractor):
         if all(v is not None for v in
                [self.origin_regex, self.origin_x, self.origin_y]):
             #get textbox used to align the page
-            alignment_box = layout.get_text_line(pages[0], self.origin_regex)
+            alignment_box = get_text_line(pages[0], self.origin_regex)
             if alignment_box is not None:
                 #set the bill's dx and dy so the textbox matches the expected
                 # coordinates.

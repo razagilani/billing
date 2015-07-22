@@ -17,6 +17,8 @@ from core.model.model import UtilbillCallback, PHYSICAL_UNITS
 from exc import NotProcessable, UnEditableBillError, BillingError, \
     BillStateError, MissingFileError, FormulaSyntaxError, FormulaError
 from util.pdf import get_all_pdfminer_objs
+from util.layout import LAYOUT_TYPES, group_layout_elements_by_page, PAGE, \
+    TEXTLINE, TEXTBOX, SHAPE, IMAGE, OTHER
 
 
 class UtilBill(Base):
@@ -638,7 +640,6 @@ class UtilBill(Base):
         :return: list of lists of LayoutElements, where each inner list
         represents the elements on each page
         """
-        from core.extraction.layout import group_layout_elements_by_page
         infile = StringIO()
 
         # _layout is an empty list if and only if get_layout has never been
@@ -676,14 +677,6 @@ class LayoutElement(Base):
     layout_element_id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
 
-    # the type of object this represents, e.g. a line of text, or an image, etc.
-    PAGE = "page"
-    TEXTBOX = "textbox"
-    TEXTLINE = "textline"
-    SHAPE = "shape"
-    IMAGE = "image"
-    OTHER = "other"
-    LAYOUT_TYPES = [PAGE, TEXTBOX, TEXTLINE, SHAPE, IMAGE, OTHER]
     type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
 
     page_num = Column(Integer, nullable=False)
@@ -713,17 +706,17 @@ class LayoutElement(Base):
             for obj in page_objs:
                 #get object type
                 if isinstance(obj, LTPage):
-                    objtype = LayoutElement.PAGE
+                    objtype = PAGE
                 elif isinstance(obj, LTTextLine):
-                    objtype = LayoutElement.TEXTLINE
+                    objtype = TEXTLINE
                 elif isinstance(obj, LTTextBox):
-                    objtype = LayoutElement.TEXTBOX
+                    objtype = TEXTBOX
                 elif isinstance(obj, LTCurve):
-                    objtype = LayoutElement.SHAPE
+                    objtype = SHAPE
                 elif isinstance(obj, LTImage):
-                    objtype = LayoutElement.IMAGE
+                    objtype = IMAGE
                 else:
-                    objtype = LayoutElement.OTHER
+                    objtype = OTHER
 
                 #get text, if any
                 if isinstance(obj, LTText):
