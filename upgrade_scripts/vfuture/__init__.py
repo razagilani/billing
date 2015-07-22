@@ -10,10 +10,9 @@ calling :func:`.core.init_model`.
 import logging
 from core.extraction import Applier
 from core.extraction.extraction import LayoutExtractor, Field
-from core.extraction.layout import Corners
-
 from upgrade_scripts import alembic_upgrade
 from core import init_model, initialize, init_config
+from util.layout import Corners
 
 log = logging.getLogger(__name__)
 
@@ -96,7 +95,7 @@ def create_layout_extractors(s):
         bbminx=310, bbminy=720, bbmaxx=470, bbmaxy=740,
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=Applier.END))
-    #non-residential bills have a whole list of subtotals, and the actual
+    # non-residential bills have a whole list of subtotals, and the actual
     # total is at the end of this. Hence the very tall bounding box
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)\s*Amount" % num_format, page_num=2,
@@ -198,7 +197,7 @@ def create_layout_extractors(s):
         bbregex="Services by (.*?) for %s" % date_format, page_num=3,
         type=Field.SUPPLIER, applier_key=Applier.SUPPLIER))
 
-    #TODO determine how to tell if we want gas or electric info
+    # TODO determine how to tell if we want gas or electric info
     bge_layout = LayoutExtractor(
         name='Layout Extractor BGE bills id 7657')
     bge_layout.fields.append(LayoutExtractor.BoundingBoxField(
