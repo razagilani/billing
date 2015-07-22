@@ -216,21 +216,21 @@ def get_running_tests():
         ExtractorResult.finished == None)
     running_tasks = q.all()
     tasks_dict = [{
-        'task_id' : rt.task_id,
-        'parent_id' : rt.parent_id,
-        'extractor_id' : rt.extractor_id,
-        'utility_id' : rt.utility_id,
-        'bills_to_run' : rt.bills_to_run,
+        'task_id': rt.task_id,
+        'parent_id': rt.parent_id,
+        'extractor_id': rt.extractor_id,
+        'utility_id': rt.utility_id,
+        'bills_to_run': rt.bills_to_run,
     } for rt in running_tasks]
-    return jsonify({'tasks' : tasks_dict})
+    return jsonify({'tasks': tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
 def run_test():
-    '''
+    """
     Runs a test of bill data extractors as an asynchronous Celery task.
     Also creates a database row in the ExtractorResult table for this test.
     :return the ID of the task being run, as well as the total number of bills
-    '''
+    """
     extractor_id = request.form.get('extractor_id')
     utility_id = request.form.get('utility_id')
     num_bills = int(request.form.get('num_bills'))
@@ -294,7 +294,7 @@ def test_status(task_id):
         parent_task.results]
         response = reduce_bill_results(subtask_results)
         if response['stopped'] > 0:
-            response['state'] = "STOPPPED"
+            response['state'] = "STOPPED"
         elif response['failed'] > 0:
             response['state'] = "SOME SUBTASKS FAILED, IN PROGRESS"
         else:
@@ -321,9 +321,9 @@ def stop_task(task_id):
     ext_res = q.one()
     parent_id = ext_res.parent_id
     # revoke chord task (i.e. the reduce step)
-    AsyncResult(task_id).revoke(terminate=True)
+    AsyncResult(task_id).revoke(terminate=True, signal='SIGKILL')
     # revoke group, (i.e. all the subtasks)
-    GroupResult.restore(parent_id).revoke(terminate=True)
+    GroupResult.restore(parent_id).revoke(terminate=True, signal='SIGKILL')
     ext_res.finished = datetime.utcnow()
     s.commit()
     return "", 204

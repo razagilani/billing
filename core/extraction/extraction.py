@@ -159,6 +159,9 @@ class Field(model.Base):
     # string determining how the extracted value gets applied to a UtilBill
     applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
 
+    # if enabled is false, then this field is skipped during extraction.
+    enabled = Column(Boolean, default=True, nullable=False)
+
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
         'extension': FieldExtension(),
@@ -220,6 +223,9 @@ class Extractor(model.Base):
     extractor_id = Column(Integer, primary_key=True)
     discriminator = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    representative_bill_id = Column(Integer,
+        ForeignKey('utilbill.id'))
+    representative_bill = relationship('UtilBill')
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(),
                       onupdate=func.now())
@@ -253,6 +259,9 @@ class Extractor(model.Base):
         self._input = self._prepare_input(utilbill, bill_file_handler)
         good, errors = {}, {}
         for field in self.fields:
+            # still extract data if field.enabled is None
+            if field.enabled is False:
+                continue
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
@@ -628,6 +637,27 @@ class ExtractorResult(model.Base):
             setattr(self, "field_" + attr_name, count_for_field)
             correct_fraction = metadata['fields_fraction'][field_name]
             setattr(self, "field_"+attr_name+"_fraction", correct_fraction)
-            date_count_dict = {str(date): str(counts.get(field_name, 0)) for
-                               date, counts in metadata['dates'].iteritems()}
+            date_count_dict = {str(date): str(counts['fields'].get(field_name,
+                0)) for date, counts in metadata['dates'].iteritems()}
             setattr(self, attr_name + "_by_month", date_count_dict)
+
+
+def verify_field(applier_key, extracted_value, db_value):
+    """
+    Compares an extracted value of a field to the corresponding value in the
+    database
+    :param applier_key: The applier key of the field
+    :param extracted_value: The value extracted from the PDF
+    :param db_value: The value already in the database
+    :return: Whether these values match.
+    """
+    if applier_key == Applier.RATE_CLASS:
+        subregex = r"[\s\-_]+"
+        exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
+        exc_string = re.sub(r"pepco_", "", exc_string)
+        db_string = re.sub(subregex, "_", db_value.name.lower().strip())
+    else:
+        # don't strip extracted value, so we can catch extra whitespace
+        exc_string = str(extracted_value)
+        db_string = str(db_value).strip()
+    return exc_string == db_string
