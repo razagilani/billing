@@ -6,9 +6,9 @@ from pdfminer.layout import LTPage, LTImage, LTTextBox, LTTextLine, LTCurve, \
     LTFigure, LTLine, LTLayoutContainer
 from pdfminer.pdftypes import PDFStream
 from core import init_model
-from core.extraction.layout import BoundingBox, get_corner, Corners, \
+from util.layout import BoundingBox, get_corner, Corners, \
     in_bounds, get_text_from_bounding_box, get_text_line, tabulate_objects, \
-    group_layout_elements_by_page
+    group_layout_elements_by_page, TEXTLINE, IMAGE, TEXTBOX, PAGE
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -53,13 +53,13 @@ class LayoutTest(TestCase):
     def setUp(self):
         self.bbox = BoundingBox(10, 10, 110, 120)
         self.out_of_bounds_obj = LayoutElement(x0=-10, y0=-10, x1=0, y1=0,
-            text="I'm out of bounds!", type=LayoutElement.TEXTLINE)
+            text="I'm out of bounds!", type=TEXTLINE)
         self.in_bounds_obj = LayoutElement(x0=11, y0=11, x1=100, y1=100,
-            text="I'm in bounds!", type=LayoutElement.TEXTLINE)
+            text="I'm in bounds!", type=TEXTLINE)
         self.overlap_obj = LayoutElement(x0=-10, y0=-10, x1=100, y1=100,
-            text="I overlap the bounding box!", type=LayoutElement.TEXTLINE)
+            text="I overlap the bounding box!", type=TEXTLINE)
         self.image_obj = LayoutElement(x0=11, y0=11, x1=100, y1=100,
-            type=LayoutElement.IMAGE)
+            type=IMAGE)
         self.layout_objects = [self.out_of_bounds_obj, self.in_bounds_obj,
             self.overlap_obj, self.image_obj]
 
@@ -84,7 +84,7 @@ class TableTest(TestCase):
             for x in range(20, 50, 10):
                 elt = LayoutElement(x0=x, y0=y, x1=x,
                     y1=y, text="%d %d text" % (x, y),
-                    type=LayoutElement.TEXTLINE)
+                    type=TEXTLINE)
                 self.layout_objects.append(elt)
                 row.append(elt)
             self.tabulated_data.append(row)
@@ -188,16 +188,16 @@ class LayoutElementTest(TestCase):
         self.pdfminer_pages = [self.page1, self.page2]
 
     def test_pdfminer_to_layoutelement(self):
-        le_pg1 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
+        le_pg1 = LayoutElement(type=PAGE, x0=0, y0=0, x1=1000,
                                y1=1000, width=1000, height=1000, text=None,
                                page_num=1, utilbill_id=123)
-        le_pg2 = LayoutElement(type=LayoutElement.PAGE, x0=0, y0=0, x1=1000,
+        le_pg2 = LayoutElement(type=PAGE, x0=0, y0=0, x1=1000,
                                y1=1000, width=1000, height=1000, text=None,
                                page_num=2, utilbill_id=123)
-        le_textbox1 = LayoutElement(type=LayoutElement.TEXTBOX, x0=200, y0=300,
+        le_textbox1 = LayoutElement(type=TEXTBOX, x0=200, y0=300,
                                     x1=600, y1=700, page_num=1, text='textbox1',
                                     utilbill_id=123)
-        le_textline1 = LayoutElement(type=LayoutElement.TEXTLINE, x0=200,
+        le_textline1 = LayoutElement(type=TEXTLINE, x0=200,
                                      y0=300, x1=500, y1=600, page_num=1,
                                      text='textline1', utilbill_id=123)
 
