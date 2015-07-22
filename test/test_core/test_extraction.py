@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from celery.exceptions import TaskRevokedError
 import os
 from unittest import TestCase, skip
 
@@ -12,13 +13,14 @@ from mock import Mock, NonCallableMock
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from core.extraction.task import test_bill, reduce_bill_results
 from test import init_test_config
 init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
-    LayoutExtractor
+    verify_field, ExtractorResult, LayoutExtractor
 from core.extraction.applier import Applier
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge, LayoutElement
@@ -27,6 +29,7 @@ from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
+from util.layout import TEXTLINE, IMAGE, TEXTBOX, PAGE
 
 
 class FieldTest(TestCase):
@@ -120,9 +123,10 @@ class ExtractorTest(TestCase):
         f2.get_value = Mock(side_effect=ExtractionError)
         f3 = Field(applier_key='c')
         f3.get_value = Mock(return_value=date(2000, 1, 1))
+        f4 = Field(applier_key='c', enabled=False)
 
         self.e = Extractor()
-        self.e.fields = [f1, f2, f3]
+        self.e.fields = [f1, f2, f3, f4]
         self.e._prepare_input = Mock(return_value='input string')
 
         self.utilbill = Mock(autospec=UtilBill)
@@ -157,6 +161,13 @@ class TextFieldTest(TestCase):
         with self.assertRaises(ConversionError):
             print self.field.get_value('Somemonth 0, 7689')
 
+        # multiple matches
+        with self.assertRaises(MatchError):
+            field_multiple_matches = TextExtractor.TextField(regex=r'(\d+) ('
+                                                                   r'\d+)',
+                type=Field.FLOAT)
+            print self.field.get_value('3342 2321')
+
 
 class TextExtractorTest(TestCase):
     def setUp(self):
@@ -169,17 +180,43 @@ class TextExtractorTest(TestCase):
     def test_prepare_input(self):
         self.assertEqual(self.text, self.te._prepare_input(self.bill, self.bfh))
 
+class VerifyFieldTest(TestCase):
+    def setUp(self):
+        self.rate_class = Mock(autospec=RateClass)
+        self.rate_class.name = "Some Rate Class"
+
+    def test_verify_field(self):
+        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+            date(2015, 07, 04)))
+        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+            '2015-07-04'))
+        # whitespace in DB is ok
+        self.assertTrue(verify_field(Applier.START, '2015-07-04',
+            '2015-07-04 '))
+        # whitespace in extracted value is not ok
+        self.assertFalse(verify_field(Applier.START, '2015-07-04 ',
+            '2015-07-04'))
+        self.assertFalse(verify_field(Applier.START, '2014-07-04',
+            '2015-07-04'))
+        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some Rate Class",
+            self.rate_class))
+        # allowances for capitalization, formatting of spaces
+        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some_rate-class",
+            self.rate_class))
+        self.assertFalse(verify_field(Applier.RATE_CLASS, "Different rate "
+                                                          "class",
+            self.rate_class))
 
 class LayoutExtractorTest(TestCase):
     def setUp(self):
         self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.layout_elts = [[self.le3, self.le1], [self.le4], [self.le2]]
 
         self.bfh = Mock(autospec=BillFileHandler)
@@ -206,17 +243,17 @@ class BoundingBoxFieldTest(TestCase):
     """
     def setUp(self):
         self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
-            x1=100, y1=200, type=LayoutElement.TEXTLINE)
+            x1=100, y1=200, type=TEXTLINE)
         self.le5 = LayoutElement(text='', page_num=1, x0=50, y0=50,
-            x1=70, y1=70, type=LayoutElement.TEXTLINE)
+            x1=70, y1=70, type=TEXTLINE)
         self.le6 = LayoutElement(text='woo', page_num=2, x0=50, y0=50,
-            x1=70, y1=70, type=LayoutElement.TEXTLINE)
+            x1=70, y1=70, type=TEXTLINE)
         self.layout_elts = [[self.le1, self.le3], [self.le4, self.le5],
                             [self.le2, self.le6]]
         self.bfh = Mock(autospec=BillFileHandler)
@@ -302,10 +339,10 @@ class TableFieldTest(TestCase):
             for x in range(20, 50, 10):
                 elt = LayoutElement(x0=x, y0=y, x1=x+5,
                     y1=y+5, text="%d %d text" % (x, y),
-                    type=LayoutElement.TEXTLINE)
+                    type=TEXTLINE)
                 self.layout_elements[0].append(elt)
         self.layout_elements[0].append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
-            text="not in table", type=LayoutElement.TEXTLINE))
+            text="not in table", type=TEXTLINE))
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elements
@@ -534,8 +571,11 @@ class TestIntegration(TestCase):
         s.flush()
         self.assertGreater(self.e1.modified, last_modified)
 
-    @skip('this task was deleted, might come back')
-    def test_test_extractor(self):
+    def test_test_bill_tasks(self):
+        """ Tests the functions in task.py, such as test_bill and
+        reduce_bill_results
+        """
+
         # TODO: it might be possible to write this as a unit test, without the
         # database. database queries in tasks would be moved to a DAO like
         # UtilbillLoader, which could be mocked.
@@ -548,20 +588,61 @@ class TestIntegration(TestCase):
         # primary keys need to be set so they can be queried. also,
         # the transaction needs to be committed because the task is a
         # separate thread so it has a different transaction
-        Session().commit()
+        s = Session()
+        s.commit()
         # TODO: session is gone after committing here, so we would have to
         # create a new session and re-load all the objects that are used in
         # the assertions below.
 
-        result = test_extractor.apply(args=[self.e1.extractor_id])
-        metadata = AsyncResult(result.task_id).info
-        self.assertEqual((1, 1, 1), result.get())
-        self.assertEqual({'all_count': 1, 'any_count': 1, 'total_count': 1},
-            metadata)
+        results = [test_bill(self.e1.extractor_id, self.bill.id),
+            TaskRevokedError("Representing a stopped task"),
+            Exception("Representing a failed task"), None]
+        total_result = reduce_bill_results(results)
 
-        result = test_extractor.apply(args=[self.e2.extractor_id])
-        metadata = AsyncResult(result.task_id).info
-        self.assertEqual((0, 0, 1), result.get())
-        self.assertEqual({'all_count': 0, 'any_count': 0, 'total_count': 1},
-                         metadata)
+        field_names = ['end', 'charges', 'energy', 'start', 'rate class',
+            'next read']
+        expected_fields = {fname:1 for fname in field_names}
+        expected_dates = {'2014-04':
+                               {'all_count': 1,
+                                'total_count': 1,
+                                'any_count': 1,
+                                'fields': expected_fields}}
+        expected_result = {'total_count': 1,
+                           'any_count': 1,
+                           'all_count': 1,
+                           'nbills': 4,
+                           'failed': 1,
+                           'stopped': 1,
+                           'dates': expected_dates,
+                           'fields_fraction':
+                               {fname:0 for fname in field_names},
+                            'verified_count': 0,
+                            'fields': expected_fields}
+        self.assertEqual(total_result,expected_result)
 
+        #set up extractor result with non-nullable fields
+        extractor_result = ExtractorResult(task_id="", parent_id="",
+            bills_to_run=4, started=datetime.utcnow())
+        #apply results to extractor result
+        extractor_result.set_results(total_result)
+        self.assertGreater(extractor_result.finished, extractor_result.started)
+        self.assertEqual(extractor_result.total_count, total_result['total_count'])
+        self.assertEqual(extractor_result.any_count, total_result['any_count'])
+        self.assertEqual(extractor_result.all_count, total_result['all_count'])
+        self.assertEqual(extractor_result.verified_count, total_result['verified_count'])
+
+        for fname in expected_fields.keys():
+            attr_name = fname.replace(" ", "_")
+
+            #check that field counts are the same
+            self.assertEqual(extractor_result.__getattribute__("field_"+attr_name),
+                expected_fields[fname])
+            # check taht field accuracies
+            self.assertEqual(extractor_result.__getattribute__(
+                "field_"+attr_name+"_fraction"), expected_result[
+                'fields_fraction'][fname])
+            #check that monthly field counts are the same
+            for date in expected_dates.keys():
+                self.assertEqual(extractor_result.__getattribute__(
+                    attr_name+"_by_month")[date], str(expected_dates[
+                    date]['fields'][fname]))
