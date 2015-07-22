@@ -86,6 +86,81 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         dataIndex: 'lastevent',
         minWidth: 350,
         flex:1
+    },{
+        header: 'Name',
+        dataIndex: 'name',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Addressee',
+        dataIndex: 'ba_addressee',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing City',
+        dataIndex: 'ba_city',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Postal Code',
+        dataIndex: 'ba_postal_code',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing State',
+        dataIndex: 'ba_state',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Street',
+        dataIndex: 'ba_street',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Discount Rate',
+        dataIndex: 'discount_rate',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Late Charge Rate',
+        dataIndex: 'late_charge_rate',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Addressee',
+        dataIndex: 'sa_addressee',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service City',
+        dataIndex: 'sa_city',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Postal Code',
+        dataIndex: 'sa_postal_code',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service State',
+        dataIndex: 'sa_state',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Street',
+        dataIndex: 'sa_street',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Type',
+        dataIndex: 'service_type',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Template Account',
+        dataIndex: 'template_account',
+        hidden: true,
+        hideable: false
     }],
 
     bbar: {
