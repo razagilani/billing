@@ -136,7 +136,7 @@ def test_bill(self, extractor_id, bill_id):
             bill.processed:
         if len(good.keys()) > 0:
             response['verified'] = 1
-        for applier_key, field_value in good.iteritems:
+        for applier_key, field_value in good.iteritems():
             db_val = Applier.GETTERS[applier_key](bill)
             if not db_val:
                 continue
