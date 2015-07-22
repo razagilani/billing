@@ -238,7 +238,7 @@ Ext.define('ReeBill.controller.Accounts', {
             records: records,
             basedOn: 'ReeBill.view.accounts.Accounts',
             store: this.getAccountsStore(),
-            exclude: ['modified', 'created']
+            exclude: ['casualname', 'primusname', 'codename']
         }).show();
     }
 
