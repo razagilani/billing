@@ -160,7 +160,7 @@ class Field(model.Base):
     applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
 
     # if enabled is false, then this field is skipped during extraction.
-    enabled = Column(Boolean, default=True, nullable=False)
+    enabled = Column(Boolean, default=True)
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
@@ -656,6 +656,9 @@ def verify_field(applier_key, extracted_value, db_value):
         exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
         exc_string = re.sub(r"pepco_", "", exc_string)
         db_string = re.sub(subregex, "_", db_value.name.lower().strip())
+    # elif applier_key == Applier.BILLING_ADDRESS or applier_key == \
+    #         Applier.SERVICE_ADDRESS:
+    #     pass
     else:
         # don't strip extracted value, so we can catch extra whitespace
         exc_string = str(extracted_value)
