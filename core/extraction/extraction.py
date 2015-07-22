@@ -656,9 +656,21 @@ def verify_field(applier_key, extracted_value, db_value):
         exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
         exc_string = re.sub(r"pepco_", "", exc_string)
         db_string = re.sub(subregex, "_", db_value.name.lower().strip())
-    # elif applier_key == Applier.BILLING_ADDRESS or applier_key == \
-    #         Applier.SERVICE_ADDRESS:
-    #     pass
+    elif applier_key == Applier.BILLING_ADDRESS or applier_key == \
+            Applier.SERVICE_ADDRESS:
+        # get fields of address, and remove empty ones
+        exc_fields = filter(None, (extracted_value.addressee,
+                     extracted_value.street, extracted_value.city,
+            extracted_value.state))
+        exc_string = " ".join(exc_fields)
+        exc_string = exc_string.upper()
+
+
+        # get fields of address, and remove empty ones
+        db_fields = filter(None, (db_value.addressee,
+                     db_value.street, db_value.city, db_value.state))
+        db_string = " ".join(db_fields)
+        db_string = db_string.upper()
     else:
         # don't strip extracted value, so we can catch extra whitespace
         exc_string = str(extracted_value)
