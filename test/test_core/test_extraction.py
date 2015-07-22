@@ -258,14 +258,9 @@ class BoundingBoxFieldTest(TestCase):
                             [self.le2, self.le6]]
         self.bfh = Mock(autospec=BillFileHandler)
         self.bill = Mock(autospec=UtilBill)
-        self.bill.get_layout.return_value = self.layout_elts
-
-        # TODO: explicitly create this rather than using LayoutExtractor to
-        # do it, so this test doesn't depend on LayoutExtractor
-        self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
 
         #add a mis-alignment for testing
-        self.input = (self.input[0], 5, 5)
+        self.input = (self.layout_elts, 5, 5)
 
     def test_not_enough_pages(self):
         bb_field = LayoutExtractor.BoundingBoxField(page_num=44)
@@ -334,24 +329,19 @@ class TableFieldTest(TestCase):
     """
     def setUp(self):
         # generate of table of elements
-        self.layout_elements = [[]]
+        self.layout_elements = []
         for y in range(100, 10, -10):
             for x in range(20, 50, 10):
                 elt = LayoutElement(x0=x, y0=y, x1=x+5,
                     y1=y+5, text="%d %d text" % (x, y),
                     type=TEXTLINE)
-                self.layout_elements[0].append(elt)
-        self.layout_elements[0].append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
+                self.layout_elements.append(elt)
+        self.layout_elements.append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
             text="not in table", type=TEXTLINE))
-        self.bfh = Mock(autospec=BillFileHandler)
-        self.bill = Mock(autospec=UtilBill)
-        self.bill.get_layout.return_value = self.layout_elements
 
-        # TODO: don't use LayoutExtractor to create this
-        self.input = LayoutExtractor()._prepare_input(self.bill, self.bfh)
-
-        #create a second page by copying the first
-        self.input[0].extend(self.input[0])
+        # Create processed input data
+        # Table is copied onto two pages.
+        self.input = ([self.layout_elements, self.layout_elements], 0, 0)
 
     def test_get_table_boundingbox(self):
         """ Test getting tabular data wihtin a bounding box
@@ -585,14 +575,8 @@ class TestIntegration(TestCase):
         celery.conf.update(
             dict(BROKER_BACKEND='memory', CELERY_ALWAYS_EAGER=True))
 
-        # primary keys need to be set so they can be queried. also,
-        # the transaction needs to be committed because the task is a
-        # separate thread so it has a different transaction
         s = Session()
         s.commit()
-        # TODO: session is gone after committing here, so we would have to
-        # create a new session and re-load all the objects that are used in
-        # the assertions below.
 
         results = [test_bill(self.e1.extractor_id, self.bill.id),
             TaskRevokedError("Representing a stopped task"),
