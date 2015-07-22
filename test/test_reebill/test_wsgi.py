@@ -117,6 +117,7 @@ class AccountsResourceTest(TestCase):
         mongo_connection.drop_database(self.database)
 
     def test_put(self):
+        self.maxDiff = None
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account='99999').one()
@@ -145,7 +146,20 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': 'payee'
+            'payee': 'payee',
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street': '123 Test Street',
         }]})
         self.assertEqual(utility_account.account_number, '987654321')
 
@@ -171,7 +185,20 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some tag,some other tag',
-            'payee': 'payee'
+            'payee': 'payee',
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street': '123 Test Street',
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some tag', 'some other tag'])
@@ -196,7 +223,20 @@ class AccountsResourceTest(TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': 'some other tag,one more tag',
-            'payee': 'payee'
+            'payee': 'payee',
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street': '123 Test Street',
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some other tag', 'one more tag'])
