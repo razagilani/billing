@@ -25,22 +25,25 @@ def upgrade():
     connection = op.get_bind()
     connection.execution_options(isolation_level='AUTOCOMMIT')
     new_type_names = [
-        'table charges',
+        'table charges', 'supplier',
     ]
     for value in new_type_names:
         op.execute("alter type field_type add value '%s'" % value)
     new_applier_keys = [
-        'period total',
+        'period total', 'supplier',
     ]
     for value in new_applier_keys:
         op.execute("alter type applier_key add value '%s'" % value)
 
+    op.add_column('extractor', sa.Column('representative_bill_id',
+        sa.Integer()))
     op.add_column('extractor', sa.Column('origin_regex', sa.String()))
     op.add_column('extractor', sa.Column('origin_x', sa.Float()))
     op.add_column('extractor', sa.Column('origin_y', sa.Float()))
 
     op.alter_column('field', 'regex', nullable=True)
-
+    op.add_column('field',
+        sa.Column('enabled', sa.Boolean(), default=True))
     op.add_column('field', sa.Column('bbregex', sa.String))
     op.add_column('field', sa.Column('offset_regex', sa.String))
     op.add_column('field', sa.Column('corner', sa.Integer()))
