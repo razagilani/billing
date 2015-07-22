@@ -54,7 +54,7 @@ def create_layout_extractors(s):
         applier_key=Applier.SERVICE_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"", page_num=1,
-        bbminx=66, bbminy=61, bbmaxx=203, bbmaxy=91,
+        bbminx=66, bbminy=51, bbmaxx=203, bbmaxy=91,
         corner=Corners.TOP_LEFT, type=Field.ADDRESS,
         applier_key=Applier.BILLING_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
