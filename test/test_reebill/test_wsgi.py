@@ -121,8 +121,14 @@ class AccountsResourceTest(TestCase):
         session = Session()
         utility_account = session.query(UtilityAccount).filter_by(
             account='99999').one()
+        utility_account2 = session.query(UtilityAccount).filter_by(
+            account='100000').one()
         reebill_customer = session.query(ReeBillCustomer).filter_by(
             utility_account_id=utility_account.id).one()
+        account_1_bills = session.query(UtilBill).filter_by(
+            utility_account_id=utility_account.id).all()
+        account_2_bills = session.query(UtilBill).filter_by(
+            utility_account_id=utility_account2.id).all()
 
         ###############################
         # Update Utility Account Number
@@ -162,7 +168,19 @@ class AccountsResourceTest(TestCase):
             'sa_street': '123 Test Street',
         }]})
         self.assertEqual(utility_account.account_number, '987654321')
-
+        ###############################
+        # Move Bills from one Account to another
+        self.assertEqual(len(account_1_bills), 0)
+        self.assertEqual(len(account_2_bills),2)
+        success, response = self.app.put(
+            '/accounts/%s' % utility_account.id, data={
+                'accounts_deleted': [utility_account2.id],
+                'utility_account_id': utility_account.id
+            }
+        )
+        bills = session.query(UtilBill).filter_by(
+            utility_account_id=utility_account.id).all()
+        self.assertEqual(len(bills), 2)
         ###############################
         # Update tags
         self.assertEqual(reebill_customer.get_groups(), [])
