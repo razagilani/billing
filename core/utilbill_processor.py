@@ -616,3 +616,19 @@ class UtilbillProcessor(object):
             raise
         utility_account.account_number = utility_account_number
         return utility_account
+
+    def update_fb_billing_address(self, utility_account_id,
+            addressee, city, postal_code, state, street):
+        s = Session()
+        try:
+            utility_account = s.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+        except NoResultFound:
+            raise
+        address = Address(addressee=addressee,
+                          city=city,
+                          postal_code=postal_code,
+                          state=state,
+                          street=street)
+        utility_account.fb_billing_address = address
+        return utility_account
