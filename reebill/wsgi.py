@@ -294,7 +294,22 @@ class AccountsResource(RESTResource):
                                             ba_postal_code,
                                             ba_state,
                                             ba_street)
-        
+
+        if {'sa_addressee', 'sa_city', 'sa_postal_code', 'sa_state',
+            'sa_street'}.issubset(set(row)):
+            sa_addressee = row['sa_addressee'] if row['sa_addressee'] else ''
+            sa_city = row['sa_city'] if row['sa_city'] else ''
+            sa_postal_code= row['sa_postal_code'] if row['sa_postal_code'] else ''
+            sa_state= row['sa_state'] if row['sa_state'] else ''
+            sa_street = row['sa_street'] if row['sa_street'] else ''
+            self.utilbill_processor.update_fb_service_address(
+                                            row['utility_account_id'],
+                                            sa_addressee,
+                                            sa_city,
+                                            sa_postal_code,
+                                            sa_state,
+                                            sa_street
+            )
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
