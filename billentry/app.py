@@ -39,7 +39,7 @@ from billentry.common import get_bcrypt_object
 from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.task import test_bill, reduce_bill_results
 from core.model import Session, Utility
 from core.model.utilbill import UtilBill
@@ -204,7 +204,7 @@ def test_extractors():
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
     utilities = s.query(Utility.name, Utility.id).distinct(Utility.name).all()
-    fields = Applier.KEYS.keys()
+    fields = UtilBillApplier.KEYS.keys()
     return render_template('test-extractors.html', extractors=extractors,
                                nbills=nbills, utilities=utilities,
                                fields=fields)

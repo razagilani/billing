@@ -6,6 +6,7 @@ from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
 from core.extraction import Main, Extractor, ExtractorResult, Applier
+from core.extraction.applier import UtilBillApplier
 from core.extraction.extraction import verify_field
 from core.model import Session
 from core.model.utilbill import UtilBill
@@ -117,7 +118,7 @@ def test_bill(self, extractor_id, bill_id):
     good, error = extractor.get_values(bill, bill_file_handler)
     for applier_key, value in good.iteritems():
         response['fields'][applier_key] = 1
-        if applier_key == Applier.END:
+        if applier_key == UtilBillApplier.END:
             bill_end_date = value
 
     # get bill period end date from DB, or from extractor
@@ -138,7 +139,7 @@ def test_bill(self, extractor_id, bill_id):
         if len(good.keys()) > 0:
             response['verified'] = 1
         for applier_key, field_value in good.iteritems():
-            db_val = Applier.GETTERS[applier_key](bill)
+            db_val = UtilBillApplier.GETTERS[applier_key](bill)
             if not db_val:
                 continue
 
