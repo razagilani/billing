@@ -30,7 +30,10 @@ Ext.define('ReeBill.model.Account', {
         {name: 'sa_street', type: 'string'},
         {name: 'service_type', type: 'string'},
         {name: 'template_account'},
-        {name: 'payee', type:'string'}
+        {name: 'payee', type:'string'},
+
+        // Needed to update references in an account being merged
+        {name: 'accounts_deleted'}
 
     ],
     idProperty: 'utility_account_id'
