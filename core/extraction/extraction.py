@@ -13,7 +13,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
@@ -56,7 +56,7 @@ class Main(object):
             utilbill, self._bill_file_handler))
 
         # values are cached so it's OK to call this repeatedly
-        success_count, errors = Applier.get_instance().apply_values(
+        success_count, errors = UtilBillApplier.get_instance().apply_values(
             best_extractor, utilbill, self._bill_file_handler)
         utilbill.date_extracted = datetime.utcnow()
         error_list_str = '\n'.join(('Field "%s": %s: %s' % (
@@ -157,7 +157,7 @@ class Field(model.Base):
     type = Column(Enum(*TYPES.keys(), name='field_type'))
 
     # string determining how the extracted value gets applied to a UtilBill
-    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
+    applier_key = Column(Enum(*UtilBillApplier.KEYS.keys(), name='applier_key'))
 
     # if enabled is false, then this field is skipped during extraction.
     enabled = Column(Boolean, default=True)
@@ -651,13 +651,13 @@ def verify_field(applier_key, extracted_value, db_value):
     :param db_value: The value already in the database
     :return: Whether these values match.
     """
-    if applier_key == Applier.RATE_CLASS:
+    if applier_key == UtilBillApplier.RATE_CLASS:
         subregex = r"[\s\-_]+"
         exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
         exc_string = re.sub(r"pepco_", "", exc_string)
         db_string = re.sub(subregex, "_", db_value.name.lower().strip())
-    elif applier_key == Applier.BILLING_ADDRESS or applier_key == \
-            Applier.SERVICE_ADDRESS:
+    elif applier_key == UtilBillApplier.BILLING_ADDRESS or applier_key == \
+            UtilBillApplier.SERVICE_ADDRESS:
         # get fields of address, and remove empty ones
         exc_fields = filter(None, (extracted_value.addressee,
                      extracted_value.street, extracted_value.city,

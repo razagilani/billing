@@ -2,14 +2,14 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
+from abc import ABCMeta
 from collections import OrderedDict
-import re
+
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
-from core import model
-from core.model import Session, RateClass, Utility, Address
-from core.model.utilbill import Charge
+
+from core.model import Session, RateClass
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
 from exc import ApplicationError, ConversionError
@@ -17,6 +17,22 @@ from core.utilbill_loader import UtilBillLoader
 
 
 class Applier(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, keys):
+        self.keys = keys
+
+    def apply(self, extractor, *args):
+        raise NotImplementedError
+
+    def get_keys(self):
+        """:return: list of keys (strings) in the order they should be
+        applied. (Not necessarily the 'KEYS' of the default Applier.)
+        """
+        return self.keys.keys()
+
+
+class UtilBillApplier(Applier):
     """Applies extracted values to attributes of UtilBill. There's no
     instance-specific state so only one instance is needed.
 
@@ -27,9 +43,10 @@ class Applier(object):
     @staticmethod
     def set_rate_class(bill, rate_class_name):
         """
-        Given a bill and a rate class name, this function sets the rate class of the bill.
-        If the name corresponds to an existing rate class in the database, then the existing rate class is used.
-        Otherwise, a new rate class object is created.
+        Given a bill and a rate class name, this function sets the rate class
+        of the bill. If the name corresponds to an existing rate class in the
+        database, then the existing rate class is used. Otherwise, a new rate
+        class object is created.
         Note: This function uses the default service for all bills.
         :param bill: A UtilBill object
         :param rate_class_name:  A string, the name of the rate class
@@ -38,8 +55,11 @@ class Applier(object):
         s = Session()
         bill_util = bill.get_utility()
         if bill_util is None:
-            raise ApplicationError("Unable to set rate class for bill id %s: utility is unknown" % bill_util.id)
-        q = s.query(RateClass).filter(RateClass.name == rate_class_name, RateClass.utility == bill_util)
+            raise ApplicationError(
+                "Unable to set rate class for bill id %s: utility is unknown" %
+                bill_util.id)
+        q = s.query(RateClass).filter(RateClass.name == rate_class_name,
+                                      RateClass.utility == bill_util)
         try:
             rate_class = q.one()
         except NoResultFound:
@@ -93,15 +113,15 @@ class Applier(object):
     # values must be applied in a certain order because some are needed in
     # order to apply others (e.g. rate class is needed for energy and charges)
     KEYS = OrderedDict([
-        (START, core.model.utilbill.UtilBill.period_start),
-        (END, core.model.utilbill.UtilBill.period_end),
-        (NEXT_READ, core.model.utilbill.UtilBill.set_next_meter_read_date),
-        (BILLING_ADDRESS, model.UtilBill.billing_address),
-        (SERVICE_ADDRESS, model.UtilBill.service_address),
-        (SUPPLIER, core.model.utilbill.UtilBill.set_supplier),
-        (PERIOD_TOTAL, model.UtilBill.target_total),
+        (START, core.model.UtilBill.period_start),
+        (END, core.model.UtilBill.period_end),
+        (NEXT_READ, core.model.UtilBill.set_next_meter_read_date),
+        (BILLING_ADDRESS, core.model.UtilBill.billing_address),
+        (SERVICE_ADDRESS, core.model.UtilBill.service_address),
+        (SUPPLIER, core.model.UtilBill.set_supplier),
+        (PERIOD_TOTAL, core.model.UtilBill.target_total),
         (RATE_CLASS, set_rate_class.__func__),
-        (ENERGY, core.model.utilbill.UtilBill.set_total_energy),
+        (ENERGY, core.model.UtilBill.set_total_energy),
         (CHARGES, set_charges.__func__),
     ])
     # TODO:
@@ -110,7 +130,7 @@ class Applier(object):
     # utility (could be determined by layout itself)
 
     # Getters for each applier key, to get the corresponding field value from
-    #  a utility bill.
+    # a utility bill.
     GETTERS = {
         BILLING_ADDRESS: lambda b: b.billing_address,
         CHARGES: lambda b: b.charges,
@@ -132,15 +152,6 @@ class Applier(object):
             cls._instance = cls(cls.KEYS)
         return cls._instance
 
-    def __init__(self, keys):
-        self.keys = keys
-
-    def get_keys(self):
-        """:return: list of keys (strings) in the order they should be
-        applied. (Not necessarily the 'KEYS' of the default Applier.)
-        """
-        return self.keys.keys()
-
     def apply(self, key, value, utilbill):
         """Set the value of a UtilBill attribute. Raise ApplicationError if
         anything goes wrong.
@@ -158,15 +169,15 @@ class Applier(object):
             if hasattr(self.__class__, attr.__name__):
                 # method of this class (takes precedence over UtilBill method
                 # with the same name)
-                apply = lambda: attr(utilbill, value)
+                execute = lambda: attr(utilbill, value)
             elif hasattr(utilbill, attr.__name__):
                 method = getattr(utilbill, attr.__name__)
                 # method of UtilBill
-                apply = lambda: method(value)
+                execute = lambda: method(value)
             else:
                 # other callable. it must take a UtilBill and the value to
                 # apply.
-                apply = lambda: attr(utilbill, value)
+                execute = lambda: attr(utilbill, value)
         else:
             # non-method attribute
             if isinstance(attr.property, RelationshipProperty):
@@ -184,12 +195,12 @@ class Applier(object):
                 raise ApplicationError(
                     "Can't apply %s to %s: unknown attribute type %s" % (
                         value, attr, type(attr)))
-            apply = lambda: setattr(utilbill, attr_name, value)
+            execute = lambda: setattr(utilbill, attr_name, value)
 
         # do it
         s = Session()
         try:
-            apply()
+            execute()
             # catch database errors here too
             s.flush()
         except Exception as e:
@@ -211,203 +222,17 @@ class Applier(object):
         good, errors = extractor.get_values(utilbill, bill_file_handler)
         success_count = 0
         for key in self.get_keys():
-            if key in good:
+            try:
                 value = good[key]
-                try:
-                    self.apply(key, value, utilbill)
-                except ApplicationError as error:
-                    errors[key] = error
-                else:
-                    success_count += 1
-        # an unrecognized key is an error
-        for key in set(good.iterkeys()) - set(self.get_keys()) :
+            except KeyError:
+                # missing key is OK (but unrecognized key is an error)
+                continue
+            try:
+                self.apply(key, value, utilbill)
+            except ApplicationError as error:
+                errors[key] = error
+            else:
+                success_count += 1
+        for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
-        
-def convert_table_charges(rows):
-    """
-    Converts a list of charges extracted from a TableField.
-    """
-    #TODO get charge name map by utility
-    num_format = r"[\d,.]+"
-    # this is based off the units currently in the charge table in the database.
-    # these will probably have to be updated
-    unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
-    # matches text of the form <quantity> <unit> x <rate>
-    #   e.g. 1,362.4 TH x .014
-    register_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format,
-    num_format)
-
-    def convert_unit(unit):
-        """
-        Convert units found in bills to standardized formats.
-        """
-        if unit in Charge.CHARGE_UNITS:
-            return unit
-        #by default, if no unit then assume dollars
-        if not unit:
-            return "dollars"
-        if unit == "th":
-            return "therms"
-        if unit == "$":
-            return "dollars"
-        #if unit is not valid, raise an error
-        raise ConversionError('unit "%s" is not in set of allowed units.' %
-                              unit)
-
-    def process_charge(row, ctype=Charge.DISTRIBUTION):
-        """
-        Processes a row of text values to create a single charge with the given
-        charge type.
-        :param row: A list of strings of length at least 2.
-        :param ctype: The type of the charge
-        :return: a Charge object
-        """
-        if len(row) < 2:
-            raise ConversionError('Charge row %s must have at least two '
-                                  'values.')
-
-        #first cell in row is the name of the charge (and sometimes contains
-        # rate info as well), while the last cell in row is the value of the
-        # charge.
-        text = row[0]
-        value = row[-1]
-        if not text or not value:
-            raise ConversionError('Table row ("%s", "%s") contains an empty '
-                                  'element.' % row)
-
-        #set up default values
-        rsi_binding = target_total = None
-        rate = 0
-        description = unit = ''
-
-        # if row does not end with some kind of number, this is not a charge.
-        match = re.search(num_format, value)
-        if match:
-            target_total = match.group(0)
-        else:
-            return None
-
-        # determine unit for charge, from either the value (e.g. "$456")
-        # or from the name e.g. "Peak Usage (kWh):..."
-        match = re.search(r"(%s)" % unit_format, value)
-        if match:
-            unit = match.group(0)
-        else:
-            match = re.match(r"(\(%s\))" % unit_format, text)
-            if match:
-                unit = match.group(0)
-        unit = convert_unit(unit)
-
-        # check if charge refers to a register
-        # register info can appear in first cell, or in a middle column,
-        # so check all columns
-        for i in range(0, len(row)):
-            cell = row[i]
-            match = re.match(r"(.*?)\s*%s" % register_format, cell,
-                re.IGNORECASE)
-            if match:
-                reg_quantity = match.group(2)
-                reg_unit = match.group(3)
-                rate = match.group(4)
-                #TODO create register, formula
-            # register info is often in same text box as the charge name.
-            # If this is the case, separate the description from the other info.
-            if i == 0:
-                description = match.group(1) if match else cell
-
-        #Get rsi binding from database, by looking for existing charges with
-        # the same description.
-        q = Session.query(Charge.rsi_binding).filter(
-            Charge.description==description, bool(Charge.rsi_binding))
-        rsi_binding = q.first()
-        if rsi_binding is None:
-            #TODO what to do if existing RSI binding not found?
-            pass
-
-        return Charge(description=description, unit=unit, rate=rate,
-            rsi_binding=rsi_binding, type=ctype, target_total=target_total)
-
-    # default charge type is DISTRIBUTION
-    charge_type = Charge.DISTRIBUTION
-    charges = []
-    for i in range (0, len(rows)):
-        row = rows[i]
-        if not row:
-            continue
-
-        if len(row) == 1:
-            #If this label is not in all caps and has no colon at the end,
-            # assume it is part of the next row's charge name that got wrapped.
-            if re.search(r"[a-z]", row[0]) and not re.search(":$", row[0]):
-                # if the next row exists, and is an actual charge row,
-                # append this current row's text to the next row's name
-                if i < len(rows) - 1 and len(rows[i+1]) > 1:
-                    rows[i+1][0] = row[0] + " " + rows[i+1][0]
-                    continue
-
-            #check if this row is a header for a type of charge.
-            if re.search(r"suppl[iy]|generation|transmission", row[0],
-                    re.IGNORECASE):
-                charge_type = Charge.SUPPLY
-            else:
-                charge_type = Charge.DISTRIBUTION
-            continue
-
-        charges.append(process_charge(row, charge_type))
-    return filter(None, charges)
-
-def convert_address(text):
-    '''
-    Given a string containing an address, parses the address into an Address object in the database.
-    '''
-    #matches city, state, and zip code
-    regional_exp = r'([\w ]+),?\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
-    #for attn: or C/O lines in billing addresses
-    addressee_attn_exp = r"attn:?\s*(.*)"
-    addressee_co_exp = r"(C/?O:?\s*.*)$"
-    #A PO box, or a line that starts with a number
-    street_exp = r"^(\d+.*?$|PO BOX \d+)"
-
-    addressee = city = state = street = postal_code = None
-    lines = re.split("\n+", text, re.MULTILINE)
-
-    # Addresses have an uncertain number (usually 1 or 2) of addressee lines
-    # The last two lines are always street and city, state, zip code.
-    # However, the last two lines are sometimes switched by PDF extractors
-    # This especially happens with service addresses
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        #if it a po box or starts with a number, this line is a street address
-        match = re.search(street_exp, line, re.IGNORECASE)
-        if match:
-            street = match.group(1)
-            continue
-        # check if this line contains city/state/zipcode
-        match = re.search(regional_exp, line, re.IGNORECASE)
-        if match:
-            city, state, postal_code = match.groups()
-            continue
-        #if line has "attn:" or "C/O" in it, it is part of addresse.
-        match = re.search(addressee_attn_exp, line, re.IGNORECASE)
-        if match:
-            if addressee is None:
-                addressee = ""
-            addressee += match.group(1) + " "
-            continue
-        match = re.search(addressee_co_exp, line, re.IGNORECASE)
-        if match:
-            if addressee is None:
-                addressee = ""
-            addressee += match.group(1) + " "
-            continue
-
-        #if none of the above patterns match, assume that this line is the
-        # addressee
-        if addressee is None:
-            addressee = ""
-        addressee += line + " "
-    return Address(addressee=addressee, street=street, city=city, state=state,
-        postal_code=postal_code)
