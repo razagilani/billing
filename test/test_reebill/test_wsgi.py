@@ -130,6 +130,7 @@ class AccountsResourceTest(TestCase):
         account_2_bills = session.query(UtilBill).filter_by(
             utility_account_id=utility_account2.id).all()
 
+
         ###############################
         # Update Utility Account Number
         self.assertEqual(utility_account.account_number, '1')
@@ -258,3 +259,64 @@ class AccountsResourceTest(TestCase):
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some other tag', 'one more tag'])
+
+        ###############################
+        # Update Reebill_customer discount_rate
+        self.assertEqual(reebill_customer.discountrate, 0.12)
+        success, response = self.app.put(
+            '/accounts/%s' % utility_account.id, data={
+                'discount_rate': 0.25,
+                'utility_account_id': utility_account.id
+            }
+        )
+        self.assertEqual(reebill_customer.discountrate, 0.25)
+
+        ###############################
+        # Update Reebill customer late_charge_rate
+        self.assertEqual(reebill_customer.latechargerate, 0.34)
+        success, response = self.app.put(
+            '/accounts/%s' % utility_account.id, data={
+                'discount_rate': 0.45,
+                'utility_account_id': utility_account.id
+            }
+        )
+        self.assertEqual(reebill_customer.discountrate, 0.45)
+        ###############################
+        # Update utility account fb_billing_address
+        address = session.query(Address).filter_by(
+            addressee='Test Customer 1 Billing'
+        ).first()
+        self.assertEqual(utility_account.fb_billing_address, address)
+        success, response = self.app.put(
+            '/accounts/%s' % utility_account.id, data={
+                'ba_addressee': 'Test Addressee',
+                'ba_city': 'Test City',
+                'ba_postal_code': '78910',
+                'ba_state': 'YY',
+                'ba_street': 'Test Street',
+                'utility_account_id': utility_account.id
+            }
+        )
+        address = session.query(Address).filter_by(
+            state='YY').one()
+        self.assertEqual(utility_account.fb_billing_address, address)
+        
+        ###############################
+        # Update utility account fb_billing_address
+        address = session.query(Address).filter_by(
+            addressee='Test Customer 1 Service'
+        ).first()
+        self.assertEqual(utility_account.fb_service_address, address)
+        success, response = self.app.put(
+            '/accounts/%s' % utility_account.id, data={
+                'sa_addressee': 'Test Addressee',
+                'sa_city': 'Test City',
+                'sa_postal_code': '78910',
+                'sa_state': 'ZZ',
+                'sa_street': 'Test Street',
+                'utility_account_id': utility_account.id
+            }
+        )
+        address = session.query(Address).filter_by(
+            state='ZZ').one()
+        self.assertEqual(utility_account.fb_service_address, address)
