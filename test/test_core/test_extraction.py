@@ -15,13 +15,12 @@ from mock import Mock, NonCallableMock
 # dependency might cause the wrong config to be loaded.
 from core.extraction.task import test_bill, reduce_bill_results
 from test import init_test_config
-init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge, LayoutElement
 from core.model.utilbill import UtilBill, Charge
@@ -31,6 +30,8 @@ from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
 from util.layout import TEXTLINE, IMAGE, TEXTBOX, PAGE
 
+def setUpModule():
+    init_test_config()
 
 class FieldTest(TestCase):
     def setUp(self):
@@ -42,7 +43,11 @@ class FieldTest(TestCase):
         # dictionary. maybe there's a way to do this without modifying the
         # class.
         self.type_convert_func = Mock(return_value=1)
+        self.old_type_func = self.field.TYPES[Field.STRING]
         self.field.TYPES[Field.STRING] = self.type_convert_func
+
+    def tearDown(self):
+        self.field.TYPES[Field.STRING] = self.old_type_func
 
     def test_get_value(self):
         value = self.field.get_value(self.input)
@@ -58,35 +63,35 @@ class FieldTest(TestCase):
 
 class ApplierTest(TestCase):
     def setUp(self):
-        self.applier = Applier.get_instance()
+        self.applier = UtilBillApplier.get_instance()
         self.bill = NonCallableMock()
         self.bill.set_total_energy = Mock()
         self.bill.set_next_meter_read_date = Mock()
 
     def test_default_applier(self):
         d = date(2000,1,1)
-        self.applier.apply(Applier.START, d, self.bill)
+        self.applier.apply(UtilBillApplier.START, d, self.bill)
         self.assertEqual(d, self.bill.period_start)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.END, d, self.bill)
+        self.applier.apply(UtilBillApplier.END, d, self.bill)
         self.assertEqual(d, self.bill.period_end)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.NEXT_READ, d, self.bill)
+        self.applier.apply(UtilBillApplier.NEXT_READ, d, self.bill)
         self.bill.set_next_meter_read_date.assert_called_once_with(d)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+        self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
         self.bill.set_total_energy.assert_called_once_with(123.456)
 
     def test_apply_values(self):
-        # TODO: maybe make this independent of UtilBill; it should be in a
-        # test for the generic Applier when that is separated from utilbill
+        # one field is good, 2 have ApplicationErrors (one with wrong value
+        # type, one with unknown key)
         extractor = Mock(autospec=Extractor)
-        good = {Applier.START: date(2000,1,1), Applier.CHARGES: 'wrong type',
-                'wrong key': 1}
-        extractor_errors = {Applier.END: ExtractionError('an error')}
+        good = {UtilBillApplier.START: date(2000, 1, 1),
+                UtilBillApplier.CHARGES: 'wrong type', 'wrong key': 1}
+        extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
         extractor.get_values.return_value = (good, extractor_errors)
         bfh = Mock(autospec=BillFileHandler)
 
@@ -95,7 +100,8 @@ class ApplierTest(TestCase):
         self.assertEqual(1, success_count)
         self.assertEqual(3, len(applier_errors))
         self.assertIsInstance(applier_errors['wrong key'], ApplicationError)
-        self.assertIsInstance(applier_errors[Applier.CHARGES], ApplicationError)
+        self.assertIsInstance(applier_errors[UtilBillApplier.CHARGES],
+                              ApplicationError)
 
     def test_errors(self):
         # wrong key
@@ -104,13 +110,13 @@ class ApplierTest(TestCase):
 
         # wrong value type
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.START, 1, self.bill)
+            self.applier.apply(UtilBillApplier.START, 1, self.bill)
 
         # exception in target method
         self.bill.reset_mock()
         self.bill.set_total_energy.side_effect = Exception
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+            self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
 
 
 class ExtractorTest(TestCase):
@@ -186,24 +192,24 @@ class VerifyFieldTest(TestCase):
         self.rate_class.name = "Some Rate Class"
 
     def test_verify_field(self):
-        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+        self.assertTrue(verify_field(UtilBillApplier.START, date(2015, 07, 04),
             date(2015, 07, 04)))
-        self.assertTrue(verify_field(Applier.START, date(2015, 07, 04),
+        self.assertTrue(verify_field(UtilBillApplier.START, date(2015, 07, 04),
             '2015-07-04'))
         # whitespace in DB is ok
-        self.assertTrue(verify_field(Applier.START, '2015-07-04',
+        self.assertTrue(verify_field(UtilBillApplier.START, '2015-07-04',
             '2015-07-04 '))
         # whitespace in extracted value is not ok
-        self.assertFalse(verify_field(Applier.START, '2015-07-04 ',
+        self.assertFalse(verify_field(UtilBillApplier.START, '2015-07-04 ',
             '2015-07-04'))
-        self.assertFalse(verify_field(Applier.START, '2014-07-04',
+        self.assertFalse(verify_field(UtilBillApplier.START, '2014-07-04',
             '2015-07-04'))
-        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some Rate Class",
+        self.assertTrue(verify_field(UtilBillApplier.RATE_CLASS, "Some Rate Class",
             self.rate_class))
         # allowances for capitalization, formatting of spaces
-        self.assertTrue(verify_field(Applier.RATE_CLASS, "Some_rate-class",
+        self.assertTrue(verify_field(UtilBillApplier.RATE_CLASS, "Some_rate-class",
             self.rate_class))
-        self.assertFalse(verify_field(Applier.RATE_CLASS, "Different rate "
+        self.assertFalse(verify_field(UtilBillApplier.RATE_CLASS, "Different rate "
                                                           "class",
             self.rate_class))
 
@@ -456,23 +462,22 @@ class TestIntegration(TestCase):
         #wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+(.*\n)\n\n.*'
         # wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+^(.*)$^.*$Next read date'
         wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+([^\n]+).*Next read date'
-        tf = TextExtractor.TextField
         e1.fields = [
             TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE,
-                                    applier_key=Applier.START),
+                                    applier_key=UtilBillApplier.START),
             TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE,
-                                    applier_key=Applier.END),
+                                    applier_key=UtilBillApplier.END),
             TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT,
-                                    applier_key=Applier.ENERGY),
+                                    applier_key=UtilBillApplier.ENERGY),
             TextExtractor.TextField(regex=wg_next_meter_read_regex,
                                     type=Field.DATE,
-                                    applier_key=Applier.NEXT_READ),
+                                    applier_key=UtilBillApplier.NEXT_READ),
             TextExtractor.TextField(regex=wg_charges_regex,
                                     type=Field.WG_CHARGES,
-                                    applier_key=Applier.CHARGES),
+                                    applier_key=UtilBillApplier.CHARGES),
             TextExtractor.TextField(regex=wg_rate_class_regex,
                                     type=Field.STRING,
-                                    applier_key=Applier.RATE_CLASS),
+                                    applier_key=UtilBillApplier.RATE_CLASS),
         ]
 
         e2 = TextExtractor(name='Another')
@@ -578,11 +583,17 @@ class TestIntegration(TestCase):
         s = Session()
         s.commit()
 
+        # set bill as processed so that the extractor results can be verified
+        #  in test_bill
+        self.bill.processed = True
+
+        # get results from test
         results = [test_bill(self.e1.extractor_id, self.bill.id),
             TaskRevokedError("Representing a stopped task"),
             Exception("Representing a failed task"), None]
         total_result = reduce_bill_results(results)
 
+        # set up expected results from test
         field_names = ['end', 'charges', 'energy', 'start', 'rate class',
             'next read']
         expected_fields = {fname:1 for fname in field_names}
@@ -600,7 +611,7 @@ class TestIntegration(TestCase):
                            'dates': expected_dates,
                            'fields_fraction':
                                {fname:0 for fname in field_names},
-                            'verified_count': 0,
+                            'verified_count': 1,
                             'fields': expected_fields}
         self.assertEqual(total_result,expected_result)
 
