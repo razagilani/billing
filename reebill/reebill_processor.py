@@ -758,3 +758,15 @@ class ReebillProcessor(object):
             raise
         reebill_customer.discountrate = discount_rate
         return reebill_customer
+
+    def update_late_charge_rate(self, utility_account_id, late_charge_rate):
+        session = Session()
+        try:
+            reebill_customer = session.query(ReeBillCustomer).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).\
+                filter(UtilityAccount.id==utility_account_id).one()
+        except NoResultFound:
+            raise
+        reebill_customer.latechargerate = late_charge_rate
+        return reebill_customer
