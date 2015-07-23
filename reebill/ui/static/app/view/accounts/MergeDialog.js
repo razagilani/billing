@@ -102,6 +102,11 @@ Ext.define('ReeBill.view.accounts.MergeDialog', {
                     handler: function(){
                         // Update the first record to match the merge
                         me.records[0].set(this.up('form').getValues());
+                        var account_ids = []
+                        for(var i=1; i < me.records.length; i++) {
+                            account_ids.push(me.records[i].data['utility_account_id']);
+                        }
+                        me.records[0].set({'accounts_deleted': account_ids})
 
                         // Delete all others
                         for(var i=1; i < me.records.length; i++){
