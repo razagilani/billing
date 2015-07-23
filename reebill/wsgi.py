@@ -274,7 +274,12 @@ class AccountsResource(RESTResource):
             self.reebill_processor.update_discount_rate(
                 row['utility_account_id'], row['discount_rate']
             )
-        
+
+        if 'late_charge_rate' in row:
+            self.reebill_processor.update_late_charge_rate(
+                row['utility_account_id'], row['late_charge_rate']
+            )
+
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
