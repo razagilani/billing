@@ -14,6 +14,8 @@ from mock import Mock, NonCallableMock
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
 from core.extraction.task import test_bill, reduce_bill_results
+from core.extraction.type_conversion import convert_unit, convert_address, \
+    process_charge, convert_table_charges
 from test import init_test_config
 
 from core import init_model, ROOT_PATH
@@ -389,6 +391,131 @@ class TableFieldTest(TestCase):
         with self.assertRaises(ExtractionError):
             # give tablefield data representing a single empty page.
             tablefield._extract(([[]], 0, 0))
+
+class TestTypeConversion(TestCase):
+    """ Test type conversion functions
+    """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
+        # FakeS3Manager.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        # FakeS3Manager.stop()
+        pass
+
+    def tearDown(self):
+        clear_db()
+
+    def setUp(self):
+        clear_db()
+
+    def test_convert_unit(self):
+        # for units already in CHARGE_UNITS, just return them
+        for cu in Charge.CHARGE_UNITS:
+            self.assertEqual(convert_unit(cu), cu)
+        # when there is no unit, assume dollars
+        self.assertEqual(convert_unit(''), 'dollars')
+        self.assertEqual(convert_unit('th'), 'therms')
+        self.assertEqual(convert_unit('$'), 'dollars')
+        with self.assertRaises(ConversionError):
+            convert_unit('lol not a unit')
+
+    def test_process_charge(self):
+        # simple test with name & value
+        sample_charge_row = ['Bagels', '$500.40']
+        sample_charge = process_charge(sample_charge_row)
+        self.assertEqual(sample_charge.description, 'Bagels')
+        self.assertEqual(sample_charge.target_total, 500.40)
+
+        # full charge test, with more fields and a name that matches an
+        # existing charge in the database with an rsi binding
+        charge_row = ['Energy charges 251.2 kWh x $0.0034', "$0.85408"]
+        charge = process_charge(charge_row, Charge.SUPPLY)
+        self.assertEqual(charge.description, 'Energy charges')
+        self.assertEqual(charge.unit, 'dollars')
+        self.assertEqual(charge.rate, 0.0034)
+        self.assertEqual(charge.type, Charge.SUPPLY)
+        self.assertEqual(charge.target_total, 0.85408)
+
+    def test_convert_table_charges(self):
+        """ Tests the conversion function that takes tabular data and outputs a
+        list of charges. Uses a list of known charges and inputs.
+        """
+        table_charges_rows = [
+            [u'DISTRIBUTION SERVICE'],
+            [u'Distribution Charge   206.0  TH x .3158', u'$ 65.05'],
+            [u'Customer Charge', u'$ 33.00'],
+            [u'NATURAL GAS SUPPLY SERVICE'],
+            [u'PGC 206.0 TH x .5542', u'$ 114.17'],
+            [u'TAXES'],
+            [u'DC Rights-of-Way Fee', u'$ 5.77'],
+            [u'Sustainable Energy Trust Fund 206.0 TH x .01400', u'$ 2.88'],
+            [u'Energy Assistance Trust Fund 206.0 TH x .006000', u'$ 1.24'],
+            [u'Delivery Tax 206.0 TH x .070700', u'$ 14.56'],
+            [u'Total Current Washington Gas Charges', u'$ 236.67']]
+
+        expected_charges = [
+            Charge(None, description='Distribution Charge', unit='dollars',
+                rate=0.3158, type=Charge.DISTRIBUTION, target_total=65.05),
+            Charge(None, description='Customer Charge', unit='dollars',
+                type=Charge.DISTRIBUTION, target_total=33.00),
+            Charge(None, description='PGC', unit='dollars',
+                rate=0.5542, type=Charge.SUPPLY, target_total=114.17),
+            Charge(None, description='DC Rights-of-Way Fee',
+                unit='dollars',
+                type=Charge.DISTRIBUTION, target_total=5.77),
+            Charge(None, description='Sustainable Energy Trust Fund', \
+            unit='dollars',
+                rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88),
+            Charge(None, description='Energy Assistance Trust Fund',
+                unit='dollars',
+                rate=0.006, type=Charge.DISTRIBUTION, target_total=1.24),
+            Charge(None, description='Delivery Tax', unit='dollars',
+                rate=0.0707, type=Charge.DISTRIBUTION, target_total=14.56),
+            Charge(None, description='Total Current Washington Gas Charges',
+                unit='dollars', type=Charge.DISTRIBUTION, target_total=236.67)
+        ]
+
+        output_charges = convert_table_charges(table_charges_rows)
+        self.assertListEqual(expected_charges, output_charges)
+
+
+
+
+    def test_convert_address(self):
+        """ Tests the address conversion function. Takes into account
+        formatting issues, such as switching street and city/state lines. 
+        """
+
+        # simple address test, with C/O line
+        lines = "\n".join(("John Smith", "C/O Smith Johnson", "",
+        "1234 Everton Road", "Baltimore, MD 12345"))
+        address = convert_address(lines)
+        self.assertEqual(address.addressee, "John Smith C/O Smith Johnson")
+        self.assertEqual(address.street, "1234 Everton Road")
+        self.assertEqual(address.city, "Baltimore")
+        self.assertEqual(address.state, "MD")
+        self.assertEqual(address.postal_code, "12345")
+
+        # street and city/state out of order, with ATTN line and 9-digit
+        # postal code
+        lines = "\n".join(("ATTN: Michael Chapin",
+                            "15 35th Street", "Seattle, WA 54321-9494"))
+        address = convert_address(lines)
+        self.assertEqual(address.addressee, "Michael Chapin")
+        self.assertEqual(address.street, "15 35th Street")
+        self.assertEqual(address.city, "Seattle")
+        self.assertEqual(address.state, "WA")
+        self.assertEqual(address.postal_code, "54321-9494")
+
+    def test_convert_wg_charges_std(self):
+        pass
+
+
 
 
 class TestIntegration(TestCase):

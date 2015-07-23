@@ -87,7 +87,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
     # matches text of the form <quantity> <unit> x <rate>
     #   e.g. 1,362.4 TH x .014
-    register_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format,
+    register_format = r"(%s)\s*(%s)\s*x\s*\$?(%s)" % (num_format, unit_format,
     num_format)
 
     #first cell in row is the name of the charge (and sometimes contains
@@ -107,7 +107,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     # if row does not end with some kind of number, this is not a charge.
     match = re.search(num_format, value)
     if match:
-        target_total = match.group(0)
+        target_total = float(match.group(0))
     else:
         return None
 
@@ -132,7 +132,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
         if match:
             reg_quantity = match.group(2)
             reg_unit = match.group(3)
-            rate = match.group(4)
+            rate = float(match.group(4))
             #TODO create register, formula
         # register info is often in same text box as the charge name.
         # If this is the case, separate the description from the other info.
@@ -142,6 +142,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     #Get rsi binding from database, by looking for existing charges with
     # the same description.
     # TODO Use some sort of charge name map
+    # TODO also filter by charge type in this query?
     q = Session.query(Charge.rsi_binding).filter(
         Charge.description==description, bool(Charge.rsi_binding))
     rsi_binding = q.first()
@@ -409,8 +410,8 @@ def convert_address(text):
         if addressee is None:
             addressee = ""
         addressee += line + " "
-    return Address(addressee=addressee, street=street, city=city, state=state,
-        postal_code=postal_code)
+    return Address(addressee=addressee.strip(), street=street, city=city,
+        state=state, postal_code=postal_code)
 
 def convert_supplier(text):
     s = Session()
