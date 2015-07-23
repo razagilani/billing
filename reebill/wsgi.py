@@ -270,6 +270,11 @@ class AccountsResource(RESTResource):
                 row['utility_account_id'], row['payee']
             )
 
+        if 'discount_rate' in row:
+            self.reebill_processor.update_discount_rate(
+                row['utility_account_id'], row['discount_rate']
+            )
+        
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
