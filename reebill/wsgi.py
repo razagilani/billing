@@ -279,7 +279,22 @@ class AccountsResource(RESTResource):
             self.reebill_processor.update_late_charge_rate(
                 row['utility_account_id'], row['late_charge_rate']
             )
-
+        if {'ba_addressee', 'ba_city', 'ba_postal_code', 'ba_state',
+            'ba_street'}.issubset(set(row)):
+            ba_addressee = row['ba_addressee'] if row['ba_addressee'] else ''
+            ba_city = row['ba_city'] if row['ba_city'] else ''
+            ba_postal_code= row['ba_postal_code'] if row['ba_postal_code'] \
+                else ''
+            ba_state= row['ba_state'] if row['ba_state'] else ''
+            ba_street = row['ba_street'] if row['ba_street'] else ''
+            self.utilbill_processor.update_fb_billing_address(
+                                            row['utility_account_id'],
+                                            ba_addressee,
+                                            ba_city,
+                                            ba_postal_code,
+                                            ba_state,
+                                            ba_street)
+        
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
