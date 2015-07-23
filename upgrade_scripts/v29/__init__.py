@@ -10,7 +10,7 @@ calling :func:`.core.init_model`.
 from sqlalchemy import select
 from brokerage.brokerage_model import MatrixQuote, CompanyPGSupplier
 from core.extraction import Field, TextExtractor
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.model import Supplier, Utility, AltitudeSession, AltitudeBase
 
 from core import init_model, init_altitude_db
@@ -35,10 +35,10 @@ def create_extractors(s):
     next_meter_read_regex = r'.*Your next meter reading is scheduled for (%s)' % date_format
     e =  TextExtractor(name='Original Pepco Extractor',
         representative_bill_id=18541)
-    e.fields.append(TextExtractor.TextField(regex=start_regex, type=Field.DATE, applier_key=Applier.START))
-    e.fields.append(TextExtractor.TextField(regex=end_regex, type=Field.DATE, applier_key=Applier.END))
-    e.fields.append(TextExtractor.TextField(regex=energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    e.fields.append(TextExtractor.TextField(regex=next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
+    e.fields.append(TextExtractor.TextField(regex=start_regex, type=Field.DATE, applier_key=UtilBillApplier.START))
+    e.fields.append(TextExtractor.TextField(regex=end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
+    e.fields.append(TextExtractor.TextField(regex=energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
+    e.fields.append(TextExtractor.TextField(regex=next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
 
     #pepco bills from 2015, with banner
     pep_start_regex = 'your electric bill for the period\s*(%s) to %s' % (date_format, date_format)
@@ -49,12 +49,12 @@ def create_extractors(s):
     pep_rate_class_regex = r'Details of your electric charges\s*(' \
                            r'.*?)\s+-\s+service number'
     pepco_2015 = TextExtractor(name="Extractor for Pepco bills in 2015", representative_bill_id=18541)
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_start_regex, type=Field.DATE, applier_key=Applier.START))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_end_regex, type=Field.DATE, applier_key=Applier.END))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_charges_regex, type=Field.PEPCO_NEW_CHARGES, applier_key=Applier.CHARGES))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_start_regex, type=Field.DATE, applier_key=UtilBillApplier.START))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_charges_regex, type=Field.PEPCO_NEW_CHARGES, applier_key=UtilBillApplier.CHARGES))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
 
     #pepco bills from before 2015, blue logo
     pep_old_start_regex = r'Services for (%s) to %s' % (date_format, date_format)
@@ -66,12 +66,12 @@ def create_extractors(s):
                                r'^([^\n\d][^\n]+)\n\nThe present reading'
     pepco_old = TextExtractor(name='Pepco bills from before 2015 with blue '
                                    'logo', representative_bill_id=2631)
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_start_regex, type=Field.DATE, applier_key=Applier.START))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_end_regex, type=Field.DATE, applier_key=Applier.END))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=Applier.CHARGES))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_start_regex, type=Field.DATE, applier_key=UtilBillApplier.START))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=UtilBillApplier.CHARGES))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
 
     #washington gas bills
     wg_start_regex = r'(%s)-%s\s*\(\d+ Days\)' % (date_format, date_format)
@@ -86,13 +86,13 @@ def create_extractors(s):
     washington_gas = TextExtractor(name='Extractor for Washington Gas bills '
                                         'with green and yellow and chart',
         representative_bill_id=15311)
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE, applier_key=Applier.START))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE, applier_key=Applier.END))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT, applier_key=Applier.ENERGY))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_next_meter_read_regex, type=Field.DATE, applier_key=Applier.NEXT_READ))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_charges_regex, type=Field.WG_CHARGES, applier_key=Applier.CHARGES))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE, applier_key=UtilBillApplier.START))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_charges_regex, type=Field.WG_CHARGES, applier_key=UtilBillApplier.CHARGES))
     washington_gas.fields.append(TextExtractor.TextField(
-        regex=wg_rate_class_regex, type=Field.STRING, applier_key=Applier.RATE_CLASS))
+        regex=wg_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
     s.add_all([e, pepco_2015, pepco_old, washington_gas])
 
 def create_charge_name_maps(s):
