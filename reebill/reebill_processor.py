@@ -746,3 +746,15 @@ class ReebillProcessor(object):
             if group_name not in customer_group_names:
                 new_group, _ = self.get_create_customer_group(group_name)
                 new_group.add(customer)
+
+    def update_discount_rate(self, utility_account_id, discount_rate):
+        session = Session()
+        try:
+            reebill_customer = session.query(ReeBillCustomer).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).\
+                filter(UtilityAccount.id==utility_account_id).one()
+        except NoResultFound:
+            raise
+        reebill_customer.discountrate = discount_rate
+        return reebill_customer
