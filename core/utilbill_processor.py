@@ -648,3 +648,22 @@ class UtilbillProcessor(object):
                           street=street)
         utility_account.fb_service_address = address
         return utility_account
+
+    def move_bills_to_account(self, utility_account_id, account_ids):
+        """
+        moves all utility bills from the given list of account_ids to a
+        single account
+        """
+        s = Session()
+        try:
+            utility_account = s.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+        except NoResultFound:
+            raise
+        for account_id in account_ids:
+            bills = s.query(UtilBill).filter(
+                UtilBill.utility_account_id == account_id).all()
+            for bill in bills:
+                bill.utility_account = utility_account
+        return utility_account
+
