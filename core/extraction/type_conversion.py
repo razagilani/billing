@@ -19,107 +19,10 @@ from core.utilbill_loader import UtilBillLoader
 def convert_table_charges(rows):
     """
     Converts a list of charges extracted from a TableField.
+    The inputs is a list of rows, and each row is a list of cells; each cell
+    is a string value.
     """
     #TODO get charge name map by utility
-
-    num_format = r"[\d,.]+"
-    # this is based off the units currently in the charge table in the database.
-    # these will probably have to be updated
-    unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
-    # matches text of the form <quantity> <unit> x <rate>
-    #   e.g. 1,362.4 TH x .014
-    register_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format,
-    num_format)
-
-    def convert_unit(unit):
-        """
-        Convert units found in bills to standardized formats.
-        """
-        if unit in Charge.CHARGE_UNITS:
-            return unit
-        #by default, if no unit then assume dollars
-        if not unit:
-            return "dollars"
-        if unit == "th":
-            return "therms"
-        if unit == "$":
-            return "dollars"
-        #if unit is not valid, raise an error
-        raise ConversionError('unit "%s" is not in set of allowed units.' %
-                              unit)
-
-    def process_charge(row, ctype=Charge.DISTRIBUTION):
-        """
-        Processes a row of text values to create a single charge with the given
-        charge type.
-        :param row: A list of strings of length at least 2.
-        :param ctype: The type of the charge
-        :return: a Charge object
-        """
-        if len(row) < 2:
-            raise ConversionError('Charge row %s must have at least two '
-                                  'values.')
-
-        #first cell in row is the name of the charge (and sometimes contains
-        # rate info as well), while the last cell in row is the value of the
-        # charge.
-        text = row[0]
-        value = row[-1]
-        if not text or not value:
-            raise ConversionError('Table row ("%s", "%s") contains an empty '
-                                  'element.' % row)
-
-        #set up default values
-        rsi_binding = target_total = None
-        rate = 0
-        description = unit = ''
-
-        # if row does not end with some kind of number, this is not a charge.
-        match = re.search(num_format, value)
-        if match:
-            target_total = match.group(0)
-        else:
-            return None
-
-        # determine unit for charge, from either the value (e.g. "$456")
-        # or from the name e.g. "Peak Usage (kWh):..."
-        match = re.search(r"(%s)" % unit_format, value)
-        if match:
-            unit = match.group(0)
-        else:
-            match = re.match(r"(\(%s\))" % unit_format, text)
-            if match:
-                unit = match.group(0)
-        unit = convert_unit(unit)
-
-        # check if charge refers to a register
-        # register info can appear in first cell, or in a middle column,
-        # so check all columns
-        for i in range(0, len(row)):
-            cell = row[i]
-            match = re.match(r"(.*?)\s*%s" % register_format, cell,
-                re.IGNORECASE)
-            if match:
-                reg_quantity = match.group(2)
-                reg_unit = match.group(3)
-                rate = match.group(4)
-                #TODO create register, formula
-            # register info is often in same text box as the charge name.
-            # If this is the case, separate the description from the other info.
-            if i == 0:
-                description = match.group(1) if match else cell
-
-        #Get rsi binding from database, by looking for existing charges with
-        # the same description.
-        q = Session.query(Charge.rsi_binding).filter(
-            Charge.description==description, bool(Charge.rsi_binding))
-        rsi_binding = q.first()
-        if rsi_binding is None:
-            #TODO what to do if existing RSI binding not found?
-            pass
-
-        return Charge(description=description, unit=unit, rate=rate,
-            rsi_binding=rsi_binding, type=ctype, target_total=target_total)
 
     # default charge type is DISTRIBUTION
     charge_type = Charge.DISTRIBUTION
@@ -148,6 +51,106 @@ def convert_table_charges(rows):
 
         charges.append(process_charge(row, charge_type))
     return filter(None, charges)
+
+def convert_unit(unit):
+    """
+    Convert units found in bills to standardized formats.
+    """
+    if unit in Charge.CHARGE_UNITS:
+        return unit
+    #by default, if no unit then assume dollars
+    if not unit:
+        return "dollars"
+    if unit == "th":
+        return "therms"
+    if unit == "$":
+        return "dollars"
+    #if unit is not valid, raise an error
+    raise ConversionError('unit "%s" is not in set of allowed units.' %
+                          unit)
+
+def process_charge(row, ctype=Charge.DISTRIBUTION):
+    """
+    Processes a row of text values to create a single charge with the given
+    charge type.
+    :param row: A list of strings of length at least 2.
+    :param ctype: The type of the charge
+    :return: a Charge object
+    """
+    if len(row) < 2:
+        raise ConversionError('Charge row %s must have at least two '
+                              'values.')
+
+    num_format = r"[\d,.]+"
+    # this is based off the units currently in the charge table in the database.
+    # these will probably have to be updated
+    unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
+    # matches text of the form <quantity> <unit> x <rate>
+    #   e.g. 1,362.4 TH x .014
+    register_format = r"(%s)\s*(%s)\s*x\s*(%s)" % (num_format, unit_format,
+    num_format)
+
+    #first cell in row is the name of the charge (and sometimes contains
+    # rate info as well), while the last cell in row is the value of the
+    # charge.
+    text = row[0]
+    value = row[-1]
+    if not text or not value:
+        raise ConversionError('Table row ("%s", "%s") contains an empty '
+                              'element.' % row)
+
+    #set up default values
+    rsi_binding = target_total = None
+    rate = 0
+    description = unit = ''
+
+    # if row does not end with some kind of number, this is not a charge.
+    match = re.search(num_format, value)
+    if match:
+        target_total = match.group(0)
+    else:
+        return None
+
+    # determine unit for charge, from either the value (e.g. "$456")
+    # or from the name e.g. "Peak Usage (kWh):..."
+    match = re.search(r"(%s)" % unit_format, value)
+    if match:
+        unit = match.group(0)
+    else:
+        match = re.match(r"(\(%s\))" % unit_format, text)
+        if match:
+            unit = match.group(0)
+    unit = convert_unit(unit)
+
+    # check if charge refers to a register
+    # register info can appear in first cell, or in a middle column,
+    # so check all columns
+    for i in range(0, len(row)):
+        cell = row[i]
+        match = re.match(r"(.*?)\s*%s" % register_format, cell,
+            re.IGNORECASE)
+        if match:
+            reg_quantity = match.group(2)
+            reg_unit = match.group(3)
+            rate = match.group(4)
+            #TODO create register, formula
+        # register info is often in same text box as the charge name.
+        # If this is the case, separate the description from the other info.
+        if i == 0:
+            description = match.group(1) if match else cell
+
+    #Get rsi binding from database, by looking for existing charges with
+    # the same description.
+    # TODO Use some sort of charge name map
+    q = Session.query(Charge.rsi_binding).filter(
+        Charge.description==description, bool(Charge.rsi_binding))
+    rsi_binding = q.first()
+    if rsi_binding is None:
+        #TODO what to do if existing RSI binding not found?
+        pass
+
+    return Charge(description=description, unit=unit, rate=rate,
+        rsi_binding=rsi_binding, type=ctype, target_total=target_total)
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
