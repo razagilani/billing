@@ -310,6 +310,10 @@ class AccountsResource(RESTResource):
                                             sa_state,
                                             sa_street
             )
+        if 'accounts_deleted' in row:
+            self.utilbill_processor.move_bills_to_account(
+                row['utility_account_id'], row['accounts_deleted'])
+
         ua = Session().query(UtilityAccount).filter_by(
             id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
