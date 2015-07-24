@@ -18,9 +18,9 @@ from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement
+from core.model import LayoutElement, BoundingBox
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
-from util.layout import tabulate_objects, BoundingBox, \
+from util.layout import tabulate_objects, \
     group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
     get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil
@@ -365,10 +365,9 @@ class LayoutExtractor(Extractor):
         # bounding box coordinates.
         # If these are None, then the first textbox that matches the bbregex
         # is used.
-        bbminx = Column(Float)
-        bbminy = Column(Float)
-        bbmaxx = Column(Float)
-        bbmaxy = Column(Float)
+        bounding_box_id = Column(Integer, ForeignKey(
+            'bounding_box.bounding_box_id'))
+        bounding_box = relationship("BoundingBox")
 
         # represents which corner of textboxes to consider when checking if
         # they are within a bounding box.
@@ -377,6 +376,7 @@ class LayoutExtractor(Extractor):
 
         def __init__(self, *args, **kwargs):
             super(LayoutExtractor.BoundingBoxField, self).__init__(*args, **kwargs)
+            # self.bounding_box = kwargs.get('bounding_box', None)
 
         def _extract(self, layoutdata):
             (pages, dx, dy) = layoutdata
@@ -393,8 +393,7 @@ class LayoutExtractor(Extractor):
             for page in pages[self.page_num-1:endpage]:
                 #if bounding box is None, instead of using geometry, return first
                 # text line object that matches bbregex.
-                if any(x is None for x in [self.bbminx, self.bbminy, self.bbmaxx,
-                    self.bbmaxy]):
+                if self.bounding_box is None:
                     textline = get_text_line(page,
                         self.bbregex)
                     if textline is None:
@@ -413,8 +412,7 @@ class LayoutExtractor(Extractor):
                         dx = offset_x
                         dy = offset_y
                     text = get_text_from_bounding_box(page,
-                        BoundingBox(minx=self.bbminx + dx, miny=self.bbminy + dy,
-                            maxx=self.bbmaxx + dx, maxy=self.bbmaxy + dy),
+                        BoundingBox.get_shifted_bbox(self.bounding_box, dx, dy),
                         self.corner)
                 #exit on first match found
                 if text:
@@ -486,18 +484,9 @@ class LayoutExtractor(Extractor):
 
                 #Either use initial bounding box for first page,
                 # or use bounding box with the top y value of 'nextpage_top'
-                if i == self.page_num - 1:
-                    bbox = BoundingBox(
-                            minx=self.bbminx + dx,
-                            miny=self.bbminy + dy,
-                            maxx=self.bbmaxx + dx,
-                            maxy=self.bbmaxy + dy)
-                else:
-                    bbox = BoundingBox(
-                            minx = self.bbminx + dx,
-                            miny = self.bbminy + dy,
-                            maxx = self.bbmaxx + dx,
-                            maxy = self.nextpage_top + dy)
+                bbox = BoundingBox.get_shifted_bbox(self.bounding_box, dx, dy)
+                if i != self.page_num - 1:
+                    bbox.y1 = self.nextpage_top + dy
 
                 search = lambda lo: (lo.type == TEXTLINE) and \
                                     in_bounds(lo, bbox, 0)
@@ -509,7 +498,8 @@ class LayoutExtractor(Extractor):
                         self.table_start_regex)
                     if top_object:
                         new_textlines = filter(
-                            lambda tl: tl.y0 < top_object.y0,
+                            lambda tl: tl.bounding_box.y0 <
+                                       top_object.bounding_box.y0,
                             new_textlines)
 
                 # if table_stop_regex matches, do not search further pages.
@@ -518,7 +508,8 @@ class LayoutExtractor(Extractor):
                         self.table_stop_regex)
                     if bottom_object:
                         new_textlines = filter(
-                            lambda tl: tl.y0 > bottom_object.y0,
+                            lambda tl: tl.bounding_box.y0 >
+                                       bottom_object.bounding_box.y0,
                             new_textlines)
                         table_data.extend(tabulate_objects(new_textlines))
                         break
@@ -549,8 +540,9 @@ class LayoutExtractor(Extractor):
         if all(v is not None for v in
                [self.origin_regex, self.origin_x, self.origin_y]):
             #get textbox used to align the page
-            alignment_box = get_text_line(pages[0], self.origin_regex)
-            if alignment_box is not None:
+            alignment_obj = get_text_line(pages[0], self.origin_regex)
+            if alignment_obj is not None:
+                alignment_box = alignment_obj.bounding_box
                 #set the bill's dx and dy so the textbox matches the expected
                 # coordinates.
                 dx = alignment_box.x0 - self.origin_x
