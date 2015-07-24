@@ -13,7 +13,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier
+from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_wg_charges_std
@@ -51,12 +51,12 @@ class Main(object):
             utilbill, self._bill_file_handler))
 
         # values are cached so it's OK to call this repeatedly
-        success_count, errors = best_extractor.apply_values(
-            utilbill, self._bill_file_handler, Applier.get_instance())
+        success_count, errors = UtilBillApplier.get_instance().apply_values(
+            best_extractor, utilbill, self._bill_file_handler)
         utilbill.date_extracted = datetime.utcnow()
         error_list_str = '\n'.join(('Field "%s": %s: %s' % (
             key, exception.__class__.__name__, exception.message)) for
-                                   (key, exception) in errors)
+                                   (key, exception) in errors.iteritems())
         self.log.info(
             'Applied extractor %(eid)s "%(ename)s" to bill %(bid)s from %('
             'utility)s %(start)s - %(end)s received %(received)s: '
@@ -146,7 +146,7 @@ class Field(model.Base):
     type = Column(Enum(*TYPES.keys(), name='field_type'))
 
     # string determining how the extracted value gets applied to a UtilBill
-    applier_key = Column(Enum(*Applier.KEYS.keys(), name='applier_key'))
+    applier_key = Column(Enum(*UtilBillApplier.KEYS.keys(), name='applier_key'))
 
     __table_args__ = (UniqueConstraint('extractor_id', 'applier_key'),)
     __mapper_args__ = {
@@ -231,24 +231,23 @@ class Extractor(model.Base):
         """
         raise NotImplementedError
 
-    #TODO right now this is a private method, we should make it public
-    def _get_values(self, utilbill, bill_file_handler):
+    def get_values(self, utilbill, bill_file_handler):
         """
         :param utilbill: UtilBill
         :param bill_file_handler: BillFileHandler
-        :return: list of (applier key, extracted value) pairs for fields that
-        succeeded in extracted values, and list of (applier key,
-        ExtractionError) pairs for fields that failed.
+        :return: dictionary of applier key -> extracted value for fields that
+        succeeded in extracted values, and dictionary of applier key ->
+        ExtractionError for fields that failed.
         """
         self._input = self._prepare_input(utilbill, bill_file_handler)
-        good, errors = [], []
+        good, errors = {}, {}
         for field in self.fields:
             try:
                 value = field.get_value(self._input)
             except ExtractionError as error:
-                errors.append((field.applier_key, error))
+                errors[field.applier_key] = error
             else:
-                good.append((field.applier_key, value))
+                good[field.applier_key] = value
         return good, errors
 
     def get_success_count(self, utilbill, bill_file_handler):
@@ -257,38 +256,8 @@ class Extractor(model.Base):
         :param bill_file_handler: BillFileHandler
         :return: number of fields that could be extracted (int)
         """
-        good, _ = self._get_values(utilbill, bill_file_handler)
+        good, _ = self.get_values(utilbill, bill_file_handler)
         return len(good)
-
-    def apply_values(self, utilbill, bill_file_handler, applier):
-        """Update attributes of the given bill with data extracted from its
-        file. Return value can be used to compare success rates of different
-        Extractors.
-        :param utilbill: UtilBill
-        :param bill_file_handler: BillFileHandler to get files for UtilBills.
-        :param applier: Applier that determines how values are applied
-        :return number of fields successfully extracted (integer), list of
-        ExtractionErrors
-        """
-        good, errors = self._get_values(utilbill, bill_file_handler)
-        success_count = 0
-
-        # hack to force field values to be applied in the order of Applier.KEYS,
-        # because of dependency of some values on others.
-        # TODO: probably Applier should get a whole Extractor passed to it
-        # and apply all the fields, so it can ensure they get applied in the
-        # right order. extraction results should not be ordered anyway.
-        good = sorted(good, key=(
-            lambda (applier_key, _): applier.get_keys().index(applier_key)))
-
-        for applier_key, value in good:
-            try:
-                applier.apply(applier_key, value, utilbill)
-            except ApplicationError as error:
-                errors.append((applier_key, error))
-            else:
-                success_count += 1
-        return success_count, errors
 
 
 class TextExtractor(Extractor):

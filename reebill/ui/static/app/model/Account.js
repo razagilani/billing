@@ -13,6 +13,8 @@ Ext.define('ReeBill.model.Account', {
         {name: 'codename', type: 'string'},
         {name: 'casualname', type: 'string'},
         {name: 'primusname', type: 'string'},
+        {name: 'brokerage_account', type: 'boolean'},
+        {name: 'reebill_customer', type:'boolean'},
 
         // Needed when a new account is created
         {name: 'name', type: 'string'},
