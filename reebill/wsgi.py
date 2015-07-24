@@ -252,6 +252,15 @@ class AccountsResource(RESTResource):
         count, result = self.utilbill_views.list_account_status(row['account'])
         return True, {'rows': result, 'results': count}
 
+    def handle_delete(self, *vpath, **params):
+        """
+        handles deleting a utility_account
+        """
+        row = cherrypy.request.json
+        self.utilbill_processor.delete_utility_account(
+            row['utility_account_id'])
+        return True, {}
+
     def handle_put(self, *vpath, **params):
         """ Handles the updates to existing account
         """
