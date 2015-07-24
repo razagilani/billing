@@ -56,11 +56,7 @@ def upgrade():
                 name='applier_key'),
             nullable=True),
         sa.Column('regex', sa.String(length=1000), nullable=False),
-        sa.Column('page_num', sa.Integer()),
-        sa.Column('bbminx', sa.Float()),
-        sa.Column('bbminy', sa.Float()),
-        sa.Column('bbmaxx', sa.Float()),
-        sa.Column('bbmaxy', sa.Float()),
+        sa.Column('page_num', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['extractor_id'], ['extractor.extractor_id'], ),
         sa.PrimaryKeyConstraint('field_id'),
         sa.UniqueConstraint('extractor_id', 'applier_key')
