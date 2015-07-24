@@ -659,8 +659,9 @@ class UtilBill(Base):
 
         # sort elements in each page by position: top to bottom, left to
         # right (origin is at lower left)
-        pages = [sorted(p, key=lambda obj: (-obj.y0, obj.x0)) for p in
-                 group_layout_elements_by_page(layout)]
+        pages = [sorted(p, key=lambda obj: (-obj.bounding_box.y0,
+            obj.bounding_box.x0)) for p in group_layout_elements_by_page(
+            layout)]
         return pages
 
 
@@ -669,24 +670,24 @@ class LayoutElement(Base):
     Represents a layout element in a PDF file. Used by core.extraction
     """
     __tablename__ = 'layout_element'
-    __table_args__ = (CheckConstraint('x1 >= x0'),
-                    CheckConstraint('y1 >= y0'),
-                    CheckConstraint('width = x1 - x0'),
-                    CheckConstraint('height = y1 - y0'))
 
     layout_element_id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
-
     type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
-
     page_num = Column(Integer, nullable=False)
-    x0 = Column(Float, nullable=False)
-    y0 = Column(Float, nullable=False)
-    x1 = Column(Float, nullable=False)
-    y1 = Column(Float, nullable=False)
-    width = Column(Float, nullable=False)
-    height = Column(Float, nullable=False)
+    bounding_box_id = Column(Integer, ForeignKey(
+        'bounding_box.bounding_box_id'), nullable=False)
     text = Column(String)
+
+    bounding_box = relationship('BoundingBox')
+
+    def __init__(self, page_num, bounding_box, text=None, type=None,
+                 utilbill_id=None):
+        self.type = type
+        self.page_num = page_num
+        self.bounding_box = bounding_box
+        self.text = text
+        self.utilbill_id = utilbill_id
 
     @classmethod
     def create_from_ltpages(cls, pages):
@@ -724,12 +725,51 @@ class LayoutElement(Base):
                 else:
                     text = None
 
-                layout_elt = LayoutElement(type=objtype, x0=obj.x0, y0=obj.y0,
-                    x1=obj.x1, y1=obj.y1, width=obj.width, height=obj.height,
-                    text=text, page_num=i+1)
+                bbox = BoundingBox(x0=obj.x0, y0=obj.y0,
+                    x1=obj.x1, y1=obj.y1)
+                layout_elt = LayoutElement(type=objtype,
+                    text=text, page_num=i+1, bounding_box=bbox)
                 layout_elements.append(layout_elt)
 
         return layout_elements
+
+class BoundingBox(Base):
+    """ Represents a two-dimension, axis-aligned bounding box.
+    Used by core.extraction
+    """
+    __tablename__ = 'bounding_box'
+    __table_args__ = (CheckConstraint('x1 >= x0'),
+                    CheckConstraint('y1 >= y0'),
+                    CheckConstraint('width = x1 - x0'),
+                    CheckConstraint('height = y1 - y0'))
+    bounding_box_id = Column(Integer(), primary_key=True)
+    x0 = Column(Float, nullable=False)
+    y0 = Column(Float, nullable=False)
+    x1 = Column(Float, nullable=False)
+    y1 = Column(Float, nullable=False)
+    width = Column(Float, nullable=False)
+    height = Column(Float, nullable=False)
+
+    def __init__(self, x0, y0, x1, y1):
+        if x0 > x1:
+            raise ValueError('Bounding box min x (%d) is greater than max x ('
+                             '%d)' % (x0, x1))
+        if y0 > y1:
+            raise ValueError('Bounding box min y (%d) is greater than max y ('
+                             '%d)' % (y0, y1))
+
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+        self.width = self.x1 - self.x0
+        self.height = self.y1 - self.y0
+
+    @classmethod
+    def get_shifted_bbox(cls, bbox, dx, dy):
+        """ Returns a copy of 'bbox', with its coordinates shifter by dx and dy.
+        """
+        return BoundingBox(bbox.x0+dx, bbox.y0+dy, bbox.x1+dx, bbox.y1+dy)
 
 
 class Evaluation(object):

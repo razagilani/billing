@@ -26,17 +26,6 @@ def group_layout_elements_by_page(layout_elements):
 
     return pages
 
-# represents a two-dimensional, axis-aligned bounding box.
-class BoundingBox:
-    def __init__(self, minx, miny, maxx, maxy):
-        if minx > maxx or miny > maxy:
-            raise ValueError("minx and miny must be less than or equal to "
-                             "maxx and maxy, respectively.")
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
-
 class Corners:
     """
     Constants for the different corners of a rectangular layout object.
@@ -51,8 +40,8 @@ def get_corner(obj, c):
     Get a specific corner of a layout element as an (x, y) tuple.
     :param: c an integer specifying the corner, as in :Corners
     """
-    x = obj.x1 if (c & 1) else obj.x0
-    y = obj.y1 if (c & 2) else obj.y0
+    x = obj.bounding_box.x1 if (c & 1) else obj.bounding_box.x0
+    y = obj.bounding_box.y1 if (c & 2) else obj.bounding_box.y0
     return (x, y)
 
 
@@ -90,8 +79,8 @@ def in_bounds(obj, bounds, corner):
     Determines if the top left corner of a layout object is in the bounding box
     """
     testpoint = get_corner(obj, corner)
-    if bounds.minx <= testpoint[0] <= bounds.maxx:
-        if bounds.miny <= testpoint[1] <= bounds.maxy:
+    if bounds.x0 <= testpoint[0] <= bounds.x1:
+        if bounds.y0 <= testpoint[1] <= bounds.y1:
             return True
 
     return False
@@ -106,12 +95,13 @@ def tabulate_objects(objs):
     are sorted by descending y value, and the objects are sorted by
     increasing x value.
     """
-    sorted_objs = sorted(objs, key=lambda o: (-o.y0, o.x0))
+    sorted_objs = sorted(objs, key=lambda o: (-o.bounding_box.y0,
+    o.bounding_box.x0))
     table_data = []
     current_y = None
     for obj in sorted_objs:
-        if obj.y0 != current_y:
-            current_y = obj.y0
+        if obj.bounding_box.y0 != current_y:
+            current_y = obj.bounding_box.y0
             current_row = []
             table_data.append(current_row)
         current_row.append(obj)

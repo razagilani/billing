@@ -24,7 +24,7 @@ from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
 from core.extraction.applier import Applier, UtilBillApplier
 from core.model import UtilityAccount, Utility, Session, Address, \
-    RateClass, Charge, LayoutElement
+    RateClass, Charge, LayoutElement, BoundingBox
 from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
@@ -217,14 +217,15 @@ class VerifyFieldTest(TestCase):
 
 class LayoutExtractorTest(TestCase):
     def setUp(self):
-        self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
+        self.le1 = LayoutElement(text='hello', page_num=0,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+        self.le2 = LayoutElement(text='text', page_num=2,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+        self.le3 = LayoutElement(text='wot', page_num=0,
+            bounding_box=BoundingBox(x0=0, y0=200, x1=100, y1=200),
+            type=TEXTLINE)
+        self.le4 = LayoutElement(text='sample', page_num=1,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
         self.layout_elts = [[self.le3, self.le1], [self.le4], [self.le2]]
 
         self.bfh = Mock(autospec=BillFileHandler)
@@ -250,18 +251,19 @@ class BoundingBoxFieldTest(TestCase):
     Tests for layout extractor of bounding box fields
     """
     def setUp(self):
-        self.le1 = LayoutElement(text='hello', page_num=0, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le2 = LayoutElement(text='text', page_num=2, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le3 = LayoutElement(text='wot', page_num=0, x0=0, y0=200,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le4 = LayoutElement(text='sample', page_num=1, x0=0, y0=0,
-            x1=100, y1=200, type=TEXTLINE)
-        self.le5 = LayoutElement(text='', page_num=1, x0=50, y0=50,
-            x1=70, y1=70, type=TEXTLINE)
-        self.le6 = LayoutElement(text='woo', page_num=2, x0=50, y0=50,
-            x1=70, y1=70, type=TEXTLINE)
+        self.le1 = LayoutElement(text='hello', page_num=0,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+        self.le2 = LayoutElement(text='text', page_num=2,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+        self.le3 = LayoutElement(text='wot', page_num=0,
+            bounding_box=BoundingBox(x0=0, y0=200, x1=100, y1=200),
+            type=TEXTLINE)
+        self.le4 = LayoutElement(text='sample', page_num=1,
+            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+        self.le5 = LayoutElement(text='', page_num=1,
+            bounding_box=BoundingBox(x0=50, y0=50, x1=70, y1=70), type=TEXTLINE)
+        self.le6 = LayoutElement(text='woo', page_num=2,
+            bounding_box=BoundingBox(x0=50, y0=50, x1=70, y1=70), type=TEXTLINE)
         self.layout_elts = [[self.le1, self.le3], [self.le4, self.le5],
                             [self.le2, self.le6]]
         self.bfh = Mock(autospec=BillFileHandler)
@@ -276,16 +278,16 @@ class BoundingBoxFieldTest(TestCase):
             bb_field.get_value(self.input)
 
     def test_get_bounding_box(self):
-        bb_field = LayoutExtractor.BoundingBoxField(bbminx=0-5, bbminy=0-5,
-            bbmaxx=100-5, bbmaxy=200-5, page_num=2, bbregex='([a-z]ampl[a-z])',
-            corner=0)
+        bb_field = LayoutExtractor.BoundingBoxField(bounding_box=BoundingBox(
+            x0=0-5, y0=0-5, x1=100-5, y1=200-5), page_num=2,
+            bbregex='([a-z]ampl[a-z])', corner=0)
         self.assertEqual('sample', bb_field.get_value(self.input))
 
     def test_bbox_alignment_error(self):
         # in this test, forget to align by 5 pixels
-        bb_field = LayoutExtractor.BoundingBoxField(bbminx=0, bbminy=0,
-        bbmaxx=100, bbmaxy=200, page_num=2, bbregex='([a-z]ampl[a-z])',
-        corner=0)
+        bb_field = LayoutExtractor.BoundingBoxField(bounding_box=BoundingBox(
+            x0=0, y0=0, x1=100, y1=200), page_num=2, bbregex='([a-z]ampl['
+                                                             'a-z])', corner=0)
         with self.assertRaises(ExtractionError):
             bb_field.get_value(self.input)
 
@@ -317,16 +319,17 @@ class BoundingBoxFieldTest(TestCase):
         matches offset_regex.
         """
         bb_offset = LayoutExtractor.BoundingBoxField(page_num=1, maxpage=3,
-            offset_regex=r'text', corner=0, bbminx=50, bbminy=50,
-            bbmaxx=60, bbmaxy=60)
+            offset_regex=r'text', corner=0, bounding_box=BoundingBox(x0=50,
+                y0=50, x1=60, y1=60))
         self.assertEqual('woo', bb_offset.get_value(self.input))
 
     def test_match_empty_text(self):
         """ Test match for an empty string, e.g. in the case of an empty
         layout element or a regex returning an empty string
         """
-        bb_field_fail = LayoutExtractor.BoundingBoxField(bbminx=50-5,
-            bbminy=50-5, bbmaxx=60-5, bbmaxy=60-5, page_num=2, corner=0)
+        bb_field_fail = LayoutExtractor.BoundingBoxField(
+            bounding_box=BoundingBox(x0=50-5, y0=50-5, x1=60-5, y1=60-5),
+            page_num=2, corner=0)
         with self.assertRaises(ExtractionError):
             bb_field_fail.get_value(self.input)
 
@@ -337,32 +340,43 @@ class TableFieldTest(TestCase):
     """
     def setUp(self):
         # generate of table of elements
-        self.layout_elements = []
+        # The table is copied on two pages.
+        self.layout_elements_pg1 = []
+        self.layout_elements_pg2 = []
         for y in range(100, 10, -10):
             for x in range(20, 50, 10):
-                elt = LayoutElement(x0=x, y0=y, x1=x+5,
-                    y1=y+5, text="%d %d text" % (x, y),
-                    type=TEXTLINE)
-                self.layout_elements.append(elt)
-        self.layout_elements.append(LayoutElement(x0=0, y0=0, x1=5, y1=5,
-            text="not in table", type=TEXTLINE))
+                elt1 = LayoutElement(bounding_box=BoundingBox(x0=x, y0=y,
+                    x1=x+5, y1=y + 5), text="%d %d text" % (x, y),
+                    type=TEXTLINE, page_num=1)
+                elt2 = LayoutElement(bounding_box=BoundingBox(x0=x, y0=y,
+                    x1=x+5, y1=y + 5), text="%d %d text" % (x, y),
+                    type=TEXTLINE, page_num=1)
+                self.layout_elements_pg1.append(elt1)
+                self.layout_elements_pg2.append(elt2)
+        self.layout_elements_pg1.append(LayoutElement(bounding_box=BoundingBox(
+            x0=0, y0=0, x1=5, y1=5), text="not in table", type=TEXTLINE,
+            page_num=1))
+        self.layout_elements_pg2.append(LayoutElement(bounding_box=BoundingBox(
+            x0=0, y0=0, x1=5, y1=5), text="not in table", type=TEXTLINE,
+            page_num=2))
 
         # Create processed input data
         # Table is copied onto two pages.
-        self.input = ([self.layout_elements, self.layout_elements], 0, 0)
+        self.input = ([self.layout_elements_pg1, self.layout_elements_pg2],
+        0, 0)
 
     def test_get_table_boundingbox(self):
         """ Test getting tabular data wihtin a bounding box
         """
-        tablefield = LayoutExtractor.TableField(page_num=1, bbminx=30,
-            bbminy=30, bbmaxx=45, bbmaxy=45)
+        tablefield = LayoutExtractor.TableField(page_num=1,
+            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45))
         expected_output = [["30 40 text", "40 40 text"],
                             ["30 30 text", "40 30 text"]]
         self.assertEqual(expected_output, tablefield._extract(self.input))
 
     def test_start_stop_regex(self):
         regex_tablefield = LayoutExtractor.TableField(page_num=1,
-            bbminx=30, bbminy=20, bbmaxx=45, bbmaxy=55,
+            bounding_box=BoundingBox(x0=30, y0=20, x1=45, y1=55),
             table_start_regex="30 50 text", table_stop_regex="30 20 text")
         expected_output = [["30 40 text", "40 40 text"],
                             ["30 30 text", "40 30 text"]]
@@ -376,7 +390,7 @@ class TableFieldTest(TestCase):
 
     def test_multipage_table(self):
         multipage_tablefield= LayoutExtractor.TableField(page_num=1,
-            bbminx=30, bbminy=30, bbmaxx=45, bbmaxy=45, multipage_table=True,
+            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45), multipage_table=True,
             nextpage_top=35, maxpage=2)
         # 1st and 2nd rows come from 1st page, 3rd row from 2nd page
         expected_output = [["30 40 text", "40 40 text"],
@@ -387,7 +401,7 @@ class TableFieldTest(TestCase):
 
     def test_no_values_found(self):
         tablefield= LayoutExtractor.TableField(page_num=1,
-            bbminx=30, bbminy=30, bbmaxx=45, bbmaxy=45)
+            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45))
         with self.assertRaises(ExtractionError):
             # give tablefield data representing a single empty page.
             tablefield._extract(([[]], 0, 0))
@@ -426,10 +440,10 @@ class TestTypeConversion(TestCase):
 
     def test_process_charge(self):
         # simple test with name & value
-        sample_charge_row = ['Bagels', '$500.40']
+        sample_charge_row = ['Bagels', '$1,500.40']
         sample_charge = process_charge(sample_charge_row)
         self.assertEqual(sample_charge.description, 'Bagels')
-        self.assertEqual(sample_charge.target_total, 500.40)
+        self.assertEqual(sample_charge.target_total, 1500.40)
 
         # full charge test, with more fields and a name that matches an
         # existing charge in the database with an rsi binding
@@ -484,8 +498,6 @@ class TestTypeConversion(TestCase):
         self.assertListEqual(expected_charges, output_charges)
 
 
-
-
     def test_convert_address(self):
         """ Tests the address conversion function. Takes into account
         formatting issues, such as switching street and city/state lines. 
@@ -511,6 +523,16 @@ class TestTypeConversion(TestCase):
         self.assertEqual(address.city, "Seattle")
         self.assertEqual(address.state, "WA")
         self.assertEqual(address.postal_code, "54321-9494")
+
+        # address with no adressee
+        lines = "\n".join(("2010 KALORAMA RD NW", "WASHINGTON DC 20009"))
+        address = convert_address(lines)
+        self.assertIsNone(address.addressee)
+        self.assertEqual(address.street, "2010 KALORAMA RD NW")
+        self.assertEqual(address.city, "WASHINGTON")
+        self.assertEqual(address.state, "DC")
+        self.assertEqual(address.postal_code, "20009")
+
 
     def test_convert_wg_charges_std(self):
         pass
