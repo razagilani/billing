@@ -320,7 +320,7 @@ class AccountsResource(RESTResource):
                                             sa_street
             )
         if 'accounts_deleted' in row:
-            self.utilbill_processor.move_bills_to_account(
+            self.utilbill_processor.move_account_references(
                 row['utility_account_id'], row['accounts_deleted'])
 
         ua = Session().query(UtilityAccount).filter_by(
