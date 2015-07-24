@@ -667,3 +667,9 @@ class UtilbillProcessor(object):
                 bill.utility_account = utility_account
         return utility_account
 
+    def delete_utility_account(self, utility_account_id):
+        session = Session()
+        utility_account = session.query(UtilityAccount).filter(
+            UtilityAccount.id == utility_account_id).one()
+        session.delete(utility_account)
+
