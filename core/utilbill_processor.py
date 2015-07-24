@@ -10,6 +10,7 @@ from core.model import Address, Charge, Register, Session, Supplier, \
 from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
+from reebill.reebill_model import ReeBillCustomer
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
@@ -649,9 +650,9 @@ class UtilbillProcessor(object):
         utility_account.fb_service_address = address
         return utility_account
 
-    def move_bills_to_account(self, utility_account_id, account_ids):
+    def move_account_references(self, utility_account_id, account_ids):
         """
-        moves all utility bills from the given list of account_ids to a
+        moves all references from the given list of account_ids to a
         single account
         """
         s = Session()
@@ -665,6 +666,10 @@ class UtilbillProcessor(object):
                 UtilBill.utility_account_id == account_id).all()
             for bill in bills:
                 bill.utility_account = utility_account
+            reebill_customers = s.query(ReeBillCustomer).filter(
+                ReeBillCustomer.utility_account_id == account_id).all()
+            for reebill_customer in reebill_customers:
+                reebill_customer.utility_account=utility_account
         return utility_account
 
     def delete_utility_account(self, utility_account_id):
