@@ -4,6 +4,7 @@ code for that is still in other files it should be moved here.
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from sqlalchemy.orm import joinedload
+from brokerage.brokerage_model import BrokerageAccount
 from core.model import Session, Register, UtilityAccount, \
     Supplier, Utility, RateClass, SupplyGroup, Charge
 from brokerage.brokerage_model import BrokerageAccount
@@ -159,16 +160,17 @@ class Views(object):
           accounts dictionary is returned """
         session = Session()
         utility_accounts = session.query(
-            UtilityAccount, ReeBillCustomer).outerjoin(
-            ReeBillCustomer).options(joinedload('utilbills')).options\
-            (joinedload('fb_utility')).options(joinedload('fb_rate_class'))
+            UtilityAccount, ReeBillCustomer, BrokerageAccount).outerjoin(
+            ReeBillCustomer).outerjoin(BrokerageAccount).options(
+            joinedload('utilbills')).options(joinedload('fb_utility')).\
+            options(joinedload('fb_rate_class'))
 
         if account is not None:
             utility_accounts = utility_accounts.filter(
                 UtilityAccount.account == account)
 
         rows_dict = {}
-        for ua, reebill_customer in utility_accounts:
+        for ua, reebill_customer, ba in utility_accounts:
             name_dict = self._nexus_util.fast_all('billing', ua.account)
             if reebill_customer is None:
                 group_names = []
@@ -179,6 +181,8 @@ class Views(object):
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
+                'brokerage_account': ba is not None,
+                'reebill_customer': reebill_customer is not None,
                 'fb_utility_name': ua.fb_utility.name,
                 'fb_rate_class': ua.fb_rate_class.name \
                     if ua.fb_rate_class else '',
