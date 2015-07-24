@@ -2,6 +2,7 @@ import json
 from datetime import datetime, date
 
 from sqlalchemy.orm.exc import NoResultFound
+from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main
 
@@ -670,6 +671,10 @@ class UtilbillProcessor(object):
                 ReeBillCustomer.utility_account_id == account_id).all()
             for reebill_customer in reebill_customers:
                 reebill_customer.utility_account=utility_account
+            brokerage_accounts = s.query(BrokerageAccount).filter(
+                BrokerageAccount.utility_account_id == account_id).all()
+            for brokerage_account in brokerage_accounts:
+                brokerage_account.utility_account = utility_account
         return utility_account
 
     def delete_utility_account(self, utility_account_id):
