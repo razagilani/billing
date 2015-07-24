@@ -330,7 +330,7 @@ def stop_task(task_id):
 
 @app.route('/create-extractor/')
 def create_extractor():
-    return app.send_static_file('create-extractor/app/index.html')
+    return app.send_static_file('create-extractor/index.html')
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
