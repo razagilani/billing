@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('myApp.mainView', ['ngRoute'])
+angular.module('createExtractor.mainView', ['ngRoute'])
 
 .config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/', {
