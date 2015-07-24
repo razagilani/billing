@@ -42,11 +42,11 @@ class IssuableReebillsTest(TestCase):
         utility_account = UtilityAccount(
             'someaccount', '99999', test_utility, None, None, blank_address,
             blank_address)
-        utility_account.id = 4
+        utility_account.id = 5
         utility_account2 = UtilityAccount(
             'someaccount', '99998', test_utility, None, None, blank_address,
             blank_address)
-        utility_account2.id = 5
+        utility_account2.id = 6
         reebill_customer = ReeBillCustomer(
             bill_email_recipient='example1@example.com',
             utility_account=utility_account
