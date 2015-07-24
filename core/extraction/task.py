@@ -153,7 +153,7 @@ def test_bill(self, extractor_id, bill_id):
                 applier_key, field_value, db_val)
 
     # print out debug information in celery log
-    debug = False
+    debug = True
     if len(good) != len(extractor.fields) and debug:
         print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name
