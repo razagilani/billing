@@ -9,9 +9,9 @@ from core.extraction.extraction import Main
 from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill, Charge
-from exc import NoSuchBillException, DuplicateFileError, BillingError
+from exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
 from core.utilbill_loader import UtilBillLoader
-from reebill.reebill_model import ReeBillCustomer
+from reebill.reebill_model import ReeBillCustomer, ReeBill
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
@@ -662,19 +662,25 @@ class UtilbillProcessor(object):
                 UtilityAccount.id == utility_account_id).one()
         except NoResultFound:
             raise
+        source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id == utility_account.id)\
+            .all()
+        reebills_for_merged_accounts = []
+        for account_id in account_ids:
+            dest_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id == account_id)\
+            .all()
+            reebills_for_merged_accounts.append(dest_account_reebills)
+        accounts_with_reebills = [x for x in reebills_for_merged_accounts if len(x) > 0]
+        if len(source_account_reebills) > 0 and len(accounts_with_reebills)>0:
+            raise MergeError('Accounts to be merged cannot all have reebills')
         for account_id in account_ids:
             bills = s.query(UtilBill).filter(
                 UtilBill.utility_account_id == account_id).all()
             for bill in bills:
                 bill.utility_account = utility_account
-            reebill_customers = s.query(ReeBillCustomer).filter(
-                ReeBillCustomer.utility_account_id == account_id).all()
-            for reebill_customer in reebill_customers:
-                reebill_customer.utility_account=utility_account
-            brokerage_accounts = s.query(BrokerageAccount).filter(
-                BrokerageAccount.utility_account_id == account_id).all()
-            for brokerage_account in brokerage_accounts:
-                brokerage_account.utility_account = utility_account
+            if len(source_account_reebills) == 0 and len(accounts_with_reebills) == 1:
+                accounts_with_reebills[0][0].reebill_customer.utility_account = utility_account
         return utility_account
 
     def delete_utility_account(self, utility_account_id):
