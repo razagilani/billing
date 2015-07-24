@@ -328,6 +328,10 @@ def stop_task(task_id):
     s.commit()
     return "", 204
 
+@app.route('/create-extractor/')
+def create_extractor():
+    return app.send_static_file('create-extractor/app/index.html')
+
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
     req = Request(config.get('billentry', 'google_user_info_url'), None,
