@@ -35,6 +35,20 @@ def upgrade():
     for value in new_applier_keys:
         op.execute("alter type applier_key add value '%s'" % value)
 
+    op.create_table('bounding_box',
+            sa.Column('bounding_box_id', sa.Integer(), nullable=False),
+            sa.Column('x0', sa.Float(), nullable=False),
+            sa.Column('y0', sa.Float(), nullable=False),
+            sa.Column('x1', sa.Float(), nullable=False),
+            sa.Column('y1', sa.Float(), nullable=False),
+            sa.Column('width', sa.Float(), nullable=False),
+            sa.Column('height', sa.Float(), nullable=False),
+            sa.PrimaryKeyConstraint('bounding_box_id'),
+            sa.CheckConstraint('x1 >= x0'),
+            sa.CheckConstraint('y1 >= y0'),
+            sa.CheckConstraint('width = x1 - x0 '),
+            sa.CheckConstraint('height = y1 - y0 '),)
+
     op.add_column('extractor', sa.Column('representative_bill_id',
         sa.Integer()))
     op.add_column('extractor', sa.Column('origin_regex', sa.String()))
@@ -44,6 +58,8 @@ def upgrade():
     op.alter_column('field', 'regex', nullable=True)
     op.add_column('field',
         sa.Column('enabled', sa.Boolean(), default=True))
+    op.add_column('field', sa.Column('bounding_box_id', sa.Integer(),
+        sa.ForeignKey('bounding_box.bounding_box_id')))
     op.add_column('field', sa.Column('bbregex', sa.String))
     op.add_column('field', sa.Column('offset_regex', sa.String))
     op.add_column('field', sa.Column('corner', sa.Integer()))
@@ -62,20 +78,13 @@ def upgrade():
         sa.Column('utilbill_id', sa.Integer()),
         sa.Column('type', sa.Enum("page", "textbox", "textline", "shape",
             "image", "other", name='layout_type'), nullable=False),
+        sa.Column('bounding_box_id', sa.Integer(), nullable=False),
         sa.Column('page_num', sa.Integer(), nullable=False),
-        sa.Column('x0', sa.Float(), nullable=False),
-        sa.Column('y0', sa.Float(), nullable=False),
-        sa.Column('x1', sa.Float(), nullable=False),
-        sa.Column('y1', sa.Float(), nullable=False),
-        sa.Column('width', sa.Float(), nullable=False),
-        sa.Column('height', sa.Float(), nullable=False),
         sa.Column('text', sa.String()),
         sa.PrimaryKeyConstraint('layout_element_id'),
         sa.ForeignKeyConstraint(['utilbill_id'], ['utilbill.id']),
-        sa.CheckConstraint('x1 >= x0'),
-        sa.CheckConstraint('y1 >= y0'),
-        sa.CheckConstraint('width = x1 - x0 '),
-        sa.CheckConstraint('height = y1 - y0 '),
+        sa.ForeignKeyConstraint(['bounding_box_id'],
+            ['bounding_box.bounding_box_id']),
     )
 
 def downgrade():

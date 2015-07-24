@@ -107,7 +107,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     # if row does not end with some kind of number, this is not a charge.
     match = re.search(num_format, value)
     if match:
-        target_total = float(match.group(0))
+        target_total = float(match.group(0).replace(',', ''))
     else:
         return None
 
@@ -410,7 +410,10 @@ def convert_address(text):
         if addressee is None:
             addressee = ""
         addressee += line + " "
-    return Address(addressee=addressee.strip(), street=street, city=city,
+
+    if addressee is not None:
+        addressee = addressee.strip()
+    return Address(addressee=addressee, street=street, city=city,
         state=state, postal_code=postal_code)
 
 def convert_supplier(text):

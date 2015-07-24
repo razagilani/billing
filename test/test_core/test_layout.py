@@ -6,7 +6,7 @@ from pdfminer.layout import LTPage, LTImage, LTTextBox, LTTextLine, LTCurve, \
     LTFigure, LTLine, LTLayoutContainer
 from pdfminer.pdftypes import PDFStream
 from core import init_model
-from util.layout import BoundingBox, get_corner, Corners, \
+from util.layout import get_corner, Corners, \
     in_bounds, get_text_from_bounding_box, get_text_line, tabulate_objects, \
     group_layout_elements_by_page, TEXTLINE, IMAGE, TEXTBOX, PAGE
 
@@ -16,7 +16,7 @@ from util.layout import BoundingBox, get_corner, Corners, \
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
-from core.model import LayoutElement
+from core.model import LayoutElement, BoundingBox
 from test import init_test_config, create_tables, clear_db
 
 def setUpModule():
@@ -25,10 +25,10 @@ def setUpModule():
 class BoundingBoxTest(TestCase):
     def test_boundingbox_init(self):
         bbox = BoundingBox(10, 20, 110, 120)
-        self.assertEqual(bbox.minx, 10)
-        self.assertEqual(bbox.miny, 20)
-        self.assertEqual(bbox.maxx, 110)
-        self.assertEqual(bbox.maxy, 120)
+        self.assertEqual(bbox.x0, 10)
+        self.assertEqual(bbox.y0, 20)
+        self.assertEqual(bbox.x1, 110)
+        self.assertEqual(bbox.y1, 120)
 
         # BoundingBox throws an error if the minimum coordinates are less
         # than the maximum coordinates
@@ -40,10 +40,11 @@ class BoundingBoxTest(TestCase):
 class CornersTest(TestCase):
     def test_get_corner(self):
         layout_obj = Mock()
-        layout_obj.x0 = 12
-        layout_obj.y0 = 34
-        layout_obj.x1 = 112
-        layout_obj.y1 = 134
+        layout_obj.bounding_box = Mock()
+        layout_obj.bounding_box.x0 = 12
+        layout_obj.bounding_box.y0 = 34
+        layout_obj.bounding_box.x1 = 112
+        layout_obj.bounding_box.y1 = 134
         self.assertEqual(get_corner(layout_obj, 0), (12, 34))
         self.assertEqual(get_corner(layout_obj, 1), (112, 34))
         self.assertEqual(get_corner(layout_obj, 2), (12, 134))
@@ -52,14 +53,16 @@ class CornersTest(TestCase):
 class LayoutTest(TestCase):
     def setUp(self):
         self.bbox = BoundingBox(10, 10, 110, 120)
-        self.out_of_bounds_obj = LayoutElement(x0=-10, y0=-10, x1=0, y1=0,
-            text="I'm out of bounds!", type=TEXTLINE)
-        self.in_bounds_obj = LayoutElement(x0=11, y0=11, x1=100, y1=100,
-            text="I'm in bounds!", type=TEXTLINE)
-        self.overlap_obj = LayoutElement(x0=-10, y0=-10, x1=100, y1=100,
+        self.out_of_bounds_obj = LayoutElement(0, BoundingBox(x0=-10, y0=-10,
+            x1=0, y1=0), text="I'm out of bounds!", type=TEXTLINE)
+        self.in_bounds_obj = LayoutElement(0,
+            BoundingBox(x0=11, y0=11, x1=100, y1=100), text="I'm in bounds!",
+            type=TEXTLINE)
+        self.overlap_obj = LayoutElement(0,
+            BoundingBox(x0=-10, y0=-10, x1=100, y1=100),
             text="I overlap the bounding box!", type=TEXTLINE)
-        self.image_obj = LayoutElement(x0=11, y0=11, x1=100, y1=100,
-            type=IMAGE)
+        self.image_obj = LayoutElement(0,
+            BoundingBox(x0=11, y0=11, x1=100, y1=100), type=IMAGE)
         self.layout_objects = [self.out_of_bounds_obj, self.in_bounds_obj,
             self.overlap_obj, self.image_obj]
 
@@ -82,9 +85,9 @@ class TableTest(TestCase):
         for y in range(100, 10, -10):
             row = []
             for x in range(20, 50, 10):
-                elt = LayoutElement(x0=x, y0=y, x1=x,
-                    y1=y, text="%d %d text" % (x, y),
-                    type=TEXTLINE)
+                elt = LayoutElement(bounding_box=BoundingBox(x0=x, y0=y, x1=x,
+                    y1=y), text="%d %d text" % (x, y), type=TEXTLINE,
+                    page_num=0)
                 self.layout_objects.append(elt)
                 row.append(elt)
             self.tabulated_data.append(row)
@@ -146,10 +149,10 @@ class PDFMinerToLayoutElementTest(TestCase):
         self.pdfminer_pages = [self.page1, self.page2]
 
     def test_group_elements_by_page(self):
-        le1 = LayoutElement(page_num=1)
-        le2 = LayoutElement(page_num=3)
-        le3 = LayoutElement(page_num=1)
-        le4 = LayoutElement(page_num=2)
+        le1 = LayoutElement(page_num=1, bounding_box=None)
+        le2 = LayoutElement(page_num=3, bounding_box=None)
+        le3 = LayoutElement(page_num=1, bounding_box=None)
+        le4 = LayoutElement(page_num=2, bounding_box=None)
         le_list = [le1, le2, le3, le4]
         le_pages = group_layout_elements_by_page(le_list)
         le_pages_expected = [[le1, le3], [le4], [le2]]
@@ -188,18 +191,16 @@ class LayoutElementTest(TestCase):
         self.pdfminer_pages = [self.page1, self.page2]
 
     def test_pdfminer_to_layoutelement(self):
-        le_pg1 = LayoutElement(type=PAGE, x0=0, y0=0, x1=1000,
-                               y1=1000, width=1000, height=1000, text=None,
-                               page_num=1, utilbill_id=123)
-        le_pg2 = LayoutElement(type=PAGE, x0=0, y0=0, x1=1000,
-                               y1=1000, width=1000, height=1000, text=None,
-                               page_num=2, utilbill_id=123)
-        le_textbox1 = LayoutElement(type=TEXTBOX, x0=200, y0=300,
-                                    x1=600, y1=700, page_num=1, text='textbox1',
-                                    utilbill_id=123)
-        le_textline1 = LayoutElement(type=TEXTLINE, x0=200,
-                                     y0=300, x1=500, y1=600, page_num=1,
-                                     text='textline1', utilbill_id=123)
+        le_pg1 = LayoutElement(type=PAGE, bounding_box=BoundingBox(x0=0,
+            y0=0, x1=1000, y1=1000), text=None, page_num=1, utilbill_id=123)
+        le_pg2 = LayoutElement(type=PAGE, bounding_box=BoundingBox(x0=0,
+            y0=0, x1=1000, y1=1000), text=None, page_num=2, utilbill_id=123)
+        le_textbox1 = LayoutElement(type=TEXTBOX, bounding_box=BoundingBox(
+            x0=200, y0=300, x1=600, y1=700), page_num=1, text='textbox1',
+            utilbill_id=123)
+        le_textline1 = LayoutElement(type=TEXTLINE, bounding_box=BoundingBox(
+            x0=200, y0=300, x1=500, y1=600), page_num=1, text='textline1',
+            utilbill_id=123)
 
         expected_elts = [le_pg1, le_textbox1, le_textline1, le_pg2]
         layout_elts = LayoutElement.create_from_ltpages(
@@ -210,7 +211,9 @@ class LayoutElementTest(TestCase):
             self.assertEqual(le.page_num, exp_le.page_num)
             self.assertEqual(le.text, exp_le.text)
 
-            self.assertEqual(le.x0, exp_le.x0)
-            self.assertEqual(le.y0, exp_le.y0)
-            self.assertEqual(le.x1, exp_le.x1)
-            self.assertEqual(le.y1, exp_le.y1)
+            le_bbox = le.bounding_box
+            exp_le_bbox = exp_le.bounding_box
+            self.assertEqual(le_bbox.x0, exp_le_bbox.x0)
+            self.assertEqual(le_bbox.y0, exp_le_bbox.y0)
+            self.assertEqual(le_bbox.x1, exp_le_bbox.x1)
+            self.assertEqual(le_bbox.y1, exp_le_bbox.y1)
