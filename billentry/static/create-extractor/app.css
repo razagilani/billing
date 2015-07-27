@@ -1,7 +1,9 @@
 /* app css stylesheet */
-html, body {
-  height:100%;
-}
+
+* { box-sizing:content-box; }
+
+html, body { height:100%; }
+
 body {
   margin:0px; 
   background-color:#EFEFFF;
@@ -13,11 +15,29 @@ body {
 hr { background-color:#AAAAFF; border:0; height:5px; margin:0; }
 hr.divider { margin-top:2em; margin-bottom:2em}
 
-#header { padding:5px; height:40px; background-color: #AAAAFF;}
+#header { background-color: #AAAAFF;}
+
+ul.navbar {
+  height:100%;
+  list-style-type: none;
+  margin:0;
+  padding:0;
+  font-size:30px;
+  font-weight:bold;
+}
+
+ul.navbar li { display:inline-block;}
+
+ul.navbar li a { display:inline-block; padding:5px; padding-left:10px; padding-right:10px;}
+
+ul.navbar li a:hover {
+  background-color:#000066;
+  color:#AAAAFF;
+}
 
 #view-container { 
   height:100%; 
-  height:calc(100% - 50px);
+  height:calc(100% - 45px);
   display:block;
 }
 
@@ -28,7 +48,8 @@ hr.divider { margin-top:2em; margin-bottom:2em}
   height:100%;
 }
 
-/* Contains the PDF.js canvas */
+/* EXTRACTOR SETTINGS VIEW */
+
 #pdf-container { 
   width:50%;  
   float:left; 
@@ -37,8 +58,7 @@ hr.divider { margin-top:2em; margin-bottom:2em}
   overflow:scroll;
 }
 
-/* A seperator between UI elements */
-#splitter { 
+#separator { 
   width:5px; 
   margin-top:0px !important; 
   background-color:#AAAAFF; 
