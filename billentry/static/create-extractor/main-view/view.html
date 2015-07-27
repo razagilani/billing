@@ -4,64 +4,86 @@
 </div>
 <div id="splitter">&nbsp;</div>
 <div id="extractor-controls">
-	<p><b>Fields</b></p>
+	<!-- List of fields for current extractor -->
+	<div id="fields-list">
+		<h3>Fields</h3>
 
-	<table id="fields">
-		<colgroup>
-			<col style="width:150px">
-			<col style="width:150px">
-			<col style="width:150px">
-		</colgroup>
-		<thead>
-			<tr>
-				<td>Applier Key</td>
-				<td>Field Type </td>
-				<td>Data Type </td>
-			</tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td>Start</td>
-				<td> 
-					<select>
-						<option>Bounding Box Field</option>
-						<option>Table Field</option>
-					</select>
-				</td>
-				<td>
-					<select>
-						<option>String</option>
-						<option>Date</option>
-						<option>... (etc) ...</option>
-					</select>
-				</td>
-				<td>+</td>
-			</tr>
-			<tr>
-				<td> ... </td>
-			</tr>
-		</tbody>
-	</table>
-	
-	<br>
+		<table id="fields">
+			<colgroup>
+				<col style="width:150px">
+				<col style="width:150px">
+				<col style="width:150px">
+			</colgroup>
+			<thead>
+				<tr>
+					<td>Applier Key</td>
+					<td>Field Type </td>
+					<td>Data Type </td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>Start</td>
+					<td> 
+						<select>
+							<option>Bounding Box Field</option>
+							<option>Table Field</option>
+						</select>
+					</td>
+					<td>
+						<select>
+							<option>String</option>
+							<option>Date</option>
+							<option>... (etc) ...</option>
+						</select>
+					</td>
+					<td>+</td>
+				</tr>
+				<tr>
+					<td> ... </td>
+				</tr>
+			</tbody>
+		</table>
+	</div> 
+	<hr class="divider">
 
-	<b> &lt; Selected Field &gt; : </b>
-	<br><br>
+	<!-- Settings for individual fields -->
+	<div class="field-settings">
+		<h3> &lt; Selected Field &gt; : </h3>
+		
+		<b> Page Number </b>
+		<select style="margin-left:10px;" type="text">
+			<option>1</option>
+			<option>2</option>
+			<option>3</option>
+		</select>
+		<span style="margin-left:10px;">to</span> 
+		<select style="margin-left:10px;" type="text">
+			<option>1</option>
+			<option>2</option>
+			<option>3</option>
+		</select>
+		<br><br>
+		<b> Offset Regex </b>
+		<input style="margin-left:10px;" type="text"></input>
+		<br><br>
 
-	<b> Page Number </b>
-	<select style="margin-left:10px;" type="text">
-		<option>1</option>
-		<option>2</option>
-		<option>3</option>
-	</select>
-	<span width="30px">&nbsp;</span>
-	<b> Corner <b>
-	<br><br>
+		<b> Bounding Box </b>
+		<pre class="bbox-coords" style="margin-left:10px">x0: 100 y0: 25 x1: 145 y1: 323</pre>
+		<span style="margin-left:10px; font-weight:bold">X</span>
+		<br><br>
 
-	<b> Bounding Box </b>
-	<pre class="bbox-coords" style="margin-left:10px">x0: 100 y0: 25 x1: 145 y1: 323</pre>
-	<br><br>
+		<b> Corner <b>
+		<select style="margin-left:10px;" type="text">
+			<option>Top Left (0)</option>
+			<option>Top Right (1)</option>
+			<option>Bottom Left (2)</option>
+			<option>Bottom Right (3)</option>
+		</select>
+		<br><br>
 
-	<b> Regular Expression </b>
-	<input style="margin-left:10px;" type="text"></input>
+		<b> Regular Expression </b>
+		<input style="margin-left:10px;" type="text"></input>
+	</div>
+	<hr class="divider">
 </div>
