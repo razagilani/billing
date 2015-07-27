@@ -10,18 +10,25 @@ Ext.define('ReeBill.controller.Accounts', {
     views:[
         'accounts.Accounts',
         'accounts.AccountForm',
+        'accounts.AccountEditForm'
     ],
 
     refs: [{
         ref: 'accountForm',
         selector: 'accountForm'
     },{
+        ref: 'accountEditForm',
+        selector: 'accountEditForm'
+    },{
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
     },{
         ref: 'accountsFilter',
         selector: 'combo[name=accountsFilter]'
-    }],    
+    },{
+        ref: 'editBtn',
+        selector: 'button#editAccountRecord'
+    }],
     
     init: function() {
         this.application.on({
@@ -41,8 +48,14 @@ Ext.define('ReeBill.controller.Accounts', {
             'button[action=saveNewAccount]': {
                 click: this.saveNewAccount
             },
+            'button[action=saveEditChanges]': {
+                click: this.saveEditChanges
+            },
             'combo[name=accountsFilter]': {
                 change: this.handleFilter
+            },
+            'button[action=editRecord]': {
+                click: this.handleEdit
             }
         });
 
@@ -131,6 +144,40 @@ Ext.define('ReeBill.controller.Accounts', {
     },
 
     /**
+     * Handle Account Edit button
+     */
+    handleEdit: function(){
+        var record = this.getAccountsGrid().getSelectionModel().getSelection()[0];
+        var accountEditWindow = Ext.create('Ext.window.Window', {
+            title: 'Edit Account',
+            closeAction: 'destroy',
+            id: 'editAccountWindow',
+            items: {xtype: 'accountEditForm',
+                    id: 'editAccountForm'}
+        });
+        var accountsForm = Ext.ComponentQuery.query('#editAccountForm')[0].getForm();
+        accountsForm.setValues({'account': record.get('account'),
+                               'name': record.get('name'),
+                               'discount_rate': record.get('discount_rate'),
+                               'late_charge_rate': record.get('late_charge_rate'),
+                               'utility_account_number': record.get('utility_account_number'),
+                               'payee': record.get('payee'),
+                               'service_type': record.get('service_type'),
+                               'ba_addressee': record.get('ba_addressee'),
+                               'ba_street': record.get('ba_street'),
+                               'ba_city': record.get('ba_city'),
+                               'ba_state': record.get('ba_state'),
+                               'ba_postal_code': record.get('ba_postal_code'),
+                               'sa_addressee': record.get('sa_addressee'),
+                               'sa_street': record.get('sa_street'),
+                               'sa_city': record.get('sa_city'),
+                               'sa_state': record.get('sa_state'),
+                               'sa_postal_code': record.get('sa_postal_code')
+                               });
+        accountEditWindow.show();
+    },
+
+    /**
      * Handle the filter being changed.
      */
     handleFilter: function( combo, newValue, oldValue, eOpts) {
@@ -153,6 +200,27 @@ Ext.define('ReeBill.controller.Accounts', {
         var store = this.getAccountsStore();
 
         newAccountField.setValue(store.getNextAccountNumber());
+    },
+
+    /**
+     * Edit an existing account
+     */
+    saveEditChanges: function() {
+        var store = this.getAccountsStore();
+        var accountEditForm = this.getAccountEditForm();
+        var editWindow = Ext.ComponentQuery.query('#editAccountWindow');
+        if (accountEditForm.getForm().isValid()) {
+            var values = accountEditForm.getValues();
+            store.clearFilter();
+            var record = store.findRecord('account', values.account);
+            record.set(values);
+            editWindow[0].close();
+            //Ext.iterate(values, function(key, value){
+            //    console.log(key + ' '+ value);
+            //    record.set({key: value});
+            //})
+
+        }
     },
 
     /**
@@ -218,7 +286,8 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the account selection.
      */
     handleAccountSelect: function() {
-
+        var selected = this.getAccountsGrid().getSelectionModel().getSelection();
+        this.getEditBtn().setDisabled(!(selected.length == 1));
     }
 
 });
