@@ -9,20 +9,27 @@
   <title>Create Extractor</title>
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayer.css">
+  <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayerBuilder.css">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
   <div id="header">
     <h1 style="margin:0px"> Create Extractor </h1>
   </div>
-  <hr>
+  <!-- <hr> -->
   <div id="view-container" ng-view></div>
 
   <!-- In production use:
   <script src="//ajax.googleapis.com/ajax/libs/angularjs/x.x.x/angular.min.js"></script>
   -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script src="/angular/bower_components/angular/angular.js"></script>
   <script src="/angular/bower_components/angular-route/angular-route.js"></script>
+  <!-- for pdf.js -->
+  <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script>
+  <script src="/angular/pdfjs-textlayer/TextLayerBuilder.js"></script>
+  <!-- actual app code -->
   <script src="app.js"></script>
   <script src="main-view/view.js"></script>
 </body>
