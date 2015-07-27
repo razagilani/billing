@@ -215,11 +215,6 @@ Ext.define('ReeBill.controller.Accounts', {
             var record = store.findRecord('account', values.account);
             record.set(values);
             editWindow[0].close();
-            //Ext.iterate(values, function(key, value){
-            //    console.log(key + ' '+ value);
-            //    record.set({key: value});
-            //})
-
         }
     },
 
