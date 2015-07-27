@@ -654,7 +654,7 @@ class UtilbillProcessor(object):
     def move_account_references(self, utility_account_id, account_ids):
         """
         moves all references from the given list of account_ids to a
-        single account
+        single account represented by utility_account_id
         """
         s = Session()
         try:
@@ -662,25 +662,33 @@ class UtilbillProcessor(object):
                 UtilityAccount.id == utility_account_id).one()
         except NoResultFound:
             raise
+        # get a list of all utility accounts for the account that is being
+        # merged into
         source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
             filter(ReeBillCustomer.utility_account_id == utility_account.id)\
             .all()
+        # list for storing reebills for all accounts that are getting merged
         reebills_for_merged_accounts = []
         for account_id in account_ids:
-            dest_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            dest_accounts_reebills = s.query(ReeBill).join(ReeBillCustomer).\
             filter(ReeBillCustomer.utility_account_id == account_id)\
             .all()
-            reebills_for_merged_accounts.append(dest_account_reebills)
+            reebills_for_merged_accounts.append(dest_accounts_reebills)
+        # filter out accounts with no reebills
         accounts_with_reebills = [x for x in reebills_for_merged_accounts if len(x) > 0]
+        # the source and destination accounts cannot all have reebills
         if len(source_account_reebills) > 0 and len(accounts_with_reebills)>0:
-            raise MergeError('Accounts to be merged cannot all have reebills')
+            raise MergeError('All accounts cannot have reebills')
         for account_id in account_ids:
             bills = s.query(UtilBill).filter(
                 UtilBill.utility_account_id == account_id).all()
             for bill in bills:
                 bill.utility_account = utility_account
-            if len(source_account_reebills) == 0 and len(accounts_with_reebills) == 1:
-                accounts_with_reebills[0][0].reebill_customer.utility_account = utility_account
+        # if source account has 0 reebills then move reebills from dest to source
+        if len(source_account_reebills) == 0:
+            for account in accounts_with_reebills:
+                account[0].reebill_customer.utility_account = utility_account
+
         return utility_account
 
     def delete_utility_account(self, utility_account_id):
