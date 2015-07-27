@@ -93,6 +93,21 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     }],
     dockedItems: [
     {
+        dock: 'top',
+        xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
+        items: [{
+            xtype: 'button',
+            itemId: 'editAccountRecord',
+            action: 'editRecord',
+            text: 'Edit',
+            iconCls: 'silk-edit',
+            disabled: true
+        }]
+    },
+    {
         xtype: 'toolbar',
         dock: 'bottom',
         items: ['->', {
