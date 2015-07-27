@@ -530,13 +530,13 @@ class AEPMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xls
 
     EXPECTED_SHEET_TITLES = [
-        'Price Finder',
-        'Matrix Table',
-        # hidden sheets
-        'Base',
-        'RateReady'
-    ]
-    SHEET = 'Matrix Table'
+        'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
+        'Matrix Table-Energy Only', 'PLC Load Factor Calculator', 'A1-1',
+        'A1-2', 'Base', 'Base Energy Only', 'RateReady']
+
+    # FPAI is "Fixed-Price All-In"; we're ignoring the "Energy Only" quotes
+    SHEET = 'Matrix Table-FPAI'
+
     EXPECTED_CELLS = [
         (SHEET, 3, 'E', 'Matrix Pricing'),
         (SHEET, 3, 'V', 'Date of Matrix:'),
@@ -615,9 +615,15 @@ class AEPMatrixParser(QuoteParser):
                     next_vol_col = 'Y'
 
                 for col in self._reader.column_range(vol_col, next_vol_col):
+                    # skip column that says "End May '18" since we don't know
+                    # what contract length that really is
+                    if self._reader.get(
+                            self.SHEET, self.HEADER_ROW, col,
+                            (basestring, float)) == "End May '18":
+                        continue
                     # TODO: extracted unnecessarily many times
-                    term = self._reader.get(self.SHEET, self.HEADER_ROW,
-                                                   col, (int, float))
+                    term = self._reader.get(
+                        self.SHEET, self.HEADER_ROW, col, (int, float))
 
                     price = self._reader.get(self.SHEET, row, col,
                                               (float, basestring, type(None)))

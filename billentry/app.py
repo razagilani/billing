@@ -402,7 +402,10 @@ def update_user_session_last_request_time(user):
     """ This is called to update the last_request field of BEUserSession
     every time user makes a request for a resource
     """
-    recent_session = Session.query(BEUserSession).filter_by(
+    # We do a SELECT ... FOR UPDATE here, since this function is called in
+    # every request and therefore concurrently for the same user
+    recent_session = Session.query(
+        BEUserSession).with_for_update(of=BEUserSession).filter_by(
         beuser=user).order_by(desc(BEUserSession.session_start)).first()
     if recent_session:
         recent_session.last_request = datetime.utcnow()
