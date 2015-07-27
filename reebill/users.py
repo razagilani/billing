@@ -43,6 +43,7 @@ class UserDAO(object):
                         password_hash=pw_hash, salt=salt)
 
         Session().add(new_user)
+        return new_user
 
     def user_exists(self, identifier):
         '''Returns True if there is a user with the given identifier (no
@@ -72,6 +73,11 @@ class UserDAO(object):
 
     def load_by_session_token(self, token):
         return Session().query(User).filter_by(session_token=token).first()
+
+    def set_session_token_for_user(self, user, token):
+        u = Session().query(User).filter_by(
+            reebill_user_id=user.reebill_user_id).one()
+        u.session_token = token
 
     def change_password(self, identifier, old_password, new_password):
         '''Sets a new password for the given user. Returns True for success,
