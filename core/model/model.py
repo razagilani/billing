@@ -667,14 +667,19 @@ class UtilityAccount(Base):
         return self.fb_service_address
 
     def get_last_bill(self, processed=None, end=None):
-        """Return the latest-ending UtilBill belonging to this account.
+        """Return the latest-ending UtilBill belonging to this account. Only
+        bills that have a 'period_end' date are included. Raise
+        NoSuchBillException if this account has no bills whose end date has
+        been set.
+
         :param processed: if True, only consider bills that are processed.
         :param end: only consider bills whose period ends on/before this date.
         :return: UtilBill
         """
-        g = (u for u in self.utilbills
-             if (processed is None or u.processed) and (
-             end is None or (u.period_end is not None and u.period_end <= end)))
+        g = (u for u in self.utilbills if u.period_end is not None
+             and (processed is None or u.processed)
+             and (end is None
+                  or (u.period_end is not None and u.period_end <= end)))
         try:
             return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
