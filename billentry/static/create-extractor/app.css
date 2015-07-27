@@ -7,18 +7,28 @@ body {
   background-color:#EFEFFF;
   color:#000066;
   font-family: sans-serif;
+  overflow:hidden;
 }
-#header { padding:5px;}
 
-#view-container { height:100%; display:block;}
+hr { background-color:#AAAAFF; border:0; height:5px; margin:0; }
+hr.divider { margin-top:2em; margin-bottom:2em}
+
+#header { padding:5px; height:40px;}
+
+#view-container { 
+  height:100%; 
+  height:calc(100% - 50px);
+  display:block;
+}
 
 #view-container>div {
-  height:100%;
   margin:1%;
   display:inline;
   float:left;
+  height:100%;
 }
 
+/* Contains the PDF.js canvas */
 #pdf-container { 
   width:40%;  
   float:left; 
@@ -30,19 +40,19 @@ canvas#pdf-canvas {
   background-color:#FFFFFF; 
 }
 
+/* A seperator between UI elements */
 #splitter { 
   width:5px; 
   margin-top:0px !important; 
   background-color:#AAAAFF; 
 }
 
+/* Container for the extractor settings */
 #extractor-controls { 
-  width:40%; 
+  width:40%;
   display:inline; 
   float:left; 
-}
-
-table#fields {
+  overflow:scroll;
 }
 
 table#fields thead { font-weight: bold }
@@ -52,4 +62,5 @@ pre.bbox-coords {
   background-color:#DEDEEF; 
   color:#666699; 
   padding:4px;
+  border: solid 2px #BBBBCC;
 }
