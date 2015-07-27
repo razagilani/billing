@@ -27,7 +27,13 @@ Ext.define('ReeBill.view.charges.Charges', {
     }],
 
     initComponent: function(){
-        // Combine the quantity_formula & formula columns into on single column
+        function deepcopy(x){
+            // this is the fastest way to deepcopy an object in JS, but it will not copy
+            // complex datatypes and functions
+            return JSON.parse(JSON.stringify(x));
+        }
+
+        // Copy all individual columns and fold quantity into quantity_formula
         var newColumns = [];
         for(var i =0; i<this.columns.length; i++){
             if (this.columns[i]['dataIndex'] === 'quantity_formula') {
@@ -45,9 +51,24 @@ Ext.define('ReeBill.view.charges.Charges', {
                     width: 250,
                     tpl: '{[values.error ? values.error : values.quantity]}'
                 });
+            }else if(this.columns[i]['dataIndex'] === 'total'){
+                var col = deepcopy(this.columns[i]);
+                // We have to explicityly redefine the summary function here, since
+                // deepcopy cannot do that. We have to redefine because ExtJS does
+                // something weird with the function, so assigning the parents
+                // reference will not work
+                col.summaryType = function(records){
+                    var sum = 0;
+                    Ext.Array.each(records, function(record){
+                        if(record.get('has_charge')){
+                            sum += record.get('total');
+                        }
+                    });
+                    return Ext.util.Format.usMoney(sum);
+                };
+                newColumns.push(col);
             }else if(this.columns[i]['dataIndex'] !== 'quantity'){
-                // Fastest way to deep copy
-                newColumns.push(JSON.parse(JSON.stringify(this.columns[i])));
+                newColumns.push(deepcopy(this.columns[i]));
             }
         }
 
