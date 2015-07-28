@@ -25,6 +25,41 @@ var utils = function() {
         win.center();
     };
 
+    var makeGridFilterTextField = function(field_name){
+        /*
+         * Creates a Textbox for a GridColumn with proper keyup listener that
+         * updates the filter of the Grid's store whenever the textfield changes.
+         * field_name is the field name of the stre that should be filtered by
+         */
+        return {
+            xtype: 'textfield',
+            flex : 1,
+            margin: 2,
+            emptyText: 'Filter',
+            enableKeyEvents: true,
+            listeners: {
+                keyup: function() {
+                    var store = this.up('tablepanel').store;
+                    var filterid = 'filter' + field_name;
+                    // Remove previous filter if one exists
+                    if(store.filters.getByKey(filterid) != undefined) {
+                        store.removeFilter(filterid, !this.value);
+                    }
+                    if (this.value) {
+                        store.filter({
+                            id: filterid,
+                            property     : field_name,
+                            value         : this.value,
+                            anyMatch      : true,
+                            caseSensitive : false
+                        });
+                    }
+                },
+                buffer: 150
+            }
+        };
+    };
+
     var makeProxyExceptionHandler = function(storeName) {
         /* Creates a function which rejects changes in the store storeName and
          shows and appropriate error message box */
@@ -45,6 +80,7 @@ var utils = function() {
 
     return {
         makeProxyExceptionHandler: makeProxyExceptionHandler,
-        makeServerExceptionWindow: makeServerExceptionWindow
+        makeServerExceptionWindow: makeServerExceptionWindow,
+        makeGridFilterTextField: makeGridFilterTextField
     };
 }();

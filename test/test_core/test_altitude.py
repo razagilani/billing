@@ -12,7 +12,8 @@ def setUpModule():
     create_tables()
 
 from core.model import Utility, Supplier, Address, Session, \
-    UtilityAccount, RateClass, UtilBill, SupplyGroup
+    UtilityAccount, RateClass, SupplyGroup
+from core.model.utilbill import UtilBill
 from core.altitude import AltitudeUtility, AltitudeSupplier, \
     get_utility_from_guid, update_altitude_account_guids, AltitudeAccount, \
     AltitudeBill

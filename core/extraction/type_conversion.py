@@ -8,7 +8,9 @@ from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 from core import model
-from core.model import Session, RateClass, Utility, Charge, Address
+from core.model import Session, RateClass, Utility, Address
+from core.model.utilbill import Charge
+import core.model.utilbill
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from exc import ApplicationError
