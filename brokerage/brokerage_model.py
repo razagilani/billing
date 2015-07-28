@@ -51,16 +51,16 @@ class RateClassAlias(AltitudeBase):
     rate_class_alias = Column('Rate_Class_Alias', String, nullable=False)
 
 
-def get_rate_class_from_alias(alias):
-    """Return the RateClass for the given alias, or None if it could not be
-    found.
+def load_rate_class_aliases():
+    """Return a dictionary that maps rate class aliases to corresponding rate
+    class IDs.
     """
     session = AltitudeSession()
-    rate_class = session.query(RateClass).join(
-        RateClassAlias, RateClass.rate_class_id ==
-                        RateClassAlias.rate_class_id).filter_by(
-        rate_class_alias=alias).first()
-    return rate_class
+    return {alias: rate_class_id for rate_class_id, alias in
+            session.query(RateClass.rate_class_id,
+                          RateClassAlias.rate_class_alias).join(
+                RateClassAlias,
+                RateClass.rate_class_id == RateClassAlias.rate_class_id)}
 
 
 def get_quote_status():
