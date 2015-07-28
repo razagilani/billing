@@ -651,46 +651,44 @@ class UtilbillProcessor(object):
         utility_account.fb_service_address = address
         return utility_account
 
-    def move_account_references(self, source_account_id, dest_account_id):
+    def move_account_references(self, dest_account_id, source_account_id):
         """
-        moves all references from dest_account_id to a
-        single account represented by source_account_id
+        moves all references from source_account_id to a
+        single account represented by dest_account_id
         """
         s = Session()
         try:
             utility_account = s.query(UtilityAccount).filter(
-                UtilityAccount.id == source_account_id).one()
+                UtilityAccount.id == dest_account_id).one()
         except NoResultFound:
             raise
         reebill_customer = s.query(ReeBillCustomer).join(UtilityAccount).\
             filter(ReeBillCustomer.utility_account == utility_account).one()
         # get a list of all utility accounts for the account that is being
         # merged into
-        source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+        dest_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
             filter(ReeBillCustomer.utility_account_id == utility_account.id)\
             .all()
 
-        dest_accounts_reebills = s.query(ReeBill).join(ReeBillCustomer).\
-            filter(ReeBillCustomer.utility_account_id == dest_account_id)\
+        source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id == source_account_id)\
             .all()
         # the source and destination accounts cannot all have reebills
-        if len(source_account_reebills) > 0 and len(dest_accounts_reebills)>0:
+        if len(source_account_reebills) > 0 and len(dest_account_reebills)>0:
             raise MergeError('All accounts cannot have reebills')
         bills = s.query(UtilBill).filter(
-                UtilBill.utility_account_id == dest_account_id).all()
+                UtilBill.utility_account_id == source_account_id).all()
         for bill in bills:
             bill.utility_account = utility_account
-            s.query(UtilbillReebill).join(UtilBill).filter(
-                UtilbillReebill.utilbill == bill).all()
         # if source account has 0 reebills then move reebills from dest to source
-        if len(source_account_reebills) == 0:
+        if len(dest_account_reebills) == 0:
             # update the source utility account reebill_customer
-            dest_accounts_reebills[0].reebill_customer.utility_account = utility_account
-            # delete the source accout's reebill_customer
+            source_account_reebills[0].reebill_customer.utility_account = utility_account
+            # delete the destination account's reebill_customer
             reebills = s.query(ReeBill).join(ReeBillCustomer).filter(
                 ReeBill.reebill_customer == reebill_customer).all()
             utilbills = s.query(UtilBill).join(UtilityAccount).filter(
-                UtilBill.utility_account_id == dest_account_id).all()
+                UtilBill.utility_account_id == source_account_id).all()
             assert len(reebills) == 0
             assert len(utilbills) == 0
             s.delete(reebill_customer)
