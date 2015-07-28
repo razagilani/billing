@@ -59,7 +59,6 @@ Ext.Ajax.request({
                 'SupplyGroups',
                 'Accounts',
                 'AccountsFilter',
-                'AccountsMemory',
                 'Charges',
                 'PreviousCharges',
                 'CustomerGroups',

@@ -1,6 +1,7 @@
 from datetime import timedelta, datetime
 from core import initialize
-from core.model import Session, RateClass, UtilBill
+from core.model import Session, RateClass
+from core.model.utilbill import UtilBill
 from core.model.model import RegisterTemplate
 
 LIMIT = 10

@@ -33,7 +33,7 @@ from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments, BillingError
 from reebill.reports.excel_export import Exporter
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
 from reebill.reebill_model import CustomerGroup
 
 
@@ -67,9 +67,8 @@ def check_authentication():
     """
     from core import config
     if not config.get('reebill', 'authenticate'):
-        if 'user' not in cherrypy.session:
-            cherrypy.session['user'] = UserDAO.default_user
-            return True
+        cherrypy.session['user'] = UserDAO.default_user
+        return True
 
     user_dao = UserDAO()
     if 'reebill_session' in cherrypy.request.cookie:
