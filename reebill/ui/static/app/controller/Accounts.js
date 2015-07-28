@@ -223,7 +223,7 @@ Ext.define('ReeBill.controller.Accounts', {
      */
     handleAccountSelect: function() {
         var selected = this.getAccountsGrid().getSelectionModel().getSelection();
-        this.getMergeBtn().setDisabled(selected.length < 2);
+        this.getMergeBtn().setDisabled(!(selected.length == 2));
     },
 
     /**
