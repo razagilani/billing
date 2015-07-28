@@ -277,25 +277,30 @@ class TestIntegration(TestCase):
         self.assertEqual(date(2014, 5, 15),
                          self.bill.get_next_meter_read_date())
         D, S = Charge.DISTRIBUTION, Charge.SUPPLY
-        expected = [
-            Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
-                   target_total=158.7, type=D, unit='therms'),
-            Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
-                   type=D, unit='therms'),
-            Charge('PGC', name='PGC', target_total=417.91, type=S,
-                   unit='therms'),
-            Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
-                   target_total=15.79, type=D, unit='therms'),
-            Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
-                   target_total=13.42, type=D, unit='therms'),
-            Charge('SETF', name='Sustainable Energy Trust Fund',
-                   target_total=7.06, type=D, unit='therms'),
-            Charge('EATF', name='Energy Assistance Trust Fund',
-                   target_total=3.03, type=D, unit='therms'),
-            Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
-                   type=D, unit='therms'),
-            Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
-                   unit='therms')]
+        # Charges are temporarily disabled, until a better way to disable
+        # specific fields is put into release 30
+
+        # expected = [
+        #     Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
+        #            target_total=158.7, type=D, unit='therms'),
+        #     Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
+        #            type=D, unit='therms'),
+        #     Charge('PGC', name='PGC', target_total=417.91, type=S,
+        #            unit='therms'),
+        #     Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
+        #            target_total=15.79, type=D, unit='therms'),
+        #     Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
+        #            target_total=13.42, type=D, unit='therms'),
+        #     Charge('SETF', name='Sustainable Energy Trust Fund',
+        #            target_total=7.06, type=D, unit='therms'),
+        #     Charge('EATF', name='Energy Assistance Trust Fund',
+        #            target_total=3.03, type=D, unit='therms'),
+        #     Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
+        #            type=D, unit='therms'),
+        #     Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
+        #            unit='therms')]
+        expected = []
+        self.assertEqual(len(expected), len(self.bill.charges))
         for expected_charge, actual_charge in zip(expected, self.bill.charges):
             self.assertEqual(expected_charge.rsi_binding,
                              actual_charge.rsi_binding)
