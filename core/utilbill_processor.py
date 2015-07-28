@@ -11,7 +11,7 @@ from core.model import Address, Charge, Register, Session, Supplier, \
 from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
 from core.utilbill_loader import UtilBillLoader
-from reebill.reebill_model import ReeBillCustomer, ReeBill
+from reebill.reebill_model import ReeBillCustomer, ReeBill, UtilbillReebill
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
@@ -651,44 +651,49 @@ class UtilbillProcessor(object):
         utility_account.fb_service_address = address
         return utility_account
 
-    def move_account_references(self, utility_account_id, account_ids):
+    def move_account_references(self, source_account_id, dest_account_id):
         """
-        moves all references from the given list of account_ids to a
-        single account represented by utility_account_id
+        moves all references from dest_account_id to a
+        single account represented by source_account_id
         """
         s = Session()
         try:
             utility_account = s.query(UtilityAccount).filter(
-                UtilityAccount.id == utility_account_id).one()
+                UtilityAccount.id == source_account_id).one()
         except NoResultFound:
             raise
+        reebill_customer = s.query(ReeBillCustomer).join(UtilityAccount).\
+            filter(ReeBillCustomer.utility_account == utility_account).one()
         # get a list of all utility accounts for the account that is being
         # merged into
         source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
             filter(ReeBillCustomer.utility_account_id == utility_account.id)\
             .all()
-        # list for storing reebills for all accounts that are getting merged
-        reebills_for_merged_accounts = []
-        for account_id in account_ids:
-            dest_accounts_reebills = s.query(ReeBill).join(ReeBillCustomer).\
-            filter(ReeBillCustomer.utility_account_id == account_id)\
+
+        dest_accounts_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id == dest_account_id)\
             .all()
-            reebills_for_merged_accounts.append(dest_accounts_reebills)
-        # filter out accounts with no reebills
-        accounts_with_reebills = [x for x in reebills_for_merged_accounts if len(x) > 0]
         # the source and destination accounts cannot all have reebills
-        if len(source_account_reebills) > 0 and len(accounts_with_reebills)>0:
+        if len(source_account_reebills) > 0 and len(dest_accounts_reebills)>0:
             raise MergeError('All accounts cannot have reebills')
-        for account_id in account_ids:
-            bills = s.query(UtilBill).filter(
-                UtilBill.utility_account_id == account_id).all()
-            for bill in bills:
-                bill.utility_account = utility_account
+        bills = s.query(UtilBill).filter(
+                UtilBill.utility_account_id == dest_account_id).all()
+        for bill in bills:
+            bill.utility_account = utility_account
+            s.query(UtilbillReebill).join(UtilBill).filter(
+                UtilbillReebill.utilbill == bill).all()
         # if source account has 0 reebills then move reebills from dest to source
         if len(source_account_reebills) == 0:
-            for account in accounts_with_reebills:
-                account[0].reebill_customer.utility_account = utility_account
-
+            # update the source utility account reebill_customer
+            dest_accounts_reebills[0].reebill_customer.utility_account = utility_account
+            # delete the source accout's reebill_customer
+            reebills = s.query(ReeBill).join(ReeBillCustomer).filter(
+                ReeBill.reebill_customer == reebill_customer).all()
+            utilbills = s.query(UtilBill).join(UtilityAccount).filter(
+                UtilBill.utility_account_id == dest_account_id).all()
+            assert len(reebills) == 0
+            assert len(utilbills) == 0
+            s.delete(reebill_customer)
         return utility_account
 
     def delete_utility_account(self, utility_account_id):
