@@ -16,17 +16,18 @@ from upgrade_scripts import alembic_upgrade, log
 def upgrade():
     alembic_upgrade('686dfe445fd')
 
-    s = Session()
     init_model()
+    s = Session()
 
     log.info('Updating reebill.utilbill_id')
-    # TODO: this sets reebill.utilbill_id to the same value in all rows. not
-    # sure what is wrong with it.
-    s.execute('''update reebill as r
-    set utilbill_id = utilbill_reebill.utilbill_id
-    from reebill
-    join utilbill_reebill on reebill.id = utilbill_reebill.reebill_id
-    join utilbill on utilbill_reebill.utilbill_id = utilbill.id''')
+    # this must be executed in raw SQL because the utilbill_reebill table
+    # object has been deleted
+    s.execute('''
+    update reebill r
+    set utilbill_id = a.utilbill_id
+    from
+    (select reebill_id, utilbill_id from utilbill_reebill) as a
+    where a.reebill_id = r.id''')
 
     # just to check that the above update worked
     log.info('Checking reebill.utilbill_id')
@@ -34,6 +35,7 @@ def upgrade():
 
     s.commit()
 
+    alembic_upgrade('1953b5abb480')
+
     # to do later:
-    # - set reebill.utilbill_id to not null
     # - drop the utilbill_reebill table
