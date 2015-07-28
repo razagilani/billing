@@ -691,6 +691,7 @@ class UtilbillProcessor(object):
                 UtilBill.utility_account_id == source_account_id).all()
             assert len(reebills) == 0
             assert len(utilbills) == 0
+            reebill_customer.utility_account = None
             s.delete(reebill_customer)
         return utility_account
 
