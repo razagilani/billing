@@ -46,7 +46,8 @@ def convert_wg_charges_std(text):
 
     def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
-        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
+        return Charge(rsi_binding, name=name, target_total=float(value),
+            type=ct, unit='therms')
     charges = []
     for names, type in charge_data:
         for charge_name in names:
@@ -154,7 +155,8 @@ def pep_old_convert_charges(text):
 
     def process_charge(name, value, ct):
         rsi_binding = charge_name_map.get(name, name.upper().replautce(' ', '_'))
-        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
+        return Charge(rsi_binding, name=name, target_total=float(value),
+            type=ct, unit='therms')
 
     charges = []
     charge_data = [(dist_charges_names, Charge.DISTRIBUTION), (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean, Charge.DISTRIBUTION)]
@@ -200,7 +202,8 @@ def pep_new_convert_charges(text):
         name = p[0]
         value = float(p[1])
         rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
-        return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
+        return Charge(rsi_binding, name=name, target_total=float(value),
+            type=ct, unit='kWh')
 
     charges = []
     for charge_text, charge_type in [(dist_text, Charge.DISTRIBUTION), (supply_text, Charge.SUPPLY)]:

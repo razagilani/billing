@@ -43,7 +43,13 @@ class UtilityAccountUnitTest(TestCase):
         self.ua.utilbills = [self.u1]
         self.assertEqual(self.u1, self.ua.get_last_bill())
 
+        # no bills, or bills without period_end date, causes exception
         self.ua.utilbills = []
+        with self.assertRaises(NoSuchBillException):
+            self.ua.get_last_bill()
+        self.ua.utilbills = [
+            UtilBill(self.ua, None, None, period_start=date(2000, 1, 3),
+                     period_end=None, processed=False)]
         with self.assertRaises(NoSuchBillException):
             self.ua.get_last_bill()
 
