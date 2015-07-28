@@ -423,7 +423,7 @@ class AccountsResourceTest(TestCase):
         self.assertEqual(len(account_2_reebills), 2)
         success, response = self.app.put(
             '/accounts/%s' % utility_account.id, data={
-                'accounts_deleted': [utility_account2.id],
+                'accounts_deleted': utility_account2.id,
                 'utility_account_id': utility_account.id
             }
         )
