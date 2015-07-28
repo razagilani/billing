@@ -16,7 +16,7 @@ from upgrade_scripts import alembic_upgrade, log
 def upgrade():
     alembic_upgrade('686dfe445fd')
 
-    init_model()
+    init_model(schema_revision='686dfe445fd')
     s = Session()
 
     log.info('Updating reebill.utilbill_id')
