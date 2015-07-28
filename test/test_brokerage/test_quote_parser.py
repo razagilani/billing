@@ -1,8 +1,7 @@
 from datetime import datetime
 from os.path import join
 from unittest import TestCase
-from brokerage.brokerage_model import RateClass, RateClassAlias, \
-    get_rate_class_from_alias
+from brokerage.brokerage_model import RateClass, RateClassAlias
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
     AEPMatrixParser
