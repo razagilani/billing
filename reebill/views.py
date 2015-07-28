@@ -30,8 +30,10 @@ def column_dict_utilbill(self):
                    else self.get_service().capitalize()),
                    ('total_charges', self.target_total),
                    ('computed_total', self.get_total_charges()),
-                   ('reebills', [ur.reebill.column_dict() for ur
-                                 in self._utilbill_reebills]),
+                   ('reebills', [{'sequence': r.sequence,
+                                  'version': r.version,
+                                  'issue_date': r.issue_date,
+                                  } for r in self.reebills]),
                    ('utility', self.utility.name),
                    ('utility_id', self.utility_id),
                    ('supplier', self.get_supplier_name()),

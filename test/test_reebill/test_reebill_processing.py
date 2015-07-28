@@ -1238,13 +1238,13 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.state_db.get_reebill(account, 2, version=0)
         self.assertEquals(1, Session().query(ReeBill).count())
         self.assertEquals([(1,)], Session().query(ReeBill.sequence).all())
-        self.assertEquals([utilbill], reebill.utilbills)
+        self.assertEquals(utilbill, reebill.utilbill)
 
         # issued reebill should not be deletable
         self.reebill_processor.issue(account, 1)
         self.assertEqual(1, reebill.issued)
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertEqual(utilbill, reebill.utilbill)
+        self.assertEqual(reebill, utilbill.reebills[0])
         self.assertRaises(IssuedBillError,
                           self.reebill_processor.delete_reebill, account, 1)
 
@@ -1260,8 +1260,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # original version should still be attached to utility bill
         # TODO this will have to change. see
         # https://www.pivotaltracker.com/story/show/31629749
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertEqual(utilbill, reebill.utilbill)
+        self.assertEqual(reebill, utilbill.reebills[0])
 
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for
