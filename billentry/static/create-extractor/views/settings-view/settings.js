@@ -1,18 +1,19 @@
 'use strict';
 
-angular.module('createExtractor.mainView', ['ngRoute'])
+angular.module('createExtractor.settingsView', ['ngRoute', 'dbService'])
 
-.config(['$routeProvider', function($routeProvider) {
-  $routeProvider.when('/', {
-    templateUrl: 'main-view/view.html',
-    controller: 'mainViewCtrl'
-  });
-}])
 
-.controller('mainViewCtrl', ['$scope', function($scope) {
+.controller('settingsViewCtrl', ['$scope', 'BillingDataOp', function($scope, BillingDataOp) {
 	setUpPDFFunctions($scope);
-	$scope.initPDFPanel();
-	$scope.getDocument();
+
+	//get utilbill by id
+	BillingDataOp.getUtilBill(24153)
+		.success(function(bill){
+			$scope.src = bill.pdf_url;
+			$scope.initPDFPanel();
+			$scope.getDocument();
+		});
+
 }]);
 
 /**
@@ -49,7 +50,7 @@ function setUpPDFFunctions($scope) {
 	    $scope.noSrcMessage = '<div style="position: absolute; top: 200px; width: 100%; text-align: center">No PDF selected</div>';
 
 	    //current pdf src is a test file, eventually will be URL from server.
-		$scope.src = "/create-extractor/test/utility_bill.pdf";
+		//$scope.src = "/create-extractor/test/utility_bill.pdf";
 		$scope.cache = true;
 		$scope.scale = 1.0;
 
@@ -121,7 +122,6 @@ function setUpPDFFunctions($scope) {
             var canvas = makePageLayer(
                 'canvas', page.pageNumber, viewport.width, viewport.height
             );
-            console.log(renderScale, viewport, canvas)
             $scope.canvasLayer.append(canvas);
 
             // This returns a Promise that fires when the page has rendered
@@ -149,7 +149,6 @@ function setUpPDFFunctions($scope) {
                     viewport: viewport,
                     isViewerInPresentationMode: false
                 });
-                console.log(viewport, textLayerSubDiv)
                 textLayer.setTextContent(content);
                 $scope.textLayerDiv.append(textLayerSubDiv);
             });
@@ -177,7 +176,7 @@ function setUpPDFFunctions($scope) {
 	* Loads the PDF document.
 	*/
 	$scope.getDocument = function(){
-		if($scope.src === ''){
+		if($scope.src === '' || $scope.src === undefined){
 			$scope.canvasLayer.innerHTML = $scope.noSrcMessage;
 			return;
 		}
@@ -209,8 +208,9 @@ function setUpPDFFunctions($scope) {
 			},
 			// on fail
 			function(message, exception){
-				console.log(message, exception);
-				if(message.lastIndexOf('Missing PDF', 0) === 0){
+				console.log(message);
+				console.log(exception);
+				if(message.message.lastIndexOf('Missing PDF', 0) === 0){
 					$scope.canvasLayer.innerHTML = $scope.pdfNotFoundMessage;
 				}
 			}

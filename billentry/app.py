@@ -40,7 +40,8 @@ from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier, UtilBillApplier
-from core.extraction.task import test_bill, reduce_bill_results
+from core.extraction.task import test_bill, reduce_bill_results, \
+    _create_bill_file_handler
 from core.model import Session, Utility
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
@@ -331,6 +332,17 @@ def stop_task(task_id):
 @app.route('/create-extractor/')
 def create_extractor():
     return app.send_static_file('create-extractor/index.html')
+
+@app.route('/get-utilbill/<bill_id>', methods=['GET'])
+def get_utilbill(bill_id):
+    s = Session()
+    q = s.query(UtilBill).filter(UtilBill.id == bill_id)
+    bill = q.one()
+    return jsonify({
+        'id': bill.id,
+        'utility_id': bill.utility_id,
+        'pdf_url': _create_bill_file_handler().get_url(bill)
+    })
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
