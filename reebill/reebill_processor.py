@@ -199,7 +199,7 @@ class ReebillProcessor(object):
             new_sequence = last_reebill.sequence + 1
         new_utilbill = session.query(UtilBill).filter(
             UtilBill.utility_account == customer.utility_account).filter(
-            not_(UtilBill._utilbill_reebills.any())).filter(
+            not_(UtilBill.reebills.any())).filter(
             UtilBill.period_start >= start_date).order_by(
             UtilBill.period_start).first()
         if new_utilbill is None:
@@ -252,8 +252,6 @@ class ReebillProcessor(object):
 
         old_reebill = self.state_db.get_reebill(account, sequence)
         reebill = old_reebill.make_correction()
-
-        assert len(reebill.utilbills) == 1
 
         self.ree_getter.update_renewable_readings(reebill)
         try:
