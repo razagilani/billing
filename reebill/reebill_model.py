@@ -67,7 +67,10 @@ class ReeBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='ReeBill.service_address_id==Address.id')
 
-    utilbill = relationship('UtilBill')
+    # UtilBill.reebills attribute is created for showing the column of
+    # reebill numbers in the ReeBill utility bills grid, but ideally it
+    # should not exist
+    utilbill = relationship('UtilBill', backref='reebills')
 
     # see the following documentation for delete cascade behavior
     charges = relationship('ReeBillCharge', backref='reebill',
@@ -110,18 +113,7 @@ class ReeBill(Base):
         self.billing_address = billing_address or Address()
         self.service_address = service_address or Address()
 
-        # supposedly, SQLAlchemy sends queries to the database whenever an
-        # association_proxy attribute is accessed, meaning that if
-        # 'utilbills' is set before the other attributes above, SQLAlchemy
-        # will try to insert the new row too soon, and fail because many
-        # fields are still null but the columns are defined as not-null. this
-        # can be fixed by setting 'utilbills' last, but there may be a better
-        # solution. see related bug:
-        # https://www.pivotaltracker.com/story/show/65502556
-        if utilbill is None:
-            self.utilbills = []
-        else:
-            self.utilbills = [utilbill]
+        self.utilbill = utilbill
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s>' % (
@@ -195,9 +187,8 @@ class ReeBill(Base):
         for r in self.readings:
             session.delete(r)
 
-        utilbill_register_bindings = list(chain.from_iterable(
-                (r.register_binding for r in u._registers)
-                for u in self.utilbills))
+        utilbill_register_bindings = [r.register_binding for r in
+                                      self.utilbill._registers]
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
@@ -398,7 +389,7 @@ class ReeBill(Base):
             'service_address': address_to_dict(self.service_address),
             'period_start': period_start,
             'period_end': period_end,
-            'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
+            'utilbill_total': self.utilbill.get_total_charges(),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'estimated': self.is_estimated(),
