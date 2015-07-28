@@ -175,6 +175,7 @@ Ext.define('ReeBill.controller.Accounts', {
                                'sa_postal_code': record.get('sa_postal_code')
                                });
         accountEditWindow.show();
+        
     },
 
     /**
