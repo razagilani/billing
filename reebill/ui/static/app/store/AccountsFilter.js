@@ -11,14 +11,14 @@ Ext.define('ReeBill.store.AccountsFilter', {
         label: 'All ReeBill Customers',
         filter: Ext.create('Ext.util.Filter', {
             filterFn: function (item) {
-                return parseInt(item.get('account')) < 20000;},
+                return item.get('reebill_customer');},
             root: 'data'}),
         value: 'reebillcustomers'
     },{
         label: 'All P&G Customers',
         filter: Ext.create('Ext.util.Filter', {
             filterFn: function(item){
-                return parseInt(item.get('account')) >= 20000;},
+                return item.get('brokerage_account');},
             root: 'data'}),
         value: 'brokeragecustomers'
     }]
