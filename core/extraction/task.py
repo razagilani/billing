@@ -60,14 +60,24 @@ class DBTask(celery.Task):
         Session.close()
 
 
-@celery.task
-def extract_bill(utilbill_id):
+@celery.task(bind=True, base=DBTask)
+def extract_bill(self, utilbill_id):
     """Extract a bill.
     :param utilbill_id: primary key of UtilBill to extract.
     """
     # TODO: the same Main object could be shared by all tasks
+
+    from core.model import Session
+    if Session.bind is None:
+        del Session
+        init_model()
+        from core.model import Session
+    s = Session()
+
+    bill = s.query(UtilBill).filter(UtilBill.id == utilbill_id).one()
     main = _create_main()
-    main.extract(utilbill_id)
+    main.extract(bill)
+    s.flush()
 
 
 @celery.task(bind=True, base=DBTask)
