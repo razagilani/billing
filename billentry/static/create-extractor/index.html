@@ -17,8 +17,8 @@
   <div id="header">
     <ul class="navbar">
       <li style="padding-left:10px;">Create Extractor: </li>
-      <li><a>Settings</a></li>
-      <li><a>Test</a></li>
+      <li><a href="#/settings">Settings</a></li>
+      <li><a href="#/test">Test</a></li>
     </ul>
   </div>
   <!-- <hr> -->
@@ -29,12 +29,15 @@
   -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script src="/angular/bower_components/angular/angular.js"></script>
+  <script src="/angular/bower_components/angular-resource/angular-resource.js"></script>
   <script src="/angular/bower_components/angular-route/angular-route.js"></script>
   <!-- for pdf.js -->
   <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script>
   <script src="/angular/pdfjs-textlayer/TextLayerBuilder.js"></script>
   <!-- actual app code -->
   <script src="app.js"></script>
-  <script src="main-view/view.js"></script>
+  <script src="db-service.js"></script>
+  <script src="views/settings-view/settings.js"></script>
+  <script src="views/extractor-test-view/extractor-test.js"></script>
 </body>
 </html>
