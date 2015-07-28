@@ -282,6 +282,8 @@ class Extractor(model.Base):
             lambda (applier_key, _): applier.get_keys().index(applier_key)))
 
         for applier_key, value in good:
+            if applier_key == Applier.CHARGES:
+                continue
             try:
                 applier.apply(applier_key, value, utilbill)
             except ApplicationError as error:
