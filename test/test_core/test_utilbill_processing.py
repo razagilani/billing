@@ -24,8 +24,9 @@ from core import init_model
 from reebill.views import column_dict
 from test import create_tables, clear_db
 from exc import DuplicateFileError, UnEditableBillError, BillingError
-from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
+from core.model import UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
+from core.model.utilbill import UtilBill, Charge
 from core.model import Session
 from test import testing_utils
 from test.setup_teardown import create_utilbill_processor, \

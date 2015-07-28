@@ -8,16 +8,13 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 from sqlalchemy.orm import joinedload
-from core import init_model, init_altitude_db
 from core.model import Session, UtilBill
 from reebill.reebill_model import ReeBill
 from upgrade_scripts import alembic_upgrade, log
 
-
 def upgrade():
-    alembic_upgrade('1eca0edc1fb7')
+    alembic_upgrade('686dfe445fd')
 
-    init_model()
     s = Session()
 
     log.info('Updating reebill.utilbill_id')
