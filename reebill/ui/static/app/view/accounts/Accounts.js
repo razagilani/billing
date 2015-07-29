@@ -9,7 +9,12 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
             clicksToEdit: 2
-        })
+        }),
+        {
+            ptype: 'bufferedrenderer',
+            trailingBufferZone: 20,  // Keep 20 rows rendered in the table behind scroll
+            leadingBufferZone: 50   // Keep 50 rows rendered in the table ahead of scroll
+        }
     ],
     
     viewConfig: {
