@@ -201,7 +201,8 @@ def _recreate_main_db():
     # Postgres requires you to connect to a different database while dropping
     # the current database. the "template1" database is always guaranteed to
     # exist.
-    command = DB_SHELL_COMMAND % dict(db_params, db=TEMP_DB_NAME)
+    command = DB_SHELL_COMMAND % dict(
+        db_params, db=TEMP_DB_NAME, username=config.get('db', 'superuser_name'))
     stdin, _, check_exit_status = run_command(command)
     stdin.write(
         'drop database if exists %(db)s; create database %(db)s' % db_params)
