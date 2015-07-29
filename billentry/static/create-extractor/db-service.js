@@ -17,8 +17,8 @@ factory('DBService', ['$http',
     DBService.getFieldTypes = function(){
       return $http.get('/get-field-types');
     };
-    DBService.getFieldDataTypes = function(){
-      return $http.get('/get-field-data-types');
+    DBService.getDataTypes = function(){
+      return $http.get('/get-data-types');
     };
 
     return DBService;

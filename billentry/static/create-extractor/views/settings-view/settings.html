@@ -26,17 +26,27 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="field in extractor.fields" ng-class="field.enabled ? 'enabled' : 'disabled'">
-					<td>{{ field.applier_key | capitalize }}</td>
+				<tr ng-repeat="field in extractor.fields" 
+					ng-class="{'disabled': !field.enabled, 'selected': selected.applier_key == field.applier_key}">
+
+					<td ng-click="selectField(field)"> {{ field.applier_key | capitalize }} </td>
 					<td> 
-						<select ng-model="field.field_type" ng-values="ftype.mapper_id for ftype in field_types" ng-options="ftype.name | capitalize for ftype in field_types">
+						<select ng-model="field.field_type" 
+								ng-values="ftype.mapper_id for ftype in field_types" 
+								ng-options="ftype.name | capitalize for ftype in field_types"
+								ng-disabled="!field.enabled">
 						</select>
 					</td>
 					<td>
-						<select ng-model="field.data_type" ng-values="dt for dt in data_types" ng-options="dt for dt in data_types">
+						<select ng-model="field.data_type" 
+								ng-values="dt for dt in data_types" 
+								ng-options="dt | capitalize for dt in data_types"
+								ng-disabled="!field.enabled">
 						</select>
 					</td>
-					<td>+</td>
+					<td>
+						<div class="addbutton" ng-click="enableField(field)"> {{ field.enabled ? "–" : "+" }} </div>
+					</td>
 				</tr>
 			</tbody>
 		</table>
@@ -44,17 +54,17 @@
 	<hr class="divider">
 
 	<!-- Settings for individual fields -->
-	<div class="field-settings">
-		<h3> &lt; Selected Field &gt; : </h3>
+	<div class="field-settings" ng-show="selected">
+		<h3> {{ selected.applier_key }} </h3>
 
 		<b> Page Number </b>
-		<select style="margin-left:10px;" type="text">
-			<option>1</option>
+		<select style="margin-left:10px;" ng-model="selected.page_number" ng-options="" ng-values="">
+			<!-- <option>1</option>
 			<option>2</option>
-			<option>3</option>
+			<option>3</option> -->
 		</select>
 		<span style="margin-left:10px;">to</span> 
-		<select style="margin-left:10px;" type="text">
+		<select style="margin-left:10px;" >
 			<option>1</option>
 			<option>2</option>
 			<option>3</option>
@@ -80,6 +90,6 @@
 
 		<b> Regular Expression </b>
 		<input style="margin-left:10px;" type="text"></input>
+		<hr class="divider">
 	</div>
-	<hr class="divider">
 </div>

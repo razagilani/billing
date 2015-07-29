@@ -22,32 +22,32 @@ factory('dataModel', ['DBService', function(DBService){
 	var initDataModel = function(){
 		// if data model has already been initialized, return
 		if (! $.isEmptyObject(_extractor)){
-			return;
+			return ;
 		} 
 
 		//Get applier keys
 		var applier_keys_promise = DBService.getApplierKeys()
 			.success(function(responseObj){
-				_applier_keys = responseObj.applier_keys;
+				Array.prototype.push.apply(_applier_keys, responseObj.applier_keys);
 		});
 
 		//Get field types
 		var field_types_promise = DBService.getFieldTypes()
 			.success(function(responseObj){
-				_field_types = responseObj.field_types;
+				Array.prototype.push.apply(_field_types, responseObj.field_types);
 		});
 
 		//Get field data types
-		var data_types_promise = DBService.getFieldDataTypes()
+		var data_types_promise = DBService.getDataTypes()
 			.success(function(responseObj){
-				_data_types = responseObj.field_data_types;
+				Array.prototype.push.apply(_data_types, responseObj.data_types);
 		});
 
 		// execute the above requests asynchronously, and then create a new extractor
 		var promises = [applier_keys_promise, field_types_promise, data_types_promise];
-		return Promise.all(promises).then(function(){
+		Promise.all(promises).then(function(){
 			newExtractor();
-		})
+		});
 	};
 
 

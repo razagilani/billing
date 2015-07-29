@@ -4,22 +4,32 @@ angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model']
 
 
 .controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
-	dataModel.initDataModel().then(function(){
-		$scope.extractor = dataModel.extractor();
-		$scope.applier_keys = dataModel.applier_keys();
-		$scope.field_types = dataModel.field_types();
-		$scope.data_types = dataModel.data_types();
+	// initialize data model
+	dataModel.initDataModel();
+	$scope.extractor = dataModel.extractor();
+	$scope.applier_keys = dataModel.applier_keys();
+	$scope.field_types = dataModel.field_types();
+	$scope.data_types = dataModel.data_types();
 
-	});
-
+	//set up pdf viewer
 	setUpPDFFunctions($scope);
-	//Get utilbill by id
 	DBService.getUtilBill(24153)
 		.success(function(bill){
 			$scope.src = bill.pdf_url;
 			$scope.initPDFPanel();
 			$scope.getDocument();
 	});
+
+	$scope.selected = null;
+	$scope.selectField = function(field){
+		if (!field.enabled){
+			$scope.enableField(field);
+		}
+		$scope.selected = field;
+	}
+	$scope.enableField = function(field){
+		field.enabled = !field.enabled;
+	}
 
 }]);
 
@@ -223,4 +233,8 @@ function setUpPDFFunctions($scope) {
 			}
 		);
 	};
+
+	$scope.getNumPDFPages = function(){
+		return $("div.pdf-canvas-layer canvas").length;
+	}
 }
