@@ -5,8 +5,9 @@ from sqlalchemy import func, and_
 from sqlalchemy.sql.expression import desc
 
 from exc import IssuedBillError
-from core.model import Address, Session, UtilBill, UtilityAccount
-from reebill.reebill_model import ReeBill, UtilbillReebill
+from core.model import Address, Session, UtilityAccount
+from core.model.utilbill import UtilBill
+from reebill.reebill_model import ReeBill
 from reebill.reebill_model import ReeBillCustomer
 
 
@@ -150,8 +151,7 @@ class ReeBillDAO(object):
                 ReeBill.sequence == max_versions.c.sequence,
                 ReeBill.version == max_versions.c.version))
         if start_date is not None:
-            q = q.join(UtilbillReebill).join(UtilBill).filter(
-                UtilBill.period_start >= start_date)
+            q = q.join(UtilBill).filter(UtilBill.period_start >= start_date)
         return q.order_by(
                 ReeBill.reebill_customer_id, ReeBill.sequence).all()
 

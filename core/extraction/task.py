@@ -6,7 +6,8 @@ from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
 from core.extraction import Main, Extractor, ExtractorResult, Applier
-from core.model import Session, UtilBill
+from core.model import Session
+from core.model.utilbill import UtilBill
 from core.utilbill_loader import UtilBillLoader
 from core import init_config, init_celery, init_model
 
@@ -122,8 +123,8 @@ def test_bill(self, extractor_id, bill_id):
     # Store field values for each successful result
     # Note: 'good' is of type [(field, value), ...]
     bill_end_date = None
-    good, error = extractor._get_values(bill, bill_file_handler)
-    for applier_key, value in good:
+    good, error = extractor.get_values(bill, bill_file_handler)
+    for applier_key, value in good.iteritems():
         response['fields'][applier_key] = value
         if applier_key == Applier.END:
             bill_end_date = value
