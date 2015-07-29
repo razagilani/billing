@@ -189,6 +189,9 @@ class Field(model.Base):
             try:
                 value = type_convert_func(value_str)
             except Exception as e:
+                # don't clutter log files with huge strings
+                if len(value_str) > 20:
+                    value_str = value_str[:20] + '...'
                 raise ConversionError(
                     "Couldn't convert \"%s\" using function %s for type "
                     "\"%s\": %s" % (
