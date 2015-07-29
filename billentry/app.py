@@ -362,9 +362,9 @@ def get_field_types():
             },]
     })
 
-@app.route('/get-field-data-types', methods=['GET'])
+@app.route('/get-data-types', methods=['GET'])
 def get_field_data_types():
-    return jsonify({ 'field_data_types': Field.TYPES.keys() })
+    return jsonify({ 'data_types': Field.TYPES.keys() })
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
