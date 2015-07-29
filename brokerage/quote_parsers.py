@@ -279,8 +279,8 @@ class QuoteParser(object):
         """
         assert self._reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
-            _assert_equal(self.EXPECTED_SHEET_TITLES,
-                          self._reader.get_sheet_titles())
+            _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
+                    set(self._reader.get_sheet_titles())))
         for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
             text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
@@ -634,4 +634,71 @@ class AEPMatrixParser(QuoteParser):
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
                             rate_class_alias=alias, price=price)
+
+
+class ChampionMatrixParser(QuoteParser):
+    """ Parser for Champion Matrix Rates
+    """
+
+    FILE_FORMAT = formats.xls
+
+    HEADER_ROW = 13
+    VOLUME_RANGE_COL = 14
+    QUOTE_START_ROW = 14
+    RATE_CLASS_COL = 'F'
+    EDC_COL = 'E'
+    TERM_START_COL = 'I'
+    TERM_END_COL = 'K'
+    PRICE_START_COL = 'I'
+    PRICE_END_COL = 'K'
+    STATE_COL = 'D'
+    START_DATE_COL = 'C'
+
+    EXPECTED_SHEET_TITLES = [
+        'Matrix',
+        'PA',
+        'OH',
+        'IL',
+        'NJ',
+        'MD'
+    ]
+    SHEET = 'PA'
+    DATE_CELL = (SHEET, 8, 'C', None)
+
+    def _extract_volume_range(self, row, col):
+        regex = r'(\d+)-(\d+) MWh'
+        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
+                                             (int, int))
+        if low % 10 == 1:
+            low -= 1
+        return low, high
+
+    def _extract_quotes(self):
+        for row in xrange(self.QUOTE_START_ROW,
+                          self._reader.get_height(self.SHEET)):
+            state = self._reader.get(self.SHEET, row, self.STATE_COL,
+                                     basestring)
+            rate_class = self._reader.get(self.SHEET, row,
+                                          self.RATE_CLASS_COL,basestring)
+
+            start_date = self._reader.get(self.SHEET, row,
+                                          self.START_DATE_COL,date)
+
+            min_volume, limit_volume = self._extract_volume_range(row,
+                                                                  self.VOLUME_RANGE_COL)
+
+            # blank line means end of sheet
+            if state == '':
+                continue
+
+
+
+
+
+
+
+
+
+
+
 
