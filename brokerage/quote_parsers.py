@@ -525,6 +525,10 @@ class USGEMatrixParser(QuoteParser):
                             (Month(start_from) + 1).first)
                         price = self._reader.get(sheet, row, i,
                                                  (float, type(None)))
+                        # some cells are blank
+                        # TODO: test spreadsheet does not include this
+                        if price is None:
+                            continue
 
                         quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
