@@ -78,7 +78,7 @@ factory('dataModel', ['DBService', function(DBService){
 	var getNewField = function(applier_key){
 		var new_field = {
 			applier_key: applier_key,
-			field_type: _field_types[0].mapper_id,
+			field_type: _field_types[0],
 			data_type: _data_types[0],
 			enabled: false,
 
