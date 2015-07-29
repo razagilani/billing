@@ -26,15 +26,14 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="field in extractor.fields">
+				<tr ng-repeat="field in extractor.fields" ng-class="field.enabled ? 'enabled' : 'disabled'">
 					<td>{{ field.applier_key | capitalize }}</td>
 					<td> 
 						<select ng-model="field.field_type" ng-values="ftype.mapper_id for ftype in field_types" ng-options="ftype.name | capitalize for ftype in field_types">
 						</select>
 					</td>
 					<td>
-						<select>
-							<option ng-repeat="type in data_types | orderBy:'value'"> {{ type | capitalize }} </option>
+						<select ng-model="field.data_type" ng-values="dt for dt in data_types" ng-options="dt for dt in data_types">
 						</select>
 					</td>
 					<td>+</td>
