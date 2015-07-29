@@ -56,6 +56,8 @@ class MatrixQuoteTest(TestCase):
         pass
 
 class TestLoadRateClassAliases(TestCase):
+
+    @classmethod
     def setUpClass(cls):
         init_test_config()
         init_altitude_db()
