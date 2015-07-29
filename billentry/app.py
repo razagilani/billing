@@ -38,7 +38,7 @@ from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
-from core.extraction import Extractor, ExtractorResult
+from core.extraction import Extractor, ExtractorResult, Field
 from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.task import test_bill, reduce_bill_results, \
     _create_bill_file_handler
@@ -343,6 +343,28 @@ def get_utilbill(bill_id):
         'utility_id': bill.utility_id,
         'pdf_url': _create_bill_file_handler().get_url(bill)
     })
+
+@app.route('/get-applier-keys', methods=['GET'])
+def get_applier_keys():
+    return jsonify({ 'applier_keys': UtilBillApplier.KEYS.keys() })
+
+@app.route('/get-field-types', methods=['GET'])
+def get_field_types():
+    return jsonify({
+        'field_types': [
+            {
+                'name': "Bounding Box Field",
+                'mapper_id': 'boundingboxfield',
+            },
+            {
+                'name': "Table Field",
+                'mapper_id': 'tablefield',
+            },]
+    })
+
+@app.route('/get-field-data-types', methods=['GET'])
+def get_field_data_types():
+    return jsonify({ 'field_data_types': Field.TYPES.keys() })
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}

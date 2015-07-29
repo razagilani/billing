@@ -3,10 +3,13 @@
 // Declare app level module which depends on views, and components
 angular.module('createExtractor', [
   'ngRoute',
+  'model',
+  'DBService',
   'createExtractor.settingsView',
-  'createExtractor.extractorTestView',
+  'createExtractor.extractorTestView'
 ]).
-// add main view to app. mainView corresponds to the extractor settings and the PDF viewer.
+
+// add views to app.
 config(['$routeProvider', function($routeProvider) {
   $routeProvider.
   	when('/settings', {
@@ -22,4 +25,11 @@ config(['$routeProvider', function($routeProvider) {
   		controller: 'extractorTestViewCtrl'
   	}).
   	otherwise({redirectTo: '/settings'});
-}]);
+}]).
+
+// capitalizes first letter of string
+filter('capitalize', function() {
+    return function(input) {
+      return input.charAt(0).toUpperCase() + input.substr(1).toLowerCase();
+    }
+});

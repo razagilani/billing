@@ -26,25 +26,18 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr>
-					<td>Start</td>
+				<tr ng-repeat="field in extractor.fields">
+					<td>{{ field.applier_key | capitalize }}</td>
 					<td> 
-						<select>
-							<option>Bounding Box Field</option>
-							<option>Table Field</option>
+						<select ng-model="field.field_type" ng-values="ftype.mapper_id for ftype in field_types" ng-options="ftype.name | capitalize for ftype in field_types">
 						</select>
 					</td>
 					<td>
 						<select>
-							<option>String</option>
-							<option>Date</option>
-							<option>... (etc) ...</option>
+							<option ng-repeat="type in data_types | orderBy:'value'"> {{ type | capitalize }} </option>
 						</select>
 					</td>
 					<td>+</td>
-				</tr>
-				<tr>
-					<td> ... </td>
 				</tr>
 			</tbody>
 		</table>

@@ -1,25 +1,25 @@
 'use strict';
 
-/* Services */
+var dbServiceModule = angular.module('DBService', ['ngResource']).
 
-var dbService = angular.module('dbService', ['ngResource']);
-
-dbService.factory('BillingDataOp', ['$http',
+// add service for getting data from server/DB
+factory('DBService', ['$http',
   function($http){
-    var BillingDataOp = {};
+    var DBService = {};
 
-    BillingDataOp.getUtilBill = function(id){
-    	return $http.get('/get-utilbill/'+id);
-    }
-    BillingDataOp.getApplierKeys = function(){
-    	return $http.get('/get-applier-keys');
-    }
-    BillingDataOp.getFieldTypes = function(){
-    	return $http.get('/get-field-types');
-    }
-    BillingDataOp.getFieldDataTypes = function(){
-    	return $http.get('/get-field-data-types');
-    }
+    // Each of these functions return a promise that executes the request.
+    DBService.getUtilBill = function(id){
+      return $http.get('/get-utilbill/'+id);
+    };
+    DBService.getApplierKeys = function(){
+      return $http.get('/get-applier-keys');
+    };
+    DBService.getFieldTypes = function(){
+      return $http.get('/get-field-types');
+    };
+    DBService.getFieldDataTypes = function(){
+      return $http.get('/get-field-data-types');
+    };
 
-    return BillingDataOp;
-  }]);
+    return DBService;
+}]);
