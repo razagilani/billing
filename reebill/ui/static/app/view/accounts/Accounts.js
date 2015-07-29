@@ -105,6 +105,12 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         },
         items: [{
             xtype: 'button',
+            itemId: 'createNewAccount',
+            action: 'createAccount',
+            text: 'New',
+            iconCls: 'silk-add'
+        },{
+            xtype: 'button',
             itemId: 'editAccountRecord',
             action: 'editRecord',
             text: 'Edit',
