@@ -93,7 +93,7 @@
   "Conditions":{
     "CreateNexusWebIngressRules" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "NexusWebSecurityGroup"}, ""]}]},
     "CreateOlapIngressRules" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "OlapSecurityGroup"}, ""]}]},
-    "CreateWorkerInstances" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "WorkerInstanceType"}, "None"]}]},
+    "CreateWorkerInstances" : {"Fn::Not" : [{"Fn::Equals" : [{"Ref" : "WorkerInstanceType"}, "None"]}]}
   },
   "Mappings" : {
     "AWSInstanceType2Arch" : {
