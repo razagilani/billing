@@ -1,18 +1,25 @@
 'use strict';
 
-angular.module('createExtractor.settingsView', ['ngRoute', 'dbService'])
+angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model'])
 
 
-.controller('settingsViewCtrl', ['$scope', 'BillingDataOp', function($scope, BillingDataOp) {
+.controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
+	dataModel.initDataModel().then(function(){
+		$scope.extractor = dataModel.extractor();
+		$scope.applier_keys = dataModel.applier_keys();
+		$scope.field_types = dataModel.field_types();
+		$scope.data_types = dataModel.data_types();
+
+	});
+
 	setUpPDFFunctions($scope);
-
-	//get utilbill by id
-	BillingDataOp.getUtilBill(24153)
+	//Get utilbill by id
+	DBService.getUtilBill(24153)
 		.success(function(bill){
 			$scope.src = bill.pdf_url;
 			$scope.initPDFPanel();
 			$scope.getDocument();
-		});
+	});
 
 }]);
 
