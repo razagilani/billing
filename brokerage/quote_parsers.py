@@ -283,8 +283,8 @@ class QuoteParser(object):
         """
         assert self._reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
-            _assert_equal(self.EXPECTED_SHEET_TITLES,
-                          self._reader.get_sheet_titles())
+            _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
+                    set(self._reader.get_sheet_titles())))
         for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
             text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
@@ -547,7 +547,7 @@ class AEPMatrixParser(QuoteParser):
     EXPECTED_SHEET_TITLES = [
         'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
         'Matrix Table-Energy Only', 'PLC Load Factor Calculator', 'A1-1',
-        'A1-2', 'Base', 'Base Energy Only', 'RateReady']
+        'A1-2', 'Base', 'Base Energy Only']
 
     # FPAI is "Fixed-Price All-In"; we're ignoring the "Energy Only" quotes
     SHEET = 'Matrix Table-FPAI'
