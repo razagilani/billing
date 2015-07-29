@@ -28,6 +28,9 @@ Ext.define('ReeBill.controller.Accounts', {
     },{
         ref: 'editBtn',
         selector: 'button#editAccountRecord'
+    },{
+        ref: 'newAccountBtn',
+        selector: 'button#createNewAccount'
     }],
     
     init: function() {
@@ -56,6 +59,9 @@ Ext.define('ReeBill.controller.Accounts', {
             },
             'button[action=editRecord]': {
                 click: this.handleEdit
+            },
+            'button[action=createAccount]': {
+                click: this.handleCreateAccount
             }
         });
 
@@ -144,12 +150,25 @@ Ext.define('ReeBill.controller.Accounts', {
     },
 
     /**
+     * Handle Create Account button
+     */
+    handleCreateAccount: function(){
+        var createAccountWindow = Ext.create('Ext.window.Window', {
+            title: 'Accounts',
+            closeAction: 'destroy',
+            id: 'createAccountWindow',
+            items: {xtype: 'accountForm',
+                    id: 'accountForm'}
+        }).show();
+    },
+
+    /**
      * Handle Account Edit button
      */
     handleEdit: function(){
         var record = this.getAccountsGrid().getSelectionModel().getSelection()[0];
         var accountEditWindow = Ext.create('Ext.window.Window', {
-            title: 'Edit Account',
+            title: 'Accounts',
             closeAction: 'destroy',
             id: 'editAccountWindow',
             items: {xtype: 'accountEditForm',
