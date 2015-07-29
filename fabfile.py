@@ -4,6 +4,7 @@ import deploy.fab_common as common
 from fabric.api import task as fabtask
 from fabric.api import env
 from fabric.api import execute
+import getpass
 import fabric.operations as fabops
 import os
 
@@ -195,11 +196,15 @@ class CreatePgpassFile(common.CommonFabTask):
         params = get_db_params()
         params.setdefault('port', '*')
 
+        print("Enter Postgres Superuser password:")
+        superuser_pass = getpass.getpass()
+
         path = os.path.join('/home',env_cfg['os_user'], '.pgpass')
         params['path'] = path
+        params['superuserpass'] = superuser_pass
 
-        print params
         fabops.sudo("echo %(host)s:%(port)s:*:%(user)s:%(password)s > %(path)s" % params, user=env_cfg["os_user"])
+        fabops.sudo("echo %(host)s:%(port)s:*:%(superuser_name):%(superuserpass)s >> %(path)s" % params, user=env_cfg["os_user"])
         fabops.sudo("chmod 600 %(path)s" % params, user=env_cfg["os_user"])
 
         return super(CreatePgpassFile, self).run(self.func, *args, **kwargs)
