@@ -76,4 +76,5 @@ class TestLoadRateClassAliases(TestCase):
         ])
 
     def test_load_rate_class_aliases(self):
+        # TODO: this is not a test
         print load_rate_class_aliases()
