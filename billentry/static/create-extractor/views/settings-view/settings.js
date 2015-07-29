@@ -20,6 +20,27 @@ angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model']
 			$scope.getDocument();
 	});
 
+	// initialize values for bounding box corners 
+	$scope.corners = [
+		{name: "Top Left", value: 0},
+		{name: "Top Right", value: 1},
+		{name: "Bottom Left", value: 2},
+		{name: "Bottom Right", value: 3}];
+
+	/**
+	* Create an array of page numbers for the current PDF document. 
+	 * 'withNull' specifies whether to provide a 'null' option for the page number.
+	*/
+	$scope.getPDFPageNums = function(withNull){
+		var pdfPageNums = withNull ? [null] : [];
+		if($scope.pdfDoc){
+			for(var i = 1; i <= $scope.pdfDoc.numPages; i++){
+				pdfPageNums.push(i);	
+			}
+		}
+		return pdfPageNums;
+	}
+
 	$scope.selected = null;
 	$scope.selectField = function(field){
 		if (!field.enabled){
@@ -30,7 +51,6 @@ angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model']
 	$scope.enableField = function(field){
 		field.enabled = !field.enabled;
 	}
-
 }]);
 
 /**
@@ -193,6 +213,7 @@ function setUpPDFFunctions($scope) {
 	* Loads the PDF document.
 	*/
 	$scope.getDocument = function(){
+
 		if($scope.src === '' || $scope.src === undefined){
 			$scope.canvasLayer.innerHTML = $scope.noSrcMessage;
 			return;
@@ -233,8 +254,4 @@ function setUpPDFFunctions($scope) {
 			}
 		);
 	};
-
-	$scope.getNumPDFPages = function(){
-		return $("div.pdf-canvas-layer canvas").length;
-	}
 }
