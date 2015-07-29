@@ -101,3 +101,8 @@ cron { export_pg_data:
     user => $username,
     minute => 0
 }
+cron { read_quote_files:
+    command => "source /home/reebill-prod/.bash_profile && python /var/local/reebill-prod/billing/bin/receive_matrix_files.py",
+    user => $username,
+    minute => '*/5'
+}
