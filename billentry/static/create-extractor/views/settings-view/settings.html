@@ -55,23 +55,24 @@
 
 	<!-- Settings for individual fields -->
 	<div class="field-settings" ng-show="selected">
-		<h3> {{ selected.applier_key }} </h3>
+		<h3> {{ selected.applier_key | capitalize }} </h3>
 
 		<b> Page Number </b>
-		<select style="margin-left:10px;" ng-model="selected.page_number" ng-options="" ng-values="">
-			<!-- <option>1</option>
-			<option>2</option>
-			<option>3</option> -->
+		<select style="margin-left:10px;" 
+				ng-model="selected.page_number" 
+				ng-options="pn for pn in getPDFPageNums(false)" 
+				ng-values="pn for pn in getPDFPageNums(false)">
 		</select>
 		<span style="margin-left:10px;">to</span> 
-		<select style="margin-left:10px;" >
-			<option>1</option>
-			<option>2</option>
-			<option>3</option>
+		<select style="margin-left:10px;" 
+				ng-model="selected.max_page" 
+				ng-options="pn | denullify for pn in getPDFPageNums(true)" 
+				ng-values="pn for pn in getPDFPageNums(true)">
 		</select>
 		<br><br>
+
 		<b> Offset Regex </b>
-		<input style="margin-left:10px;" type="text"></input>
+		<input style="margin-left:10px;" type="text" ng-model="selected.offset_regex"></input>
 		<br><br>
 
 		<b> Bounding Box </b>
@@ -80,16 +81,15 @@
 		<br><br>
 
 		<b> Corner <b>
-		<select style="margin-left:10px;" type="text">
-			<option>Top Left (0)</option>
-			<option>Top Right (1)</option>
-			<option>Bottom Left (2)</option>
-			<option>Bottom Right (3)</option>
+		<select style="margin-left:10px;"
+				ng-model="selected.corner"
+				ng-options="c.name for c in corners"
+				ng-values="c.value for c in corners">
 		</select>
 		<br><br>
 
 		<b> Regular Expression </b>
-		<input style="margin-left:10px;" type="text"></input>
+		<input style="margin-left:10px;" type="text" ng-model="selected.regex"></input>
 		<hr class="divider">
 	</div>
 </div>
