@@ -5,7 +5,7 @@ from brokerage.brokerage_model import RateClass, RateClassAlias, \
     get_rate_class_from_alias
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
-    AEPMatrixParser
+    AEPMatrixParser,ChampionMatrixParser
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 
@@ -23,6 +23,7 @@ class MatrixQuoteParsersTest(TestCase):
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
+    CHAMPION_FILE_PATH = join(DIRECTORY,'Matrix 4 Example - Champion.xls')
 
     def setUp(self):
         clear_db()
@@ -210,4 +211,17 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('GSLV ND', q1.rate_class_alias)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.09084478584241074, q1.price)
+
+    def test_Champion(self):
+        parser = ChampionMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.CHAMPION_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+
+
 
