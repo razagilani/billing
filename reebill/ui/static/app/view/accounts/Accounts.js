@@ -2,7 +2,7 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
     requires: [
         'ReeBill.store.AccountsFilter'],
-    title: 'Accounts Processing Status',
+    title: 'Accounts',
     alias: 'widget.accounts',   
     store: 'Accounts',
 
