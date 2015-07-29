@@ -259,8 +259,6 @@ class Extractor(model.Base):
         good, _ = self.get_values(utilbill, bill_file_handler)
         return len(good)
 
-            if applier_key == Applier.CHARGES:
-                continue
 
 class TextExtractor(Extractor):
     """Extracts data about a bill from plain text dump of a PDF file.
