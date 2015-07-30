@@ -1,15 +1,17 @@
 'use strict';
 
-angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model'])
+angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model']).
 
-
-.controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
+controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
 	// initialize data model
 	dataModel.initDataModel();
 	$scope.extractor = dataModel.extractor();
 	$scope.applier_keys = dataModel.applier_keys();
 	$scope.field_types = dataModel.field_types();
 	$scope.data_types = dataModel.data_types();
+
+	// canvas for drawing bounding boxes
+	$scope.bboxCanvas = angular.element("#bbox-drawing-canvas");
 
 	//set up pdf viewer
 	setUpPDFFunctions($scope);
@@ -42,16 +44,158 @@ angular.module('createExtractor.settingsView', ['ngRoute', 'DBService', 'model']
 	}
 
 	$scope.selected = null;
+	// select a field, so one can view/edit its parameters
 	$scope.selectField = function(field){
 		if (!field.enabled){
 			$scope.enableField(field);
+			$scope.selected = field;
+		} 
+		// clicking on an already selected field de-selects it unless it was disabled.
+		else {
+			if ($scope.selected == field){
+				$scope.selected = null;
+			} else {
+				$scope.selected = field;
+			}
 		}
-		$scope.selected = field;
 	}
+	// enable a field, so that it will be used in extraction
 	$scope.enableField = function(field){
 		field.enabled = !field.enabled;
+		$scope.drawBoundingBoxes();
 	}
-}]);
+
+	// allow the bounding box to be edited. 
+	// This is in place so that people don't undo bounding boxes by accidentally clicking, etc.
+	$scope.activateBoundingBox = function(){
+		if ($scope.bboxActive == undefined){
+			$scope.bboxActive = false;
+		}
+		$scope.bboxActive = !$scope.bboxActive;
+	}
+
+	/**
+	* Draws bounding boxes on the canvas. Bounding boxes are colored differently 
+	* if they are currently selected, enabled or disabled, etc. 
+	*/
+	$scope.drawBoundingBoxes = function(){
+		// clear previous rectangles
+		var ctx = $scope.bboxCanvas[0].getContext('2d');
+		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+		$scope.extractor.fields.forEach(function(elem){
+	  		if (elem.bounding_box == null || elem.bounding_box.x0 == null){
+	  			return;
+	  		}
+
+	  		var color;
+	  		if ($scope.selected && elem.applier_key == $scope.selected.applier_key){
+	  			color = "#FF0000";
+	  		}
+	  		else if (elem.enabled == false){
+	  			color = "#AAAAFF";
+	  		}
+	  		else {
+				color = "#000066";
+	  		}
+	  		drawBBOX(elem.bounding_box.x0, 
+	  				 elem.bounding_box.y0, 
+	  				 elem.bounding_box.x1, 
+	  				 elem.bounding_box.y1, 
+	  				 color);
+		});
+
+		// draw an individual bounding box
+    	function drawBBOX(x0, y0, x1, y1, color){
+			// start drawing
+			ctx.beginPath();
+			// set stroke color and thickness
+			ctx.strokeStyle = color;
+			ctx.lineWidth = 2;
+			// specify rectangle
+			ctx.rect(x0, y0, x1 - x0, y1 - y0);
+			// draw the rectangle
+			ctx.stroke();
+			// stop drawing
+			ctx.closePath()
+    	}
+  	}
+
+	// Update the canvas when fields are selected or enabled/disabled
+	$scope.$watch('selected', function(newValue, oldValue){
+		$scope.drawBoundingBoxes();
+	});
+}]).
+
+//directive for a canvas in which one can draw bounding boxes
+directive("bboxDrawing", function(){
+	return {
+	    restrict: "A",
+	    link: function(scope, element){
+			var startX;
+			var startY;
+			var currentX;
+			var currentY;
+
+			var drawing = true;
+
+			/**
+			* If drawing is activated, start drawing a rectangle on mouse down
+			*/
+			element.bind('mousedown', function(event){
+				if (scope.bboxActive){
+				    if(event.offsetX!==undefined){
+				    	startX = event.offsetX;
+				    	startY = event.offsetY;
+				    } else { // Firefox compatibility
+				    	startX = event.layerX - event.currentTarget.offsetLeft;
+				    	startY = event.layerY - event.currentTarget.offsetTop;
+				    }
+				    drawing = true;
+				}
+			});
+
+			/**
+			* While drawing, update the rectangle when the mouse moves
+			*/
+	    	element.bind('mousemove', function(event){
+	    		if(scope.bboxActive && drawing){
+					// get current mouse position
+					if(event.offsetX!==undefined){
+						currentX = event.offsetX;
+						currentY = event.offsetY;
+					} else {
+						currentX = event.layerX - event.currentTarget.offsetLeft;
+						currentY = event.layerY - event.currentTarget.offsetTop;
+					}
+
+					scope.selected.bounding_box.x0 = Math.min(startX, currentX);
+					scope.selected.bounding_box.y0 = Math.min(startY, currentY);
+					scope.selected.bounding_box.x1 = Math.max(startX, currentX);
+					scope.selected.bounding_box.y1 = Math.max(startY, currentY);
+
+					scope.drawBoundingBoxes();
+		        }
+
+	    	});
+
+
+			/**
+			* When the user lets go the mouse, deactivate drawing to prevent accidental editing.
+			*/
+			element.bind('mouseup', function(event){
+				// stop drawing, deactive bounding box
+				drawing = false;
+				scope.bboxActive = false;
+				scope.$apply();
+			});
+
+			// canvas reset
+			function reset(){
+				element[0].width = element[0].width; 
+			}
+	    }
+	};
+});
 
 /**
 * Sets up functions for manipulating the PDF viewer, and adds those functions to $scope. 
@@ -191,6 +335,16 @@ function setUpPDFFunctions($scope) {
             });
         };
 
+
+        /**
+        *  Set up bbox drawing canvas size to match PDF canvas's size
+		*  (this can't be done in css, since the canvas becomes 'zoomed in')
+		*/
+        var initBboxDrawingCanvas = function(){
+			$scope.bboxCanvas.attr("width", $scope.canvasLayer.width());
+			$scope.bboxCanvas.attr("height", $scope.canvasLayer.height());
+        }
+
         var execForAllPages = function(func){
             // Retrieves all pages and executes a func on them
             // Returns an Array of func's return value
@@ -204,9 +358,9 @@ function setUpPDFFunctions($scope) {
         };
 
         $scope.resetLayers();
-        Promise.all(execForAllPages(renderPage)).then(
-            execForAllPages(renderPageText)
-        );
+        Promise.all(execForAllPages(renderPage)).
+        	then(execForAllPages(renderPageText)).
+        		then(initBboxDrawingCanvas);
 	};
 
 	/**
