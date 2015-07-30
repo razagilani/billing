@@ -1,31 +1,6 @@
 'use strict';
 
-// Declare app level module which depends on views, and components
-angular.module('createExtractor', [
-  'ngRoute',
-  'model',
-  'DBService',
-  'createExtractor.settingsView',
-  'createExtractor.extractorTestView'
-]).
-
-// add views to app.
-config(['$routeProvider', function($routeProvider) {
-  $routeProvider.
-  	when('/settings', {
-  		templateUrl: 'views/settings-view/settings.html',
-  		controller: 'settingsViewCtrl'
-  	}).
-  	when('/settings/:bill_id', {
-  		templateUrl: 'views/settings-view/settings.html',
-  		controller: 'settingsViewCtrl'
-  	}).
-  	when('/test',{
-  		templateUrl: 'views/extractor-test-view/extractor-test.html',
-  		controller: 'extractorTestViewCtrl'
-  	}).
-  	otherwise({redirectTo: '/settings'});
-}]).
+angular.module('createExtractor').
 
 // capitalizes first letter of string
 filter('capitalize', function() {
@@ -66,11 +41,11 @@ filter('denullify', function(){
 //display the values of a bounding box
 filter('bboxToString', function(){
   return function(bbox){
-    if (bbox != null){
+    if (bbox != null && bbox.x0 != null){
       return "x0: " + bbox.x0 + ", y0: " + bbox.y0 + ", x1: " + bbox.x1 + ", y1: " + bbox.y1;
     }
     else {
-      return "(click to edit)";
+      return "(click to draw on PDF)";
     }
   };
 });

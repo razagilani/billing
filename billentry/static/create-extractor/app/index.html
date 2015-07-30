@@ -11,7 +11,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayer.css">
   <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayerBuilder.css">
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="app/app.css">
+  <link rel="stylesheet" href="app/views/settings-view/settings.css">
 </head>
 <body>
   <div id="header">
@@ -35,10 +36,12 @@
   <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script>
   <script src="/angular/pdfjs-textlayer/TextLayerBuilder.js"></script>
   <!-- actual app code -->
-  <script src="db-service.js"></script>
-  <script src="model.js"></script>
-  <script src="app.js"></script>
-  <script src="views/settings-view/settings.js"></script>
-  <script src="views/extractor-test-view/extractor-test.js"></script>
+  <script src="app/app.js"></script>
+  <script src="app/directives/pdf-panel.js"></script>
+  <script src="app/filters/filters.js"></script>
+  <script src="app/model/model.js"></script>
+  <script src="app/services/db-service.js"></script>
+  <script src="app/views/settings-view/settings.js"></script>
+  <script src="app/views/extractor-test-view/extractor-test.js"></script>
 </body>
 </html>

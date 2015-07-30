@@ -1,6 +1,6 @@
 'use strict';
 
-var dbServiceModule = angular.module('DBService', ['ngResource']).
+angular.module('createExtractor').
 
 // add service for getting data from server/DB
 factory('DBService', ['$http',
