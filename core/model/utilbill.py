@@ -8,7 +8,7 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from sqlalchemy import CheckConstraint, Column, String, Integer, ForeignKey, \
-    Date, Boolean, Float, DateTime, Enum
+    Date, Boolean, Float, DateTime, Enum, inspect
 from sqlalchemy.orm import relationship, backref, object_session
 import tsort
 from core.model import Base, Address, Session, Register
@@ -606,7 +606,10 @@ class UtilBill(Base):
         # delete the other bill
         s = object_session(other)
         if s is not None:
-            s.expunge(other)
+            if inspect(other).pending:
+                s.expunge(other)
+            else:
+                s.delete(other)
 
     def get_text(self, bill_file_handler, pdf_util):
         """Return text dump of the bill's PDF.
