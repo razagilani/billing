@@ -35,7 +35,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         ref: 'utilbillToggleProcessed',
         selector: '[action=utilbillToggleProcessed]'
     },{
-        ref: 'replaceEstWithRealBill',
+        ref: 'replaceButton',
         selector: '[action=replaceEstWithRealBill]'
     }],
     
@@ -108,7 +108,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleRowSelect: function(combo, recs) {
         var hasSelections = recs.length > 0;
-        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var selections = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+        var selected = selections[0];
+        this.getReplaceButton().setDisabled(!(selections.length == 2));
         if (selected != null)
         {
             var processed = selected.get('processed')
@@ -249,6 +251,13 @@ Ext.define('ReeBill.controller.UtilityBills', {
         selected.set('processed', !selected.get('processed'));
         var processed = selected.get('processed');
         this.getUtilbillCompute().setDisabled(processed);
+    },
+
+    /**
+     * Handle replacing estimated bill with a real bill
+     */
+    handleReplaceEstWithReal: function() {
+
     },
 
     handleUtilityComboFocus: function(combo) {
