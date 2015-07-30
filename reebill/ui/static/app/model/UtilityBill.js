@@ -26,6 +26,8 @@ Ext.define('ReeBill.model.UtilityBill', {
         {name: 'processed'},
         {name: 'editable'},
         {name: 'sha256_hexdigest'},
-        {name: 'pdf_url'}
+        {name: 'pdf_url'},
+        {name: 'estimated_bill_id'},
+        {name: 'real_bill_id'}
     ]
 });
