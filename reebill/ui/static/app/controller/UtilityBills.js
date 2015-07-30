@@ -34,7 +34,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'utilbillToggleProcessed',
         selector: '[action=utilbillToggleProcessed]'
-    }],    
+    },{
+        ref: 'replaceEstWithRealBill',
+        selector: '[action=replaceEstWithRealBill]'
+    }],
     
     init: function() {
         this.application.on({
@@ -62,6 +65,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             '[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
+            },'[action=replaceEstWithRealBill]': {
+                click: this.handleReplaceEstWithReal
             },
             '#utility_combo':{
                 blur: this.handleUtilityBlur,
