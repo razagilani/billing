@@ -331,7 +331,7 @@ def stop_task(task_id):
 
 @app.route('/create-extractor/')
 def create_extractor():
-    return app.send_static_file('create-extractor/index.html')
+    return app.send_static_file('create-extractor/app/index.html')
 
 @app.route('/get-utilbill/<bill_id>', methods=['GET'])
 def get_utilbill(bill_id):

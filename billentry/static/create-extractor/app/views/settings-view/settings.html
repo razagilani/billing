@@ -3,11 +3,10 @@
  Displays a PDF viewer, and a list of UI elements to create a new layout extractor.
  -->
 
-<div id="pdf-container">
+<div pdf-panel bill-id="{{ bill_id }}">
 	<!-- PDF renderer goes here. -->
-	<div id="bbox-drawing-layer">
-		<canvas id="bbox-drawing-canvas" bbox-drawing></canvas>
-	</div>
+
+	<div id="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
 </div>
 <div id="separator">&nbsp;</div>
 <div id="extractor-controls">

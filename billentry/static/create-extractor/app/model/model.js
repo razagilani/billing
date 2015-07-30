@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('model', ['DBService']).
+angular.module('createExtractor').
 
 /** 
 * Service for manipulating the data model of the app.
