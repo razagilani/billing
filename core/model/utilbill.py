@@ -606,7 +606,7 @@ class UtilBill(Base):
         # delete the other bill
         s = object_session(other)
         if s is not None:
-            s.expunge(other)
+            s.delete(other)
 
     def get_text(self, bill_file_handler, pdf_util):
         """Return text dump of the bill's PDF.
