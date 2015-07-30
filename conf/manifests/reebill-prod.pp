@@ -96,11 +96,11 @@ cron { run_reports:
     hour => 3,
     minute => 0
 }
-cron { export_pg_data:
-    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
-    user => $username,
-    minute => 0
-}
+#cron { export_pg_data:
+#    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
+#    user => $username,
+#    minute => 0
+#}
 cron { read_quote_files:
     command => "source /home/reebill-prod/.bash_profile && python /var/local/reebill-prod/billing/bin/receive_matrix_files.py",
     user => $username,
