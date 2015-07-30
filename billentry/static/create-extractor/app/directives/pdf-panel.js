@@ -235,7 +235,7 @@ directive("bboxDrawing", function(){
 			var currentX;
 			var currentY;
 
-			var drawing = true;
+			var drawing = false;
 
 			/**
 			* If drawing is activated, start drawing a rectangle on mouse down
@@ -267,10 +267,12 @@ directive("bboxDrawing", function(){
 						currentY = event.layerY - event.currentTarget.offsetTop;
 					}
 
-					scope.selected.bounding_box.x0 = Math.min(startX, currentX);
-					scope.selected.bounding_box.y0 = Math.min(startY, currentY);
-					scope.selected.bounding_box.x1 = Math.max(startX, currentX);
-					scope.selected.bounding_box.y1 = Math.max(startY, currentY);
+					coords = canvasToPDFCoords(startX, startY, currentX	, currentY);
+
+					scope.selected.bounding_box.x0 = coords.x0;
+					scope.selected.bounding_box.y0 = coords.y0;
+					scope.selected.bounding_box.x1 = coords.x1;
+					scope.selected.bounding_box.y1 = coords.y1;
 
 					drawBoundingBoxes();
 		        }
@@ -293,7 +295,7 @@ directive("bboxDrawing", function(){
 			*/
 			function drawBoundingBoxes(){
 				// clear previous rectangles
-				var ctx = scope.pdf_data.bboxCanvas[0].getContext('2d');
+				var ctx = element[0].getContext('2d');
 				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 				if (scope.extractor.fields == undefined){
 					return;
@@ -302,6 +304,7 @@ directive("bboxDrawing", function(){
 			  		if (elem.bounding_box == null || elem.bounding_box.x0 == null){
 			  			return;
 			  		}
+
 
 			  		var color;
 			  		if (scope.selected && elem.applier_key == scope.selected.applier_key){
@@ -313,27 +316,64 @@ directive("bboxDrawing", function(){
 			  		else {
 						color = "#000066";
 			  		}
-			  		drawBBOX(elem.bounding_box.x0, 
-			  				 elem.bounding_box.y0, 
-			  				 elem.bounding_box.x1, 
-			  				 elem.bounding_box.y1, 
-			  				 color);
-				});
 
-				// draw an individual bounding box
-		    	function drawBBOX(x0, y0, x1, y1, color){
-					// start drawing
-					ctx.beginPath();
-					// set stroke color and thickness
-					ctx.strokeStyle = color;
-					ctx.lineWidth = 2;
-					// specify rectangle
-					ctx.rect(x0, y0, x1 - x0, y1 - y0);
-					// draw the rectangle
-					ctx.stroke();
-					// stop drawing
-					ctx.closePath()
-		    	}
+			  		var pages = scope.pdf_data.canvasLayer.children();
+			  		angular.forEach(pages, function(page){
+			  			coords = PDFToCanvasCoords(elem.bounding_box, page.height);
+				  		drawBBOX(coords, color);
+
+			  		});
+				});
+		  	}
+
+			// draw an individual bounding box, in canvas coordinates
+	    	function drawBBOX(coords, color){
+				var ctx = element[0].getContext('2d');
+				// start drawing
+				ctx.beginPath();
+				// set stroke color and thickness
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 2;
+				// specify rectangle
+				ctx.rect(coords.x0, coords.y0, coords.x1 - coords.x0, coords.y1 - coords.y0);
+				// draw the rectangle
+				ctx.stroke();
+				// stop drawing
+				ctx.closePath()
+	    	}
+
+		  	/**
+		  	* Converts pixel coordinate of the canvas to the coordinates on the PDF. 
+		  	* x coordinates are preserved, but y coordinates relative to the current 
+		  	* page and are flipped (so that y increases as one goes up the page)
+		  	*/
+		  	function canvasToPDFCoords(x0, y0, x1, y1){
+		  		var topY = Math.min(y0, y1);
+		  		var pages = scope.pdf_data.canvasLayer.children()
+		  		for(var i=0; i<pages.length; i++){
+					var page = pages[i];
+
+					if (topY < page.height){
+						topY = page.height - topY;
+						break;
+					}
+					topY -= page.height;
+				}
+
+				bottomY = topY - Math.abs(y1 - y0);
+				console.log({ x0: x0, y0: bottomY, x1: x1, y1: topY });
+				return { x0: x0, y0: bottomY, x1: x1, y1: topY };
+		  	}
+
+		  	/*
+		  	* Takes PDF coordinates and flips the y-axis. 
+		  	* However, the returned result is still relative to the current page 
+		  	* (as bounding boxes do not store page information)
+		  	*/
+		  	function PDFToCanvasCoords(obj, page_height){
+		  		var minY = page_height - Math.max(obj.y0, obj.y1);
+		  		var maxY = page_height - Math.min(obj.y0, obj.y1);
+		  		return { x0: obj.x0, y0: minY, x1: obj.x1, y1: maxY };
 		  	}
 
 			// canvas reset
