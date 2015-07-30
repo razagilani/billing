@@ -4,6 +4,8 @@
 
 a, a:visited {text-decoration:inherit; color:inherit; }
 
+.left-margin { margin-left:10px; }
+
 html, body { height:100%; }
 
 body {
@@ -60,6 +62,13 @@ ul.navbar li a:hover {
   overflow:scroll;
 }
 
+#bbox-drawing-layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index: 5;
+}
+
 #separator { 
   width:5px; 
   margin-top:0px !important; 
@@ -74,16 +83,26 @@ ul.navbar li a:hover {
   overflow:scroll;
 }
 
+input.textbox-flush {
+  border: solid #AAAAFF 2px;
+  /*border: 0;*/
+  padding:4px;
+  background-color: #EFEFFF;
+  font: inherit;
+  color:inherit;
+}
+
 /* list of fields in extractor settings */
 table#fields { border-collapse: collapse; border-spacing: 0px; }
 table#fields thead { font-weight: bold; }
+table#fields thead tr > td { padding-bottom:10px; }
 
 table#fields tr.disabled { color:#9999CC; }
 table#fields tr.selected { background-color:#AAAAFF; }
 table#fields tbody tr:hover { background-color:#CDCDFF; }
 table#fields tr.selected:hover { background-color:#8888FF; }
 
-.addbutton { dispaly:inline; padding-left:4px; padding-right:4px; font-weight:bold; color:#000066;}
+.addbutton { padding-left:4px; padding-right:4px; font-weight:bold; color:#000066;}
 .addbutton:hover { background-color: #8888FF; }
 
 /* Box that displays bounding box coordinates. Not editable, but reflects what is drawn on the PDF viewer.*/
@@ -93,4 +112,8 @@ pre.bbox-coords {
   color:#666699; 
   padding:4px;
   border: solid 2px #BBBBCC;
+}
+
+pre.bbox-coords.active {
+  border-color:#FF0000;
 }

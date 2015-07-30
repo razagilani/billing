@@ -58,7 +58,7 @@ factory('dataModel', ['DBService', function(DBService){
 	var newExtractor = function(){
 		// set extractor's values to new values (but don't create new object)
 		_extractor.fields = [];
-		_extractor.name = "New Extractor";
+		_extractor.name = "New Extractor Name";
 		_extractor.representative_bill_id = null;
 		_extractor.origin_regex = null;
 		_extractor.origin_x = null;
@@ -86,7 +86,7 @@ factory('dataModel', ['DBService', function(DBService){
 			max_page: null,
 			regex: null,
 			offset_regex: null,
-			bounding_box: null,
+			bounding_box: { x0:null, y0:null, x1:null, y1:null },
 			corner: 0,
 
 			//table specific parameters

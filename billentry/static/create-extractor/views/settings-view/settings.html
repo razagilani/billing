@@ -5,9 +5,29 @@
 
 <div id="pdf-container">
 	<!-- PDF renderer goes here. -->
+	<div id="bbox-drawing-layer">
+		<canvas id="bbox-drawing-canvas" bbox-drawing></canvas>
+	</div>
 </div>
 <div id="separator">&nbsp;</div>
 <div id="extractor-controls">
+	<!-- Extractor-level parameters/settings -->
+	<div id="extractor-settings">
+		<h3>Extractor: <input style="width:60%" class="left-margin textbox-flush" type="text" ng-model="extractor.name"></h3>
+
+		<b> Representative Bill ID </b>
+		<input class="left-margin" type="text" ng-model="extractor.representative_bill_id">
+		<br><br>
+
+		<b> Offset Regex </b>
+		<input class="left-margin" type="text" ng-model="extractor.offset_regex">
+		<br><br>
+
+		<b> Offset Coordinates </b>
+		<pre class="left-margin bbox-coords">x: 34 y: 50</pre>
+	</div>
+	<hr class="divider">
+
 	<!-- List of fields for current extractor -->
 	<div id="fields-list">
 		<h3>Fields</h3>
@@ -58,13 +78,13 @@
 		<h3> {{ selected.applier_key | capitalize }} </h3>
 
 		<b> Page Number </b>
-		<select style="margin-left:10px;" 
+		<select class="left-margin" 
 				ng-model="selected.page_number" 
 				ng-options="pn for pn in getPDFPageNums(false)" 
 				ng-values="pn for pn in getPDFPageNums(false)">
 		</select>
-		<span style="margin-left:10px;">to</span> 
-		<select style="margin-left:10px;" 
+		<span class="left-margin">to</span> 
+		<select class="left-margin" 
 				ng-model="selected.max_page" 
 				ng-options="pn | denullify for pn in getPDFPageNums(true)" 
 				ng-values="pn for pn in getPDFPageNums(true)">
@@ -72,16 +92,19 @@
 		<br><br>
 
 		<b> Offset Regex </b>
-		<input style="margin-left:10px;" type="text" ng-model="selected.offset_regex"></input>
+		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
 		<br><br>
 
 		<b> Bounding Box </b>
-		<pre class="bbox-coords" style="margin-left:10px">x0: 100 y0: 25 x1: 145 y1: 323</pre>
+		<pre class="left-margin bbox-coords" 
+			 ng-click="activateBoundingBox()"
+			 ng-model="bboxActive"
+			 ng-class="{ 'active': bboxActive }"> {{ selected.bounding_box | bboxToString }} </pre>
 		<span style="margin-left:10px; font-weight:bold">X</span>
 		<br><br>
 
 		<b> Corner <b>
-		<select style="margin-left:10px;"
+		<select class="left-margin"
 				ng-model="selected.corner"
 				ng-options="c.name for c in corners"
 				ng-values="c.value for c in corners">
@@ -89,7 +112,8 @@
 		<br><br>
 
 		<b> Regular Expression </b>
-		<input style="margin-left:10px;" type="text" ng-model="selected.regex"></input>
+		<input class="left-margin" type="text" ng-model="selected.regex"></input>
 		<hr class="divider">
 	</div>
+	
 </div>
