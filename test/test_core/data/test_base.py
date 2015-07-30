@@ -34,8 +34,8 @@ class BaseTest(TestCase):
     def test_copy_data_from(self):
         # a1's attributes are filled in, a2's are empty
         b = B()
-        a1 = A(x=1, bs=[b])
-        a2 = A()
+        a1 = A(id=1, x=1, bs=[b])
+        a2 = A(id=2)
 
         # copy empty values from a2 to a1
         a1._copy_data_from(a2)
@@ -51,6 +51,10 @@ class BaseTest(TestCase):
         self.assertEqual([b], a1.bs)
         self.assertEqual(a1, b.a)
         self.assertEqual(3, a1.x)
+
+        # primary keys should not be affected
+        self.assertEqual(a1.id, 1)
+        self.assertEqual(a2.id, 2)
 
         # child objects of the object whose _copy_data_from method was called
         # get copied, so the original object still has them, and both objects
