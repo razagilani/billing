@@ -612,6 +612,14 @@ class UtilBillResource(RESTResource):
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
 
+        elif action == 'replace':
+            est_ub = self.utilbill_processor.get_utilbill(
+                row['estimated_bill_id'])
+            ub = self.utilbill_processor.get_utilbill(
+                row['real_bill_id'])
+            est_ub.replace_estimated_with_complete(ub,
+                                    self.bill_file_handler)
+
         elif action == '':
             period_start = None
             if 'period_start' in row:
