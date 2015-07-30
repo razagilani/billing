@@ -10,6 +10,9 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
     store: 'UtilityBills',
+    selModel: {
+        mode: 'MULTI'
+    },
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
