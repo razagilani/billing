@@ -57,7 +57,6 @@ directive("pdfPanel", ['DBService', function(DBService){
 
 				// canvas for drawing bounding boxes
 				pdf_data.bboxCanvas = angular.element("canvas[bbox-drawing]");
-				console.log("inited");
 			};
 
 			/**
@@ -66,12 +65,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 			*/
 			resetLayers = function(){
 				var pdf_data = scope.pdf_data;
-				while (pdf_data.textLayerDiv.lastChild) {
-		            pdf_data.textLayerDiv.removeChild(pdf_data.textLayerDiv.lastChild);
-		        }
-		        while (pdf_data.canvasLayer.lastChild) {
-		            pdf_data.canvasLayer.removeChild(pdf_data.canvasLayer.lastChild);
-		        }
+				 pdf_data.canvasLayer.empty();
+				 pdf_data.textLayerDiv.empty();
 			};
 
 			/**
@@ -81,7 +76,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 			setLoading = function(){
 				var pdf_data = scope.pdf_data;
 				resetLayers();
-				pdf_data.canvasLayer.innerHTML = pdf_data.loadingMessage;
+				pdf_data.canvasLayer.html(pdf_data.loadingMessage);
 			};
 
 			renderDoc = function(){
@@ -178,7 +173,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 				var pdf_data = scope.pdf_data;
 
 				if(pdf_data.src === '' || pdf_data.src === undefined){
-					pdf_data.canvasLayer.innerHTML = pdf_data.noSrcMessage;
+					pdf_data.canvasLayer.html(pdf_data.noSrcMessage);
 					return;
 				}
 				else {
@@ -200,7 +195,6 @@ directive("pdfPanel", ['DBService', function(DBService){
 		            }
 		            return me.src + cacheparam
 		        };
-
 				PDFJS.getDocument(pdf_data.src).then(
 					// on success
 					function(pdfDoc){
@@ -212,7 +206,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 						console.log(message);
 						console.log(exception);
 						if(message.message.lastIndexOf('Missing PDF', 0) === 0){
-							pdf_data.canvasLayer.innerHTML = pdf_data.pdfNotFoundMessage;
+							pdf_data.canvasLayer.html(pdf_data.pdfNotFoundMessage);
 						}
 					}
 				);
@@ -220,8 +214,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 
 			initPDFPanel();
 			getDocument();
-			scope.$watch('attrs.billId', function(newValue, oldValue){
-				DBService.getUtilBill(attrs.billId)
+			scope.$watch('bill_id', function(newValue, oldValue){
+				DBService.getUtilBill(scope.bill_id)
 					.success(function(bill){
 						scope.pdf_data.src = bill.pdf_url;
 						getDocument();
@@ -301,6 +295,9 @@ directive("bboxDrawing", function(){
 				// clear previous rectangles
 				var ctx = scope.pdf_data.bboxCanvas[0].getContext('2d');
 				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+				if (scope.extractor.fields == undefined){
+					return;
+				};
 				scope.extractor.fields.forEach(function(elem){
 			  		if (elem.bounding_box == null || elem.bounding_box.x0 == null){
 			  			return;
@@ -344,6 +341,7 @@ directive("bboxDrawing", function(){
 				element[0].width = element[0].width; 
 			}
 
+			// watch selected field, so one can highlight only the selected bounding box 
 			scope.$watch('selected', function(newValue, oldValue){
 				drawBoundingBoxes();
 			});
