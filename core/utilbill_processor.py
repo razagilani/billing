@@ -616,3 +616,12 @@ class UtilbillProcessor(object):
             raise
         utility_account.account_number = utility_account_number
         return utility_account
+
+    def get_utilbill(self, utilbill_id):
+        session = Session()
+        try:
+            utilbill = session.query(UtilBill).filter(
+                UtilBill.id == utilbill_id).one()
+        except NoResultFound:
+            raise
+        return utilbill
