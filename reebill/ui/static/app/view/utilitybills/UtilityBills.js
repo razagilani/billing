@@ -234,7 +234,7 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
         },{
             xtype: 'button',
             action: 'replaceEstWithRealBill',
-            text: 'Replace Estimated With Real Bill',
+            text: 'Replace Estimated Bill By Real',
             disabled: true
         }]
     }]
