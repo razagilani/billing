@@ -257,7 +257,27 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle replacing estimated bill with a real bill
      */
     handleReplaceEstWithReal: function() {
-
+        var selections = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+        var utility_bill1 = selections[0];
+        var utility_bill2 = selections[1];
+        if (utility_bill1.get('state') != 'Estimated' && utility_bill2.get('state') != 'Estimated'){
+            Ext.MessageBox.alert('Error', 'One of the utility Bills has to be an Estimated Bill');
+            return;
+        }
+        var estimated_bill_id, real_bill_id, estimated;
+        if (utility_bill1.get('state') == 'Estimated')
+        {
+            estimated_bill_id = utility_bill1.get('id');
+            real_bill_id = utility_bill2.get('id');
+            estimated = utility_bill1;
+        }
+        else{
+            estimated_bill_id = utility_bill2.get('id');
+            real_bill_id = utility_bill1.get('id');
+            estimated = utility_bill2;
+        }
+        estimated.set({'action': 'replace', 'estimated_bill_id': estimated_bill_id, 'real_bill_id': real_bill_id});
+        this.getUtilityBillsStore().reload();
     },
 
     handleUtilityComboFocus: function(combo) {
