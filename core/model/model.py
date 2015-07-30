@@ -96,7 +96,7 @@ class _Base(object):
             getattr(self, x) for x in self.column_names()))
 
     def _get_primary_key_names(self):
-        """:return: set of names of primary key columns.
+        """:return: set of names of primary key columns (set of strings).
         """
         return {c.key for c in class_mapper(self.__class__).primary_key}
 
