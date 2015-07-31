@@ -1,14 +1,28 @@
 /* EXTRACTOR SETTINGS VIEW */
 
-#pdf-container { 
-  width:50%;  
-  float:left; 
+div[pdf-panel] {
+  width:50%;
+  float:left;
   background-color:#FFFFFF;
   position:relative;
   overflow:scroll;
 }
 
-#bbox-drawing-layer {
+/* add page borders in pdf view */
+.pdf-canvas-layer canvas {
+  border-color: #000000;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+}
+.pdf-canvas-layer canvas:first-of-type {
+  border-top: 0;
+}
+.pdf-canvas-layer canvas:last-of-type {
+  border-bottom: 0;
+}
+
+
+.bbox-drawing-layer {
   position: absolute;
   top: 0px;
   left: 0px;
@@ -27,21 +41,6 @@
   display:inline; 
   float:left; 
   overflow:scroll;
-}
-
-div[pdf-panel] {
-  width:50%;
-  float:left;
-  background-color:#FFFFFF;
-  position:relative;
-  overflow:scroll;
-}
-
-#bbox-drawing-layer {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  z-index: 5;
 }
 
 input.textbox-flush {
@@ -63,8 +62,14 @@ table#fields tr.selected { background-color:#AAAAFF; }
 table#fields tbody tr:hover { background-color:#CDCDFF; }
 table#fields tr.selected:hover { background-color:#8888FF; }
 
-.addbutton { padding-left:4px; padding-right:4px; font-weight:bold; color:#000066;}
-.addbutton:hover { background-color: #8888FF; }
+.addbutton { 
+  padding-left:4px; 
+  padding-right:4px; 
+  font-weight:bold; 
+  color:#000066; 
+  border:1px solid transparent;
+}
+.addbutton:hover { background-color: #8888FF; border:1px solid #000066;}
 
 /* Box that displays bounding box coordinates. Not editable, but reflects what is drawn on the PDF viewer.*/
 pre.bbox-coords {
@@ -78,3 +83,12 @@ pre.bbox-coords {
 pre.bbox-coords.active {
   border-color:#FF0000;
 }
+
+div.clear-bbox {
+  display:inline; 
+  padding-left:4px; 
+  padding-right:4px; 
+  font-weight:bold; 
+  border: 1px solid transparent;
+}
+div.clear-bbox:hover { background-color: #8888FF; border: 1px solid #000066; };

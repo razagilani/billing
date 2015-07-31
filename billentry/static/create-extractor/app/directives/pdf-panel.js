@@ -12,7 +12,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* A canvas layer, containing a <canvas> tag for each page, that displays the PDF,
 			* and a text layer, which contains selectable text overlayed on the PDF.  
 			*/
-			initPDFPanel = function(){
+			var initPDFPanel = function(){
 				var pdf_data = {} 
 				scope.pdf_data = pdf_data;
 
@@ -63,7 +63,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* Removes child elements (which correspond to pages of the PDF) from 
 			* the canvas and text layers.
 			*/
-			resetLayers = function(){
+			var resetLayers = function(){
 				var pdf_data = scope.pdf_data;
 				 pdf_data.canvasLayer.empty();
 				 pdf_data.textLayerDiv.empty();
@@ -73,13 +73,13 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* Displays a 'loading...' message, and resets the pdf 
 			* viewer's canvas and text layers.
 			*/
-			setLoading = function(){
+			var setLoading = function(){
 				var pdf_data = scope.pdf_data;
 				resetLayers();
 				pdf_data.canvasLayer.html(pdf_data.loadingMessage);
 			};
 
-			renderDoc = function(){
+			var renderDoc = function(){
 				var pdf_data = scope.pdf_data;
 				var pdfDoc = pdf_data.pdfDoc;
 				var panelWidth = angular.element('div[pdf-panel]').width();
@@ -138,6 +138,22 @@ directive("pdfPanel", ['DBService', function(DBService){
 		            });
 		        };
 
+		        /* 
+		        * Store coordinates of a page. 
+		        * This can be retrieved later without using pdf.js' PDFDocument.getPage(), 
+		        * which is asynchronous.
+		        */
+		        var storePageCoords = function(page){
+		        	if (pdf_data.pages == undefined){
+		        		pdf_data.pages = [];
+		        	}
+		        	var viewport = page.getViewport(1); 
+		        	pdf_data.pages.push({
+		        		pageNumber: page.pageNumber,
+		        		width: viewport.width,
+		        		height: viewport.height
+		        	});
+		        };
 
 		        /**
 		        *  Set up bbox drawing canvas size to match PDF canvas's size
@@ -146,7 +162,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 		        var initBboxDrawingCanvas = function(){
 					pdf_data.bboxCanvas.attr("width", pdf_data.canvasLayer.width());
 					pdf_data.bboxCanvas.attr("height", pdf_data.canvasLayer.height());
-		        }
+		        };
 
 		        var execForAllPages = function(func){
 		            // Retrieves all pages and executes a func on them
@@ -163,13 +179,14 @@ directive("pdfPanel", ['DBService', function(DBService){
 		        resetLayers();
 		        Promise.all(execForAllPages(renderPage)).
 		        	then(execForAllPages(renderPageText)).
-		        		then(initBboxDrawingCanvas);
+		        		then(execForAllPages(storePageCoords)).
+		        			then(initBboxDrawingCanvas);
 			};
 
 			/**
 			* Loads the PDF document.
 			*/
-			getDocument = function(){
+			var getDocument = function(){
 				var pdf_data = scope.pdf_data;
 
 				if(pdf_data.src === '' || pdf_data.src === undefined){
@@ -267,8 +284,16 @@ directive("bboxDrawing", function(){
 						currentY = event.layerY - event.currentTarget.offsetTop;
 					}
 
-					coords = canvasToPDFCoords(startX, startY, currentX	, currentY);
+					var minX = Math.min(startX, currentX);
+					var minY = Math.min(startY, currentY);
+					var maxX = Math.max(startX, currentX);
+					var maxY = Math.max(startY, currentY);
 
+					coords = canvasToPDFCoords(minX, minY, maxX	, maxY);
+
+					if (scope.selected.bounding_box == null){
+						scope.selected.bounding_box = {};
+					}
 					scope.selected.bounding_box.x0 = coords.x0;
 					scope.selected.bounding_box.y0 = coords.y0;
 					scope.selected.bounding_box.x1 = coords.x1;
@@ -297,83 +322,121 @@ directive("bboxDrawing", function(){
 				// clear previous rectangles
 				var ctx = element[0].getContext('2d');
 				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-				if (scope.extractor.fields == undefined){
+				if (scope.extractor().fields == undefined){
 					return;
 				};
-				scope.extractor.fields.forEach(function(elem){
-			  		if (elem.bounding_box == null || elem.bounding_box.x0 == null){
+				scope.extractor().fields.forEach(function(field){
+			  		if (field.bounding_box == null || field.bounding_box.x0 == null){
 			  			return;
 			  		}
 
-
+			  		var opacity = 1;
 			  		var color;
-			  		if (scope.selected && elem.applier_key == scope.selected.applier_key){
+			  		if (scope.selected && field.applier_key == scope.selected.applier_key){
 			  			color = "#FF0000";
 			  		}
-			  		else if (elem.enabled == false){
+			  		else if (field.enabled == false){
 			  			color = "#AAAAFF";
 			  		}
 			  		else {
 						color = "#000066";
 			  		}
 
-			  		var pages = scope.pdf_data.canvasLayer.children();
-			  		angular.forEach(pages, function(page){
-			  			coords = PDFToCanvasCoords(elem.bounding_box, page.height);
-				  		drawBBOX(coords, color);
-
-			  		});
+			  		var pageCanvases = scope.pdf_data.canvasLayer.children();
+			  		for(var i=0; i<pageCanvases.length; i++){
+			  			if (field.page_number != null && (i+1 < field.page_number || (i+1 > field.page_number && field.max_page != null && i+1 > field.max_page))){
+			  				opacity = 0.5;
+			  			}
+			  			var coords = PDFToCanvasCoords(field.bounding_box, i+1);
+			  			console.log(i+1);
+			  			console.log(coords);
+			  			console.log("---");
+				  		drawBBOX(coords, color, opacity);
+			  		}
 				});
 		  	}
 
 			// draw an individual bounding box, in canvas coordinates
-	    	function drawBBOX(coords, color){
+	    	function drawBBOX(coords, color, opacity){
 				var ctx = element[0].getContext('2d');
 				// start drawing
 				ctx.beginPath();
-				// set stroke color and thickness
+				// set stroke opacity, color and thickness
+				ctx.globalAlpha = opacity;
 				ctx.strokeStyle = color;
 				ctx.lineWidth = 2;
 				// specify rectangle
 				ctx.rect(coords.x0, coords.y0, coords.x1 - coords.x0, coords.y1 - coords.y0);
 				// draw the rectangle
 				ctx.stroke();
+				// reset alpha
+				ctx.globalAlpha = 1;
 				// stop drawing
 				ctx.closePath()
 	    	}
 
 		  	/**
 		  	* Converts pixel coordinate of the canvas to the coordinates on the PDF. 
-		  	* x coordinates are preserved, but y coordinates relative to the current 
-		  	* page and are flipped (so that y increases as one goes up the page)
+		  	* scaled the coordinates to the actual size of the pdf, and then inverts y values
+		  	* (so y=0 is at the bottom of the page).
 		  	*/
 		  	function canvasToPDFCoords(x0, y0, x1, y1){
-		  		var topY = Math.min(y0, y1);
-		  		var pages = scope.pdf_data.canvasLayer.children()
-		  		for(var i=0; i<pages.length; i++){
-					var page = pages[i];
-
-					if (topY < page.height){
-						topY = page.height - topY;
+		  		//find correct page
+		  		var pageMaxY = y1; 
+		  		var pageCanvases = scope.pdf_data.canvasLayer.children();
+		  		var i = 0;
+		  		var pageCanvas;
+		  		for(i=0; i<pageCanvases.length; i++){
+					pageCanvas = pageCanvases[i];
+					if (pageMaxY < pageCanvas.height){
 						break;
 					}
-					topY -= page.height;
+					pageMaxY -= pageCanvas.height;
 				}
+				var pageMinY = pageMaxY - (y1 - y0);
 
-				bottomY = topY - Math.abs(y1 - y0);
-				console.log({ x0: x0, y0: bottomY, x1: x1, y1: topY });
-				return { x0: x0, y0: bottomY, x1: x1, y1: topY };
+				// scale coordinates based on page size
+				var actualPageHeight = scope.pdf_data.pages[i].height;
+				var sc = actualPageHeight / pageCanvas.height;
+				var scaledCoords = scale({x0: x0, y0: pageMinY, x1: x1, y1: pageMaxY }, sc);
+
+				//invert y values
+				var old_y0 = scaledCoords.y0;
+				scaledCoords.y0 = actualPageHeight - scaledCoords.y1;
+				scaledCoords.y1 = actualPageHeight - old_y0;
+
+				return scaledCoords;
 		  	}
 
 		  	/*
-		  	* Takes PDF coordinates and flips the y-axis. 
-		  	* However, the returned result is still relative to the current page 
-		  	* (as bounding boxes do not store page information)
+		  	* Converts pdf coordinates (with inverted y, so y=0 is at the bottom of the page)
 		  	*/
-		  	function PDFToCanvasCoords(obj, page_height){
-		  		var minY = page_height - Math.max(obj.y0, obj.y1);
-		  		var maxY = page_height - Math.min(obj.y0, obj.y1);
-		  		return { x0: obj.x0, y0: minY, x1: obj.x1, y1: maxY };
+		  	function PDFToCanvasCoords(obj, page_num){
+		  		var canvas_height = scope.pdf_data.canvasLayer.children()[page_num - 1].height;
+		  		var page_height = scope.pdf_data.pages[page_num - 1].height;
+
+		  		// invert y
+		  		var minY = page_height - obj.y1;
+		  		var maxY = page_height - obj.y0;
+
+		  		// scale
+		  		var sc = canvas_height / page_height;
+		  		var coords = scale({x0: obj.x0, y0: minY, x1: obj.x1, y1: maxY}, sc);
+
+		  		// increase y values to line up to curent page
+		  		for(var i=0; i<page_num-1; i++){
+		  			var current_page_height = scope.pdf_data.canvasLayer.children()[i].height;
+		  			coords.y0 += current_page_height;
+		  			coords.y1 += current_page_height;
+		  		}
+
+		  		return coords;
+
+		  	}
+
+		  	// scales the coordinates in 'coords' by a factor of 'sc'
+		  	function scale(coords, sc){
+		  		return { x0: coords.x0*sc, y0: coords.y0*sc, x1: coords.x1*sc, y1: coords.y1*sc };
 		  	}
 
 			// canvas reset

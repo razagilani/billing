@@ -20,6 +20,9 @@ factory('DBService', ['$http',
     DBService.getDataTypes = function(){
       return $http.get('/get-data-types');
     };
+    DBService.previewField = function(bill_id, field){
+      return $http.post('/preview-field/'+bill_id, field);
+    };
 
     return DBService;
 }]);
