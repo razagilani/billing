@@ -42,7 +42,10 @@ filter('denullify', function(){
 filter('bboxToString', function(){
   return function(bbox){
     if (bbox != null && bbox.x0 != null){
-      return "x0: " + bbox.x0 + ", y0: " + bbox.y0 + ", x1: " + bbox.x1 + ", y1: " + bbox.y1;
+      return "x0: " + bbox.x0.toFixed(2) + 
+             ", y0: " + bbox.y0.toFixed(2) + 
+             ", x1: " + bbox.x1.toFixed(2) + 
+             ", y1: " + bbox.y1.toFixed(2);
     }
     else {
       return "(click to draw on PDF)";

@@ -5,34 +5,19 @@ angular.module('createExtractor').
 controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
 	// initialize data model
 	dataModel.initDataModel();
-	$scope.extractor = dataModel.extractor();
-	$scope.applier_keys = dataModel.applier_keys();
-	$scope.field_types = dataModel.field_types();
-	$scope.data_types = dataModel.data_types();
+	$scope.extractor = dataModel.extractor;
+	$scope.applier_keys = dataModel.applier_keys;
+	$scope.field_types = dataModel.field_types;
+	$scope.data_types = dataModel.data_types;
 
 	//set up pdf viewer
 	$scope.bill_id = 24153;
 
 	// initialize values for bounding box corners 
-	$scope.corners = [
-		{name: "Top Left", value: 0},
-		{name: "Top Right", value: 1},
-		{name: "Bottom Left", value: 2},
-		{name: "Bottom Right", value: 3}];
-
-	/**
-	* Create an array of page numbers for the current PDF document. 
-	 * 'withNull' specifies whether to provide a 'null' option for the page number.
-	*/
-	$scope.getPDFPageNums = function(withNull){
-		var pdfPageNums = withNull ? [null] : [];
-		if($scope.pdfDoc){
-			for(var i = 1; i <= $scope.pdfDoc.numPages; i++){
-				pdfPageNums.push(i);	
-			}
-		}
-		return pdfPageNums;
-	}
+	$scope.corners = [{number: 0, name: "Top Left"}, 
+					  {number: 1, name: "Top Right"}, 
+					  {number: 2, name: "Bottom Left"}, 
+					  {number: 3, name: "Bottom Right"}];
 
 	$scope.selected = null;
 	// select a field, so one can view/edit its parameters
@@ -62,6 +47,25 @@ controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($sc
 			$scope.bboxActive = false;
 		}
 		$scope.bboxActive = !$scope.bboxActive;
+	}
+
+	$scope.clearBoundingBox = function(){
+		$scope.selected.bounding_box.x0 = null;
+		$scope.selected.bounding_box.y0 = null;
+		$scope.selected.bounding_box.x1 = null;
+		$scope.selected.bounding_box.y1 = null;
+	}
+
+	$scope.previewField = function(field){
+		DBService.previewField($scope.bill_id, field).success(
+			function(data, status, headers, config){
+				$scope.preview_output = data.field_output;
+			})
+			.error(function(data, status, headers, config){
+				$scope.preview_output = "(preview failed)";
+				console.log("Field preview failed.");
+				console.log(data);
+			});
 	}
 }]);
 

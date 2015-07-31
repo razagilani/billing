@@ -40,9 +40,10 @@ from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult, Field
 from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.extraction import LayoutExtractor
 from core.extraction.task import test_bill, reduce_bill_results, \
     _create_bill_file_handler
-from core.model import Session, Utility
+from core.model import Session, Utility, BoundingBox
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
@@ -365,6 +366,66 @@ def get_field_types():
 @app.route('/get-data-types', methods=['GET'])
 def get_field_data_types():
     return jsonify({ 'data_types': Field.TYPES.keys() })
+
+@app.route('/preview-field/<bill_id>', methods=['POST'])
+def preview_field(bill_id):
+    field_json =  request.get_json()
+    field = parse_json_extractor_field(field_json)
+
+    s = Session()
+    utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
+    le = LayoutExtractor()
+    input = le._prepare_input(utilbill,
+        _create_bill_file_handler())
+    output = field.get_value(input)
+
+    return jsonify({'field_output': str(output)}), 200
+
+def parse_json_extractor_field(field_json):
+    discriminator = field_json['field_type']['mapper_id']
+    applier_key = field_json['applier_key']
+    type = field_json['data_type']
+    enabled = field_json['enabled']
+    page_num = int(field_json['page_number'])
+    max_page = int(field_json['max_page'])
+    bbregex = field_json['regex']
+    offset_regex = field_json['offset_regex']
+    corner = field_json['corner']
+    table_start_regex = field_json['table_start_regex']
+    table_stop_regex = field_json['table_stop_regex']
+    multipage_table = field_json['multipage_table']
+    nextpage_top = field_json['nextpage_top']
+
+    bbox_json = field_json['bounding_box']
+    bbox = None
+    if bbox_json is not None:
+        bbox = BoundingBox(x0=bbox_json['x0'], y0=bbox_json['y0'],
+            x1=bbox_json['x1'], y1=bbox_json['y1'])
+
+    field = None
+    if discriminator == 'boundingboxfield':
+        field = LayoutExtractor.BoundingBoxField()
+    elif discriminator == 'tablefield':
+        field = LayoutExtractor.TableField()
+
+    # init field columns
+    field.discriminator=discriminator
+    field.applier_key=applier_key
+    field.type=type
+    field.enabled=enabled
+    field.page_num=page_num
+    field.max_page=max_page
+    field.bbregex=bbregex
+    field.offset_regex=offset_regex
+    field.corner=corner
+    field.bounding_box = bbox
+
+    field.table_start_regex=table_start_regex
+    field.table_stop_regex=table_stop_regex
+    field.multipage_table=multipage_table
+    field.nextpage_top=nextpage_top
+
+    return field
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}

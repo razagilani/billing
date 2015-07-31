@@ -28,19 +28,19 @@ factory('dataModel', ['DBService', function(DBService){
 		//Get applier keys
 		var applier_keys_promise = DBService.getApplierKeys()
 			.success(function(responseObj){
-				Array.prototype.push.apply(_applier_keys, responseObj.applier_keys);
+				_applier_keys = responseObj.applier_keys;
 		});
 
 		//Get field types
 		var field_types_promise = DBService.getFieldTypes()
 			.success(function(responseObj){
-				Array.prototype.push.apply(_field_types, responseObj.field_types);
+				_field_types = responseObj.field_types;
 		});
 
 		//Get field data types
 		var data_types_promise = DBService.getDataTypes()
 			.success(function(responseObj){
-				Array.prototype.push.apply(_data_types, responseObj.data_types);
+				_data_types = responseObj.data_types;
 		});
 
 		// execute the above requests asynchronously, and then create a new extractor
@@ -86,7 +86,7 @@ factory('dataModel', ['DBService', function(DBService){
 			max_page: null,
 			regex: null,
 			offset_regex: null,
-			bounding_box: { x0:null, y0:null, x1:null, y1:null },
+			bounding_box: null,
 			corner: 0,
 
 			//table specific parameters

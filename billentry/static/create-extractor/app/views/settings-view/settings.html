@@ -6,20 +6,20 @@
 <div pdf-panel bill-id="{{ bill_id }}">
 	<!-- PDF renderer goes here. -->
 
-	<div id="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
+	<div class="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
 </div>
 <div id="separator">&nbsp;</div>
 <div id="extractor-controls">
 	<!-- Extractor-level parameters/settings -->
 	<div id="extractor-settings">
-		<h3>Extractor: <input style="width:60%" class="left-margin textbox-flush" type="text" ng-model="extractor.name"></h3>
+		<h3>Extractor: <input style="width:60%" class="left-margin textbox-flush" type="text" ng-model="extractor().name"></h3>
 
 		<b> Representative Bill ID </b>
-		<input class="left-margin" type="text" ng-model="extractor.representative_bill_id">
+		<input class="left-margin" type="text" ng-model="extractor().representative_bill_id">
 		<br><br>
 
 		<b> Offset Regex </b>
-		<input class="left-margin" type="text" ng-model="extractor.offset_regex">
+		<input class="left-margin" type="text" ng-model="extractor().offset_regex">
 		<br><br>
 
 		<b> Offset Coordinates </b>
@@ -44,21 +44,21 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="field in extractor.fields" 
+				<tr ng-repeat="field in extractor().fields" 
 					ng-class="{'disabled': !field.enabled, 'selected': selected.applier_key == field.applier_key}">
 
 					<td ng-click="selectField(field)"> {{ field.applier_key | capitalize }} </td>
 					<td> 
 						<select ng-model="field.field_type" 
-								ng-values="ftype.mapper_id for ftype in field_types" 
-								ng-options="ftype.name | capitalize for ftype in field_types"
+								ng-values="ftype.mapper_id for ftype in field_types()" 
+								ng-options="ftype.name | capitalize for ftype in field_types()"
 								ng-disabled="!field.enabled">
 						</select>
 					</td>
 					<td>
 						<select ng-model="field.data_type" 
-								ng-values="dt for dt in data_types" 
-								ng-options="dt | capitalize for dt in data_types"
+								ng-values="dt for dt in data_types()" 
+								ng-options="dt | capitalize for dt in data_types()	"
 								ng-disabled="!field.enabled">
 						</select>
 					</td>
@@ -76,21 +76,17 @@
 		<h3> {{ selected.applier_key | capitalize }} </h3>
 
 		<b> Page Number </b>
-		<select class="left-margin" 
-				ng-model="selected.page_number" 
-				ng-options="pn for pn in getPDFPageNums(false)" 
-				ng-values="pn for pn in getPDFPageNums(false)">
+		<select class="left-margin" ng-model="selected.page_number">
+			<option ng-repeat="p in pdf_data.pages" value="{{ p.pageNumber }}"> {{ p.pageNumber }} </option>
 		</select>
 		<span class="left-margin">to</span> 
-		<select class="left-margin" 
-				ng-model="selected.max_page" 
-				ng-options="pn | denullify for pn in getPDFPageNums(true)" 
-				ng-values="pn for pn in getPDFPageNums(true)">
+		<select class="left-margin" ng-model="selected.max_page">
+			<option ng-repeat="p in pdf_data.pages" value="{{ p.pageNumber }}"> {{ p.pageNumber }} </option>
 		</select>
 		<br><br>
 
-		<b> Offset Regex </b>
-		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
+		<b> Regular Expression </b>
+		<input class="left-margin" type="text" ng-model="selected.regex"></input>
 		<br><br>
 
 		<b> Bounding Box </b>
@@ -98,19 +94,35 @@
 			 ng-click="activateBoundingBox()"
 			 ng-model="bboxActive"
 			 ng-class="{ 'active': bboxActive }"> {{ selected.bounding_box | bboxToString }} </pre>
-		<span style="margin-left:10px; font-weight:bold">X</span>
+		<div class="left-margin clear-bbox" ng-click="clearBoundingBox()">x</div>
 		<br><br>
 
-		<b> Corner <b>
+		<b> Corner </b>
 		<select class="left-margin"
 				ng-model="selected.corner"
-				ng-options="c.name for c in corners"
-				ng-values="c.value for c in corners">
+				ng-options="c.number as c.name for c in corners track by c.number">
 		</select>
 		<br><br>
 
-		<b> Regular Expression </b>
-		<input class="left-margin" type="text" ng-model="selected.regex"></input>
+		<b> Offset Regex </b>
+		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
+
+		<hr class="divider">
+	</div>
+
+	<!-- Shows preview of an individual field -->
+	<div class="field-preview" ng-show="selected">
+		<h3> Preview of {{ selected.applier_key | capitalize }}: </h3>
+		<button ng-click="previewField(selected)">Refresh Preview</button>
+		<br><br>
+
+		<b> Field Output: </b>
+		<pre> {{ selected.data_type }}: "{{ preview_output }}" </pre>
+		<br><br>
+
+		<b> Field JSON: </b>
+		<pre>{{ selected | json }}</pre>
+		
 		<hr class="divider">
 	</div>
 	
