@@ -31,7 +31,7 @@ factory('DBService', ['$http',
 
     // For a given bill, returns the first object that matches 'regex'. 
     // min_page and max_page can be used to narrow down which pages are searched.
-    DBService.getTextLine = function(bill_id, min_page, max_page, regex){
+    DBService.getTextLine = function(bill_id, regex, min_page, max_page){
       var min_page_str = (min_page == null) ? "" : "/"+min_page;
       var max_page_str = (max_page == null) ? "" : "/"+max_page;
       return $http.post('/get-text-lines-page/'+bill_id+min_page_str+max_page_str, {regex: regex});

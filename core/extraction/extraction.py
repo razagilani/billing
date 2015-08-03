@@ -498,8 +498,8 @@ class LayoutExtractor(Extractor):
                         self.table_start_regex)
                     if top_object:
                         new_textlines = filter(
-                            lambda tl: tl.bounding_box.y0 <
-                                       top_object.bounding_box.y0,
+                            lambda tl: tl.bounding_box.y1 <
+                                       top_object.bounding_box.y1,
                             new_textlines)
 
                 # if table_stop_regex matches, do not search further pages.
@@ -508,8 +508,8 @@ class LayoutExtractor(Extractor):
                         self.table_stop_regex)
                     if bottom_object:
                         new_textlines = filter(
-                            lambda tl: tl.bounding_box.y0 >
-                                       bottom_object.bounding_box.y0,
+                            lambda tl: tl.bounding_box.y1 >
+                                       bottom_object.bounding_box.y1,
                             new_textlines)
                         table_data.extend(tabulate_objects(new_textlines))
                         break
@@ -546,7 +546,7 @@ class LayoutExtractor(Extractor):
                 #set the bill's dx and dy so the textbox matches the expected
                 # coordinates.
                 dx = alignment_box.x0 - self.origin_x
-                dy = alignment_box.y0 - self.origin_y
+                dy = alignment_box.y1 - self.origin_y
         return (pages, dx, dy)
 
 

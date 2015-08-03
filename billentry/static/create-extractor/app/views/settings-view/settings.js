@@ -27,6 +27,23 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
 
+	$scope.updateExtractorOrigin = function(){
+		var ex = $scope.extractor();
+		if (ex.origin_regex == null || ex.origin_regex == ""){
+			ex.origin_obj = null;
+			return;
+		}
+		DBService.getTextLine($scope.bill_id, ex.origin_regex, 1)
+			.success(function(data, status, headers, config){
+				ex.origin_obj = data.textline;
+				ex.origin_x = ex.origin_obj.x0;
+				ex.origin_y = ex.origin_obj.y1;
+			})
+			.error(function(data, status, headers, config){
+				console.log("Could not update origin.");
+			});
+	}
+
 	$scope.selected = null;
 	// select a field, so one can view/edit its parameters
 	$scope.selectField = function(field){
@@ -71,7 +88,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			return;
 		}
 
-		DBService.getTextLine($scope.bill_id, field.page_number, field.max_page, field.offset_regex)
+		DBService.getTextLine($scope.bill_id, field.offset_regex, field.page_number, field.max_page)
 			.success(function(responseJSON){
 				field.offset_obj = responseJSON.textline;
 			})

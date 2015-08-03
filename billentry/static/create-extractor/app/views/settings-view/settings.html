@@ -19,12 +19,13 @@
 		<button ng-click="viewBill()">View bill</button>
 		<br><br>
 
-		<b> Offset Regex </b>
-		<input class="left-margin" type="text" ng-model="extractor().offset_regex">
+		<b> Origin Regex </b>
+		<input class="left-margin" type="text" ng-model="extractor().origin_regex">
 		<br><br>
 
-		<b> Offset Coordinates </b>
-		<pre class="left-margin bbox-coords">x: 34 y: 50</pre>
+		<b> Origin Coordinates </b>
+		<pre class="left-margin bbox-coords">x: {{extractor().origin_x}}, y: {{extractor().origin_y}}</pre>
+		<button ng-click="updateExtractorOrigin()">Get coords from regex</button>
 	</div>
 	<hr class="divider">
 
@@ -116,7 +117,7 @@
 			Found box 
 			<pre class="left-margin bbox-coords" style="padding:0;"> {{  selected.offset_obj | bboxToString }} </pre>
 			<br>
-			On <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
+			on <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
 		</div>
 
 		<hr class="divider">
