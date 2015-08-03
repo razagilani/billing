@@ -53,19 +53,26 @@ controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($sc
 		$scope.bboxActive = !$scope.bboxActive;
 	}
 
+	// reset the bounding box for a field
 	$scope.clearBoundingBox = function(){
-		$scope.selected.bounding_box.x0 = null;
-		$scope.selected.bounding_box.y0 = null;
-		$scope.selected.bounding_box.x1 = null;
-		$scope.selected.bounding_box.y1 = null;
+		$scope.selected.bounding_box = null;
 	}
 
+	// Use the offset_regex to find an object to use as a the relative origin for bounding box coordinates. 
+	// This function does not need to be called to create a valid extractor, but it updates the view to 
+	// take offset_regex into account, making the UI more intuitive. 
 	$scope.updateOffset = function(field){
-		DBService.getTextLine($scope.bill_id, field.offset_regex)
-			.success(function(textline){
-				console.log(textline);
+		if (field.offset_regex == null || field.offset_regex == ""){
+			field.offset_objs = null;
+			return;
+		}
+
+		DBService.getTextLine($scope.bill_id, field.page_number, field.max_page, field.offset_regex)
+			.success(function(responseJSON){
+				field.offset_obj = responseJSON.textline;
 			})
 			.error(function(data, status, headers, config){
+				field.offset_obj = null;
 				console.log("could not preview offset");
 			});
 	}

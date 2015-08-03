@@ -64,7 +64,7 @@
 						</select>
 					</td>
 					<td>
-						<div class="addbutton" ng-click="enableField(field)"> {{ field.enabled ? "–" : "+" }} </div>
+						<img class="addbutton" ng-click="enableField(field)" ng-src="{{ field.enabled ? '/icons/delete.png' : '/icons/add.png' }}">
 					</td>
 				</tr>
 			</tbody>
@@ -94,11 +94,11 @@
 		<br><br>
 
 		<b> Bounding Box </b>
-		<pre class="left-margin bbox-coords" 
+		<pre class="left-margin bbox-coords editable" 
 			 ng-click="activateBoundingBox()"
 			 ng-model="bboxActive"
 			 ng-class="{ 'active': bboxActive }"> {{ selected.bounding_box | bboxToString }} </pre>
-		<div class="left-margin clear-bbox" ng-click="clearBoundingBox()">x</div>
+		<img class="clear-bbox" src="/icons/delete.png" ng-click="clearBoundingBox()">
 		<br><br>
 
 		<b> Corner </b>
@@ -111,6 +111,13 @@
 		<b> Offset Regex </b>
 		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
 		<button ng-click="updateOffset(selected)">Update Offset</button>
+		<br>
+		<div class="field-offset-details" ng-show="selected.offset_obj != null">
+			Found box 
+			<pre class="left-margin bbox-coords" style="padding:0;"> {{  selected.offset_obj | bboxToString }} </pre>
+			<br>
+			On <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
+		</div>
 
 		<hr class="divider">
 	</div>

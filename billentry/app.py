@@ -333,10 +333,16 @@ def stop_task(task_id):
 
 @app.route('/create-extractor/')
 def create_extractor():
+    """
+    Serves template for the UI for creating PDF extractors
+    """
     return app.send_static_file('create-extractor/app/index.html')
 
 @app.route('/get-utilbill/<bill_id>', methods=['GET'])
 def get_utilbill(bill_id):
+    """
+    Returns a utility bill by ID
+    """
     s = Session()
     q = s.query(UtilBill).filter(UtilBill.id == bill_id)
     bill = q.one()
@@ -368,20 +374,41 @@ def get_field_types():
 def get_field_data_types():
     return jsonify({ 'data_types': Field.TYPES.keys() })
 
-@app.route('/get-text-line/<bill_id>', methods=['POST'])
-def get_text_line(bill_id):
+@app.route('/get-text-lines-page/<bill_id>',
+    methods=['POST'],
+    defaults={'min_page': None, 'max_page': None})
+@app.route('/get-text-lines-page/<bill_id>/<int:min_page>',
+    methods=['POST'],
+    defaults={'max_page': None})
+@app.route('/get-text-lines-page/<bill_id>/<int:min_page>/<int:max_page>',
+    methods=['POST'])
+def get_text_line(bill_id, min_page, max_page):
+    """
+    Return the first text object in the bill that matches 'regex'.
+    The range of pages that are searched can be narrowed down with min_page
+    and max_page.
+    """
     regex = request.get_json()['regex']
+    if not regex:
+        return jsonify({'textline': None}), 200
 
     s = Session()
     utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
-
     le = LayoutExtractor()
     input = le._prepare_input(utilbill,
         _create_bill_file_handler())
-    # flatten pages into a 1D list of layout objects
-    objs = sum(input[0], [])
-    try:
-        output = layout.get_text_line(objs, regex)
+
+    if max_page is None:
+        max_page = min_page
+    output = None
+    for p in input[0][min_page-1:max_page]:
+        output = layout.get_text_line(p, regex)
+        if output is None:
+            continue
+
+    if output is None:
+        textline_data = None
+    else:
         textline_data = {
             'text': output.text,
             'page_num': output.page_num,
@@ -390,12 +417,14 @@ def get_text_line(bill_id):
             'x1': output.bounding_box.x1,
             'y1': output.bounding_box.y1,
         }
-    except:
-        textline_data = None
+
     return jsonify({'textline': textline_data}), 200
 
 @app.route('/preview-field/<bill_id>', methods=['POST'])
 def preview_field(bill_id):
+    """
+    Tests a single field on a bill.
+    """
     field_json =  request.get_json()
     field = parse_json_extractor_field(field_json)
 
@@ -409,6 +438,9 @@ def preview_field(bill_id):
     return jsonify({'field_output': str(output)}), 200
 
 def parse_json_extractor_field(field_json):
+    """
+    Create a Field object based on a JSON string representing that field.
+    """
     discriminator = field_json['field_type']['mapper_id']
     applier_key = field_json['applier_key']
     type = field_json['data_type']

@@ -13,7 +13,7 @@ div[pdf-panel] {
 }
 
 .pdf-text-layer .textLayer div {
-  /*border:2px solid #666;*/
+  border:2px solid rgba(96, 96, 96, .3);
 }
 
 /* add page borders in pdf view */
@@ -70,13 +70,9 @@ table#fields tbody tr:hover { background-color:#CDCDFF; }
 table#fields tr.selected:hover { background-color:#8888FF; }
 
 .addbutton { 
-  padding-left:4px; 
   padding-right:4px; 
-  font-weight:bold; 
-  color:#000066; 
-  border:1px solid transparent;
+  padding-top:4px; 
 }
-.addbutton:hover { background-color: #8888FF; border:1px solid #000066;}
 
 /* Box that displays bounding box coordinates. Not editable, but reflects what is drawn on the PDF viewer.*/
 pre.bbox-coords {
@@ -87,15 +83,22 @@ pre.bbox-coords {
   border: solid 2px #BBBBCC;
 }
 
+pre.bbox-coords.editable {
+  border-color: #6666AA;
+}
+
 pre.bbox-coords.active {
   border-color:#FF0000;
 }
 
-div.clear-bbox {
-  display:inline; 
-  padding-left:4px; 
-  padding-right:4px; 
-  font-weight:bold; 
-  border: 1px solid transparent;
+img.clear-bbox { 
+  position:relative;
+  top:3px; 
 }
-div.clear-bbox:hover { background-color: #8888FF; border: 1px solid #000066; };
+
+div.field-offset-details {
+  margin-top: 10px; 
+  line-height: 150%; 
+  padding-left: 15px; 
+  font-size: 0.9em;
+}
