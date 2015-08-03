@@ -14,10 +14,6 @@ config(['$routeProvider', function($routeProvider) {
   		templateUrl: 'app/views/settings-view/settings.html',
   		controller: 'settingsViewCtrl'
   	}).
-  	when('/settings/:bill_id', {
-  		templateUrl: 'app/views/settings-view/settings.html',
-  		controller: 'settingsViewCtrl'
-  	}).
   	when('/test',{
   		templateUrl: 'app/views/extractor-test-view/extractor-test.html',
   		controller: 'extractorTestViewCtrl'

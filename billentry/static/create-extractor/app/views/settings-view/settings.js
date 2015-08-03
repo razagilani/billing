@@ -2,7 +2,7 @@
 
 angular.module('createExtractor').
 
-controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($scope, DBService, dataModel) {
+controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataModel', function($scope, $routeParams, DBService, dataModel) {
 	// initialize data model
 	dataModel.initDataModel();
 	$scope.extractor = dataModel.extractor;
@@ -10,8 +10,12 @@ controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($sc
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
 
-	//set up pdf viewer
-	$scope.bill_id = 24153;
+	// get bill id from URL
+	if($routeParams.bill_id){
+		$scope.bill_id = $routeParams.bill_id;
+	} else{
+		$scope.bill_id = 0;
+	}
 
 	// initialize values for bounding box corners 
 	$scope.corners = [{number: 0, name: "Top Left"}, 
