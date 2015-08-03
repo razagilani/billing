@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from core.model import Session, UtilBill, UtilityAccount
 from util.dateutils import ISO_8601_DATETIME
 from brokerage.brokerage_model import BrokerageAccount
+from csv import DictWriter
 
 def _create_brokerage_accounts_for_utility_accounts():
     ''' This is a temporary Workaround that creates brokerage accounts for
@@ -48,24 +49,12 @@ class PGAltitudeExporter(object):
         self._altitude_converter = altitude_converter
 
     def write_csv(self, utilbills, file):
-        '''Write CSV of data to 'file'.
+        """Write CSV of data to 'file'.
         :param utilbills: iterator of UtilBills to include data from.
         :param file: destination file.
-
-        Note: the entire dataset is loaded into memory and turned into a CSV
-        before being written all at once. This is because it is generated using
-        Tablib, which doesn't support writing incrementally.
-        '''
-        dataset = self.get_dataset(utilbills)
-        file.write(dataset.csv)
-
-    def get_dataset(self, utilbills):
-        '''Return a tablib.Dataset containing the data that is supposed to be
-        exported.
-        :param utilbills: iterator of UtilBills to include data from.
-        '''
+        """
         session = Session()
-        dataset = Dataset(headers=[
+        writer = DictWriter(file, fieldnames=[
             'customer_account_guid',
             'billing_customer_id',
             'utility_bill_guid',
@@ -98,12 +87,13 @@ class PGAltitudeExporter(object):
             if g is None:
                 return ''
             return g
+        writer.writeheader()
         for ub in utilbills:
-            append_row_as_dict(dataset, {
+            writer.writerow({
                 'customer_account_guid': (
                     format_possible_none(
                         self._altitude_converter
-                        .get_one_altitude_account_guid_for_utility_account(
+                            .get_one_altitude_account_guid_for_utility_account(
                             ub.utility_account))),
                 'billing_customer_id': ub.get_nextility_account_number(),
                 'utility_bill_guid':
@@ -137,7 +127,6 @@ class PGAltitudeExporter(object):
                 'time_of_use': 'TRUE' if ub.tou else 'FALSE'
             })
         session.commit()
-        return dataset
 
 # TODO maybe this is built into tablib already or should be added there.
 def append_row_as_dict(dataset, row_dict):
