@@ -47,6 +47,7 @@ from core.model import Session, Utility, BoundingBox
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
+from util import layout
 
 LOG_NAME = 'billentry'
 
@@ -367,6 +368,32 @@ def get_field_types():
 def get_field_data_types():
     return jsonify({ 'data_types': Field.TYPES.keys() })
 
+@app.route('/get-text-line/<bill_id>', methods=['POST'])
+def get_text_line(bill_id):
+    regex = request.get_json()['regex']
+
+    s = Session()
+    utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
+
+    le = LayoutExtractor()
+    input = le._prepare_input(utilbill,
+        _create_bill_file_handler())
+    # flatten pages into a 1D list of layout objects
+    objs = sum(input[0], [])
+    try:
+        output = layout.get_text_line(objs, regex)
+        textline_data = {
+            'text': output.text,
+            'page_num': output.page_num,
+            'x0': output.bounding_box.x0,
+            'y0': output.bounding_box.y0,
+            'x1': output.bounding_box.x1,
+            'y1': output.bounding_box.y1,
+        }
+    except:
+        textline_data = None
+    return jsonify({'textline': textline_data}), 200
+
 @app.route('/preview-field/<bill_id>', methods=['POST'])
 def preview_field(bill_id):
     field_json =  request.get_json()
@@ -387,7 +414,7 @@ def parse_json_extractor_field(field_json):
     type = field_json['data_type']
     enabled = field_json['enabled']
     page_num = int(field_json['page_number'])
-    max_page = int(field_json['max_page'])
+    max_page = field_json['max_page']
     bbregex = field_json['regex']
     offset_regex = field_json['offset_regex']
     corner = field_json['corner']
