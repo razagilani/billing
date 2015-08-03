@@ -239,6 +239,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 					.error(function(data, status, header, config){
 						scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
 					});
+
 			});
 		}	
 	};
