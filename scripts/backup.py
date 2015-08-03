@@ -112,12 +112,12 @@ def write_gzipped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
     cancel the upload instead of completing it. (boto's documentation suggests
     that Amazon may charge for storage of incomplete upload parts.)
     '''
-    chunk_buffer = StringIO()
     multipart_upload = s3_key.bucket.initiate_multipart_upload(s3_key)
 
     count = 1
     done = False
     while not done:
+        chunk_buffer = StringIO()
         # write a chunk of gzipped data into 'chunk_buffer'
         done = _write_gzipped_chunk(in_file, chunk_buffer,
                 S3_MULTIPART_CHUNK_SIZE_BYTES)
@@ -144,7 +144,6 @@ def write_gzipped_to_file(in_file, out_file):
     cancel the upload instead of completing it. (boto's documentation suggests
     that Amazon may charge for storage of incomplete upload parts.)
     '''
-
     count = 1
     done = False
     while not done:
