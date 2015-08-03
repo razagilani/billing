@@ -114,5 +114,5 @@ cron { run_reports:
 cron { read_quote_files:
     command => "source /home/reebill-stage/.bash_profile && python /var/local/reebill-stage/billing/bin/receive_matrix_files.py",
     user => $username,
-    minute => '*/5'
+    minute => '*/10'
 }
