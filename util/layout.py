@@ -41,7 +41,7 @@ def get_corner(obj, c):
     :param: c an integer specifying the corner, as in :Corners
     """
     x = obj.bounding_box.x1 if (c & 1) else obj.bounding_box.x0
-    y = obj.bounding_box.y1 if (c & 2) else obj.bounding_box.y0
+    y = obj.bounding_box.y0 if (c & 2) else obj.bounding_box.y1
     return (x, y)
 
 
