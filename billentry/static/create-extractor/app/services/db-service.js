@@ -20,6 +20,9 @@ factory('DBService', ['$http',
     DBService.getDataTypes = function(){
       return $http.get('/get-data-types');
     };
+    DBService.getTextLine = function(bill_id, regex){
+      return $http.post('/get-text-line/'+bill_id, {regex: regex});
+    };
     DBService.previewField = function(bill_id, field){
       return $http.post('/preview-field/'+bill_id, field);
     };

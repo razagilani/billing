@@ -19,6 +19,10 @@ controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($sc
 					  {number: 2, name: "Bottom Left"}, 
 					  {number: 3, name: "Bottom Right"}];
 
+	$scope.viewBill = function(){
+		$scope.bill_id = $scope.extractor().representative_bill_id;
+	}
+
 	$scope.selected = null;
 	// select a field, so one can view/edit its parameters
 	$scope.selectField = function(field){
@@ -56,9 +60,19 @@ controller('settingsViewCtrl', ['$scope', 'DBService', 'dataModel', function($sc
 		$scope.selected.bounding_box.y1 = null;
 	}
 
+	$scope.updateOffset = function(field){
+		DBService.getTextLine($scope.bill_id, field.offset_regex)
+			.success(function(textline){
+				console.log(textline);
+			})
+			.error(function(data, status, headers, config){
+				console.log("could not preview offset");
+			});
+	}
+
 	$scope.previewField = function(field){
-		DBService.previewField($scope.bill_id, field).success(
-			function(data, status, headers, config){
+		DBService.previewField($scope.bill_id, field)
+			.success(function(data, status, headers, config){
 				$scope.preview_output = data.field_output;
 			})
 			.error(function(data, status, headers, config){

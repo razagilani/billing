@@ -16,6 +16,7 @@
 
 		<b> Representative Bill ID </b>
 		<input class="left-margin" type="text" ng-model="extractor().representative_bill_id">
+		<button ng-click="viewBill()">View bill</button>
 		<br><br>
 
 		<b> Offset Regex </b>
@@ -76,12 +77,15 @@
 		<h3> {{ selected.applier_key | capitalize }} </h3>
 
 		<b> Page Number </b>
-		<select class="left-margin" ng-model="selected.page_number">
-			<option ng-repeat="p in pdf_data.pages" value="{{ p.pageNumber }}"> {{ p.pageNumber }} </option>
+		<select class="left-margin" 
+				ng-model="selected.page_number" 
+				ng-options="p.pageNumber as p.pageNumber for p in pdf_data.pages">
 		</select>
 		<span class="left-margin">to</span> 
-		<select class="left-margin" ng-model="selected.max_page">
-			<option ng-repeat="p in pdf_data.pages" value="{{ p.pageNumber }}"> {{ p.pageNumber }} </option>
+		<select class="left-margin" 
+				ng-model="selected.max_page"
+				ng-options="p.pageNumber as p.pageNumber for p in pdf_data.pages">
+				<option value="">(none)</option>
 		</select>
 		<br><br>
 
@@ -100,12 +104,13 @@
 		<b> Corner </b>
 		<select class="left-margin"
 				ng-model="selected.corner"
-				ng-options="c.number as c.name for c in corners track by c.number">
+				ng-options="c.number as c.name for c in corners">
 		</select>
 		<br><br>
 
 		<b> Offset Regex </b>
 		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
+		<button ng-click="updateOffset(selected)">Update Offset</button>
 
 		<hr class="divider">
 	</div>
@@ -120,7 +125,7 @@
 		<pre> {{ selected.data_type }}: "{{ preview_output }}" </pre>
 		<br><br>
 
-		<b> Field JSON: </b>
+		<b> Field JSON (for debug): </b>
 		<pre>{{ selected | json }}</pre>
 		
 		<hr class="divider">

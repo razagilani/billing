@@ -32,7 +32,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 			    
 			    // messages to display while pdf is loading / if pdf rendering failed
 			    pdf_data.loadingMessage =  '<div style="position: absolute; top: 200px; width: 100%; text-align: center">Loading PDF, please wait...</div>';
-			    pdf_data.pdfNotFoundMessage = '<div style="position: absolute; top: 200px; width: 100%; text-align: center">PDF NOT FOUND</div>';
+			    pdf_data.billNotFoundMessage = '<div style="position: absolute; top: 200px; width: 100%; text-align: center">Failed to load bill.</div>';
+			    pdf_data.pdfNotLoadedMessage = '<div style="position: absolute; top: 200px; width: 100%; text-align: center">Failed to load PDF.</div>';
 			    pdf_data.noSrcMessage = '<div style="position: absolute; top: 200px; width: 100%; text-align: center">No PDF selected</div>';
 
 			    //current pdf src is a test file, eventually will be URL from server.
@@ -188,7 +189,6 @@ directive("pdfPanel", ['DBService', function(DBService){
 			*/
 			var getDocument = function(){
 				var pdf_data = scope.pdf_data;
-
 				if(pdf_data.src === '' || pdf_data.src === undefined){
 					pdf_data.canvasLayer.html(pdf_data.noSrcMessage);
 					return;
@@ -222,9 +222,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 					function(message, exception){
 						console.log(message);
 						console.log(exception);
-						if(message.message.lastIndexOf('Missing PDF', 0) === 0){
-							pdf_data.canvasLayer.html(pdf_data.pdfNotFoundMessage);
-						}
+						pdf_data.canvasLayer.html(pdf_data.pdfNotLoadedMessage);
+						
 					}
 				);
 			};
@@ -236,9 +235,12 @@ directive("pdfPanel", ['DBService', function(DBService){
 					.success(function(bill){
 						scope.pdf_data.src = bill.pdf_url;
 						getDocument();
-				});
+					})
+					.error(function(data, status, header, config){
+						scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
+					});
 			});
-		}
+		}	
 	};
 }]).
 
@@ -335,22 +337,20 @@ directive("bboxDrawing", function(){
 			  		if (scope.selected && field.applier_key == scope.selected.applier_key){
 			  			color = "#FF0000";
 			  		}
-			  		else if (field.enabled == false){
-			  			color = "#AAAAFF";
-			  		}
+			  		// else if (field.enabled == false){
+			  		// 	color = "#AAAAFF";
+			  		// }
 			  		else {
-						color = "#000066";
+						color = "#AAAAFF";
 			  		}
 
 			  		var pageCanvases = scope.pdf_data.canvasLayer.children();
 			  		for(var i=0; i<pageCanvases.length; i++){
 			  			if (field.page_number != null && (i+1 < field.page_number || (i+1 > field.page_number && field.max_page != null && i+1 > field.max_page))){
-			  				opacity = 0.5;
+			  				opacity = 1;
+			  				color="#999999";
 			  			}
 			  			var coords = PDFToCanvasCoords(field.bounding_box, i+1);
-			  			console.log(i+1);
-			  			console.log(coords);
-			  			console.log("---");
 				  		drawBBOX(coords, color, opacity);
 			  		}
 				});
