@@ -52,7 +52,7 @@ superuser_db_params = dict(get_db_params(),
                            user=config.get('db', 'superuser_name'))
 
 # amount of data to send to S3 at one time in bytes
-S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
+S3_MULTIPART_CHUNK_SIZE_BYTES = 50 * 1024**2
 
 # amount of data to read and compress at one time in bytes
 GZIP_CHUNK_SIZE_BYTES = 128 * 1024
