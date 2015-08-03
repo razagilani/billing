@@ -10,6 +10,7 @@ from uuid import NAMESPACE_DNS
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+import tablib
 from test import init_test_config
 init_test_config()
 
@@ -130,21 +131,28 @@ class TestExportAltitude(TestCase):
         self.pgae = PGAltitudeExporter(uuid_func, altitude_converter)
 
     def test_get_dataset(self):
-        dataset = self.pgae.get_dataset(self.utilbills)
+        file = StringIO()
+        self.pgae.write_csv(self.utilbills, file)
+
+        file.seek(0)
+        dataset = tablib.Dataset()
+        dataset.csv = file.read()
+
+        self.maxDiff = None
         self.assertEqual(2, len(dataset))
         self.assertEqual((
                              'C' * 36,
                              '11111',
-                             self.uuids[0],
+                             str(self.uuids[0]),
                              'A' * 36,
-                             self.uuids[1],
+                             str(self.uuids[1]),
                              'electric',
                              '1',
                              '2000-01-01T00:00:00Z',
                              '2000-02-01T00:00:00Z',
                              '2000-03-01T00:00:00Z',
-                             10,
-                             100,
+                             '10',
+                             '100',
                              'rate class 1',
                              '',
                              '1 Fake St.',
@@ -160,16 +168,16 @@ class TestExportAltitude(TestCase):
         self.assertEqual((
                              '',
                              '22222',
-                             self.uuids[2],
+                             str(self.uuids[2]),
                              'A' * 36,
-                             self.uuids[3],
+                             str(self.uuids[3]),
                              '',
                              '2',
                              '2000-01-15T00:00:00Z',
                              '2000-02-15T00:00:00Z',
                              '2000-03-15T00:00:00Z',
-                             20,
-                             200,
+                             '20',
+                             '200',
                              'rate class 2',
                              '123xyz',
                              '2 Fake St.',
@@ -257,12 +265,11 @@ class TestAltitudeBillStorage(TestCase):
         s.query(AltitudeBill).delete()
         self.assertEqual(0, s.query(AltitudeBill).count())
 
-        dataset_1 = self.pgae.get_dataset([self.utilbill])
+        self.pgae.write_csv([self.utilbill], StringIO())
         self.assertEqual(1, s.query(AltitudeBill).count())
 
-        dataset_2 = self.pgae.get_dataset([self.utilbill])
+        self.pgae.write_csv([self.utilbill], StringIO())
         self.assertEqual(1, s.query(AltitudeBill).count())
-        self.assertEqual(dataset_1.csv, dataset_2.csv)
 
     def test_altitude_supplier_consistency(self):
         """Check that an AlititudeSupplier is created only once and reused
@@ -272,10 +279,9 @@ class TestAltitudeBillStorage(TestCase):
         s.query(AltitudeSupplier).delete()
         self.assertEqual(0, s.query(AltitudeSupplier).count())
 
-        dataset_1 = self.pgae.get_dataset([self.utilbill])
+        self.pgae.write_csv([self.utilbill], StringIO())
         self.assertEqual(1, s.query(AltitudeSupplier).count())
 
-        dataset_2 = self.pgae.get_dataset([self.utilbill])
+        self.pgae.write_csv([self.utilbill], StringIO())
         self.assertEqual(1, s.query(AltitudeSupplier).count())
-        self.assertEqual(dataset_1.csv, dataset_2.csv)
 
