@@ -48,6 +48,8 @@ ACCOUNTS_LIST = [1737]
 
 # extract database connection parameters from URI in config file
 db_params = get_db_params()
+superuser_db_params = dict(get_db_params(),
+                           user=config.get('db', 'superuser_name'))
 
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
@@ -210,7 +212,7 @@ def _recreate_main_db():
 
 def restore_main_db_s3(bucket):
     _recreate_main_db()
-    command = DB_SHELL_COMMAND % dict(db_params)
+    command = DB_SHELL_COMMAND % superuser_db_params
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -221,6 +223,8 @@ def restore_main_db_s3(bucket):
     print 'restoring main database from %s/%s version %s (modified %s)' % (
             bucket.name, key.name, key.version_id, key.last_modified)
     key.get_contents_to_file(ungzip_file)
+    stdin.write('reassign owned by %s to %s' % (
+        superuser_db_params['user'], db_params['user']))
 
     # stdin pipe must be closed to make the process exit
     stdin.close()
@@ -228,7 +232,7 @@ def restore_main_db_s3(bucket):
 
 def restore_main_db_local(dump_file_path):
     _recreate_main_db()
-    command = DB_SHELL_COMMAND % dict(db_params)
+    command = DB_SHELL_COMMAND % superuser_db_params
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -236,6 +240,8 @@ def restore_main_db_local(dump_file_path):
     # TODO: maybe bad to read whole file at once
     with open(dump_file_path) as dump_file:
         ungzip_file.write(dump_file.read())
+    stdin.write('reassign owned by %s to %s' % (
+        superuser_db_params['user'], db_params['user']))
 
     stdin.close()
     check_exit_status()
