@@ -25,17 +25,15 @@ def _create_brokerage_accounts_for_utility_accounts():
 def _load_pg_utilbills():
     '''Return an iterator of all UtilBills that have a BrokerageAccount.
     '''
+    # unfortunately Query.yield_per (see below) is not compatible with joined
+    # loading of related objects
     return Session().query(UtilBill).join(UtilityAccount).join(
-        BrokerageAccount).options(
-            joinedload('service_address')).options(
-            joinedload('rate_class')).options(
-            joinedload('supplier').joinedload('altitude_supplier')).options(
-            joinedload('utility').joinedload('altitude_utility')).options(
-            joinedload('charges')).options(
-            joinedload('utility_account')).options(
-            joinedload('altitude_bills'))
+        BrokerageAccount)
 
 class PGAltitudeExporter(object):
+
+    # number of rows to load into memory at once
+    QUERY_BATCH_SIZE = 100
 
     def __init__(self, uuid_func, altitude_converter):
         '''
@@ -88,7 +86,12 @@ class PGAltitudeExporter(object):
                 return ''
             return g
         writer.writeheader()
-        for ub in utilbills:
+
+        # use Query.yield_per to avoid explosive growith in memory size that
+        # brought down our server. see
+        # http://docs.sqlalchemy.org/en/latest/orm/query.html
+        # #sqlalchemy.orm.query.Query.yield_per
+        for ub in utilbills.yield_per(self.QUERY_BATCH_SIZE):
             writer.writerow({
                 'customer_account_guid': (
                     format_possible_none(
