@@ -101,3 +101,9 @@ cron { export_pg_data:
     user => $username,
     minute => 0
 }
+cron { receive_matrix_files:
+    command => "source /var/local/reebill-prod/bin/activate && python /var/local/reebill-prod/billing/bin/receive_matrix_files.py"
+    user => $username,
+    hour => 0,
+    minute => 5
+}
