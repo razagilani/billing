@@ -49,7 +49,7 @@
 				<tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="ex in availableExtractors">
+				<tr ng-repeat="ex in availableExtractors" ng-click="chooseExtractor(ex.extractor_id)">
 					<td> {{ ex.extractor_id }} </td>
 					<td> {{ ex.name }} </td>
 				</tr>
@@ -80,14 +80,14 @@
 
 					<td ng-click="selectField(field)"> {{ field.applier_key | capitalize }} </td>
 					<td> 
-						<select ng-model="field.field_type" 
-								ng-values="ftype.mapper_id for ftype in field_types()" 
-								ng-options="ftype.name | capitalize for ftype in field_types()"
+						<select ng-model="field.discriminator" 
+								ng-values="ftype for ftype in field_types()" 
+								ng-options="ftype | capitalize for ftype in field_types()"
 								ng-disabled="!field.enabled">
 						</select>
 					</td>
 					<td>
-						<select ng-model="field.data_type" 
+						<select ng-model="field.type" 
 								ng-values="dt for dt in data_types()" 
 								ng-options="dt | capitalize for dt in data_types()	"
 								ng-disabled="!field.enabled">
@@ -108,19 +108,19 @@
 
 		<b> Page Number </b>
 		<select class="left-margin" 
-				ng-model="selected.page_number" 
+				ng-model="selected.page_num" 
 				ng-options="p.pageNumber as p.pageNumber for p in pdf_data.pages">
 		</select>
 		<span class="left-margin">to</span> 
 		<select class="left-margin" 
-				ng-model="selected.max_page"
+				ng-model="selected.maxpage"
 				ng-options="p.pageNumber as p.pageNumber for p in pdf_data.pages">
 				<option value="">(none)</option>
 		</select>
 		<br><br>
 
 		<b> Regular Expression </b>
-		<input class="left-margin" type="text" ng-model="selected.regex"></input>
+		<input class="left-margin" type="text" ng-model="selected.bbregex"></input>
 		<br><br>
 
 		<b> Bounding Box </b>
@@ -149,7 +149,7 @@
 			on <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
 		</div>
 
-		<div ng-show="selected.field_type.mapper_id=='tablefield'">
+		<div ng-show="selected.discriminator=='tablefield'">
 			<br>
 			<b> Table Start Regex </b>
 			<input class="left-margin" type="text" ng-model="selected.table_start_regex"></input>
@@ -178,7 +178,7 @@
 		<br><br>
 
 		<b> Field Output: </b>
-		<pre> {{ selected.data_type }}: "{{ preview_output }}" </pre>
+		<pre> {{ selected.type }}: "{{ preview_output }}" </pre>
 		<br><br>
 
 		<b> Field JSON (for debug): </b>

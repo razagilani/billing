@@ -341,17 +341,7 @@ def create_extractor():
 
 @app.route('/get-field-types', methods=['GET'])
 def get_field_types():
-    return jsonify({
-        'field_types': [
-            {
-                'name': "Bounding Box Field",
-                'mapper_id': 'boundingboxfield',
-            },
-            {
-                'name': "Table Field",
-                'mapper_id': 'tablefield',
-            },]
-    })
+    return jsonify({'field_types': ['boundingboxfield', 'tablefield']})
 
 @app.route('/get-text-lines-page/<bill_id>',
     methods=['POST'],
@@ -377,13 +367,14 @@ def get_text_line(bill_id, min_page, max_page):
     input = le._prepare_input(utilbill,
         _create_bill_file_handler())
 
-    if max_page is None:
+    if not max_page:
         max_page = min_page
     output = None
+    print "****", min_page, max_page
     for p in input[0][min_page-1:max_page]:
         output = layout.get_text_line(p, regex)
-        if output is None:
-            continue
+        if output is not None:
+            break
 
     if output is None:
         textline_data = None

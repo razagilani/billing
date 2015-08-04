@@ -474,7 +474,7 @@ class LayoutExtractor(Extractor):
             table_data = []
 
             #determine last page to search
-            if self.multipage_table:
+            if self.multipage_table and self.maxpage:
                 endpage = min(self.maxpage, len(pages))
             else:
                 endpage = self.page_num

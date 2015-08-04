@@ -77,14 +77,14 @@ table#extractors {
 }
 
 /* list of fields in extractor settings */
-table#fields { border-collapse: collapse; border-spacing: 0px; }
-table#fields thead { font-weight: bold; }
-table#fields thead tr > td { padding-bottom:10px; }
+table { border-collapse: collapse; border-spacing: 0px; }
+table thead { font-weight: bold; }
+table thead tr > td { padding-bottom:10px; }
 
-table#fields tr.disabled { color:#9999CC; }
-table#fields tr.selected { background-color:#AAAAFF; }
-table#fields tbody tr:hover { background-color:#CDCDFF; }
-table#fields tr.selected:hover { background-color:#8888FF; }
+table tr.disabled { color:#9999CC; }
+table tr.selected { background-color:#AAAAFF; }
+table tbody tr:hover { background-color:#CDCDFF; }
+table tr.selected:hover { background-color:#8888FF; }
 
 .addbutton { 
   padding-right:4px; 

@@ -101,7 +101,6 @@ directive("bboxDrawing", function(){
 					return;
 				};
 				scope.extractor().fields.forEach(function(field){
-					var opacity = 1;
 					var color;
 					var coords;
 
@@ -133,9 +132,10 @@ directive("bboxDrawing", function(){
 
 					var pageCanvases = scope.pdf_data.canvasLayer.children();
 					for(var i=0; i<pageCanvases.length; i++){
-						if (i+1 != field.page_number){
-							if (field.max_page == null || i+1 > field.max_page){
-								color="#999999";
+						var opacity = 1;
+						if (i+1 != field.page_num){
+							if (field.maxpage == null || i+1 > field.maxpage){
+								opacity=0.3;
 							}
 						}
 

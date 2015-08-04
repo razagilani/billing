@@ -78,13 +78,13 @@ factory('dataModel', ['DBService', function(DBService){
 	var getNewField = function(applier_key){
 		var new_field = {
 			applier_key: applier_key,
-			field_type: _field_types[0],
-			data_type: _data_types[0],
+			discriminator: _field_types[0],
+			type: _data_types[0],
 			enabled: false,
 
-			page_number: 1,
-			max_page: null,
-			regex: null,
+			page_num: 1,
+			maxpage: null,
+			bbregex: null,
 			offset_regex: null,
 			bounding_box: null,
 			corner: 0,
@@ -109,6 +109,16 @@ factory('dataModel', ['DBService', function(DBService){
 			});
 	}
 
+	var loadExtractor = function(id){
+		DBService.loadExtractor(id)
+			.success(function(responseObj){
+				_extractor = responseObj.extractor;
+			})
+			.error(function(){
+				console.log("failed to load extractor from db.");
+			});
+	}
+
 	return {
 		extractor: function(){ return _extractor;},
 		applier_keys: function(){ return _applier_keys;},
@@ -118,6 +128,7 @@ factory('dataModel', ['DBService', function(DBService){
 		newExtractor: newExtractor,
 		getNewField: getNewField,
 		saveExtractor: saveExtractor,
+		loadExtractor: loadExtractor,
 	};
 }]);
 	

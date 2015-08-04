@@ -12,6 +12,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 
 	$scope.newExtractor = dataModel.newExtractor;
 	$scope.saveExtractor = dataModel.saveExtractor;
+	$scope.loadExtractor = dataModel.loadExtractor;
 
 	if($routeParams.bill_id){
 		$scope.bill_id = $routeParams.bill_id;
@@ -61,6 +62,12 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		}
 	}
 
+	// shows the "load extractor" menu.
+	$scope.chooseExtractor = function(id){
+		$scope.viewLoadScreen = false;
+		$scope.loadExtractor(id);
+	}
+
 	$scope.selected = null;
 	// select a field, so one can view/edit its parameters
 	$scope.selectField = function(field){
@@ -105,8 +112,9 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			return;
 		}
 
-		DBService.getTextLine($scope.bill_id, field.offset_regex, field.page_number, field.max_page)
+		DBService.getTextLine($scope.bill_id, field.offset_regex, field.page_num, field.maxpage)
 			.success(function(responseJSON){
+				console.log(responseJSON);
 				field.offset_obj = responseJSON.textline;
 			})
 			.error(function(data, status, headers, config){
