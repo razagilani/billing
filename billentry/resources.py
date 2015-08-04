@@ -633,9 +633,9 @@ field_fields = {
     "discriminator": String,
     "type": String,
     "enabled": Boolean,
-    "page_number": Integer,
-    "max_page": Integer,
-    "regex": String,
+    "page_num": Integer,
+    "maxpage": Integer,
+    "bbregex": String,
     "offset_regex": String,
     "bounding_box": Nested(bounding_box_fields),
     "corner": Integer,
@@ -661,7 +661,7 @@ def parse_json_extractor_field(field_json):
     Create a Field object based on a JSON string representing that field.
     """
 
-    discriminator = field_json['field_type']['mapper_id']
+    discriminator = field_json['discriminator']
     field = None
     if discriminator == 'boundingboxfield':
         field = LayoutExtractor.BoundingBoxField()
@@ -677,13 +677,13 @@ def fill_field_with_json(field, field_json):
     :param field_json: JSON containing new data
     :return: field, modified in-place
     """
-    field.discriminator = field_json['field_type']['mapper_id']
+    field.discriminator = field_json['discriminator']
     field.applier_key = field_json['applier_key']
-    field.type = field_json['data_type']
+    field.type = field_json['type']
     field.enabled = field_json['enabled']
-    field.page_num = int(field_json['page_number'])
-    field.max_page = field_json['max_page']
-    field.bbregex = field_json['regex']
+    field.page_num = int(field_json['page_num'])
+    field.max_page = field_json['maxpage']
+    field.bbregex = field_json['bbregex']
     field.offset_regex = field_json['offset_regex']
     field.corner = field_json['corner']
     field.table_start_regex = field_json['table_start_regex']

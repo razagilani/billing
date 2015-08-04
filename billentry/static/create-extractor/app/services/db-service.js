@@ -48,8 +48,8 @@ factory('DBService', ['$http',
     };
 
     // Loads an extractor by ID from the database.
-    DBService.loadExtractor = function(extractor){
-      return $http.get('/extractor/' + extractor.id);
+    DBService.loadExtractor = function(id){
+      return $http.get('/extractor/' + id);
     };
 
     // For a given bill, returns the first object that matches 'regex'. 
