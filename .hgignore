@@ -1,0 +1,17 @@
+.DS_Store # annoying invisible files created by Mac OS
+.directory
+.idea
+alembic.ini
+glob:*.log
+glob:*.pyc
+glob:*.swp
+logs/*.log
+reebill/reconciliation.log
+reebill/reconciliation_report.json
+reebill/reebill.cfg
+reebill/reebill.log
+reebill/ui/revision.txt
+revision.txt
+# packages used by angular
+glob:*/node_modules/*
+glob:*/bower_components/*
