@@ -536,6 +536,8 @@ class LayoutExtractor(Extractor):
         and checking if bill's PDF is misaligned.
         """
         pages = utilbill.get_layout(bill_file_handler, PDFUtil())
+        if len(pages) == 0:
+            raise ExtractionError("Bill has no pages.")
         dx = dy = 0
         if all(v is not None for v in
                [self.origin_regex, self.origin_x, self.origin_y]):

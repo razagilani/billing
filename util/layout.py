@@ -68,15 +68,13 @@ def get_text_line(layout_objs, regexstr):
     search = lambda lo: lo.type == TEXTLINE and regex.search(
         lo.text)
     objs = filter(search, layout_objs)
-    #sort objects by position on page
-    # objs = sorted(objs, key=lambda o: (-o.y0, o.x0))
     if not objs:
         return None
     return objs[0]
 
 def in_bounds(obj, bounds, corner):
     """
-    Determines if the top left corner of a layout object is in the bounding box
+    Determines if a corner of a layout object is in the bounding box
     """
     testpoint = get_corner(obj, corner)
     if bounds.x0 <= testpoint[0] <= bounds.x1:
@@ -95,13 +93,13 @@ def tabulate_objects(objs):
     are sorted by descending y value, and the objects are sorted by
     increasing x value.
     """
-    sorted_objs = sorted(objs, key=lambda o: (-o.bounding_box.y0,
+    sorted_objs = sorted(objs, key=lambda o: (-o.bounding_box.y1,
     o.bounding_box.x0))
     table_data = []
     current_y = None
     for obj in sorted_objs:
-        if obj.bounding_box.y0 != current_y:
-            current_y = obj.bounding_box.y0
+        if obj.bounding_box.y1 != current_y:
+            current_y = obj.bounding_box.y1
             current_row = []
             table_data.append(current_row)
         current_row.append(obj)
