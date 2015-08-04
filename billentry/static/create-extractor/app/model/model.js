@@ -98,6 +98,17 @@ factory('dataModel', ['DBService', function(DBService){
 		return new_field;
 	};
 
+	var saveExtractor = function(){
+		DBService.saveExtractor(_extractor)
+			.success(function(responseObj){
+				_extractor.id = responseObj.id;
+				console.log("saved successfully to id "+_extractor.id);
+			})
+			.error(function(){
+				console.log("failed to save extractor to db.");
+			});
+	}
+
 	return {
 		extractor: function(){ return _extractor;},
 		applier_keys: function(){ return _applier_keys;},
@@ -106,6 +117,7 @@ factory('dataModel', ['DBService', function(DBService){
 		initDataModel: initDataModel,
 		newExtractor: newExtractor,
 		getNewField: getNewField,
+		saveExtractor: saveExtractor,
 	};
 }]);
 	

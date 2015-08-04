@@ -59,6 +59,19 @@ input.textbox-flush {
   color:inherit;
 }
 
+button.fancy-btn {
+  background-color: #AAAAFF;
+  color: #000099;
+  border: 2px solid #000099;
+  font-size: 0.9em;
+  outline:none;
+}
+
+button.fancy-btn:hover {
+  background-color: #000099;
+  color: #AAAAFF;
+}
+
 /* list of fields in extractor settings */
 table#fields { border-collapse: collapse; border-spacing: 0px; }
 table#fields thead { font-weight: bold; }
