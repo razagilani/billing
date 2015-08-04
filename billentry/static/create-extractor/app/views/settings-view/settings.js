@@ -4,20 +4,18 @@ angular.module('createExtractor').
 
 controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataModel', function($scope, $routeParams, DBService, dataModel) {
 	// initialize data model
-	dataModel.initDataModel();
+	dataModel.initDataModel($routeParams.bill_id);
 	$scope.extractor = dataModel.extractor;
 	$scope.applier_keys = dataModel.applier_keys;
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
+
+	$scope.newExtractor = dataModel.newExtractor;
 	$scope.saveExtractor = dataModel.saveExtractor;
 
 	if($routeParams.bill_id){
 		$scope.bill_id = $routeParams.bill_id;
-		if ($scope.extractor().representative_bill_id == null){
-			$scope.extractor().representative_bill_id = $scope.bill_id;
-		}
-	}
-	// get bill id from URL, or from extractor if one is switching back to the view after the extractor has been loaded. 
+	} 
 	else if($scope.extractor().representative_bill_id != null) {
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
@@ -47,6 +45,20 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			.error(function(data, status, headers, config){
 				console.log("Could not update origin.");
 			});
+	}
+
+	// shows the "load extractor" menu.
+	$scope.showLoadScreen = function(){
+		$scope.viewLoadScreen = !$scope.viewLoadScreen;
+		if($scope.viewLoadScreen){
+			DBService.getExtractors()
+				.success(function(data, status, headers, config){
+					$scope.availableExtractors = data.extractors;
+				})
+				.error(function(data, status, headers, config){
+					console.log("Could not load extractors");
+				});
+		}
 	}
 
 	$scope.selected = null;

@@ -36,6 +36,7 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
+from billentry.resources import parse_json_extractor_field
 from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult, Field
@@ -338,24 +339,6 @@ def create_extractor():
     """
     return app.send_static_file('create-extractor/app/index.html')
 
-@app.route('/get-utilbill/<bill_id>', methods=['GET'])
-def get_utilbill(bill_id):
-    """
-    Returns a utility bill by ID
-    """
-    s = Session()
-    q = s.query(UtilBill).filter(UtilBill.id == bill_id)
-    bill = q.one()
-    return jsonify({
-        'id': bill.id,
-        'utility_id': bill.utility_id,
-        'pdf_url': _create_bill_file_handler().get_url(bill)
-    })
-
-@app.route('/get-applier-keys', methods=['GET'])
-def get_applier_keys():
-    return jsonify({ 'applier_keys': UtilBillApplier.KEYS.keys() })
-
 @app.route('/get-field-types', methods=['GET'])
 def get_field_types():
     return jsonify({
@@ -369,44 +352,6 @@ def get_field_types():
                 'mapper_id': 'tablefield',
             },]
     })
-
-@app.route('/get-data-types', methods=['GET'])
-def get_field_data_types():
-    return jsonify({ 'data_types': Field.TYPES.keys() })
-
-@app.route('/save-extractor', methods=['POST'])
-def save_extractor():
-    ex_json = request.get_json()['extractor']
-    ex_id = ex_json.get('id', None)
-    s = Session()
-
-    if ex_id is None:
-        ex = LayoutExtractor()
-        ex.created = datetime.utcnow()
-        s.add(ex)
-    else:
-        ex = s.query(Extractor).filter(Extractor.extractor_id == ex_id).one()
-
-    ex.name = ex_json['name']
-    ex.origin_regex = ex_json['origin_regex']
-    ex.origin_x = ex_json['origin_x']
-    ex.origin_y = ex_json['origin_y']
-    ex.representative_bill_id = ex_json['representative_bill_id']
-
-    # Updates the fields of the extractor with the fields in the JSON
-    for field_json in ex_json['fields']:
-        field = next((f for f in ex.fields if f.applier_key == field_json[
-            'applier_key']), None)
-        if field is None:
-            # add new field to extractor
-            field = parse_json_extractor_field(field_json)
-            ex.fields.append(field)
-        else:
-            # update existing field
-            fill_field_with_json(field, field_json)
-
-    s.commit()
-    return jsonify({'id': ex.extractor_id}), 200
 
 @app.route('/get-text-lines-page/<bill_id>',
     methods=['POST'],
@@ -470,50 +415,6 @@ def preview_field(bill_id):
     output = field.get_value(input)
 
     return jsonify({'field_output': str(output)}), 200
-
-def parse_json_extractor_field(field_json):
-    """
-    Create a Field object based on a JSON string representing that field.
-    """
-
-    discriminator = field_json['field_type']['mapper_id']
-    field = None
-    if discriminator == 'boundingboxfield':
-        field = LayoutExtractor.BoundingBoxField()
-    elif discriminator == 'tablefield':
-        field = LayoutExtractor.TableField()
-    fill_field_with_json(field, field_json)
-    return field
-
-def fill_field_with_json(field, field_json):
-    """
-    Sets a given field's properties with JSON data representing a field.
-    :param field: The field to be modified
-    :param field_json: JSON containing new data
-    :return: field, modified in-place
-    """
-    field.discriminator = field_json['field_type']['mapper_id']
-    field.applier_key = field_json['applier_key']
-    field.type = field_json['data_type']
-    field.enabled = field_json['enabled']
-    field.page_num = int(field_json['page_number'])
-    field.max_page = field_json['max_page']
-    field.bbregex = field_json['regex']
-    field.offset_regex = field_json['offset_regex']
-    field.corner = field_json['corner']
-    field.table_start_regex = field_json['table_start_regex']
-    field.table_stop_regex = field_json['table_stop_regex']
-    field.multipage_table = field_json['multipage_table']
-    field.nextpage_top = field_json['nextpage_top']
-
-    bbox_json = field_json['bounding_box']
-    bbox = None
-    if bbox_json is not None:
-        bbox = BoundingBox(x0=bbox_json['x0'], y0=bbox_json['y0'],
-            x1=bbox_json['x1'], y1=bbox_json['y1'])
-    field.bounding_box = bbox
-
-    return field
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
@@ -795,6 +696,10 @@ api.add_resource(resources.UtilBillListForUserResource,
                  '/utilitybills/user_utilitybills')
 api.add_resource(resources.FlaggedUtilBillListResource,
                  '/utilitybills/flagged_utilitybills')
+api.add_resource(resources.ExtractorsListResource, '/extractors')
+api.add_resource(resources.ExtractorResource, '/extractor/<int:id>')
+api.add_resource(resources.ApplierKeyListResource, '/applier-keys')
+api.add_resource(resources.FieldTypesListResource, '/field-data-types')
 
 # apparently needed for Apache
 application = app

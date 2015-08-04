@@ -29,9 +29,32 @@
 		<br><br>
 		
 		<button class="fancy-btn" ng-click="saveExtractor()">Save</button>
-		<button class="left-margin fancy-btn">Load</button>
-		<button class="left-margin fancy-btn">New</button>
+		<button class="left-margin fancy-btn" ng-click="showLoadScreen()">Load</button>
+		<button class="left-margin fancy-btn" ng-click="newExtractor(bill_id)">New</button>
 
+		<hr class="divider">
+	</div>
+
+	<div ng-show="viewLoadScreen">
+		<h3> Available Extractors </h3>
+		<table id="extractors">
+			<colgroup>
+				<col style="width:50px">
+				<col style="max-width:150px">
+			</colgroup>
+			<thead>
+				<tr>
+					<td>ID</td>
+					<td>Name</td>
+				<tr>
+			</thead>
+			<tbody>
+				<tr ng-repeat="ex in availableExtractors">
+					<td> {{ ex.extractor_id }} </td>
+					<td> {{ ex.name }} </td>
+				</tr>
+			</tbody>
+		</table>
 		<hr class="divider">
 	</div>
 

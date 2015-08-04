@@ -19,7 +19,7 @@ factory('dataModel', ['DBService', function(DBService){
 	* Gets data from the server, including a list of applier keys and field types,
 	* and creates a new, blank extractor. 
 	*/
-	var initDataModel = function(){
+	var initDataModel = function(rep_bill_id){
 		// if data model has already been initialized, return
 		if (! $.isEmptyObject(_extractor)){
 			return ;
@@ -46,7 +46,7 @@ factory('dataModel', ['DBService', function(DBService){
 		// execute the above requests asynchronously, and then create a new extractor
 		var promises = [applier_keys_promise, field_types_promise, data_types_promise];
 		Promise.all(promises).then(function(){
-			newExtractor();
+			newExtractor(rep_bill_id);
 		});
 	};
 
@@ -55,11 +55,11 @@ factory('dataModel', ['DBService', function(DBService){
 	* Resets _extractor with a new extractor with default values.
 	* Also adds a field for each applier key; each field is disabled by default 
 	*/
-	var newExtractor = function(){
-		// set extractor's values to new values (but don't create new object)
+	var newExtractor = function(rep_bill_id){
+		_extractor = {}
 		_extractor.fields = [];
 		_extractor.name = "New Extractor Name";
-		_extractor.representative_bill_id = null;
+		_extractor.representative_bill_id = rep_bill_id;
 		_extractor.origin_regex = null;
 		_extractor.origin_x = null;
 		_extractor.origin_y = null;
