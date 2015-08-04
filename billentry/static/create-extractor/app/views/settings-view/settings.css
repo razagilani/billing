@@ -72,6 +72,10 @@ button.fancy-btn:hover {
   color: #AAAAFF;
 }
 
+table#extractors {
+    text-overflow: ellipsis;
+}
+
 /* list of fields in extractor settings */
 table#fields { border-collapse: collapse; border-spacing: 0px; }
 table#fields thead { font-weight: bold; }

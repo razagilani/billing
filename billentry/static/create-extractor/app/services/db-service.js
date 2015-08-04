@@ -11,12 +11,12 @@ factory('DBService', ['$http',
 
     // Given an id, returns the bill's id , utility_id, and pdf url on success
     DBService.getUtilBill = function(id){
-      return $http.get('/get-utilbill/'+id);
+      return $http.get('/utilitybills/utilitybills/'+id);
     };
 
     //Returns a list of the applier keys currently available to use in extraction. 
     DBService.getApplierKeys = function(){
-      return $http.get('/get-applier-keys');
+      return $http.get('/applier-keys');
     };
 
     // Returns a list of possible field types as a string array
@@ -26,7 +26,12 @@ factory('DBService', ['$http',
 
     // Returns a list of possible data types for a field as a string array
     DBService.getDataTypes = function(){
-      return $http.get('/get-data-types');
+      return $http.get('/field-data-types');
+    };
+
+    // Returns a list of the id's and names of available LayoutExtractors in the DB
+    DBService.getExtractors = function(){
+      return $http.get('/extractors');
     };
 
     // Saves the current extractor to the DB. If the extractor has an ID 
@@ -35,7 +40,16 @@ factory('DBService', ['$http',
     // Otherwise, the DB will create a new extractor with a new ID. 
     // The ID of the extractor is returned. 
     DBService.saveExtractor = function(extractor){
-      return $http.post('/save-extractor', {extractor: extractor});
+      var extractor_id = extractor.id;
+      if (!extractor_id){
+        extractor_id = 0; 
+      }
+      return $http.post('/extractor/'+extractor_id, {extractor: extractor});
+    };
+
+    // Loads an extractor by ID from the database.
+    DBService.loadExtractor = function(extractor){
+      return $http.get('/extractor/' + extractor.id);
     };
 
     // For a given bill, returns the first object that matches 'regex'. 
