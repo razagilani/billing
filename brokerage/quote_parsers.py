@@ -382,7 +382,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         low, high = self._reader.get_matches(0, row, col, regex, (float, float))
         if col != self.PRICE_END_COL:
             high += 1
-        return low, high
+        return low * 1000, high * 1000
 
     def _extract_quotes(self):
         volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
@@ -413,7 +413,7 @@ class DirectEnergyMatrixParser(QuoteParser):
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader.get(0, row, col, (int, float)) / 100.
+                price = self._reader.get(0, row, col, (int, float)) / 1000.
                 for rate_class_id, alias in izip(rate_class_ids,
                                                  rate_class_aliases):
                     quote = MatrixQuote(
@@ -614,9 +614,8 @@ class AEPMatrixParser(QuoteParser):
 
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
-            rate_class_cell = self._reader.get(self.SHEET, row,
+            rate_class = self._reader.get(self.SHEET, row,
                                               self.RATE_CLASS_COL, basestring)
-            rate_class_aliases = [s.strip() for s in rate_class_cell.split(',')]
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
@@ -651,14 +650,13 @@ class AEPMatrixParser(QuoteParser):
                         continue
                     _assert_true(type(price) is float)
 
-                    for alias in rate_class_aliases:
-                        rate_class_id = self.get_rate_class_id_for_alias(alias)
-                        quote = MatrixQuote(
-                            start_from=start_from, start_until=start_until,
-                            term_months=term, valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
-                            min_volume=min_volume, limit_volume=limit_volume,
-                            purchase_of_receivables=False,
-                            rate_class_alias=alias, price=price)
-                        quote.rate_class_id = rate_class_id
-                        yield quote
+                    rate_class_id = self.get_rate_class_id_for_alias(rate_class)
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_volume, limit_volume=limit_volume,
+                        purchase_of_receivables=False,
+                        rate_class_alias=rate_class, price=price)
+                    quote.rate_class_id = rate_class_id
+                    yield quote
