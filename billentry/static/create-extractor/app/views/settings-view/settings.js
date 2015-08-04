@@ -62,10 +62,19 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		}
 	}
 
-	// shows the "load extractor" menu.
+	// when an extractor is selected from the load menu
 	$scope.chooseExtractor = function(id){
 		$scope.viewLoadScreen = false;
-		$scope.loadExtractor(id);
+		$scope.loadExtractor(id).success(function(){
+			$scope.selected = null;
+			// update offset objects for drawing individual fields
+			$scope.extractor().fields.forEach(function(field){
+				console.log(field);
+				if (field.offset_regex){
+					$scope.updateOffset(field);
+				}
+			});
+		});
 	}
 
 	$scope.selected = null;
