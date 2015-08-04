@@ -10,11 +10,12 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
 
-	// get bill id from URL
 	if($routeParams.bill_id){
 		$scope.bill_id = $routeParams.bill_id;
-	} else{
-		$scope.bill_id = 0;
+	}
+	// get bill id from URL, or from extractor if one is switching back to the view after the extractor has been loaded. 
+	else if($scope.extractor().representative_bill_id != null) {
+		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
 
 	// initialize values for bounding box corners 
@@ -84,7 +85,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	// take offset_regex into account, making the UI more intuitive. 
 	$scope.updateOffset = function(field){
 		if (field.offset_regex == null || field.offset_regex == ""){
-			field.offset_objs = null;
+			field.offset_obj = null;
 			return;
 		}
 

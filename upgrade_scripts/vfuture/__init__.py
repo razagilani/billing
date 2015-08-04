@@ -28,30 +28,30 @@ def create_layout_extractors(s):
              'yellow and chart (after 2014) id 15311',
         origin_regex="account number",
         origin_x=411.624,
-        origin_y=746.91)
+        origin_y=757.755)
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(%s)-%s" % (date_format, date_format), page_num=1,
-        bounding_box=BoundingBox(x0=411, y0=712, x1=441, y1=717),
+        bounding_box=BoundingBox(x0=411, y0=713, x1=441, y1=723),
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=UtilBillApplier.START))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"%s-(%s)" % (date_format, date_format), page_num=1,
-        bounding_box=BoundingBox(x0=411, y0=712, x1=441, y1=717),
+        bounding_box=BoundingBox(x0=411, y0=713, x1=441, y1=723),
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=UtilBillApplier.END))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(%s)" % num_format, page_num=2,
-        bounding_box=BoundingBox(x0=225, y0=624, x1=300, y1=640),
+        bounding_box=BoundingBox(x0=225, y0=624, x1=300, y1=647),
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
         applier_key=UtilBillApplier.ENERGY))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(%s)" % date_format, page_num=2,
-        bounding_box=BoundingBox(x0=280, y0=702, x1=330, y1=715),
+        bounding_box=BoundingBox(x0=280, y0=713, x1=330, y1=723),
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=UtilBillApplier.NEXT_READ))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(.*)Service address:\s+(.*)$", page_num=1,
-        bounding_box=BoundingBox(x0=411, y0=690, x1=480, y1=706),
+        bounding_box=BoundingBox(x0=411, y0=690, x1=480, y1=711),
         corner=Corners.TOP_LEFT, type=Field.ADDRESS,
         applier_key=UtilBillApplier.SERVICE_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
@@ -61,7 +61,7 @@ def create_layout_extractors(s):
         applier_key=UtilBillApplier.BILLING_ADDRESS))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"Rate Class:\s+(.*)$", page_num=2,
-        bounding_box=BoundingBox(x0=39, y0=715, x1=105, y1=725),
+        bounding_box=BoundingBox(x0=39, y0=725, x1=105, y1=735),
         corner=Corners.TOP_LEFT, type=Field.STRING,
         applier_key=UtilBillApplier.RATE_CLASS))
     washington_gas_layout.fields.append(LayoutExtractor.TableField(
@@ -79,7 +79,7 @@ def create_layout_extractors(s):
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="Your gas is supplied(?: and distributed)? by\s+(.+?)\.",
         page_num=2, corner=Corners.TOP_LEFT,
-        bounding_box=BoundingBox(x0=413, y0=725, x1=595, y1=750),
+        bounding_box=BoundingBox(x0=413, y0=725, x1=595, y1=758),
         type=Field.SUPPLIER, applier_key=UtilBillApplier.SUPPLIER))
 
     pepco_2015_layout = LayoutExtractor(
