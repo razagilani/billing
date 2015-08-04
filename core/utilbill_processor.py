@@ -678,36 +678,59 @@ class UtilbillProcessor(object):
                 UtilBill.utility_account_id == source_account_id).all()
         for bill in bills:
             bill.utility_account = dest_utility_account
-        try:
-             dest_reebill_customer = s.query(ReeBillCustomer).join(
-                 UtilityAccount).filter(
-                 ReeBillCustomer.utility_account == dest_utility_account)\
-                 .one()
-        except NoResultFound:
-            return dest_utility_account
-        # if source account has 0 reebills then update the source utility
-        # account's reebill_customer reference to point at destination
-        # utility account
-        if len(dest_account_reebills) == 0:
-            # update the source utility account reebill_customer
-            source_account_reebills[0].reebill_customer.utility_account = \
-                dest_utility_account
-
-            reebills = s.query(ReeBill).join(ReeBillCustomer).filter(
-                ReeBill.reebill_customer == dest_reebill_customer).all()
-            utilbills = s.query(UtilBill).join(UtilityAccount).filter(
-                UtilBill.utility_account_id == source_account_id).all()
-            assert len(reebills) == 0
-            assert len(utilbills) == 0
-            
-            dest_reebill_customer.utility_account = None
-            # delete the destination account's old reebill_customer
-            s.delete(dest_reebill_customer)
+        source_reebill_customer = self.get_reebill_customer_for_account(
+            source_account_id)
+        dest_reebill_customer = self.get_reebill_customer_for_account(
+                dest_account_id)
+        if dest_reebill_customer:
+            # if source account has 0 reebills then update the source utility
+            # account's reebill_customer reference to point at destination
+            # utility account
+            if len(dest_account_reebills) == 0:
+                # update the source utility account reebill_customer
+                if source_reebill_customer:
+                    source_reebill_customer.set_account(dest_utility_account)
+                dest_reebill_customer.utility_account = None
+                # delete the destination account's old reebill_customer
+                s.delete(dest_reebill_customer)
+                s.commit()
+        else:
+            source_reebill_customer.set_account(dest_utility_account)
+        #update the brokerage_accounts
+        source_ba = self.get_brokerage_account(source_account_id)
+        dest_ba = self.get_brokerage_account(dest_account_id)
+        if dest_ba:
+             s.delete(dest_ba)
+             s.commit()
+        if source_ba:
+            source_ba.utility_account_id = dest_account_id
         return dest_utility_account
 
     def delete_utility_account(self, utility_account_id):
         session = Session()
-        utility_account = session.query(UtilityAccount).filter(
-            UtilityAccount.id == utility_account_id).one()
-        session.delete(utility_account)
+        try:
+            utility_account = session.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+            session.delete(utility_account)
+        except NoResultFound:
+            raise
 
+    def get_brokerage_account(self, utility_account_id):
+        s = Session()
+        try:
+            ua = s.query(BrokerageAccount).join(UtilityAccount).filter(
+                 BrokerageAccount.utility_account_id == utility_account_id)\
+                 .one()
+        except NoResultFound:
+            ua = None
+        return ua
+
+    def get_reebill_customer_for_account(self, account_id):
+        s = Session()
+        try:
+            rb_customer = s.query(ReeBillCustomer).join(UtilityAccount).\
+                filter(ReeBillCustomer.utility_account_id == account_id).\
+                one()
+        except NoResultFound:
+            rb_customer = None
+        return rb_customer
