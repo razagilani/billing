@@ -26,8 +26,14 @@
 		<b> Origin Coordinates </b>
 		<pre class="left-margin bbox-coords">x: {{extractor().origin_x}}, y: {{extractor().origin_y}}</pre>
 		<button class="left-margin" ng-click="updateExtractorOrigin()">Get coords from regex</button>
+		<br><br>
+		
+		<button class="fancy-btn" ng-click="saveExtractor()">Save</button>
+		<button class="left-margin fancy-btn">Load</button>
+		<button class="left-margin fancy-btn">New</button>
+
+		<hr class="divider">
 	</div>
-	<hr class="divider">
 
 	<!-- List of fields for current extractor -->
 	<div id="fields-list">
@@ -70,8 +76,8 @@
 				</tr>
 			</tbody>
 		</table>
+		<hr class="divider">
 	</div> 
-	<hr class="divider">
 
 	<!-- Settings for individual fields -->
 	<div class="field-settings" ng-show="selected">
@@ -118,6 +124,25 @@
 			<pre class="left-margin bbox-coords" style="padding:0;"> {{  selected.offset_obj | bboxToString }} </pre>
 			<br>
 			on <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
+		</div>
+
+		<div ng-show="selected.field_type.mapper_id=='tablefield'">
+			<br>
+			<b> Table Start Regex </b>
+			<input class="left-margin" type="text" ng-model="selected.table_start_regex"></input>
+			<br><br>
+
+			<b> Table Stop Regex </b>
+			<input class="left-margin" type="text" ng-model="selected.table_stop_regex"></input>
+			<br><br>
+
+			<b> Multipage Table </b>
+			<input type="checkbox" ng-model="selected.multipage_table">
+			<br><br>
+
+			<b> Top margin for subsequent pages </b>
+			<pre class="left-margin bbox-coords editable"> y: {{ selected.nextpage_top | singleCoordToString:'y' }} </pre>
+			<br><br>
 		</div>
 
 		<hr class="divider">

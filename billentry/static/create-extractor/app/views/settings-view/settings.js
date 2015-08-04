@@ -9,9 +9,13 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.applier_keys = dataModel.applier_keys;
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
+	$scope.saveExtractor = dataModel.saveExtractor;
 
 	if($routeParams.bill_id){
 		$scope.bill_id = $routeParams.bill_id;
+		if ($scope.extractor().representative_bill_id == null){
+			$scope.extractor().representative_bill_id = $scope.bill_id;
+		}
 	}
 	// get bill id from URL, or from extractor if one is switching back to the view after the extractor has been loaded. 
 	else if($scope.extractor().representative_bill_id != null) {

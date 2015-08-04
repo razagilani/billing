@@ -374,6 +374,40 @@ def get_field_types():
 def get_field_data_types():
     return jsonify({ 'data_types': Field.TYPES.keys() })
 
+@app.route('/save-extractor', methods=['POST'])
+def save_extractor():
+    ex_json = request.get_json()['extractor']
+    ex_id = ex_json.get('id', None)
+    s = Session()
+
+    if ex_id is None:
+        ex = LayoutExtractor()
+        ex.created = datetime.utcnow()
+        s.add(ex)
+    else:
+        ex = s.query(Extractor).filter(Extractor.extractor_id == ex_id).one()
+
+    ex.name = ex_json['name']
+    ex.origin_regex = ex_json['origin_regex']
+    ex.origin_x = ex_json['origin_x']
+    ex.origin_y = ex_json['origin_y']
+    ex.representative_bill_id = ex_json['representative_bill_id']
+
+    # Updates the fields of the extractor with the fields in the JSON
+    for field_json in ex_json['fields']:
+        field = next((f for f in ex.fields if f.applier_key == field_json[
+            'applier_key']), None)
+        if field is None:
+            # add new field to extractor
+            field = parse_json_extractor_field(field_json)
+            ex.fields.append(field)
+        else:
+            # update existing field
+            fill_field_with_json(field, field_json)
+
+    s.commit()
+    return jsonify({'id': ex.extractor_id}), 200
+
 @app.route('/get-text-lines-page/<bill_id>',
     methods=['POST'],
     defaults={'min_page': None, 'max_page': None})
@@ -441,48 +475,43 @@ def parse_json_extractor_field(field_json):
     """
     Create a Field object based on a JSON string representing that field.
     """
+
     discriminator = field_json['field_type']['mapper_id']
-    applier_key = field_json['applier_key']
-    type = field_json['data_type']
-    enabled = field_json['enabled']
-    page_num = int(field_json['page_number'])
-    max_page = field_json['max_page']
-    bbregex = field_json['regex']
-    offset_regex = field_json['offset_regex']
-    corner = field_json['corner']
-    table_start_regex = field_json['table_start_regex']
-    table_stop_regex = field_json['table_stop_regex']
-    multipage_table = field_json['multipage_table']
-    nextpage_top = field_json['nextpage_top']
+    field = None
+    if discriminator == 'boundingboxfield':
+        field = LayoutExtractor.BoundingBoxField()
+    elif discriminator == 'tablefield':
+        field = LayoutExtractor.TableField()
+    fill_field_with_json(field, field_json)
+    return field
+
+def fill_field_with_json(field, field_json):
+    """
+    Sets a given field's properties with JSON data representing a field.
+    :param field: The field to be modified
+    :param field_json: JSON containing new data
+    :return: field, modified in-place
+    """
+    field.discriminator = field_json['field_type']['mapper_id']
+    field.applier_key = field_json['applier_key']
+    field.type = field_json['data_type']
+    field.enabled = field_json['enabled']
+    field.page_num = int(field_json['page_number'])
+    field.max_page = field_json['max_page']
+    field.bbregex = field_json['regex']
+    field.offset_regex = field_json['offset_regex']
+    field.corner = field_json['corner']
+    field.table_start_regex = field_json['table_start_regex']
+    field.table_stop_regex = field_json['table_stop_regex']
+    field.multipage_table = field_json['multipage_table']
+    field.nextpage_top = field_json['nextpage_top']
 
     bbox_json = field_json['bounding_box']
     bbox = None
     if bbox_json is not None:
         bbox = BoundingBox(x0=bbox_json['x0'], y0=bbox_json['y0'],
             x1=bbox_json['x1'], y1=bbox_json['y1'])
-
-    field = None
-    if discriminator == 'boundingboxfield':
-        field = LayoutExtractor.BoundingBoxField()
-    elif discriminator == 'tablefield':
-        field = LayoutExtractor.TableField()
-
-    # init field columns
-    field.discriminator=discriminator
-    field.applier_key=applier_key
-    field.type=type
-    field.enabled=enabled
-    field.page_num=page_num
-    field.max_page=max_page
-    field.bbregex=bbregex
-    field.offset_regex=offset_regex
-    field.corner=corner
     field.bounding_box = bbox
-
-    field.table_start_regex=table_start_regex
-    field.table_stop_regex=table_stop_regex
-    field.multipage_table=multipage_table
-    field.nextpage_top=nextpage_top
 
     return field
 

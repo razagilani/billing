@@ -14,29 +14,6 @@ filter('capitalize', function() {
     };
 }).
 
-//produces a range of integers
-filter('range', function() {
-  return function(input, min, max) {
-    min = parseInt(min); //Make string input int
-    max = parseInt(max);
-    for (var i=min; i<=max; i++)
-      input.push(i);
-    return input;
-  };
-}).
-
-// if a value is null, display "(none)"
-filter('denullify', function(){
-  return function(input){
-    if (input == null){
-      return "(none)";
-    }
-    else{
-      return input;
-    }
-  };
-}).
-
 //display the values of a bounding box
 filter('bboxToString', function(){
   return function(bbox){
@@ -48,6 +25,17 @@ filter('bboxToString', function(){
     }
     else {
       return "(click to draw on PDF)";
+    }
+  };
+}).
+
+filter('singleCoordToString', function(){
+  return function(coord, axis){
+    if (coord == null){
+      return "(click to draw on PDF)";
+    }
+    else {
+      return axis+": "+coord;
     }
   };
 });

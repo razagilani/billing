@@ -29,6 +29,15 @@ factory('DBService', ['$http',
       return $http.get('/get-data-types');
     };
 
+    // Saves the current extractor to the DB. If the extractor has an ID 
+    // (i.e. it already exists in the DB), then the ID is sent so that 
+    // the DB can udpate the existing extractor instead of creating a new one.
+    // Otherwise, the DB will create a new extractor with a new ID. 
+    // The ID of the extractor is returned. 
+    DBService.saveExtractor = function(extractor){
+      return $http.post('/save-extractor', {extractor: extractor});
+    };
+
     // For a given bill, returns the first object that matches 'regex'. 
     // min_page and max_page can be used to narrow down which pages are searched.
     DBService.getTextLine = function(bill_id, regex, min_page, max_page){
