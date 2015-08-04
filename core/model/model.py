@@ -153,13 +153,12 @@ class _Base(object):
         existing values.
         param other: object having same class as self.
         """
-        assert (other.__class__ == self.__class__ or issubclass(other.__class__, self.__class__) \
-               or issubclass(self.__class__, other.__class__))
+        assert other.__class__ == self.__class__
         # all attributes are either columns or relationships (note that some
         # relationship attributes, like charges, correspond to a foreign key
         # in a different table)
         for col_name in other.column_names():
-            if col_name != 'id':
+            if col_name not in self._get_primary_key_names():
                 setattr(self, col_name, getattr(other, col_name))
         for name, property in inspect(self.__class__).relationships.items():
             other_value = getattr(other, name)
