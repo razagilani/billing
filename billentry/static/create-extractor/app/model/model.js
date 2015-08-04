@@ -45,7 +45,7 @@ factory('dataModel', ['DBService', function(DBService){
 
 		// execute the above requests asynchronously, and then create a new extractor
 		var promises = [applier_keys_promise, field_types_promise, data_types_promise];
-		Promise.all(promises).then(function(){
+		return Promise.all(promises).then(function(){
 			newExtractor(rep_bill_id);
 		});
 	};
@@ -99,7 +99,7 @@ factory('dataModel', ['DBService', function(DBService){
 	};
 
 	var saveExtractor = function(){
-		DBService.saveExtractor(_extractor)
+		return DBService.saveExtractor(_extractor)
 			.success(function(responseObj){
 				_extractor.id = responseObj.id;
 				console.log("saved successfully to id "+_extractor.id);
@@ -110,7 +110,7 @@ factory('dataModel', ['DBService', function(DBService){
 	}
 
 	var loadExtractor = function(id){
-		DBService.loadExtractor(id)
+		return DBService.loadExtractor(id)
 			.success(function(responseObj){
 				_extractor = responseObj.extractor;
 			})

@@ -9,6 +9,7 @@
     "angular-mocks": "~1.4.0",
     "angular-resource": "~1.4.0",
     "angular-route": "~1.4.0",
+    "jquery": "~1.11.0",
     "pdfjs-dist": "1.1.341"
   }
 }

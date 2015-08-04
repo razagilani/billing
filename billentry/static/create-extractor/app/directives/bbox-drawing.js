@@ -248,7 +248,12 @@ directive("bboxDrawing", function(){
 			}
 
 			// watch selected field, so one can highlight only the selected bounding box 
-			scope.$watch('selected', function(newValue, oldValue){
+			scope.$watchCollection('selected', function(newValue, oldValue){
+				paintCanvas();
+			});
+
+			// watch selected field, so one can highlight only the selected bounding box 
+			scope.$watch('extractor()', function(newValue, oldValue){
 				paintCanvas();
 			});
 	    }
