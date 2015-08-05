@@ -115,10 +115,17 @@ directive("bboxDrawing", function(){
 						opacity=0.3;
 
 						if (scope.selected && scope.selected.bounding_box){
-							// if layout element overlaps with selected field
-							if (inBounds(scope.selected.bounding_box, getCorner(0, layout_element.bounding_box))){
-								// if layout element is on same page as selected field
-								if (inPageRange(scope.selected, layout_element.page_num)){
+							// if layout element is on same page as selected field
+							if (inPageRange(scope.selected, layout_element.page_num)){
+								var selected_bbox = scope.selected.bounding_box;
+								// if the selected field's offset object exists for this field on the correct page, 
+								// translate the selected field by the appropriate amount before checking which layout elements it intersects with
+								if (scope.selected.offset_obj != null && scope.selected.offset_obj.page_num == layout_element.page_num){
+									selected_bbox = translateByPoint(scope.selected.bounding_box, scope.selected.offset_obj.x0, scope.selected.offset_obj.y0);
+								}
+
+								// check if layout element overlaps with selected field
+								if (inBounds(selected_bbox, getCorner(0, layout_element.bounding_box))){
 									color = "#FFAA00";
 									opacity=0.5;
 								}

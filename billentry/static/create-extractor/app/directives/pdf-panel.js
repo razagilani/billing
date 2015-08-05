@@ -230,7 +230,6 @@ directive("pdfPanel", ['DBService', function(DBService){
 			//refresh pdf when bill_id is changed
 			scope.$watch('bill_id', function(newValue, oldValue){
 				if(!scope.bill_id){
-					console.log(scope.bill_id);
 					return;
 				}
 

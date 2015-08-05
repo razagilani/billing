@@ -67,13 +67,21 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		$scope.viewLoadScreen = false;
 		$scope.loadExtractor(id).success(function(){
 			$scope.selected = null;
+
 			// update offset objects for drawing individual fields
+			var offsetTasks = [];
 			$scope.extractor().fields.forEach(function(field){
-				console.log(field);
 				if (field.offset_regex){
-					$scope.updateOffset(field);
+					offsetTasks.push($scope.updateOffset(field));
 				}
 			});
+			Promise.all(offsetTasks).then($scope.paintCanvas);
+			// 
+			// $scope.extractor().fields.forEach(function(field){
+			// 	if (field.offset_regex){
+			// 		$scope.updateOffset(field);
+			// 	}
+			// });
 		});
 	}
 
@@ -119,12 +127,11 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.updateOffset = function(field){
 		if (field.offset_regex == null || field.offset_regex == ""){
 			field.offset_obj = null;
-			return;
+			return Promise.resolve(null);
 		}
 
-		DBService.getTextLine($scope.bill_id, field.offset_regex, field.page_num, field.maxpage)
+		return DBService.getTextLine($scope.bill_id, field.offset_regex, field.page_num, field.maxpage)
 			.success(function(responseJSON){
-				console.log(responseJSON);
 				field.offset_obj = responseJSON.textline;
 			})
 			.error(function(data, status, headers, config){
