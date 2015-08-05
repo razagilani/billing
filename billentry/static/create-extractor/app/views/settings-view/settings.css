@@ -12,9 +12,6 @@ div[pdf-panel] {
   overflow:inherit;
 }
 
-/*.pdf-text-layer .textLayer div {
-  border:2px solid rgba(96, 96, 96, .3);
-}*/
 .pdf-canvas-layer canvas:first-of-type {
   border-top: 0;
 }

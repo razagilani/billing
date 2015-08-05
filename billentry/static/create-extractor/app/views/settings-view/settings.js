@@ -17,6 +17,17 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	// initialize data model
 	dataModel.initDataModel($scope.bill_id);
 
+	$scope.selected = null;
+
+	$scope.corners = [
+		{number:0, name: "top left"},
+		{number:1, name: "top right"},
+		{number:2, name: "bottom left"},
+		{number:3, name: "bottom right"},
+	]
+
+	/* EVERYTHING BELOW HERE IS A FUNCTION BINDING */
+
 	$scope.extractor = dataModel.extractor;
 	$scope.applier_keys = dataModel.applier_keys;
 	$scope.field_types = dataModel.field_types;
@@ -85,7 +96,6 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		});
 	}
 
-	$scope.selected = null;
 	// select a field, so one can view/edit its parameters
 	$scope.selectField = function(field){
 		if (!field.enabled){

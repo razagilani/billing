@@ -62,6 +62,12 @@ directive("bboxDrawing", function(){
 						}
 						pageMaxY -= pageCanvas.height;
 					}
+
+					if(!inPageRange(scope.selected, i+1)){
+						scope.selected.page_num = i+1;
+						scope.selected.max_page = null;
+					}
+
 					if (scope.selected.offset_obj != null && scope.selected.offset_obj.page_num == i+1){
 						coords = subtractByPoint(coords, scope.selected.offset_obj.x0, scope.selected.offset_obj.y0);
 					}
@@ -125,7 +131,7 @@ directive("bboxDrawing", function(){
 								}
 
 								// check if layout element overlaps with selected field
-								if (inBounds(selected_bbox, getCorner(0, layout_element.bounding_box))){
+								if (inBounds(selected_bbox, getCorner(scope.selected.corner, layout_element.bounding_box))){
 									color = "#FFAA00";
 									opacity=0.5;
 								}
@@ -170,7 +176,7 @@ directive("bboxDrawing", function(){
 						for(var i=0; i<pageCanvases.length; i++){
 							opacity = 1;
 							if (!inPageRange(field, i+1)){
-								opacity=0.3;	
+								opacity=0;	
 							}
 
 							var bbox = field.bounding_box;

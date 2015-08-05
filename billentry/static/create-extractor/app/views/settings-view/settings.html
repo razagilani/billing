@@ -134,7 +134,7 @@
 		<b> Corner </b>
 		<select class="left-margin"
 				ng-model="selected.corner"
-				ng-options="c.number as c.name for c in corners">
+				ng-options="c.number as c.name | capitalize for c in corners">
 		</select>
 		<br><br>
 
