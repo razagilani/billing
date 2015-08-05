@@ -120,7 +120,7 @@ class QuoteEmailProcessor(object):
                 Supplier.matrix_email_subject.like(subject)))
         try:
             supplier = q.one()
-        except (NoResultFound, MultipleResultsFound) as e:
+        except (NoResultFound, MultipleResultsFound):
             raise UnknownSupplierError
 
         # match supplier in Altitude database by name--this means names
@@ -129,7 +129,7 @@ class QuoteEmailProcessor(object):
             Company).filter_by(name=supplier.name)
         try:
             altitude_supplier = q.one()
-        except (NoResultFound, MultipleResultsFound) as e:
+        except (NoResultFound, MultipleResultsFound):
             raise UnknownSupplierError
 
         # load quotes from the file into the database
