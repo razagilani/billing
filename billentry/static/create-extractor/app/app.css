@@ -51,3 +51,11 @@ ul.navbar li a:hover {
   float:left;
   height:100%;
 }
+
+button.fancy-btn {
+  background-color: #AAAAFF;
+  color: #000099;
+  border: 2px solid #000099;
+  font-size: 0.9em;
+  outline:none;
+}
