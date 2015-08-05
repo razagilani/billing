@@ -762,7 +762,7 @@ class ReebillProcessor(object):
                 ReeBillCustomer.utility_account_id==UtilityAccount.id).\
                 filter(UtilityAccount.id==utility_account_id).one()
         except NoResultFound:
-            raise
+            return
         reebill_customer.discountrate = discount_rate
         return reebill_customer
 
@@ -774,6 +774,6 @@ class ReebillProcessor(object):
                 ReeBillCustomer.utility_account_id==UtilityAccount.id).\
                 filter(UtilityAccount.id==utility_account_id).one()
         except NoResultFound:
-            raise
+            return
         reebill_customer.latechargerate = late_charge_rate
         return reebill_customer
