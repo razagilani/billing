@@ -704,7 +704,7 @@ class UtilbillProcessor(object):
                 # delete the destination account's old reebill_customer
                 s.delete(dest_reebill_customer)
                 s.commit()
-        else:
+        elif source_reebill_customer:
             source_reebill_customer.set_account(dest_utility_account)
         #update the brokerage_accounts
         source_ba = self.get_brokerage_account(source_account_id)
