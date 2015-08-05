@@ -95,14 +95,9 @@ Ext.define('BillEntry.controller.UtilityBills', {
         }, this, {single: true});
 
         this.getUtilityBillsStore().on('write', function(store, operation){
-            var utilityAccountId = operation.records[0].get('utility_account_id');
-
-            // Find the accounts record associated with the updated utility bill
-            var accountsRecord = this.getAccountsStore().findRecord('id', utilityAccountId);
-            console.log(accountsRecord);
-
             // This request will not actually change the state on the server. However, it will cause the server to
             // reavaluate 'bills_to_be_entered' for this account record.
+            var accountsRecord = this.getAccountsGrid().getSelectionModel().getSelection()[0];
             accountsRecord.set('bills_to_be_entered', !accountsRecord.get('bills_to_be_entered'));
         }, this);
 
