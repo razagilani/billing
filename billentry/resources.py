@@ -13,7 +13,7 @@ from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean,\
     List
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, with_polymorphic
 from sqlalchemy.orm.exc import NoResultFound
 import werkzeug
 
@@ -202,9 +202,18 @@ parse_date = lambda _s: dateutil_parser.parse(_s).date()
 
 class AccountListResource(BaseResource):
     def get(self):
-        accounts = Session().query(UtilityAccount).join(
-            BrokerageAccount).options(joinedload('utilbills')).options(
-            joinedload('fb_utility')).order_by(UtilityAccount.account).all()
+        # Load each Account, each account's bills and fb_utility, and each
+        # bills service address
+        accounts = Session().query(
+            UtilityAccount).join(BrokerageAccount).options(
+                # We have to specifically instruct sqlalchemy to also load
+                # BEUtilityBill attributes, otherwise access to those attributes
+                # causes a seperate query later on
+                joinedload(UtilityAccount.utilbills.of_type(with_polymorphic(
+                    UtilBill, [UtilBill, BEUtilBill], aliased=True))
+                ).joinedload('service_address')
+        ).options(joinedload('fb_utility')).order_by(
+                UtilityAccount.account).all()
         return [dict(marshal(account, {
             'id': Integer,
             'account': String,
@@ -212,7 +221,7 @@ class AccountListResource(BaseResource):
             'utility': String(attribute='fb_utility'),
             'service_address': CallableField(String(),
                 attribute='get_service_address'),
-            }),bills_to_be_entered=account_has_bills_for_data_entry(
+            }), bills_to_be_entered=account_has_bills_for_data_entry(
                          account)) for account in accounts]
 
 
