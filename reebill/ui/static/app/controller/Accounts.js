@@ -244,6 +244,7 @@ Ext.define('ReeBill.controller.Accounts', {
     saveNewAccount: function() {
         var accountForm = this.getAccountForm(),
             accountsGrid = this.getAccountsGrid(),
+            newAccountWindow = Ext.ComponentQuery.query('#createAccountWindow'),
             makeAnotherAccount = accountForm.down('[name=makeAnotherAccount]').checked;
         var store = this.getAccountsStore();
 
@@ -284,7 +285,7 @@ Ext.define('ReeBill.controller.Accounts', {
                     },
                     scope: this
                 });
-                accountsGrid.expand();
+                newAccountWindow[0].close();
             }else {
                 this.loadNextAccountNumber();
                 store.sync({
