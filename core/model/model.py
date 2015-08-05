@@ -564,9 +564,9 @@ class UtilityAccount(Base):
         primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
-    fb_billing_address = relationship('Address', uselist=False, cascade='all',
+    fb_billing_address = relationship('Address', uselist=False,
         primaryjoin='UtilityAccount.fb_billing_address_id==Address.id')
-    fb_service_address = relationship('Address', uselist=False, cascade='all',
+    fb_service_address = relationship('Address', uselist=False,
         primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
     fb_utility = relationship('Utility')
 
