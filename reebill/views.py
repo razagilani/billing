@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from brokerage.brokerage_model import BrokerageAccount
 from core.model import Session, Register, UtilityAccount, \
     Supplier, Utility, RateClass, SupplyGroup, Charge
+from brokerage.brokerage_model import BrokerageAccount
 from core.model.utilbill import UtilBill, Charge
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
@@ -194,7 +195,22 @@ class Views(object):
                 'utilityserviceaddress': str(ua.get_service_address()),
                 'tags': group_names,
                 'lastevent': '',
-                'payee': payee
+                'payee': payee,
+                'name':ua.name,
+                'ba_addressee': ua.fb_billing_address.addressee,
+                'ba_city': ua.fb_billing_address.city,
+                'ba_postal_code':ua.fb_billing_address.postal_code,
+                'ba_state':ua.fb_billing_address.state,
+                'ba_street':ua.fb_billing_address.street,
+                'discount_rate': reebill_customer.discountrate if
+                reebill_customer else '',
+                'late_charge_rate':reebill_customer.latechargerate if
+                reebill_customer else '',
+                'sa_addressee': ua.fb_service_address.addressee,
+                'sa_city': ua.fb_service_address.city,
+                'sa_postal_code':ua.fb_service_address.postal_code,
+                'sa_state':ua.fb_service_address.state,
+                'sa_street':ua.fb_service_address.street
             }
 
         if account is not None:
