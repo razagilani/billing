@@ -1,3 +1,62 @@
-<div>
-	View for testing the new extractor.
+<div style="width:96%; margin-right:2%; margin-left:2%">
+	<div id="test-header">
+		<h3>Testing Extractor: <i>{{extractor().name}}</i></h3>
+
+		<!-- Batch test, which runs many bills at once -->
+		<b>Batch Test:</b> &nbsp; 
+		Limit to &nbsp; 
+		<input type="number" ng-model="test_template.nbills"></input> &nbsp;
+		bills, with utility &nbsp;
+		<select ng-model="test_template.utility_id">
+			<option ng-repeat="util in utilities() | orderBy: 'name' " 
+					value="{{ util.id }}" >
+					{{ util.name }}
+			</option>
+		</select>
+		&nbsp; in the time range between
+		&nbsp; <input type="text" ng-model="test_template.start_date"></input> &nbsp;
+		and
+		&nbsp; <input type="text" ng-model="test_template.stop_date"></input> &nbsp;
+		<button class="left-margin fancy-btn" ng-click="addBatchTest()">Run Batch Test</button>
+		<br><br>
+
+		<!-- Individual test, which runs one bill at a time and gives detailed results -->
+		<b>Individual Test:</b> &nbsp; 
+		Test Bill &nbsp; 
+		<input type="number" ng-model="test_template.indiv_bill_id"></input> &nbsp; 
+		<button class="left-margin fancy-btn" ng-click="addIndividualTest()">Run Individual Test</button>
+		<hr class="divider">
+	</div>
+
+	<!-- A list of running tests, with general information on them. -->
+	<div id="tests-summary">
+		<table id="testlist">
+			<thead>
+				<tr>
+					<td> # </td>
+					<td> Extractor </td>
+					<td> Utility </td>
+					<td> Status </td>
+					<td> Bills to run </td>
+					<td> Total so far </td>
+					<td> Bills with <i>all</i> fields read </td>
+					<td> Bills with <i>any</i> fields read </td>
+					<td ng-repeat="applier_key in applier_keys()">{{ applier_key }}</td>
+				</tr>
+			</thead>
+		</table>
+		<hr class="divider">
+	</div>
+
+	<!-- Detailed info on a specific test.  -->
+	<div>
+		Detailed Test Results 
+		<hr class="divider">
+	</div>
+
+	<div>
+		<i>Random debug stuff, which won't be here in production.</i>
+		<pre>{{ test_template | json }}</pre>
+	</div>
+
 </div>

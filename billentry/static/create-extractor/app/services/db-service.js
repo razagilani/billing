@@ -71,5 +71,10 @@ factory('DBService', ['$http',
       return $http.post('/preview-field/'+bill_id, field);
     };
 
+    // Gets a list of utilities from the database
+    DBService.getUtilities = function(){
+      return $http.get('/utilitybills/utilities');
+    }
+
     return DBService;
 }]);

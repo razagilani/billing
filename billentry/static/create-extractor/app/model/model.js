@@ -10,6 +10,7 @@ factory('dataModel', ['DBService', function(DBService){
 	var _applier_keys = [];
 	var _field_types = [];
 	var _data_types = [];
+	var _utilities = [];
 
 	// stores data about the extractor being manipulated
 	var _extractor = {};
@@ -43,8 +44,14 @@ factory('dataModel', ['DBService', function(DBService){
 				_data_types = responseObj.data_types;
 		});
 
+		//Get utilities
+		var utilities_promise = DBService.getUtilities()
+			.success(function(responseObj){
+				_utilities = responseObj.rows;
+		});
+
 		// execute the above requests asynchronously, and then create a new extractor
-		var promises = [applier_keys_promise, field_types_promise, data_types_promise];
+		var promises = [applier_keys_promise, field_types_promise, data_types_promise, utilities_promise];
 		return Promise.all(promises).then(function(){
 			newExtractor(rep_bill_id);
 		});
@@ -125,6 +132,7 @@ factory('dataModel', ['DBService', function(DBService){
 		applier_keys: function(){ return _applier_keys;},
 		field_types: function(){ return _field_types;},
 		data_types: function(){ return _data_types;},
+		utilities: function(){ return _utilities;},
 		initDataModel: initDataModel,
 		newExtractor: newExtractor,
 		getNewField: getNewField,
