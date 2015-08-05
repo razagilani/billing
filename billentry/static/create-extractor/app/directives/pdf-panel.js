@@ -212,7 +212,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 		            }
 		            return me.src + cacheparam
 		        };
-				PDFJS.getDocument(pdf_data.src).then(
+				return PDFJS.getDocument(pdf_data.src).then(
 					// on success
 					function(pdfDoc){
 						pdf_data.pdfDoc = pdfDoc;
@@ -220,30 +220,80 @@ directive("pdfPanel", ['DBService', function(DBService){
 					},
 					// on fail
 					function(message, exception){
-						console.log(message);
-						console.log(exception);
 						pdf_data.canvasLayer.html(pdf_data.pdfNotLoadedMessage);
-						
+						throw "Load PDF Error";
 					}
 				);
 			};
 
 			initPDFPanel();
-			getDocument();
 			//refresh pdf when bill_id is changed
 			scope.$watch('bill_id', function(newValue, oldValue){
 				if(!scope.bill_id){
 					console.log(scope.bill_id);
 					return;
 				}
-				DBService.getUtilBill(scope.bill_id)
-					.success(function(bill){
-						scope.pdf_data.src = bill.pdf_url;
-						getDocument();
-					})
-					.error(function(data, status, header, config){
-						scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
-					});
+
+				var loadBill = function(){
+					return DBService.getUtilBill(scope.bill_id).then(null, loadBillError);
+				}
+
+				var loadPDF = function(response){
+					var bill = response.data;
+					scope.pdf_data.src = bill.pdf_url;
+					return getDocument();
+				};
+
+				var loadLayoutElements = function(){
+					return DBService.getLayoutElements(scope.bill_id).then(
+						// on success
+						function(response){
+							scope.pdf_data.layout_elements = response.data.layout_elements;
+						},
+						// on error
+						function(){
+							scope.pdf_data.layout_elements = null;
+						}
+					)
+				};
+
+				var loadBillError = function(){
+					scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
+					throw "Load Bill Error";
+				};
+
+				loadBill()
+				.then(loadPDF)
+				.then(loadLayoutElements)
+				.finally(scope.paintCanvas);
+
+				// var billRequest = DBService.getUtilBill(scope.bill_id)
+				// .success(loadPDF)
+				// .error(showBillNotfound);
+				// billRequest.then(loadLayoutElements).catch(console.log).finally(scope.paintCanvas);;
+
+				// DBService.getUtilBill(scope.bill_id)
+				// 	.success(function(bill){
+				// 		scope.pdf_data.src = bill.pdf_url;
+				// 		getDocument().then(
+				// 			function(){
+				// 				DBService.getLayoutElements(scope.bill_id).then(
+				// 					// on success
+				// 					function(response){
+				// 						scope.pdf_data.layout_elements = response.data.layout_elements;
+				// 					},
+				// 					// on error
+				// 					function(){
+				// 						scope.pdf_data.layout_elements = null;
+				// 					}
+				// 				)
+				// 				.finally(scope.paintCanvas);
+				// 			}
+				// 		);
+				// 	})
+				// 	.error(function(){
+				// 		scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
+				// 	});
 
 			});
 		}	

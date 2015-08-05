@@ -655,6 +655,34 @@ extractor_fields = {
     'fields': List(Nested(field_fields))
 }
 
+layout_element_fields = {
+    'layout_element_id': Integer,
+    'utilbill_id': Integer,
+    'type': String,
+    'bounding_box': Nested(bounding_box_fields),
+    'page_num': Integer,
+    'text': String,
+}
+
+def fill_extractor_with_json(ex, ex_json):
+    ex.name = ex_json['name']
+    ex.origin_regex = ex_json['origin_regex']
+    ex.origin_x = ex_json['origin_x']
+    ex.origin_y = ex_json['origin_y']
+    ex.representative_bill_id = ex_json['representative_bill_id']
+
+    # Updates the fields of the extractor with the fields in the JSON
+    for field_json in ex_json['fields']:
+        field = next((f for f in ex.fields if f.applier_key == field_json[
+            'applier_key']), None)
+        if field is None:
+            # add new field to extractor
+            field = parse_json_extractor_field(field_json)
+            ex.fields.append(field)
+        else:
+            # update existing field
+            fill_field_with_json(field, field_json)
+    return ex
 
 def parse_json_extractor_field(field_json):
     """
@@ -703,41 +731,19 @@ def fill_field_with_json(field, field_json):
 class ExtractorResource(Resource):
     @marshal_with(extractor_fields, envelope="extractor")
     def get(self, id):
+        # get an existing extractor
         s = Session()
         le = s.query(LayoutExtractor)\
             .filter(LayoutExtractor.extractor_id == id).one()
         return le
 
-    def post(self, id):
+    def put(self, id):
+        # update an existing extractor
         ex_json = request.json.get('extractor')
         s = Session()
-
-        if not id:
-            ex = LayoutExtractor()
-            ex.created = datetime.utcnow()
-            s.add(ex)
-        else:
-            ex = s.query(LayoutExtractor).filter(
-                Extractor.extractor_id==id).one()
-
-        ex.name = ex_json['name']
-        ex.origin_regex = ex_json['origin_regex']
-        ex.origin_x = ex_json['origin_x']
-        ex.origin_y = ex_json['origin_y']
-        ex.representative_bill_id = ex_json['representative_bill_id']
-
-        # Updates the fields of the extractor with the fields in the JSON
-        for field_json in ex_json['fields']:
-            field = next((f for f in ex.fields if f.applier_key == field_json[
-                'applier_key']), None)
-            if field is None:
-                # add new field to extractor
-                field = parse_json_extractor_field(field_json)
-                ex.fields.append(field)
-            else:
-                # update existing field
-                fill_field_with_json(field, field_json)
-
+        ex = s.query(LayoutExtractor)\
+            .filter(LayoutExtractor.extractor_id == id).one()
+        fill_extractor_with_json(ex, ex_json)
         s.commit()
         return {'id': ex.extractor_id}
 
@@ -745,9 +751,21 @@ class ExtractorsListResource(Resource):
     @marshal_with({'extractor_id': Integer, 'name': String},
         envelope="extractors")
     def get(self):
+        # get all current extractors
         s = Session()
         les = s.query(LayoutExtractor).all()
         return les
+
+    def post(self):
+        # add a new extractor
+        ex_json = request.json.get('extractor')
+        s = Session()
+        ex = LayoutExtractor()
+        s.add(ex)
+        fill_extractor_with_json(ex, ex_json)
+        s.commit()
+        return {'id': ex.extractor_id}
+
 
 class ApplierKeyListResource(Resource):
     def get(self):
@@ -759,3 +777,12 @@ class FieldTypesListResource(Resource):
     def get(self):
         types = Field.TYPES.keys()
         return {'data_types': types}
+
+class LayoutElementsListResource(BaseResource):
+    @marshal_with(layout_element_fields, envelope="layout_elements")
+    def get(self, id):
+        s = Session()
+        utilbill = s.query(UtilBill).filter(UtilBill.id == id).one()
+        le = LayoutExtractor()
+        le._prepare_input(utilbill, self.utilbill_processor.bill_file_handler)
+        return utilbill._layout

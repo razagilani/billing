@@ -317,7 +317,7 @@ def test_status(task_id):
 
 @app.route('/stop-task/<task_id>', methods=['POST'])
 def stop_task(task_id):
-    #get child tasks and revoke them
+    # get child tasks and revoke them
     init_celery()
     s = Session()
     q = s.query(ExtractorResult).filter(
@@ -343,14 +343,15 @@ def create_extractor():
 def get_field_types():
     return jsonify({'field_types': ['boundingboxfield', 'tablefield']})
 
+
 @app.route('/get-text-lines-page/<bill_id>',
-    methods=['POST'],
-    defaults={'min_page': None, 'max_page': None})
+           methods=['POST'],
+           defaults={'min_page': None, 'max_page': None})
 @app.route('/get-text-lines-page/<bill_id>/<int:min_page>',
-    methods=['POST'],
-    defaults={'max_page': None})
+           methods=['POST'],
+           defaults={'max_page': None})
 @app.route('/get-text-lines-page/<bill_id>/<int:min_page>/<int:max_page>',
-    methods=['POST'])
+           methods=['POST'])
 def get_text_line(bill_id, min_page, max_page):
     """
     Return the first text object in the bill that matches 'regex'.
@@ -401,8 +402,7 @@ def preview_field(bill_id):
     s = Session()
     utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
     le = LayoutExtractor()
-    input = le._prepare_input(utilbill,
-        _create_bill_file_handler())
+    input = le._prepare_input(utilbill, _create_bill_file_handler())
     output = field.get_value(input)
 
     return jsonify({'field_output': str(output)}), 200
@@ -688,10 +688,11 @@ api.add_resource(resources.UtilBillListForUserResource,
 api.add_resource(resources.FlaggedUtilBillListResource,
                  '/utilitybills/flagged_utilitybills')
 api.add_resource(resources.ExtractorsListResource, '/extractors')
-api.add_resource(resources.ExtractorResource, '/extractor/<int:id>')
+api.add_resource(resources.ExtractorResource, '/extractors/<int:id>')
 api.add_resource(resources.ApplierKeyListResource, '/applier-keys')
 api.add_resource(resources.FieldTypesListResource, '/field-data-types')
-
+api.add_resource(resources.LayoutElementsListResource,
+    '/utilitybills/<int:id>/layout-elements')
 # apparently needed for Apache
 application = app
 

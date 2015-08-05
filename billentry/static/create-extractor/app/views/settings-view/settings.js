@@ -13,15 +13,9 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	else {
 		$scope.bill_id = null;
 	}
-	
+
 	// initialize data model
-	dataModel.initDataModel($scope.bill_id).then(
-		function(){
-		},
-		function(){
-			console.log("Failed to load data model");
-		}
-	);
+	dataModel.initDataModel($scope.bill_id);
 
 	$scope.extractor = dataModel.extractor;
 	$scope.applier_keys = dataModel.applier_keys;

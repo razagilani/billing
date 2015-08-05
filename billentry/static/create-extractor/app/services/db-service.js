@@ -40,16 +40,16 @@ factory('DBService', ['$http',
     // Otherwise, the DB will create a new extractor with a new ID. 
     // The ID of the extractor is returned. 
     DBService.saveExtractor = function(extractor){
-      var extractor_id = extractor.id;
-      if (!extractor_id){
-        extractor_id = 0; 
+      if (extractor.id){
+        return $http.put('/extractors/'+extractor.id, {extractor:extractor});
+      } else {
+        return $http.post('/extractors', {extractor:extractor});
       }
-      return $http.post('/extractor/'+extractor_id, {extractor: extractor});
     };
 
     // Loads an extractor by ID from the database.
     DBService.loadExtractor = function(id){
-      return $http.get('/extractor/' + id);
+      return $http.get('/extractors/' + id);
     };
 
     // For a given bill, returns the first object that matches 'regex'. 
@@ -58,6 +58,11 @@ factory('DBService', ['$http',
       var min_page_str = (min_page == null) ? "" : "/"+min_page;
       var max_page_str = (max_page == null) ? "" : "/"+max_page;
       return $http.post('/get-text-lines-page/'+bill_id+min_page_str+max_page_str, {regex: regex});
+    };
+
+    // get all the layout elements for a bill.
+    DBService.getLayoutElements = function(bill_id){
+      return $http.get('/utilitybills/'+bill_id+'/layout-elements');
     };
 
     // Tests a field on a given bill, and returns the output (after the type conversion function has been applier)
