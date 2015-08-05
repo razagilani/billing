@@ -780,9 +780,14 @@ class FieldTypesListResource(Resource):
 
 class LayoutElementsListResource(BaseResource):
     @marshal_with(layout_element_fields, envelope="layout_elements")
-    def get(self, id):
+    def get(self, id, type):
+        """
+        Returns a list of layout elements for a given bill.
+        'type' is used to filter layout elements by type.
+        """
         s = Session()
         utilbill = s.query(UtilBill).filter(UtilBill.id == id).one()
         le = LayoutExtractor()
         le._prepare_input(utilbill, self.utilbill_processor.bill_file_handler)
-        return utilbill._layout
+        layout_elts = filter(lambda o: o.type == type, utilbill._layout)
+        return layout_elts

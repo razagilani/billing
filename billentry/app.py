@@ -692,7 +692,7 @@ api.add_resource(resources.ExtractorResource, '/extractors/<int:id>')
 api.add_resource(resources.ApplierKeyListResource, '/applier-keys')
 api.add_resource(resources.FieldTypesListResource, '/field-data-types')
 api.add_resource(resources.LayoutElementsListResource,
-    '/utilitybills/<int:id>/layout-elements')
+    '/utilitybills/<int:id>/layout-elements/<string:type>')
 # apparently needed for Apache
 application = app
 
