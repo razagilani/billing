@@ -35,7 +35,7 @@ def upgrade():
 
     s.commit()
 
-    alembic_upgrade('1953b5abb480')
+    alembic_upgrade('482dddf4fe5d')
 
     # to do later:
     # - drop the utilbill_reebill table
