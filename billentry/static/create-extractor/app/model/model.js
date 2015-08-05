@@ -22,7 +22,7 @@ factory('dataModel', ['DBService', function(DBService){
 	var initDataModel = function(rep_bill_id){
 		// if data model has already been initialized, return
 		if (! $.isEmptyObject(_extractor)){
-			return ;
+			return Promise.resolve(null);
 		} 
 
 		//Get applier keys

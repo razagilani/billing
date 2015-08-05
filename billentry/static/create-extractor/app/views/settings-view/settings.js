@@ -7,15 +7,18 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	if($routeParams.bill_id){
 		$scope.bill_id = $routeParams.bill_id;
 	} 
-	else if($scope.extractor().representative_bill_id != null) {
-		$scope.bill_id = $scope.extractor().representative_bill_id;
+	else if(dataModel.extractor().representative_bill_id != null) {
+		$scope.bill_id = dataModel.extractor().representative_bill_id;
 	}
 	else {
 		$scope.bill_id = null;
 	}
 
-	// initialize data model
-	dataModel.initDataModel($scope.bill_id);
+	// initialize data model, and then refresh scope
+	dataModel.initDataModel($scope.bill_id)
+		.then(function(){
+			$scope.$apply();
+		});
 
 	$scope.selected = null;
 
@@ -87,12 +90,6 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 				}
 			});
 			Promise.all(offsetTasks).then($scope.paintCanvas);
-			// 
-			// $scope.extractor().fields.forEach(function(field){
-			// 	if (field.offset_regex){
-			// 		$scope.updateOffset(field);
-			// 	}
-			// });
 		});
 	}
 
