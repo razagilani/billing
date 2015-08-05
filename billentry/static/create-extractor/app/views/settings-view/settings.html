@@ -27,7 +27,7 @@
 		<pre class="left-margin bbox-coords">x: {{extractor().origin_x}}, y: {{extractor().origin_y}}</pre>
 		<button class="left-margin" ng-click="updateExtractorOrigin()">Get coords from regex</button>
 		<br><br>
-		
+		<hr style="height:2px"><br>
 		<button class="fancy-btn" ng-click="saveExtractor()">Save</button>
 		<button class="left-margin fancy-btn" ng-click="showLoadScreen()">Load</button>
 		<button class="left-margin fancy-btn" ng-click="newExtractor(bill_id)">New</button>
@@ -35,6 +35,7 @@
 		<hr class="divider">
 	</div>
 
+	<!-- A list of existing extractors in the DB -->
 	<div ng-show="viewLoadScreen">
 		<h3> Available Extractors </h3>
 		<table id="extractors">

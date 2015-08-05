@@ -3,8 +3,26 @@
 angular.module('createExtractor').
 
 controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataModel', function($scope, $routeParams, DBService, dataModel) {
+	// load bill id
+	if($routeParams.bill_id){
+		$scope.bill_id = $routeParams.bill_id;
+	} 
+	else if($scope.extractor().representative_bill_id != null) {
+		$scope.bill_id = $scope.extractor().representative_bill_id;
+	}
+	else {
+		$scope.bill_id = null;
+	}
+	
 	// initialize data model
-	dataModel.initDataModel($routeParams.bill_id);
+	dataModel.initDataModel($scope.bill_id).then(
+		function(){
+		},
+		function(){
+			console.log("Failed to load data model");
+		}
+	);
+
 	$scope.extractor = dataModel.extractor;
 	$scope.applier_keys = dataModel.applier_keys;
 	$scope.field_types = dataModel.field_types;
@@ -13,13 +31,6 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.newExtractor = dataModel.newExtractor;
 	$scope.saveExtractor = dataModel.saveExtractor;
 	$scope.loadExtractor = dataModel.loadExtractor;
-
-	if($routeParams.bill_id){
-		$scope.bill_id = $routeParams.bill_id;
-	} 
-	else if($scope.extractor().representative_bill_id != null) {
-		$scope.bill_id = $scope.extractor().representative_bill_id;
-	}
 
 	// initialize values for bounding box corners 
 	$scope.corners = [{number: 0, name: "Top Left"}, 
@@ -31,6 +42,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
 
+	// Updates origin_x and origin_y using origin_regex
 	$scope.updateExtractorOrigin = function(){
 		var ex = $scope.extractor();
 		if (ex.origin_regex == null || ex.origin_regex == ""){
@@ -132,6 +144,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			});
 	}
 
+	// Test the output of a single field
 	$scope.previewField = function(field){
 		DBService.previewField($scope.bill_id, field)
 			.success(function(data, status, headers, config){
