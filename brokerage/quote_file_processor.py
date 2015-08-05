@@ -1,12 +1,13 @@
 from cStringIO import StringIO
+import email
 from itertools import islice
 import logging
 import os
 import re
 import traceback
+from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
-from wtforms.validators import email
-from brokerage.brokerage_model import Company
+from brokerage.brokerage_model import Company, CompanyPGSupplier
 from brokerage import quote_parsers
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
@@ -72,17 +73,17 @@ class QuoteEmailProcessor(object):
 
     def process_email(self, email_file):
         try:
-            # TODO: get email address
             message = email.message_from_file(email_file)
             from_addr, to_addr = message['From'], message['To']
             subject = message['Subject']
-            q = Session().query(Supplier)
-            if Supplier.matrix_email_sender is not None:
-                q = q.filter(Supplier.matrix_email_sender.like(from_addr))
-            if Supplier.matrix_email_recipient is not None:
-                q = q.filter(Supplier.matrix_email_recipient.like(to_addr))
-            if Supplier.matrix_email_title is not None:
-                q = q.filter(Supplier.matrix_email_subject.like(subject))
+            q = Session().query(Supplier).filter(
+                or_(Supplier.matrix_email_sender == None,
+                    Supplier.matrix_email_sender.like(from_addr)),
+                or_(Supplier.matrix_email_recipient == None,
+                    Supplier.matrix_email_recipient.like(to_addr)),
+                or_(Supplier.matrix_email_subject == None,
+                    Supplier.matrix_email_subject.like(subject)),
+            )
             try:
                 supplier = q.one()
             except (NoResultFound, MultipleResultsFound) as e:
@@ -91,27 +92,33 @@ class QuoteEmailProcessor(object):
             # match supplier in Altitude database by name--this means names
             # for the same supplier must always be the same (will be None if
             # not found)
-            altitude_supplier = self.altitude_session.query(Company).filter_by(
-                name=supplier.name).first()
+            altitude_supplier = self.altitude_session.query(
+                Company).filter_by(name=supplier.name).one()
 
             # load quotes from the file into the database
-            self.logger.info('Starting to read from "%s"' % path)
+            self.logger.info('Starting to read quotes from %s' % supplier.name)
+
 
             attachments = get_attachments(message)
-            assert len(attachments) == 1
-            name, content = attachments[0]
-            if not re.match(supplier.matrix_file_name, name):
-                raise FileNameError(
-                    ('Unexpected attachment file name does not match "%s": '
-                     'found "%s"') % supplier.matrix_file_name, name)
-            quote_file = StringIO()
-            quote_file.write(content)
-            quote_file.seek(0)
-
-            for count in self._read_file(quote_file, supplier,
-                                         altitude_supplier):
-                self.logger.debug('%s quotes so far' % count)
-                self.altitude_session.commit()
+            if len(attachments) == 0:
+                self.logger.warn(
+                    'Email from %s has no attachments' % supplier.name)
+            for file_name, file_content in attachments:
+                if (supplier.matrix_file_name is not None
+                    and not re.match(supplier.matrix_file_name, file_name)):
+                    self.logger.warn(
+                        ('Skipped attachment attacment from %s with unexpected '
+                        'name: "%s"') % (supplier.name, file_name))
+                    continue
+                self.logger.info(
+                    'Processing file from %s: "%s' % (supplier.name, file_name))
+                quote_file = StringIO()
+                quote_file.write(file_content)
+                quote_file.seek(0)
+                for count in self._read_file(quote_file, supplier,
+                                             altitude_supplier):
+                    self.logger.debug('%s quotes so far' % count)
+                    self.altitude_session.commit()
         except Exception as e:
             self.logger.error('Error when processing email:\n%s' % (
                 traceback.format_exc()))
