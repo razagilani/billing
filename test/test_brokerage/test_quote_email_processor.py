@@ -37,8 +37,7 @@ class TestQuoteEmailProcessor(TestCase):
                                    '<recipient2@nextility.example.com>, '
                                    'Recipient2 <recipient1@nextility.com>'),
         ))
-        a = AltitudeSession()
-        a.add(Company(name='USGE'))
+        AltitudeSession().add(Company(name='USGE'))
 
     def tearDown(self):
         self.email_file.close()

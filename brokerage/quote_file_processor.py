@@ -15,18 +15,24 @@ from util.email_util import get_attachments
 
 LOG_NAME = 'read_quotes'
 
-class UnknownSupplierError(BillingError):
+class QuoteProcessingError(BillingError):
     pass
 
-class FileNameError(BillingError):
-    pass
+class EmailError(QuoteProcessingError):
+    """Email was invalid.
+    """
+
+class UnknownSupplierError(QuoteProcessingError):
+    """Could not match the an email to a supplier, or more than one supplier
+    matched it.
+    """
 
 
 class QuoteEmailProcessor(object):
-    """Receives emails from suppliers containing matrix quotes files as
+    """Receives emails from suppliers containing matrix quote files as
     attachments, and extracts the quotes from the attachments.
     """
-    # maps each supplier id to the class for parsing its quote file
+    # maps each supplier primary key to the class for parsing its quote file
     CLASSES_FOR_SUPPLIERS = {
         14: quote_parsers.DirectEnergyMatrixParser,
         95: quote_parsers.AEPMatrixParser,
@@ -39,24 +45,31 @@ class QuoteEmailProcessor(object):
     BATCH_SIZE = 1000
 
     def __init__(self):
-        from core import config
         self.logger = logging.getLogger(LOG_NAME)
         self.altitude_session = AltitudeSession()
 
-    def _read_file(self, quote_file, supplier, altitude_supplier):
-        """Read and insert 'BATCH_SIZE' quotes fom the given file.
-        :param quote_file: quote file to read from
+    def _process_quote_file(self, supplier, altitude_supplier, file_content):
+        """Process quotes from a single quote file for the given supplier.
         :param supplier: core.model.Supplier instance
         :param altitude_supplier: brokerage.brokerage_model.Company instance
         corresponding to the Company table in the Altitude SQL Server database,
         representing a supplier. Not to be confused with the "supplier" table
         (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
         mapping between these two. May be None if the supplier is unknown.
+        :param file_content: content of a quote file as a string. (A file
+        object would be better, but the Python 'email' module processes a
+        whole file at a time so it all has to be in memory anyway.)
         """
+        # copy string into a StringIO :(
+        quote_file = StringIO(file_content)
+
+        # pick a QuoteParser class for the given supplier, and load the file
+        # into it, and validate the file
         quote_parser = self.CLASSES_FOR_SUPPLIERS[supplier.id]()
         quote_parser.load_file(quote_file)
         quote_parser.validate()
 
+        # read and insert quotes in groups of 'BATCH_SIZE'
         generator = quote_parser.extract_quotes()
         while True:
             quote_list = []
@@ -69,21 +82,31 @@ class QuoteEmailProcessor(object):
             # TODO: probably not a good way to find out that the parser is done
             if quote_list == []:
                 break
-            yield quote_parser.get_count()
+            self.logger.debug('%s quotes so far' % quote_parser.get_count())
+            self.altitude_session.commit()
 
     def process_email(self, email_file):
+        """Read an email from the given file, which should be an email from a
+        supplier containing one or more matrix quote files as attachments.
+        Determine which supplier the email is from, and process each
+        attachment using a QuoteParser to extract quotes from the file and
+        restore them in the Altitude database.
+        :param email_file: text file with the full content of an email
+        """
         try:
             message = email.message_from_file(email_file)
             from_addr, to_addr = message['From'], message['To']
             subject = message['Subject']
+            if None in (from_addr, to_addr, subject):
+                raise EmailError('Invalid email format')
+
             q = Session().query(Supplier).filter(
                 or_(Supplier.matrix_email_sender == None,
                     Supplier.matrix_email_sender.like(from_addr)),
                 or_(Supplier.matrix_email_recipient == None,
                     Supplier.matrix_email_recipient.like(to_addr)),
                 or_(Supplier.matrix_email_subject == None,
-                    Supplier.matrix_email_subject.like(subject)),
-            )
+                    Supplier.matrix_email_subject.like(subject)))
             try:
                 supplier = q.one()
             except (NoResultFound, MultipleResultsFound) as e:
@@ -92,12 +115,15 @@ class QuoteEmailProcessor(object):
             # match supplier in Altitude database by name--this means names
             # for the same supplier must always be the same (will be None if
             # not found)
-            altitude_supplier = self.altitude_session.query(
-                Company).filter_by(name=supplier.name).one()
+            q = self.altitude_session.query(
+                Company).filter_by(name=supplier.name)
+            try:
+                altitude_supplier = q.one()
+            except (NoResultFound, MultipleResultsFound) as e:
+                raise UnknownSupplierError
 
             # load quotes from the file into the database
             self.logger.info('Starting to read quotes from %s' % supplier.name)
-
 
             attachments = get_attachments(message)
             if len(attachments) == 0:
@@ -112,13 +138,8 @@ class QuoteEmailProcessor(object):
                     continue
                 self.logger.info(
                     'Processing file from %s: "%s' % (supplier.name, file_name))
-                quote_file = StringIO()
-                quote_file.write(file_content)
-                quote_file.seek(0)
-                for count in self._read_file(quote_file, supplier,
-                                             altitude_supplier):
-                    self.logger.debug('%s quotes so far' % count)
-                    self.altitude_session.commit()
+                count = self._process_quote_file(supplier, altitude_supplier,
+                                                file_content)
         except Exception as e:
             self.logger.error('Error when processing email:\n%s' % (
                 traceback.format_exc()))
