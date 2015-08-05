@@ -25,7 +25,8 @@ def create_layout_extractors(s):
     num_format = r'[0-9,\.]+'
     washington_gas_layout = LayoutExtractor(
         name='Layout Extractor for Washington Gas bills with green and '
-             'yellow and chart (after 2014) id 15311',
+             'yellow and chart (after 2014)',
+        representative_bill_id=24153,
         origin_regex="account number",
         origin_x=411.624,
         origin_y=757.755)
@@ -86,22 +87,22 @@ def create_layout_extractors(s):
         name='Layout Extractor for Pepco bills in 2015 id 18541',
         origin_regex="How to contact us",
         origin_x="333",
-        origin_y="617.652")
+        origin_y="637.872")
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(%s) to %s" % (date_format, date_format), page_num=2,
-        bounding_box=BoundingBox(x0=310, y0=720, x1=470, y1=740),
+        bounding_box=BoundingBox(x0=310, y0=744, x1=470, y1=756),
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=UtilBillApplier.START))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"%s to (%s)" % (date_format, date_format), page_num=2,
-        bounding_box=BoundingBox(x0=310, y0=720, x1=470, y1=740),
+        bounding_box=BoundingBox(x0=310, y0=744, x1=470, y1=756),
         corner=Corners.TOP_LEFT, type=Field.DATE,
         applier_key=UtilBillApplier.END))
     # non-residential bills have a whole list of subtotals, and the actual
     # total is at the end of this. Hence the very tall bounding box
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)\s*Amount" % num_format, page_num=2,
-        bounding_box=BoundingBox(x0=348, y0=328, x1=361, y1=623),
+        bounding_box=BoundingBox(x0=348, y0=328, x1=361, y1=639),
         corner=Corners.TOP_RIGHT, type=Field.FLOAT,
         applier_key=UtilBillApplier.ENERGY))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
@@ -110,17 +111,17 @@ def create_layout_extractors(s):
         applier_key=UtilBillApplier.NEXT_READ))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"Your service address:\s+(.*)$", page_num=1,
-        bounding_box=BoundingBox(x0=45, y0=554, x1=260, y1=577),
+        bounding_box=BoundingBox(x0=45, y0=575, x1=260, y1=594),
         corner=Corners.TOP_LEFT, type=Field.ADDRESS,
         applier_key=UtilBillApplier.SERVICE_ADDRESS))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"", page_num=1,
-        bounding_box=BoundingBox(x0=36, y0=61, x1=206, y1=95),
+        bounding_box=BoundingBox(x0=36, y0=61, x1=206, y1=107),
         corner=Corners.TOP_LEFT, type=Field.ADDRESS,
         applier_key=UtilBillApplier.BILLING_ADDRESS))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex=r"(.*) - service number", page_num=2,
-        bounding_box=BoundingBox(x0=35, y0=671, x1=280, y1=681),
+        bounding_box=BoundingBox(x0=35, y0=671, x1=280, y1=696),
         corner=Corners.TOP_LEFT, type=Field.STRING,
         applier_key=UtilBillApplier.RATE_CLASS))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
@@ -134,7 +135,7 @@ def create_layout_extractors(s):
         page_num=2,
         table_start_regex=r"how we calculate this charge",
         table_stop_regex=r"total electric charges",
-        bounding_box=BoundingBox(x0=35, y0=246, x1=354, y1=512),
+        bounding_box=BoundingBox(x0=35, y0=246, x1=354, y1=527),
         multipage_table=True, maxpage=3,
         nextpage_top = 710,
         corner=Corners.TOP_LEFT, type=Field.TABLE_CHARGES,
