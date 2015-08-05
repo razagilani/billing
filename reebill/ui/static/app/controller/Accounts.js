@@ -43,7 +43,7 @@ Ext.define('ReeBill.controller.Accounts', {
                 activate: this.handleActivate
             },
             'accountForm': {
-                expand: this.loadNextAccountNumber
+                beforerender: this.loadNextAccountNumber
             },
             'grid[id=accountsGrid]': {
                 selectionchange: this.handleAccountSelect
@@ -213,10 +213,10 @@ Ext.define('ReeBill.controller.Accounts', {
     },
 
     /**
-     * Get the next account number and add it populate the new account numnber field
+     * Get the next account number and add it populate the new account number field
      */
-    loadNextAccountNumber: function() {
-        var newAccountField = this.getAccountForm().down('textfield[name=account]');
+    loadNextAccountNumber: function(accountsForm) {
+        var newAccountField = accountsForm.down('textfield[name=account]');
         var store = this.getAccountsStore();
 
         newAccountField.setValue(store.getNextAccountNumber());
