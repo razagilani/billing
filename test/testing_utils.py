@@ -160,7 +160,7 @@ class ReebillRestTestClient(object):
         url_parts, qs = self._get_resource_path_query_by_url(url)
         return self.resource.handle_get(*url_parts, **qs)
 
-    def delete(self, url):
+    def delete(self, url, data=None):
         url_parts, qs = self._get_resource_path_query_by_url(url)
         self._set_json_request_data(data)
         return self.resource.handle_delete(*url_parts, **qs)
