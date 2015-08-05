@@ -2,12 +2,12 @@ from cStringIO import StringIO
 import email
 from itertools import islice
 import logging
-import os
 import re
-import traceback
+
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
-from brokerage.brokerage_model import Company, CompanyPGSupplier
+
+from brokerage.brokerage_model import Company
 from brokerage import quote_parsers
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
@@ -91,62 +91,62 @@ class QuoteEmailProcessor(object):
         Determine which supplier the email is from, and process each
         attachment using a QuoteParser to extract quotes from the file and
         restore them in the Altitude database.
+
+        Raise EmailError if something went wrong with the email.
+        Raise UnknownSupplierError if there was not exactly one supplier
+        corresponding to the email in the main database and another with the
+        same name in the Altitude database.
+        Raise ValidationError if there was a problem with a quote file
+        itself or the quotes in it.
+
         :param email_file: text file with the full content of an email
         """
+        message = email.message_from_file(email_file)
+        from_addr, to_addr = message['From'], message['To']
+        subject = message['Subject']
+        if None in (from_addr, to_addr, subject):
+            raise EmailError('Invalid email format')
+
+        q = Session().query(Supplier).filter(
+            or_(Supplier.matrix_email_sender == None,
+                Supplier.matrix_email_sender.like(from_addr)),
+            or_(Supplier.matrix_email_recipient == None,
+                Supplier.matrix_email_recipient.like(to_addr)),
+            or_(Supplier.matrix_email_subject == None,
+                Supplier.matrix_email_subject.like(subject)))
         try:
-            message = email.message_from_file(email_file)
-            from_addr, to_addr = message['From'], message['To']
-            subject = message['Subject']
-            if None in (from_addr, to_addr, subject):
-                raise EmailError('Invalid email format')
+            supplier = q.one()
+        except (NoResultFound, MultipleResultsFound) as e:
+            raise UnknownSupplierError
 
-            q = Session().query(Supplier).filter(
-                or_(Supplier.matrix_email_sender == None,
-                    Supplier.matrix_email_sender.like(from_addr)),
-                or_(Supplier.matrix_email_recipient == None,
-                    Supplier.matrix_email_recipient.like(to_addr)),
-                or_(Supplier.matrix_email_subject == None,
-                    Supplier.matrix_email_subject.like(subject)))
-            try:
-                supplier = q.one()
-            except (NoResultFound, MultipleResultsFound) as e:
-                raise UnknownSupplierError
+        # match supplier in Altitude database by name--this means names
+        # for the same supplier must always be the same (will be None if
+        # not found)
+        q = self.altitude_session.query(
+            Company).filter_by(name=supplier.name)
+        try:
+            altitude_supplier = q.one()
+        except (NoResultFound, MultipleResultsFound) as e:
+            raise UnknownSupplierError
 
-            # match supplier in Altitude database by name--this means names
-            # for the same supplier must always be the same (will be None if
-            # not found)
-            q = self.altitude_session.query(
-                Company).filter_by(name=supplier.name)
-            try:
-                altitude_supplier = q.one()
-            except (NoResultFound, MultipleResultsFound) as e:
-                raise UnknownSupplierError
+        # load quotes from the file into the database
+        self.logger.info('Starting to read quotes from %s' % supplier.name)
 
-            # load quotes from the file into the database
-            self.logger.info('Starting to read quotes from %s' % supplier.name)
-
-            attachments = get_attachments(message)
-            if len(attachments) == 0:
+        attachments = get_attachments(message)
+        if len(attachments) == 0:
+            self.logger.warn(
+                'Email from %s has no attachments' % supplier.name)
+        for file_name, file_content in attachments:
+            if (supplier.matrix_file_name is not None
+                and not re.match(supplier.matrix_file_name, file_name)):
                 self.logger.warn(
-                    'Email from %s has no attachments' % supplier.name)
-            for file_name, file_content in attachments:
-                if (supplier.matrix_file_name is not None
-                    and not re.match(supplier.matrix_file_name, file_name)):
-                    self.logger.warn(
-                        ('Skipped attachment attacment from %s with unexpected '
-                        'name: "%s"') % (supplier.name, file_name))
-                    continue
-                self.logger.info(
-                    'Processing file from %s: "%s' % (supplier.name, file_name))
-                count = self._process_quote_file(supplier, altitude_supplier,
-                                                file_content)
-        except Exception as e:
-            self.logger.error('Error when processing email:\n%s' % (
-                traceback.format_exc()))
-            self.altitude_session.rollback()
-        else:
-            self.logger.info('Read %s quotes from "%s"' % (
-                count, supplier.name))
-        Session.remove()
-        AltitudeSession.remove()
+                    ('Skipped attachment attacment from %s with unexpected '
+                    'name: "%s"') % (supplier.name, file_name))
+                continue
+            self.logger.info(
+                'Processing file from %s: "%s' % (supplier.name, file_name))
+            count = self._process_quote_file(supplier, altitude_supplier,
+                                            file_content)
+            self.logger.info('Read %s quotes for %s from "%s"' % (
+                supplier.name, count, file_name))
 
