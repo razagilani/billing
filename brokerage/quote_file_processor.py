@@ -2,14 +2,23 @@ from cStringIO import StringIO
 from itertools import islice
 import logging
 import os
+import re
 import traceback
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from wtforms.validators import email
 from brokerage.brokerage_model import Company
 from brokerage import quote_parsers
 from core.model import AltitudeSession, Session, Supplier
+from exc import BillingError
 from util.email_util import get_attachments
 
 LOG_NAME = 'read_quotes'
+
+class UnknownSupplierError(BillingError):
+    pass
+
+class FileNameError(BillingError):
+    pass
 
 
 class QuoteEmailProcessor(object):
@@ -62,9 +71,22 @@ class QuoteEmailProcessor(object):
             yield quote_parser.get_count()
 
     def process_email(self, email_file):
-        for supplier in Session().query(Supplier).filter(
-                        Supplier.matrix_file_name != None).order_by(
-            Supplier.name):
+        try:
+            # TODO: get email address
+            message = email.message_from_file(email_file)
+            from_addr, to_addr = message['From'], message['To']
+            subject = message['Subject']
+            q = Session().query(Supplier)
+            if Supplier.matrix_email_sender is not None:
+                q = q.filter(Supplier.matrix_email_sender.like(from_addr))
+            if Supplier.matrix_email_recipient is not None:
+                q = q.filter(Supplier.matrix_email_recipient.like(to_addr))
+            if Supplier.matrix_email_title is not None:
+                q = q.filter(Supplier.matrix_email_subject.like(subject))
+            try:
+                supplier = q.one()
+            except (NoResultFound, MultipleResultsFound) as e:
+                raise UnknownSupplierError
 
             # match supplier in Altitude database by name--this means names
             # for the same supplier must always be the same (will be None if
@@ -73,30 +95,30 @@ class QuoteEmailProcessor(object):
                 name=supplier.name).first()
 
             # load quotes from the file into the database
-            try:
-                self.logger.info('Starting to read from "%s"' % path)
+            self.logger.info('Starting to read from "%s"' % path)
 
-                # TODO: get email address
-                message = email.message_from_file(email_file)
-                from_addr, to_addr = message['From'], message['To']
-                attachments = get_attachments(message)
-                assert len(attachments) == 1
-                name, content = attachments[0]
-                quote_file = StringIO()
-                quote_file.write(content)
-                quote_file.seek(0)
+            attachments = get_attachments(message)
+            assert len(attachments) == 1
+            name, content = attachments[0]
+            if not re.match(supplier.matrix_file_name, name):
+                raise FileNameError(
+                    ('Unexpected attachment file name does not match "%s": '
+                     'found "%s"') % supplier.matrix_file_name, name)
+            quote_file = StringIO()
+            quote_file.write(content)
+            quote_file.seek(0)
 
-                for count in self._read_file(quote_file, supplier,
-                                             altitude_supplier):
-                    self.logger.debug('%s quotes so far' % count)
+            for count in self._read_file(quote_file, supplier,
+                                         altitude_supplier):
+                self.logger.debug('%s quotes so far' % count)
                 self.altitude_session.commit()
-            except Exception as e:
-                self.logger.error('Error when processing email:\n%s' % (
-                    traceback.format_exc()))
-                self.altitude_session.rollback()
-            else:
-                self.logger.info('Read %s quotes from "%s"' % (
-                    count, supplier.name))
+        except Exception as e:
+            self.logger.error('Error when processing email:\n%s' % (
+                traceback.format_exc()))
+            self.altitude_session.rollback()
+        else:
+            self.logger.info('Read %s quotes from "%s"' % (
+                count, supplier.name))
         Session.remove()
         AltitudeSession.remove()
 
