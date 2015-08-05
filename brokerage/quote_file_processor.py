@@ -79,18 +79,21 @@ class QuoteEmailProcessor(object):
                 quote.validate()
                 quote_list.append(quote)
             self.altitude_session.bulk_save_objects(quote_list)
+            count = quote_parser.get_count()
             # TODO: probably not a good way to find out that the parser is done
             if quote_list == []:
-                break
-            self.logger.debug('%s quotes so far' % quote_parser.get_count())
+                return count
             self.altitude_session.commit()
+            self.logger.debug('%s quotes so far' % count)
 
     def process_email(self, email_file):
         """Read an email from the given file, which should be an email from a
         supplier containing one or more matrix quote files as attachments.
         Determine which supplier the email is from, and process each
         attachment using a QuoteParser to extract quotes from the file and
-        restore them in the Altitude database.
+        store them in the Altitude database.
+
+        If there are no attachments, nothing happens.
 
         Raise EmailError if something went wrong with the email.
         Raise UnknownSupplierError if there was not exactly one supplier
@@ -101,6 +104,7 @@ class QuoteEmailProcessor(object):
 
         :param email_file: text file with the full content of an email
         """
+        self.logger.info('Staring to read email')
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['To']
         subject = message['Subject']
@@ -120,8 +124,7 @@ class QuoteEmailProcessor(object):
             raise UnknownSupplierError
 
         # match supplier in Altitude database by name--this means names
-        # for the same supplier must always be the same (will be None if
-        # not found)
+        # for the same supplier must always be the same
         q = self.altitude_session.query(
             Company).filter_by(name=supplier.name)
         try:
@@ -130,7 +133,7 @@ class QuoteEmailProcessor(object):
             raise UnknownSupplierError
 
         # load quotes from the file into the database
-        self.logger.info('Starting to read quotes from %s' % supplier.name)
+        self.logger.info('Matched email with supplier: %s' % supplier.name)
 
         attachments = get_attachments(message)
         if len(attachments) == 0:
@@ -140,13 +143,14 @@ class QuoteEmailProcessor(object):
             if (supplier.matrix_file_name is not None
                 and not re.match(supplier.matrix_file_name, file_name)):
                 self.logger.warn(
-                    ('Skipped attachment attacment from %s with unexpected '
+                    ('Skipped attachment from %s with unexpected '
                     'name: "%s"') % (supplier.name, file_name))
                 continue
-            self.logger.info(
-                'Processing file from %s: "%s' % (supplier.name, file_name))
+            self.logger.info('Processing attachment from %s: "%s"' % (
+                supplier.name, file_name))
             count = self._process_quote_file(supplier, altitude_supplier,
                                             file_content)
             self.logger.info('Read %s quotes for %s from "%s"' % (
                 supplier.name, count, file_name))
+        self.logger.info('Finished email from %s' % supplier)
 
