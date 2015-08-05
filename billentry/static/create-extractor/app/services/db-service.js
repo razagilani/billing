@@ -61,8 +61,9 @@ factory('DBService', ['$http',
     };
 
     // get all the layout elements for a bill.
+    // Currently only gets text lines, not text boxes or images, etc. 
     DBService.getLayoutElements = function(bill_id){
-      return $http.get('/utilitybills/'+bill_id+'/layout-elements');
+      return $http.get('/utilitybills/'+bill_id+'/layout-elements/textline');
     };
 
     // Tests a field on a given bill, and returns the output (after the type conversion function has been applier)

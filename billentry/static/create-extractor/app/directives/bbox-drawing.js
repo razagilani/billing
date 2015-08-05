@@ -97,6 +97,9 @@ directive("bboxDrawing", function(){
 				// clear previous rectangles
 				var ctx = element[0].getContext('2d');
 				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+				var color;
+				var opacity = 1;
+				var coords;
 
 				// draw page borders
 				if(scope.pdf_data == undefined){
@@ -108,16 +111,28 @@ directive("bboxDrawing", function(){
 				// draw layout elements
 				if (scope.pdf_data.layout_elements != undefined){
 					scope.pdf_data.layout_elements.forEach(function(layout_element){
+						color = "#999999";
+						opacity=0.3;
+
+						if (scope.selected && scope.selected.bounding_box){
+							// if layout element overlaps with selected field
+							if (inBounds(scope.selected.bounding_box, getCorner(0, layout_element.bounding_box))){
+								// if layout element is on same page as selected field
+								if (inPageRange(scope.selected, layout_element.page_num)){
+									color = "#FFAA00";
+									opacity=0.5;
+								}
+							}
+						}
+
 						coords = PDFToCanvasCoords(layout_element.bounding_box, layout_element.page_num);
-						drawBBOX(coords, "#999999", 0.3);
+						drawBBOX(coords, color, opacity);
 					});
 				}
 
 				// draw stuff for each field
 				if (scope.extractor().fields != undefined){
 					scope.extractor().fields.forEach(function(field){
-						var color;
-						var coords;
 
 						// Draw offset boxes
 						if (field.offset_obj != null) {
@@ -146,11 +161,9 @@ directive("bboxDrawing", function(){
 						}
 
 						for(var i=0; i<pageCanvases.length; i++){
-							var opacity = 1;
-							if (i+1 != field.page_num){
-								if (field.maxpage == null || i+1 > field.maxpage){
-									opacity=0.3;
-								}
+							opacity = 1;
+							if (!inPageRange(field, i+1)){
+								opacity=0.3;	
 							}
 
 							var bbox = field.bounding_box;
@@ -164,6 +177,7 @@ directive("bboxDrawing", function(){
 					});
 				}
 			}
+			// in case the controller needs to directly get the canvas to redraw; sometimes angular can't handle all events that would require a re-draw
 			scope.paintCanvas = paintCanvas;
 
 			function drawPageBorders(pages){
@@ -231,6 +245,16 @@ directive("bboxDrawing", function(){
 				return scaledCoords;
 			}
 
+			//TODO move this somewhere better, maybe in the model file?
+			function inPageRange(field, page_num){
+				if (page_num != field.page_num){
+					if (field.maxpage == null || page_num > field.maxpage){
+						return false;
+					}
+				}
+				return true;
+			}
+
 			/*
 			* Converts pdf coordinates (with inverted y, so y=0 is at the bottom of the page)
 			*/
@@ -255,21 +279,6 @@ directive("bboxDrawing", function(){
 
 				return coords;
 			}
-
-			// scales the coordinates in 'coords' by a factor of 'sc'
-			function scale(coords, sc){
-				return { x0: coords.x0*sc, y0: coords.y0*sc, x1: coords.x1*sc, y1: coords.y1*sc };
-			}
-
-			// Translates org by a given 2d point, by adding its coordinates
-			function translateByPoint(org, dx, dy){
-				return {x0: org.x0+dx, y0: org.y0+dy, x1: org.x1+dx, y1: org.y1+dy };
-			} 
-
-			// Subtracts org by a given 2d point
-			function subtractByPoint(org, dx, dy){
-				return {x0: org.x0-dx, y0: org.y0-dy, x1: org.x1-dx, y1: org.y1-dy };
-			} 
 
 			// canvas reset
 			function reset(){

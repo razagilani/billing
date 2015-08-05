@@ -26,12 +26,6 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.saveExtractor = dataModel.saveExtractor;
 	$scope.loadExtractor = dataModel.loadExtractor;
 
-	// initialize values for bounding box corners 
-	$scope.corners = [{number: 0, name: "Top Left"}, 
-					  {number: 1, name: "Top Right"}, 
-					  {number: 2, name: "Bottom Left"}, 
-					  {number: 3, name: "Bottom Right"}];
-
 	$scope.viewBill = function(){
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
@@ -102,6 +96,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	// enable a field, so that it will be used in extraction
 	$scope.enableField = function(field){
 		field.enabled = !field.enabled;
+		$scope.paintCanvas();
 	}
 
 	// allow the bounding box to be edited. 

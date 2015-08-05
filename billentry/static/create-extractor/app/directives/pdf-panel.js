@@ -266,35 +266,6 @@ directive("pdfPanel", ['DBService', function(DBService){
 				.then(loadPDF)
 				.then(loadLayoutElements)
 				.finally(scope.paintCanvas);
-
-				// var billRequest = DBService.getUtilBill(scope.bill_id)
-				// .success(loadPDF)
-				// .error(showBillNotfound);
-				// billRequest.then(loadLayoutElements).catch(console.log).finally(scope.paintCanvas);;
-
-				// DBService.getUtilBill(scope.bill_id)
-				// 	.success(function(bill){
-				// 		scope.pdf_data.src = bill.pdf_url;
-				// 		getDocument().then(
-				// 			function(){
-				// 				DBService.getLayoutElements(scope.bill_id).then(
-				// 					// on success
-				// 					function(response){
-				// 						scope.pdf_data.layout_elements = response.data.layout_elements;
-				// 					},
-				// 					// on error
-				// 					function(){
-				// 						scope.pdf_data.layout_elements = null;
-				// 					}
-				// 				)
-				// 				.finally(scope.paintCanvas);
-				// 			}
-				// 		);
-				// 	})
-				// 	.error(function(){
-				// 		scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
-				// 	});
-
 			});
 		}	
 	};
