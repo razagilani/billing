@@ -103,61 +103,68 @@ directive("bboxDrawing", function(){
 					return;
 				}
 				var pageCanvases = scope.pdf_data.canvasLayer.children();
-				console.log(pageCanvases);
 				drawPageBorders(pageCanvases);
 
-				// draw stuff for each field
-				if (scope.extractor().fields == undefined){
-					return;
+				// draw layout elements
+				if (scope.pdf_data.layout_elements != undefined){
+					scope.pdf_data.layout_elements.forEach(function(layout_element){
+						coords = PDFToCanvasCoords(layout_element.bounding_box, layout_element.page_num);
+						drawBBOX(coords, "#999999", 0.3);
+					});
 				}
-				scope.extractor().fields.forEach(function(field){
-					var color;
-					var coords;
 
-					// Draw offset boxes
-					if (field.offset_obj != null) {
+				// draw stuff for each field
+				if (scope.extractor().fields != undefined){
+					scope.extractor().fields.forEach(function(field){
+						var color;
+						var coords;
+
+						// Draw offset boxes
+						if (field.offset_obj != null) {
+							if (scope.selected && field.applier_key == scope.selected.applier_key){
+								color="#009900";
+							}
+							else {
+								color="#999999";
+							}
+							coords = PDFToCanvasCoords(field.offset_obj, field.offset_obj.page_num); 
+							drawBBOX(coords, color, opacity);
+						}
+
+						// Draw actual bounding box
+						if (field.bounding_box == null || field.bounding_box.x0 == null){
+							return;
+						}
 						if (scope.selected && field.applier_key == scope.selected.applier_key){
-							color="#009900";
+							color = "#FF0000";
+						}
+						else if (field.enabled == false){
+							color = "#AAAAFF";
 						}
 						else {
-							color="#999999";
+							color = "#000099";
 						}
-						coords = PDFToCanvasCoords(field.offset_obj, field.offset_obj.page_num); 
-						drawBBOX(coords, color, opacity);
-					}
 
-					// Draw actual bounding box
-					if (field.bounding_box == null || field.bounding_box.x0 == null){
-						return;
-					}
-					if (scope.selected && field.applier_key == scope.selected.applier_key){
-						color = "#FF0000";
-					}
-					else if (field.enabled == false){
-						color = "#AAAAFF";
-					}
-					else {
-						color = "#000099";
-					}
-
-					for(var i=0; i<pageCanvases.length; i++){
-						var opacity = 1;
-						if (i+1 != field.page_num){
-							if (field.maxpage == null || i+1 > field.maxpage){
-								opacity=0.3;
+						for(var i=0; i<pageCanvases.length; i++){
+							var opacity = 1;
+							if (i+1 != field.page_num){
+								if (field.maxpage == null || i+1 > field.maxpage){
+									opacity=0.3;
+								}
 							}
-						}
 
-						var bbox = field.bounding_box;
-						// translate bounding box by the offset object, if it exists on this page
-						if (field.offset_obj != null && field.offset_obj.page_num == i+1){
-							bbox = translateByPoint(field.bounding_box, field.offset_obj.x0, field.offset_obj.y0);
+							var bbox = field.bounding_box;
+							// translate bounding box by the offset object, if it exists on this page
+							if (field.offset_obj != null && field.offset_obj.page_num == i+1){
+								bbox = translateByPoint(field.bounding_box, field.offset_obj.x0, field.offset_obj.y0);
+							}
+							coords = PDFToCanvasCoords(bbox, i+1);
+							drawBBOX(coords, color, opacity);
 						}
-						coords = PDFToCanvasCoords(bbox, i+1);
-						drawBBOX(coords, color, opacity);
-					}
-				});
+					});
+				}
 			}
+			scope.paintCanvas = paintCanvas;
 
 			function drawPageBorders(pages){
 				var ctx = element[0].getContext('2d');
@@ -200,7 +207,6 @@ directive("bboxDrawing", function(){
 				//find correct page
 				var pageMaxY = y1; 
 				var pageCanvases = scope.pdf_data.canvasLayer.children();
-				console.log(pageCanvases);
 				var i = 0;
 				var pageCanvas;
 				for(i=0; i<pageCanvases.length; i++){
@@ -277,11 +283,6 @@ directive("bboxDrawing", function(){
 
 			// watch extractor, so loading a new extractor re-draws fields
 			scope.$watch('extractor()', function(newValue, oldValue){
-				paintCanvas();
-			});
-
-			// watch bill_id, so loading a new bill redraws the canvas. 
-			scope.$watch('bill_id', function(newValue, oldValue){
 				paintCanvas();
 			});
 	    }
