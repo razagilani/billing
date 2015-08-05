@@ -97,9 +97,19 @@ directive("bboxDrawing", function(){
 				// clear previous rectangles
 				var ctx = element[0].getContext('2d');
 				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+				// draw page borders
+				if(scope.pdf_data == undefined){
+					return;
+				}
+				var pageCanvases = scope.pdf_data.canvasLayer.children();
+				console.log(pageCanvases);
+				drawPageBorders(pageCanvases);
+
+				// draw stuff for each field
 				if (scope.extractor().fields == undefined){
 					return;
-				};
+				}
 				scope.extractor().fields.forEach(function(field){
 					var color;
 					var coords;
@@ -130,7 +140,6 @@ directive("bboxDrawing", function(){
 						color = "#000099";
 					}
 
-					var pageCanvases = scope.pdf_data.canvasLayer.children();
 					for(var i=0; i<pageCanvases.length; i++){
 						var opacity = 1;
 						if (i+1 != field.page_num){
@@ -148,6 +157,19 @@ directive("bboxDrawing", function(){
 						drawBBOX(coords, color, opacity);
 					}
 				});
+			}
+
+			function drawPageBorders(pages){
+				var ctx = element[0].getContext('2d');
+				for (var i=0; i<pages.length-1; i++){
+					ctx.strokeStyle = "#000000";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(0, pages[0].height);
+					ctx.lineTo(pages[0].width, pages[0].height);
+					ctx.stroke();
+					ctx.closePath();
+				}
 			}
 
 			// draw an individual bounding box, in canvas coordinates
@@ -178,6 +200,7 @@ directive("bboxDrawing", function(){
 				//find correct page
 				var pageMaxY = y1; 
 				var pageCanvases = scope.pdf_data.canvasLayer.children();
+				console.log(pageCanvases);
 				var i = 0;
 				var pageCanvas;
 				for(i=0; i<pageCanvases.length; i++){
@@ -252,8 +275,13 @@ directive("bboxDrawing", function(){
 				paintCanvas();
 			});
 
-			// watch selected field, so one can highlight only the selected bounding box 
+			// watch extractor, so loading a new extractor re-draws fields
 			scope.$watch('extractor()', function(newValue, oldValue){
+				paintCanvas();
+			});
+
+			// watch bill_id, so loading a new bill redraws the canvas. 
+			scope.$watch('bill_id', function(newValue, oldValue){
 				paintCanvas();
 			});
 	    }

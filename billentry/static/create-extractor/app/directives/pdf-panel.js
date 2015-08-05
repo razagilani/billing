@@ -230,7 +230,12 @@ directive("pdfPanel", ['DBService', function(DBService){
 
 			initPDFPanel();
 			getDocument();
+			//refresh pdf when bill_id is changed
 			scope.$watch('bill_id', function(newValue, oldValue){
+				if(!scope.bill_id){
+					console.log(scope.bill_id);
+					return;
+				}
 				DBService.getUtilBill(scope.bill_id)
 					.success(function(bill){
 						scope.pdf_data.src = bill.pdf_url;
