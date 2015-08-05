@@ -716,21 +716,30 @@ class ReebillProcessor(object):
 
     def set_payee_for_utility_account(self, account_id, payee):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=account_id).one()
-        customer.payee = payee
+            customer.payee = payee
+        except NoResultFound:
+            return
 
     def get_payee_for_utility_account(self, account_id):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
-            utility_account_id=account_id).one()
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
+                utility_account_id=account_id).one()
+        except NoResultFound:
+            return None
         return customer.get_payee()
 
 
     def set_groups_for_utility_account(self, account_id, group_name_array):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
-            utility_account_id=account_id).one()
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
+                utility_account_id=account_id).one()
+        except NoResultFound:
+            return
 
         # Remove the customer from groups whose names are not in
         # 'group_name_array'
