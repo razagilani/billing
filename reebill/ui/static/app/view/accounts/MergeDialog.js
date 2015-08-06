@@ -103,11 +103,21 @@ Ext.define('ReeBill.view.accounts.MergeDialog', {
                         // Update the first record to match the merge
                         var dict = this.up('form').getValues();
                         dict.accounts_deleted = me.records[1].data['utility_account_id'];
+                        me.store.suspendAutoSync();
                         me.records[0].set(dict);
-                        // Delete all others
-                        for(var i=1; i < me.records.length; i++){
-                            me.store.remove(me.records[i]);
-                        }
+                        me.store.sync({
+                            success:function(){
+                                // Delete all others
+                                me.store.resumeAutoSync();
+                                for(var i=1; i < me.records.length; i++) {
+                                    me.store.remove(me.records[i]);
+                                }
+                            },
+                            failure: function(){
+                                me.store.resumeAutoSync();
+                            }
+                        });
+
 
                         // Cleanup
                         me.hide();
