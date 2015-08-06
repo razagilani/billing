@@ -216,7 +216,7 @@ Ext.define('ReeBill.controller.Accounts', {
      * Get the next account number and add it populate the new account number field
      */
     loadNextAccountNumber: function(accountsForm) {
-        var newAccountField = accountsForm.down('textfield[name=account]');
+        var newAccountField = this.getAccountForm().down('textfield[name=account]');
         var store = this.getAccountsStore();
 
         newAccountField.setValue(store.getNextAccountNumber());
@@ -274,11 +274,8 @@ Ext.define('ReeBill.controller.Accounts', {
                             property: 'account',
                             direction: 'DESC'
                         });
-                        memoryStore.loadPage(1);
+                        memoryStore.reload();
                         accountsGrid.getSelectionModel().select([accountRec]);
-
-                        var accountForm = this.getAccountForm();
-                        accountForm.getForm().reset();
                     },
                     callback: function(){
                         store.resumeAutoSync();
@@ -287,6 +284,7 @@ Ext.define('ReeBill.controller.Accounts', {
                 });
                 newAccountWindow[0].close();
             }else {
+                accountForm.getForm().reset();
                 this.loadNextAccountNumber();
                 store.sync({
                     callback: function(){
