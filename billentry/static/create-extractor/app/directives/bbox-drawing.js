@@ -102,14 +102,19 @@ directive("bboxDrawing", function(){
 				scope.$apply();
 			});
 
+			function clearCanvas(){
+				var ctx = element[0].getContext('2d');
+				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			}
+
 			/**
 			* Draws bounding boxes on the canvas. Bounding boxes are colored differently 
 			* if they are currently selected, enabled or disabled, etc. 
 			*/
 			function paintCanvas(){
 				// clear previous rectangles
-				var ctx = element[0].getContext('2d');
-				ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+				clearCanvas();
+
 				var color;
 				var opacity = 1;
 				var coords;
@@ -202,8 +207,7 @@ directive("bboxDrawing", function(){
 					});
 				}
 			}
-			// in case the controller needs to directly get the canvas to redraw; sometimes angular can't handle all events that would require a re-draw
-			scope.paintCanvas = paintCanvas;
+
 
 			function drawPageBorders(pages){
 				var current_y = 0;
@@ -326,6 +330,11 @@ directive("bboxDrawing", function(){
 			scope.$watch('extractor()', function(newValue, oldValue){
 				paintCanvas();
 			});
+
+			// in case the controller needs to directly get the canvas to redraw; sometimes angular can't handle all events that would require a re-draw
+			// there's probably a better way of doing this.
+			scope.paintCanvas = paintCanvas;
+			scope.clearCanvas = clearCanvas;
 	    }
 	};
 });
