@@ -8,7 +8,8 @@ from pika import URLParameters
 from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Schema, Match
 from billentry import common
-from core.model import Session, UtilBill
+from core.model import Session
+from core.model.utilbill import UtilBill
 from mq.schemas.validators import MessageVersion
 from core import altitude
 

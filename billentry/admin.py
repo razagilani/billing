@@ -13,8 +13,9 @@ from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
-from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, UtilBill, \
+from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, \
     SupplyGroup
+from core.model.utilbill import UtilBill
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.reebill_model import ReeBillCustomer, ReeBill, CustomerGroup
 from billentry.common import get_bcrypt_object

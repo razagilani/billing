@@ -5,8 +5,9 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main
 
-from core.model import UtilBill, Address, Charge, Register, Session, Supplier, \
+from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
+from core.model.utilbill import UtilBill, Charge
 from exc import NoSuchBillException, DuplicateFileError, BillingError
 from core.utilbill_loader import UtilBillLoader
 
@@ -615,3 +616,12 @@ class UtilbillProcessor(object):
             raise
         utility_account.account_number = utility_account_number
         return utility_account
+
+    def get_utilbill(self, utilbill_id):
+        session = Session()
+        try:
+            utilbill = session.query(UtilBill).filter(
+                UtilBill.id == utilbill_id).one()
+        except NoResultFound:
+            raise
+        return utilbill

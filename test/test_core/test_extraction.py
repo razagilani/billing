@@ -13,19 +13,21 @@ from mock import Mock, NonCallableMock
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
 from test import init_test_config
-init_test_config()
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor
-from core.extraction.applier import Applier
-from core.model import UtilBill, UtilityAccount, Utility, Session, Address, \
+from core.extraction.applier import Applier, UtilBillApplier
+from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge
+from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
 
+def setUpModule():
+    init_test_config()
 
 class FieldTest(TestCase):
     def setUp(self):
@@ -53,27 +55,45 @@ class FieldTest(TestCase):
 
 class ApplierTest(TestCase):
     def setUp(self):
-        self.applier = Applier.get_instance()
+        self.applier = UtilBillApplier.get_instance()
         self.bill = NonCallableMock()
         self.bill.set_total_energy = Mock()
         self.bill.set_next_meter_read_date = Mock()
 
     def test_default_applier(self):
         d = date(2000,1,1)
-        self.applier.apply(Applier.START, d, self.bill)
+        self.applier.apply(UtilBillApplier.START, d, self.bill)
         self.assertEqual(d, self.bill.period_start)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.END, d, self.bill)
+        self.applier.apply(UtilBillApplier.END, d, self.bill)
         self.assertEqual(d, self.bill.period_end)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.NEXT_READ, d, self.bill)
+        self.applier.apply(UtilBillApplier.NEXT_READ, d, self.bill)
         self.bill.set_next_meter_read_date.assert_called_once_with(d)
 
         self.bill.reset_mock()
-        self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+        self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
         self.bill.set_total_energy.assert_called_once_with(123.456)
+
+    def test_apply_values(self):
+        # one field is good, 2 have ApplicationErrors (one with wrong value
+        # type, one with unknown key)
+        extractor = Mock(autospec=Extractor)
+        good = {UtilBillApplier.START: date(2000, 1, 1),
+                UtilBillApplier.CHARGES: 'wrong type', 'wrong key': 1}
+        extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
+        extractor.get_values.return_value = (good, extractor_errors)
+        bfh = Mock(autospec=BillFileHandler)
+
+        success_count, applier_errors = self.applier.apply_values(
+            extractor, self.bill, bfh)
+        self.assertEqual(1, success_count)
+        self.assertEqual(3, len(applier_errors))
+        self.assertIsInstance(applier_errors['wrong key'], ApplicationError)
+        self.assertIsInstance(applier_errors[UtilBillApplier.CHARGES],
+                              ApplicationError)
 
     def test_errors(self):
         # wrong key
@@ -82,13 +102,13 @@ class ApplierTest(TestCase):
 
         # wrong value type
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.START, 1, self.bill)
+            self.applier.apply(UtilBillApplier.START, 1, self.bill)
 
         # exception in target method
         self.bill.reset_mock()
         self.bill.set_total_energy.side_effect = Exception
         with self.assertRaises(ApplicationError):
-            self.applier.apply(Applier.ENERGY, 123.456, self.bill)
+            self.applier.apply(UtilBillApplier.ENERGY, 123.456, self.bill)
 
 
 class ExtractorTest(TestCase):
@@ -100,7 +120,7 @@ class ExtractorTest(TestCase):
         f2 = Field(applier_key='b')
         f2.get_value = Mock(side_effect=ExtractionError)
         f3 = Field(applier_key='c')
-        f3.get_value = Mock(return_value=date(2000,1,1))
+        f3.get_value = Mock(return_value=date(2000, 1, 1))
 
         self.e = Extractor()
         self.e.fields = [f1, f2, f3]
@@ -114,15 +134,11 @@ class ExtractorTest(TestCase):
         self.applier = Mock(autospec=Applier)
         self.applier.apply.side_effect = [None, ApplicationError]
 
-    def test_apply_values(self):
-        count, errors = self.e.apply_values(
-            self.utilbill, self.bill_file_handler, self.applier)
-        self.assertEqual(1, count)
-        self.assertEqual(2, len(errors))
-        applier_keys, exceptions = zip(*errors)
-        self.assertEqual(('b', 'c'), applier_keys)
-        self.assertIsInstance(exceptions[0], ExtractionError)
-        self.assertIsInstance(exceptions[1], ApplicationError)
+    def test_get_values(self):
+        good, errors = self.e.get_values(self.utilbill, self.bill_file_handler)
+        self.assertEqual({'a': 123, 'c': date(2000, 1, 1)}, good)
+        self.assertEqual(['b'], errors.keys())
+        self.assertIsInstance(errors['b'], ExtractionError)
 
 
 class TextFieldTest(TestCase):
@@ -229,20 +245,20 @@ class TestIntegration(TestCase):
         tf = TextExtractor.TextField
         e1.fields = [
             TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE,
-                                    applier_key=Applier.START),
+                                    applier_key=UtilBillApplier.START),
             TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE,
-                                    applier_key=Applier.END),
+                                    applier_key=UtilBillApplier.END),
             TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT,
-                                    applier_key=Applier.ENERGY),
+                                    applier_key=UtilBillApplier.ENERGY),
             TextExtractor.TextField(regex=wg_next_meter_read_regex,
                                     type=Field.DATE,
-                                    applier_key=Applier.NEXT_READ),
+                                    applier_key=UtilBillApplier.NEXT_READ),
             TextExtractor.TextField(regex=wg_charges_regex,
                                     type=Field.WG_CHARGES,
-                                    applier_key=Applier.CHARGES),
+                                    applier_key=UtilBillApplier.CHARGES),
             TextExtractor.TextField(regex=wg_rate_class_regex,
                                     type=Field.STRING,
-                                    applier_key=Applier.RATE_CLASS),
+                                    applier_key=UtilBillApplier.RATE_CLASS),
         ]
 
         e2 = TextExtractor(name='Another')
@@ -264,26 +280,26 @@ class TestIntegration(TestCase):
         # Charges are temporarily disabled, until a better way to disable
         # specific fields is put into release 30
 
-        # expected = [
-        #     Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
-        #            target_total=158.7, type=D, unit='therms'),
-        #     Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
-        #            type=D, unit='therms'),
-        #     Charge('PGC', name='PGC', target_total=417.91, type=S,
-        #            unit='therms'),
-        #     Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
-        #            target_total=15.79, type=D, unit='therms'),
-        #     Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
-        #            target_total=13.42, type=D, unit='therms'),
-        #     Charge('SETF', name='Sustainable Energy Trust Fund',
-        #            target_total=7.06, type=D, unit='therms'),
-        #     Charge('EATF', name='Energy Assistance Trust Fund',
-        #            target_total=3.03, type=D, unit='therms'),
-        #     Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
-        #            type=D, unit='therms'),
-        #     Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
-        #            unit='therms')]
-        expected = []
+        expected = [
+             Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
+                    target_total=158.7, type=D, unit='therms'),
+             Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
+                    type=D, unit='therms'),
+             Charge('PGC', name='PGC', target_total=417.91, type=S,
+                    unit='therms'),
+             Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
+                    target_total=15.79, type=D, unit='therms'),
+             Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
+                    target_total=13.42, type=D, unit='therms'),
+             Charge('SETF', name='Sustainable Energy Trust Fund',
+                    target_total=7.06, type=D, unit='therms'),
+             Charge('EATF', name='Energy Assistance Trust Fund',
+                    target_total=3.03, type=D, unit='therms'),
+             Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
+                    type=D, unit='therms'),
+             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
+                    unit='therms')]
+        
         self.assertEqual(len(expected), len(self.bill.charges))
         for expected_charge, actual_charge in zip(expected, self.bill.charges):
             self.assertEqual(expected_charge.rsi_binding,
