@@ -27,17 +27,13 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 
 	/* EVERYTHING BELOW HERE IS A FUNCTION BINDING */
 
-	// Determines whether a test is a batch or individual test
-	$scope.isBatchTest = function(test){
-		return !test.indiv_bill_id;
-	}
-
 	// Sends a batch task to the server. 
 	$scope.addBatchTest = function(){
 		// copy test template for request.
 		// Only need to do a shallow copy, as all the parameters are strings/numbers.
 		var test_request = $.extend({}, $scope.test_template);
 		test_request.extractor_id = $scope.extractor().extractor_id;
+		test_request.batch = true;
 
 		DBService.runBatchTest(test_request)
 			.success(function(responseObj){
@@ -62,12 +58,13 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.addIndividualTest = function(){
 		var test_request = $.extend({}, $scope.test_template);
 		test_request.extractor_id = $scope.extractor().extractor_id;
+		test_request.batch = false;
+		test_request.results = {}
+		$scope.indiv_tests.push(test_request);
 
 		DBService.runIndividualTest(test_request)
 			.success(function(responseObj){
-				test_request.results = {}
 				$.extend(test_request.results, responseObj);
-				$scope.indiv_tests.push(test_request);
 			})
 			.error(function(){
 				console.log("failed to run individual bill test.");
@@ -84,6 +81,20 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 			$scope.selected_test = test;
 		}
 	};
+
+	// Stops a given batch test by sending the server a stop request.
+	$scope.stopTest = function(test){
+		if(!test.batch){
+			return;
+		}
+		DBService.stopTest(test.task_id)
+			.success(function(){
+				test.status = "STOPPED";
+			})
+			.error(function(){
+				console.log("Could not stop test "+test.task_id);
+			});
+	}
 
 	// Gets the updated status for all batch tests from the server.
 	$scope.refreshAllTests = function(){

@@ -17,5 +17,5 @@ table.results {
 table.results td {
 	border-right: solid 1px #000066; 
 	border-left: solid 1px #000066;
-	/*padding-left: 5px;*/
+	text-align: center;
 }
