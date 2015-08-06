@@ -1,0 +1,339 @@
+Delivered-To: recipient@example.com
+Received: by 10.25.144.13 with SMTP id s13csp2321417lfd;
+        Tue, 4 Aug 2015 10:00:33 -0700 (PDT)
+X-Received: by 10.140.104.236 with SMTP id a99mr8451721qgf.71.1438707632574;
+        Tue, 04 Aug 2015 10:00:32 -0700 (PDT)
+Return-Path: <tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com>
+Received: from mail-qk0-f197.google.com (mail-qk0-f197.google.com. [209.85.220.197])
+        by mx.google.com with ESMTPS id a85si2807045qkh.95.2015.08.04.10.00.31
+        for <recipient@example.com>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 04 Aug 2015 10:00:32 -0700 (PDT)
+Received-SPF: pass (google.com: domain of tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com designates 209.85.220.197 as permitted sender) client-ip=209.85.220.197;
+Authentication-Results: mx.google.com;
+       spf=pass (google.com: domain of tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com designates 209.85.220.197 as permitted sender) smtp.mail=tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com
+Received: by qkdv3 with SMTP id v3sf14161831qkd.1
+        for <recipient@example.com>; Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20130820;
+        h=x-gm-message-state:date:from:to:message-id:subject:mime-version
+         :content-type:x-original-sender:x-original-authentication-results
+         :precedence:mailing-list:list-id:list-post:list-help:list-archive
+         :list-unsubscribe:x-spam-checked-in-group;
+        bh=FQaBzolm5n/VYo3Ax6+qy0H2jMcFETIaxujGK2Tk2Y0=;
+        b=QJ9uGJI2cW3emW8U2Fw+9N68mxTTfZVjlTXnCX71kqMY0pYrf4TpWzHNkurLodsLrL
+         rWaLyTiJGfPUfrzGuHKC/uqsKS3X7HGFvmyIN3qhjhd/BV17UtSu/gyfe4q+IFcNzXOs
+         YYy4EUZThunK8Bs4KmK2zsK9TF0biNd6wuGsXTSLBRYZRWNX4fo6O0fNHINrMs7e/qXh
+         fCwYbCSA6SOX5OZ0C6GwdddrgnKr8wtzxkTJXjWIou5xIF8oGJ02wF+moQsHDFpBOpIg
+         CssapEugQb5P9Y8bebYhuuiaPaoXZiciu0gNrQ+R4aF3j8rUJC7zM5Wz0U8bOqnZgVJg
+         ka2g==
+X-Gm-Message-State: ALoCoQkVYpOoyuclUoHqw4xK8J6de3wuzskgOauR5Nh3tK3/4KLGerRQ1FR7BjAn2OgVzbycvskq
+X-Received: by 10.129.70.133 with SMTP id t127mr3952955ywa.58.1438707631853;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-BeenThere: tech@example.com
+Received: by 10.107.15.214 with SMTP id 83ls242367iop.56.gmail; Tue, 04 Aug
+ 2015 10:00:31 -0700 (PDT)
+X-Received: by 10.107.133.93 with SMTP id h90mr3973942iod.8.1438707631645;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-BeenThere: dailyperformance@example.com
+Received: by 10.140.23.231 with SMTP id 94ls254048qgp.24.gmail; Tue, 04 Aug
+ 2015 10:00:31 -0700 (PDT)
+X-Received: by 10.140.148.11 with SMTP id 11mr9177841qhu.82.1438707631522;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+Received: from mail.example.net (mail.example.net. [54.174.123.212])
+        by mx.google.com with ESMTP id h138si2803577qhc.103.2015.08.04.10.00.31
+        for <dailyperformance@example.com>;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+Received-SPF: pass (google.com: domain of jaspersoftreportserver-prod@example.net designates 54.174.123.212 as permitted sender) client-ip=54.174.123.212;
+Received: from ip-10-1-1-135.ec2.internal (ip-10-1-1-135.ec2.internal [10.1.1.135])
+	by mail.example.net (Postfix) with ESMTP id 19DC840458
+	for <dailyperformance@example.com>; Tue,  4 Aug 2015 17:00:31 +0000 (UTC)
+Date: Tue, 4 Aug 2015 17:00:30 +0000 (UTC)
+From: jaspersoftreportserver-prod@example.net
+To: dailyperformance@example.com
+Message-ID: <1709918666.01438707630330.JavaMail.tomcat@ip-10-1-1-135.ec2.internal>
+Subject: Daily Report CSV Format
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_Part_0_457362715.1438707629660"
+X-Original-Sender: jaspersoftreportserver-prod@example.net
+X-Original-Authentication-Results: mx.google.com;       spf=pass (google.com:
+ domain of jaspersoftreportserver-prod@example.net designates 54.174.123.212
+ as permitted sender) smtp.mail=jaspersoftreportserver-prod@example.net
+Precedence: list
+Mailing-list: list tech@example.com; contact tech+owners@example.com
+List-ID: <tech.example.com>
+X-Google-Group-Id: 345948056754
+List-Post: <http://groups.google.com/a/example.com/group/tech/post>, <mailto:tech@example.com>
+List-Help: <http://support.google.com/a/example.com/bin/topic.py?topic=25838>,
+ <mailto:tech+help@example.com>
+List-Archive: <http://groups.google.com/a/example.com/group/tech/>
+List-Unsubscribe: <mailto:googlegroups-manage+345948056754+unsubscribe@googlegroups.com>,
+ <http://groups.google.com/a/example.com/group/tech/subscribe>
+X-Spam-Checked-In-Group: tech@example.com
+
+------=_Part_0_457362715.1438707629660
+Content-Type: multipart/related;
+	boundary="----=_Part_1_562079028.1438707629810"
+
+------=_Part_1_562079028.1438707629810
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+
+
+------=_Part_1_562079028.1438707629810--
+------=_Part_0_457362715.1438707629660
+Content-Type: text/csv; charset=us-ascii; name=DailyReportCSV.csv
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=DailyReportCSV.csv
+
+Delivered Gallons,30 day delivery per panel avg. (kBtu),Install,Delivered (kBtu),Project,Delivered per Panel (kBtu)
+vesta-1,1010 S Frederick Street,185.54,9.77,317.5,16.454669280411412
+vesta-2,1018 S Frederick St,168.82,8.89,307.0,22.09017687861803
+laga-1,101 N Normandie Ave,5.53,0.35,245.0,0.34785450014656966
+vesta-3,1024 S Frederick St,63.33,3.33,112.0,10.39772034943241
+nergal-1,102 North Crain Hwy,760.86,18.12,2190.0,16.695873015873016
+familylaundry-1,1107 West Chester Pike,257.55,32.19,1342.0,30.200905807768624
+liza-1,1200 Lebanon St,239.56,17.11,664.0,18.039323809523808
+liza-2,1204 Lebanon St,263.6,16.48,962.0,13.060279166666668
+helios-6,1217 Madison St Annapolis - A1,323.98,16.2,811.0,19.961540755631507
+helios-7,1217 Madison St Annapolis - A2,315.07,19.69,783.0,20.557460927296535
+helios-4,1217 Madison St Annapolis - A3,null,null,null,0
+helios-10,1217 Madison St Annapolis - A4,210.5,10.52,840.0,16.047973333333335
+helios-1,1217 Madison St Annapolis - A5,284.91,14.25,888.0,14.780014841349775
+helios-3,1217 Madison St Annapolis - A6,405.23,20.26,1217.5,20.398859565991764
+helios-8,1217 Madison St Annapolis - B1,529.46,26.47,1375.5,22.60118089854163
+helios-5,1217 Madison St Annapolis - B2,461.24,23.06,1432.0,20.351107170253854
+helios-9,1217 Madison St Annapolis - B3,563.74,28.19,1502.0,22.601973333333333
+helios-2,1217 Madison St Annapolis - B4,464.91,23.25,1242.5,19.437252626852562
+tuelyn-1,1250 S Western Ave,15.78,0.48,250.0,0.6255017938056971
+brookview-1,13120 Pomerado Rd,193.44,9.67,440.0,9.864456666666667
+brookview-2,13150 Pomerado Rd,286.73,14.34,660.0,15.024389999999999
+gtown-2,1318 22nd St NW,218.51,15.61,570.0,11.788132337730962
+kumara-1,1436 W St NW,0,0,0.0,0.0
+kumara-2,1440 W St NW,274.26,17.14,617.0,15.495133333333333
+kumara-3,1444 W St NW,141.78,8.86,623.0,7.916783333333334
+montecito-1,14655 Blythe St,50.56,1.58,295.0,3.078048262180168
+grandvenice-1,1500 S. Grand Avenue,331.33,8.95,1830.0,5.654962162162163
+enyo-1,1570 N Edgemont St,910.66,45.53,1815.0,16.852088763684115
+cedargateway-1,1612 6th Ave,null,null,null,0
+lugh-1,1629 National Ave,null,null,null,0
+lugh-2,1668 National Ave,null,null,null,0
+chastleton-1,1701 16th St NW,null,null,null,2.937496031746032
+boston-1,1711 Massachussetts Ave ,null,null,null,0.0
+webster-1,1718 P St NW,446.41,10.15,1690.0,14.85375836792523
+lambert-2,1791 Lanier Pl NW,403.32,18.33,null,16.105825484756068
+twins-1811,1811 S St NW,20.42,1.02,110.0,0.4072821156822286
+twins-1815,1815 S St NW,144.47,7.22,280.0,10.231986176875354
+marylandave-1,1825 Maryland Ave NE,6.14,0.17,null,-14.812733199317632
+vernon-2,1825 Vernon St NW,64.05,4.57,283.0,7.014971428571429
+amun-1,1903 15th St NW,676.99,28.21,2160.0,25.743466666666663
+gwu-2,1959 E St NW,622.2,20.74,6285.0,28.877183343647417
+vulcan-1,19740 US Highway 90,"1,726.1",3.18,33740.049,33.72750882539853
+mithras-1,1 Hawaii Ave NE,264.26,22.02,1431.0,20.189866666666664
+eos-1,2001 15th St NW,382.34,8.69,966.5,9.628869713550683
+summerbreeze-1,200 Lewis Rd,null,null,null,0
+gwu-1,2031 F St NW,null,null,null,0
+martinsview-1,206 Elmira St SW-SWH,null,null,null,0
+martinsview-2,207 Elmira St SW-SWH,1.38,0.1,1065.0,8.904333333333334
+gwu-4,2100 F St NW,0.09,0,25.0,0.9440780701754385
+shadowhills-1,211 E Wilbur Rd,36.06,9.02,129.0,9.504204166666666
+shadowhills-2,219 E Wilbur Rd,32.67,6.53,478.0,7.506586666666667
+broadstreet-1,2240 Emily St,null,null,null,0
+linbrook-1,2240 W. Lincoln Avenue,null,null,null,0
+floresdelvalle-2,225 N Ave 25 Barranca,0,0,0.0,0.0
+floresdelvalle-1,225 N Ave 25 Humboldt,0,0,0.0,0.000038193580366639084
+broadstreet-2,2280 Emily St,null,null,null,0
+tesorodelvalle-1,2301 N Humboldt St,0,0,260.0,0.0
+garfield-1,2319 Hartford St SE,759.2,18.98,null,15.495103832101673
+shadowhills-3,235 E Wilbur Rd,38.52,6.42,358.0,8.092922222222223
+shadowhills-4,243 E Wilbur Rd,559.5,13.99,1940.0,11.742506666666666
+park-1,2440 16th St NW,807.8,16.83,2295.0,14.36131419668344
+shamash-1,2501 Calvert St NW,null,null,null,0
+qManor-5,2505 Allison St,376.79,31.4,917.0,27.093222222222224
+badercondo-1,2515 K St NW,6.64,0.41,940.0,0.5197986979166667
+shadowhills-5,251 E Wilbur Rd,72.07,18.02,285.0,12.165799999999999
+shadowhills-6,259 E Wilbur Rd,0.24,0.05,66.0,0.0016175000000000002
+montevista-2,2600 Castillo Ct,387.5,17.61,1193.0,18.5682696969697
+tonatiuh-1,2613 MLK Ave SE,389.9,13.93,1710.0,14.876590476190477
+shadowhills-7,267 E Wilbur Rd,39.2,9.8,113.0,13.634166666666665
+surya-1,2700 Connecticut Ave NW,217.23,6.39,1457.0,20.244564705882354
+sol-12,2705 Allison St,169.83,21.23,314.0,20.724066666666666
+qManor-4,2705 Queens Chapel Rd,247.75,15.48,666.0,17.610033333333334
+grannus-1,2726 Connecticut Ave NW,212.39,17.7,593.0,12.716094444444446
+langston-1,2730 Langston Pl SE,"1,752.32",27.38,5390.0,12.006871630859376
+delano-1,2745 29th St NW,361.55,11.3,1530.0,12.538156256363079
+shadowhills-8,275 E Wilbur Rd,1.39,0.23,7.0,0.3109
+smimigi-1,2900 Lakebrook Circle,0,0,0.0,0.0
+smimigi-2,2901 Lakebrook Circle,0,0,0.0,0.0
+smimigi-3,2902 Lakebrook Circle,73.05,12.18,283.0,13.960766666666668
+qManor-9,2904 Arundel Rd,190.44,23.8,406.0,19.931066666666666
+qManor-2,2905 Allison St,312.07,26.01,667.0,21.615333333333332
+smimigi-5,2905 Lakebrook Circle,null,null,null,0.0
+qManor-1,2905 Queens Chapel Rd,null,null,null,0
+sol-14,2906 Allison St,113.54,14.19,375.0,30.846666666666668
+smimigi-6,2908 Lakebrook Circle,0,0,0.0,0.0
+smimigi-8,2912 Lakebrook Circle,0,0,0.0,0.0
+smimigi-9,2918 Lakebrook Circle,0,0,0.0,0.0
+smimigi-10,2920 Lakebrook Circle,null,null,null,0
+smimigi-11,2922 Lakebrook Circle,0,0,0.0,0.0
+langston-2,2923 Knox Pl SE,788.02,20.21,4443.0,19.290188034188034
+smimigi-12,2932 Lakebrook Circle,103.57,17.26,379.0,16.552555555555553
+smimigi-13,2934 Lakebrook Circle,null,null,null,0
+smimigi-14,2936 Lakebrook Circle,0,0,0.0,0.0
+smimigi-15,2938 Lakebrook Circle,0,0,0.0,0.0
+vannesseast-1,2939 Van Ness Street NW,"1,401.65",18.94,4790.0,12.032944144144144
+smimigi-16,2940 Lakebrook Circle,0,0,0.0,0.0
+smimigi-17,2942 Lakebrook Circle,null,null,null,0
+smimigi-18,2944 Lakebrook Circle,141.4,14.14,441.0,9.032993333333334
+smimigi-19,2946 Lakebrook Circle,0,0,0.0,0.0
+smimigi-20,2948 Lakebrook Circle,0,0,0.0,0.0
+smimigi-22,2952 Lakebrook Circle,0,0,0.0,0.0
+smimigi-23,2954 Lakebrook Circle,0,0,0.0,0.0
+porterst-1,3025 Porter St NW,null,null,null,3.2221161115950463
+mamao-1,3115 S Fig Ave,"7,541.59",24.09,68077.59000000001,32.09294946269903
+monsenor-1,3145 Mt Pleasant St NW,453.29,16.19,2050.0,16.270638095238095
+hepa-1,315 Franklin St NE,361.95,20.11,1083.0,17.670548148148146
+hepa-3,315 Franklin St NE,584.16,17.7,null,16.308658348317213
+hepa-2,325 Franklin St NE,244.64,14.39,819.5,13.547294605365368
+hepa-4,325 Franklin St NE,266.49,19.03,null,16.36040670117619
+amaterasu-1,330 W Ave 26,621.09,12.94,1395.0,13.375541769504702
+wala-3,3311 10th Pl SE,65.98,13.2,485.0,27.602220000000003
+wala-4,3313 10th Pl SE,null,null,null,0.0
+wala-9,3318 Wheeler Rd SE,65.95,9.42,349.0,17.383314285714285
+wala-8,3319 10th Pl SE,60.57,6.06,273.0,17.50946666666667
+wala-7,3320 Wheeler Rd SE,null,null,null,0
+wala-1,3322 Wheeler Rd SE,33.56,6.71,163.0,20.282066666666665
+wala-2,3323 10th Pl SE,57.42,11.48,286.0,4.118146666666666
+wala-6,3324 10th Pl SE,43.64,6.23,151.0,9.90812380952381
+menkiti-1,3329 8th St NE,437.1,16.19,null,13.522612156127265
+menkiti-2,3407 8th St NE,591.67,17.93,null,14.159353782187898
+agni-3501,3501 13th St NW,null,null,null,0
+ra-1,3701 Donnell Dr,0,0,0.0,0.0
+parksidehigh-1,3701 Hayes St NE,"3,300.91",19.42,null,15.778947182401138
+ra-2,3705 Donnell Dr,33.61,6.72,137.0,6.512426881973077
+ra-7,3709 Donnell Dr,266.15,16.63,670.5,13.803515236310544
+ra-8,3715 Donnell Dr,null,null,null,6.192847826086957
+ra-5,3717 Donnell Dr,null,null,null,8.583810779587242
+ra-6,3721 Donnell Dr,null,null,null,0
+ra-3,3723 Donnell Dr,97.77,9.78,228.5,10.709251549785284
+ra-4,3727 Donnell Dr,178.29,17.83,519.0,13.474365371762993
+ra-9,3729 Donnell Dr,null,null,null,0
+ra-10,3735 Donnell Dr,145.9,14.59,518.0,16.02791856711725
+ra-11,3737 Donnell Dr,231.14,8.89,569.5,1.0536216332832036
+ra-12,3741 Donnell Dr,null,null,null,0
+ra-13,3745 Donnell Dr,125.18,12.52,405.0,11.856222828919796
+ra-14,3749 Donnell Dr,null,null,null,14.271571428571429
+allenhouse-1,3760 Minnesota Ave NE,229.66,14.35,1101.0,16.800549999999998
+palmdalia-1,38040 11th St E-A,413.17,51.65,1877.0,9.538425
+palmdalia-2,38040 11th St E-B,262.48,32.81,834.0,6.58001537272125
+palmdalia-3,38040 11th St E-C,269.44,44.91,875.0,21.209218055555557
+palmdalia-4,38040 11th St E-D,226.12,37.69,791.0,38.234088888888884
+tohil-1,3910 Georgia Ave NW,230.62,5.24,920.0,11.97020606060606
+haciendavilla-1,399 East Ct,481.26,30.08,1854.0,51.320717447916664
+gerd-1,4000 Tunlaw Rd NW,330.98,5.71,615.0,9.017689843607304
+burlington-1,409 S Burlington Ave,123.06,6.15,730.0,6.114370094335898
+danastrand-1,410 Hawaiian Ave,361.36,7.53,2880.0,6.295244444444444
+tiber-2,429 N St SW,0,0,5220.0,19.414565208333332
+martinsview-3,4337 MLK Ave SW-PV,362.03,21.3,null,16.872705836660767
+martinsview-4,4353 MLK Ave SW-PV,341.21,20.07,null,16.814498714737272
+aurora-3,4400 Massachusetts Ave NW - Mary ,223.26,13.95,5280.0,11.817430590833974
+pacific-1,4429 Inglewood Blvd North,220.55,18.38,608.0,17.439013560652192
+pacific-2,4429 Inglewood Blvd South,319.62,26.64,838.5,18.350575931126436
+palisade-1,4540 Macarthur Blvd NW,183.73,7.66,1398.0,21.418866666666666
+qManor-7,4600 29th St,297.84,24.82,720.0,20.787044444444444
+qManor-3,4600 30th St,246.65,30.83,794.0,26.448900000000002
+bast-1,4600 Connecticut Ave NW,"1,928.95",30.14,5760.0,28.12606433677252
+qManor-8,4601 25th St,292.22,24.35,652.0,21.740755555555555
+qManor-10,4601 29th St,168.21,21.03,287.0,22.334866666666667
+sol-5,4700 27th St,127.36,15.92,236.0,26.347966666666668
+sol-6,4701 27th St,91.92,11.49,189.0,27.28783333333333
+qManor-6,4704 27th St,null,null,null,0
+theessex-1,4740 Connecticut Ave NW,46.59,0.95,7950.0,1.0037115646258505
+zorya-1,4811 North Capitol St NE,401.38,7.17,1238.0,17.762819047619047
+ketu-1,4884 Macarthur Blvd NW,null,null,null,0
+casadeangeles-1,4900 South Figueroa St,null,null,null,0.4424520952857015
+garuda-1,4951 G St SE,614.26,19.2,1860.0,15.279416666666666
+freyr-1,5005 Bass Pl SE,0,0,0.0,0.0017777777777777776
+orangewood-1,5050 N Sepulveda Blvd - North,305.02,15.25,580.0,17.44009333333333
+orangewood-2,5050 N Sepulveda Blvd - South,372.22,26.59,1230.0,26.305219047619048
+imi-1,511 Imi Pl,235.13,13.06,1092.5,20.743054783362332
+sulgrave-1,5130 Connecticut Ave NW,236.14,23.61,917.0,21.48404
+auburnpark-1,5135 University Avenue,null,null,null,0
+elsinore-1,5312 E St SE,182.58,10.74,1261.0,13.897772549019608
+elsinore-2,5317 E St SE,"1,180.26",23.61,3560.0,22.4064
+elsinore-3,5330 E St SE,324.23,18.01,839.0,17.72291851851852
+maywood-1,5601 Atlantic Blvd,0,0,0.0,0.0
+gwu-3,616 23rd St NW,909.34,15.16,1900.0,17.361316746059657
+castellar-1,625 North Hill St,"1,784.45",37.18,5610.0,33.557322514727005
+durga-2,701 Glenwood St,873.36,36.39,2510.0,28.00208833000835
+brandon-1,735 Hartford Ave-SWH,365.88,19.26,1240.0,19.22074512685801
+westlake-1,7425 Democracy Blvd 1,"21,307.5","2,663.44",169138.0,6512.423308648595
+westlake-2,7425 Democracy Blvd 2,"593,137.66","74,142.21",3049536.0,68367.232
+hvar-1,743 Fairmont St NW,null,null,null,15.293595959595962
+hvar-2,743 Fairmont St NW,747.26,18.23,null,15.565746260238226
+parkview-1,7667 Maple Avenue,"1,829.7",29.51,4730.0,26.11428817204301
+essexhouse-1,7777 Maple Avenue,"1,603.38",30.83,5420.0,28.231887179487178
+casafigueroa-1,7800 South Figueroa St,517,21.54,1760.0,22.134949451503857
+tall-1,7814-A Hanover Pkwy,-28.53,-0.48,12990.0,29.776556191537143
+coralwood-1,8025 Reseda Blvd,817.79,38.94,1960.0,36.56980317460318
+coralwood-2,8039 Reseda Blvd,785.1,37.39,2580.0,33.13688888888889
+villas-25,8100 15th Ave,85.16,10.65,220.0,24.981509615384617
+villas-26,8102 15th Ave,107.93,8.99,353.0,24.629877777777775
+villas-14,8103 15th Ave,378.27,37.83,1282.0,31.707626666666666
+villas-27,8104 15th Ave,0,0,0.0,0.0
+villas-28,8105 15th Ave,0,0,0.0,0.0
+villas-15,8106 15th Ave,154.16,15.42,815.0,16.369226666666666
+liza-3,8106 New Hampshire Ave,3.66,0.31,1010.0,0.33905555555555555
+villas-29,8107 15th Ave,95.41,7.95,291.0,9.605577777777778
+villas-1,8108 15th Ave,3.06,0.31,598.0,13.087066666666667
+villas-16,8109 15th Ave,0,0,0.0,0.0
+villas-30,8110 15th Ave,141.37,17.67,371.0,26.738441666666667
+liza-4,8110 New Hampshire Ave,0.07,0,1577.0,0.07325862068965516
+villas-2,8111 15th Ave,101.03,10.1,271.0,21.453996666666665
+villas-31,8112 15th Ave,68.18,8.52,244.0,16.578491666666665
+villas-3,8113 15th Ave,81.64,8.16,221.0,23.837916666666665
+villas-17,8114 15th Ave,395.13,39.51,1258.0,28.093
+villas-4,8115 15th Ave,75.39,7.54,198.0,19.011680000000002
+villas-5,8116 15th Ave,94.26,9.43,309.0,24.19632
+villas-18,8117 15th Ave,0,0,0.0,0.0
+villas-6,8118 15th Ave,11.14,1.11,206.0,6.009941666666666
+villas-32,8119 15th Ave,0,0,0.0,0.0
+villas-19,8120 15th Ave,241.77,24.18,747.0,19.741786666666666
+villas-33,8121 15th Ave,null,null,null,0
+villas-34,8122 15th Ave,76.82,6.4,220.0,14.923955555555557
+villas-35,8123 15th Ave,128.97,10.75,323.0,27.782044444444445
+villas-36,8124 15th Ave,null,null,null,0.0
+villas-37,8125 15th Ave,null,null,null,0
+villas-38,8126 15th Ave,0,0,0.0,0.0
+villas-20,8127 15th Ave,0,0,0.0,0.0
+villas-39,8128 15th Ave,179.76,14.98,732.0,21.107433333333333
+villas-21,8129 15th Ave,174.08,17.41,529.0,19.35288
+villas-40,8130 15th Ave,111.5,9.29,510.0,16.668766666666667
+villas-22,8131 15th Ave,285.06,28.51,863.0,24.268213333333332
+villas-23,8132 15th Ave,null,null,null,0.0
+villas-24,8133 15th Ave,244.23,24.42,677.0,22.99596
+villas-12,8135 15th Ave,546.14,18.2,2369.0,14.770791111111112
+villas-13,8139 15th Ave,622.86,20.76,1939.0,21.24399111111111
+villas-11,8140 15th Ave,0,0,0.0,0.0
+villas-7,8142 15th Ave,110.47,11.05,295.0,23.752226666666665
+villas-8,8143 15th Ave,100.04,10,347.0,24.36790666666667
+villas-9,8144 15th Ave,67.2,8.4,177.0,26.174458333333334
+villas-10,8148 15th Ave,221.69,27.71,567.0,22.325483333333334
+liza-5,8202 New Hampshire Ave,445.06,37.09,1138.0,30.154309523809523
+liza-6,8206 New Hampshire Ave,446.94,31.92,1524.0,24.369485714285716
+ravi-1,820 University Blvd East,"1,525.6",13.15,2870.0,12.286556321839083
+mahulu-1,8211 14th St,"2,763.87",33.3,14680.0,27.84495487535744
+mahulu-2,8228 14th St,"1,778.37",19.98,9500.0,16.46041647940075
+indra-1,861 S Fedora St,7.16,0.45,100.0,0.6172256067444043
+tarhunt-1,8662 West Irlo Bronson,null,null,null,0
+tarhunt-2,8662 West Irlo Bronson,null,null,null,0
+kapo-1,8733 Carroll Ave,1.64,0.02,3594.0,0.02569393939393939
+verano-1,904 South D St,443.83,24.66,1390.0,27.178524074074073
+leolua-1,Building C,"1,346.18",16.83,3960.0,22.200754999999997
+leolua-2,Building E,935.34,31.18,2540.0,25.683644444444447
+leolua-3,Building G,922.1,30.74,1830.0,31.584404444444445
+testbed-1,No address,null,null,null,null
+
+------=_Part_0_457362715.1438707629660--
