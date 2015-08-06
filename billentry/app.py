@@ -41,7 +41,7 @@ from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult, Field
 from core.extraction.applier import Applier, UtilBillApplier
-from core.extraction.extraction import LayoutExtractor
+from core.extraction.extraction import LayoutExtractor, serialize_field
 from core.extraction.task import test_bill, reduce_bill_results, \
     _create_bill_file_handler
 from core.model import Session, Utility, BoundingBox
@@ -294,7 +294,11 @@ def run_indiv_test():
     print "error"
     pp.pprint(error)
 
-    return jsonify({'good': good, 'error': error}), 200
+    good_results = {applier_key: serialize_field(result) for applier_key,
+    result in good.iteritems()}
+    error_results = {applier_key: str(err) for applier_key, err in
+        error.iteritems()}
+    return jsonify({'good': good_results, 'error': error_results}), 200
 
 @app.route('/test-status/<task_id>', methods=['GET', 'POST'])
 def test_status(task_id):

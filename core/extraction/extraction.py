@@ -18,7 +18,7 @@ from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement, BoundingBox
+from core.model import LayoutElement, BoundingBox, Address, Charge, Supplier
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.layout import tabulate_objects, \
     group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
@@ -670,3 +670,36 @@ def verify_field(applier_key, extracted_value, db_value):
         exc_string = str(extracted_value)
         db_string = str(db_value).strip()
     return exc_string == db_string
+
+def serialize_field(result):
+    """
+    Converts a field into a json-serializable type, such as an int, string,
+    or dictionary.
+    When given a list, the members of the list are serialized.
+    If no proper conversion can be found, then str(results) is returned.
+    """
+    if result is None:
+        return None;
+    if isinstance(result, list):
+        return map(serialize_field, result)
+    if isinstance(result, (str, int, float, bool)):
+        return result
+    if isinstance(result, Address):
+        return {
+            'addressee': result.addressee,
+            'street': result.street,
+            'city': result.city,
+            'state': result.state,
+            'postal_code': result.postal_code,
+        }
+    if isinstance(result, Charge):
+        return {
+            'description': result.description,
+            'quantity': result.quantity,
+            'unit': result.unit,
+            'rate': result.rate,
+            'target_total': result.target_total,
+        }
+    if isinstance(result, Supplier):
+        return {'name': result.name}
+    return str(result)
