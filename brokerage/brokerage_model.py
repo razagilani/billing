@@ -64,10 +64,13 @@ def load_rate_class_aliases():
     ).order_by(RateClassAlias.rate_class_alias, RateClass.rate_class_id)
 
     # build dictionary from query results: alias -> list of rate class ids
-    result = defaultdict(lambda: [])
+    # (not using a defaultdict because KeyError is expected when alias is not
+    # found)
+    result = {}
     for rate_class_alias, row in itertools.groupby(
             q.all(), key=lambda row: row[0]):
         rate_class_ids = [element[1] for element in row]
+        result.setdefault(rate_class_alias, [])
         result[rate_class_alias].extend(rate_class_ids)
     return result
 

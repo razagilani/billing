@@ -86,10 +86,14 @@ class TestLoadRateClassAliases(TestCase):
     def tearDown(self):
         clear_db()
 
-    def test_load_rate_class_aliases(self):
+    def test_load_rate_class_aliases_normal(self):
         expected = {
             'a': [1],
             'b': [2],
             'c': [2, 3],
         }
         self.assertEqual(expected, load_rate_class_aliases())
+
+    def test_load_rate_class_aliases_empty(self):
+        AltitudeSession.expunge_all()
+        self.assertEqual({}, load_rate_class_aliases())
