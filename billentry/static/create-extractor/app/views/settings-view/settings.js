@@ -13,6 +13,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	else {
 		$scope.bill_id = null;
 	}
+	$scope.bill_id = parseInt($scope.bill_id);
 
 	// initialize data model, and then refresh scope
 	dataModel.initDataModel($scope.bill_id)
@@ -121,6 +122,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			$scope.bboxActive = false;
 		}
 		$scope.bboxActive = !$scope.bboxActive;
+		$scope.marginActive = false;
 	}
 
 	// reset the bounding box for a field
@@ -145,6 +147,17 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 				field.offset_obj = null;
 				console.log("could not preview offset");
 			});
+	}
+
+	// For the selected field's 'top margin for next pages' column (if the field is a table field),
+	// this enables the user to click and drag on the canvas to select a margin height. 
+	$scope.activateTopMargin = function(){
+		if ($scope.marginActive == undefined){
+			$scope.marginActive = false;
+		}
+		$scope.marginActive = !$scope.marginActive;
+		// dont' edit the bounding box while choosing the margin
+		$scope.bboxActive = false;
 	}
 
 	// Test the output of a single field

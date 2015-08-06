@@ -35,7 +35,7 @@ filter('singleCoordToString', function(){
       return "(click to draw on PDF)";
     }
     else {
-      return axis+": "+coord;
+      return axis+": "+coord.toFixed(2);
     }
   };
 });

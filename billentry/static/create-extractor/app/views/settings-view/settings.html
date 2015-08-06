@@ -164,7 +164,10 @@
 			<br><br>
 
 			<b> Top margin for subsequent pages </b>
-			<pre class="left-margin bbox-coords editable"> y: {{ selected.nextpage_top | singleCoordToString:'y' }} </pre>
+			<pre class="left-margin bbox-coords editable"
+				 ng-click="activateTopMargin()"
+				 ng-model="marginActive"
+				 ng-class="{ 'active': marginActive }"> {{ selected.nextpage_top | singleCoordToString:'y' }} </pre>
 			<br><br>
 		</div>
 
