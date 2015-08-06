@@ -59,7 +59,16 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 
 	// Sends an individual task to the server (i.e. runs only one bill)
 	$scope.addIndividualTest = function(){
-		// TODO
+		var test_request = $.extend({}, $scope.test_template);
+		test_request.extractor_id = $scope.extractor().extractor_id;
+
+		DBService.runIndividualTest(test_request)
+			.success(function(){
+				
+			})
+			.error(function(){
+				console.log("failed to run individual bill test.");
+			});
 	};
 
 	// selects a test, and displays detailed info for it in the view.
