@@ -280,7 +280,7 @@ directive("bboxDrawing", function(){
 			//TODO move this somewhere better, maybe in the model file?
 			function inPageRange(field, page_num){
 				if (page_num != field.page_num){
-					if (field.maxpage == null || page_num > field.maxpage){
+					if (field.maxpage == null || page_num > field.maxpage || page_num < field.page_num){
 						return false;
 					}
 				}

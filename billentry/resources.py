@@ -637,7 +637,7 @@ field_fields = {
     "maxpage": Integer,
     "bbregex": String,
     "offset_regex": String,
-    "bounding_box": Nested(bounding_box_fields),
+    "bounding_box": Nested(bounding_box_fields, allow_null=True),
     "corner": Integer,
     "table_start_regex": String,
     "table_stop_regex": String,
