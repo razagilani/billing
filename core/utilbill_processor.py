@@ -704,6 +704,12 @@ class UtilbillProcessor(object):
                 # delete the destination account's old reebill_customer
                 s.delete(dest_reebill_customer)
                 s.commit()
+            else:
+                # source_utility_account doesn't have any reebills so we
+                # need to just delete it if it exists
+                if source_reebill_customer:
+                    source_reebill_customer.utility_account = None
+                    s.delete(source_reebill_customer)
         elif source_reebill_customer:
             source_reebill_customer.set_account(dest_utility_account)
         #update the brokerage_accounts
