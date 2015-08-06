@@ -1,17 +1,19 @@
 from cStringIO import StringIO
 from email.message import Message
+import os
 from unittest import TestCase
 from mock import Mock, call
 from brokerage.brokerage_model import Company, Quote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
     UnknownSupplierError, QuoteDAO, CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parsers import QuoteParser
-from core import init_altitude_db, init_model
+from core import init_altitude_db, init_model, ROOT_PATH
 from core.model import Supplier, Session, AltitudeSession
 from exc import ValidationError
 from test import init_test_config, clear_db, create_tables
 
-EMAIL_FILE_PATH = 'quote_email.txt'
+EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',
+                               'quote_email.txt')
 
 def setUpModule():
     init_test_config()
