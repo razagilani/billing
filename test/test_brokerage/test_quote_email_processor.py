@@ -17,9 +17,6 @@ EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',
 
 def setUpModule():
     init_test_config()
-    create_tables()
-    init_model()
-    init_altitude_db()
 
 class TestQuoteEmailProcessor(TestCase):
     """Unit tests for QuoteEmailProcessor.
@@ -152,6 +149,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
     """Integration test using a real email with QuoteEmailProcessor,
     QuoteDAO, and QuoteParser, including the database.
     """
+    @classmethod
+    def setUpClass(self):
+        create_tables()
+        init_model()
+        init_altitude_db()
+
     def setUp(self):
         # example email containing a USGE matrix spreadsheet, matches the
         # Supplier object below. this has 2 quote file attachments but only 1
