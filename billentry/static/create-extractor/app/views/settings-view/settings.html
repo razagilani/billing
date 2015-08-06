@@ -8,8 +8,10 @@
 		<img ng-click="zoomPDF(-0.2)" src="/icons/add.png">
 		<img ng-click="zoomPDF(0.2)" src="/icons/delete.png">
 	</div>
-	<!-- PDF renderer goes here. -->
-	<div class="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
+	<span class="pdf-scroll">
+		<!-- PDF renderer goes here. -->
+		<div class="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
+	</span>
 </div>
 <div id="separator">&nbsp;</div>
 <div id="extractor-controls">

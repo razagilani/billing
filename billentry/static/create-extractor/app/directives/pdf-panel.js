@@ -45,15 +45,15 @@ directive("pdfPanel", ['DBService', function(DBService){
 
 				//set up canvas layer for PDF
 			    var canvasLayerHTML = '<div class="pdf-canvas-layer"></div>';
-			    angular.element('div[pdf-panel]').append(canvasLayerHTML);
-			    pdf_data.canvasLayer = angular.element('div[pdf-panel] .pdf-canvas-layer');
+			    element.find('.pdf-scroll').append(canvasLayerHTML);
+			    pdf_data.canvasLayer = angular.element('div[pdf-panel] .pdf-scroll .pdf-canvas-layer');
 
 			    //if enabled, set up text for PDF
 			    var textLayerHTML = '';
 			    if(!PDFJS.disableTextLayer){
 			        textLayerHTML = '<div class="pdf-text-layer"></div>';
-				    angular.element('div[pdf-panel]').append(textLayerHTML);
-			    	pdf_data.textLayerDiv = angular.element('div[pdf-panel] .pdf-text-layer');
+				    element.find('.pdf-scroll').append(textLayerHTML);
+			    	pdf_data.textLayerDiv = angular.element('div[pdf-panel] .pdf-scroll .pdf-text-layer');
 			    }
 
 				// canvas for drawing bounding boxes
@@ -88,7 +88,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 				var renderScale;
 
 		        if(!pdfDoc || panelWidth <= 0)
-		            return;
+		            return Promise.resolve(null);
 
 		        var makePageLayer = function(tag, pageNumber, width, height, classes){
 			        var cls = classes || '';
@@ -179,7 +179,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 		        };
 
 		        resetLayers();
-		        Promise.all(execForAllPages(renderPage)).
+		        return Promise.all(execForAllPages(renderPage)).
 		        	then(execForAllPages(renderPageText)).
 		        		then(execForAllPages(storePageCoords)).
 		        			then(initBboxDrawingCanvas);
@@ -266,6 +266,10 @@ directive("pdfPanel", ['DBService', function(DBService){
 				.then(loadPDF)
 				.then(loadLayoutElements)
 				.finally(scope.paintCanvas);
+			});
+
+			scope.$watch('pdf_data.scale', function(){
+				renderDoc().then(scope.paintCanvas);
 			});
 		}	
 	};
