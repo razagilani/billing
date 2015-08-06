@@ -404,8 +404,6 @@ class DirectEnergyMatrixParser(QuoteParser):
             rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
             rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
-            rate_class_ids = [self.get_rate_class_ids_for_alias(alias) for alias
-                              in rate_class_aliases]
 
             special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
                                                basestring)
