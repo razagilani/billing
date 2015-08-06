@@ -41,7 +41,8 @@ from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility
+from core.model import Session, Utility
+from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
 

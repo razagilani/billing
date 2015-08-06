@@ -38,6 +38,7 @@ class TestUserDAO(TestCase):
     def setUp(self):
         clear_db()
         self.dao = UserDAO()
+        clear_db()
 
     def test_create_load_users(self):
         # no users yet

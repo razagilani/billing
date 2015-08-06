@@ -10,8 +10,9 @@ calling :func:`.core.init_model`.
 from itertools import groupby
 import json
 import logging
-from core.model import Session, UtilBill, SupplyGroup, Supplier, Utility, \
+from core.model import Session, SupplyGroup, Supplier, Utility, \
     RateClass
+from core.model.utilbill import UtilBill
 
 from alembic.config import Config
 import pymongo
