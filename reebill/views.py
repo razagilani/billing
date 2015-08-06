@@ -163,8 +163,10 @@ class Views(object):
         utility_accounts = session.query(
             UtilityAccount, ReeBillCustomer, BrokerageAccount).outerjoin(
             ReeBillCustomer).outerjoin(BrokerageAccount).options(
-            joinedload('utilbills')).options(joinedload('fb_utility')).\
-            options(joinedload('fb_rate_class'))
+                joinedload('utilbills').joinedload('service_address')
+            ).options(
+                joinedload('fb_utility')
+            ).options(joinedload('fb_rate_class'))
 
         if account is not None:
             utility_accounts = utility_accounts.filter(

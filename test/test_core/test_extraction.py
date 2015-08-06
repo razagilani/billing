@@ -152,11 +152,11 @@ class TextFieldTest(TestCase):
 
         # regex doesn't match
         with self.assertRaises(MatchError):
-            print self.field.get_value('xyz')
+            self.field.get_value('xyz')
 
         # matched a string but couldn't convert to a date
         with self.assertRaises(ConversionError):
-            print self.field.get_value('Somemonth 0, 7689')
+            self.field.get_value('Somemonth 0, 7689')
 
 
 class TextExtractorTest(TestCase):
