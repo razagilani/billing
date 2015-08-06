@@ -2,10 +2,10 @@ from datetime import datetime
 from unittest import TestCase
 from brokerage.brokerage_model import Quote, MatrixQuote, \
     load_rate_class_aliases, RateClassAlias, RateClass
-from core import init_altitude_db
+from core import init_altitude_db, init_model
 from core.model import AltitudeSession
 from exc import ValidationError
-from test import init_test_config
+from test import init_test_config, clear_db, create_tables
 
 
 class QuoteTest(TestCase):
@@ -60,9 +60,12 @@ class TestLoadRateClassAliases(TestCase):
     @classmethod
     def setUpClass(cls):
         init_test_config()
+        create_tables()
+        init_model()
         init_altitude_db()
 
     def setUp(self):
+        clear_db()
         s = AltitudeSession()
         s.add_all([
             RateClass(rate_class_id=1),
@@ -75,6 +78,9 @@ class TestLoadRateClassAliases(TestCase):
             RateClassAlias(rate_class_alias='c', rate_class_id=2)
         ])
 
+    def tearDown(self):
+        clear_db()
+
     def test_load_rate_class_aliases(self):
         # TODO: this is not a test
-        print load_rate_class_aliases()
+        load_rate_class_aliases()
