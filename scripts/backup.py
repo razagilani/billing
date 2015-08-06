@@ -35,7 +35,7 @@ MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 # entered through the subprocess stdin
 DROP_COMMAND = 'dropdb --if-exists %(db)s -h %(host)s -U %(user)s -w'
 CREATE_COMMAND = 'createdb %(db)s %(host)s -U %(user)s -w'
-DUMP_COMMAND = 'pg_dump %(db)s -h %(host)s -U %(user)s -w'
+DUMP_COMMAND = 'pg_dump %(db)s -h %(host)s -U %(user)s -w -O'
 DB_SHELL_COMMAND = 'psql %(db)s -h %(host)s -U %(user)s -w'
 TEMP_DB_NAME = 'template1'
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
@@ -202,10 +202,20 @@ def _recreate_main_db():
     # Postgres requires you to connect to a different database while dropping
     # the current database. the "template1" database is always guaranteed to
     # exist.
-    command = DB_SHELL_COMMAND % dict(db_params, db=TEMP_DB_NAME)
+    command = DB_SHELL_COMMAND % dict(superuser_db_params, db=TEMP_DB_NAME)
     stdin, _, check_exit_status = run_command(command)
+    # Don't allow new connections
     stdin.write(
-        'drop database if exists %(db)s; create database %(db)s' % db_params)
+        "update pg_database set datallowconn = 'false' where datname = '%(db)s';" % db_params)
+    # Disconnect all existing connections
+    stdin.write(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '%(db)s';" % db_params)
+    # Drop and create database
+    stdin.write(
+        'drop database if exists %(db)s; create database %(db)s with owner %(user)s;' % db_params)
+    # Re-allow new connections
+    stdin.write(
+        "update pg_database set datallowconn = 'true' where datname = '%(db)s;'" % db_params)
     stdin.close()
     check_exit_status()
 
