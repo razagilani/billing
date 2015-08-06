@@ -1,7 +1,7 @@
 from cStringIO import StringIO
 from unittest import TestCase
 from brokerage.brokerage_model import Company, Quote
-from brokerage.quote_file_processor import QuoteEmailProcessor, EmailError, \
+from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
     UnknownSupplierError
 from core import init_altitude_db, init_model
 from core.model import Supplier, Session, AltitudeSession
