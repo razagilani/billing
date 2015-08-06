@@ -1,6 +1,8 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
+from collections import defaultdict
 from datetime import datetime
+import itertools
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float, Table, func, desc
 from sqlalchemy.orm import relationship
@@ -56,11 +58,18 @@ def load_rate_class_aliases():
     class IDs.
     """
     session = AltitudeSession()
-    return {alias: rate_class_id for rate_class_id, alias in
-            session.query(RateClass.rate_class_id,
-                          RateClassAlias.rate_class_alias).join(
-                RateClassAlias,
-                RateClass.rate_class_id == RateClassAlias.rate_class_id)}
+    q = session.query(RateClassAlias.rate_class_alias,
+        RateClass.rate_class_id).join(
+        RateClass, RateClass.rate_class_id == RateClassAlias.rate_class_id
+    ).order_by(RateClassAlias.rate_class_alias, RateClass.rate_class_id)
+
+    # build dictionary from query results: alias -> list of rate class ids
+    result = defaultdict(lambda: [])
+    for rate_class_alias, row in itertools.groupby(
+            q.all(), key=lambda row: row[0]):
+        rate_class_ids = [element[1] for element in row]
+        result[rate_class_alias].extend(rate_class_ids)
+    return result
 
 
 def get_quote_status():
