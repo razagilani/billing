@@ -714,21 +714,30 @@ class ReebillProcessor(object):
 
     def set_payee_for_utility_account(self, account_id, payee):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
             utility_account_id=account_id).one()
-        customer.payee = payee
+            customer.payee = payee
+        except NoResultFound:
+            return
 
     def get_payee_for_utility_account(self, account_id):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
-            utility_account_id=account_id).one()
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
+                utility_account_id=account_id).one()
+        except NoResultFound:
+            return None
         return customer.get_payee()
 
 
     def set_groups_for_utility_account(self, account_id, group_name_array):
         s = Session()
-        customer = s.query(ReeBillCustomer).filter_by(
-            utility_account_id=account_id).one()
+        try:
+            customer = s.query(ReeBillCustomer).filter_by(
+                utility_account_id=account_id).one()
+        except NoResultFound:
+            return
 
         # Remove the customer from groups whose names are not in
         # 'group_name_array'
@@ -744,3 +753,27 @@ class ReebillProcessor(object):
             if group_name not in customer_group_names:
                 new_group, _ = self.get_create_customer_group(group_name)
                 new_group.add(customer)
+
+    def update_discount_rate(self, utility_account_id, discount_rate):
+        session = Session()
+        try:
+            reebill_customer = session.query(ReeBillCustomer).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).\
+                filter(UtilityAccount.id==utility_account_id).one()
+        except NoResultFound:
+            return
+        reebill_customer.discountrate = discount_rate
+        return reebill_customer
+
+    def update_late_charge_rate(self, utility_account_id, late_charge_rate):
+        session = Session()
+        try:
+            reebill_customer = session.query(ReeBillCustomer).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).\
+                filter(UtilityAccount.id==utility_account_id).one()
+        except NoResultFound:
+            return
+        reebill_customer.latechargerate = late_charge_rate
+        return reebill_customer
