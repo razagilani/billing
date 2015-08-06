@@ -2,14 +2,16 @@ import json
 from datetime import datetime, date
 
 from sqlalchemy.orm.exc import NoResultFound
+from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Main
 
 from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill, Charge
-from exc import NoSuchBillException, DuplicateFileError, BillingError
+from exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
 from core.utilbill_loader import UtilBillLoader
+from reebill.reebill_model import ReeBillCustomer, ReeBill
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
@@ -616,7 +618,7 @@ class UtilbillProcessor(object):
             raise
         utility_account.account_number = utility_account_number
         return utility_account
-
+     
     def get_utilbill(self, utilbill_id):
         session = Session()
         try:
@@ -625,3 +627,126 @@ class UtilbillProcessor(object):
         except NoResultFound:
             raise
         return utilbill
+
+
+    def update_fb_billing_address(self, utility_account_id,
+            addressee, city, postal_code, state, street):
+        s = Session()
+        try:
+            utility_account = s.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+        except NoResultFound:
+            raise
+        address = Address(addressee=addressee,
+                          city=city,
+                          postal_code=postal_code,
+                          state=state,
+                          street=street)
+        utility_account.fb_billing_address = address
+        return utility_account
+
+    def update_fb_service_address(self, utility_account_id,
+            addressee, city, postal_code, state, street):
+        s = Session()
+        try:
+            utility_account = s.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+        except NoResultFound:
+            raise
+        address = Address(addressee=addressee,
+                          city=city,
+                          postal_code=postal_code,
+                          state=state,
+                          street=street)
+        utility_account.fb_service_address = address
+        return utility_account
+
+    def move_account_references(self, dest_account_id, source_account_id):
+        """
+        moves all references from source_account_id to a
+        single account represented by dest_account_id
+        """
+        s = Session()
+        try:
+            dest_utility_account = s.query(UtilityAccount).filter(
+                UtilityAccount.id == dest_account_id).one()
+        except NoResultFound:
+            raise
+        # get a list of all reebills for the destination utility account
+        dest_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id ==
+                   dest_utility_account.id)\
+            .all()
+        # get a list of all reebills for the source utility account
+        source_account_reebills = s.query(ReeBill).join(ReeBillCustomer).\
+            filter(ReeBillCustomer.utility_account_id == source_account_id)\
+            .all()
+        # Both source and destination accounts cannot have reebills
+        if len(source_account_reebills) > 0 and len(dest_account_reebills)>0:
+            raise MergeError('All accounts cannot have reebills')
+        bills = s.query(UtilBill).filter(
+                UtilBill.utility_account_id == source_account_id).all()
+        for bill in bills:
+            bill.utility_account = dest_utility_account
+        source_reebill_customer = self.get_reebill_customer_for_account(
+            source_account_id)
+        dest_reebill_customer = self.get_reebill_customer_for_account(
+                dest_account_id)
+        if dest_reebill_customer:
+            # if source account has 0 reebills then update the source utility
+            # account's reebill_customer reference to point at destination
+            # utility account
+            if len(dest_account_reebills) == 0:
+                # update the source utility account reebill_customer
+                if source_reebill_customer:
+                    source_reebill_customer.set_account(dest_utility_account)
+                dest_reebill_customer.utility_account = None
+                # delete the destination account's old reebill_customer
+                s.delete(dest_reebill_customer)
+                s.commit()
+            else:
+                # source_utility_account doesn't have any reebills so we
+                # need to just delete it if it exists
+                if source_reebill_customer:
+                    source_reebill_customer.utility_account = None
+                    s.delete(source_reebill_customer)
+        elif source_reebill_customer:
+            source_reebill_customer.set_account(dest_utility_account)
+        #update the brokerage_accounts
+        source_ba = self.get_brokerage_account(source_account_id)
+        dest_ba = self.get_brokerage_account(dest_account_id)
+        if dest_ba:
+             s.delete(dest_ba)
+             s.commit()
+        if source_ba:
+            source_ba.utility_account_id = dest_account_id
+        return dest_utility_account
+
+    def delete_utility_account(self, utility_account_id):
+        session = Session()
+        try:
+            utility_account = session.query(UtilityAccount).filter(
+                UtilityAccount.id == utility_account_id).one()
+            session.delete(utility_account)
+        except NoResultFound:
+            raise
+
+    def get_brokerage_account(self, utility_account_id):
+        s = Session()
+        try:
+            ua = s.query(BrokerageAccount).join(UtilityAccount).filter(
+                 BrokerageAccount.utility_account_id == utility_account_id)\
+                 .one()
+        except NoResultFound:
+            ua = None
+        return ua
+
+    def get_reebill_customer_for_account(self, account_id):
+        s = Session()
+        try:
+            rb_customer = s.query(ReeBillCustomer).join(UtilityAccount).\
+                filter(ReeBillCustomer.utility_account_id == account_id).\
+                one()
+        except NoResultFound:
+            rb_customer = None
+        return rb_customer
