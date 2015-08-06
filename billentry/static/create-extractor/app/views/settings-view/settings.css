@@ -5,6 +5,12 @@ div[pdf-panel] {
   float:left;
   background-color:#FFFFFF;
   position:relative;
+  overflow:hidden;
+}
+
+/* When zooming out, canvases should not fit on the same row. */
+div[pdf-panel] canvas{
+  display: block;
 }
 
 .pdf-toolbar {
@@ -15,11 +21,16 @@ div[pdf-panel] {
   float: left;
   position: relative;   
   height: 100%;
+  width: 100%;
   overflow: scroll;
 }
 
 .textLayer {
   overflow:inherit;
+}
+
+.pdf-canvas-layer {
+  float:left;
 }
 
 .bbox-drawing-layer {
@@ -28,6 +39,7 @@ div[pdf-panel] {
   left: 0px;
   z-index: 5;
 }
+
 
 #separator { 
   width:5px; 

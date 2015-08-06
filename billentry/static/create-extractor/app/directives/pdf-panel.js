@@ -269,6 +269,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 			});
 
 			scope.$watch('pdf_data.scale', function(){
+				// renderDoc is (relatively) slow, and clearCanvas prevents old bounding boxes from hanging around while the PDF is zooming in.
+				scope.clearCanvas();
 				renderDoc().then(scope.paintCanvas);
 			});
 		}	
