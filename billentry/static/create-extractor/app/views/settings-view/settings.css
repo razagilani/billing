@@ -12,13 +12,6 @@ div[pdf-panel] {
   overflow:inherit;
 }
 
-.pdf-canvas-layer canvas:first-of-type {
-  border-top: 0;
-}
-.pdf-canvas-layer canvas:last-of-type {
-  border-bottom: 0;
-}
-
 .bbox-drawing-layer {
   position: absolute;
   top: 0px;
