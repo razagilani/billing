@@ -609,6 +609,9 @@ class ReeBillCustomer(Base):
     def set_payee(self, value):
         self.payee = value
 
+    def set_account(self, utility_account):
+        self.utility_account = utility_account
+
     def get_late_charge_rate(self):
         return self.latechargerate
 

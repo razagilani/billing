@@ -21,7 +21,10 @@ Ext.define('ReeBill.controller.Accounts', {
     },{
         ref: 'accountsFilter',
         selector: 'combo[name=accountsFilter]'
-    }],    
+    },{
+        ref: 'mergeBtn',
+        selector: 'button#mergeAccountRecord'
+    }],
     
     init: function() {
         this.application.on({
@@ -43,6 +46,9 @@ Ext.define('ReeBill.controller.Accounts', {
             },
             'combo[name=accountsFilter]': {
                 change: this.handleFilter
+            },
+            '[action=mergeRecords]': {
+                click: this.handleMerge
             }
         });
 
@@ -164,7 +170,6 @@ Ext.define('ReeBill.controller.Accounts', {
             makeAnotherAccount = accountForm.down('[name=makeAnotherAccount]').checked;
         var store = this.getAccountsStore();
 
-        var memoryStore = this.getAccountsStore();
         if (accountForm.getForm().isValid()) {
             var values = accountForm.getForm().getValues();
             store.suspendAutoSync();
@@ -176,7 +181,6 @@ Ext.define('ReeBill.controller.Accounts', {
                         var filterStore = this.getAccountsFilterStore();
                         var filterRec = filterStore.findRecord('value', filter);
                         var accountRec = batch.operations[0].records[0];
-                        var memoryStore = this.getAccountsStore();
 
                         // Test if the current filter would filter out the newly
                         // created account and if yes, set the filter to none
@@ -186,11 +190,11 @@ Ext.define('ReeBill.controller.Accounts', {
                             filterCombo.select(noneFilter);
                         }
 
-                        memoryStore.sort({
+                        store.sort({
                             property: 'account',
                             direction: 'DESC'
                         });
-                        memoryStore.loadPage(1);
+                        store.loadPage(1);
                         accountsGrid.getSelectionModel().select([accountRec]);
 
                         var accountForm = this.getAccountForm();
@@ -218,7 +222,22 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the account selection.
      */
     handleAccountSelect: function() {
+        var selected = this.getAccountsGrid().getSelectionModel().getSelection();
+        this.getMergeBtn().setDisabled(!(selected.length == 2));
+    },
 
+    /**
+     * handle merge records button
+     */
+    handleMerge: function () {
+        var records = this.getAccountsGrid().getSelectionModel().getSelection();
+        Ext.create('ReeBill.view.accounts.MergeDialog', {
+            records: records,
+            basedOn: 'ReeBill.view.accounts.Accounts',
+            store: this.getAccountsStore(),
+            exclude: ['casualname', 'primusname', 'codename', 'lastevent',
+            'service_type', 'template_account']
+        }).show();
     }
 
 });
