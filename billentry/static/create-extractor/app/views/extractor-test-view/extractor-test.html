@@ -77,12 +77,33 @@
 		<br><br> 
 
 		<!-- Details for individual bill test -->
-		<span ng-if="test && isBatchTest(selected_test)">
-			This is an individual test
+		<span ng-if="selected_test && !isBatchTest(selected_test)">
 		</span>
 		<!-- Details for batch test -->
-		<span ng-if="test && !isBatchTest(selected_test)">
-			This is a batch test
+		<span ng-if="selected_test && isBatchTest(selected_test)">
+			<table id="batch-test-details">
+				<thead>
+					<tr>
+						<td> Date </td>
+						<td> Total so far </td>
+						<td> Bills with <i>all</i> fields read </td>
+						<td> Bills with <i>any</i> fields read </td>
+						<td ng-repeat="applier_key in applier_keys()"><i>{{ applier_key }}</i></td>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="(date, date_result) in selected_test.results.dates">
+						<td> {{ date }} </td>
+						<td> {{ date_result.total_count }} </td>
+						<td> {{ date_result.all_count }} </td>
+						<td> {{ date_result.any_count }} </td>
+						<td> {{ date_result.any_count | percentage:date_result.total_count }} </td>
+						<td ng-repeat="applier_key in applier_keys()"> 
+							{{ date_result.fields[applier_key] }}
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</span> 
 		
 		<hr class="divider">
@@ -91,6 +112,7 @@
 	<div>
 		<i>Random debug stuff, which won't be here in production.</i>
 		<pre>{{ test_template | json }}</pre>
+		<pre>{{ selected_test | json }}</pre>
 	</div>
 
 </div>

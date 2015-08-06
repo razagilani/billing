@@ -40,12 +40,11 @@ filter('singleCoordToString', function(){
   };
 }).
 
-filter('fromListByField', function(){
-  return function(list, key, value){
-    if (value == undefined){
-      return value;
+filter('percentage', function(){
+  return function(numerator, denominator){
+    if (denominator == 0){
+      return "-";
     }
-    var result = $.grep(list, function(e){ return e[key] == value; });
-    return result[value];
+    return (100*numerator/denominator).toFixed(0)+"%";
   };
 });

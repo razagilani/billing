@@ -277,12 +277,24 @@ def run_test():
     s.commit()
     return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
 
-@app.route('/run-indiv-test')
+@app.route('/run-indiv-test', methods=['POST'])
 def run_indiv_test():
-    extractor_id = request.form.get('extractor_id')
-    bill_id = request.form.get('indiv_bill_id')
-    #TODO
-    return jsonify({'result': "lol good job"}), 202
+    extractor_id = request.json.get('extractor_id')
+    bill_id = request.json.get('indiv_bill_id')
+
+    s = Session()
+    ex = s.query(Extractor).filter(Extractor.extractor_id == extractor_id).one()
+    bill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
+    good, error = ex.get_values(bill, _create_bill_file_handler())
+
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
+    print "good"
+    pp.pprint(good)
+    print "error"
+    pp.pprint(error)
+
+    return jsonify({'good': good, 'error': error}), 200
 
 @app.route('/test-status/<task_id>', methods=['GET', 'POST'])
 def test_status(task_id):
