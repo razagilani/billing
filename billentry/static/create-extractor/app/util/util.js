@@ -2,6 +2,11 @@
 
 /* MATH / GEOMETRY FUNCTIONS */
 
+// clamps a number x between a min and max value
+function clamp(x, min, max){
+	return Math.min(max, Math.max(min, x));
+}
+
 // scales the coordinates in 'coords' by a factor of 'sc'
 function scale(coords, sc){
 	return { x0: coords.x0*sc, y0: coords.y0*sc, x1: coords.x1*sc, y1: coords.y1*sc };

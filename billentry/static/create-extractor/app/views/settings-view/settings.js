@@ -45,6 +45,10 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
 
+	$scope.zoomPDF = function(amount){
+		$scope.pdf_data.scale = clamp($scope.pdf_data.scale+amount, 0.2, 3);
+	}
+
 	// Updates origin_x and origin_y using origin_regex
 	$scope.updateExtractorOrigin = function(){
 		var ex = $scope.extractor();
