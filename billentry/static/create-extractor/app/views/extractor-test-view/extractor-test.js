@@ -20,7 +20,8 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	// the template for creating new tests. 
 	// This template is modified by the UI, and when the user starts a test the template's variables are used as parameters.
 	$scope.test_template = {};
-	$scope.tests = [];
+	$scope.batch_tests = [];
+	$scope.indiv_tests = [];
 	$scope.selected_test = null;
 
 
@@ -50,7 +51,7 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 				test_request.results = {};
 
 				// add task to tests list
-				$scope.tests.push(test_request);
+				$scope.batch_tests.push(test_request);
 			})
 			.error(function(){
 				console.log("failed to run batch test");
@@ -63,8 +64,10 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 		test_request.extractor_id = $scope.extractor().extractor_id;
 
 		DBService.runIndividualTest(test_request)
-			.success(function(){
-				
+			.success(function(responseObj){
+				test_request.results = {}
+				$.extend(test_request.results, responseObj);
+				$scope.indiv_tests.push(test_request);
 			})
 			.error(function(){
 				console.log("failed to run individual bill test.");
@@ -82,9 +85,9 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 		}
 	};
 
-	// Gets the updated status for all tests from the server.
+	// Gets the updated status for all batch tests from the server.
 	$scope.refreshAllTests = function(){
-		$scope.tests.forEach($scope.refreshTest);
+		$scope.batch_tests.forEach($scope.refreshTest);
 	};
 
 	// Updates the status for one test by querying the server.
