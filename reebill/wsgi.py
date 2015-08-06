@@ -261,6 +261,10 @@ class AccountsResource(RESTResource):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
+        if 'accounts_deleted' in row:
+            ua = self.utilbill_processor.move_account_references(
+                row['utility_account_id'], row['accounts_deleted'])
+
         if 'utility_account_number' in row:
             self.utilbill_processor.update_utility_account_number(
                 row['utility_account_id'], row['utility_account_number'])
@@ -315,11 +319,7 @@ class AccountsResource(RESTResource):
                                             sa_state,
                                             sa_street
             )
-        if 'accounts_deleted' in row:
-            ua = self.utilbill_processor.move_account_references(
-                row['utility_account_id'], row['accounts_deleted'])
-        else:
-            ua = Session().query(UtilityAccount).filter_by(
+        ua = Session().query(UtilityAccount).filter_by(
                 id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
         return True, {'rows': result, 'results': count}
