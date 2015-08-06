@@ -1972,6 +1972,77 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.reebill_processor.roll_reebill(
             self.account, start_date=self.utilbill.period_start)
 
+    def test_adjustment(self):
+        s = Session()
+        # TODO: move charges to setup if possible
+        self.utilbill.charges = [
+            Charge('A', formula=Charge.get_simple_formula(Register.TOTAL),
+                   rate=2, unit='kWh'),
+        ]
+        self.utilbill.compute_charges()
+        self.utilbill.processed = True
+        utilbill_2 = UtilBill(self.utilbill.utility_account,
+                              self.utilbill.get_utility(),
+                              self.utilbill.get_rate_class(),
+                              self.utilbill.get_supplier(),
+                              period_start=date(2000, 2, 1),
+                              period_end=date(2000, 3, 1), processed=True)
+        utilbill_3 = UtilBill(self.utilbill.utility_account,
+                              self.utilbill.get_utility(),
+                              self.utilbill.get_rate_class(),
+                              self.utilbill.get_supplier(),
+                              period_start=date(2000, 3, 1),
+                              period_end=date(2000, 4, 1), processed=True)
+        s.add_all([utilbill_2, utilbill_3])
+
+        reebill_1 = self.reebill_processor.roll_reebill(
+            self.customer.get_account(), start_date=self.utilbill.period_start)
+
+        # first bill never has any adjustment
+        self.assertEqual(0, reebill_1.total_adjustment)
+
+        # if that bill is issued and the next one is created, still no
+        # adjustment
+        reebill_1.issue(datetime(2000, 2, 1), self.reebill_processor)
+        reebill_2 = self.reebill_processor.roll_reebill(
+            self.customer.get_account())
+        self.assertEqual(0, reebill_1.total_adjustment)
+        self.assertEqual(0, reebill_2.total_adjustment)
+
+        # if the first bill is corrected, the second bill gets an adjustment
+        correction = reebill_1.make_correction()
+        # TODO: change unit so this isn't a huge number
+        correction.set_renewable_energy_reading(Register.TOTAL, 10000000)
+        correction.compute_charges()
+        s.add(correction)
+        self.reebill_processor.compute_reebill(reebill_2.get_account(),
+                                               reebill_2.sequence)
+        self.assertGreater(reebill_2.total_adjustment, 0)
+
+        # if there are more bills, reebill 2 still gets the adjustment
+        reebill_3 = self.reebill_processor.roll_reebill(
+            self.customer.get_account())
+        for r in [reebill_2, reebill_3]:
+            self.reebill_processor.compute_reebill(r.get_account(), r.sequence)
+        self.assertGreater(reebill_2.total_adjustment, 0)
+        self.assertEqual(0, reebill_3.total_adjustment)
+
+        # delete correction and recreate it after making reebill_2 "processed":
+        # then reebill 3 gets the adjustment, because it is the earliest non-processed one
+        s.delete(correction)
+        for r in [reebill_2, reebill_3]:
+            self.reebill_processor.compute_reebill(r.get_account(), r.sequence)
+        reebill_2.processed = True
+        correction = reebill_1.make_correction()
+        correction.set_renewable_energy_reading(Register.TOTAL, 10000000)
+        correction.compute_charges()
+        s.add(correction)
+        self.reebill_processor.compute_reebill(reebill_3.get_account(),
+                                               reebill_3.sequence)
+        self.assertEqual(0, reebill_2.total_adjustment)
+        self.assertGreater(reebill_3.total_adjustment, 0)
+
+
 class TestTouMetering(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
