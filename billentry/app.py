@@ -229,19 +229,21 @@ def get_running_tests():
     return jsonify({'tasks': tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
+@app.route('/run-batch-test', methods=['POST'])
 def run_test():
     """
     Runs a test of bill data extractors as an asynchronous Celery task.
     Also creates a database row in the ExtractorResult table for this test.
     :return the ID of the task being run, as well as the total number of bills
     """
-    extractor_id = request.form.get('extractor_id')
-    utility_id = request.form.get('utility_id')
-    num_bills = int(request.form.get('num_bills'))
-    date_filter_type = request.form.get('date_filter_type')
-    filter_date = request.form.get('filter_date')
+    extractor_id = request.json.get('extractor_id')
+    utility_id = request.json.get('utility_id')
+    num_bills = request.json.get('num_bills')
+    num_bills = int(num_bills) if num_bills else 0
+    date_filter_type = request.json.get('date_filter_type')
+    filter_date = request.json.get('filter_date')
     #if date is just a 4-digit year, add 'january 1st' to make a full date.
-    if re.match(r'\d{4}$', filter_date):
+    if filter_date and re.match(r'\d{4}$', filter_date):
         filter_date = filter_date + "-01-01"
 
     s = Session();
@@ -275,7 +277,14 @@ def run_test():
     s.commit()
     return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
 
-@app.route('/test-status/<task_id>', methods=['POST'])
+@app.route('/run-indiv-test')
+def run_indiv_test():
+    extractor_id = request.form.get('extractor_id')
+    bill_id = request.form.get('indiv_bill_id')
+    #TODO
+    return jsonify({'result': "lol good job"}), 202
+
+@app.route('/test-status/<task_id>', methods=['GET', 'POST'])
 def test_status(task_id):
     '''
     Returns the status for a given task.
@@ -315,7 +324,7 @@ def test_status(task_id):
         return jsonify(result)
 
 
-@app.route('/stop-task/<task_id>', methods=['POST'])
+@app.route('/stop-task/<task_id>', methods=['GET', 'POST'])
 def stop_task(task_id):
     # get child tasks and revoke them
     init_celery()

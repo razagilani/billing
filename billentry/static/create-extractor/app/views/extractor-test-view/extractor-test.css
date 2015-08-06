@@ -1,4 +1,14 @@
-/*table#testlist { width:100%; }*/
+#test-container {
+	width: 96%; 
+	margin-right: 2%; 
+	margin-left: 2%;
+	overflow: scroll;
+}
+
+#test-header h3 {
+	font-weight: normal;
+}
+
 table#testlist td {
 	padding-right:10px;
 }

@@ -76,5 +76,28 @@ factory('DBService', ['$http',
       return $http.get('/utilitybills/utilities');
     }
 
+    /* For running tests */
+
+    // Run a batch test on the server. 
+    // Returns the task_id of the job, and the number of bills to be run.
+    DBService.runBatchTest = function(test){
+      return $http.post('/run-batch-test', test);
+    }
+
+    // Runs a test on one bill
+    DBService.runIndividualTest = function(test){
+      return $http.post('/run-indiv-test', test);
+    }
+
+    // Gets status for a running batch job
+    DBService.getTestStatus = function(task_id){
+      return $http.get('/test-status/'+task_id);
+    }
+
+    // Stops a running batch job
+    DBService.stopTest = function(task_id){
+      return $http.get('/stop-task/'+task_id);
+    }
+
     return DBService;
 }]);
