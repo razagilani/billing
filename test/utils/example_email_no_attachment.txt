@@ -1,0 +1,79 @@
+Delivered-To: recipient@example.com
+Received: by 10.25.144.13 with SMTP id s13csp2321417lfd;
+        Tue, 4 Aug 2015 10:00:33 -0700 (PDT)
+X-Received: by 10.140.104.236 with SMTP id a99mr8451721qgf.71.1438707632574;
+        Tue, 04 Aug 2015 10:00:32 -0700 (PDT)
+Return-Path: <tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com>
+Received: from mail-qk0-f197.google.com (mail-qk0-f197.google.com. [209.85.220.197])
+        by mx.google.com with ESMTPS id a85si2807045qkh.95.2015.08.04.10.00.31
+        for <recipient@example.com>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 04 Aug 2015 10:00:32 -0700 (PDT)
+Received-SPF: pass (google.com: domain of tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com designates 209.85.220.197 as permitted sender) client-ip=209.85.220.197;
+Authentication-Results: mx.google.com;
+       spf=pass (google.com: domain of tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com designates 209.85.220.197 as permitted sender) smtp.mail=tech+bncBDXZTKGE2MDBBL67QOXAKGQEL6XD53Q@example.com
+Received: by qkdv3 with SMTP id v3sf14161831qkd.1
+        for <recipient@example.com>; Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20130820;
+        h=x-gm-message-state:date:from:to:message-id:subject:mime-version
+         :content-type:x-original-sender:x-original-authentication-results
+         :precedence:mailing-list:list-id:list-post:list-help:list-archive
+         :list-unsubscribe:x-spam-checked-in-group;
+        bh=FQaBzolm5n/VYo3Ax6+qy0H2jMcFETIaxujGK2Tk2Y0=;
+        b=QJ9uGJI2cW3emW8U2Fw+9N68mxTTfZVjlTXnCX71kqMY0pYrf4TpWzHNkurLodsLrL
+         rWaLyTiJGfPUfrzGuHKC/uqsKS3X7HGFvmyIN3qhjhd/BV17UtSu/gyfe4q+IFcNzXOs
+         YYy4EUZThunK8Bs4KmK2zsK9TF0biNd6wuGsXTSLBRYZRWNX4fo6O0fNHINrMs7e/qXh
+         fCwYbCSA6SOX5OZ0C6GwdddrgnKr8wtzxkTJXjWIou5xIF8oGJ02wF+moQsHDFpBOpIg
+         CssapEugQb5P9Y8bebYhuuiaPaoXZiciu0gNrQ+R4aF3j8rUJC7zM5Wz0U8bOqnZgVJg
+         ka2g==
+X-Gm-Message-State: ALoCoQkVYpOoyuclUoHqw4xK8J6de3wuzskgOauR5Nh3tK3/4KLGerRQ1FR7BjAn2OgVzbycvskq
+X-Received: by 10.129.70.133 with SMTP id t127mr3952955ywa.58.1438707631853;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-BeenThere: tech@example.com
+Received: by 10.107.15.214 with SMTP id 83ls242367iop.56.gmail; Tue, 04 Aug
+ 2015 10:00:31 -0700 (PDT)
+X-Received: by 10.107.133.93 with SMTP id h90mr3973942iod.8.1438707631645;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+X-BeenThere: dailyperformance@example.com
+Received: by 10.140.23.231 with SMTP id 94ls254048qgp.24.gmail; Tue, 04 Aug
+ 2015 10:00:31 -0700 (PDT)
+X-Received: by 10.140.148.11 with SMTP id 11mr9177841qhu.82.1438707631522;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+Received: from mail.example.net (mail.example.net. [54.174.123.212])
+        by mx.google.com with ESMTP id h138si2803577qhc.103.2015.08.04.10.00.31
+        for <dailyperformance@example.com>;
+        Tue, 04 Aug 2015 10:00:31 -0700 (PDT)
+Received-SPF: pass (google.com: domain of jaspersoftreportserver-prod@example.net designates 54.174.123.212 as permitted sender) client-ip=54.174.123.212;
+Received: from ip-10-1-1-135.ec2.internal (ip-10-1-1-135.ec2.internal [10.1.1.135])
+	by mail.example.net (Postfix) with ESMTP id 19DC840458
+	for <dailyperformance@example.com>; Tue,  4 Aug 2015 17:00:31 +0000 (UTC)
+Date: Tue, 4 Aug 2015 17:00:30 +0000 (UTC)
+From: jaspersoftreportserver-prod@example.net
+To: dailyperformance@example.com
+Message-ID: <1709918666.01438707630330.JavaMail.tomcat@ip-10-1-1-135.ec2.internal>
+Subject: Daily Report CSV Format
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_Part_0_457362715.1438707629660"
+X-Original-Sender: jaspersoftreportserver-prod@example.net
+X-Original-Authentication-Results: mx.google.com;       spf=pass (google.com:
+ domain of jaspersoftreportserver-prod@example.net designates 54.174.123.212
+ as permitted sender) smtp.mail=jaspersoftreportserver-prod@example.net
+Precedence: list
+Mailing-list: list tech@example.com; contact tech+owners@example.com
+List-ID: <tech.example.com>
+X-Google-Group-Id: 345948056754
+List-Post: <http://groups.google.com/a/example.com/group/tech/post>, <mailto:tech@example.com>
+List-Help: <http://support.google.com/a/example.com/bin/topic.py?topic=25838>,
+ <mailto:tech+help@example.com>
+List-Archive: <http://groups.google.com/a/example.com/group/tech/>
+List-Unsubscribe: <mailto:googlegroups-manage+345948056754+unsubscribe@googlegroups.com>,
+ <http://groups.google.com/a/example.com/group/tech/subscribe>
+X-Spam-Checked-In-Group: tech@example.com
+
+------=_Part_0_457362715.1438707629660
+Content-Type: multipart/related;
+	boundary="----=_Part_1_562079028.1438707629810"
+
+------=_Part_1_562079028.1438707629810--
