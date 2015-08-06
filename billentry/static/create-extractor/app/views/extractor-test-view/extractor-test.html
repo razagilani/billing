@@ -1,11 +1,14 @@
-<div style="width:96%; margin-right:2%; margin-left:2%">
+<div id="test-container">
 	<div id="test-header">
-		<h3>Testing Extractor: <i>{{extractor().name}}</i></h3>
+		<h3><b>Testing Extractor:</b> {{extractor().name}}
+			<span ng-if="extractor().extractor_id">(id: {{ extractor().id }})</span>
+			<span ng-if="!extractor().extractor_id">(extractor is unsaved)</span>
+		</h3>
 
 		<!-- Batch test, which runs many bills at once -->
 		<b>Batch Test:</b> &nbsp; 
 		Limit to &nbsp; 
-		<input type="number" ng-model="test_template.nbills"></input> &nbsp;
+		<input type="number" ng-model="test_template.num_bills"></input> &nbsp;
 		bills, with utility &nbsp;
 		<select ng-model="test_template.utility_id">
 			<option ng-repeat="util in utilities() | orderBy: 'name' " 
@@ -41,32 +44,47 @@
 					<td> Total so far </td>
 					<td> Bills with <i>all</i> fields read </td>
 					<td> Bills with <i>any</i> fields read </td>
-					<td ng-repeat="applier_key in applier_keys()">{{ applier_key }}</td>
+					<td ng-repeat="applier_key in applier_keys()"><i>{{ applier_key }}</i></td>
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="test in tests">
+				<tr ng-repeat="test in tests" 
+					ng-click="selectTest(test)"
+					ng-class="{'selected': selected_test == test}">
 					<td> {{ $index }} </td>
 					<td> {{ test.extractor_id }} </td>
 					<td> {{ test.utility_id }} </td>
 					<td> {{ test.status }} </td>
-					<td> {{ test.results.bills_to_run }} </td>
+					<td> {{ test.bills_to_run }} </td>
 					<td> {{ test.results.total_count }} </td>
 					<td> {{ test.results.all_count }} </td>
 					<td> {{ test.results.any_count }} </td>
 					<td ng-repeat="applier_key in applier_keys()"> 
-						{{ test.results.fields[applier_key] }} 
+						{{ test.results.fields[applier_key] }}
 					</td>
-					<td><img src="/icons/delete.png"></td>
+					<td ng-show="isBatchTest(test)"><img src="/icons/delete.png"></td>
 				</tr>
 			</tbody>
 		</table>
+		<br>
+		<button ng-click="refreshAllTests()">Refresh</button>
 		<hr class="divider">
 	</div>
 
 	<!-- Detailed info on a specific test.  -->
-	<div>
-		Detailed Test Results 
+	<div id="tests-details" ng-show="selected_test">
+		<h3>Detailed Test Results:</h3>
+		<br><br> 
+
+		<!-- Details for individual bill test -->
+		<span ng-if="test && isBatchTest(selected_test)">
+			This is an individual test
+		</span>
+		<!-- Details for batch test -->
+		<span ng-if="test && !isBatchTest(selected_test)">
+			This is a batch test
+		</span> 
+		
 		<hr class="divider">
 	</div>
 

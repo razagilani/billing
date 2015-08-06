@@ -38,4 +38,14 @@ filter('singleCoordToString', function(){
       return axis+": "+coord.toFixed(2);
     }
   };
+}).
+
+filter('fromListByField', function(){
+  return function(list, key, value){
+    if (value == undefined){
+      return value;
+    }
+    var result = $.grep(list, function(e){ return e[key] == value; });
+    return result[value];
+  };
 });
