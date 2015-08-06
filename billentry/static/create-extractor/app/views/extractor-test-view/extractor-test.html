@@ -32,7 +32,7 @@
 	</div>
 
 	<!-- A list of running tests, with general information on them. -->
-	<div id="tests-summary">
+	<div id="tests-summary" ng-show="(indiv_tests.length + batch_tests.length)">
 		<h3>Current Tests: </h3>
 		<!-- List of batch tests -->
 		<span ng-show="batch_tests.length">
@@ -50,7 +50,7 @@
 						<td>All fields read</td>
 						<td> Any fields read</td>
 						<td ng-repeat="applier_key in applier_keys()"><i>{{ applier_key }}</i></td>
-						<td> <!-- For the 'delete' button --> </td>
+						<td> Stop Test <!-- For the 'delete' button --> </td>
 					</tr>
 				</thead>
 				<tbody>
@@ -68,7 +68,7 @@
 						<td ng-repeat="applier_key in applier_keys()"> 
 							{{ test.results.fields[applier_key] }}
 						</td>
-						<td ng-show="isBatchTest(test)"><img src="/icons/delete.png"></td>
+						<td><img src="/icons/delete.png" ng-click="stopTest(test)"></td>
 					</tr>
 				</tbody>
 			</table>
@@ -96,9 +96,9 @@
 						<td> {{ test.indiv_bill_id }} </td>
 						<td ng-repeat="applier_key in applier_keys()"> 
 							<!-- check mark (field success) -->
-							<span ng-show="test.results.good[applier_key]" style="color:#00AA00">&#10003;</span>
+							<span ng-show="test.results.good && test.results.good[applier_key]" style="color:#00AA00">&#10003;</span>
 							<!-- X mark (field failure) -->
-							<span ng-show="!test.results.good[applier_key]" style="color:#AA0000">&#10005;</span>
+							<span ng-show="test.results.good && !test.results.good[applier_key]" style="color:#AA0000">&#10005;</span>
 						</td>
 					</tr>
 				</tbody>
@@ -106,8 +106,7 @@
 		</span>
 		<br>
 		<button class="fancy-btn" 
-				ng-click="refreshAllTests()"
-				ng-show="(indiv_tests.length + batch_tests.length)">
+				ng-click="refreshAllTests()">
 			Refresh
 		</button>
 		<hr class="divider">
@@ -119,10 +118,10 @@
 		<br><br> 
 
 		<!-- Details for individual bill test -->
-		<span ng-if="selected_test && !isBatchTest(selected_test)">
+		<span ng-if="selected_test && !selected_test.batch">
 		</span>
 		<!-- Details for batch test -->
-		<span ng-if="selected_test && isBatchTest(selected_test)">
+		<span ng-if="selected_test && selected_test.batch">
 			<table id="batch-test-details" class="results">
 				<thead>
 					<tr>

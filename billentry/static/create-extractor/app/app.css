@@ -68,5 +68,3 @@ table tr.disabled { color:#9999CC; }
 table tr.selected { background-color:#AAAAFF; }
 table tbody tr:hover { background-color:#CDCDFF; }
 table tr.selected:hover { background-color:#8888FF; }
-
-table td { text-align: center};

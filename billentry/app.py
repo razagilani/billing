@@ -240,11 +240,13 @@ def run_test():
     utility_id = request.json.get('utility_id')
     num_bills = request.json.get('num_bills')
     num_bills = int(num_bills) if num_bills else 0
-    date_filter_type = request.json.get('date_filter_type')
-    filter_date = request.json.get('filter_date')
+    start_date = request.json.get('start_date')
+    stop_date = request.json.get('stop_date')
     #if date is just a 4-digit year, add 'january 1st' to make a full date.
-    if filter_date and re.match(r'\d{4}$', filter_date):
-        filter_date = filter_date + "-01-01"
+    if start_date and re.match(r'\d{4}$', start_date):
+        start_date = start_date + "-01-01"
+    if stop_date and re.match(r'\d{4}$', stop_date):
+        stop_date = stop_date + "-01-01"
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
@@ -255,11 +257,10 @@ def run_test():
         q = q.filter(UtilBill.utility_id == utility_id)
     else:
         utility_id = None
-    if filter_date and date_filter_type:
-        if date_filter_type == 'before':
-            q = q.filter(UtilBill.period_end <= filter_date)
-        elif date_filter_type == 'after':
-            q = q.filter(UtilBill.period_end >= filter_date)
+    if start_date:
+        q = q.filter(UtilBill.period_end >= start_date)
+    if stop_date:
+        q = q.filter(UtilBill.period_end <= stop_date)
     if num_bills > 0:
         q = q.limit(num_bills)
     if q.count() == 0:
@@ -300,7 +301,7 @@ def run_indiv_test():
         error.iteritems()}
     return jsonify({'good': good_results, 'error': error_results}), 200
 
-@app.route('/test-status/<task_id>', methods=['GET', 'POST'])
+@app.route('/test-status/<task_id>', methods=['GET'])
 def test_status(task_id):
     '''
     Returns the status for a given task.
