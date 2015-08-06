@@ -78,6 +78,7 @@ directive("pdfPanel", ['DBService', function(DBService){
 				var pdf_data = scope.pdf_data;
 				resetLayers();
 				pdf_data.canvasLayer.html(pdf_data.loadingMessage);
+				pdf_data.pages = [];
 			};
 
 			var renderDoc = function(){
