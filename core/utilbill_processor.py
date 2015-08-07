@@ -629,6 +629,19 @@ class UtilbillProcessor(object):
             raise
         utility_account.name = name
         return utility_account
+
+    def update_service_type(self, utility_account_id,
+        service):
+        session = Session()
+        try:
+            reebill_customer = session.query(ReeBillCustomer).join(
+                UtilityAccount).filter(
+                ReeBillCustomer.utility_account_id == utility_account_id).\
+                one()
+        except NoResultFound:
+            raise
+        reebill_customer.service = service
+        return reebill_customer.utility_account
      
     def get_utilbill(self, utilbill_id):
         session = Session()
