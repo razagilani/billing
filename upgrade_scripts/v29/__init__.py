@@ -53,7 +53,7 @@ def create_extractors(s):
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
-    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_charges_regex, type=Field.PEPCO_NEW_CHARGES, applier_key=UtilBillApplier.CHARGES))
+    pepco_2015.fields.append(TextExtractor.TextField(regex=pep_charges_regex, type=Field.PEPCO_NEW_CHARGES, applier_key=UtilBillApplier.CHARGES, enabled=False))
     pepco_2015.fields.append(TextExtractor.TextField(regex=pep_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
 
     #pepco bills from before 2015, blue logo
@@ -70,7 +70,7 @@ def create_extractors(s):
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
-    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=UtilBillApplier.CHARGES))
+    pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_charges_regex, type=Field.PEPCO_OLD_CHARGES, applier_key=UtilBillApplier.CHARGES, enabled=False))
     pepco_old.fields.append(TextExtractor.TextField(regex=pep_old_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
 
     #washington gas bills
@@ -90,7 +90,7 @@ def create_extractors(s):
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE, applier_key=UtilBillApplier.END))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT, applier_key=UtilBillApplier.ENERGY))
     washington_gas.fields.append(TextExtractor.TextField(regex=wg_next_meter_read_regex, type=Field.DATE, applier_key=UtilBillApplier.NEXT_READ))
-    washington_gas.fields.append(TextExtractor.TextField(regex=wg_charges_regex, type=Field.WG_CHARGES, applier_key=UtilBillApplier.CHARGES))
+    washington_gas.fields.append(TextExtractor.TextField(regex=wg_charges_regex, type=Field.WG_CHARGES, applier_key=UtilBillApplier.CHARGES, enabled=False))
     washington_gas.fields.append(TextExtractor.TextField(
         regex=wg_rate_class_regex, type=Field.STRING, applier_key=UtilBillApplier.RATE_CLASS))
     s.add_all([e, pepco_2015, pepco_old, washington_gas])
