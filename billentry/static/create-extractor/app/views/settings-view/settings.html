@@ -179,13 +179,13 @@
 	</div>
 
 	<!-- Shows preview of an individual field -->
-	<div class="field-preview" ng-show="selected">
+	<div class="field-preview" ng-if="selected">
 		<h3> Preview of {{ selected.applier_key | capitalize }}: </h3>
 		<button ng-click="previewField(selected)">Refresh Preview</button>
 		<br><br>
 
 		<b> Field Output: </b>
-		<pre> {{ selected.type }}: "{{ preview_output }}" </pre>
+		<pre> {{ selected.type }}: "{{ preview_output | printField:selected.type }}" </pre>
 		<br><br>
 
 		<b> Field JSON (for debug): </b>

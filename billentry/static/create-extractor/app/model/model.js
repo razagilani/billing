@@ -15,6 +15,9 @@ factory('dataModel', ['DBService', function(DBService){
 	// stores data about the extractor being manipulated
 	var _extractor = {};
 
+	//stores PDF data for the page.
+	// var pdf_data = {};
+
 	/**
 	* Initializes the app's data model. 
 	* Gets data from the server, including a list of applier keys and field types,

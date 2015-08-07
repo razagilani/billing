@@ -61,6 +61,10 @@ filter('numKeys', function(){
 // Returns the number of keys/members this object has. 
 filter('printField', function(){
   return function(value, type){
+    if (value == null){
+      return value;
+    }
+    console.log(value);
     if (type == "address"){
       var out_str = "";
       out_str += (value.addressee || "(no addressee)") + ", ";
