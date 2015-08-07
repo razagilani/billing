@@ -72,7 +72,7 @@ def create_layout_extractors(s):
         offset_regex="total charges this period",
         bounding_box=BoundingBox(x0=0, y0=0, x1=170, y1=10),
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
-        applier_key=UtilBillApplier.PERIOD_TOTAL))
+        applier_key=UtilBillApplier.TOTAL))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="Your gas is supplied(?: and distributed)? by\s+(.+?)\.",
         page_num=2, corner=Corners.TOP_LEFT,
@@ -141,7 +141,7 @@ def create_layout_extractors(s):
         offset_regex="total electric charges",
         bounding_box=BoundingBox(x0=0, y0=-10, x1=318, y1=0),
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
-        applier_key=UtilBillApplier.PERIOD_TOTAL))
+        applier_key=UtilBillApplier.TOTAL))
 
     pepco_old_layout = LayoutExtractor(
         name='Layout Extractor Pepco bills before 2015, blue logo id 2631')
@@ -191,7 +191,7 @@ def create_layout_extractors(s):
         offset_regex="current charges this period",
         bounding_box=BoundingBox(x0=0, y0=-10, x1=252, y1=0),
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
-        applier_key=UtilBillApplier.PERIOD_TOTAL))
+        applier_key=UtilBillApplier.TOTAL))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="Services by (.*?) for %s" % date_format, page_num=3,
         type=Field.SUPPLIER, applier_key=UtilBillApplier.SUPPLIER))
@@ -231,7 +231,7 @@ def create_layout_extractors(s):
         offset_regex="total charges this period|total new charges due",
         bounding_box=BoundingBox(x0=0, y0=-10, x1=255, y1=0),
         corner=Corners.TOP_LEFT, type=Field.FLOAT,
-        applier_key=UtilBillApplier.PERIOD_TOTAL))
+        applier_key=UtilBillApplier.TOTAL))
 
     s.add_all([washington_gas_layout, pepco_2015_layout, pepco_old_layout,
                bge_layout])
