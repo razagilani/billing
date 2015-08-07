@@ -104,7 +104,7 @@ class UtilBillApplier(Applier):
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
-    PERIOD_TOTAL = 'period total'
+    TOTAL = 'total'
     RATE_CLASS = 'rate class'
     SERVICE_ADDRESS = 'service address'
     START = 'start'
@@ -119,7 +119,7 @@ class UtilBillApplier(Applier):
         (BILLING_ADDRESS, core.model.UtilBill.billing_address),
         (SERVICE_ADDRESS, core.model.UtilBill.service_address),
         (SUPPLIER, core.model.UtilBill.set_supplier),
-        (PERIOD_TOTAL, core.model.UtilBill.target_total),
+        (TOTAL, core.model.UtilBill.target_total),
         (RATE_CLASS, set_rate_class.__func__),
         (ENERGY, core.model.UtilBill.set_total_energy),
         (CHARGES, set_charges.__func__),
@@ -137,7 +137,7 @@ class UtilBillApplier(Applier):
         END: lambda b: b.period_end,
         ENERGY: lambda b: b.get_total_energy(),
         NEXT_READ: lambda b: b.next_meter_read_date,
-        PERIOD_TOTAL: lambda b: b.target_total,
+        TOTAL: lambda b: b.target_total,
         RATE_CLASS: lambda b: b.rate_class,
         SERVICE_ADDRESS: lambda b: b.service_address,
         START: lambda b: b.period_start,

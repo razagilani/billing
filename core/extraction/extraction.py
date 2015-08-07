@@ -226,6 +226,9 @@ class Extractor(model.Base):
     extractor_id = Column(Integer, primary_key=True)
     discriminator = Column(String, nullable=False)
     name = Column(String, nullable=False)
+
+    # A sample bill that an extractor is known to work for. Can be used for
+    # debugging/testing.
     representative_bill_id = Column(Integer,
         ForeignKey('utilbill.id'))
     representative_bill = relationship('UtilBill')
@@ -589,7 +592,7 @@ class ExtractorResult(model.Base):
     field_end = Column(Integer)
     field_energy = Column(Integer)
     field_next_read = Column(Integer)
-    field_period_total = Column(Integer)
+    field_total = Column(Integer)
     field_rate_class = Column(Integer)
     field_start = Column(Integer)
     field_service_address = Column(Integer)
@@ -610,7 +613,7 @@ class ExtractorResult(model.Base):
     end_by_month = Column(HSTORE)
     energy_by_month = Column(HSTORE)
     next_read_by_month = Column(HSTORE)
-    period_total_by_month = Column(HSTORE)
+    total_by_month = Column(HSTORE)
     rate_class_by_month = Column(HSTORE)
     service_address_by_month = Column(HSTORE)
     start_by_month = Column(HSTORE)
