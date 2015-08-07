@@ -66,7 +66,7 @@ def create_layout_extractors(s):
         bounding_box=BoundingBox(x0=99, y0=437, x1=372, y1=571),
         table_stop_regex=r"total washington gas charges|ways to pay",
         corner=Corners.TOP_LEFT, type=Field.TABLE_CHARGES,
-        applier_key=UtilBillApplier.CHARGES))
+        applier_key=UtilBillApplier.CHARGES, enabled=False))
     washington_gas_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)" % num_format, page_num=1,
         offset_regex="total charges this period",
@@ -135,7 +135,7 @@ def create_layout_extractors(s):
         multipage_table=True, maxpage=3,
         nextpage_top = 710,
         corner=Corners.TOP_LEFT, type=Field.TABLE_CHARGES,
-        applier_key=UtilBillApplier.CHARGES))
+        applier_key=UtilBillApplier.CHARGES, enabled=False))
     pepco_2015_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)" % num_format, page_num=1, maxpage=3,
         offset_regex="total electric charges",
@@ -185,7 +185,7 @@ def create_layout_extractors(s):
         bounding_box=BoundingBox(x0=259, y0=446, x1=576, y1=657),
         table_stop_regex=r"current charges this period",
         corner=Corners.TOP_LEFT, type=Field.TABLE_CHARGES,
-        applier_key=UtilBillApplier.CHARGES))
+        applier_key=UtilBillApplier.CHARGES, enabled=False))
     pepco_old_layout.fields.append(LayoutExtractor.BoundingBoxField(
         bbregex="(%s)" % num_format, page_num=1,
         offset_regex="current charges this period",
@@ -261,6 +261,12 @@ def upgrade():
     s = Session()
     alembic_upgrade('4d54d21b2c7a')
     create_layout_extractors(s)
+
+    # disable fields that read charges.
+    charge_fields = s.query(Field).filter(Field.applier_key ==
+                                          UtilBillApplier.CHARGES).all()
+    for cf in charge_fields:
+        cf.enabled = False;
     s.commit()
 
     # to do later:
