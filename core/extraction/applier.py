@@ -12,8 +12,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.model import Session, RateClass
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
+from exc import ApplicationError, ConversionError
 from core.utilbill_loader import UtilBillLoader
-from exc import ApplicationError
 
 
 class Applier(object):
@@ -99,21 +99,29 @@ class UtilBillApplier(Applier):
                 if charge.rate is None:
                     charge.rate = other_charge.rate
 
+    BILLING_ADDRESS = 'billing address'
     CHARGES = 'charges'
     END = 'end'
     ENERGY = 'energy'
     NEXT_READ = 'next read'
+    PERIOD_TOTAL = 'period total'
     RATE_CLASS = 'rate class'
+    SERVICE_ADDRESS = 'service address'
     START = 'start'
+    SUPPLIER = 'supplier'
 
     # values must be applied in a certain order because some are needed in
     # order to apply others (e.g. rate class is needed for energy and charges)
     KEYS = OrderedDict([
-        (START, core.model.utilbill.UtilBill.period_start),
-        (END, core.model.utilbill.UtilBill.period_end),
-        (NEXT_READ, core.model.utilbill.UtilBill.set_next_meter_read_date),
+        (START, core.model.UtilBill.period_start),
+        (END, core.model.UtilBill.period_end),
+        (NEXT_READ, core.model.UtilBill.set_next_meter_read_date),
+        (BILLING_ADDRESS, core.model.UtilBill.billing_address),
+        (SERVICE_ADDRESS, core.model.UtilBill.service_address),
+        (SUPPLIER, core.model.UtilBill.set_supplier),
+        (PERIOD_TOTAL, core.model.UtilBill.target_total),
         (RATE_CLASS, set_rate_class.__func__),
-        (ENERGY, core.model.utilbill.UtilBill.set_total_energy),
+        (ENERGY, core.model.UtilBill.set_total_energy),
         (CHARGES, set_charges.__func__),
     ])
     # TODO:
@@ -124,12 +132,16 @@ class UtilBillApplier(Applier):
     # Getters for each applier key, to get the corresponding field value from
     # a utility bill.
     GETTERS = {
+        BILLING_ADDRESS: lambda b: b.billing_address,
         CHARGES: lambda b: b.charges,
         END: lambda b: b.period_end,
         ENERGY: lambda b: b.get_total_energy(),
         NEXT_READ: lambda b: b.next_meter_read_date,
+        PERIOD_TOTAL: lambda b: b.target_total,
         RATE_CLASS: lambda b: b.rate_class,
+        SERVICE_ADDRESS: lambda b: b.service_address,
         START: lambda b: b.period_start,
+        SUPPLIER: lambda b: b.supplier
     }
 
     _instance = None
@@ -224,4 +236,3 @@ class UtilBillApplier(Applier):
         for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
-
