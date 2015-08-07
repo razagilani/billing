@@ -431,7 +431,7 @@ def preview_field(bill_id):
     input = le._prepare_input(utilbill, _create_bill_file_handler())
     output = field.get_value(input)
 
-    return jsonify({'field_output': unicode(output)}), 200
+    return jsonify({'field_output': serialize_field(output)}), 200
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
