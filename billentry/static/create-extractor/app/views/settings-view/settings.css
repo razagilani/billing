@@ -15,6 +15,7 @@ div[pdf-panel] canvas{
 
 .pdf-toolbar {
   background-color: #EFEFFF;
+  padding-bottom: 10px;
 }
 
 .pdf-scroll {
