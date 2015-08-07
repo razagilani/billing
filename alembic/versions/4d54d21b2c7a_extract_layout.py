@@ -30,7 +30,7 @@ def upgrade():
     for value in new_type_names:
         op.execute("alter type field_type add value '%s'" % value)
     new_applier_keys = [
-        'period total', 'supplier',
+        'total', 'supplier',
     ]
     for value in new_applier_keys:
         op.execute("alter type applier_key add value '%s'" % value)
