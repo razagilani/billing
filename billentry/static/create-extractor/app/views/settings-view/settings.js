@@ -36,17 +36,20 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 	$scope.applier_keys = dataModel.applier_keys;
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
+	$scope.pdf_data = dataModel.pdf_data;
 
 	$scope.newExtractor = dataModel.newExtractor;
 	$scope.saveExtractor = dataModel.saveExtractor;
 	$scope.loadExtractor = dataModel.loadExtractor;
+	$scope.setPDFData = dataModel.setPDFData;
 
 	$scope.viewBill = function(){
 		$scope.bill_id = $scope.extractor().representative_bill_id;
 	}
 
+	// changes the scale of a pdf by 'amount', and re-renders the PDF
 	$scope.zoomPDF = function(amount){
-		$scope.pdf_data.scale = clamp($scope.pdf_data.scale+amount, 0.2, 3);
+		$scope.pdf_data().scale = clamp($scope.pdf_data().scale+amount, 0.2, 3);
 	}
 
 	// Updates origin_x and origin_y using origin_regex
@@ -90,9 +93,7 @@ controller('settingsViewCtrl', ['$scope', '$routeParams', 'DBService', 'dataMode
 			// update offset objects for drawing individual fields
 			var offsetTasks = [];
 			$scope.extractor().fields.forEach(function(field){
-				if (field.offset_regex){
-					offsetTasks.push($scope.updateOffset(field));
-				}
+				offsetTasks.push($scope.updateOffset(field));
 			});
 			Promise.all(offsetTasks).then($scope.paintCanvas);
 		});

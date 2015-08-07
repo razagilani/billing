@@ -16,7 +16,7 @@ factory('dataModel', ['DBService', function(DBService){
 	var _extractor = {};
 
 	//stores PDF data for the page.
-	// var pdf_data = {};
+	var _pdf_data = {};
 
 	/**
 	* Initializes the app's data model. 
@@ -131,17 +131,23 @@ factory('dataModel', ['DBService', function(DBService){
 			});
 	}
 
+	var setPDFData = function(pdf_data){
+		_pdf_data = pdf_data;
+	}
+
 	return {
 		extractor: function(){ return _extractor;},
 		applier_keys: function(){ return _applier_keys;},
 		field_types: function(){ return _field_types;},
 		data_types: function(){ return _data_types;},
 		utilities: function(){ return _utilities;},
+		pdf_data: function(){ return _pdf_data; },
 		initDataModel: initDataModel,
 		newExtractor: newExtractor,
 		getNewField: getNewField,
 		saveExtractor: saveExtractor,
 		loadExtractor: loadExtractor,
+		setPDFData: setPDFData,
 	};
 }]);
 	
