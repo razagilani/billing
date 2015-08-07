@@ -38,8 +38,7 @@ def upgrade():
                     sa.Column('modified', sa.DateTime(), nullable=False,
                               server_default=sa.func.now(),
                               onupdate=sa.func.now()),
-        sa.PrimaryKeyConstraint('extractor_id'),
-        sa.ForeignKeyConstraint(['representative_bill_id'], ['utilbill.id'])
+        sa.PrimaryKeyConstraint('extractor_id')
     )
     op.create_table('field',
         sa.Column('field_id', sa.Integer(), nullable=False),
@@ -47,8 +46,7 @@ def upgrade():
         sa.Column('extractor_id', sa.Integer(), nullable=True),
         sa.Column('type',
             sa.Enum('address', 'date', 'float', 'pepco old charges',
-                'pepco new charges', 'rate class', 'string', 'supplier',
-                'wg charges',
+                'pepco new charges', 'rate class', 'string', 'wg charges',
                 name='field_type'), nullable=True),
         sa.Column('applier_key',
             sa.Enum('billing address', 'charges', 'rate class', 'next read',
@@ -104,7 +102,7 @@ def upgrade():
         sa.Column('field_next_read_fraction', sa.Float()),
         sa.Column('field_rate_class_fraction', sa.Float()),
         sa.Column('field_service_address_fraction', sa.Float()),
-        sa.Column('field_start_fraction', sa.Float()), )
+        sa.Column('field_start_fraction', sa.Float()),)
 
 
 def downgrade():
