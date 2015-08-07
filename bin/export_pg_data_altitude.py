@@ -18,5 +18,4 @@ if __name__ == '__main__':
     init_model()
     _create_brokerage_accounts_for_utility_accounts()
     pgae = PGAltitudeExporter(uuid4, altitude)
-    print _load_pg_utilbills().count()
     pgae.write_csv(_load_pg_utilbills(), stdout)
