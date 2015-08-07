@@ -1,6 +1,6 @@
 angular.module('createExtractor').
 
-directive("pdfPanel", ['DBService', function(DBService){
+directive("pdfPanel", ['DBService', 'dataModel', function(DBService, dataModel){
 	return {
 	    restrict: "ACE",
 	    link: function(scope, element, attrs){
@@ -13,8 +13,8 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* and a text layer, which contains selectable text overlayed on the PDF.  
 			*/
 			var initPDFPanel = function(){
-				var pdf_data = {} 
-				scope.pdf_data = pdf_data;
+				var pdf_data = {};
+				dataModel.setPDFData(pdf_data);
 
 			    /**
 			     * @cfg{Boolean} disableWorker
@@ -65,9 +65,9 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* the canvas and text layers.
 			*/
 			var resetLayers = function(){
-				var pdf_data = scope.pdf_data;
-				 pdf_data.canvasLayer.empty();
-				 pdf_data.textLayerDiv.empty();
+				var pdf_data = dataModel.pdf_data();
+				pdf_data.canvasLayer.empty();
+				pdf_data.textLayerDiv.empty();
 			};
 
 			/**
@@ -75,14 +75,14 @@ directive("pdfPanel", ['DBService', function(DBService){
 			* viewer's canvas and text layers.
 			*/
 			var setLoading = function(){
-				var pdf_data = scope.pdf_data;
+				var pdf_data = dataModel.pdf_data();
 				resetLayers();
 				pdf_data.canvasLayer.html(pdf_data.loadingMessage);
 				pdf_data.pages = [];
 			};
 
 			var renderDoc = function(){
-				var pdf_data = scope.pdf_data;
+				var pdf_data = dataModel.pdf_data();
 				var pdfDoc = pdf_data.pdfDoc;
 				var panelWidth = angular.element('div[pdf-panel]').width();
 				var renderScale;
@@ -188,8 +188,11 @@ directive("pdfPanel", ['DBService', function(DBService){
 			/**
 			* Loads the PDF document.
 			*/
-			var getDocument = function(){
-				var pdf_data = scope.pdf_data;
+			var getDocument = function(useCache){
+				var pdf_data = dataModel.pdf_data();
+				if(useCache && pdf_data.pdfDoc){
+					return;
+				}
 				if(pdf_data.src === '' || pdf_data.src === undefined){
 					pdf_data.canvasLayer.html(pdf_data.noSrcMessage);
 					return;
@@ -240,35 +243,47 @@ directive("pdfPanel", ['DBService', function(DBService){
 
 				var loadPDF = function(response){
 					var bill = response.data;
-					scope.pdf_data.src = bill.pdf_url;
-					return getDocument();
+					scope.pdf_data().src = bill.pdf_url;
+					return getDocument(false);
 				};
 
 				var loadLayoutElements = function(){
 					return DBService.getLayoutElements(scope.bill_id).then(
 						// on success
 						function(response){
-							scope.pdf_data.layout_elements = response.data.layout_elements;
+							scope.pdf_data().layout_elements = response.data.layout_elements;
 						},
 						// on error
 						function(){
-							scope.pdf_data.layout_elements = null;
+							scope.pdf_data().layout_elements = null;
 						}
 					)
 				};
 
+				var getFieldOffsets = function(){
+					scope.selected = null;
+
+					// update offset objects for drawing individual fields
+					var offsetTasks = [];
+					scope.extractor().fields.forEach(function(field){
+						offsetTasks.push(scope.updateOffset(field));
+					});
+					return Promise.all(offsetTasks).then(scope.paintCanvas);
+				}
+
 				var loadBillError = function(){
-					scope.pdf_data.canvasLayer.html(scope.pdf_data.billNotFoundMessage);
+					scope.pdf_data().canvasLayer.html(scope.pdf_data().billNotFoundMessage);
 					throw "Load Bill Error";
 				};
 
 				loadBill()
 				.then(loadPDF)
 				.then(loadLayoutElements)
+				.then(getFieldOffsets)
 				.finally(scope.paintCanvas);
 			});
 
-			scope.$watch('pdf_data.scale', function(){
+			scope.$watch('pdf_data().scale', function(){
 				// renderDoc is (relatively) slow, and clearCanvas prevents old bounding boxes from hanging around while the PDF is zooming in.
 				scope.clearCanvas();
 				renderDoc().then(scope.paintCanvas);

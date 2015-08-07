@@ -53,7 +53,7 @@ directive("bboxDrawing", function(){
 
 						// find page number
 						// TODO this is also done in canvasToPDFCoords, so abstract it into a function
-						var pageCanvases = scope.pdf_data.canvasLayer.children();
+						var pageCanvases = scope.pdf_data().canvasLayer.children();
 						var i = 0;
 						var pageMaxY = maxY
 						var pageCanvas;
@@ -120,15 +120,15 @@ directive("bboxDrawing", function(){
 				var coords;
 
 				// draw page borders
-				if(scope.pdf_data == undefined){
+				if(scope.pdf_data() == undefined){
 					return;
 				}
-				var pageCanvases = scope.pdf_data.canvasLayer.children();
+				var pageCanvases = scope.pdf_data().canvasLayer.children();
 				drawPageBorders(pageCanvases);
 
 				// draw layout elements
-				if (scope.pdf_data.layout_elements != undefined){
-					scope.pdf_data.layout_elements.forEach(function(layout_element){
+				if (scope.pdf_data().layout_elements != undefined){
+					scope.pdf_data().layout_elements.forEach(function(layout_element){
 						color = "#999999";
 						opacity=0.3;
 
@@ -256,7 +256,7 @@ directive("bboxDrawing", function(){
 			function canvasToPDFCoords(x0, y0, x1, y1){
 				//find correct page
 				var pageMaxY = y1; 
-				var pageCanvases = scope.pdf_data.canvasLayer.children();
+				var pageCanvases = scope.pdf_data().canvasLayer.children();
 				var i = 0;
 				var pageCanvas;
 				for(i=0; i<pageCanvases.length; i++){
@@ -269,7 +269,7 @@ directive("bboxDrawing", function(){
 				var pageMinY = pageMaxY - (y1 - y0);
 
 				// scale coordinates based on page size
-				var actualPageHeight = scope.pdf_data.pages[i].height;
+				var actualPageHeight = scope.pdf_data().pages[i].height;
 				var sc = actualPageHeight / pageCanvas.height;
 				var scaledCoords = scale({x0: x0, y0: pageMinY, x1: x1, y1: pageMaxY }, sc);
 
@@ -295,8 +295,8 @@ directive("bboxDrawing", function(){
 			* Converts pdf coordinates (with inverted y, so y=0 is at the bottom of the page)
 			*/
 			function PDFToCanvasCoords(obj, page_num){
-				var canvas_height = scope.pdf_data.canvasLayer.children()[page_num - 1].height;
-				var page_height = scope.pdf_data.pages[page_num - 1].height;
+				var canvas_height = scope.pdf_data().canvasLayer.children()[page_num - 1].height;
+				var page_height = scope.pdf_data().pages[page_num - 1].height;
 
 				// invert y
 				var minY = page_height - obj.y1;
@@ -308,7 +308,7 @@ directive("bboxDrawing", function(){
 
 				// increase y values to line up to curent page
 				for(var i=0; i<page_num-1; i++){
-					var current_page_height = scope.pdf_data.canvasLayer.children()[i].height;
+					var current_page_height = scope.pdf_data().canvasLayer.children()[i].height;
 					coords.y0 += current_page_height;
 					coords.y1 += current_page_height;
 				}
