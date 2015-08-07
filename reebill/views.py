@@ -208,6 +208,8 @@ class Views(object):
                 reebill_customer else '',
                 'late_charge_rate':reebill_customer.latechargerate if
                 reebill_customer else '',
+                'service_type': reebill_customer.service if
+                reebill_customer else '',
                 'sa_addressee': ua.fb_service_address.addressee,
                 'sa_city': ua.fb_service_address.city,
                 'sa_postal_code':ua.fb_service_address.postal_code,
