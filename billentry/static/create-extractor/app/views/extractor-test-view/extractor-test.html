@@ -90,15 +90,15 @@
 				<tbody>
 					<tr ng-repeat="test in indiv_tests" 
 						ng-click="selectTest(test)"
-						ng-class="{'selected': selected_test == test}">
+						ng-class="{'selected': selected_test == test, 'failed': test.failed}">
 						<td> {{ $index+1 }} </td>
 						<td> {{ test.extractor_id }} </td>
 						<td> {{ test.indiv_bill_id }} </td>
 						<td ng-repeat="applier_key in applier_keys()"> 
 							<!-- check mark (field success) -->
-							<span ng-show="test.results.good && test.results.good[applier_key]" style="color:#00AA00">&#10003;</span>
+							<span ng-if="test.results.good && test.results.good[applier_key]" style="color:#00AA00">&#10003;</span>
 							<!-- X mark (field failure) -->
-							<span ng-show="test.results.good && !test.results.good[applier_key]" style="color:#AA0000">&#10005;</span>
+							<span ng-if="test.results.error && test.results.error[applier_key]" style="color:#AA0000">&#10005;</span>
 						</td>
 					</tr>
 				</tbody>
@@ -113,15 +113,24 @@
 	</div>
 
 	<!-- Detailed info on a specific test.  -->
-	<div id="tests-details" ng-show="selected_test">
+	<div id="tests-details" ng-if="selected_test && testHasResults(selected_test)">
 		<h3>Detailed Test Results:</h3>
-		<br><br> 
-
 		<!-- Details for individual bill test -->
-		<span ng-if="selected_test && !selected_test.batch">
+		<span ng-if="!selected_test.batch">
+			Ran Extractor <b>{{ extractor().extractor_id }}</b> on Bill <b>#{{selected_test.indiv_bill_id}}</b>:
+			<b>{{ selected_test.results.good | numKeys }}</b> fields successful, <b>{{ selected_test.results.error | numKeys }}</b> errors.
+			<p ng-repeat="field in extractor().fields">
+				<b>{{ field.applier_key }}: </b>
+				<span ng-if="selected_test.results.good[field.applier_key]">
+					<span style="font-family:monospace; white-space: pre-line">{{ selected_test.results.good[field.applier_key] | printField:field.type }}</span>
+				</span>
+				<span ng-if="selected_test.results.error[field.applier_key]">
+					<span style="font-family:monospace; color:#FF0000">{{ selected_test.results.error[field.applier_key] }}</span>
+				</span>
+			</p> 
 		</span>
 		<!-- Details for batch test -->
-		<span ng-if="selected_test && selected_test.batch">
+		<span ng-if="selected_test.batch">
 			<table id="batch-test-details" class="results">
 				<thead>
 					<tr>

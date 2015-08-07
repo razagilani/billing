@@ -19,3 +19,15 @@ table.results td {
 	border-left: solid 1px #000066;
 	text-align: center;
 }
+
+table.results tr.failed {
+	background-color:#FFCCCC;
+}
+
+table.results tr.failed:hover {
+	background-color:#FFAAAA;
+}
+
+table.results tr.failed.selected {
+	background-color:#FF8888;
+}

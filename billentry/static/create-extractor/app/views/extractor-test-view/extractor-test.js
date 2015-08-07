@@ -68,6 +68,7 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 			})
 			.error(function(){
 				console.log("failed to run individual bill test.");
+				test_request.failed = true;
 			});
 	};
 
@@ -114,6 +115,10 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 			.error(function(){
 				console.log("Could not get task status for task "+test.task_id);
 			});
+	}
+
+	$scope.testHasResults = function(test){
+		return !$.isEmptyObject(test.results);
 	}
 
 }]);
