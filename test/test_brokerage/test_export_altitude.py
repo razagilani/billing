@@ -10,6 +10,7 @@ from uuid import NAMESPACE_DNS
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from sqlalchemy.orm import Query
 import tablib
 from test import init_test_config
 init_test_config()
@@ -109,7 +110,8 @@ class TestExportAltitude(TestCase):
         u2.get_total_meter_identifier.return_value = ''
         u2.tou = False
 
-        self.utilbills = [u1, u2]
+        self.utilbills = Mock(autospec=Query)
+        self.utilbills.yield_per.return_value = [u1, u2]
 
         altitude_converter = Mock()
         altitude_converter.get_guid_for_utility\
@@ -239,7 +241,7 @@ class TestAltitudeBillStorage(TestCase):
         s.add(self.utilbill)
 
         csv_file = StringIO()
-        self.pgae.write_csv(s.query(UtilBill).all(), csv_file)
+        self.pgae.write_csv(s.query(UtilBill), csv_file)
         expected_csv = (
             'customer_account_guid,billing_customer_id,utility_bill_guid,'
             'utility_guid,supplier_guid,service_type,utility_account_number,'
@@ -265,10 +267,13 @@ class TestAltitudeBillStorage(TestCase):
         s.query(AltitudeBill).delete()
         self.assertEqual(0, s.query(AltitudeBill).count())
 
-        self.pgae.write_csv([self.utilbill], StringIO())
+        query = Mock(autospec=Query)
+        query.yield_per.return_value = [self.utilbill]
+
+        self.pgae.write_csv(query, StringIO())
         self.assertEqual(1, s.query(AltitudeBill).count())
 
-        self.pgae.write_csv([self.utilbill], StringIO())
+        self.pgae.write_csv(query, StringIO())
         self.assertEqual(1, s.query(AltitudeBill).count())
 
     def test_altitude_supplier_consistency(self):
@@ -279,9 +284,12 @@ class TestAltitudeBillStorage(TestCase):
         s.query(AltitudeSupplier).delete()
         self.assertEqual(0, s.query(AltitudeSupplier).count())
 
-        self.pgae.write_csv([self.utilbill], StringIO())
+        query = Mock(autospec=Query)
+        query.yield_per.return_value = [self.utilbill]
+
+        self.pgae.write_csv(query, StringIO())
         self.assertEqual(1, s.query(AltitudeSupplier).count())
 
-        self.pgae.write_csv([self.utilbill], StringIO())
+        self.pgae.write_csv(query, StringIO())
         self.assertEqual(1, s.query(AltitudeSupplier).count())
 

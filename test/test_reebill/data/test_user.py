@@ -34,9 +34,9 @@ class TestUserDAO(TestCase):
         init_test_config()
         create_tables()
         init_model()
-        clear_db()
 
     def setUp(self):
+        clear_db()
         self.dao = UserDAO()
 
     def test_create_load_users(self):
