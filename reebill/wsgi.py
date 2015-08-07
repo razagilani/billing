@@ -265,6 +265,16 @@ class AccountsResource(RESTResource):
             ua = self.utilbill_processor.move_account_references(
                 row['utility_account_id'], row['accounts_deleted'])
 
+        if 'name' in row:
+            self.utilbill_processor.update_utility_account_name(
+                row['utility_account_id'], row['name']
+            )
+
+        if 'service_type' in row:
+            self.utilbill_processor.update_service_type(
+                row['utility_account_id'], row['service_type']
+            )
+
         if 'utility_account_number' in row:
             self.utilbill_processor.update_utility_account_number(
                 row['utility_account_id'], row['utility_account_number'])
