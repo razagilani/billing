@@ -4,7 +4,7 @@ from datetime import datetime, date
 from sqlalchemy.orm.exc import NoResultFound
 from brokerage.brokerage_model import BrokerageAccount
 from core.bill_file_handler import BillFileHandler
-from core.extraction.extraction import Main
+from core import extraction
 
 from core.model import Address, Charge, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
@@ -190,17 +190,17 @@ class UtilbillProcessor(object):
             state=state, supply_group=supply_group)
         return new_utilbill
 
-    def _set_utilbill_data(self, utilbill, skip_extraction=False):
+    def _set_utilbill_data(self, utilbill):
         """Set attributes of the given bill, using customer data, existing
         bills, and/or data extracted from the file to get the most accurate
         possible values. This should be called after uploading the bill's file
         and setting its file hash, because the file is used to get the values
         of some attributes.
         :param utilbill: UtilBill
-        :param skip_extraction: if True, do not extract data from the the
-        bill file (for speed)
         """
-        # 'period_end' may be None, in which case this is the last bill overall
+        # get whatever data can be extracted from the file itself
+        extraction.Main(self.bill_file_handler).extract(utilbill)
+
         try:
             predecessor = utilbill.utility_account.get_last_bill(
                 end=utilbill.period_end)
@@ -208,14 +208,13 @@ class UtilbillProcessor(object):
             pass
         else:
             # copy data from 'predecessor' here
-            if predecessor is not None:
-                # do not re-add any code that directly accesses registers
-                # inside a UtilBill object!
-                # The predecessor may not have a REG_TOTAL if it doesn't have a
-                # rate class yet
-                mi = predecessor.get_total_meter_identifier()
-                if mi is not None:
-                    utilbill.set_total_meter_identifier(mi)
+            # do not re-add any code that directly accesses registers
+            # inside a UtilBill object!
+            # The predecessor may not have a REG_TOTAL if it doesn't have a
+            # rate class yet
+            mi = predecessor.get_total_meter_identifier()
+            if mi is not None:
+                utilbill.set_total_meter_identifier(mi)
 
         # if no charges could be extracted from the file, guess what they
         # should be
@@ -293,7 +292,7 @@ class UtilbillProcessor(object):
 
     def create_utility_bill_with_existing_file(
             self, utility_account, sha256_hexdigest, due_date=None,
-            target_total=None, service_address=None, skip_extraction=False):
+            target_total=None, service_address=None):
         """Create a UtilBill in the database corresponding to a file that
         has already been stored in S3.
         :param utility_account: UtilityAccount to which the new bill will
@@ -339,7 +338,7 @@ class UtilbillProcessor(object):
         if due_date is not None:
             new_utilbill.due_date = due_date
 
-        self._set_utilbill_data(new_utilbill, skip_extraction=skip_extraction)
+        self._set_utilbill_data(new_utilbill)
 
         return new_utilbill
 
