@@ -181,6 +181,8 @@ class UtilbillProcessor(object):
         if rate_class is None:
             rate_class = utility_account.fb_rate_class
         if supply_group is None:
+            supply_group = getattr(predecessor, 'supply_group', None)
+        if supply_group is None:
             supply_group = utility_account.fb_supply_group
 
         new_utilbill = UtilBill(utility_account, utility, rate_class,
