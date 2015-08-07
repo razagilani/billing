@@ -13,6 +13,7 @@ from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
+from core.altitude import AltitudeSupplier
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, \
     SupplyGroup
 from core.model.utilbill import UtilBill
@@ -138,6 +139,7 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Utility, Session))
     admin.add_view(SupplierModelView(Session))
+    admin.add_view(LoginModelView(AltitudeSupplier, Session))
     admin.add_view(LoginModelView(SupplyGroup, Session))
     admin.add_view(RateClassModelView(RateClass, Session))
     admin.add_view(UserModelView(Session))
