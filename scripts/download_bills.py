@@ -1,3 +1,12 @@
+"""
+A script that downloads PDFs of a set of bills. Bills can be specified by id,
+or by utility / period end date. One can also limit the number of bills
+downloaded to a specfiic number.
+There is a usage string below; one can also specify the output directory of
+the PDFs, and optionally create an SVG that shows the text & bounding boxes
+of the layout elements on the bill.
+"""
+
 from xml.sax.saxutils import escape
 from StringIO import StringIO
 import codecs

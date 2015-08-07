@@ -51,10 +51,15 @@ def upgrade():
 
     op.add_column('extractor', sa.Column('representative_bill_id',
         sa.Integer()))
+    sa.ForeignKeyConstraint("extractor", "utilbill", ['representative_bill_id'], ['id'])
     op.add_column('extractor', sa.Column('origin_regex', sa.String()))
     op.add_column('extractor', sa.Column('origin_x', sa.Float()))
     op.add_column('extractor', sa.Column('origin_y', sa.Float()))
 
+    op.drop_column('field', 'bbminx')
+    op.drop_column('field', 'bbminy')
+    op.drop_column('field', 'bbmaxx')
+    op.drop_column('field', 'bbmaxy')
     op.alter_column('field', 'regex', nullable=True)
     op.add_column('field',
         sa.Column('enabled', sa.Boolean(), default=True))
@@ -69,9 +74,9 @@ def upgrade():
     op.add_column('field', sa.Column('table_start_regex', sa.String))
     op.add_column('field', sa.Column('table_stop_regex', sa.String))
 
-    op.add_column('extractor_result', sa.Column('field_period_total', sa.Integer()))
+    op.add_column('extractor_result', sa.Column('field_total', sa.Integer()))
     op.add_column('extractor_result',
-                  sa.Column('period_total_by_month', HSTORE()))
+                  sa.Column('total_by_month', HSTORE()))
 
     op.create_table('layout_element',
         sa.Column('layout_element_id', sa.Integer(), nullable=False),
