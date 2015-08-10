@@ -13,9 +13,7 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.saveExtractor = dataModel.saveExtractor;
 	$scope.loadExtractor = dataModel.loadExtractor;
 
-	/* FOR TESTING */
 	dataModel.initDataModel();
-	dataModel.loadExtractor(37);
 
 	// the template for creating new tests. 
 	// This template is modified by the UI, and when the user starts a test the template's variables are used as parameters.
@@ -24,8 +22,27 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.indiv_tests = [];
 	$scope.selected_test = null;
 
-
 	/* EVERYTHING BELOW HERE IS A FUNCTION BINDING */
+
+	// shows the "load extractor" menu.
+	$scope.showLoadScreen = function(){
+		$scope.viewLoadScreen = !$scope.viewLoadScreen;
+		if($scope.viewLoadScreen){
+			DBService.getExtractors()
+				.success(function(data, status, headers, config){
+					$scope.availableExtractors = data.extractors;
+				})
+				.error(function(data, status, headers, config){
+					console.log("Could not load extractors");
+				});
+		}
+	}
+
+	// when an extractor is selected from the load menu
+	$scope.chooseExtractor = function(id){
+		$scope.viewLoadScreen = false;
+		$scope.loadExtractor(id);
+	}
 
 	// Sends a batch task to the server. 
 	$scope.addBatchTest = function(){
