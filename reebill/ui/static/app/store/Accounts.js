@@ -1,6 +1,5 @@
 Ext.define('ReeBill.store.Accounts', {
     extend: 'Ext.data.Store',
-    memoryStore: 'AccountsMemory',
     requires: ['ReeBill.store.Preferences', 'ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
 

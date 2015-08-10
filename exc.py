@@ -113,6 +113,10 @@ class ConversionError(ExtractionError):
     """
     pass
 
+class MergeError(BillingError):
+    """Accounts cannot be merged when all utility_accounts have reebills
+
+    """
 class ApplicationError(ExtractionError):
     """Failed to apply an extracted value to a bill.
     """

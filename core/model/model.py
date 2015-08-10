@@ -158,7 +158,8 @@ class _Base(object):
         # relationship attributes, like charges, correspond to a foreign key
         # in a different table)
         for col_name in other.column_names():
-            setattr(self, col_name, getattr(other, col_name))
+            if col_name not in self._get_primary_key_names():
+                setattr(self, col_name, getattr(other, col_name))
         for name, property in inspect(self.__class__).relationships.items():
             other_value = getattr(other, name)
             # for a relationship attribute where this object is the parent
@@ -182,7 +183,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '1953b5abb480'
+_schema_revision = '4d54d21b2c7a'
 
 
 def check_schema_revision(schema_revision=None):
@@ -564,9 +565,9 @@ class UtilityAccount(Base):
         primaryjoin='UtilityAccount.fb_supply_group_id==SupplyGroup.id')
     fb_rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilityAccount.fb_rate_class_id==RateClass.id')
-    fb_billing_address = relationship('Address', uselist=False, cascade='all',
+    fb_billing_address = relationship('Address', uselist=False,
         primaryjoin='UtilityAccount.fb_billing_address_id==Address.id')
-    fb_service_address = relationship('Address', uselist=False, cascade='all',
+    fb_service_address = relationship('Address', uselist=False,
         primaryjoin='UtilityAccount.fb_service_address_id==Address.id')
     fb_utility = relationship('Utility')
 
