@@ -44,6 +44,8 @@ class MatrixQuoteParsersTest(TestCase):
                            rate_class_alias='Residential'),
             RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
                            rate_class_alias='Commercial'),
+            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                           rate_class_alias='PA-DQE-GS-General Service'),
         ])
         session.flush()
 
@@ -74,10 +76,11 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
+        self.assertEqual(75000, q1.limit_volume)
         self.assertEqual('37', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(.7036, q1.price)
+        self.assertEqual(.07036, q1.price)
 
     def test_usge(self):
         parser = USGEMatrixParser()
@@ -192,8 +195,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(19856, len(quotes))
-        self.assertEqual(19856, parser.get_count())
+        self.assertEqual(6664, len(quotes))
+        self.assertEqual(6664, parser.get_count())
         for quote in quotes:
             quote.validate()
 
@@ -207,7 +210,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 7, 22), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(100, q1.limit_volume)
-        self.assertEqual('GSLV ND', q1.rate_class_alias)
+        self.assertEqual('GSLV ND, GS LV, GS 3A', q1.rate_class_alias)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.08688419193651578, q1.price)
 
@@ -234,5 +237,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(100000, q1.limit_volume)
         self.assertEqual('PA-DQE-GS-General Service', q1.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.07686, q1.price)

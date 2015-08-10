@@ -2,19 +2,23 @@ from StringIO import StringIO
 import ast
 from datetime import datetime, date
 from pdfminer.converter import PDFPageAggregator
-from pdfminer.layout import LAParams
+from pdfminer.layout import LAParams, LTComponent, LTTextLine, LTTextBox, LTPage, \
+    LTCurve, LTImage, LTText
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from sqlalchemy import CheckConstraint, Column, String, Integer, ForeignKey, \
-    Date, Boolean, Float, DateTime, Enum
+    Date, Boolean, Float, DateTime, Enum, inspect
 from sqlalchemy.orm import relationship, backref, object_session
 import tsort
 from core.model import Base, Address, Session, Register
 from core.model.model import UtilbillCallback, PHYSICAL_UNITS
 from exc import NotProcessable, UnEditableBillError, BillingError, \
     BillStateError, MissingFileError, FormulaSyntaxError, FormulaError
+from util.pdf import get_all_pdfminer_objs
+from util.layout import LAYOUT_TYPES, group_layout_elements_by_page, PAGE, \
+    TEXTLINE, TEXTBOX, SHAPE, IMAGE, OTHER
 
 
 class UtilBill(Base):
@@ -84,6 +88,9 @@ class UtilBill(Base):
 
     # cached text taken from a PDF for use with TextExtractor
     _text = Column('text', String)
+
+    # cached layout info taken from PDF for use with LayoutExtractor
+    _layout = relationship('LayoutElement', backref='utilbill')
 
     # a number seen on some bills, also known as "secondary account number". the
     # only example of it we have seen is on BGE bills where it is called
@@ -606,7 +613,12 @@ class UtilBill(Base):
         # delete the other bill
         s = object_session(other)
         if s is not None:
-            s.expunge(other)
+            if inspect(other).pending:
+                s.expunge(other)
+            else:
+                assert inspect(other).persistent
+                s.delete(other)
+
 
     def get_text(self, bill_file_handler, pdf_util):
         """Return text dump of the bill's PDF.
@@ -625,40 +637,144 @@ class UtilBill(Base):
             self._text = text
         return self._text
 
-    def get_layout(self, bill_file_handler):
+    # TODO: no test coverage
+    def get_layout(self, bill_file_handler, pdf_util):
         """
-        Returns a list of LTPage objects, containing PDFMiner's layout
-        information for the PDF
         :param bill_file_handler: used to get the PDF file
+        :param pdf_util: PDFUtil
+        :return: list of lists of LayoutElements, where each inner list
+        represents the elements on each page
         """
-        #TODO cache layout info after retrieval
-        # maybe use 'PickleType' sqlalchemy column?
-        pages = []
         infile = StringIO()
-        try:
-            bill_file_handler.write_copy_to_file(self, infile)
-        except MissingFileError as e:
-            print e
-        else:
-            # TODO: code for parsing PDF files probably doesn't belong in
-            # UtilBill; maybe in BillFileHandler or extraction
-            infile.seek(0)
-            parser = PDFParser(infile)
-            document = PDFDocument(parser)
-            rsrcmgr = PDFResourceManager()
-            laparams = LAParams()
-            device = PDFPageAggregator(rsrcmgr, laparams=laparams)
-            interpreter = PDFPageInterpreter(rsrcmgr, device)
-            try:
-                for page in PDFPage.create_pages(document):
-                    interpreter.process_page(page)
-                    pages.append(device.get_result())
-            except PDFSyntaxError as e:
-                pages = []
-                print e
-            device.close()
 
+        # _layout is an empty list if and only if get_layout has never been
+        # called before, because if there are no layout elements, there will
+        # at least be empty pages
+        if len(self._layout) > 0:
+            layout = self._layout
+        else:
+            try:
+                bill_file_handler.write_copy_to_file(self, infile)
+            except MissingFileError as e:
+                layout = []
+            else:
+                pages = pdf_util.get_pdfminer_layout(infile)
+                layout = LayoutElement.create_from_ltpages(pages)
+            self._layout = layout
+
+        # sort elements in each page by position: top to bottom, left to
+        # right (origin is at lower left)
+        pages = [sorted(p, key=lambda obj: (-obj.bounding_box.y0,
+            obj.bounding_box.x0)) for p in group_layout_elements_by_page(
+            layout)]
         return pages
+
+
+class LayoutElement(Base):
+    """
+    Represents a layout element in a PDF file. Used by core.extraction
+    """
+    __tablename__ = 'layout_element'
+
+    layout_element_id = Column(Integer, primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
+    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
+    page_num = Column(Integer, nullable=False)
+    bounding_box_id = Column(Integer, ForeignKey(
+        'bounding_box.bounding_box_id'), nullable=False)
+    text = Column(String)
+
+    bounding_box = relationship('BoundingBox')
+
+    def __init__(self, page_num, bounding_box, text=None, type=None,
+                 utilbill_id=None):
+        self.type = type
+        self.page_num = page_num
+        self.bounding_box = bounding_box
+        self.text = text
+        self.utilbill_id = utilbill_id
+
+    @classmethod
+    def create_from_ltpages(cls, pages):
+        """
+        Takes PDFMiner data and converts it to a list of LayoutElement's, as well as
+         adding them to the database.
+        :param pages: list of LTPage objects
+        :return: A list of LayoutElement's
+        """
+        layout_elements = []
+        for i in range(0, len(pages)):
+            # Right now only keep track of some object types.
+            # Scanned bills can have 100,000+ image/shape objects, one for each
+            # character, slowing down analysis.
+            page_objs = get_all_pdfminer_objs(pages[i], objtype=LTComponent,
+                predicate=lambda o: isinstance(o, (LTPage, LTTextLine, LTTextBox)))
+            for obj in page_objs:
+                #get object type
+                if isinstance(obj, LTPage):
+                    objtype = PAGE
+                elif isinstance(obj, LTTextLine):
+                    objtype = TEXTLINE
+                elif isinstance(obj, LTTextBox):
+                    objtype = TEXTBOX
+                elif isinstance(obj, LTCurve):
+                    objtype = SHAPE
+                elif isinstance(obj, LTImage):
+                    objtype = IMAGE
+                else:
+                    objtype = OTHER
+
+                #get text, if any
+                if isinstance(obj, LTText):
+                    text = obj.get_text()
+                else:
+                    text = None
+
+                bbox = BoundingBox(x0=obj.x0, y0=obj.y0,
+                    x1=obj.x1, y1=obj.y1)
+                layout_elt = LayoutElement(type=objtype,
+                    text=text, page_num=i+1, bounding_box=bbox)
+                layout_elements.append(layout_elt)
+
+        return layout_elements
+
+class BoundingBox(Base):
+    """ Represents a two-dimension, axis-aligned bounding box.
+    Used by core.extraction
+    """
+    __tablename__ = 'bounding_box'
+    __table_args__ = (CheckConstraint('x1 >= x0'),
+                    CheckConstraint('y1 >= y0'),
+                    CheckConstraint('width = x1 - x0'),
+                    CheckConstraint('height = y1 - y0'))
+    bounding_box_id = Column(Integer(), primary_key=True)
+    x0 = Column(Float, nullable=False)
+    y0 = Column(Float, nullable=False)
+    x1 = Column(Float, nullable=False)
+    y1 = Column(Float, nullable=False)
+    width = Column(Float, nullable=False)
+    height = Column(Float, nullable=False)
+
+    def __init__(self, x0, y0, x1, y1):
+        if x0 > x1:
+            raise ValueError('Bounding box min x (%d) is greater than max x ('
+                             '%d)' % (x0, x1))
+        if y0 > y1:
+            raise ValueError('Bounding box min y (%d) is greater than max y ('
+                             '%d)' % (y0, y1))
+
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+        self.width = self.x1 - self.x0
+        self.height = self.y1 - self.y0
+
+    @classmethod
+    def get_shifted_bbox(cls, bbox, dx, dy):
+        """ Returns a copy of 'bbox', with its coordinates shifter by dx and dy.
+        """
+        return BoundingBox(bbox.x0+dx, bbox.y0+dy, bbox.x1+dx, bbox.y1+dy)
 
 
 class Evaluation(object):
@@ -851,3 +967,5 @@ class Charge(Base):
             self.error = None if evaluation.exception is None else \
                 evaluation.exception.message
         return evaluation
+
+

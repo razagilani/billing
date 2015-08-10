@@ -97,6 +97,9 @@ class db(Schema):
     uri = String()
     altitude_uri = String()
     echo = StringBool()
+    # name of superuser for restoring from backup (can drop/create DB,
+    # create extension)
+    superuser_name = String()
 
 class mongodb(Schema):
     database = String()
