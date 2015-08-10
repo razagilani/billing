@@ -4,7 +4,7 @@ from unittest import TestCase
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
-    AEPMatrixParser
+    AEPMatrixParser, AmerigreenMatrixParser
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 
@@ -22,6 +22,8 @@ class MatrixQuoteParsersTest(TestCase):
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
+    #AMERIGREEN_FILE_PATH = join(DIRECTORY, 'Amerigreen Matrix 08-03-2015.xlsx')
+    AMERIGREEN_FILE_PATH = join(DIRECTORY, 'amerigreen.xls')
 
     def setUp(self):
         clear_db()
@@ -210,3 +212,33 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('GSLV ND, GS LV, GS 3A', q1.rate_class_alias)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.08688419193651578, q1.price)
+
+    def test_amerigreen(self):
+        parser = AmerigreenMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.AMERIGREEN_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(96, len(quotes))
+        self.assertEqual(96, parser.get_count())
+        for quote in quotes:
+            quote.validate()
+
+        # since there are so many, only check one
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 9, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 9, 2), q1.start_until)
+        self.assertEqual(3, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 8, 10), q1.valid_from)
+        self.assertEqual(datetime(2015, 8, 11), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(75000, q1.limit_volume)
+        self.assertEqual('37', q1.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(.07036, q1.price)
