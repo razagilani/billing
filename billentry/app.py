@@ -282,24 +282,18 @@ def run_test():
 def run_indiv_test():
     extractor_id = request.json.get('extractor_id')
     bill_id = request.json.get('indiv_bill_id')
+    test_result = test_bill(extractor_id, bill_id)
 
-    s = Session()
-    ex = s.query(Extractor).filter(Extractor.extractor_id == extractor_id).one()
-    bill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
-    good, error = ex.get_values(bill, _create_bill_file_handler())
+    # transform fields and errors into json-serializable form
+    test_result['date'] = str(test_result['date'])
+    for category in ['db_values', 'errors', 'fields']:
+        for applier_key, value in test_result[category].iteritems():
+            test_result[category][applier_key] = serialize_field(value)
 
     import pprint
-    pp = pprint.PrettyPrinter(indent=4)
-    print "good"
-    pp.pprint(good)
-    print "error"
-    pp.pprint(error)
+    pprint.pprint(test_result)
 
-    good_results = {applier_key: serialize_field(result) for applier_key,
-    result in good.iteritems()}
-    error_results = {applier_key: str(err) for applier_key, err in
-        error.iteritems()}
-    return jsonify({'good': good_results, 'error': error_results}), 200
+    return jsonify(test_result), 200
 
 @app.route('/test-status/<task_id>', methods=['GET'])
 def test_status(task_id):

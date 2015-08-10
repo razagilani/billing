@@ -188,11 +188,8 @@ directive("pdfPanel", ['DBService', 'dataModel', function(DBService, dataModel){
 			/**
 			* Loads the PDF document.
 			*/
-			var getDocument = function(useCache){
+			var getDocument = function(){
 				var pdf_data = dataModel.pdf_data();
-				if(useCache && pdf_data.pdfDoc){
-					return;
-				}
 				if(pdf_data.src === '' || pdf_data.src === undefined){
 					pdf_data.canvasLayer.html(pdf_data.noSrcMessage);
 					return;
@@ -244,7 +241,7 @@ directive("pdfPanel", ['DBService', 'dataModel', function(DBService, dataModel){
 				var loadPDF = function(response){
 					var bill = response.data;
 					scope.pdf_data().src = bill.pdf_url;
-					return getDocument(false);
+					return getDocument();
 				};
 
 				var loadLayoutElements = function(){

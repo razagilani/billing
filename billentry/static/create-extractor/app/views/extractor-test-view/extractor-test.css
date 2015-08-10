@@ -20,14 +20,11 @@ table.results td {
 	text-align: center;
 }
 
-table.results tr.failed {
-	background-color:#FFCCCC;
-}
+table.results tr.failed { background-color:#FFCCCC; }
 
-table.results tr.failed:hover {
-	background-color:#FFAAAA;
-}
+table.results tr.failed:hover { background-color:#FFAAAA; }
 
-table.results tr.failed.selected {
-	background-color:#FF8888;
-}
+table.results tr.failed.selected { background-color:#FF8888; }
+
+/* Used for pre-tag like output, but still allowing html inside. */
+span.pre { font-family:monospace; white-space: pre-line }

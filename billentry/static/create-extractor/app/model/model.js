@@ -122,7 +122,6 @@ factory('dataModel', ['DBService', function(DBService){
 	var loadExtractor = function(id){
 		return DBService.loadExtractor(id)
 			.success(function(responseObj){
-				console.log(responseObj.extractor);
 				_extractor = responseObj.extractor;
 				_extractor.id = _extractor.extractor_id;
 			})
