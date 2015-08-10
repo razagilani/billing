@@ -45,10 +45,10 @@ def bounding_boxes_to_svg(page, filename):
         # Note: pdfminer inverts y values (origin is at bottom left of page)
 
         if isinstance(obj, LTComponent):
-            if isinstance(obj, LTChar):
-                return
+            # if isinstance(obj, LTChar):
+            #     return
 
-            if isinstance(obj, LTTextLine):
+            if isinstance(obj, LTChar):
                 text_baseline = page.height - obj.y0 - 2
                 text_chars = obj.get_text()
                 text_chars = escape(text_chars)
@@ -59,6 +59,7 @@ def bounding_boxes_to_svg(page, filename):
                             text_chars)
                 out_text = text_fmt % text_values
                 outfile.write(out_text)
+                return
 
             alpha = 1
             if isinstance(obj, LTTextBox):
@@ -76,16 +77,17 @@ def bounding_boxes_to_svg(page, filename):
                 color = "#000000"
 
             typename = obj.__class__.__name__
-            #pdf miner inverts y coordiantes, relative to the screen
+            #pdf miner inverts y coordinates, relative to the screen
             display_y = page.height - obj.y0 - obj.height
             #make sure lines are visible
             width = max(obj.width, 1)
             height = max(obj.height, 1)
 
             rect_fmt = '<rect pdfminer-type="%s" style="stroke:%s; ' \
-                       'fill:none;" x="%f" y="%f" actual-y = "%f" width="%f" ' \
+                       'fill:none;" x="%f" y="%f" actual-y-max = "%f" ' \
+                       'width="%f" ' \
                        'height="%f" stroke-opacity="%f"/>\n'
-            rect_values = (typename, color, obj.x0, display_y, obj.y0, width,
+            rect_values = (typename, color, obj.x0, display_y, obj.y1, width,
                         height, alpha)
             outfile.write(rect_fmt % rect_values)
 

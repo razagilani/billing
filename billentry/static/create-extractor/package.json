@@ -1,0 +1,16 @@
+{
+  "name": "create-extractor",
+  "private": true,
+  "version": "0.0.0",
+  "description": "User Interface for Creating Utility Bill Extractors",
+  "license": "MIT",
+  "devDependencies": {
+    "bower": "^1.3.1",
+    "jasmine-core": "^2.3.4"
+  },
+  "scripts": {
+    "postinstall": "bower install",
+    "preupdate-webdriver": "npm install",
+    "update-webdriver": "webdriver-manager update"
+  }
+}
