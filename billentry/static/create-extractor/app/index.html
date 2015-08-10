@@ -28,15 +28,23 @@
   <!-- <hr> -->
   <div id="view-container" ng-view></div>
 
-  <!-- In production use: -->
-  <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script> -->
-  <script src="/angular/bower_components/jquery/dist/jquery.min.js"></script>
-  <script src="/angular/bower_components/angular/angular.js"></script>
-  <script src="/angular/bower_components/angular-resource/angular-resource.js"></script>
-  <script src="/angular/bower_components/angular-route/angular-route.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular-resource.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular-route.min.js"></script>
+
+  <!-- local versions, not used in production (or development) -->
+  <!-- <script src="/angular/bower_components/jquery/dist/jquery.min.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular/angular.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular-resource/angular-resource.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular-route/angular-route.js"></script> -->
+
   <!-- for pdf.js -->
-  <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script>
+  <!-- Using version of pdf.js in ext/ folder, used by rest of billentry UI -->
+  <script src="/ext/lib/pdf.js/pdf.js"></script>
+  <!-- <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script> -->
   <script src="/angular/pdfjs-textlayer/TextLayerBuilder.js"></script>
+
   <!-- actual app code -->
   <script src="app/app.js"></script>
   <script src="app/directives/bbox-drawing.js"></script>
