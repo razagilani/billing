@@ -643,53 +643,97 @@ class ChampionMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xls
 
     HEADER_ROW = 13
-    VOLUME_RANGE_COL = 14
+    VOLUME_RANGE_COL = 'H'
     QUOTE_START_ROW = 14
+    QUOTE_END_ROW = 445
     RATE_CLASS_COL = 'F'
     EDC_COL = 'E'
+    DESCRIPTION_COL = 'G'
     TERM_START_COL = 'I'
-    TERM_END_COL = 'K'
+    TERM_END_COL = 'L'
     PRICE_START_COL = 'I'
     PRICE_END_COL = 'K'
     STATE_COL = 'D'
     START_DATE_COL = 'C'
 
     EXPECTED_SHEET_TITLES = [
-        'Matrix',
         'PA',
         'OH',
         'IL',
         'NJ',
         'MD'
     ]
-    SHEET = 'PA'
-    DATE_CELL = (SHEET, 8, 'C', None)
 
-    def _extract_volume_range(self, row, col):
+    DATE_CELL = ('PA', 8, 'C', None)
+
+    def _extract_volume_range(self, sheet,row, col):
         regex = r'(\d+)-(\d+) MWh'
-        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
+        low, high = self._reader.get_matches(sheet, row, col, regex,
                                              (int, int))
         if low % 10 == 1:
             low -= 1
-        return low, high
+        return low * 1000, high * 1000
 
     def _extract_quotes(self):
-        for row in xrange(self.QUOTE_START_ROW,
-                          self._reader.get_height(self.SHEET)):
-            state = self._reader.get(self.SHEET, row, self.STATE_COL,
-                                     basestring)
-            rate_class = self._reader.get(self.SHEET, row,
-                                          self.RATE_CLASS_COL,basestring)
+        for sheet in self.EXPECTED_SHEET_TITLES:
 
-            start_date = self._reader.get(self.SHEET, row,
-                                          self.START_DATE_COL,date)
+            for row in xrange(self.QUOTE_START_ROW,
+                              self._reader.get_height(sheet)):
+                state = self._reader.get(sheet, row, self.STATE_COL,
+                                         basestring)
+                if state == '':
+                    continue
 
-            min_volume, limit_volume = self._extract_volume_range(row,
-                                                                  self.VOLUME_RANGE_COL)
+                edc = self._reader.get(sheet, row, self.EDC_COL,
+                                         basestring)
 
-            # blank line means end of sheet
-            if state == '':
-                continue
+                description = self._reader.get(sheet, row,self.DESCRIPTION_COL,
+                                         basestring)
+
+                rate_class_alias =  self._reader.get(
+                    sheet, row, self.RATE_CLASS_COL,basestring)
+
+                rate_class_alias_long = state + '-' + edc + '-' + rate_class_alias\
+                                       + '-' + description
+
+                rate_class = get_rate_class_from_alias(rate_class_alias_long)
+
+                start_from = excel_number_to_datetime(self._reader.get(
+                    sheet, row, self.START_DATE_COL, float))
+
+                start_until = date_to_datetime((Month(start_from) + 1).first)
+
+                min_volume, limit_volume = self._extract_volume_range(sheet,row,
+                                                        self.VOLUME_RANGE_COL)
+
+                for col in self._reader.column_range(self.TERM_START_COL,
+                                                     self.TERM_END_COL):
+                    price = float(self._reader.get(sheet, row, col,
+                                                  (float, basestring,
+                                                   type(None))))/1000
+
+                    term = self._reader.get_matches(
+                                            sheet, self.HEADER_ROW, col,
+                                            '(\d+) mths', int)
+
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_volume, limit_volume=limit_volume,
+                        purchase_of_receivables=False, price=price,
+                        rate_class_alias=rate_class_alias_long)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+
+                    print quote
+
+                    if rate_class is not None:
+                        quote.rate_class_id = rate_class.rate_class_id
+                    yield quote
+
+
+
 
 
 
