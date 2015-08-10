@@ -78,6 +78,11 @@ factory('DBService', ['$http',
 
     /* For running tests */
 
+    // get a list of currently running batch tests on the server.
+    DBService.getRunningBatchTests = function(){
+      return $http.get('/get-running-tests');
+    }
+
     // Run a batch test on the server. 
     // Returns the task_id of the job, and the number of bills to be run.
     DBService.runBatchTest = function(test){
