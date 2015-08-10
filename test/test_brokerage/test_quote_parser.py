@@ -22,8 +22,10 @@ class MatrixQuoteParsersTest(TestCase):
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
-    #AMERIGREEN_FILE_PATH = join(DIRECTORY, 'Amerigreen Matrix 08-03-2015.xlsx')
-    AMERIGREEN_FILE_PATH = join(DIRECTORY, 'amerigreen.xls')
+    # using version of the file converted to XLS because we can't currently
+    # read the newer format
+    AMERIGREEN_FILE_PATH = join(
+        DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
 
     def setUp(self):
         clear_db()
@@ -236,7 +238,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 9, 2), q1.start_until)
         self.assertEqual(3, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        # TODO: date shown on spreadsheet is not the real date
+        # TODO: date shown on spreadsheet is not the real date. we need a
+        # different way to find out the quote validity dates
         # self.assertEqual(datetime(2015, 8, 10), q1.valid_from)
         # self.assertEqual(datetime(2015, 8, 11), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
