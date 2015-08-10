@@ -15,8 +15,12 @@ factory('dataModel', ['DBService', function(DBService){
 	// stores data about the extractor being manipulated
 	var _extractor = {};
 
-	//stores PDF data for the page.
+	//stores PDF data for the PDF view
 	var _pdf_data = {};
+
+	// keeps track of current tests from the testing view
+	var _batch_tests = [];
+	var _indiv_tests = [];
 
 	/**
 	* Initializes the app's data model. 
@@ -69,10 +73,15 @@ factory('dataModel', ['DBService', function(DBService){
 		_extractor = {}
 		_extractor.fields = [];
 		_extractor.name = "New Extractor Name";
-		_extractor.representative_bill_id = rep_bill_id;
 		_extractor.origin_regex = null;
 		_extractor.origin_x = null;
 		_extractor.origin_y = null;
+		if(rep_bill_id == undefined){
+			_extractor.representative_bill_id = null;
+		}
+		else {
+			_extractor.representative_bill_id = rep_bill_id;
+		}
 
 		// add a default, disabled field for each applier key
 		_applier_keys.forEach(function(applier_key){
@@ -111,8 +120,8 @@ factory('dataModel', ['DBService', function(DBService){
 	var saveExtractor = function(){
 		return DBService.saveExtractor(_extractor)
 			.success(function(responseObj){
-				_extractor.id = responseObj.id;
-				console.log("saved successfully to id "+_extractor.id);
+				_extractor.extractor_id = responseObj.id;
+				console.log("saved successfully to id "+_extractor.extractor_id);
 			})
 			.error(function(){
 				console.log("failed to save extractor to db.");
@@ -123,7 +132,7 @@ factory('dataModel', ['DBService', function(DBService){
 		return DBService.loadExtractor(id)
 			.success(function(responseObj){
 				_extractor = responseObj.extractor;
-				_extractor.id = _extractor.extractor_id;
+				_extractor.extractor_id = _extractor.extractor_id;
 			})
 			.error(function(){
 				console.log("failed to load extractor from db.");
@@ -141,6 +150,8 @@ factory('dataModel', ['DBService', function(DBService){
 		data_types: function(){ return _data_types;},
 		utilities: function(){ return _utilities;},
 		pdf_data: function(){ return _pdf_data; },
+		batch_tests: function(){ return _batch_tests; },
+		indiv_tests: function(){ return _indiv_tests; },
 		initDataModel: initDataModel,
 		newExtractor: newExtractor,
 		getNewField: getNewField,

@@ -8,6 +8,8 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.field_types = dataModel.field_types;
 	$scope.data_types = dataModel.data_types;
 	$scope.utilities = dataModel.utilities;
+	$scope.batch_tests = dataModel.batch_tests;
+	$scope.indiv_tests = dataModel.indiv_tests;
 
 	$scope.newExtractor = dataModel.newExtractor;
 	$scope.saveExtractor = dataModel.saveExtractor;
@@ -18,8 +20,6 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	// the template for creating new tests. 
 	// This template is modified by the UI, and when the user starts a test the template's variables are used as parameters.
 	$scope.test_template = {};
-	$scope.batch_tests = [];
-	$scope.indiv_tests = [];
 	$scope.selected_test = null;
 
 	/* EVERYTHING BELOW HERE IS A FUNCTION BINDING */
@@ -42,52 +42,61 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.chooseExtractor = function(id){
 		$scope.viewLoadScreen = false;
 		$scope.loadExtractor(id);
-	}
+	};
 
-	// Sends a batch task to the server. 
-	$scope.addBatchTest = function(){
-		// copy test template for request.
-		// Only need to do a shallow copy, as all the parameters are strings/numbers.
+	// Runs a test, and keeps track of its results / status.
+	$scope.addTest = function(isBatch){
+		var batchTestRun = function(){
+			DBService.runBatchTest(test_request)
+				.success(function(responseObj){
+					test_request.bills_to_run = responseObj.bills_to_run;
+					// check if task is empty
+					if (test_request.bills_to_run > 0){
+						test_request.task_id = responseObj.task_id;
+					} else {
+						test_request.status = "No bills to run.";
+					}
+					test_request.results = {};
+
+					// add task to tests list
+					$scope.batch_tests().push(test_request);
+				})
+				.error(function(){
+					console.log("failed to run batch test");
+				});
+		}
+
+		var indivTestRun = function(){
+			test_request.results = {};
+			$scope.indiv_tests().push(test_request);
+			DBService.runIndividualTest(test_request)
+				.success(function(responseObj){
+					$.extend(test_request.results, responseObj);
+				})
+				.error(function(){
+					console.log("failed to run individual bill test.");
+					test_request.failed = true;
+				});
+		}
+
+		// copy test request template
 		var test_request = $.extend({}, $scope.test_template);
-		test_request.extractor_id = $scope.extractor().extractor_id;
-		test_request.batch = true;
 
-		DBService.runBatchTest(test_request)
-			.success(function(responseObj){
-				test_request.bills_to_run = responseObj.bills_to_run;
-				// check if task is empty
-				if (test_request.bills_to_run > 0){
-					test_request.task_id = responseObj.task_id;
+		// saves the extractor, so it can be up to date on the server when the test is run.
+		$scope.saveExtractor()
+			.success(function(){
+				test_request.extractor_id = $scope.extractor().extractor_id;
+				test_request.batch = isBatch;
+				if (isBatch){
+					batchTestRun();
 				} else {
-					test_request.status = "No bills to run.";
+					indivTestRun();
 				}
-				test_request.results = {};
-
-				// add task to tests list
-				$scope.batch_tests.push(test_request);
 			})
 			.error(function(){
-				console.log("failed to run batch test");
+				console.log("Could not save extractor.");
 			});
-	};
-
-	// Sends an individual task to the server (i.e. runs only one bill)
-	$scope.addIndividualTest = function(){
-		var test_request = $.extend({}, $scope.test_template);
-		test_request.extractor_id = $scope.extractor().extractor_id;
-		test_request.batch = false;
-		test_request.results = {}
-		$scope.indiv_tests.push(test_request);
-
-		DBService.runIndividualTest(test_request)
-			.success(function(responseObj){
-				$.extend(test_request.results, responseObj);
-			})
-			.error(function(){
-				console.log("failed to run individual bill test.");
-				test_request.failed = true;
-			});
-	};
+	}
 
 	// selects a test, and displays detailed info for it in the view.
 	// If the test is already selected, this de-selects it.
@@ -116,7 +125,7 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 
 	// Gets the updated status for all batch tests from the server.
 	$scope.refreshAllTests = function(){
-		$scope.batch_tests.forEach($scope.refreshTest);
+		$scope.batch_tests().forEach($scope.refreshTest);
 	};
 
 	// Updates the status for one test by querying the server.

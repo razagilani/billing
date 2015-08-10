@@ -290,9 +290,6 @@ def run_indiv_test():
         for applier_key, value in test_result[category].iteritems():
             test_result[category][applier_key] = serialize_field(value)
 
-    import pprint
-    pprint.pprint(test_result)
-
     return jsonify(test_result), 200
 
 @app.route('/test-status/<task_id>', methods=['GET'])

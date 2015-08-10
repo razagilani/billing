@@ -40,8 +40,8 @@ factory('DBService', ['$http',
     // Otherwise, the DB will create a new extractor with a new ID. 
     // The ID of the extractor is returned. 
     DBService.saveExtractor = function(extractor){
-      if (extractor.id){
-        return $http.put('/extractors/'+extractor.id, {extractor:extractor});
+      if (extractor.extractor_id){
+        return $http.put('/extractors/'+extractor.extractor_id, {extractor:extractor});
       } else {
         return $http.post('/extractors', {extractor:extractor});
       }
