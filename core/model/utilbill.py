@@ -613,8 +613,11 @@ class UtilBill(Base):
         # delete the other bill
         s = object_session(other)
         if s is not None:
-            s.delete(other) if inspect(other).persistent else \
+            if inspect(other).pending:
                 s.expunge(other)
+            else:
+                assert inspect(other).persistent
+                s.delete(other)
 
 
     def get_text(self, bill_file_handler, pdf_util):
