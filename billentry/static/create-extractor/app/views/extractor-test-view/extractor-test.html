@@ -1,11 +1,13 @@
 <div id="test-container">
 	<div id="test-header">
-		<h3><b>Testing Extractor:</b> {{extractor().name}}
-			<span ng-if="extractor().extractor_id">(id: {{ extractor().id }})</span>
+		<h3 style="display:inline">
+			<b>Testing Extractor:</b> {{extractor().name}}
+			<span ng-if="extractor().extractor_id">(id: {{ extractor().extractor_id }})</span>
 			<span ng-if="!extractor().extractor_id">(extractor is unsaved)</span>
 			&nbsp;
-			<button class="fancy-btn" ng-click="showLoadScreen()">Load Extractor...</button>
 		</h3>
+		<button class="fancy-btn" ng-click="showLoadScreen()">Load Extractor...</button>
+		<br><br>
 
 		<!-- A list of existing extractors in the DB -->
 		<!-- TODO: This is (kinda) a duplicate from the settings.html view -->
@@ -45,22 +47,22 @@
 		&nbsp; <input type="text" ng-model="test_template.start_date"></input> &nbsp;
 		and
 		&nbsp; <input type="text" ng-model="test_template.stop_date"></input> &nbsp;
-		<button class="left-margin fancy-btn" ng-click="addBatchTest()">Run Batch Test</button>
+		<button class="left-margin fancy-btn" ng-click="addTest(true)">Run Batch Test</button>
 		<br><br>
 
 		<!-- Individual test, which runs one bill at a time and gives detailed results -->
 		<b>Individual Test:</b> &nbsp; 
 		Test Bill &nbsp; 
 		<input type="number" ng-model="test_template.indiv_bill_id"></input> &nbsp; 
-		<button class="left-margin fancy-btn" ng-click="addIndividualTest()">Run Individual Test</button>
+		<button class="left-margin fancy-btn" ng-click="addTest(false)">Run Individual Test</button>
 		<hr class="divider">
 	</div>
 
 	<!-- A list of running tests, with general information on them. -->
-	<div id="tests-summary" ng-show="(indiv_tests.length + batch_tests.length)">
+	<div id="tests-summary" ng-show="(indiv_tests().length + batch_tests().length)">
 		<h3>Current Tests: </h3>
 		<!-- List of batch tests -->
-		<span ng-show="batch_tests.length">
+		<span ng-show="batch_tests().length">
 			<b>Batch Tests</b>
 			<br><br>
 			<table id="batch-test-list" class="results">
@@ -79,7 +81,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-repeat="test in batch_tests" 
+					<tr ng-repeat="test in batch_tests()" 
 						ng-click="selectTest(test)"
 						ng-class="{'selected': selected_test == test}">
 						<td> {{ $index+1 }} </td>
@@ -100,7 +102,7 @@
 		</span>
 		<br>
 		<!-- List of individual bill tests -->
-		<span ng-show="indiv_tests.length">
+		<span ng-show="indiv_tests().length">
 			<b>Individual Bill Tests</b>
 			<br><br>
 			<table id="indiv-test-list" class="results">
@@ -114,7 +116,7 @@
 					</tr> 
 				</thead>
 				<tbody>
-					<tr ng-repeat="test in indiv_tests" 
+					<tr ng-repeat="test in indiv_tests()" 
 						ng-click="selectTest(test)"
 						ng-class="{'selected': selected_test == test, 'failed': test.failed}">
 						<td> {{ $index+1 }} </td>
