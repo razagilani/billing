@@ -83,12 +83,13 @@ def test_bill(self, extractor_id, bill_id):
     :return: {
         extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
-        fields : {name:0/1, ...} for each field name in Applier.KEYS.
-                Value is 1 if it could be recovered, 0 otherwise
         date : The bill's period end date, read from the database, or if not
-        in the database, from the bill.
-                If neither succeeds, this is None. 'date' is used to group
-                bills by date to see whether formats change over time.
+                in the database, from the extracted bill.
+        verified : whether this bill was verified against the DB
+        db_values : {applier_key, value, ...} The database value of each
+                    field (if bill is processed)
+        errors : {applier_key, error, ...} a list of extraction errors (if any)
+        fields : {applier_key: value, ...} the value of each extracted field.
     }
     '''
     from core.model import Session
@@ -107,7 +108,9 @@ def test_bill(self, extractor_id, bill_id):
         'extractor_id': extractor_id,
         'bill_id': bill_id,
         'num_fields': len(applier_keys),
-        'fields': {f:0 for f in applier_keys},
+        'errors': {},
+        'fields': {f: None for f in applier_keys},
+        'db_values': {f: None for f in applier_keys},
         'fields_correct': {f: 0 for f in applier_keys},
         'fields_incorrect': {f: 0 for f in applier_keys},
     }
@@ -115,21 +118,20 @@ def test_bill(self, extractor_id, bill_id):
     # Store field values for each successful result
     # Note: 'good' is of type {applier_key: value, ...}
     bill_end_date = None
-    good, error = extractor.get_values(bill, bill_file_handler)
+    good, errors = extractor.get_values(bill, bill_file_handler)
     for applier_key, value in good.iteritems():
-        response['fields'][applier_key] = 1
-        if applier_key == UtilBillApplier.END:
-            bill_end_date = value
+        response['fields'][applier_key] = value
+    for applier_key, err in errors.iteritems():
+        response['errors'][applier_key] = str(err)
+    bill_end_date = response['fields'].get(UtilBillApplier.END, None)
 
     # get bill period end date from DB, or from extractor
     # this is used to group bills by date and to check for changes over time
     # in format
     if bill.period_end is not None:
         response['date'] = bill.period_end
-    elif bill_end_date is not None:
-        response['date'] = bill_end_date
     else:
-        response['date'] = None
+        response['date'] = bill_end_date
 
     # compare results to those in the db
     from billentry.billentry_model import BEUtilBill
@@ -140,6 +142,7 @@ def test_bill(self, extractor_id, bill_id):
             response['verified'] = 1
         for applier_key, field_value in good.iteritems():
             db_val = UtilBillApplier.GETTERS[applier_key](bill)
+            response['db_values'][applier_key] = db_val
             if not db_val:
                 continue
 
@@ -159,9 +162,7 @@ def test_bill(self, extractor_id, bill_id):
         print "Extractor Name: ", extractor.name
         print "Bill ID: ", str(bill_id)
         print "Utility: ", bill.utility_id
-        print "ERRORS: " + str(len(error))
-        print "TEXT LENGTH: ", len(bill.get_text(bill_file_handler,
-            PDFUtil()))
+        print "ERRORS: " + str(len(errors))
         print "*******\n"
     return response
 
@@ -258,9 +259,8 @@ def reduce_bill_results(self, results):
             all_count += 1
             dates[bill_date_format]['all_count'] += 1
 
-    #calculate percent accuracy for each field, relative to the values
+    # calculate percent accuracy for each field, relative to the values
     # already in the database
-
     for k in fields.keys():
         sum = fields_correct[k] + fields_incorrect[k]
         if sum > 0:
