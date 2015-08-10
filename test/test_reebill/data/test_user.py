@@ -36,6 +36,7 @@ class TestUserDAO(TestCase):
         init_model()
 
     def setUp(self):
+        clear_db()
         self.dao = UserDAO()
         clear_db()
 

@@ -2,14 +2,22 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
     requires: [
         'ReeBill.store.AccountsFilter'],
-    title: 'Accounts Processing Status',
+    title: 'Accounts',
     alias: 'widget.accounts',   
     store: 'Accounts',
+    selModel: {
+      mode: 'MULTI'
+    },
 
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
             clicksToEdit: 2
-        })
+        }),
+        {
+            ptype: 'bufferedrenderer',
+            trailingBufferZone: 20,  // Keep 20 rows rendered in the table behind scroll
+            leadingBufferZone: 50   // Keep 50 rows rendered in the table ahead of scroll
+        }
     ],
     
     viewConfig: {
@@ -89,36 +97,109 @@ Ext.define('ReeBill.view.accounts.Accounts', {
         dataIndex: 'lastevent',
         minWidth: 350,
         flex:1,
-        items: utils.makeGridFilterTextField('lastevent')
+    },{
+        header: 'Name',
+        dataIndex: 'name',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Addressee',
+        dataIndex: 'ba_addressee',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing City',
+        dataIndex: 'ba_city',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Postal Code',
+        dataIndex: 'ba_postal_code',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing State',
+        dataIndex: 'ba_state',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Billing Street',
+        dataIndex: 'ba_street',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Discount Rate',
+        dataIndex: 'discount_rate',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Late Charge Rate',
+        dataIndex: 'late_charge_rate',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Addressee',
+        dataIndex: 'sa_addressee',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service City',
+        dataIndex: 'sa_city',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Postal Code',
+        dataIndex: 'sa_postal_code',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service State',
+        dataIndex: 'sa_state',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Street',
+        dataIndex: 'sa_street',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Service Type',
+        dataIndex: 'service_type',
+        hidden: true,
+        hideable: false
+    },{
+        header: 'Template Account',
+        dataIndex: 'template_account',
+        hidden: true,
+        hideable: false
     }],
-    dockedItems: [
-    {
-        xtype: 'toolbar',
-        dock: 'bottom',
-        items: ['->', {
-            xtype: 'combo',
-            name: 'accountsFilter',
-            fieldLabel: 'Filter',
-            labelWidth: 50,
-            width: 400,
-            value: 'none',
-            editable: false,
-            store: 'AccountsFilter',
-            triggerAction: 'all',
-            valueField: 'value',
-            displayField: 'label',
-            forceSelection: true,
-            listeners:{
-                scope: this,
-                'select': function(combo, record, index) {
-                    var g = combo.findParentByType('grid');
-                    g.getStore().clearFilter();
-                    if (combo.getValue() == 'reebillcustomers')
-                        g.getStore().filter('reebill_customer', true);
-                    else if(combo.getValue() == 'brokeragecustomers')
-                        g.getStore().filter('brokerage_account', true);
-                }
-            }
-            }, '->']
+
+
+    dockedItems: [{
+        dock: 'top',
+        layout: {
+            overflowHandler: 'Menu'
+        },
+        items: [{
+            xtype: 'button',
+            itemId: 'createNewAccount',
+            action: 'createAccount',
+            text: 'New',
+            iconCls: 'silk-add'
+        },{
+            xtype: 'button',
+            itemId: 'editAccountRecord',
+            action: 'editRecord',
+            text: 'Edit',
+            iconCls: 'silk-edit',
+            disabled: true
+        },{
+            xtype: 'button',
+            itemId: 'mergeAccountRecord',
+            action: 'mergeRecords',
+            text: 'Merge',
+            iconCls: 'silk-merge',
+            disabled: true
+        }]
     }]
 });
