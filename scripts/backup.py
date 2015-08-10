@@ -204,18 +204,19 @@ def _recreate_main_db():
     # exist.
     command = DB_SHELL_COMMAND % dict(superuser_db_params, db=TEMP_DB_NAME)
     stdin, _, check_exit_status = run_command(command)
-    # Don't allow new connections
-    stdin.write(
-        "update pg_database set datallowconn = 'false' where datname = '%(db)s';" % db_params)
-    # Disconnect all existing connections
-    stdin.write(
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '%(db)s';" % db_params)
+    # TODO: this was meant to disconnect other users of the database but is temporarily disabled
+    ## Don't allow new connections
+    #stdin.write(
+        #"update pg_database set datallowconn = 'false' where datname = '%(db)s';" % db_params)
+    ## Disconnect all existing connections
+    #stdin.write(
+        #"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '%(db)s';" % db_params)
     # Drop and create database
     stdin.write(
         'drop database if exists %(db)s; create database %(db)s with owner %(user)s;' % db_params)
-    # Re-allow new connections
-    stdin.write(
-        "update pg_database set datallowconn = 'true' where datname = '%(db)s;'" % db_params)
+    ## Re-allow new connections
+    #stdin.write(
+        #"update pg_database set datallowconn = 'true' where datname = '%(db)s;'" % db_params)
     stdin.close()
     check_exit_status()
 
