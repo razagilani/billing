@@ -15,14 +15,7 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.saveExtractor = dataModel.saveExtractor;
 	$scope.loadExtractor = dataModel.loadExtractor;
 
-	dataModel.initDataModel();
-
-	// the template for creating new tests. 
-	// This template is modified by the UI, and when the user starts a test the template's variables are used as parameters.
-	$scope.test_template = {};
-	$scope.selected_test = null;
-
-	/* EVERYTHING BELOW HERE IS A FUNCTION BINDING */
+	/* FUNCTION BINDINGS */
 
 	// shows the "load extractor" menu.
 	$scope.showLoadScreen = function(){
@@ -123,6 +116,27 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 			});
 	}
 
+	// Get all currently running batch tests, and load them into dataModel.batch_tests
+	$scope.getRunningBatchTests = function(){
+		if($scope.batch_tests().length != 0){
+			return;
+		}
+
+		DBService.getRunningBatchTests()
+			.success(function(responseObj){
+				console.log(responseObj.tasks);
+				console.log($scope.batch_tests());
+				responseObj.tasks.forEach(function(t){
+					t.results = {};
+					t.batch = true;
+					$scope.batch_tests().push(t);
+				});
+			})
+			.error(function(){
+				console.log("Failed to load tests.")
+			});
+	};
+
 	// Gets the updated status for all batch tests from the server.
 	$scope.refreshAllTests = function(){
 		$scope.batch_tests().forEach($scope.refreshTest);
@@ -146,5 +160,14 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 	$scope.testHasResults = function(test){
 		return !$.isEmptyObject(test.results);
 	}
+
+	/* INIT CODE */
+
+	dataModel.initDataModel().then($scope.getRunningBatchTests);
+
+	// the template for creating new tests. 
+	// This template is modified by the UI, and when the user starts a test the template's variables are used as parameters.
+	$scope.test_template = {};
+	$scope.selected_test = null;
 
 }]);

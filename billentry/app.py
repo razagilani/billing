@@ -199,11 +199,11 @@ def index():
 
 @app.route('/test-extractors')
 def test_extractors():
-    '''
+    """
     Displays a user interface for testing different bill data extractors on
     the database.
     Provides the client a list of extractors, utilities, and bill fields.
-    '''
+    """
     s = Session()
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
@@ -213,7 +213,7 @@ def test_extractors():
                                nbills=nbills, utilities=utilities,
                                fields=fields)
 
-@app.route('/get-running-tests', methods=['POST'])
+@app.route('/get-running-tests', methods=['GET'])
 def get_running_tests():
     s = Session()
     q = s.query(ExtractorResult).filter(
@@ -294,12 +294,12 @@ def run_indiv_test():
 
 @app.route('/test-status/<task_id>', methods=['GET'])
 def test_status(task_id):
-    '''
+    """
     Returns the status for a given task.
     This is done by calling reduce_bill_results on all the sub-tasks for a given task.
     :param task_id: The id of the current task
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
-    '''
+    """
     init_celery()
 
     task = AsyncResult(task_id)
