@@ -788,7 +788,7 @@ class AmerigreenMatrixParser(QuoteParser):
 
     HEADER_ROW = 25
     QUOTE_START_ROW = 26
-    RATE_CLASS_COL = 'C'
+    UTILITY_COL = 'C'
     STATE_COL = 'D'
     TERM_COL = 'E'
     START_MONTH_COL = 'F'
@@ -820,31 +820,18 @@ class AmerigreenMatrixParser(QuoteParser):
     ]
     DATE_CELL = (0, 13, 'D', None)
 
-    def _extract_volume_range(self, row, col):
-        # these cells are strings like like "75-149" where "149" really
-        # means < 150, so 1 is added to the 2nd number--unless it is the
-        # highest volume range, in which case the 2nd number really means
-        # what it says.
-        regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
-        if col != self.PRICE_END_COL:
-            high += 1
-        return low * 1000, high * 1000
-
     def _extract_quotes(self):
         # "Valid for accounts with annual volume of up to 50,000 therms"
         min_volume, limit_volume = 0, 50000
-        print self._date
 
         for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
-            rate_class_alias = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                                basestring)
+            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
             # detect end of quotes by blank cell in first column
-            if rate_class_alias == "":
+            if utility == "":
                 break
 
-            # TODO: state may not be used
             state = self._reader.get(0, row, self.STATE_COL, basestring)
+            rate_class_alias = state + '-' + utility
 
             term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
 
