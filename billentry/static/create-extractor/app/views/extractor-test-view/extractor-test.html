@@ -3,7 +3,32 @@
 		<h3><b>Testing Extractor:</b> {{extractor().name}}
 			<span ng-if="extractor().extractor_id">(id: {{ extractor().id }})</span>
 			<span ng-if="!extractor().extractor_id">(extractor is unsaved)</span>
+			&nbsp;
+			<button class="fancy-btn" ng-click="showLoadScreen()">Load Extractor...</button>
 		</h3>
+
+		<!-- A list of existing extractors in the DB -->
+		<!-- TODO: This is (kinda) a duplicate from the settings.html view -->
+		<div class="show-extractors" ng-show="viewLoadScreen">
+			<table id="extractors">
+				<colgroup>
+					<col style="width:50px">
+					<col style="max-width:150px">
+				</colgroup>
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+					<tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="ex in availableExtractors" ng-click="chooseExtractor(ex.extractor_id)">
+						<td> {{ ex.extractor_id }} </td>
+						<td> {{ ex.name }} </td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 
 		<!-- Batch test, which runs many bills at once -->
 		<b>Batch Test:</b> &nbsp; 

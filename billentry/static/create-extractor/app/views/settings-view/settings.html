@@ -7,6 +7,9 @@
 	<div class="pdf-toolbar">
 		<button class="fancy-btn" ng-click="zoomPDF(-0.2)">Zoom In</button>
 		<button class="fancy-btn" ng-click="zoomPDF(0.2)">Zoom Out</button>
+		<span style="color:#9999CC; float:right" ng-if="pdf_data().layout_elements.length">
+			{{ pdf_data().layout_elements.length }} Text Objects
+		</span>
 	</div>
 	<span class="pdf-scroll">
 		<!-- PDF renderer goes here. -->
@@ -185,7 +188,7 @@
 		<br><br>
 
 		<b> Field Output: </b>
-		<pre> {{ selected.type }}: "{{ preview_output | printField:selected.type }}" </pre>
+		<pre style="white-space: pre-wrap"> {{ selected.type }}: "{{ preview_output | printField:selected.type }}" </pre>
 		<br><br>
 
 		<b> Field JSON (for debug): </b>

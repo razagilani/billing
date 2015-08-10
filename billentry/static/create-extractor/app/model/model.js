@@ -81,7 +81,7 @@ factory('dataModel', ['DBService', function(DBService){
 	};
 
 	/**  
-	* Returns a new field, disabled by default.
+	* Returns a new field, which is disabled by default.
 	* The field type and data type are the first elements in the 
 	* _field_types and _data_types arrays, respectively.
 	*/
