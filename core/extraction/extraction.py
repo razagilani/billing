@@ -18,7 +18,7 @@ from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement, BoundingBox
+from core.model import LayoutElement, BoundingBox, Address, Charge, Supplier
 from exc import ConversionError, ExtractionError, ApplicationError, MatchError
 from util.layout import tabulate_objects, \
     group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
@@ -480,7 +480,7 @@ class LayoutExtractor(Extractor):
             table_data = []
 
             #determine last page to search
-            if self.multipage_table:
+            if self.multipage_table and self.maxpage:
                 endpage = min(self.maxpage, len(pages))
             else:
                 endpage = self.page_num
@@ -504,8 +504,8 @@ class LayoutExtractor(Extractor):
                         self.table_start_regex)
                     if top_object:
                         new_textlines = filter(
-                            lambda tl: tl.bounding_box.y0 <
-                                       top_object.bounding_box.y0,
+                            lambda tl: tl.bounding_box.y1 <
+                                       top_object.bounding_box.y1,
                             new_textlines)
 
                 # if table_stop_regex matches, do not search further pages.
@@ -514,8 +514,8 @@ class LayoutExtractor(Extractor):
                         self.table_stop_regex)
                     if bottom_object:
                         new_textlines = filter(
-                            lambda tl: tl.bounding_box.y0 >
-                                       bottom_object.bounding_box.y0,
+                            lambda tl: tl.bounding_box.y1 >
+                                       bottom_object.bounding_box.y1,
                             new_textlines)
                         table_data.extend(tabulate_objects(new_textlines))
                         break
@@ -542,6 +542,8 @@ class LayoutExtractor(Extractor):
         and checking if bill's PDF is misaligned.
         """
         pages = utilbill.get_layout(bill_file_handler, PDFUtil())
+        if len(pages) == 0:
+            raise ExtractionError("Bill has no pages.")
         dx = dy = 0
         if all(v is not None for v in
                [self.origin_regex, self.origin_x, self.origin_y]):
@@ -552,7 +554,7 @@ class LayoutExtractor(Extractor):
                 #set the bill's dx and dy so the textbox matches the expected
                 # coordinates.
                 dx = alignment_box.x0 - self.origin_x
-                dy = alignment_box.y0 - self.origin_y
+                dy = alignment_box.y1 - self.origin_y
         return (pages, dx, dy)
 
 
@@ -674,3 +676,36 @@ def verify_field(applier_key, extracted_value, db_value):
         exc_string = str(extracted_value)
         db_string = str(db_value).strip()
     return exc_string == db_string
+
+def serialize_field(result):
+    """
+    Converts a field into a json-serializable type, such as an int, string,
+    or dictionary.
+    When given a list, the members of the list are serialized.
+    If no proper conversion can be found, then str(results) is returned.
+    """
+    if result is None:
+        return None;
+    if isinstance(result, list):
+        return map(serialize_field, result)
+    if isinstance(result, (str, int, float, bool)):
+        return result
+    if isinstance(result, Address):
+        return {
+            'addressee': result.addressee,
+            'street': result.street,
+            'city': result.city,
+            'state': result.state,
+            'postal_code': result.postal_code,
+        }
+    if isinstance(result, Charge):
+        return {
+            'description': result.description,
+            'quantity': result.quantity,
+            'unit': result.unit,
+            'rate': result.rate,
+            'target_total': result.target_total,
+        }
+    if isinstance(result, Supplier):
+        return {'name': result.name}
+    return str(result)

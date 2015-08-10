@@ -5,12 +5,12 @@ import os
 
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
-from flask import session
+from flask import session, request, jsonify
 from flask.ext.login import current_user, logout_user
 from flask.ext.principal import Permission, RoleNeed
-from flask.ext.restful import Resource, marshal, abort
+from flask.ext.restful import Resource, marshal, abort, marshal_with
 from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean,\
-    List
+    List, Nested
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload, with_polymorphic
@@ -24,7 +24,10 @@ from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+from core.extraction.applier import UtilBillApplier
+from core.extraction.extraction import LayoutExtractor, Extractor, Field
+from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address, \
+    BoundingBox
 
 from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount
@@ -267,6 +270,11 @@ class UtilBillListResource(BaseResource):
 class UtilBillResource(BaseResource):
     def __init__(self):
         super(UtilBillResource, self).__init__()
+
+    def get(self, id):
+        s = Session()
+        bill = s.query(UtilBill).filter(UtilBill.id == id).one()
+        return marshal(bill, self.utilbill_fields)
 
     def put(self, id):
         s = Session()
@@ -621,3 +629,173 @@ class FlaggedUtilBillListResource(BaseResource):
             rows = [marshal(ub, self.utilbill_fields) for ub in utilbills]
             return {'rows': rows, 'results': len(rows)}
 
+bounding_box_fields = {
+    "x0": Integer,
+    "y0": Integer,
+    "x1": Integer,
+    "y1": Integer
+}
+
+field_fields = {
+    "applier_key": String,
+    "discriminator": String,
+    "type": String,
+    "enabled": Boolean,
+    "page_num": Integer,
+    "maxpage": Integer,
+    "bbregex": String,
+    "offset_regex": String,
+    "bounding_box": Nested(bounding_box_fields, allow_null=True),
+    "corner": Integer,
+    "table_start_regex": String,
+    "table_stop_regex": String,
+    "multipage_table": Boolean,
+    "nextpage_top": Float
+}
+
+extractor_fields = {
+    'extractor_id': Integer,
+    'name': String,
+    'representative_bill_id': Integer,
+    'origin_regex': String,
+    'origin_x': Float,
+    'origin_y': Float,
+    'fields': List(Nested(field_fields))
+}
+
+layout_element_fields = {
+    'layout_element_id': Integer,
+    'utilbill_id': Integer,
+    'type': String,
+    'bounding_box': Nested(bounding_box_fields),
+    'page_num': Integer,
+    'text': String,
+}
+
+def fill_extractor_with_json(ex, ex_json):
+    ex.name = ex_json['name']
+    ex.origin_regex = ex_json['origin_regex']
+    ex.origin_x = ex_json['origin_x']
+    ex.origin_y = ex_json['origin_y']
+    ex.representative_bill_id = ex_json['representative_bill_id']
+
+    # Updates the fields of the extractor with the fields in the JSON
+    for field_json in ex_json['fields']:
+        field = next((f for f in ex.fields if f.applier_key == field_json[
+            'applier_key']), None)
+        if field is None:
+            # add new field to extractor
+            field = parse_json_extractor_field(field_json)
+            ex.fields.append(field)
+        else:
+            # update existing field
+            fill_field_with_json(field, field_json)
+    return ex
+
+def parse_json_extractor_field(field_json):
+    """
+    Create a Field object based on a JSON string representing that field.
+    """
+
+    discriminator = field_json['discriminator']
+    field = None
+    if discriminator == 'boundingboxfield':
+        field = LayoutExtractor.BoundingBoxField()
+    elif discriminator == 'tablefield':
+        field = LayoutExtractor.TableField()
+    fill_field_with_json(field, field_json)
+    return field
+
+def fill_field_with_json(field, field_json):
+    """
+    Sets a given field's properties with JSON data representing a field.
+    :param field: The field to be modified
+    :param field_json: JSON containing new data
+    :return: field, modified in-place
+    """
+    field.discriminator = field_json['discriminator']
+    field.applier_key = field_json['applier_key']
+    field.type = field_json['type']
+    field.enabled = field_json['enabled']
+    field.page_num = int(field_json['page_num'])
+    field.max_page = field_json['maxpage']
+    field.bbregex = field_json['bbregex']
+    field.offset_regex = field_json['offset_regex']
+    field.corner = field_json['corner']
+    field.table_start_regex = field_json['table_start_regex']
+    field.table_stop_regex = field_json['table_stop_regex']
+    field.multipage_table = field_json['multipage_table']
+    field.nextpage_top = field_json['nextpage_top']
+
+    bbox_json = field_json['bounding_box']
+    bbox = None
+    if bbox_json is not None:
+        bbox = BoundingBox(x0=bbox_json['x0'], y0=bbox_json['y0'],
+            x1=bbox_json['x1'], y1=bbox_json['y1'])
+    field.bounding_box = bbox
+
+    return field
+
+class ExtractorResource(Resource):
+    @marshal_with(extractor_fields, envelope="extractor")
+    def get(self, id):
+        # get an existing extractor
+        s = Session()
+        le = s.query(LayoutExtractor)\
+            .filter(LayoutExtractor.extractor_id == id).one()
+        return le
+
+    def put(self, id):
+        # update an existing extractor
+        ex_json = request.json.get('extractor')
+        s = Session()
+        ex = s.query(LayoutExtractor)\
+            .filter(LayoutExtractor.extractor_id == id).one()
+        fill_extractor_with_json(ex, ex_json)
+        s.commit()
+        return {'id': ex.extractor_id}
+
+class ExtractorsListResource(Resource):
+    @marshal_with({'extractor_id': Integer, 'name': String},
+        envelope="extractors")
+    def get(self):
+        # get all current extractors
+        s = Session()
+        les = s.query(LayoutExtractor).all()
+        return les
+
+    def post(self):
+        # add a new extractor
+        ex_json = request.json.get('extractor')
+        s = Session()
+        ex = LayoutExtractor()
+        s.add(ex)
+        fill_extractor_with_json(ex, ex_json)
+        s.commit()
+        return {'id': ex.extractor_id}
+
+
+class ApplierKeyListResource(Resource):
+    def get(self):
+        keys = UtilBillApplier.KEYS.keys()
+        return {'applier_keys': keys}
+
+
+class FieldTypesListResource(Resource):
+    def get(self):
+        types = Field.TYPES.keys()
+        return {'data_types': types}
+
+class LayoutElementsListResource(BaseResource):
+    @marshal_with(layout_element_fields, envelope="layout_elements")
+    def get(self, id, type):
+        """
+        Returns a list of layout elements for a given bill.
+        'type' is used to filter layout elements by type.
+        """
+        s = Session()
+        utilbill = s.query(UtilBill).filter(UtilBill.id == id).one()
+        le = LayoutExtractor()
+        le._prepare_input(utilbill, self.utilbill_processor.bill_file_handler)
+        layout_elts = filter(lambda o: o.type == type, utilbill._layout)
+        return layout_elts

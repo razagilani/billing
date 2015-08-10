@@ -45,10 +45,10 @@ class CornersTest(TestCase):
         layout_obj.bounding_box.y0 = 34
         layout_obj.bounding_box.x1 = 112
         layout_obj.bounding_box.y1 = 134
-        self.assertEqual(get_corner(layout_obj, 0), (12, 34))
-        self.assertEqual(get_corner(layout_obj, 1), (112, 34))
-        self.assertEqual(get_corner(layout_obj, 2), (12, 134))
-        self.assertEqual(get_corner(layout_obj, 3), (112, 134))
+        self.assertEqual(get_corner(layout_obj, Corners.TOP_LEFT), (12, 134))
+        self.assertEqual(get_corner(layout_obj, Corners.TOP_RIGHT), (112, 134))
+        self.assertEqual(get_corner(layout_obj, Corners.BOTTOM_LEFT), (12, 34))
+        self.assertEqual(get_corner(layout_obj, Corners.BOTTOM_RIGHT), (112, 34))
 
 class LayoutTest(TestCase):
     def setUp(self):
@@ -72,7 +72,7 @@ class LayoutTest(TestCase):
         self.assertFalse(in_bounds(self.overlap_obj, self.bbox,
             Corners.TOP_LEFT))
         self.assertTrue(in_bounds(self.overlap_obj, self.bbox,
-            Corners.BOTTOM_RIGHT))
+            Corners.TOP_RIGHT))
         self.assertFalse(in_bounds(self.out_of_bounds_obj, self.bbox,
             Corners.TOP_LEFT))
 

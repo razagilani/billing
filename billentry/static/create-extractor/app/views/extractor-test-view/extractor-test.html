@@ -1,0 +1,205 @@
+<div id="test-container">
+	<div id="test-header">
+		<h3 style="display:inline">
+			<b>Testing Extractor:</b> {{extractor().name}}
+			<span ng-if="extractor().extractor_id">(id: {{ extractor().extractor_id }})</span>
+			<span ng-if="!extractor().extractor_id">(extractor is unsaved)</span>
+			&nbsp;
+		</h3>
+		<button class="fancy-btn" ng-click="showLoadScreen()">Load Extractor...</button>
+		<br><br>
+
+		<!-- A list of existing extractors in the DB -->
+		<!-- TODO: This is (kinda) a duplicate from the settings.html view -->
+		<div class="show-extractors" ng-show="viewLoadScreen">
+			<table id="extractors">
+				<colgroup>
+					<col style="width:50px">
+					<col style="max-width:150px">
+				</colgroup>
+				<thead>
+					<tr>
+						<td>ID</td>
+						<td>Name</td>
+					<tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="ex in availableExtractors" ng-click="chooseExtractor(ex.extractor_id)">
+						<td> {{ ex.extractor_id }} </td>
+						<td> {{ ex.name }} </td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Batch test, which runs many bills at once -->
+		<b>Batch Test:</b> &nbsp; 
+		Limit to &nbsp; 
+		<input type="number" ng-model="test_template.num_bills"></input> &nbsp;
+		bills, with utility &nbsp;
+		<select ng-model="test_template.utility_id">
+			<option ng-repeat="util in utilities() | orderBy: 'name' " 
+					value="{{ util.id }}" >
+					{{ util.name }}
+			</option>
+		</select>
+		&nbsp; in the time range between
+		&nbsp; <input type="text" ng-model="test_template.start_date"></input> &nbsp;
+		and
+		&nbsp; <input type="text" ng-model="test_template.stop_date"></input> &nbsp;
+		<button class="left-margin fancy-btn" ng-click="addTest(true)">Run Batch Test</button>
+		<br><br>
+
+		<!-- Individual test, which runs one bill at a time and gives detailed results -->
+		<b>Individual Test:</b> &nbsp; 
+		Test Bill &nbsp; 
+		<input type="number" ng-model="test_template.indiv_bill_id"></input> &nbsp; 
+		<button class="left-margin fancy-btn" ng-click="addTest(false)">Run Individual Test</button>
+		<hr class="divider">
+	</div>
+
+	<!-- A list of running tests, with general information on them. -->
+	<div id="tests-summary" ng-show="(indiv_tests().length + batch_tests().length)">
+		<h3>Current Tests: </h3>
+		<!-- List of batch tests -->
+		<span ng-show="batch_tests().length">
+			<b>Batch Tests</b>
+			<br><br>
+			<table id="batch-test-list" class="results">
+				<thead>
+					<tr>
+						<td> #&nbsp;</td>
+						<td>Extractor</td>
+						<td>Utility</td>
+						<td>Status</td>
+						<td>Bills to run</td>
+						<td>Total so far</td>
+						<td>All fields read</td>
+						<td> Any fields read</td>
+						<td ng-repeat="applier_key in applier_keys()"><i>{{ applier_key }}</i></td>
+						<td> Stop Test <!-- For the 'delete' button --> </td>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="test in batch_tests()" 
+						ng-click="selectTest(test)"
+						ng-class="{'selected': selected_test == test}">
+						<td> {{ $index+1 }} </td>
+						<td> {{ test.extractor_id }} </td>
+						<td> {{ test.utility_id }} </td>
+						<td> {{ test.status }} </td>
+						<td> {{ test.bills_to_run }} </td>
+						<td> {{ test.results.total_count }} </td>
+						<td> {{ test.results.all_count }} </td>
+						<td> {{ test.results.any_count }} </td>
+						<td ng-repeat="applier_key in applier_keys()"> 
+							{{ test.results.fields[applier_key] }}
+						</td>
+						<td><img src="/icons/delete.png" ng-click="stopTest(test)"></td>
+					</tr>
+				</tbody>
+			</table>
+		</span>
+		<br>
+		<!-- List of individual bill tests -->
+		<span ng-show="indiv_tests().length">
+			<b>Individual Bill Tests</b>
+			<br><br>
+			<table id="indiv-test-list" class="results">
+				<thead>
+					<tr>
+						<td>#&nbsp;</td>
+						<td>Extractor</td>
+						<td>Bill ID</td>
+						<td ng-repeat="applier_key in applier_keys()"> {{ applier_key }} </td> 
+						<td>PDF</td>
+					</tr> 
+				</thead>
+				<tbody>
+					<tr ng-repeat="test in indiv_tests()" 
+						ng-click="selectTest(test)"
+						ng-class="{'selected': selected_test == test, 'failed': test.failed}">
+						<td> {{ $index+1 }} </td>
+						<td> {{ test.extractor_id }} </td>
+						<td> {{ test.indiv_bill_id }} </td>
+						<td ng-repeat="applier_key in applier_keys()">
+							<!-- check mark (field success) -->
+							<span ng-if="test.results.fields && test.results.fields[applier_key]" style="color:#00AA00">&#10003;</span>
+							<!-- X mark (field failure) -->
+							<span ng-if="test.results.errors && test.results.errors[applier_key]" style="color:#AA0000">&#10005;</span>
+						</td>
+						<td><a href="#/settings/{{test.indiv_bill_id}}"><img src="/icons/application_go.png"></a></td>
+					</tr>
+				</tbody>
+			</table>
+		</span>
+		<br>
+		<button class="fancy-btn" 
+				ng-click="refreshAllTests()">
+			Refresh
+		</button>
+		<hr class="divider">
+	</div>
+
+	<!-- Detailed info on a specific test.  -->
+	<div id="tests-details" ng-if="selected_test && testHasResults(selected_test)">
+		<h3>Detailed Test Results:</h3>
+		<!-- Details for individual bill test -->
+		<span ng-if="!selected_test.batch">
+			Ran Extractor <b>{{ extractor().extractor_id }}</b> on Bill <b>#{{selected_test.indiv_bill_id}}</b>:
+			<b>{{ selected_test.results.fields | numKeys }}</b> {{ selected_test.results.fields | numKeys | pluralize:"field"  }} successful, 
+			<b>{{ selected_test.results.errors | numKeys }}</b> {{ selected_test.results.errors | numKeys | pluralize:"error" }}.
+			<p ng-repeat="field in extractor().fields">
+				<b>{{ field.applier_key }}: </b>
+				<span ng-if="selected_test.results.fields[field.applier_key]">
+					<span class="pre">{{ selected_test.results.fields[field.applier_key] | printField:field.type }}</span>
+					<!-- check mark (field matches the DB) -->
+					<span ng-if="selected_test.results.fields_correct[field.applier_key]" style="color:#00AA00">&#10003;</span>
+					<!-- show db value in red if there is a mismatch -->
+					<span ng-if="selected_test.results.fields_incorrect[field.applier_key]" class="pre" style="color:#AA0000;"> {{ 
+						selected_test.results.db_values[field.applier_key] | printField:field.type 
+					}}</span>
+				</span>
+				<span ng-if="selected_test.results.errors[field.applier_key]">
+					<span style="font-family:monospace; color:#FF0000">{{ selected_test.results.errors[field.applier_key] }}</span>
+				</span>
+			</p> 
+		</span>
+		<!-- Details for batch test -->
+		<span ng-if="selected_test.batch">
+			<table id="batch-test-details" class="results">
+				<thead>
+					<tr>
+						<td> Date </td>
+						<td> Total so far </td>
+						<td> All fields read </td>
+						<td> Any fields read </td>
+						<td> % Any / Total </td>
+						<td ng-repeat="applier_key in applier_keys()"><i>{{ applier_key }}</i></td>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="(date, date_result) in selected_test.results.dates">
+						<td> {{ date }} </td>
+						<td> {{ date_result.total_count }} </td>
+						<td> {{ date_result.all_count }} </td>
+						<td> {{ date_result.any_count }} </td>
+						<td> {{ date_result.any_count | percentage:date_result.total_count }} </td>
+						<td ng-repeat="applier_key in applier_keys()"> 
+							{{ date_result.fields[applier_key] }}
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</span> 
+		
+		<hr class="divider">
+	</div>
+
+	<div>
+		<i>Random debug stuff, which won't be here in production.</i>
+		<pre>{{ test_template | json }}</pre>
+		<pre>{{ selected_test | json }}</pre>
+	</div>
+
+</div>
