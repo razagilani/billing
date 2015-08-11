@@ -23,11 +23,13 @@ log = logging.getLogger(__name__)
     # TODO: these extractors were already created in the version 30
     # upgrade script, so they should be updated instead
 def create_layout_extractors(s):
+    # sort extractors by id, based on the v30 upgrade script
     layout_extractors = s.query(LayoutExtractor).order_by(
-        Extractor.name.desc()).all()
-    # this sorts the extractors by name based on the v30 upgrade script.
+        Extractor.extractor_id.asc()).all()
     [washington_gas_layout, pepco_2015_layout, pepco_old_layout, bge_layout] \
         = layout_extractors
+
+    print [le.name for le in layout_extractors]
 
     washington_gas_layout.representative_bill_id = 24153
     washington_gas_layout.origin_y=757.755
@@ -54,7 +56,7 @@ def create_layout_extractors(s):
             f.bounding_box = BoundingBox(x0=413, y0=725, x1=595, y1=758)
 
     pepco_2015_layout.representative_bill_id = 18541
-    pepco_2015_layout.origin_y=637.872
+    pepco_2015_layout.origin_y=631.872
     for f in pepco_2015_layout.fields:
         if f.applier_key == UtilBillApplier.START:
             f.bounding_box = BoundingBox(x0=310, y0=744, x1=470, y1=756)
@@ -64,6 +66,7 @@ def create_layout_extractors(s):
             f.bounding_box = BoundingBox(x0=348, y0=328, x1=361, y1=639)
         elif f.applier_key == UtilBillApplier.NEXT_READ:
             # doesn't use a bounding box
+            f.bounding_box = None
             pass
         elif f.applier_key == UtilBillApplier.SERVICE_ADDRESS:
             f.bounding_box = BoundingBox(x0=45, y0=575, x1=260, y1=594)
@@ -78,39 +81,41 @@ def create_layout_extractors(s):
             f.bounding_box = BoundingBox(x0=0, y0=-10, x1=318, y1=0)
         elif f.applier_key == UtilBillApplier.SUPPLIER:
             # doesn't use a bounding box
+            f.bounding_box = None
             pass
 
     pepco_old_layout.representative_bill_id = 219
     for f in pepco_old_layout.fields:
         if f.applier_key == UtilBillApplier.START:
-            f.bounding_box = BoundingBox(x0=435, y0=716, x1=535, y1=726)
+            f.bounding_box = BoundingBox(x0=435, y0=725, x1=535, y1=739)
         elif f.applier_key == UtilBillApplier.END:
-            f.bounding_box = BoundingBox(x0=435, y0=716, x1=535, y1=726)
+            f.bounding_box = BoundingBox(x0=435, y0=725, x1=535, y1=739)
         elif f.applier_key == UtilBillApplier.ENERGY:
-            f.bounding_box = BoundingBox(x0=280, y0=481, x1=305, y1=491)
+            f.bounding_box = BoundingBox(x0=280, y0=490, x1=315, y1=500)
         elif f.applier_key == UtilBillApplier.NEXT_READ:
-            f.bounding_box = BoundingBox(x0=13, y0=448, x1=234, y1=458)
+            f.bounding_box = BoundingBox(x0=13, y0=456, x1=234, y1=470)
         elif f.applier_key == UtilBillApplier.SERVICE_ADDRESS:
-            f.bounding_box = BoundingBox(x0=435, y0=694, x1=555, y1=704)
+            f.bounding_box = BoundingBox(x0=435, y0=704, x1=555, y1=716)
         elif f.applier_key == UtilBillApplier.BILLING_ADDRESS:
-            f.bounding_box = BoundingBox(x0=86, y0=66, x1=224, y1=108)
+            f.bounding_box = BoundingBox(x0=80, y0=66, x1=231, y1=123)
         elif f.applier_key == UtilBillApplier.RATE_CLASS:
-            f.bounding_box = BoundingBox(x0=97, y0=480, x1=144, y1=490)
+            f.bounding_box = BoundingBox(x0=94, y0=491, x1=144, y1=499)
         elif f.applier_key == UtilBillApplier.CHARGES:
-            f.bounding_box = BoundingBox(x0=259, y0=446, x1=576, y1=657)
+            f.bounding_box = BoundingBox(x0=259, y0=446, x1=576, y1=672)
         elif f.applier_key == UtilBillApplier.TOTAL:
             f.bounding_box = BoundingBox(x0=0, y0=-10, x1=252, y1=0)
 
-    bge_layout.representative_bill_id = 7657
+    bge_layout.representative_bill_id = 7567
     for f in bge_layout.fields:
         if f.applier_key == UtilBillApplier.START:
-            f.bounding_box = BoundingBox(x0=0, y0=-10, x1=175, y1=0)
+            f.bounding_box = BoundingBox(x0=0, y0=-2, x1=175, y1=15)
         if f.applier_key == UtilBillApplier.END:
-            f.bounding_box = BoundingBox(x0=0, y0=-10, x1=175, y1=0)
+            f.bounding_box = BoundingBox(x0=0, y0=-2, x1=175, y1=15)
         if f.applier_key == UtilBillApplier.NEXT_READ:
-            f.bounding_box = BoundingBox(x0=460, y0=672, x1=586, y1=682)
+            f.bounding_box = BoundingBox(x0=460, y0=676, x1=586, y1=697)
         if f.applier_key == UtilBillApplier.SERVICE_ADDRESS:
-            f.bounding_box = BoundingBox(x0=370, y0=716, x1=555, y1=740)
+            f.bounding_box = BoundingBox(x0=310, y0=732, x1=555, y1=525)
+            f.bbregex = r"(.*)\s+Service\s+Address\s(.*)"
         if f.applier_key == UtilBillApplier.BILLING_ADDRESS:
             f.bounding_box = BoundingBox(x0=40, y0=100, x1=200, y1=161)
         if f.applier_key == UtilBillApplier.TOTAL:
