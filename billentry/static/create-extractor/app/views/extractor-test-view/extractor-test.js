@@ -124,8 +124,6 @@ controller('extractorTestViewCtrl', ['$scope', 'DBService', 'dataModel', functio
 
 		DBService.getRunningBatchTests()
 			.success(function(responseObj){
-				console.log(responseObj.tasks);
-				console.log($scope.batch_tests());
 				responseObj.tasks.forEach(function(t){
 					t.results = {};
 					t.batch = true;

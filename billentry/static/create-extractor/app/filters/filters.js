@@ -60,7 +60,7 @@ filter('numKeys', function(){
 
 // Given a count and a string, use the count to properly pluralize the string.
 // e.g. Given (1, 'cow'), return 'cow'. Given (2, 'owl') return 'owls'. 
-// A count of 0 is treated as a plural, e.g. "o cows".
+// A count of 0 is treated as a plural, e.g. "0 cows".
 filter('pluralize', function(){
   return function(count, singular){
     return singular + ((count != 1) ? "s" : "");
@@ -71,9 +71,9 @@ filter('pluralize', function(){
 filter('printField', function(){
   return function(value, type){
     if (value == null){
-      return value;
+      return "(none)";
     }
-    if (type == "address"){
+    if (type == "billing address" || type == "service address"){
       var out_str = "";
       out_str += (value.addressee || "(no addressee)") + ", ";
       out_str += (value.street || "(no street)") + ", ";

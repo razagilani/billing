@@ -127,6 +127,10 @@
 							<span ng-if="test.results.fields && test.results.fields[applier_key]" style="color:#00AA00">&#10003;</span>
 							<!-- X mark (field failure) -->
 							<span ng-if="test.results.errors && test.results.errors[applier_key]" style="color:#AA0000">&#10005;</span>
+							<!-- If field is disabled, or somehow returns null but is not an error -->
+							<span ng-if="test.results.fields && test.results.fields[applier_key] == null && !test.results.errors[applier_key]" style="color:#000066">
+								&#8212;
+							</span>
 						</td>
 						<td><a href="#/settings/{{test.indiv_bill_id}}"><img src="/icons/application_go.png"></a></td>
 					</tr>
@@ -146,22 +150,22 @@
 		<h3>Detailed Test Results:</h3>
 		<!-- Details for individual bill test -->
 		<span ng-if="!selected_test.batch">
-			Ran Extractor <b>{{ extractor().extractor_id }}</b> on Bill <b>#{{selected_test.indiv_bill_id}}</b>:
+			Ran Extractor <b>{{ selected_test.extractor_id }}</b> on Bill <b>#{{selected_test.indiv_bill_id}}</b>:
 			<b>{{ selected_test.results.fields | numKeys }}</b> {{ selected_test.results.fields | numKeys | pluralize:"field"  }} successful, 
 			<b>{{ selected_test.results.errors | numKeys }}</b> {{ selected_test.results.errors | numKeys | pluralize:"error" }}.
-			<p ng-repeat="field in extractor().fields">
-				<b>{{ field.applier_key }}: </b>
-				<span ng-if="selected_test.results.fields[field.applier_key]">
-					<span class="pre">{{ selected_test.results.fields[field.applier_key] | printField:field.type }}</span>
+			<p ng-repeat="applier_key in applier_keys()">
+				<b>{{ applier_key }}: </b>
+				<span ng-if="selected_test.results.fields[applier_key]">
+					<span class="pre">{{ selected_test.results.fields[applier_key] | printField:applier_key }}</span>
 					<!-- check mark (field matches the DB) -->
-					<span ng-if="selected_test.results.fields_correct[field.applier_key]" style="color:#00AA00">&#10003;</span>
+					<span ng-if="selected_test.results.fields_correct[applier_key]" style="color:#00AA00">&#10003;</span>
 					<!-- show db value in red if there is a mismatch -->
-					<span ng-if="selected_test.results.fields_incorrect[field.applier_key]" class="pre" style="color:#AA0000;"> {{ 
-						selected_test.results.db_values[field.applier_key] | printField:field.type 
+					<span ng-if="selected_test.results.fields_incorrect[applier_key]" class="pre" style="color:#AA0000;"> {{ 
+						selected_test.results.db_values[applier_key] | printField:applier_key
 					}}</span>
 				</span>
-				<span ng-if="selected_test.results.errors[field.applier_key]">
-					<span style="font-family:monospace; color:#FF0000">{{ selected_test.results.errors[field.applier_key] }}</span>
+				<span ng-if="selected_test.results.errors[applier_key]">
+					<span style="font-family:monospace; color:#FF0000">{{ selected_test.results.errors[applier_key] }}</span>
 				</span>
 			</p> 
 		</span>
