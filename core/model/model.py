@@ -183,7 +183,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '4d54d21b2c7a'
+_schema_revision = '1226d67c4c53'
 
 
 def check_schema_revision(schema_revision=None):
@@ -642,4 +642,21 @@ class UtilityAccount(Base):
         except ValueError:
             raise NoSuchBillException
 
+class ChargeNameMap(Base):
+    """
+    Represents a mapping between a charge's name/description, and its
+    rsi_binding. Used to relate charges across different bills / utilities.
+    """
 
+    __tablename__ = 'charge_name_map'
+
+    charge_name_map_id = Column(Integer, primary_key=True)
+
+    # the utility to which this type of charge belongs
+    utility_id = Column(Integer, ForeignKey('utility.id'))
+
+    # a pattern that matches the name of a charge as it is displayed on a bill.
+    display_name_regex = Column(String, nullable=False)
+
+    # the corresponding charge's rsi binding.
+    rsi_binding = Column(String, nullable=False)

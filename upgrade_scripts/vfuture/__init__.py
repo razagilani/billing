@@ -11,7 +11,7 @@ import logging
 from core.extraction import Applier
 from core.extraction.applier import UtilBillApplier
 from core.extraction.extraction import LayoutExtractor, Field
-from core.model import BoundingBox
+from core.model import BoundingBox, Session
 from upgrade_scripts import alembic_upgrade
 from core import init_model, initialize, init_config
 from util.layout import Corners
@@ -21,13 +21,11 @@ log = logging.getLogger(__name__)
     # TODO: add charge_name_map's for other utilities
 
 def upgrade():
-    alembic_upgrade('4d54d21b2c7a')
+    alembic_upgrade('1226d67c4c53')
 
-    initialize()
-    from core.model import Base, Session
-    print '\n'.join(sorted(t for t in Base.metadata.tables))
-
+    init_model()
     s = Session()
-    create_layout_extractors(s)
+    # TODO
+
     s.commit()
 
