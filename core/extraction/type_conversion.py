@@ -9,6 +9,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 from core import model
 from core.model import Session, RateClass, Utility, Address, Supplier
+from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
@@ -144,7 +145,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     # TODO Use some sort of charge name map
     # TODO also filter by charge type in this query?
     q = Session.query(Charge.rsi_binding).filter(
-        Charge.description==description, bool(Charge.rsi_binding))
+        Charge.description == description, Charge.rsi_binding != '')
     rsi_binding = q.first()
     if rsi_binding is None:
         #TODO what to do if existing RSI binding not found?
@@ -152,6 +153,34 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
 
     return Charge(description=description, unit=unit, rate=rate,
         rsi_binding=rsi_binding, type=ctype, target_total=target_total)
+
+def _get_charge_names_map():
+    """
+    Return a list of charge name mappings.
+    Each item is a ChargeNameMap row, containing a regex that matches a
+    charge's description, and a corresponding rsi_binding.
+    :return: A list of ChargeNameMap objects.
+    """
+    s = Session()
+    return s.query(ChargeNameMap).all()
+
+def _get_rsi_binding_from_name(charge_names_map, charge_name):
+    """
+    Get the RSI binding for a charge name
+    :param charge_names_map: A list of ChargeNameMap rows
+    :param charge_name: The charge's name, as seen on a bill.
+    :return: An RSI binding corresponding to the charge, as a string
+    """
+    rsi_bindings = []
+    for charge_entry in charge_names_map:
+        charge_regex = charge_entry.display_name_regex
+        if re.match(charge_regex, charge_name, re.IGNORECASE):
+            rsi_bindings.push(charge_entry.rsi_binding)
+
+    if len(rsi_bindings) != 1:
+        raise ConversionError('Multiple RSI bindings match to charge name.')
+    return rsi_bindings[0]
+
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
@@ -199,7 +228,6 @@ def convert_wg_charges_std(text):
             charges.append(process_charge(charge_name, charge_value, type))
     #reverse list, remove last item ('Total Current Washington Gas Charges')
     return charges[:0:-1]
-
 
 def convert_wg_charges_wgl(text):
     """Function to convert a string containing charges from a particular
