@@ -299,8 +299,7 @@ class TextExtractor(Extractor):
         @declared_attr
         def regex(cls):
             "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
+            return Field.__table__.c.get('regex', Column(String))
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)

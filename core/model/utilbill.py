@@ -678,7 +678,7 @@ class LayoutElement(Base):
 
     layout_element_id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
-    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
+    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"), nullable=False)
     page_num = Column(Integer, nullable=False)
     bounding_box_id = Column(Integer, ForeignKey(
         'bounding_box.bounding_box_id'), nullable=False)
