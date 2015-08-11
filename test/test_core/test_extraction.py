@@ -320,7 +320,7 @@ class BoundingBoxFieldTest(TestCase):
         """
         bb_offset = LayoutExtractor.BoundingBoxField(page_num=1, maxpage=3,
             offset_regex=r'text', corner=0, bounding_box=BoundingBox(x0=50,
-                y0=50, x1=60, y1=60))
+                y0=-150, x1=60, y1=-130))
         self.assertEqual('woo', bb_offset.get_value(self.input))
 
     def test_match_empty_text(self):

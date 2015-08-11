@@ -1,0 +1,2 @@
+These files include code for adding selectable text to the pdf.js PDF viewer. The code was separated from pdf.js's view.js file, without any code specific to their viewer. 
+These files copied from billing/billentry/static/ext/lib/pdf.js.

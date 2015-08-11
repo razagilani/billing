@@ -1,0 +1,110 @@
+/* EXTRACTOR SETTINGS VIEW */
+
+div[pdf-panel] {
+  width:50%;
+  float:left;
+  background-color:#FFFFFF;
+  position:relative;
+  overflow:hidden;
+}
+
+/* When zooming out, canvases should not fit on the same row. */
+div[pdf-panel] canvas{
+  display: block;
+}
+
+.pdf-toolbar {
+  background-color: #EFEFFF;
+  padding-bottom: 10px;
+}
+
+.pdf-scroll {
+  float: left;
+  position: relative;   
+  height: 100%;
+  width: 100%;
+  overflow: scroll;
+}
+
+.textLayer {
+  overflow:inherit;
+}
+
+.pdf-canvas-layer {
+  float:left;
+}
+
+.bbox-drawing-layer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index: 5;
+}
+
+#separator { 
+  width:5px; 
+  margin-top:0px !important; 
+  background-color:#AAAAFF; 
+}
+
+/* Container for the extractor settings */
+#extractor-controls { 
+  width:40%;
+  display:inline; 
+  float:left; 
+  overflow:scroll;
+}
+
+input.textbox-flush {
+  border: solid #AAAAFF 2px;
+  /*border: 0;*/
+  padding:4px;
+  background-color: #EFEFFF;
+  font: inherit;
+  color:inherit;
+}
+
+button.fancy-btn:hover {
+  background-color: #000099;
+  color: #AAAAFF;
+}
+
+table#extractors {
+    text-overflow: ellipsis;
+}
+
+/* list of fields in extractor settings */
+
+.addbutton { 
+  padding-right:4px; 
+  padding-top:4px; 
+}
+
+/* Box that displays bounding box coordinates. */
+pre.bbox-coords {
+  display:inline; 
+  background-color:#DEDEEF; 
+  color:#666699; 
+  padding:4px;
+  border: solid 2px #BBBBCC;
+}
+
+pre.bbox-coords.editable {
+  border-color: #6666AA;
+}
+
+pre.bbox-coords.active {
+  border-color:#FF0000;
+}
+
+img.clear-bbox { 
+  position:relative;
+  top:3px; 
+}
+
+div.field-offset-details {
+  margin-top: 10px; 
+  line-height: 150%; 
+  padding-left: 15px; 
+  font-size: 0.9em;
+}

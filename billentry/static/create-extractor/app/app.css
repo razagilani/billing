@@ -1,0 +1,70 @@
+/* APP CSS STYLESHEET */
+
+* { box-sizing:content-box; }
+
+a, a:visited {text-decoration:inherit; color:inherit; }
+
+.left-margin { margin-left:10px; }
+
+html, body { height:100%; }
+
+body {
+  margin:0px; 
+  background-color:#EFEFFF;
+  color:#000066;
+  font-family: sans-serif;
+  overflow:hidden;
+}
+
+hr { background-color:#AAAAFF; border:0; height:5px; margin:0; }
+hr.divider { margin-top:2em; margin-bottom:2em}
+
+#header { background-color: #AAAAFF;}
+
+ul.navbar {
+  height:100%;
+  list-style-type: none;
+  margin:0;
+  padding:0;
+  font-size:30px;
+  font-weight:bold;
+}
+
+ul.navbar li { display:inline-block;}
+
+ul.navbar li a { display:inline-block; padding:5px; padding-left:10px; padding-right:10px;}
+
+ul.navbar li a:hover {
+  background-color:#000066;
+  color:#AAAAFF;
+}
+
+#view-container { 
+  height:100%; 
+  height:calc(100% - 45px);
+  display:block;
+}
+
+#view-container>div {
+  margin:1%;
+  display:inline;
+  float:left;
+  height:100%;
+}
+
+button.fancy-btn {
+  background-color: #AAAAFF;
+  color: #000099;
+  border: 2px solid #000099;
+  font-size: 0.8em;
+  outline:none;
+}
+
+table { border-collapse: collapse; border-spacing: 0px; }
+table thead { font-weight: bold; }
+table thead tr > td { padding-bottom:10px; }
+
+table tr.disabled { color:#9999CC; }
+table tr.selected { background-color:#AAAAFF; }
+table tbody tr:hover { background-color:#CDCDFF; }
+table tr.selected:hover { background-color:#8888FF; }

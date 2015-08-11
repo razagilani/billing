@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html lang="en" ng-app="createExtractor" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html lang="en" ng-app="createExtractor" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html lang="en" ng-app="createExtractor" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html lang="en" ng-app="createExtractor" class="no-js"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Create Extractor</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayer.css">
+  <link rel="stylesheet" href="/angular/pdfjs-textlayer/TextLayerBuilder.css">
+  <link rel="stylesheet" href="app/app.css">
+  <link rel="stylesheet" href="app/views/settings-view/settings.css">
+  <link rel="stylesheet" href="app/views/extractor-test-view/extractor-test.css">
+  <link rel="icon" href="/images/favicon.ico">
+</head>
+<body>
+  <div id="header">
+    <ul class="navbar">
+      <li style="padding-left:10px;">Create Extractor: </li>
+      <li><a href="#/settings/">Settings</a></li>
+      <!-- <li><a href="#/load">Load</a></li> -->
+      <li><a href="#/test">Test</a></li>
+    </ul>
+  </div>
+  <!-- <hr> -->
+  <div id="view-container" ng-view></div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular-resource.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular-route.min.js"></script>
+
+  <!-- local versions, not used in production (or development) -->
+  <!-- <script src="/angular/bower_components/jquery/dist/jquery.min.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular/angular.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular-resource/angular-resource.js"></script> -->
+  <!-- <script src="/angular/bower_components/angular-route/angular-route.js"></script> -->
+
+  <!-- for pdf.js -->
+  <!-- Using version of pdf.js in ext/ folder, used by rest of billentry UI -->
+  <script src="/ext/lib/pdf.js/pdf.js"></script>
+  <!-- <script src="/angular/bower_components/pdfjs-dist/build/pdf.js"></script> -->
+  <script src="/angular/pdfjs-textlayer/TextLayerBuilder.js"></script>
+
+  <!-- actual app code -->
+  <script src="app/app.js"></script>
+  <script src="app/directives/bbox-drawing.js"></script>
+  <script src="app/directives/pdf-panel.js"></script>
+  <script src="app/filters/filters.js"></script>
+  <script src="app/model/model.js"></script>
+  <script src="app/services/db-service.js"></script>
+  <script src="app/views/settings-view/settings.js"></script>
+  <script src="app/views/extractor-test-view/extractor-test.js"></script>
+  <script src="app/util/util.js"></script>
+</body>
+</html>
