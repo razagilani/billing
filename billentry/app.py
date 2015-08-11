@@ -36,15 +36,19 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
+from billentry.resources import parse_json_extractor_field
 from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
-from core.extraction import Extractor, ExtractorResult
+from core.extraction import Extractor, ExtractorResult, Field
 from core.extraction.applier import Applier, UtilBillApplier
-from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, Utility
+from core.extraction.extraction import LayoutExtractor, serialize_field
+from core.extraction.task import test_bill, reduce_bill_results, \
+    _create_bill_file_handler
+from core.model import Session, Utility, BoundingBox
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
+from util import layout
 
 LOG_NAME = 'billentry'
 
@@ -195,11 +199,11 @@ def index():
 
 @app.route('/test-extractors')
 def test_extractors():
-    '''
+    """
     Displays a user interface for testing different bill data extractors on
     the database.
     Provides the client a list of extractors, utilities, and bill fields.
-    '''
+    """
     s = Session()
     extractors = s.query(Extractor).all()
     nbills = s.query(UtilBill).count()
@@ -209,7 +213,7 @@ def test_extractors():
                                nbills=nbills, utilities=utilities,
                                fields=fields)
 
-@app.route('/get-running-tests', methods=['POST'])
+@app.route('/get-running-tests', methods=['GET'])
 def get_running_tests():
     s = Session()
     q = s.query(ExtractorResult).filter(
@@ -225,20 +229,24 @@ def get_running_tests():
     return jsonify({'tasks': tasks_dict})
 
 @app.route('/run-test', methods=['POST'])
+@app.route('/run-batch-test', methods=['POST'])
 def run_test():
     """
     Runs a test of bill data extractors as an asynchronous Celery task.
     Also creates a database row in the ExtractorResult table for this test.
     :return the ID of the task being run, as well as the total number of bills
     """
-    extractor_id = request.form.get('extractor_id')
-    utility_id = request.form.get('utility_id')
-    num_bills = int(request.form.get('num_bills'))
-    date_filter_type = request.form.get('date_filter_type')
-    filter_date = request.form.get('filter_date')
+    extractor_id = request.json.get('extractor_id')
+    utility_id = request.json.get('utility_id')
+    num_bills = request.json.get('num_bills')
+    num_bills = int(num_bills) if num_bills else 0
+    start_date = request.json.get('start_date')
+    stop_date = request.json.get('stop_date')
     #if date is just a 4-digit year, add 'january 1st' to make a full date.
-    if re.match(r'\d{4}$', filter_date):
-        filter_date = filter_date + "-01-01"
+    if start_date and re.match(r'\d{4}$', start_date):
+        start_date = start_date + "-01-01"
+    if stop_date and re.match(r'\d{4}$', stop_date):
+        stop_date = stop_date + "-01-01"
 
     s = Session();
     #get bills with valid PDF addresses, and filter by utility if necessary
@@ -249,11 +257,10 @@ def run_test():
         q = q.filter(UtilBill.utility_id == utility_id)
     else:
         utility_id = None
-    if filter_date and date_filter_type:
-        if date_filter_type == 'before':
-            q = q.filter(UtilBill.period_end <= filter_date)
-        elif date_filter_type == 'after':
-            q = q.filter(UtilBill.period_end >= filter_date)
+    if start_date:
+        q = q.filter(UtilBill.period_end >= start_date)
+    if stop_date:
+        q = q.filter(UtilBill.period_end <= stop_date)
     if num_bills > 0:
         q = q.limit(num_bills)
     if q.count() == 0:
@@ -271,14 +278,28 @@ def run_test():
     s.commit()
     return jsonify({'task_id': result.id, 'bills_to_run': q.count()}), 202
 
-@app.route('/test-status/<task_id>', methods=['POST'])
+@app.route('/run-indiv-test', methods=['POST'])
+def run_indiv_test():
+    extractor_id = request.json.get('extractor_id')
+    bill_id = request.json.get('indiv_bill_id')
+    test_result = test_bill(extractor_id, bill_id)
+
+    # transform fields and errors into json-serializable form
+    test_result['date'] = str(test_result['date'])
+    for category in ['db_values', 'errors', 'fields']:
+        for applier_key, value in test_result[category].iteritems():
+            test_result[category][applier_key] = serialize_field(value)
+
+    return jsonify(test_result), 200
+
+@app.route('/test-status/<task_id>', methods=['GET'])
 def test_status(task_id):
-    '''
+    """
     Returns the status for a given task.
     This is done by calling reduce_bill_results on all the sub-tasks for a given task.
     :param task_id: The id of the current task
     :return: Data on the current progress of the task, including how many bills have succeeded, failed, etc.
-    '''
+    """
     init_celery()
 
     task = AsyncResult(task_id)
@@ -311,9 +332,9 @@ def test_status(task_id):
         return jsonify(result)
 
 
-@app.route('/stop-task/<task_id>', methods=['POST'])
+@app.route('/stop-task/<task_id>', methods=['GET', 'POST'])
 def stop_task(task_id):
-    #get child tasks and revoke them
+    # get child tasks and revoke them
     init_celery()
     s = Session()
     q = s.query(ExtractorResult).filter(
@@ -327,6 +348,81 @@ def stop_task(task_id):
     ext_res.finished = datetime.utcnow()
     s.commit()
     return "", 204
+
+@app.route('/create-extractor/')
+def create_extractor():
+    """
+    Serves template for the UI for creating PDF extractors
+    """
+    return app.send_static_file('create-extractor/app/index.html')
+
+@app.route('/get-field-types', methods=['GET'])
+def get_field_types():
+    return jsonify({'field_types': ['boundingboxfield', 'tablefield']})
+
+
+@app.route('/get-text-lines-page/<bill_id>',
+           methods=['POST'],
+           defaults={'min_page': None, 'max_page': None})
+@app.route('/get-text-lines-page/<bill_id>/<int:min_page>',
+           methods=['POST'],
+           defaults={'max_page': None})
+@app.route('/get-text-lines-page/<bill_id>/<int:min_page>/<int:max_page>',
+           methods=['POST'])
+def get_text_line(bill_id, min_page, max_page):
+    """
+    Return the first text object in the bill that matches 'regex'.
+    The range of pages that are searched can be narrowed down with min_page
+    and max_page.
+    """
+    regex = request.get_json()['regex']
+    if not regex:
+        return jsonify({'textline': None}), 200
+
+    s = Session()
+    utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
+    le = LayoutExtractor()
+    input = le._prepare_input(utilbill,
+        _create_bill_file_handler())
+
+    if not max_page:
+        max_page = min_page
+    output = None
+    print "****", min_page, max_page
+    for p in input[0][min_page-1:max_page]:
+        output = layout.get_text_line(p, regex)
+        if output is not None:
+            break
+
+    if output is None:
+        textline_data = None
+    else:
+        textline_data = {
+            'text': output.text,
+            'page_num': output.page_num,
+            'x0': output.bounding_box.x0,
+            'y0': output.bounding_box.y0,
+            'x1': output.bounding_box.x1,
+            'y1': output.bounding_box.y1,
+        }
+
+    return jsonify({'textline': textline_data}), 200
+
+@app.route('/preview-field/<bill_id>', methods=['POST'])
+def preview_field(bill_id):
+    """
+    Tests a single field on a bill.
+    """
+    field_json =  request.get_json()
+    field = parse_json_extractor_field(field_json)
+
+    s = Session()
+    utilbill = s.query(UtilBill).filter(UtilBill.id == bill_id).one()
+    le = LayoutExtractor()
+    input = le._prepare_input(utilbill, _create_bill_file_handler())
+    output = field.get_value(input)
+
+    return jsonify({'field_output': serialize_field(output)}), 200
 
 def create_user_in_db(access_token):
     headers = {'Authorization': 'OAuth ' + access_token}
@@ -611,7 +707,12 @@ api.add_resource(resources.UtilBillListForUserResource,
                  '/utilitybills/user_utilitybills')
 api.add_resource(resources.FlaggedUtilBillListResource,
                  '/utilitybills/flagged_utilitybills')
-
+api.add_resource(resources.ExtractorsListResource, '/extractors')
+api.add_resource(resources.ExtractorResource, '/extractors/<int:id>')
+api.add_resource(resources.ApplierKeyListResource, '/applier-keys')
+api.add_resource(resources.FieldTypesListResource, '/field-data-types')
+api.add_resource(resources.LayoutElementsListResource,
+    '/utilitybills/<int:id>/layout-elements/<string:type>')
 # apparently needed for Apache
 application = app
 

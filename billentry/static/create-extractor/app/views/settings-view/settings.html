@@ -1,0 +1,200 @@
+<!-- 
+ Contains main view for create-extractor UI. 
+ Displays a PDF viewer, and a list of UI elements to create a new layout extractor.
+ -->
+
+<div pdf-panel bill-id="{{ bill_id }}">
+	<div class="pdf-toolbar">
+		<button class="fancy-btn" ng-click="zoomPDF(-0.2)">Zoom In</button>
+		<button class="fancy-btn" ng-click="zoomPDF(0.2)">Zoom Out</button>
+		<span style="color:#9999CC; float:right" ng-if="pdf_data().layout_elements.length">
+			{{ pdf_data().layout_elements.length }} Text Objects
+		</span>
+	</div>
+	<span class="pdf-scroll">
+		<!-- PDF renderer goes here. -->
+		<div class="bbox-drawing-layer"><canvas bbox-drawing></canvas></div>
+	</span>
+</div>
+<div id="separator">&nbsp;</div>
+<div id="extractor-controls">
+	<!-- Extractor-level parameters/settings -->
+	<div id="extractor-settings">
+		<h3>Extractor: <input style="width:60%" class="left-margin textbox-flush" type="text" ng-model="extractor().name"></h3>
+
+		<b> Representative Bill ID </b>
+		<input class="left-margin" type="number" ng-model="extractor().representative_bill_id">
+		<button ng-click="viewBill()">View bill</button>
+		<br><br>
+
+		<b> Origin Regex </b>
+		<input class="left-margin" type="text" ng-model="extractor().origin_regex">
+		<br><br>
+
+		<b> Origin Coordinates </b>
+		<pre class="left-margin bbox-coords">x: {{extractor().origin_x}}, y: {{extractor().origin_y}}</pre>
+		<button class="left-margin" ng-click="updateExtractorOrigin()">Get coords from regex</button>
+		<br><br>
+		<button class="fancy-btn" ng-click="saveExtractor()">Save</button>
+		<button class="left-margin fancy-btn" ng-click="showLoadScreen()">Load</button>
+		<button class="left-margin fancy-btn" ng-click="newExtractor(bill_id)">New</button>
+
+		<hr class="divider">
+	</div>
+
+	<!-- A list of existing extractors in the DB -->
+	<div ng-show="viewLoadScreen">
+		<h3> Available Extractors </h3>
+		<table id="extractors">
+			<colgroup>
+				<col style="width:50px">
+				<col style="max-width:150px">
+			</colgroup>
+			<thead>
+				<tr>
+					<td>ID</td>
+					<td>Name</td>
+				<tr>
+			</thead>
+			<tbody>
+				<tr ng-repeat="ex in availableExtractors" ng-click="chooseExtractor(ex.extractor_id)">
+					<td> {{ ex.extractor_id }} </td>
+					<td> {{ ex.name }} </td>
+				</tr>
+			</tbody>
+		</table>
+		<hr class="divider">
+	</div>
+
+	<!-- List of fields for current extractor -->
+	<div id="fields-list">
+		<h3>Fields</h3>
+		<table id="fields">
+			<colgroup>
+				<col style="width:150px">
+				<col style="width:150px">
+				<col style="width:150px">
+			</colgroup>
+			<thead>
+				<tr>
+					<td>Applier Key</td>
+					<td>Field Type </td>
+					<td>Data Type </td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-repeat="field in extractor().fields" 
+					ng-class="{'disabled': !field.enabled, 'selected': selected.applier_key == field.applier_key}">
+
+					<td ng-click="selectField(field)"> {{ field.applier_key | capitalize }} </td>
+					<td> 
+						<select ng-model="field.discriminator" 
+								ng-values="ftype for ftype in field_types()" 
+								ng-options="ftype | capitalize for ftype in field_types()"
+								ng-disabled="!field.enabled">
+						</select>
+					</td>
+					<td>
+						<select ng-model="field.type" 
+								ng-values="dt for dt in data_types()" 
+								ng-options="dt | capitalize for dt in data_types()	"
+								ng-disabled="!field.enabled">
+						</select>
+					</td>
+					<td>
+						<img class="addbutton" ng-click="enableField(field)" ng-src="{{ field.enabled ? '/icons/delete.png' : '/icons/add.png' }}">
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<hr class="divider">
+	</div> 
+
+	<!-- Settings for individual fields -->
+	<div class="field-settings" ng-show="selected">
+		<h3> {{ selected.applier_key | capitalize }} </h3>
+
+		<b> Page Number </b>
+		<input  type="number"
+				class="left-margin" 
+				ng-model="selected.page_num">
+		</input>
+		<span class="left-margin">to</span> 
+		<input type="number"
+				class="left-margin" 
+				ng-model="selected.maxpage">
+		</input>
+		<br><br>
+
+		<b> Regular Expression </b>
+		<input class="left-margin" type="text" ng-model="selected.bbregex"></input>
+		<br><br>
+
+		<b> Bounding Box </b>
+		<pre class="left-margin bbox-coords editable" 
+			 ng-click="activateBoundingBox()"
+			 ng-model="bboxActive"
+			 ng-class="{ 'active': bboxActive }"> {{ selected.bounding_box | bboxToString }} </pre>
+		<img class="clear-bbox" src="/icons/delete.png" ng-click="clearBoundingBox()">
+		<br><br>
+
+		<b> Corner </b>
+		<select class="left-margin"
+				ng-model="selected.corner"
+				ng-options="c.number as c.name | capitalize for c in corners">
+		</select>
+		<br><br>
+
+		<b> Offset Regex </b>
+		<input class="left-margin" type="text" ng-model="selected.offset_regex"></input>
+		<button ng-click="updateOffset(selected)">Update Offset</button>
+		<br>
+		<div class="field-offset-details" ng-show="selected.offset_obj != null">
+			Found box 
+			<pre class="left-margin bbox-coords" style="padding:0;"> {{  selected.offset_obj | bboxToString }} </pre>
+			<br>
+			on <b>page {{ selected.offset_obj.page_num }}</b> with content "<i>{{ selected.offset_obj.text }}</i>" 
+		</div>
+
+		<div ng-show="selected.discriminator=='tablefield'">
+			<br>
+			<b> Table Start Regex </b>
+			<input class="left-margin" type="text" ng-model="selected.table_start_regex"></input>
+			<br><br>
+
+			<b> Table Stop Regex </b>
+			<input class="left-margin" type="text" ng-model="selected.table_stop_regex"></input>
+			<br><br>
+
+			<b> Multipage Table </b>
+			<input type="checkbox" ng-model="selected.multipage_table">
+			<br><br>
+
+			<b> Top margin for subsequent pages </b>
+			<pre class="left-margin bbox-coords editable"
+				 ng-click="activateTopMargin()"
+				 ng-model="marginActive"
+				 ng-class="{ 'active': marginActive }"> {{ selected.nextpage_top | singleCoordToString:'y' }} </pre>
+			<br><br>
+		</div>
+
+		<hr class="divider">
+	</div>
+
+	<!-- Shows preview of an individual field -->
+	<div class="field-preview" ng-if="selected">
+		<h3> Preview of {{ selected.applier_key | capitalize }}: </h3>
+		<button ng-click="previewField(selected)">Refresh Preview</button>
+		<br><br>
+
+		<b> Field Output: </b>
+		<pre style="white-space: pre-wrap"> {{ selected.type }}: "{{ preview_output | printField:selected.type }}" </pre>
+		<br><br>
+
+		<b> Field JSON (for debug): </b>
+		<pre>{{ selected | json }}</pre>
+		
+		<hr class="divider">
+	</div>
+	
+</div>

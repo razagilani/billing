@@ -44,7 +44,7 @@ MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
 MONGO_COLLECTIONS = ['journal']
 
 #ACCOUNTS_LIST = [100, 101, 102, 103, 104]
-ACCOUNTS_LIST = [1737]
+ACCOUNTS_LIST = [1737, 2448]
 
 # extract database connection parameters from URI in config file
 db_params = get_db_params()
