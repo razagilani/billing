@@ -252,6 +252,7 @@ directive("pdfPanel", ['DBService', 'dataModel', function(DBService, dataModel){
 						},
 						// on error
 						function(){
+							console.log("Failed to get layout elements");
 							scope.pdf_data().layout_elements = null;
 						}
 					)
@@ -273,6 +274,9 @@ directive("pdfPanel", ['DBService', 'dataModel', function(DBService, dataModel){
 					throw "Load Bill Error";
 				};
 
+				// clear these so as not to cause confusion while new bill loads.
+				scope.pdf_data().layout_elements = null;
+				scope.clearCanvas();
 				loadBill()
 				.then(loadPDF)
 				.then(loadLayoutElements)
