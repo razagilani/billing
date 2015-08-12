@@ -9,7 +9,7 @@ Block 1                                        | BLOCK_ONE
 Block 3                                        | BLOCK_THREE                              
 Block 2                                        | BLOCK_TWO                                
 Commodity( Charge)?$                           | COMMODITY                                
-(?<!First|Second|Third)Gas Commodity Charge    | COMMODITY                                
+^Gas Commodity Charge						   | COMMODITY                                
 First Gas Commodity Charge                     | COMMODITY_FIRST_RATE                     
 Second Gas Commodity Charge                    | COMMODITY_SECOND_RATE                    
 Commodity State Tax                            | COMMODITY_STATE_TAX                      
@@ -78,7 +78,7 @@ Public Space Occupancy Surcharge               | PSOS
 Estimated Pepco Avg Charge                     | Pepco Electrical Estimate                
 Residential Aid Discount Surcharge             | RADS                                     
 RBA Rate Adjustment                            | RBA                                      
-Rights? Of Way                                 | RIGHT_OF_WAY                             
+Rights?.Of.Way                                 | RIGHT_OF_WAY                             
 Sales Tax                                      | SALES_TAX                                
 Sales Tax - Commodity                          | SALES_TAX_COMMODITY                      
 Sales Tax - Distribution                       | SALES_TAX_DISTRIBUTION                   
@@ -102,7 +102,8 @@ Summer Peak                                    | SUPPLY_SUMMER_PEAK
 Summer Peak Rate Increase                      | SUPPLY_SUMMER_PEAK_RATE_INCREASE         
 Swing Volume                                   | SWING_VOLUME                             
 System Charge                                  | SYSTEM_CHARGE                            
-Transportation Charge Adjustment               | TCA                                      
+Transportation Charge Adjustment               | TCA
+Total.*Charges                                 | TOTAL_CHARGES   
 Transmission                                   | TRANSMISSION                             
 Minimum charge for transmission                | TRANSMISSION_ENERGY_MINIMUM_CHARGE       
 Utility Tax                                    | UTILITY_TAX                              
