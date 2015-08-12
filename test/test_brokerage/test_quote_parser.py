@@ -247,6 +247,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.07686, q1.price)
+
     def test_amerigreen(self):
         parser = AmerigreenMatrixParser()
         self.assertEqual(0, parser.get_count())
