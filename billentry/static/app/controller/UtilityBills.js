@@ -32,6 +32,9 @@ Ext.define('BillEntry.controller.UtilityBills', {
         ref: 'utilbillNext',
         selector: '[action=utilbillNext]'
     },{
+        ref: 'createExtractor',
+        selector: '[action=createExtractor]',
+    },{
         ref: 'utilbillHelp',
         selector: '[action=utilbillHelp]'
     }],
@@ -61,6 +64,9 @@ Ext.define('BillEntry.controller.UtilityBills', {
             },
             '[action=utilbillNext]': {
                 click: this.incrementAccount
+            },
+            '[action=createExtractor]': {
+                click: this.createExtractor
             },
             '[action=utilbillHelp]': {
                 click: this.handleUtilbillHelp
@@ -397,6 +403,18 @@ Ext.define('BillEntry.controller.UtilityBills', {
         var store = this.getUtilityBillsStore();
         store.getProxy().setExtraParam('id', id);
         store.reload();
+    },
+
+    /* Create a new extractor with the currently selected bill. 
+     This opens the /create-extractor/ page. 
+    */
+    createExtractor: function(){
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var bill_arg = "";
+        if (selected != null){
+            bill_arg = "?bill_id="+selected.get('id');
+        }
+        window.open('/create-extractor/#/settings'+bill_arg);
     },
 
     handleUtilbillHelp: function(){

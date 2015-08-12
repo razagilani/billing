@@ -247,6 +247,11 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
                 disabled: false
             },{
                 xtype: 'button',
+                action: 'createExtractor',
+                text: 'Create Extractor',
+                disabled: false
+            },{
+                xtype: 'button',
                 action: 'utilbillHelp',
                 text: 'Show Utility Bill Help',
                 icon: 'icons/icon-question.png',
