@@ -18,6 +18,7 @@ class QuoteFileProcessor(object):
         14: quote_parsers.DirectEnergyMatrixParser,
         95: quote_parsers.AEPMatrixParser,
         199: quote_parsers.USGEMatrixParser,
+        125: quote_parsers.AmerigreenMatrixParser,
     }
 
     # number of quotes to read and insert at once. larger is faster as long
