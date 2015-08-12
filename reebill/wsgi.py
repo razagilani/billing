@@ -33,7 +33,7 @@ from reebill.reebill_processor import ReebillProcessor
 from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments, BillingError
 from reebill.reports.excel_export import Exporter
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
 from reebill.reebill_model import CustomerGroup
 
 
@@ -67,9 +67,8 @@ def check_authentication():
     """
     from core import config
     if not config.get('reebill', 'authenticate'):
-        if 'user' not in cherrypy.session:
-            cherrypy.session['user'] = UserDAO.default_user
-            return True
+        cherrypy.session['user'] = UserDAO.default_user
+        return True
 
     user_dao = UserDAO()
     if 'reebill_session' in cherrypy.request.cookie:
@@ -249,10 +248,33 @@ class AccountsResource(RESTResource):
         count, result = self.utilbill_views.list_account_status(row['account'])
         return True, {'rows': result, 'results': count}
 
+    def handle_delete(self, *vpath, **params):
+        """
+        handles deleting a utility_account
+        """
+        row = cherrypy.request.json
+        self.utilbill_processor.delete_utility_account(
+            row['utility_account_id'])
+        return True, {}
+
     def handle_put(self, *vpath, **params):
         """ Handles the updates to existing account
         """
         row = cherrypy.request.json
+        if 'accounts_deleted' in row:
+            ua = self.utilbill_processor.move_account_references(
+                row['utility_account_id'], row['accounts_deleted'])
+
+        if 'name' in row:
+            self.utilbill_processor.update_utility_account_name(
+                row['utility_account_id'], row['name']
+            )
+
+        if 'service_type' in row:
+            self.utilbill_processor.update_service_type(
+                row['utility_account_id'], row['service_type']
+            )
+
         if 'utility_account_number' in row:
             self.utilbill_processor.update_utility_account_number(
                 row['utility_account_id'], row['utility_account_number'])
@@ -267,8 +289,48 @@ class AccountsResource(RESTResource):
                 row['utility_account_id'], row['payee']
             )
 
+        if 'discount_rate' in row:
+            self.reebill_processor.update_discount_rate(
+                row['utility_account_id'], row['discount_rate']
+            )
+
+        if 'late_charge_rate' in row:
+            self.reebill_processor.update_late_charge_rate(
+                row['utility_account_id'], row['late_charge_rate']
+            )
+        if {'ba_addressee', 'ba_city', 'ba_postal_code', 'ba_state',
+            'ba_street'}.issubset(set(row)):
+            ba_addressee = row['ba_addressee'] if row['ba_addressee'] else ''
+            ba_city = row['ba_city'] if row['ba_city'] else ''
+            ba_postal_code= row['ba_postal_code'] if row['ba_postal_code'] \
+                else ''
+            ba_state= row['ba_state'] if row['ba_state'] else ''
+            ba_street = row['ba_street'] if row['ba_street'] else ''
+            self.utilbill_processor.update_fb_billing_address(
+                                            row['utility_account_id'],
+                                            ba_addressee,
+                                            ba_city,
+                                            ba_postal_code,
+                                            ba_state,
+                                            ba_street)
+
+        if {'sa_addressee', 'sa_city', 'sa_postal_code', 'sa_state',
+            'sa_street'}.issubset(set(row)):
+            sa_addressee = row['sa_addressee'] if row['sa_addressee'] else ''
+            sa_city = row['sa_city'] if row['sa_city'] else ''
+            sa_postal_code= row['sa_postal_code'] if row['sa_postal_code'] else ''
+            sa_state= row['sa_state'] if row['sa_state'] else ''
+            sa_street = row['sa_street'] if row['sa_street'] else ''
+            self.utilbill_processor.update_fb_service_address(
+                                            row['utility_account_id'],
+                                            sa_addressee,
+                                            sa_city,
+                                            sa_postal_code,
+                                            sa_state,
+                                            sa_street
+            )
         ua = Session().query(UtilityAccount).filter_by(
-            id=row['utility_account_id']).one()
+                id=row['utility_account_id']).one()
         count, result = self.utilbill_views.list_account_status(ua.account)
         return True, {'rows': result, 'results': count}
 
@@ -612,6 +674,14 @@ class UtilBillResource(RESTResource):
 
         elif action == 'compute':
             ub = self.utilbill_processor.compute_utility_bill(utilbill_id)
+
+        elif action == 'replace':
+            est_ub = self.utilbill_processor.get_utilbill(
+                row['estimated_bill_id'])
+            ub = self.utilbill_processor.get_utilbill(
+                row['real_bill_id'])
+            est_ub.replace_estimated_with_complete(ub,
+                                    self.bill_file_handler)
 
         elif action == '':
             period_start = None

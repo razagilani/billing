@@ -4,8 +4,11 @@ code for that is still in other files it should be moved here.
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import functions as func
 from sqlalchemy.orm import joinedload
-from core.model import Session, UtilBill, Register, UtilityAccount, \
+from brokerage.brokerage_model import BrokerageAccount
+from core.model import Session, Register, UtilityAccount, \
     Supplier, Utility, RateClass, SupplyGroup, Charge
+from brokerage.brokerage_model import BrokerageAccount
+from core.model.utilbill import UtilBill, Charge
 from reebill.reebill_model import ReeBill, ReeBillCustomer, ReeBillCharge, CustomerGroup
 
 
@@ -28,8 +31,10 @@ def column_dict_utilbill(self):
                    else self.get_service().capitalize()),
                    ('total_charges', self.target_total),
                    ('computed_total', self.get_total_charges()),
-                   ('reebills', [ur.reebill.column_dict() for ur
-                                 in self._utilbill_reebills]),
+                   ('reebills', [{'sequence': r.sequence,
+                                  'version': r.version,
+                                  'issue_date': r.issue_date,
+                                  } for r in self.reebills]),
                    ('utility', self.utility.name),
                    ('utility_id', self.utility_id),
                    ('supplier', self.get_supplier_name()),
@@ -157,8 +162,8 @@ class Views(object):
           accounts dictionary is returned """
         session = Session()
         utility_accounts = session.query(
-            UtilityAccount, ReeBillCustomer).outerjoin(
-            ReeBillCustomer).options(
+            UtilityAccount, ReeBillCustomer, BrokerageAccount).outerjoin(
+            ReeBillCustomer).outerjoin(BrokerageAccount).options(
                 joinedload('utilbills').joinedload('service_address')
             ).options(
                 joinedload('fb_utility')
@@ -169,7 +174,7 @@ class Views(object):
                 UtilityAccount.account == account)
 
         rows_dict = {}
-        for ua, reebill_customer in utility_accounts:
+        for ua, reebill_customer, ba in utility_accounts:
             name_dict = self._nexus_util.fast_all('billing', ua.account)
             if reebill_customer is None:
                 group_names = []
@@ -180,6 +185,8 @@ class Views(object):
             rows_dict[ua.account] = {
                 'account': ua.account,
                 'utility_account_id': ua.id,
+                'brokerage_account': ba is not None,
+                'reebill_customer': reebill_customer is not None,
                 'fb_utility_name': ua.fb_utility.name,
                 'fb_rate_class': ua.fb_rate_class.name \
                     if ua.fb_rate_class else '',
@@ -190,7 +197,24 @@ class Views(object):
                 'utilityserviceaddress': str(ua.get_service_address()),
                 'tags': group_names,
                 'lastevent': '',
-                'payee': payee
+                'payee': payee,
+                'name':ua.name,
+                'ba_addressee': ua.fb_billing_address.addressee,
+                'ba_city': ua.fb_billing_address.city,
+                'ba_postal_code':ua.fb_billing_address.postal_code,
+                'ba_state':ua.fb_billing_address.state,
+                'ba_street':ua.fb_billing_address.street,
+                'discount_rate': reebill_customer.discountrate if
+                reebill_customer else '',
+                'late_charge_rate':reebill_customer.latechargerate if
+                reebill_customer else '',
+                'service_type': reebill_customer.service if
+                reebill_customer else '',
+                'sa_addressee': ua.fb_service_address.addressee,
+                'sa_city': ua.fb_service_address.city,
+                'sa_postal_code':ua.fb_service_address.postal_code,
+                'sa_state':ua.fb_service_address.state,
+                'sa_street':ua.fb_service_address.street
             }
 
         if account is not None:

@@ -10,6 +10,9 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
     store: 'UtilityBills',
+    selModel: {
+        mode: 'MULTI'
+    },
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -231,21 +234,11 @@ Ext.define('ReeBill.view.utilitybills.UtilityBills', {
             action: 'utilbillToggleProcessed',
             text: 'Toggle Processed',
             disabled: true
-//        },'-',{
-//            xtype: 'button',
-//            action: 'utilbillDla',
-//            text: 'Layout',
-//            disabled: true
-//        },{
-//            xtype: 'button',
-//            action: 'utilbillSlice',
-//            text: 'Identify',
-//            disabled: true
-//        },{
-//            xtype: 'button',
-//            action: 'utilbillResults',
-//            text: 'Review',
-//            disabled: true
+        },{
+            xtype: 'button',
+            action: 'replaceEstWithRealBill',
+            text: 'Replace Estimated Bill By Real',
+            disabled: true
         }]
     }]
 });

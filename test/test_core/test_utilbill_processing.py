@@ -24,8 +24,9 @@ from core import init_model
 from reebill.views import column_dict
 from test import create_tables, clear_db
 from exc import DuplicateFileError, UnEditableBillError, BillingError
-from core.model import UtilBill, UtilityAccount, Utility, Address, Supplier, \
+from core.model import UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register, Charge
+from core.model.utilbill import UtilBill, Charge
 from core.model import Session
 from test import testing_utils
 from test.setup_teardown import create_utilbill_processor, \
@@ -506,47 +507,86 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         _, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
-    @unittest.skip(
-        "It's not possible for a utility bill not to have a total register "
-        "anymore")
-    def test_upload_uility_bill_without_reg_total(self):
-        '''Check that a total register is added to new bills
-        even though some old bills don't have it.
-        '''
+    def test_replace_estimated_bill_with_real(self):
         account = '99999'
+
         s = Session()
+        # one utility bill
+        # service, utility, rate_class are different from the template
+        # account
+        utilbill_path = join(dirname(realpath(__file__)), 'data',
+                             'utility_bill.pdf')
 
-        files = [StringIO(c) for c in 'abc']
+        with open(utilbill_path) as file1:
+            # store args for this utilbill to be re-used below
+            args = [account, file1, date(2012, 1, 1), date(2012, 2, 1),
+                    'electric']
+            utilbill1 = self.utilbill_processor.upload_utility_bill(*args)
+        utilbills_data, count = self.views.get_all_utilbills_json(account,
+                                                                0, 30)
+        self.assertEqual(1, count)
+        self.assertDictContainsSubset({
+            'state': 'Final',
+            'service': 'Gas',
+            'utility': utilbill1.utility.name,
+            'supplier': utilbill1.supplier.name,
+            'period_start': date(2012, 1, 1),
+            'period_end': date(2012, 2, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
 
-        # upload a first utility bill to serve as the "predecessor" for the
-        # next one. this will have only a demand register called so
-        # the total register is missing
-        self.utilbill_processor.upload_utility_bill(
-            account, files.pop(), date(2012, 1, 1), date(2012, 2, 1), 'electric')
-        u = s.query(UtilBill).join(UtilityAccount).filter(UtilityAccount.account == account).one()
-        while len(u._registers) > 0:
-            del u._registers[0]
-        u.registers = [Register(Register.DEMAND, 'MMBTU')]
-        self.assertEqual({Register.DEMAND},
-                         {r.register_binding for r in u.registers})
+        utilbill2 = self.utilbill_processor.upload_utility_bill(account, None, date(2012, 2, 1),
+                                         date(2012, 3, 1), 'electric', state=UtilBill.Estimated)
+        utilbills_data, _ = self.views.get_all_utilbills_json(account, 0, 30)
+        dictionaries = [{
+                            'state': 'Estimated',
+                            'service': 'Gas',
+                            'utility':utilbill2.utility.name,
+                            'supplier': utilbill2.supplier.name,
+                            'period_start': date(2012, 2, 1),
+                            'period_end': date(2012, 3, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                            }, {
+                            'state': 'Final',
+                            'service': 'Gas',
+                            'utility': utilbill1.utility.name,
+                            'supplier': utilbill1.supplier.name,
+                            'period_start': date(2012, 1, 1),
+                            'period_end': date(2012, 2, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                            }]
+        for x, y in zip(dictionaries, utilbills_data):
+            self.assertDictContainsSubset(x, y)
 
-        for service, energy_unit in [('gas', 'therms'), ('electric', 'kWh')]:
-            # the next utility bill will still have the total register (in addition to demand),
-            # and its unit will be 'energy_unit'
-            self.utilbill_processor.upload_utility_bill(
-                account, files.pop(), date(2012, 2, 1), date(2012, 3, 1), service)
-            u = s.query(UtilBill).join(UtilityAccount).filter(
-                UtilityAccount.account == account).order_by(
-                desc(UtilBill.period_start)).first()
-            self.assertEqual({Register.TOTAL, Register.DEMAND},
-                             {r.register_binding for r in u.registers})
-            other = next(
-                r for r in u.registers if r.register_binding == Register.DEMAND)
-            self.assertEqual('MMBTU', other.unit)
-            # NOTE: total register unit is determined by service, not unit in
-            # previous bill
-            s.delete(u)
-            s.flush()
+        utilbill2.replace_estimated_with_complete(utilbill1, self.billupload)
+        utilbills_data, count = self.views.get_all_utilbills_json(account, 0, 30)
+
+        self.assertEqual(1, count)
+        self.assertDictContainsSubset({
+            'state': 'Final',
+            'service': 'Gas',
+            'utility': utilbill1.utility.name,
+            'supplier': utilbill1.supplier.name,
+            'period_start': date(2012, 1, 1),
+            'period_end': date(2012, 2, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
 
     def test_create_utility_bill_for_existing_file(self):
         account = '99999'
@@ -606,7 +646,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             utility_account, file_hash,
             # TODO: add due date
             #due_date=datetime(2000,1,1),
-            target_total=100, service_address=the_address, skip_extraction=True)
+            target_total=100, service_address=the_address)
         # the only one of these arguments that is visible in the UI is "total"
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
