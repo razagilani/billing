@@ -144,7 +144,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     # TODO Use some sort of charge name map
     # TODO also filter by charge type in this query?
     q = Session.query(Charge.rsi_binding).filter(
-        Charge.description==description, bool(Charge.rsi_binding))
+        Charge.description == description, Charge.rsi_binding != '')
     rsi_binding = q.first()
     if rsi_binding is None:
         #TODO what to do if existing RSI binding not found?
