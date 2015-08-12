@@ -4,6 +4,7 @@ specifically on the UtilBill class should go here.
 """
 from collections import OrderedDict
 import re
+import regex
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
@@ -179,8 +180,19 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         raise ConversionError('Multiple (%d) RSI bindings match to charge name '
                               '"%s".' % (len(rsi_bindings), charge_name))
     elif len(rsi_bindings) == 0:
-        raise ConversionError('No RSI bindings match to charge name "%s"' %
-                              charge_name)
+        # if no matches, use fuzzy regexes to find a similar charge
+        # description in the database.
+        s = Session()
+        charges = s.query(Charge.description, Charge.rsi_binding).distinct().all()
+        charge_name_clean = regex.escape(charge_name)
+        for c in charges:
+            # find a name in the database that has an edit distance of 3 from
+            #  the current charge_name.
+            m = regex.match(r'(%s){e<=3}' % charge_name_clean,
+                c.description, regex.IGNORECASE)
+            if (m):
+                return c.rsi_binding
+        raise ConversionError('No RSI bindings match to charge name "%s"' % charge_name)
     return rsi_bindings[0]
 
 
@@ -325,7 +337,9 @@ def pep_old_convert_charges(text):
             type=ct, unit='therms')
 
     charges = []
-    charge_data = [(dist_charges_names, Charge.DISTRIBUTION), (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean, Charge.DISTRIBUTION)]
+    charge_data = [(dist_charges_names, Charge.DISTRIBUTION),
+        (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean,
+        Charge.DISTRIBUTION)] 
     for names, type in charge_data:
         for charge_name in names:
             if not charge_name:
