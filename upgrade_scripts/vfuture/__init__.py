@@ -29,8 +29,6 @@ def create_layout_extractors(s):
     [washington_gas_layout, pepco_2015_layout, pepco_old_layout, bge_layout] \
         = layout_extractors
 
-    print [le.name for le in layout_extractors]
-
     washington_gas_layout.representative_bill_id = 24153
     washington_gas_layout.origin_y=757.755
     for f in washington_gas_layout.fields:
@@ -114,7 +112,7 @@ def create_layout_extractors(s):
         if f.applier_key == UtilBillApplier.NEXT_READ:
             f.bounding_box = BoundingBox(x0=460, y0=676, x1=586, y1=697)
         if f.applier_key == UtilBillApplier.SERVICE_ADDRESS:
-            f.bounding_box = BoundingBox(x0=310, y0=732, x1=555, y1=525)
+            f.bounding_box = BoundingBox(x0=310, y0=732, x1=555, y1=754)
             f.bbregex = r"(.*)\s+Service\s+Address\s(.*)"
         if f.applier_key == UtilBillApplier.BILLING_ADDRESS:
             f.bounding_box = BoundingBox(x0=40, y0=100, x1=200, y1=161)
