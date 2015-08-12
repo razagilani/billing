@@ -644,8 +644,8 @@ class UtilityAccount(Base):
 
 class ChargeNameMap(Base):
     """
-    Represents a mapping between a charge's name/description, and its
-    rsi_binding. Used to relate charges across different bills / utilities.
+    Represents a mapping between a charge's name/description as it appears on a
+    bill, and its standardized name.
     """
 
     __tablename__ = 'charge_name_map'
