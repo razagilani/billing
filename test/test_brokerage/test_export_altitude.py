@@ -20,8 +20,9 @@ from core import altitude, init_model
 from core.altitude import AltitudeBill, AltitudeSupplier, AltitudeUtility, \
     AltitudeAccount
 
-from core.model import UtilBill, UtilityAccount, Utility, Address, Session, \
+from core.model import UtilityAccount, Utility, Address, Session, \
     RateClass, Supplier, Register
+from core.model.utilbill import UtilBill
 from brokerage.brokerage_model import BrokerageAccount
 from brokerage.export_altitude import PGAltitudeExporter, \
     _create_brokerage_accounts_for_utility_accounts, _load_pg_utilbills
