@@ -31,7 +31,8 @@ def upgrade():
     cnm_infile = open(cnm_filename, 'r')
     for line in cnm_infile.readlines():
         (regex, rsi_binding) = re.split(r"\s+\|\s+", line)
-        s.add(ChargeNameMap(display_name_regex=regex, rsi_binding=rsi_binding))
+        s.add(ChargeNameMap(display_name_regex=regex.strip(),
+            rsi_binding=rsi_binding.strip()))
 
     s.commit()
 
