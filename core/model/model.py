@@ -652,9 +652,6 @@ class ChargeNameMap(Base):
 
     charge_name_map_id = Column(Integer, primary_key=True)
 
-    # the utility to which this type of charge belongs
-    utility_id = Column(Integer, ForeignKey('utility.id'))
-
     # a pattern that matches the name of a charge as it is displayed on a bill.
     display_name_regex = Column(String, nullable=False)
 
