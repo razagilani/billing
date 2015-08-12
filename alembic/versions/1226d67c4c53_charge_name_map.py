@@ -17,10 +17,8 @@ import sqlalchemy as sa
 def upgrade():
     op.create_table('charge_name_map',
         sa.Column('charge_name_map_id', sa.Integer(), primary_key=True),
-        sa.Column('utility_id', sa.Integer(), nullable=False),
         sa.Column('display_name_regex', sa.String(), nullable=False),
-        sa.Column('rsi_binding', sa.String(), nullable=False),
-        sa.ForeignKeyConstraint(['utility_id'], ['utility.id']))
+        sa.Column('rsi_binding', sa.String(), nullable=False))
 
 
 def downgrade():

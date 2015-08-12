@@ -430,18 +430,17 @@ class TestTypeConversion(TestCase):
         clear_db()
         # set up a fake charge names map
         charge_names_map = [
-            ChargeNameMap(utility_id=2,
-                display_name_regex="(distribution|customer) charge",
+            ChargeNameMap(display_name_regex="(distribution|customer) charge",
                 rsi_binding='DIST_CHARGE'),
-            ChargeNameMap(utility_id=2, display_name_regex="pgc",
+            ChargeNameMap(display_name_regex="pgc",
                 rsi_binding='PGC_CHARGE'),
-            ChargeNameMap(utility_id=2, display_name_regex="tax",
+            ChargeNameMap(display_name_regex="tax",
                 rsi_binding='TAX'),
-            ChargeNameMap(utility_id=2, display_name_regex="fee",
+            ChargeNameMap(display_name_regex="fee",
                 rsi_binding='FEE'),
-            ChargeNameMap(utility_id=2, display_name_regex="total",
+            ChargeNameMap(display_name_regex="total",
                 rsi_binding='TOTAL_CHARGE'),
-            ChargeNameMap(utility_id=2, display_name_regex="trust fund",
+            ChargeNameMap(display_name_regex="trust fund",
                 rsi_binding='TRUST_FUND')]
         type_conversion._get_charge_names_map = Mock(
             return_value=charge_names_map)
@@ -458,11 +457,9 @@ class TestTypeConversion(TestCase):
             convert_unit('lol not a unit')
 
     def test_process_charge(self):
-        bagel_cnm = ChargeNameMap(utility_id=1,
-            display_name_regex=r"bagel|donut",
+        bagel_cnm = ChargeNameMap(display_name_regex=r"bagel|donut",
             rsi_binding='DELICIOUSNESS_CHARGE')
-        energy_cnm = ChargeNameMap(utility_id=1,
-            display_name_regex="energy charge",
+        energy_cnm = ChargeNameMap(display_name_regex="energy charge",
             rsi_binding='ENERGY_CHARGE')
         charge_names_map = [bagel_cnm, energy_cnm]
 
