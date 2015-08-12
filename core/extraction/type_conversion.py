@@ -2,20 +2,14 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
-from collections import OrderedDict
 import re
 import regex
-from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
-from core import model
-from core.model import Session, RateClass, Utility, Address, Supplier
+
+from core.model import Session, Address, Supplier
 from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
-import core.model.utilbill
-from core.pricing import FuzzyPricingModel
-from exc import ApplicationError, ConversionError
-from core.utilbill_loader import UtilBillLoader
+from exc import ConversionError
 
 
 def convert_table_charges(rows):
@@ -188,9 +182,8 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         for c in charges:
             # find a name in the database that has an edit distance of 3 from
             #  the current charge_name.
-            m = regex.match(r'(%s){e<=3}' % charge_name_clean,
-                c.description, regex.IGNORECASE)
-            if (m):
+            if regex.match(r'(%s){e<=3}' % charge_name_clean, c.description,
+                    regex.IGNORECASE):
                 return c.rsi_binding
         raise ConversionError('No RSI bindings match to charge name "%s"' % charge_name)
     return rsi_bindings[0]
@@ -339,7 +332,7 @@ def pep_old_convert_charges(text):
     charges = []
     charge_data = [(dist_charges_names, Charge.DISTRIBUTION),
         (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean,
-        Charge.DISTRIBUTION)] 
+        Charge.DISTRIBUTION)]
     for names, type in charge_data:
         for charge_name in names:
             if not charge_name:
