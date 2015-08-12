@@ -9,10 +9,7 @@
     },
     "InstanceType" : {
       "Description" : "EC2 instance type",
-      "Type" : "String",
-      "Default" : "t2.micro",
-      "AllowedValues" : ["t2.micro", "t2.small", "t2.medium", "m3.large", "c4.xlarge", "c4.4xlarge"],
-      "ConstraintDescription" : "must be a valid EC2 instance type."
+      "Type" : "String"
     },
     "HostedZone": {
       "Description" : "Hosted Zone ID to add internal dns entries to, must already exist in Route53",
@@ -100,9 +97,10 @@
       "t2.micro"    : { "Arch" : "HVM64"  },
       "t2.small"    : { "Arch" : "HVM64"  },
       "t2.medium"   : { "Arch" : "HVM64"  },
-      "m3.large"   : { "Arch" : "HVM64"  },
+      "t2.large"    : { "Arch" : "HVM64"  },
+      "m3.large"    : { "Arch" : "HVM64"  },
       "c4.xlarge"   : { "Arch" : "HVM64"  },
-      "c4.4xlarge"   : { "Arch" : "HVM64"  }
+      "c4.4xlarge"  : { "Arch" : "HVM64"  }
     },
     "AWSRegionArch2AMI" : {
       "us-east-1"      : { "PV64" : "ami-146e2a7c", "HVM64" : "ami-146e2a7c", "HVMG2" : "ami-3a329952"  },
