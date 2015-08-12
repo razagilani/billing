@@ -176,9 +176,11 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         if re.search(charge_regex, charge_name, re.IGNORECASE):
             rsi_bindings.append(charge_entry.rsi_binding)
     if len(rsi_bindings) > 1:
-        raise ConversionError('Multiple RSI bindings match to charge name.')
+        raise ConversionError('Multiple (%d) RSI bindings match to charge name '
+                              '"%s".' % (len(rsi_bindings), charge_name))
     elif len(rsi_bindings) == 0:
-        raise ConversionError('No RSI bindings match to charge name')
+        raise ConversionError('No RSI bindings match to charge name "%s"' %
+                              charge_name)
     return rsi_bindings[0]
 
 

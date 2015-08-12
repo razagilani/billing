@@ -27,8 +27,6 @@ def upgrade():
 
     init_model()
     s = Session()
-    # TODO
-
     cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'
     cnm_infile = open(cnm_filename, 'r')
     for line in cnm_infile.readlines():
