@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <script type="text/javascript" src="ext/ext-all-dev.js"></script>
+    <link rel="stylesheet" type="text/css"
+          href="ext/resources/css/ext-all-classic.css">
+    <title>Select Login method</title>
+
+    <style type="text/css">
+        body, html{
+            background: #fff !important;
+        }
+        .outerbox {
+            display: table;
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            top: 0px;
+            left: 0px;
+        }
+        .middlebox{
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .innerbox {
+            margin-left: auto;
+            margin-right: auto;
+            width: 300px;
+        }
+        #oauthlink{
+            text-align: center;
+        }
+        #oauthlink a{
+            color: #00A4E4;
+            text-decoration: none;
+        }#oauthlink a:hover{
+            text-decoration: underline;
+        }
+        .flashmessages{
+            width: 100%;
+            min-height: 20px;
+            background: #E7C3C3;
+            color: #A94442;
+            border-radius: 5px;
+            padding: 10px;
+        }
+    </style>
+    <script type="text/javascript">
+            Ext.require([
+                'Ext.form.*',
+                'Ext.data.*'
+            ]);
+            Ext.onReady(function() {
+                Ext.create('Ext.form.Panel', {
+                    url: 'http://' + location.host + '/userlogin',
+                    border: false,
+                    width: 300,
+                    renderTo: 'loginform',
+                    frame: false,
+                    frameHeader: false,
+                    standardSubmit: true,
+                    bodyStyle: {
+                        background: '#fff',
+                        padding: '5px'
+                    },
+                     layout: {
+                        type: 'vbox',
+                        align: 'stretch',
+                        padding: 5
+                    },
+                    defaultType: 'textfield',
+                    items: [
+                        {
+                            name:'email',
+                            fieldLabel:'Email Address',
+                            msgTarget:'side'
+                        },{
+                            name:'password',
+                            fieldLabel:'Password',
+                            inputType:'password',
+                            msgTarget:'side',
+                        },{
+                            name: 'rememberme',
+                            xtype: 'checkbox',
+                            fieldLabel: 'Remember Me'
+                        }
+                    ],
+                    buttons: [
+                        {
+                            text: 'Sign In',
+                            type: 'submit',
+                            formBind: true,
+                            handler: function () {
+                                var form = this.up('form').getForm();
+                                form.submit();
+                            }
+                        }
+                    ]
+                });
+            });
+        </script>
+</head>
+<body>
+    <p align="center">
+        <img src="images/NEXTILITY_LOGO.png" width='300' align="center">
+    </p>
+    <div class='outerbox'>
+        <div class="middlebox">
+            <div class="innerbox">
+                {% with messages = get_flashed_messages() %}
+                  {% if messages %}
+                    <div class="flashmessages">
+                    {% for message in messages %}
+                      <p>{{ message }}</p>
+                    {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
+                <div id="loginform">
+
+                </div>
+                <div id="oauthlink">
+                    <h3>
+                        <a href="/login"> Login with Google </a>
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
