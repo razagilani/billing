@@ -13,10 +13,9 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
 from sqlalchemy.ext.associationproxy import association_proxy
 from core.model.model import physical_unit_type
 
-from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable, \
-    NoSuchBillException
-from core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Charge
+from exc import IssuedBillError, RegisterError, UnEditableBillError, NotIssuable
+from core.model import Base, Address, Register, Session
+from core.model.utilbill import UtilBill, Evaluation, Charge
 from util.units import unit_registry, convert_to_therms
 
 
@@ -54,6 +53,7 @@ class ReeBill(Base):
 
     reebill_customer_id = Column(Integer, ForeignKey('reebill_customer.id'),
                                  nullable=False)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
     billing_address_id = Column(Integer, ForeignKey('address.id'),
                                 nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
@@ -67,43 +67,10 @@ class ReeBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='ReeBill.service_address_id==Address.id')
 
-    _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
-        # NOTE: the "utilbill_reebill" table also has ON DELETE CASCADE in
-        # the db
-        cascade='delete')
-
-    # NOTE on why there is no corresponding 'UtilBill.reebills' attribute: each
-    # 'AssociationProxy' has a 'creator', which is a callable that creates a
-    # new instance of the intermediate class whenever an instance of the
-    # "target" class is appended to the list (in this case, a new instance of
-    # 'UtilbillReebill' to hold each UtilBill). the default 'creator' is just
-    # the intermediate class itself, which works when that class' constructor
-    # has only one argument and that argument is the target class instance. in
-    # this case the 'creator' is 'UtilbillReebill' and its __init__ takes one
-    # UtilBill as its argument. if there were a bidirectional relationship
-    # where 'UtilBill' also had a 'reebills' attribute,
-    # UtilbillReebill.__init__ would have to take both a UtilBill and a ReeBill
-    # as arguments, so a 'creator' would have to be explicitly specified. for
-    # ReeBill it would be something like
-    #     creator=lambda u: UtilbillReebill(u, self)
-    # and for UtilBill,
-    #     creator=lambda r: UtilbillReebill(self, r)
-    # but this will not actually work because 'self' is not available in class
-    # scope; there is no instance of UtilBill or ReeBill at the time this
-    # code is executed. it also does not work to move the code into __init__
-    # and assign the 'utilbills' attribute to a particular ReeBill instance
-    # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
-    # switching to "classical" class-definition style?) but i decided it was
-    # sufficient to have only a one-directional relationship from ReeBill to
-    # UtilBill.
-    utilbills = association_proxy('_utilbill_reebills', 'utilbill')
-
-    @property
-    def utilbill(self):
-        # there should only be one, but some early bills had more than one
-        if self.utilbills == []:
-            return None
-        return self.utilbills[0]
+    # UtilBill.reebills attribute is created for showing the column of
+    # reebill numbers in the ReeBill utility bills grid, but ideally it
+    # should not exist
+    utilbill = relationship('UtilBill', backref='reebills')
 
     # see the following documentation for delete cascade behavior
     charges = relationship('ReeBillCharge', backref='reebill',
@@ -146,18 +113,7 @@ class ReeBill(Base):
         self.billing_address = billing_address or Address()
         self.service_address = service_address or Address()
 
-        # supposedly, SQLAlchemy sends queries to the database whenever an
-        # association_proxy attribute is accessed, meaning that if
-        # 'utilbills' is set before the other attributes above, SQLAlchemy
-        # will try to insert the new row too soon, and fail because many
-        # fields are still null but the columns are defined as not-null. this
-        # can be fixed by setting 'utilbills' last, but there may be a better
-        # solution. see related bug:
-        # https://www.pivotaltracker.com/story/show/65502556
-        if utilbill is None:
-            self.utilbills = []
-        else:
-            self.utilbills = [utilbill]
+        self.utilbill = utilbill
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s>' % (
@@ -231,9 +187,8 @@ class ReeBill(Base):
         for r in self.readings:
             session.delete(r)
 
-        utilbill_register_bindings = list(chain.from_iterable(
-                (r.register_binding for r in u._registers)
-                for u in self.utilbills))
+        utilbill_register_bindings = [r.register_binding for r in
+                                      self.utilbill._registers]
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
@@ -434,7 +389,7 @@ class ReeBill(Base):
             'service_address': address_to_dict(self.service_address),
             'period_start': period_start,
             'period_end': period_end,
-            'utilbill_total': sum(u.get_total_charges()for u in self.utilbills),
+            'utilbill_total': self.utilbill.get_total_charges(),
             # TODO: is this used at all? does it need to be populated?
             'services': [],
             'estimated': self.is_estimated(),
@@ -539,28 +494,6 @@ class ReeBill(Base):
         # register, which may not be correct)
         new_reebill.readings = [r.clone() for r in self.readings]
         return new_reebill
-
-class UtilbillReebill(Base):
-    '''Class corresponding to the "utilbill_reebill" table which represents the
-    many-to-many relationship between "utilbill" and "reebill".'''
-    __tablename__ = 'utilbill_reebill'
-
-    reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
-
-    # there is no delete cascade in this 'relationship' because a UtilBill
-    # should not be deleted when a UtilbillReebill is deleted.
-    utilbill = relationship('UtilBill', backref='_utilbill_reebills')
-
-    def __init__(self, utilbill):
-        # UtilbillReebill has only 'utilbill' in its __init__ because the
-        # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
-        # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
-        # UtilbillReebill will cause a stack overflow in SQLAlchemy code
-        # (without this check).
-        assert isinstance(utilbill, UtilBill)
-
-        self.utilbill = utilbill
 
 # intermediate table for many-to-many relationship. should not be used
 # outside this file.
@@ -675,6 +608,9 @@ class ReeBillCustomer(Base):
 
     def set_payee(self, value):
         self.payee = value
+
+    def set_account(self, utility_account):
+        self.utility_account = utility_account
 
     def get_late_charge_rate(self):
         return self.latechargerate

@@ -10,8 +10,9 @@ from testfixtures.tempdirectory import TempDirectory
 from core import init_model
 from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
-from reebill.reebill_model import ReeBill, UtilBill, ReeBillCustomer, \
+from reebill.reebill_model import ReeBill, ReeBillCustomer, \
     CustomerGroup
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util
@@ -189,7 +190,6 @@ class ReebillProcessingTest(testing_utils.TestCase):
     def test_list_account_status(self):
         # NOTE this test does not add any data to the database beyond what is
         # inserted in setup
-
         utility_account_9 = Session().query(UtilityAccount).filter_by(
             account='99999').one()
         utility_account_0 = Session().query(UtilityAccount).filter_by(
@@ -201,6 +201,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
@@ -210,10 +212,26 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': 'payee'
+            'payee': 'payee',
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street': '123 Test Street',
+            'service_type': 'thermal'
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Other Rate Class',
             'fb_utility_name': 'Other Utility',
             'casualname': 'Example 4',
@@ -223,10 +241,26 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1788 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': "Nextility"
+            'payee': "Nextility",
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer 3 No Rate Strucutres',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street': '123 Test Street',
+            'service_type': 'thermal'
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 3',
@@ -236,7 +270,21 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1787 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': "Someone Else!"
+            'payee': "Someone Else!",
+            'ba_addressee': 'Test Customer 2 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street':'123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer 2',
+            'sa_addressee': 'Test Customer 2 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street':'123 Test Street',
+            'service_type': 'thermal'
         }], data)
 
         # get only one account
@@ -245,6 +293,8 @@ class ReebillProcessingTest(testing_utils.TestCase):
         self.assertEqual([{
             'utility_account_id': utility_account_9.id,
             'account': '99999',
+            'brokerage_account': False,
+            'reebill_customer': True,
             'fb_rate_class': 'Test Rate Class Template',
             'fb_utility_name': 'Test Utility Company Template',
             'casualname': 'Example 1',
@@ -254,7 +304,21 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
             'tags': '',
-            'payee': 'payee'
+            'payee': 'payee',
+            'ba_addressee': 'Test Customer 1 Billing',
+            'ba_city': 'Test City',
+            'ba_postal_code': '12345',
+            'ba_state': 'XX',
+            'ba_street': '123 Test Street',
+            'discount_rate': 0.12,
+            'late_charge_rate': 0.34,
+            'name': 'Test Customer',
+            'sa_addressee': 'Test Customer 1 Service',
+            'sa_city': 'Test City',
+            'sa_postal_code': '12345',
+            'sa_state': 'XX',
+            'sa_street':'123 Test Street',
+            'service_type': 'thermal'
         }], data)
 
     def test_set_payee_for_utility_account(self):
@@ -1229,13 +1293,13 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             self.state_db.get_reebill(account, 2, version=0)
         self.assertEquals(1, Session().query(ReeBill).count())
         self.assertEquals([(1,)], Session().query(ReeBill.sequence).all())
-        self.assertEquals([utilbill], reebill.utilbills)
+        self.assertEquals(utilbill, reebill.utilbill)
 
         # issued reebill should not be deletable
         self.reebill_processor.issue(account, 1)
         self.assertEqual(1, reebill.issued)
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertEqual(utilbill, reebill.utilbill)
+        self.assertEqual(reebill, utilbill.reebills[0])
         self.assertRaises(IssuedBillError,
                           self.reebill_processor.delete_reebill, account, 1)
 
@@ -1251,8 +1315,8 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         # original version should still be attached to utility bill
         # TODO this will have to change. see
         # https://www.pivotaltracker.com/story/show/31629749
-        self.assertEqual([utilbill], reebill.utilbills)
-        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertEqual(utilbill, reebill.utilbill)
+        self.assertEqual(reebill, utilbill.reebills[0])
 
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for

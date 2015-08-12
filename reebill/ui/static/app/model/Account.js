@@ -13,6 +13,8 @@ Ext.define('ReeBill.model.Account', {
         {name: 'codename', type: 'string'},
         {name: 'casualname', type: 'string'},
         {name: 'primusname', type: 'string'},
+        {name: 'brokerage_account', type: 'boolean'},
+        {name: 'reebill_customer', type:'boolean'},
 
         // Needed when a new account is created
         {name: 'name', type: 'string'},
@@ -30,7 +32,10 @@ Ext.define('ReeBill.model.Account', {
         {name: 'sa_street', type: 'string'},
         {name: 'service_type', type: 'string'},
         {name: 'template_account'},
-        {name: 'payee', type:'string'}
+        {name: 'payee', type:'string'},
+
+        // Needed to update references in an account being merged
+        {name: 'accounts_deleted'}
 
     ],
     idProperty: 'utility_account_id'

@@ -18,7 +18,7 @@ from mock import Mock
 from test import init_test_config
 init_test_config()
 
-from core.model import UtilBill
+from core.model.utilbill import UtilBill
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
 from exc import MissingFileError, DuplicateFileError

@@ -24,7 +24,9 @@ from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, UtilBill, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
+
+from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
@@ -155,6 +157,7 @@ class BaseResource(Resource):
             'supply_choice_id': String,
             'processed': Boolean,
             'flagged': CallableField(Boolean(), attribute='is_flagged'),
+            'flagged_by': CallableField(String(), attribute='get_flagged_by_user'),
             'due_date': IsoDatetime,
             'wiki_url': WikiUrlField, 'tou': Boolean,
             'meter_identifier': CallableField(
@@ -320,7 +323,7 @@ class UtilBillResource(BaseResource):
         self.utilbill_processor.compute_utility_bill(id)
 
         if row['flagged'] is True:
-            utilbill.flag()
+            utilbill.flag(current_user)
         elif row['flagged'] is False:
             utilbill.un_flag()
 
@@ -379,8 +382,7 @@ class UploadUtilityBillResource(BaseResource):
         for hash_digest in session.get('hash-digest'):
             # skip extracting data because it's currently slow
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, hash_digest, service_address=address,
-                skip_extraction=True)
+                utility_account, hash_digest, service_address=address)
             s.add(ub)
         # remove the consumed hash-digest from session
         session.pop('hash-digest')
@@ -589,7 +591,7 @@ class UtilBillListForUserResource(BaseResource):
 
         s = Session()
         utilbills = s.query(BEUtilBill)\
-            .join(BillEntryUser)\
+            .join(BillEntryUser, BillEntryUser.id==BEUtilBill.billentry_user_id)\
             .filter(and_(
                 BEUtilBill.billentry_date >= args['start'],
                 BEUtilBill.billentry_date < args['end'],

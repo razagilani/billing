@@ -6,7 +6,10 @@ from sqlalchemy import func
 
 from core.bill_file_handler import BillFileHandler
 from core.extraction import Main, Extractor, ExtractorResult, Applier
-from core.model import Session, UtilBill
+from core.extraction.applier import UtilBillApplier
+from core.extraction.extraction import verify_field
+from core.model import Session
+from core.model.utilbill import UtilBill
 from core.utilbill_loader import UtilBillLoader
 from core import init_config, init_celery, init_model
 
@@ -90,8 +93,8 @@ def test_bill(self, extractor_id, bill_id):
     :return: {
         extractor_id, bill_id : the IDs of the current extractor and bill
         num_fields : the total number of fields that should be extracted
-        fields : {name:value, ...} for each field name in Applier.KEYS.
-                Value is None if it could not be recovered
+        fields : {name:0/1, ...} for each field name in Applier.KEYS.
+                Value is 1 if it could be recovered, 0 otherwise
         date : The bill's period end date, read from the database, or if not
         in the database, from the bill.
                 If neither succeeds, this is None. 'date' is used to group
@@ -114,18 +117,18 @@ def test_bill(self, extractor_id, bill_id):
         'extractor_id': extractor_id,
         'bill_id': bill_id,
         'num_fields': len(applier_keys),
-        'fields': {f:None for f in applier_keys},
+        'fields': {f:0 for f in applier_keys},
         'fields_correct': {f: 0 for f in applier_keys},
         'fields_incorrect': {f: 0 for f in applier_keys},
     }
 
     # Store field values for each successful result
-    # Note: 'good' is of type [(field, value), ...]
+    # Note: 'good' is of type {applier_key: value, ...}
     bill_end_date = None
-    good, error = extractor._get_values(bill, bill_file_handler)
-    for applier_key, value in good:
-        response['fields'][applier_key] = value
-        if applier_key == Applier.END:
+    good, error = extractor.get_values(bill, bill_file_handler)
+    for applier_key, value in good.iteritems():
+        response['fields'][applier_key] = 1
+        if applier_key == UtilBillApplier.END:
             bill_end_date = value
 
     # get bill period end date from DB, or from extractor
@@ -143,10 +146,10 @@ def test_bill(self, extractor_id, bill_id):
     response['verified'] = 0
     if (isinstance(bill, BEUtilBill) and bill.is_entered()) or \
             bill.processed:
-        if good:
+        if len(good.keys()) > 0:
             response['verified'] = 1
-        for applier_key, field_value in good:
-            db_val = Applier.GETTERS[applier_key](bill)
+        for applier_key, field_value in good.iteritems():
+            db_val = UtilBillApplier.GETTERS[applier_key](bill)
             if not db_val:
                 continue
 
@@ -160,7 +163,7 @@ def test_bill(self, extractor_id, bill_id):
                 applier_key, field_value, db_val)
 
     # print out debug information in celery log
-    debug = False
+    debug = True
     if len(good) != len(extractor.fields) and debug:
         print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name
@@ -245,7 +248,7 @@ def reduce_bill_results(self, results):
         # count number of successfully read fields
         success_fields = 0
         for k in fields.keys():
-            if r['fields'][k] is not None:
+            if r['fields'][k]:
                 success_fields += 1
                 fields[k] += 1
                 dates[bill_date_format]['fields'][k] += 1
@@ -297,26 +300,6 @@ def reduce_bill_results(self, results):
     if q.count():
         extractor_result = q.one()
         extractor_result.set_results(response)
-    s.commit()
 
     return response
 
-def verify_field(applier_key, extracted_value, db_value):
-    """
-    Compares an extracted value of a field to the corresponding value in the
-    database
-    :param applier_key: The applier key of the field
-    :param extracted_value: The value extracted from the PDF
-    :param db_value: The value already in the database
-    :return: Whether these values match.
-    """
-    if applier_key == Applier.RATE_CLASS:
-        subregex = r"[\s\-_]+"
-        exc_string = re.sub(subregex, "_", extracted_value.lower().strip())
-        exc_string = re.sub(r"pepco_", "", exc_string)
-        db_string = re.sub(subregex, "_", db_value.name.lower().strip())
-    else:
-        # don't strip extracted value, so we can catch extra whitespace
-        exc_string = str(extracted_value)
-        db_string = str(db_value).strip()
-    return exc_string == db_string

@@ -113,7 +113,7 @@ class ReebillFileHandler(object):
         return {
             'account': reebill.get_account(),
             'sequence': str(reebill.sequence),
-            'begin_period': reebill.utilbills[0].period_start,
+            'begin_period': reebill.utilbill.period_start,
             'manual_adjustment': reebill.manual_adjustment,
             'balance_forward': reebill.balance_forward,
             'payment_received': reebill.payment_received,
