@@ -212,12 +212,19 @@ Ext.define('ReeBill.controller.Accounts', {
     handleFilter: function( combo, newValue, oldValue, eOpts) {
         // We're filtering every record, so we have to use AccountsStore
         // and not AccountsMemoryStore
-        var memStore = this.getAccountsStore();
+        // We're filtering every record, so we have to use AccountsStore
+        // and not AccountsMemoryStore
+        var accountsStore = this.getAccountsStore();
         var prefStore = this.getPreferencesStore();
-        if(memStore.count()!=0 && prefStore.count()!=0 && newValue){
+        var allRecords = accountsStore.getRange();
+        var filter = this.getAccountsFilterStore().findRecord('value', combo.getValue());
+        var filterFn = filter.get('filter').filterFn;
+        accountsStore.clearFilter(true);
+        accountsStore.filter({filterFn: filterFn});
+
+        if(accountsStore.count()!=0 && prefStore.count()!=0 && newValue){
             var rec= prefStore.findRecord('key', 'filtername');
             rec.set('value', newValue);
-            memStore.loadPage(1);
         }
     },
 
