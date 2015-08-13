@@ -199,11 +199,12 @@ class Field(model.Base):
         type_convert_func = self.TYPES[self.type]
         if self._value is None or input != self._input:
             self._input = input
-            value_str = self._extract(input)
+            value_output = self._extract(input)
             try:
-                value = type_convert_func(value_str)
+                value = type_convert_func(value_output)
             except Exception as e:
                 # don't clutter log files with huge strings
+                value_str = str(value_output)
                 if len(value_str) > 20:
                     value_str = value_str[:20] + '...'
                 raise ConversionError(
