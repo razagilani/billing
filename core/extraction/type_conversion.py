@@ -192,7 +192,10 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
                 if min_distance is None or edit_distance < min_distance:
                     min_distance = sum(m.fuzzy_counts)
                     closest_charge = c
-        return closest_charge
+        if closest_charge is not None:
+            return closest_charge
+        raise ConversionError('No RSI binding found for charge name "%s"' %
+                              charge_name)
     return rsi_bindings[0]
 
 
