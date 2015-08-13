@@ -143,7 +143,8 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     rsi_binding = _get_rsi_binding_from_name(charge_names_map, description)
     if rsi_binding is None:
         # TODO what to do if existing RSI binding not found?
-        pass
+        # right now simply skip this charge by returning None
+        return None
 
     return Charge(description=description, unit=unit, rate=rate,
         rsi_binding=rsi_binding, type=ctype, target_total=target_total)
@@ -177,15 +178,21 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         # if no matches, use fuzzy regexes to find a similar charge
         # description in the database.
         s = Session()
-        charges = s.query(Charge.description, Charge.rsi_binding).distinct().all()
+        charges = s.query(Charge.description,Charge.rsi_binding).filter(
+            Charge.description != 'New Charge - Insert description '
+                                  'here').distinct().all()
         charge_name_clean = regex.escape(charge_name)
+        min_distance = None
+        closest_charge = None
         for c in charges:
-            # find a name in the database that has an edit distance of 3 from
-            #  the current charge_name.
-            if regex.match(r'(%s){e<=3}' % charge_name_clean, c.description,
-                    regex.IGNORECASE):
-                return c.rsi_binding
-        raise ConversionError('No RSI bindings match to charge name "%s"' % charge_name)
+            m = regex.match(r'(%s){e<=10}' % charge_name_clean, c.description,
+                    regex.IGNORECASE, regex.BESTMATCH)
+            if m:
+                edit_distance = sum(m.fuzzy_counts)
+                if min_distance is None or edit_distance < min_distance:
+                    min_distance = sum(m.fuzzy_counts)
+                    closest_charge = c
+        return closest_charge
     return rsi_bindings[0]
 
 
