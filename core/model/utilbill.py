@@ -8,6 +8,7 @@ from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
+from re import sub
 from sqlalchemy import CheckConstraint, Column, String, Integer, ForeignKey, \
     Date, Boolean, Float, DateTime, Enum, inspect
 from sqlalchemy.orm import relationship, backref, object_session
@@ -878,6 +879,18 @@ class Charge(Base):
         if filter_builtins:
             return [var for var in var_names if not Charge._is_builtin(var)]
         return list(var_names)
+
+    @staticmethod
+    def description_to_rsi_binding(charge_description):
+        """
+        Convert the name of a charge as displayed on a bill to a form that
+        could be used as a standardized name.
+        :param charge_description: display name of the charge (string)
+        :return: name converted to standardized name: all caps, no leading or
+        trailing whitespace, whitespace between words replaced by
+        underscores.
+        """
+        return sub('(\s|_)+', '_', charge_description.strip().upper())
 
     @staticmethod
     def get_simple_formula(register_binding):
