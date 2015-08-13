@@ -620,6 +620,23 @@ class TestIntegration(TestCase):
         account = UtilityAccount('', '123', None, None, None, Address(),
                                  Address())
 
+        #TODO add charge name map
+        self.charge_names_map = [
+            ChargeNameMap(display_name_regex="(distribution|customer) charge",
+                rsi_binding='DISTRIBUTION_CHARGE'),
+            ChargeNameMap(display_name_regex="peak",
+                rsi_binding='PEAK_USAGE_CHARGE'),
+            ChargeNameMap(display_name_regex="pgc",
+                rsi_binding='PGC_CHARGE'),
+            ChargeNameMap(display_name_regex="tax",
+                rsi_binding='TAX'),
+            ChargeNameMap(display_name_regex="rights?.of.way",
+                rsi_binding='RIGHT_OF_WAY'),
+            ChargeNameMap(display_name_regex="total",
+                rsi_binding='TOTAL_CHARGE'),
+            ChargeNameMap(display_name_regex="trust fund",
+                rsi_binding='TRUST_FUND')]
+
         # create bill with file
         self.bill = UtilBill(account, utility, rate_class)
         with open(self.EXAMPLE_FILE_PATH, 'rb') as bill_file:
@@ -659,7 +676,7 @@ class TestIntegration(TestCase):
         ]
 
         e2 = TextExtractor(name='Another')
-        Session().add_all([self.bill, e1, e2])
+        Session().add_all(self.charge_names_map + [self.bill, e1, e2])
         self.e1, self.e2 = e1, e2
 
     def tearDown(self):
@@ -677,34 +694,35 @@ class TestIntegration(TestCase):
         # Charges are temporarily disabled, until a better way to disable
         # specific fields is put into release 30
 
-        # expected = [
-        #      Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
-        #             target_total=158.7, type=D, unit='therms'),
-        #      Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
-        #             type=D, unit='therms'),
-        #      Charge('PGC', name='PGC', target_total=417.91, type=S,
-        #             unit='therms'),
-        #      Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
-        #             target_total=15.79, type=D, unit='therms'),
-        #      Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
-        #             target_total=13.42, type=D, unit='therms'),
-        #      Charge('SETF', name='Sustainable Energy Trust Fund',
-        #             target_total=7.06, type=D, unit='therms'),
-        #      Charge('EATF', name='Energy Assistance Trust Fund',
-        #             target_total=3.03, type=D, unit='therms'),
-        #      Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
-        #             type=D, unit='therms'),
-        #      Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
-        #             unit='therms')]
-        #
-        # self.assertEqual(len(expected), len(self.bill.charges))
-        # for expected_charge, actual_charge in zip(expected, self.bill.charges):
-        #     self.assertEqual(expected_charge.rsi_binding,
-        #                      actual_charge.rsi_binding)
-        #     self.assertEqual(expected_charge.name, actual_charge.name)
-        #     self.assertEqual(expected_charge.rate, actual_charge.rate)
-        #     self.assertEqual(expected_charge.target_total,
-        #                      actual_charge.target_total)
+        expected = [
+             Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
+                    target_total=158.7, type=D, unit='therms'),
+             Charge('DISTRIBUTION_CHARGE', name='Customer Charge',
+                 target_total=14.0,
+                    type=D, unit='therms'),
+             Charge('PGC_CHARGE', name='PGC', target_total=417.91, type=S,
+                    unit='therms'),
+             Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
+                    target_total=15.79, type=D, unit='therms'),
+             Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
+                    target_total=13.42, type=D, unit='therms'),
+             Charge('TRUST_FUND', name='Sustainable Energy Trust Fund',
+                    target_total=7.06, type=D, unit='therms'),
+             Charge('TRUST_FUND', name='Energy Assistance Trust Fund',
+                    target_total=3.03, type=D, unit='therms'),
+             Charge('TAX', name='Delivery Tax', target_total=39.24,
+                    type=D, unit='therms'),
+             Charge('TAX', name='Sales Tax', target_total=38.48, type=D,
+                    unit='therms')]
+
+        self.assertEqual(len(expected), len(self.bill.charges))
+        for expected_charge, actual_charge in zip(expected, self.bill.charges):
+            self.assertEqual(expected_charge.rsi_binding,
+                             actual_charge.rsi_binding)
+            self.assertEqual(expected_charge.name, actual_charge.name)
+            self.assertEqual(expected_charge.rate, actual_charge.rate)
+            self.assertEqual(expected_charge.target_total,
+                             actual_charge.target_total)
 
         # TODO: this seems to fail with "" as the rate class name, only when
         # run as part of the whole test_extraction module or larger unit,
@@ -780,15 +798,14 @@ class TestIntegration(TestCase):
         field_names = ['end', 'charges', 'energy', 'start', 'rate class',
             'next read']
         expected_fields = {fname:1 for fname in field_names}
-        expected_fields['charges'] = 0
         expected_dates = {'2014-04':
-                               {'all_count': 0,
+                               {'all_count': 1,
                                 'total_count': 1,
                                 'any_count': 1,
                                 'fields': expected_fields}}
         expected_result = {'total_count': 1,
                            'any_count': 1,
-                           'all_count': 0,
+                           'all_count': 1,
                            'nbills': 4,
                            'failed': 1,
                            'stopped': 1,
