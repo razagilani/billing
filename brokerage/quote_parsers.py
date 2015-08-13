@@ -419,22 +419,7 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 1000.
-                if rate_class_ids is not None:
-                    for rate_class_id in rate_class_ids:
-                        quote = MatrixQuote(
-                            start_from=start_from, start_until=start_until,
-                            term_months=term_months, valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
-                            min_volume=min_vol, limit_volume=max_vol,
-                            rate_class_alias=rate_class_alias,
-                            purchase_of_receivables=(special_options == 'POR'),
-                            price=price)
-                        # TODO: rate_class_id should be determined automatically
-                        # by setting rate_class
-                        if rate_class_id is not None:
-                            quote.rate_class_id = rate_class_id
-                        yield quote
-                else:
+                for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._date,
@@ -443,6 +428,10 @@ class DirectEnergyMatrixParser(QuoteParser):
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
                         price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class_id is not None:
+                        quote.rate_class_id = rate_class_id
                     yield quote
 
 
