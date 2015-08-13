@@ -1,115 +1,115 @@
-Administrative Credit Large Commercial         | ACLC
-Administrative Credit                          | ADMIN_CREDIT
-All Applicable Riders                          | ALL_APPLICABLE_RIDERS
-APRP Adjustment                                | APRP_ADJUSTMENT
-APRP Surcharge                                 | APRP_SURCHARGE
-Balancing( Service Fee)?                       | BALANCING
-Baseline Gas Commodity Charge                  | BASELINE
-Block 1                                        | BLOCK_ONE
-Block 3                                        | BLOCK_THREE
-Block 2                                        | BLOCK_TWO
-Commodity( Charge)?$                           | COMMODITY
-^Gas Commodity Charge                          | COMMODITY
-First Gas Commodity Charge                     | COMMODITY_FIRST_RATE
-Second Gas Commodity Charge                    | COMMODITY_SECOND_RATE
-Commodity State Tax                            | COMMODITY_STATE_TAX
-Third Gas Commodity Charge                     | COMMODITY_THIRD_RATE
-Commodity total                                | COMMODITY_TOTAL
-COMM LEAC                                      | COMM_LEAC
-(Customer|Consumer) Charge                     | CUSTOMER_CHARGE
-Contract Volume                                | CONTRACT_VOLUME
-State Sales Tax DC                             | DC_SALES_TAX_COMMODITY
-Delivery Service Demand                        | DELIVERY_DEMAND
-Delivery State Tax                             | DELIVERY_STATE_TAX
-Delivery[ \-]+Tax                              | DELIVERY_TAX
-Demand( Charges?)?$                            | DEMAND
-^Distribution( Charges?)?$                     | DISTRIBUTION
-Distribution( Charges?)?[ \-]+First Block      | DISTRIBUTION_CHARGES_FIRST_BLOCK
-Distribution( Charges?)?[ \-]+Second Block     | DISTRIBUTION_CHARGES_SECOND_BLOCK
-Energy Assistance Trust Fund                   | EATF
-Energy Cost Adjustment                         | ECA
-EmPower MD Charge MDT                          | EMPOWER
-Energy Charge(.*)(First)?                      | ENERGY_CHARGE
-Energy Charge - Next                           | ENERGY_CHARGE_2
+Administrative_Credit_Large_Commercial         | ACLC
+Administrative_Credit                          | ADMIN_CREDIT
+All_Applicable_Riders                          | ALL_APPLICABLE_RIDERS
+APRP_Adjustment                                | APRP_ADJUSTMENT
+APRP_Surcharge                                 | APRP_SURCHARGE
+Balancing(_Service_Fee)?                       | BALANCING
+Baseline_Gas_Commodity_Charge                  | BASELINE
+Block_1                                        | BLOCK_ONE
+Block_3                                        | BLOCK_THREE
+Block_2                                        | BLOCK_TWO
+Commodity(_Charge)?$                           | COMMODITY
+^Gas_Commodity_Charge                          | COMMODITY
+First_Gas_Commodity_Charge                     | COMMODITY_FIRST_RATE
+Second_Gas_Commodity_Charge                    | COMMODITY_SECOND_RATE
+Commodity_State_Tax                            | COMMODITY_STATE_TAX
+Third_Gas_Commodity_Charge                     | COMMODITY_THIRD_RATE
+Commodity_total                                | COMMODITY_TOTAL
+COMM_LEAC                                      | COMM_LEAC
+(Customer|Consumer)_Charge                     | CUSTOMER_CHARGE
+Contract_Volume                                | CONTRACT_VOLUME
+State_Sales_Tax_DC                             | DC_SALES_TAX_COMMODITY
+Delivery_Service_Demand                        | DELIVERY_DEMAND
+Delivery_State_Tax                             | DELIVERY_STATE_TAX
+Delivery_+Tax                                  | DELIVERY_TAX
+Demand(_Charges?)?$                            | DEMAND
+^Distribution(_Charges?)?$                     | DISTRIBUTION
+Distribution(_Charges?)?_+First_Block          | DISTRIBUTION_CHARGES_FIRST_BLOCK
+Distribution(_Charges?)?_+Second_Block         | DISTRIBUTION_CHARGES_SECOND_BLOCK
+Energy_Assistance_Trust_Fund                   | EATF
+Energy_Cost_Adjustment                         | ECA
+EmPower_MD_Charge_MDT                          | EMPOWER
+Energy_Charge(.*)(First)?                      | ENERGY_CHARGE
+Energy_Charge_Next                             | ENERGY_CHARGE_2
 Efficiency                                     | ENERGY_EFFICIENCY_CHARGE
-Excise Tax                                     | EXCISE_TAX
-Marginal Fuel Rate                             | FLAT_RATE
-Franchise Tax                                  | FRANCHISE_TAX
+Excise_Tax                                     | EXCISE_TAX
+Marginal_Fuel_Rate                             | FLAT_RATE
+Franchise_Tax                                  | FRANCHISE_TAX
 Fuel                                           | FUEL
-Gas PPP Surcharge                              | GAS_PPP_1
-Gas Service Over Baseline                      | GAS_SERVICE_NON_BASELINE
-Gas Cost Adjustment Charges                    | GCA_CHARGE
-Generation( Charges?)?$                        | GENERATION
-Generation Maximum Demand                      | GENERATION_MAX_DEMAND
-Generation Minimum Charge                      | GENERATION_MIN_CHARGE
-Gross Receipts Tax                             | GROSS_RECEIPTS_TAX
-GSA Volume                                     | GSA_VOLUME
-Generation - Int-Peak Energy                   | INTERMEDIATE_PEAK_ENERGY
-IRP Cost Recovery                              | IRP
-Late Payment( Charge)?                         | LATE_PAYMENT
-Los Angeles City Users Tax                     | LA_CITY_USERS
-LN Loss Surcharge                              | LN_LOSS_SUR
-Local Tax                                      | LOCAL_TAX
-LP LEAC                                        | LP_LEAC
-MD Gross Receipts Surcharge                    | MD_GROSS_RECEIPTS_SURCHARGE
-MD GRT Surcharge                               | MD_GRT_SURCHARGE
-MD Distribution Sales Tax                      | MD_STATE_SALES_TAX
-MD (Supply )?Sales Tax                         | MD_SUPPLY_SALES_TAX
-Md Universal Service Prog.                     | MD_UNIVERSAL
-Montgomery County Surcharge                    | MONT_COUNTY_SURCHARGE
-Natural Gas                                    | NG_SUPPLY
-Generation - Off-Peak Energy                   | OFF_PEAK_ENERGY
-Generation - On-Peak Energy                    | ON_PEAK_ENERGY
-Over Baseline                                  | OVER_BASELINE
-PBF Surcharge                                  | PBF
-Procurement cost adjustment                    | PCA
-Procurement Cost Adjustment - Small Commercial | PCASC
-Peak Usage Charge                              | PEAK_USAGE
-Penalty Gas Usage                              | PENALTY_GAS_USAGE
-Rate per Therm                                 | PER_THERM_RATE
-Peak Gas Charge                                | PGC
+Gas_PPP_Surcharge                              | GAS_PPP_1
+Gas_Service_Over_Baseline                      | GAS_SERVICE_NON_BASELINE
+Gas_Cost_Adjustment_Charges                    | GCA_CHARGE
+Generation(_Charges?)?$                        | GENERATION
+Generation_Maximum_Demand                      | GENERATION_MAX_DEMAND
+Generation_Minimum_Charge                      | GENERATION_MIN_CHARGE
+Gross_Receipts_Tax                             | GROSS_RECEIPTS_TAX
+GSA_Volume                                     | GSA_VOLUME
+Generation_Int_Peak_Energy                     | INTERMEDIATE_PEAK_ENERGY
+IRP_Cost_Recovery                              | IRP
+Late_Payment(_Charge)?                         | LATE_PAYMENT
+Los_Angeles_City_Users_Tax                     | LA_CITY_USERS
+LN_Loss_Surcharge                              | LN_LOSS_SUR
+Local_Tax                                      | LOCAL_TAX
+LP_LEAC                                        | LP_LEAC
+MD_Gross_Receipts_Surcharge                    | MD_GROSS_RECEIPTS_SURCHARGE
+MD_GRT_Surcharge                               | MD_GRT_SURCHARGE
+MD_Distribution_Sales_Tax                      | MD_STATE_SALES_TAX
+MD_(Supply_)?Sales_Tax                         | MD_SUPPLY_SALES_TAX
+Md_Universal_Service_Prog.                     | MD_UNIVERSAL
+Montgomery_County_Surcharge                    | MONT_COUNTY_SURCHARGE
+Natural_Gas                                    | NG_SUPPLY
+Generation_Off_Peak_Energy                     | OFF_PEAK_ENERGY
+Generation_On_Peak_Energy                      | ON_PEAK_ENERGY
+Over_Baseline                                  | OVER_BASELINE
+PBF_Surcharge                                  | PBF
+Procurement_cost_adjustment                    | PCA
+Procurement_Cost_Adjustment_Small_Commercial   | PCASC
+Peak_Usage_Charge                              | PEAK_USAGE
+Penalty_Gas_Usage                              | PENALTY_GAS_USAGE
+Rate_per_Therm                                 | PER_THERM_RATE
+Peak_Gas_Charge                                | PGC
 PGC                                            | PGC
-Prince George's County Energy Tax              | PG_COUNTY_ENERGY_TAX
-Pilot Surcharge                                | PILOT_SUR
-Power Purchase Adjustment                      | PPA
-Public Space Occupancy Surcharge               | PSOS
-(CARE )?Public Purpose Surcharge               | PUBLIC_PURPOSE_SURCHARGE
-Estimated Pepco Avg Charge                     | Pepco Electrical Estimate
-Residential Aid Discount Surcharge             | RADS
-RBA Rate Adjustment                            | RBA
+Prince_George's_County_Energy_Tax              | PG_COUNTY_ENERGY_TAX
+Pilot_Surcharge                                | PILOT_SUR
+Power_Purchase_Adjustment                      | PPA
+Public_Space_Occupancy_Surcharge               | PSOS
+(CARE_)?Public_Purpose_Surcharge               | PUBLIC_PURPOSE_SURCHARGE
+Estimated_Pepco_Avg_Charge                     | Pepco Electrical Estimate
+Residential_Aid_Discount_Surcharge             | RADS
+RBA_Rate_Adjustment                            | RBA
 Rights?.Of.Way                                 | RIGHT_OF_WAY
-Sales Tax                                      | SALES_TAX
-Sales Tax - Commodity                          | SALES_TAX_COMMODITY
-Sales Tax - Distribution                       | SALES_TAX_DISTRIBUTION
-Service Charge                                 | SERVICE_CHARGE
+Sales_Tax                                      | SALES_TAX
+Sales_Tax_Commodity                            | SALES_TAX_COMMODITY
+Sales_Tax_Distribution                         | SALES_TAX_DISTRIBUTION
+Service_Charge                                 | SERVICE_CHARGE
 Subtotal									   | SUBTOTAL
-Sustain(able)? Energy Trust Fund               | SETF
-South Jersey Energy Charge                     | SOUTH_JERSEY_ENERGY
-South Jersey Energy Capacity Adjustment        | SOUTH_JERSEY_ENERGY_CAPACITY_ADJUSTMENT
-State Adjustment Tax                           | STATE_ADJUSTMENT_TAX
-State Regulatory Fee                           | STATE_REGULATORY
-State Surcharge                                | STATE_SURCHARGE
-San Jose Franchise Surcharge                   | STATE_SURCHARGE
-State Tax                                      | STATE_TAX
+Sustain(able)?_Energy_Trust_Fund               | SETF
+South_Jersey_Energy_Charge                     | SOUTH_JERSEY_ENERGY
+South_Jersey_Energy_Capacity_Adjustment        | SOUTH_JERSEY_ENERGY_CAPACITY_ADJUSTMENT
+State_Adjustment_Tax                           | STATE_ADJUSTMENT_TAX
+State_Regulatory_Fee                           | STATE_REGULATORY
+State_Surcharge                                | STATE_SURCHARGE
+San_Jose_Franchise_Surcharge                   | STATE_SURCHARGE
+State_Tax                                      | STATE_TAX
 STRIDE                                         | STRIDE
 Balancing                                      | SUPPLY_BALANCING
-^Supply( Charges?)?                            | SUPPLY_CHARGE
-Summer Intermediate                            | SUPPLY_SUMMER_INTERMEDIATE
-Summer Intermediate Increase                   | SUPPLY_SUMMER_INTERMEDIATE_RATE_INCREASE
-Summer Off-Peak                                | SUPPLY_SUMMER_OFF_PEAK
-Summer Off-Peak Increase                       | SUPPLY_SUMMER_OFF_PEAK_RATE_INCREASE
-Summer Peak                                    | SUPPLY_SUMMER_PEAK
-Summer Peak Rate Increase                      | SUPPLY_SUMMER_PEAK_RATE_INCREASE
-Swing Volume                                   | SWING_VOLUME
-System Charge                                  | SYSTEM_CHARGE
-Transportation Charge Adjustment               | TCA
-Total Charges                                  | TOTAL_CHARGES
-Total (Electric )?Delivery Charges             | TOTAL_DELIVERY_CHARGES
-Total (Electric )?Supply Charges               | TOTAL_SUPPLY_CHARGES
-Transmission( Charges?)?$                      | TRANSMISSION
+^Supply(_Charges?)?                            | SUPPLY_CHARGE
+Summer_Intermediate                            | SUPPLY_SUMMER_INTERMEDIATE
+Summer_Intermediate_Increase                   | SUPPLY_SUMMER_INTERMEDIATE_RATE_INCREASE
+Summer_Off_Peak                                | SUPPLY_SUMMER_OFF_PEAK
+Summer_Off_Peak_Increase                       | SUPPLY_SUMMER_OFF_PEAK_RATE_INCREASE
+Summer_Peak                                    | SUPPLY_SUMMER_PEAK
+Summer_Peak_Rate_Increase                      | SUPPLY_SUMMER_PEAK_RATE_INCREASE
+Swing_Volume                                   | SWING_VOLUME
+System_Charge                                  | SYSTEM_CHARGE
+Transportation_Charge_Adjustment               | TCA
+Total_Charges                                  | TOTAL_CHARGES
+Total_(Electric_)?Delivery_Charges             | TOTAL_DELIVERY_CHARGES
+Total_(Electric_)?Supply_Charges               | TOTAL_SUPPLY_CHARGES
+Transmission(_Charges?)?$                      | TRANSMISSION
 Minimum.*transmission                          | TRANSMISSION_ENERGY_MINIMUM_CHARGE
 transmission.*minimum                          | TRANSMISSION_ENERGY_MINIMUM_CHARGE
-Utility Tax                                    | UTILITY_TAX
-VA Consumption Tax                             | VA_CONSUMPTION_TAX
-WG Purchases                                   | WG_PURCHASES
-Weather Normalization Charge                   | WNA_CHARGE
+Utility_Tax                                    | UTILITY_TAX
+VA_Consumption_Tax                             | VA_CONSUMPTION_TAX
+WG_Purchases                                   | WG_PURCHASES
+Weather_Normalization_Charge                   | WNA_CHARGE
