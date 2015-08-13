@@ -297,7 +297,7 @@ class QuoteParser(object):
 
     def get_rate_class_ids_for_alias(self, alias):
         """Return ID of rate class for the given alias, if there is one,
-        otherwise None.
+        otherwise [None].
         """
         try:
             rate_class_ids = self._rate_class_aliases[alias]
@@ -351,11 +351,14 @@ class DirectEnergyMatrixParser(QuoteParser):
     HEADER_ROW = 51
     VOLUME_RANGE_ROW = 51
     QUOTE_START_ROW = 52
+    STATE_COL = 'B'
+    UTILITY_COL = 'C'
     RATE_CLASS_COL = 'E'
     SPECIAL_OPTIONS_COL = 'F'
     TERM_COL = 'H'
     PRICE_START_COL = 8
     PRICE_END_COL = 13
+
 
     EXPECTED_SHEET_TITLES = [
         'Daily Matrix Price',
@@ -400,10 +403,14 @@ class DirectEnergyMatrixParser(QuoteParser):
             start_until = date_to_datetime((Month(start_from) + 1).first)
             term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
 
-            # rate class names are separated by commas and optional whitespace
-            rate_class_text = self._reader.get(0, row, self.RATE_CLASS_COL,
+            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
-            rate_class_aliases = [s.strip() for s in rate_class_text.split(',')]
+            state = self._reader.get(0, row, self.STATE_COL,
+                                     basestring)
+            utility = self._reader.get(0, row, self.UTILITY_COL,
+                                       basestring)
+            rate_class_alias = '-'.join([state, utility, rate_class])
+            rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
                                                basestring)
@@ -412,15 +419,14 @@ class DirectEnergyMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
                 price = self._reader.get(0, row, col, (int, float)) / 1000.
-                for alias in rate_class_aliases:
-                    for rate_class_id in self.get_rate_class_ids_for_alias(
-                            alias):
+                if rate_class_ids is not None:
+                    for rate_class_id in rate_class_ids:
                         quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
                             term_months=term_months, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_vol, limit_volume=max_vol,
-                            rate_class_alias=alias,
+                            rate_class_alias=rate_class_alias,
                             purchase_of_receivables=(special_options == 'POR'),
                             price=price)
                         # TODO: rate_class_id should be determined automatically
@@ -428,6 +434,16 @@ class DirectEnergyMatrixParser(QuoteParser):
                         if rate_class_id is not None:
                             quote.rate_class_id = rate_class_id
                         yield quote
+                else:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_vol, limit_volume=max_vol,
+                        rate_class_alias=rate_class_alias,
+                        purchase_of_receivables=(special_options == 'POR'),
+                        price=price)
+                    yield quote
 
 
 class USGEMatrixParser(QuoteParser):
@@ -445,6 +461,9 @@ class USGEMatrixParser(QuoteParser):
     RATE_END_COL = 11
     TERM_START_COL = 6
     TERM_END_COL = 28
+    LDC_COL = 'A'
+    CUSTOMER_TYPE_COL = 'B'
+    RATE_CLASS_COL = 'C'
 
     EXPECTED_SHEET_TITLES = [
         'KY',
@@ -501,8 +520,14 @@ class USGEMatrixParser(QuoteParser):
                 if utility is None:
                     continue
 
-                rate_class_alias = self._reader.get(sheet, row, 2,
-                                                    (basestring, type(None)))
+                ldc = self._reader.get(sheet, row, self.LDC_COL,
+                                       (basestring, type(None)))
+                customer_type = self._reader.get(sheet, row, self.CUSTOMER_TYPE_COL,
+                                                 (basestring, type(None)))
+                rate_class = self._reader.get(sheet, row,self.RATE_CLASS_COL,
+                (basestring, type(None)))
+                rate_class_alias = '-'.join([ldc, customer_type, rate_class])
+
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
 
@@ -588,6 +613,7 @@ class AEPMatrixParser(QuoteParser):
     QUOTE_START_ROW = 14
     STATE_COL = 'C'
     UTILITY_COL = 'D'
+    RATE_CODES_COL = 'E'
     # TODO what is "rate code(s)" in col E?
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
@@ -614,8 +640,13 @@ class AEPMatrixParser(QuoteParser):
 
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
+            state = self._reader.get(self.SHEET, row,
+                                              self.STATE_COL, basestring)
+            rate_codes = self._reader.get(self.SHEET, row,
+                                              self.RATE_CODES_COL, basestring)
             rate_class = self._reader.get(self.SHEET, row,
                                               self.RATE_CLASS_COL, basestring)
+            rate_class_alias = '-'.join([state, utility, rate_codes,rate_class])
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
@@ -651,14 +682,14 @@ class AEPMatrixParser(QuoteParser):
                     _assert_true(type(price) is float)
 
                     for rate_class_id in self.get_rate_class_ids_for_alias(
-                            rate_class):
+                            rate_class_alias):
                         quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
                             term_months=term, valid_from=self._date,
                             valid_until=self._date + timedelta(days=1),
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
-                            rate_class_alias=rate_class, price=price)
+                            rate_class_alias=rate_class_alias, price=price)
                         quote.rate_class_id = rate_class_id
                         yield quote
 
