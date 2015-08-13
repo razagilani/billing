@@ -210,10 +210,6 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the filter being changed.
      */
     handleFilter: function( combo, newValue, oldValue, eOpts) {
-        // We're filtering every record, so we have to use AccountsStore
-        // and not AccountsMemoryStore
-        // We're filtering every record, so we have to use AccountsStore
-        // and not AccountsMemoryStore
         var accountsStore = this.getAccountsStore();
         var prefStore = this.getPreferencesStore();
         var allRecords = accountsStore.getRange();
