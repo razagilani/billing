@@ -39,7 +39,7 @@ Fuel                                           | FUEL
 Gas_PPP_Surcharge                              | GAS_PPP_1
 Gas_Service_Over_Baseline                      | GAS_SERVICE_NON_BASELINE
 Gas_Cost_Adjustment_Charges                    | GCA_CHARGE
-Generation(_Charges?)?$                        | GENERATION
+^Generation(_Charges?)?$                       | GENERATION
 Generation_Maximum_Demand                      | GENERATION_MAX_DEMAND
 Generation_Minimum_Charge                      | GENERATION_MIN_CHARGE
 Gross_Receipts_Tax                             | GROSS_RECEIPTS_TAX
@@ -53,10 +53,12 @@ Local_Tax                                      | LOCAL_TAX
 LP_LEAC                                        | LP_LEAC
 MD_Gross_Receipts_Surcharge                    | MD_GROSS_RECEIPTS_SURCHARGE
 MD_GRT_Surcharge                               | MD_GRT_SURCHARGE
+MD_Sales_Tax$                                  | MD_STATE_SALES_TAX
+MD_Sales_Tax_Distribution                      | MD_STATE_SALES_TAX
 MD_Distribution_Sales_Tax                      | MD_STATE_SALES_TAX
-MD_(Supply_)?Sales_Tax                         | MD_SUPPLY_SALES_TAX
+MD_Supply_Sales_Tax                            | MD_SUPPLY_SALES_TAX
 Md_Universal_Service_Prog.                     | MD_UNIVERSAL
-Montgomery_County_Surcharge                    | MONT_COUNTY_SURCHARGE
+Montgomery_C(ou)?nty_Surcharge                 | MONT_COUNTY_SURCHARGE
 Natural_Gas                                    | NG_SUPPLY
 Generation_Off_Peak_Energy                     | OFF_PEAK_ENERGY
 Generation_On_Peak_Energy                      | ON_PEAK_ENERGY
@@ -103,9 +105,11 @@ Summer_Peak_Rate_Increase                      | SUPPLY_SUMMER_PEAK_RATE_INCREAS
 Swing_Volume                                   | SWING_VOLUME
 System_Charge                                  | SYSTEM_CHARGE
 Transportation_Charge_Adjustment               | TCA
-Total_Charges                                  | TOTAL_CHARGES
+Total_Charges$                                 | TOTAL_CHARGES
 Total_(Electric_)?Delivery_Charges             | TOTAL_DELIVERY_CHARGES
+Total_(Electric_)?Generation_Charges           | TOTAL_GENERATION_CHARGES
 Total_(Electric_)?Supply_Charges               | TOTAL_SUPPLY_CHARGES
+Total_(Electric_)?Transmission_Charges         | TOTAL_TRANSMISSION_CHARGES
 Transmission(_Charges?)?$                      | TRANSMISSION
 Minimum.*transmission                          | TRANSMISSION_ENERGY_MINIMUM_CHARGE
 transmission.*minimum                          | TRANSMISSION_ENERGY_MINIMUM_CHARGE

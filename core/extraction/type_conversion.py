@@ -181,7 +181,8 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
             rsi_bindings.append(charge_entry.rsi_binding)
     if len(rsi_bindings) > 1:
         raise ConversionError('Multiple (%d) RSI bindings match to charge name '
-                              '"%s".' % (len(rsi_bindings), charge_name))
+                              '"%s": %s' % (len(rsi_bindings), charge_name,
+                                rsi_bindings))
     elif len(rsi_bindings) == 0:
         # if no matches, use fuzzy regexes to find a similar charge
         # description in the database.
@@ -194,7 +195,7 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         closest_charge = None
         for c in charges:
             charge_desc_clean = Charge.description_to_rsi_binding(c.description)
-            m = regex.match(r'(%s){e<=10}' % charge_name_regex, c.description,
+            m = regex.match(r'(%s){e<=10}' % charge_name_regex, charge_desc_clean,
                     regex.IGNORECASE, regex.BESTMATCH)
             if m:
                 edit_distance = sum(m.fuzzy_counts)
