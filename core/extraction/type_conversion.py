@@ -9,7 +9,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.model import Session, Address, Supplier
 from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
-from exc import ConversionError
+from exc import ConversionError, NoRSIBindingError
 
 
 def convert_table_charges(rows):
@@ -45,8 +45,12 @@ def convert_table_charges(rows):
             else:
                 charge_type = Charge.DISTRIBUTION
             continue
-
-        charges.append(process_charge(charge_names_map, row, charge_type))
+        try:
+            charges.append(process_charge(charge_names_map, row, charge_type))
+        except NoRSIBindingError:
+            # if no rsi binding is found, skip this bill.
+            print "*** no rsi binding for: %s" % row
+            continue
     return filter(None, charges)
 
 def convert_unit(unit):
@@ -194,7 +198,7 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
                     closest_charge = c
         if closest_charge is not None:
             return closest_charge
-        raise ConversionError('No RSI binding found for charge name "%s"' %
+        raise NoRSIBindingError('No RSI binding found for charge name "%s"' %
                               charge_name)
     return rsi_bindings[0]
 
