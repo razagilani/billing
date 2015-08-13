@@ -200,6 +200,19 @@ Ext.define('ReeBill.view.accounts.Accounts', {
             text: 'Merge',
             iconCls: 'silk-merge',
             disabled: true
+        },{
+            xtype: 'combo',
+            name: 'accountsFilter',
+            fieldLabel: 'Filter',
+            labelWidth: 50,
+            width: 400,
+            value: 'none',
+            editable: false,
+            store: 'AccountsFilter',
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'label',
+            forceSelection: true
         }]
     }]
 });
