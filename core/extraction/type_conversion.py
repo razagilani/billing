@@ -171,9 +171,13 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
     :return: An RSI binding corresponding to the charge, as a string
     """
     rsi_bindings = []
+    # sanitize charge name
+    charge_name_clean = Charge.description_to_rsi_binding(charge_name)
+
+    # look for matching patterns in charge_names_map
     for charge_entry in charge_names_map:
         charge_regex = charge_entry.display_name_regex
-        if re.search(charge_regex, charge_name, re.IGNORECASE):
+        if re.search(charge_regex, charge_name_clean, re.IGNORECASE):
             rsi_bindings.append(charge_entry.rsi_binding)
     if len(rsi_bindings) > 1:
         raise ConversionError('Multiple (%d) RSI bindings match to charge name '
@@ -185,11 +189,12 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         charges = s.query(Charge.description,Charge.rsi_binding).filter(
             Charge.description != 'New Charge - Insert description '
                                   'here').distinct().all()
-        charge_name_clean = regex.escape(charge_name)
+        charge_name_regex = regex.escape(charge_name_clean)
         min_distance = None
         closest_charge = None
         for c in charges:
-            m = regex.match(r'(%s){e<=10}' % charge_name_clean, c.description,
+            charge_desc_clean = Charge.description_to_rsi_binding(c.description)
+            m = regex.match(r'(%s){e<=10}' % charge_name_regex, c.description,
                     regex.IGNORECASE, regex.BESTMATCH)
             if m:
                 edit_distance = sum(m.fuzzy_counts)
@@ -197,9 +202,10 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
                     min_distance = sum(m.fuzzy_counts)
                     closest_charge = c
         if closest_charge is not None:
-            return closest_charge
-        raise NoRSIBindingError('No RSI binding found for charge name "%s"' %
-                              charge_name)
+            return closest_charge.rsi_binding
+        else:
+            # use sanitized name as rsi_binding
+            return charge_name_clean
     return rsi_bindings[0]
 
 
