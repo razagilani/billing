@@ -2,18 +2,14 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
-from collections import OrderedDict
 import re
-from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.orm.attributes import InstrumentedAttribute
+import regex
 from sqlalchemy.orm.exc import NoResultFound
-from core import model
-from core.model import Session, RateClass, Utility, Address, Supplier
+
+from core.model import Session, Address, Supplier
+from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
-import core.model.utilbill
-from core.pricing import FuzzyPricingModel
-from exc import ApplicationError, ConversionError
-from core.utilbill_loader import UtilBillLoader
+from exc import ConversionError, NoRSIBindingError
 
 
 def convert_table_charges(rows):
@@ -22,10 +18,11 @@ def convert_table_charges(rows):
     The inputs is a list of rows, and each row is a list of cells; each cell
     is a string value.
     """
-    #TODO get charge name map by utility
+    # TODO get charge name map by utility
 
     # default charge type is DISTRIBUTION
     charge_type = Charge.DISTRIBUTION
+    charge_names_map = _get_charge_names_map()
     charges = []
     for i in range (0, len(rows)):
         row = rows[i]
@@ -33,7 +30,7 @@ def convert_table_charges(rows):
             continue
 
         if len(row) == 1:
-            #If this label is not in all caps and has no colon at the end,
+            # If this label is not in all caps and has no colon at the end,
             # assume it is part of the next row's charge name that got wrapped.
             if re.search(r"[a-z]", row[0]) and not re.search(":$", row[0]):
                 # if the next row exists, and is an actual charge row,
@@ -41,15 +38,19 @@ def convert_table_charges(rows):
                 if i < len(rows) - 1 and len(rows[i+1]) > 1:
                     rows[i+1][0] = row[0] + " " + rows[i+1][0]
                     continue
-            #check if this row is a header for a type of charge.
+            # check if this row is a header for a type of charge.
             if re.search(r"suppl[iy]|generation|transmission", row[0],
                     re.IGNORECASE):
                 charge_type = Charge.SUPPLY
             else:
                 charge_type = Charge.DISTRIBUTION
             continue
-
-        charges.append(process_charge(row, charge_type))
+        try:
+            charges.append(process_charge(charge_names_map, row, charge_type))
+        except NoRSIBindingError:
+            # if no rsi binding is found, skip this bill.
+            print "*** no rsi binding for: %s" % row
+            continue
     return filter(None, charges)
 
 def convert_unit(unit):
@@ -58,18 +59,18 @@ def convert_unit(unit):
     """
     if unit in Charge.CHARGE_UNITS:
         return unit
-    #by default, if no unit then assume dollars
+    # by default, if no unit then assume dollars
     if not unit:
         return "dollars"
     if unit == "th":
         return "therms"
     if unit == "$":
         return "dollars"
-    #if unit is not valid, raise an error
+    # if unit is not valid, raise an error
     raise ConversionError('unit "%s" is not in set of allowed units.' %
                           unit)
 
-def process_charge(row, ctype=Charge.DISTRIBUTION):
+def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     """
     Processes a row of text values to create a single charge with the given
     charge type.
@@ -90,7 +91,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     register_format = r"(%s)\s*(%s)\s*x\s*\$?(%s)" % (num_format, unit_format,
     num_format)
 
-    #first cell in row is the name of the charge (and sometimes contains
+    # first cell in row is the name of the charge (and sometimes contains
     # rate info as well), while the last cell in row is the value of the
     # charge.
     text = row[0]
@@ -99,7 +100,7 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
         raise ConversionError('Table row ("%s", "%s") contains an empty '
                               'element.' % row)
 
-    #set up default values
+    # set up default values
     rsi_binding = target_total = None
     rate = 0
     description = unit = ''
@@ -133,25 +134,74 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
             reg_quantity = match.group(2)
             reg_unit = match.group(3)
             rate = float(match.group(4))
-            #TODO create register, formula
+            # TODO create register, formula
         # register info is often in same text box as the charge name.
         # If this is the case, separate the description from the other info.
         if i == 0:
             description = match.group(1) if match else cell
 
-    #Get rsi binding from database, by looking for existing charges with
+    # Get rsi binding from database, by looking for existing charges with
     # the same description.
     # TODO Use some sort of charge name map
     # TODO also filter by charge type in this query?
-    q = Session.query(Charge.rsi_binding).filter(
-        Charge.description == description, Charge.rsi_binding != '')
-    rsi_binding = q.first()
+    rsi_binding = _get_rsi_binding_from_name(charge_names_map, description)
     if rsi_binding is None:
-        #TODO what to do if existing RSI binding not found?
-        pass
+        # TODO what to do if existing RSI binding not found?
+        # right now simply skip this charge by returning None
+        return None
 
     return Charge(description=description, unit=unit, rate=rate,
         rsi_binding=rsi_binding, type=ctype, target_total=target_total)
+
+def _get_charge_names_map():
+    """
+    Return a list of charge name mappings.
+    Each item is a ChargeNameMap row, containing a regex that matches a
+    charge's description, and a corresponding rsi_binding.
+    :return: A list of ChargeNameMap objects.
+    """
+    s = Session()
+    return s.query(ChargeNameMap).all()
+
+def _get_rsi_binding_from_name(charge_names_map, charge_name):
+    """
+    Get the RSI binding for a charge name
+    :param charge_names_map: A list of ChargeNameMap rows
+    :param charge_name: The charge's name, as seen on a bill.
+    :return: An RSI binding corresponding to the charge, as a string
+    """
+    rsi_bindings = []
+    for charge_entry in charge_names_map:
+        charge_regex = charge_entry.display_name_regex
+        if re.search(charge_regex, charge_name, re.IGNORECASE):
+            rsi_bindings.append(charge_entry.rsi_binding)
+    if len(rsi_bindings) > 1:
+        raise ConversionError('Multiple (%d) RSI bindings match to charge name '
+                              '"%s".' % (len(rsi_bindings), charge_name))
+    elif len(rsi_bindings) == 0:
+        # if no matches, use fuzzy regexes to find a similar charge
+        # description in the database.
+        s = Session()
+        charges = s.query(Charge.description,Charge.rsi_binding).filter(
+            Charge.description != 'New Charge - Insert description '
+                                  'here').distinct().all()
+        charge_name_clean = regex.escape(charge_name)
+        min_distance = None
+        closest_charge = None
+        for c in charges:
+            m = regex.match(r'(%s){e<=10}' % charge_name_clean, c.description,
+                    regex.IGNORECASE, regex.BESTMATCH)
+            if m:
+                edit_distance = sum(m.fuzzy_counts)
+                if min_distance is None or edit_distance < min_distance:
+                    min_distance = sum(m.fuzzy_counts)
+                    closest_charge = c
+        if closest_charge is not None:
+            return closest_charge
+        raise NoRSIBindingError('No RSI binding found for charge name "%s"' %
+                              charge_name)
+    return rsi_bindings[0]
+
 
 def convert_wg_charges_std(text):
     """Function to convert a string containing charges from a particular
@@ -162,7 +212,7 @@ def convert_wg_charges_std(text):
     # these functions, this creates duplicate code both for loading the name map
     # and for using it to convert names into rsi_bindings. it probably should
     # be an argument.
-    charge_name_map = Session().query(Utility).filter_by(name='washington gas').one().charge_name_map
+    charge_names_map = _get_charge_names_map()
     regexflags = re.IGNORECASE | re.MULTILINE | re.DOTALL
     groups = r'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*?)TAXES(.*?' \
              r'Total Current Washington Gas Charges)(.*?)' \
@@ -175,14 +225,14 @@ def convert_wg_charges_std(text):
     charge_values_lines = filter(None, re.split("\n+", charge_values_block,
         regexflags))
 
-    #read charges backwards, because WG bills include previous bill amounts at top of table
+    # read charges backwards, because WG bills include previous bill amounts at top of table
     charge_values_lines = charge_values_lines[::-1]
     charge_data = [(taxes_charge_names[::-1], Charge.DISTRIBUTION),
         (supply_charge_names[::-1], Charge.SUPPLY),
         (dist_charge_names[::-1], Charge.DISTRIBUTION)]
 
     def process_charge(name, value, ct):
-        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        rsi_binding = _get_rsi_binding_from_name(charge_names_map, name)
         return Charge(rsi_binding, name=name, target_total=float(value),
             type=ct, unit='therms')
     charges = []
@@ -197,9 +247,8 @@ def convert_wg_charges_std(text):
                 continue
             charge_value = float(match.group(1))
             charges.append(process_charge(charge_name, charge_value, type))
-    #reverse list, remove last item ('Total Current Washington Gas Charges')
+    # reverse list, remove last item ('Total Current Washington Gas Charges')
     return charges[:0:-1]
-
 
 def convert_wg_charges_wgl(text):
     """Function to convert a string containing charges from a particular
@@ -210,8 +259,7 @@ def convert_wg_charges_wgl(text):
     # these functions, this creates duplicate code both for loading the name map
     # and for using it to convert names into rsi_bindings. it probably should
     # be an argument.
-    charge_name_map = Session().query(Utility).filter_by(
-        name='washington gas').one().charge_name_map
+    charge_names_map = _get_charge_names_map()
     groups = 'DISTRIBUTION SERVICE(.*?)NATURAL GAS\s?SUPPLY SERVICE(.*)TAXES(.*?)' \
              'Total Current Washington Gas Charges(.*?)' \
              'Total Washington Gas Charges This Period'
@@ -223,14 +271,14 @@ def convert_wg_charges_wgl(text):
     charge_values_names = re.split("\n+", charge_values_block, regexflags)
 
     charge_name_exp = r"([a-z]['a-z ]+?[a-z])\s*[\d@\n]"
-    #read charges backwards, because WG bills include previous bill amounts at top of table
+    # read charges backwards, because WG bills include previous bill amounts at top of table
     charge_values_names = charge_values_names[::-1]
     charge_data = [(taxes_charge_names[::-1], Charge.DISTRIBUTION),
         (supply_charge_names[::-1], Charge.SUPPLY),
         (dist_charge_names[::-1], Charge.DISTRIBUTION)]
 
     def process_charge(name, value, ct):
-        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        rsi_binding = _get_rsi_binding_from_name(charge_names_map, name)
         return Charge(rsi_binding, name=name, target_total=float(value), type=ct)
 
     charges = []
@@ -257,15 +305,15 @@ def convert_wg_charges_wgl(text):
 
 def pep_old_convert_charges(text):
     """
-    Given text output from a pepco utility bill PDF that contains supply/distribution/etc charges, parses the individual charges
+    Given text output from a pepco utility bill PDF that contains
+    supply/distribution/etc charges, parses the individual charges
     and returns a list of Charge objects.
     :param text - the text containing both distribution and supply charges.
     :returns A list of Charge objects representing the charges from the bill
     """
-    #TODO deal with external suppliers
-    #TODO find a better method for categorizing charge names
-    charge_name_map = Session().query(Utility).filter_by(
-        name='pepco').one().charge_name_map
+    # TODO deal with external suppliers
+    # TODO find a better method for categorizing charge names
+    charge_names_map = _get_charge_names_map()
 
 
     distribution_charges_exp = r'Distribution Services:(.*?)Generation Services:'
@@ -291,12 +339,14 @@ def pep_old_convert_charges(text):
         trans_charges_names_clean.append(name)
 
     def process_charge(name, value, ct):
-        rsi_binding = charge_name_map.get(name, name.upper().replautce(' ', '_'))
+        rsi_binding = _get_rsi_binding_from_name(charge_names_map, name)
         return Charge(rsi_binding, name=name, target_total=float(value),
             type=ct, unit='therms')
 
     charges = []
-    charge_data = [(dist_charges_names, Charge.DISTRIBUTION), (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean, Charge.DISTRIBUTION)]
+    charge_data = [(dist_charges_names, Charge.DISTRIBUTION),
+        (supply_charges_names, Charge.SUPPLY), (trans_charges_names_clean,
+        Charge.DISTRIBUTION)]
     for names, type in charge_data:
         for charge_name in names:
             if not charge_name:
@@ -319,18 +369,17 @@ def pep_new_convert_charges(text):
     :param text - the text containing both distribution and supply charges.
     :returns A list of Charge objects representing the charges from the bill
     """
+    charge_names_map = _get_charge_names_map()
 
-    charge_name_map = Session().query(Utility).filter_by(name='pepco').one().charge_name_map
-
-    #in pepco bills, supply and distribution charges are separate
+    # in pepco bills, supply and distribution charges are separate
     distribution_charges_exp = r'Distribution Services:(.*?)(Status of your Deferred|Page)'
     supply_charges_exp = r'Transmission Services\:(.*?)Energy Usage History'
     dist_text = re.search(distribution_charges_exp, text).group(1)
     supply_text = re.search(supply_charges_exp, text).group(1)
 
-    #regexes for individual charges
-    exp_name = r'([A-Z][A-Za-z \(\)]+?)' #Letters, spaces, and parens (but starts with capital letter)
-    exp_stuff = r'(?:(?:Includes|at\b|\d).*?)?' #stuff in between the name and value, like the per-unit rate
+    # regexes for individual charges
+    exp_name = r'([A-Z][A-Za-z \(\)]+?)' # Letters, spaces, and parens (but starts with capital letter)
+    exp_stuff = r'(?:(?:Includes|at\b|\d).*?)?' # stuff in between the name and value, like the per-unit rate
     exp_value = r'(\d[\d\.]*)' # The actual number we want
     exp_lookahead = r'(?=[A-Z]|$)' # The next charge name will begin with a capital letter.
     charge_exp = re.compile(exp_name + exp_stuff + exp_value + exp_lookahead)
@@ -338,7 +387,7 @@ def pep_new_convert_charges(text):
     def process_charge(p, ct):
         name = p[0]
         value = float(p[1])
-        rsi_binding = charge_name_map.get(name, name.upper().replace(' ', '_'))
+        rsi_binding = _get_rsi_binding_from_name(charge_names_map, name)
         return Charge(rsi_binding, name=name, target_total=float(value),
             type=ct, unit='kWh')
 
@@ -358,19 +407,19 @@ def pep_new_convert_charges(text):
 #     try:
 #         return q.one()
 #     except NoResultFound:
-#         #TODO fill in fields correctly
+#         # TODO fill in fields correctly
 #         return RateClass(name=text)
 
 def convert_address(text):
     '''
     Given a string containing an address, parses the address into an Address object in the database.
     '''
-    #matches city, state, and zip code
+    # matches city, state, and zip code
     regional_exp = r'([\w ]+),?\s+([a-z]{2})\s+(\d{5}(?:-\d{4})?)'
-    #for attn: or C/O lines in billing addresses
+    # for attn: or C/O lines in billing addresses
     addressee_attn_exp = r"attn:?\s*(.*)"
     addressee_co_exp = r"(C/?O:?\s*.*)$"
-    #A PO box, or a line that starts with a number
+    # A PO box, or a line that starts with a number
     street_exp = r"^(\d+.*?$|PO BOX \d+)"
 
     addressee = city = state = street = postal_code = None
@@ -384,7 +433,7 @@ def convert_address(text):
         line = line.strip()
         if not line:
             continue
-        #if it a po box or starts with a number, this line is a street address
+        # if it a po box or starts with a number, this line is a street address
         match = re.search(street_exp, line, re.IGNORECASE)
         if match:
             street = match.group(1)
@@ -394,7 +443,7 @@ def convert_address(text):
         if match:
             city, state, postal_code = match.groups()
             continue
-        #if line has "attn:" or "C/O" in it, it is part of addresse.
+        # if line has "attn:" or "C/O" in it, it is part of addresse.
         match = re.search(addressee_attn_exp, line, re.IGNORECASE)
         if match:
             if addressee is None:
@@ -408,7 +457,7 @@ def convert_address(text):
             addressee += match.group(1) + " "
             continue
 
-        #if none of the above patterns match, assume that this line is the
+        # if none of the above patterns match, assume that this line is the
         # addressee
         if addressee is None:
             addressee = ""
@@ -425,5 +474,5 @@ def convert_supplier(text):
     try:
         return q.one()
     except NoResultFound:
-        #TODO fill in fields correctly
+        # TODO fill in fields correctly
         raise ConversionError('Could not find supplier with name "%s"' % text)

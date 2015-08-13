@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from celery.exceptions import TaskRevokedError
+from core.extraction import type_conversion
 import os
 from unittest import TestCase, skip
 
@@ -15,7 +16,8 @@ from mock import Mock, NonCallableMock
 # dependency might cause the wrong config to be loaded.
 from core.extraction.task import test_bill, reduce_bill_results
 from core.extraction.type_conversion import convert_unit, convert_address, \
-    process_charge, convert_table_charges
+    process_charge, convert_table_charges, _get_charge_names_map
+from core.model.model import ChargeNameMap
 from test import init_test_config
 
 from core import init_model, ROOT_PATH
@@ -426,6 +428,22 @@ class TestTypeConversion(TestCase):
 
     def setUp(self):
         clear_db()
+        # set up a fake charge names map
+        charge_names_map = [
+            ChargeNameMap(display_name_regex="(distribution|customer) charge",
+                rsi_binding='DIST_CHARGE'),
+            ChargeNameMap(display_name_regex="pgc",
+                rsi_binding='PGC_CHARGE'),
+            ChargeNameMap(display_name_regex="tax",
+                rsi_binding='TAX'),
+            ChargeNameMap(display_name_regex="fee",
+                rsi_binding='FEE'),
+            ChargeNameMap(display_name_regex="total",
+                rsi_binding='TOTAL_CHARGE'),
+            ChargeNameMap(display_name_regex="trust fund",
+                rsi_binding='TRUST_FUND')]
+        type_conversion._get_charge_names_map = Mock(
+            return_value=charge_names_map)
 
     def test_convert_unit(self):
         # for units already in CHARGE_UNITS, just return them
@@ -439,21 +457,29 @@ class TestTypeConversion(TestCase):
             convert_unit('lol not a unit')
 
     def test_process_charge(self):
+        bagel_cnm = ChargeNameMap(display_name_regex=r"bagel|donut",
+            rsi_binding='DELICIOUSNESS_CHARGE')
+        energy_cnm = ChargeNameMap(display_name_regex="energy charge",
+            rsi_binding='ENERGY_CHARGE')
+        charge_names_map = [bagel_cnm, energy_cnm]
+
         # simple test with name & value
         sample_charge_row = ['Bagels', '$1,500.40']
-        sample_charge = process_charge(sample_charge_row)
+        sample_charge = process_charge(charge_names_map, sample_charge_row)
         self.assertEqual(sample_charge.description, 'Bagels')
         self.assertEqual(sample_charge.target_total, 1500.40)
+        self.assertEqual(sample_charge.rsi_binding, 'DELICIOUSNESS_CHARGE')
 
         # full charge test, with more fields and a name that matches an
         # existing charge in the database with an rsi binding
         charge_row = ['Energy charges 251.2 kWh x $0.0034', "$0.85408"]
-        charge = process_charge(charge_row, Charge.SUPPLY)
+        charge = process_charge(charge_names_map, charge_row, Charge.SUPPLY)
         self.assertEqual(charge.description, 'Energy charges')
         self.assertEqual(charge.unit, 'dollars')
         self.assertEqual(charge.rate, 0.0034)
         self.assertEqual(charge.type, Charge.SUPPLY)
         self.assertEqual(charge.target_total, 0.85408)
+        self.assertEqual(charge.rsi_binding, 'ENERGY_CHARGE')
 
     def test_convert_table_charges(self):
         """ Tests the conversion function that takes tabular data and outputs a
@@ -473,27 +499,30 @@ class TestTypeConversion(TestCase):
             [u'Total Current Washington Gas Charges', u'$ 236.67']]
 
         expected_charges = [
-            Charge(None, description='Distribution Charge', unit='dollars',
-                rate=0.3158, type=Charge.DISTRIBUTION, target_total=65.05),
-            Charge(None, description='Customer Charge', unit='dollars',
-                type=Charge.DISTRIBUTION, target_total=33.00),
-            Charge(None, description='PGC', unit='dollars',
-                rate=0.5542, type=Charge.SUPPLY, target_total=114.17),
-            Charge(None, description='DC Rights-of-Way Fee',
-                unit='dollars',
-                type=Charge.DISTRIBUTION, target_total=5.77),
-            Charge(None, description='Sustainable Energy Trust Fund', \
-            unit='dollars',
-                rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88),
-            Charge(None, description='Energy Assistance Trust Fund',
-                unit='dollars',
-                rate=0.006, type=Charge.DISTRIBUTION, target_total=1.24),
-            Charge(None, description='Delivery Tax', unit='dollars',
-                rate=0.0707, type=Charge.DISTRIBUTION, target_total=14.56),
-            Charge(None, description='Total Current Washington Gas Charges',
-                unit='dollars', type=Charge.DISTRIBUTION, target_total=236.67)
+            Charge(description='Distribution Charge', unit='dollars',
+                rate=0.3158, type=Charge.DISTRIBUTION, target_total=65.05,
+                rsi_binding='DIST_CHARGE'),
+            Charge(description='Customer Charge', unit='dollars',
+                type=Charge.DISTRIBUTION, target_total=33.00,
+                rsi_binding='DIST_CHARGE'),
+            Charge(description='PGC', unit='dollars', rate=0.5542,
+                type=Charge.SUPPLY, target_total=114.17,
+                rsi_binding='PGC_CHARGE'),
+            Charge(description='DC Rights-of-Way Fee', unit='dollars',
+                type=Charge.DISTRIBUTION, target_total=5.77, rsi_binding='FEE'),
+            Charge(description='Sustainable Energy Trust Fund', unit='dollars',
+                rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88,
+                rsi_binding='TRUST_FUND'),
+            Charge(description='Energy Assistance Trust Fund', unit='dollars',
+                rate=0.006, type=Charge.DISTRIBUTION, target_total=1.24,
+                rsi_binding='TRUST_FUND'),
+            Charge(description='Delivery Tax', unit='dollars', rate=0.0707,
+                type=Charge.DISTRIBUTION, target_total=14.56,
+                rsi_binding='TAX'),
+            Charge(description='Total Current Washington Gas Charges',
+                unit='dollars', type=Charge.DISTRIBUTION, target_total=236.67,
+                rsi_binding='TOTAL_CHARGE')
         ]
-
         output_charges = convert_table_charges(table_charges_rows)
         self.assertListEqual(expected_charges, output_charges)
 
@@ -591,6 +620,23 @@ class TestIntegration(TestCase):
         account = UtilityAccount('', '123', None, None, None, Address(),
                                  Address())
 
+        #TODO add charge name map
+        self.charge_names_map = [
+            ChargeNameMap(display_name_regex="(distribution|customer) charge",
+                rsi_binding='DISTRIBUTION_CHARGE'),
+            ChargeNameMap(display_name_regex="peak",
+                rsi_binding='PEAK_USAGE_CHARGE'),
+            ChargeNameMap(display_name_regex="pgc",
+                rsi_binding='PGC_CHARGE'),
+            ChargeNameMap(display_name_regex="tax",
+                rsi_binding='TAX'),
+            ChargeNameMap(display_name_regex="rights?.of.way",
+                rsi_binding='RIGHT_OF_WAY'),
+            ChargeNameMap(display_name_regex="total",
+                rsi_binding='TOTAL_CHARGE'),
+            ChargeNameMap(display_name_regex="trust fund",
+                rsi_binding='TRUST_FUND')]
+
         # create bill with file
         self.bill = UtilBill(account, utility, rate_class)
         with open(self.EXAMPLE_FILE_PATH, 'rb') as bill_file:
@@ -630,7 +676,7 @@ class TestIntegration(TestCase):
         ]
 
         e2 = TextExtractor(name='Another')
-        Session().add_all([self.bill, e1, e2])
+        Session().add_all(self.charge_names_map + [self.bill, e1, e2])
         self.e1, self.e2 = e1, e2
 
     def tearDown(self):
@@ -651,23 +697,24 @@ class TestIntegration(TestCase):
         expected = [
              Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
                     target_total=158.7, type=D, unit='therms'),
-             Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
+             Charge('DISTRIBUTION_CHARGE', name='Customer Charge',
+                 target_total=14.0,
                     type=D, unit='therms'),
-             Charge('PGC', name='PGC', target_total=417.91, type=S,
+             Charge('PGC_CHARGE', name='PGC', target_total=417.91, type=S,
                     unit='therms'),
              Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
                     target_total=15.79, type=D, unit='therms'),
              Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
                     target_total=13.42, type=D, unit='therms'),
-             Charge('SETF', name='Sustainable Energy Trust Fund',
+             Charge('TRUST_FUND', name='Sustainable Energy Trust Fund',
                     target_total=7.06, type=D, unit='therms'),
-             Charge('EATF', name='Energy Assistance Trust Fund',
+             Charge('TRUST_FUND', name='Energy Assistance Trust Fund',
                     target_total=3.03, type=D, unit='therms'),
-             Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
+             Charge('TAX', name='Delivery Tax', target_total=39.24,
                     type=D, unit='therms'),
-             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
+             Charge('TAX', name='Sales Tax', target_total=38.48, type=D,
                     unit='therms')]
-        
+
         self.assertEqual(len(expected), len(self.bill.charges))
         for expected_charge, actual_charge in zip(expected, self.bill.charges):
             self.assertEqual(expected_charge.rsi_binding,

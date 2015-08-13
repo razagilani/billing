@@ -113,6 +113,14 @@ class ConversionError(ExtractionError):
     """
     pass
 
+class NoRSIBindingError(ConversionError):
+    """
+    Failed to find an appropriate rsi binding for a given charge on a bill.
+    This likely means that the 'charge' was not an actual charge, and should
+    be ignored.
+    """
+    pass
+
 class MergeError(BillingError):
     """Accounts cannot be merged when all utility_accounts have reebills
 
