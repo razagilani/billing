@@ -430,7 +430,7 @@ class TestTypeConversion(TestCase):
         clear_db()
         # set up a fake charge names map
         charge_names_map = [
-            ChargeNameMap(display_name_regex="(distribution|customer) charge",
+            ChargeNameMap(display_name_regex="(distribution|customer)_charge",
                 rsi_binding='DIST_CHARGE'),
             ChargeNameMap(display_name_regex="pgc",
                 rsi_binding='PGC_CHARGE'),
@@ -440,7 +440,7 @@ class TestTypeConversion(TestCase):
                 rsi_binding='FEE'),
             ChargeNameMap(display_name_regex="total",
                 rsi_binding='TOTAL_CHARGE'),
-            ChargeNameMap(display_name_regex="trust fund",
+            ChargeNameMap(display_name_regex="trust_fund",
                 rsi_binding='TRUST_FUND')]
         type_conversion._get_charge_names_map = Mock(
             return_value=charge_names_map)
@@ -459,7 +459,7 @@ class TestTypeConversion(TestCase):
     def test_process_charge(self):
         bagel_cnm = ChargeNameMap(display_name_regex=r"bagel|donut",
             rsi_binding='DELICIOUSNESS_CHARGE')
-        energy_cnm = ChargeNameMap(display_name_regex="energy charge",
+        energy_cnm = ChargeNameMap(display_name_regex="energy_charge",
             rsi_binding='ENERGY_CHARGE')
         charge_names_map = [bagel_cnm, energy_cnm]
 
@@ -622,7 +622,7 @@ class TestIntegration(TestCase):
 
         #TODO add charge name map
         self.charge_names_map = [
-            ChargeNameMap(display_name_regex="(distribution|customer) charge",
+            ChargeNameMap(display_name_regex="(distribution|customer)_charge",
                 rsi_binding='DISTRIBUTION_CHARGE'),
             ChargeNameMap(display_name_regex="peak",
                 rsi_binding='PEAK_USAGE_CHARGE'),
@@ -634,7 +634,7 @@ class TestIntegration(TestCase):
                 rsi_binding='RIGHT_OF_WAY'),
             ChargeNameMap(display_name_regex="total",
                 rsi_binding='TOTAL_CHARGE'),
-            ChargeNameMap(display_name_regex="trust fund",
+            ChargeNameMap(display_name_regex="trust_fund",
                 rsi_binding='TRUST_FUND')]
 
         # create bill with file
