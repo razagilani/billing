@@ -83,6 +83,8 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
                               'values.')
 
     num_format = r"[\d,.]+"
+    # for prices, negative sign can appear on both sides of dollar sign
+    price_format = r"-?\$?-?[\d,.]+"
     # this is based off the units currently in the charge table in the database.
     # these will probably have to be updated
     unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
@@ -105,10 +107,10 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     rate = 0
     description = unit = ''
 
-    # if row does not end with some kind of number, this is not a charge.
-    match = re.search(num_format, value)
+    # if row does not end with a price, this is not a charge.
+    match = re.search(price_format, value)
     if match:
-        target_total = float(match.group(0).replace(',', ''))
+        target_total = float(re.sub(r'[,$]', '', match.group(0)))
     else:
         return None
 
