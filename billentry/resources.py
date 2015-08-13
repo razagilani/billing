@@ -437,8 +437,9 @@ class ChargeResource(BaseResource):
         charge = s.query(Charge).filter_by(id=id).one()
         if args['rsi_binding'] is not None:
             # convert name to all caps with underscores instead of spaces
-            charge.rsi_binding = args['rsi_binding'].strip().upper().replace(
-                ' ', '_')
+            charge.rsi_binding = Charge.description_to_rsi_binding(
+                args['rsi_binding'])
+
         if args['target_total'] is not None:
             charge.target_total = args['target_total']
         s.commit()
