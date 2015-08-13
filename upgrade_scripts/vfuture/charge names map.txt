@@ -82,7 +82,8 @@ Sales Tax                                      | SALES_TAX
 Sales Tax - Commodity                          | SALES_TAX_COMMODITY
 Sales Tax - Distribution                       | SALES_TAX_DISTRIBUTION
 Service Charge                                 | SERVICE_CHARGE
-Sustainable Energy Trust Fund                  | SETF
+Subtotal									   | SUBTOTAL
+Sustain(able)? Energy Trust Fund               | SETF
 South Jersey Energy Charge                     | SOUTH_JERSEY_ENERGY
 South Jersey Energy Capacity Adjustment        | SOUTH_JERSEY_ENERGY_CAPACITY_ADJUSTMENT
 State Adjustment Tax                           | STATE_ADJUSTMENT_TAX
@@ -103,6 +104,7 @@ Swing Volume                                   | SWING_VOLUME
 System Charge                                  | SYSTEM_CHARGE
 Transportation Charge Adjustment               | TCA
 Total Charges                                  | TOTAL_CHARGES
+Total (Electric )?Delivery Charges             | TOTAL_DELIVERY_CHARGES
 Total (Electric )?Supply Charges               | TOTAL_SUPPLY_CHARGES
 Transmission( Charges?)?$                      | TRANSMISSION
 Minimum.*transmission                          | TRANSMISSION_ENERGY_MINIMUM_CHARGE
