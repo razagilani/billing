@@ -177,8 +177,9 @@ Ext.define('ReeBill.view.accounts.Accounts', {
 
     dockedItems: [{
         dock: 'top',
-        layout: {
-            overflowHandler: 'Menu'
+        layout:{
+            type:'hbox',
+            align:'stretch'
         },
         items: [{
             xtype: 'button',
@@ -204,8 +205,8 @@ Ext.define('ReeBill.view.accounts.Accounts', {
             xtype: 'combo',
             name: 'accountsFilter',
             fieldLabel: 'Filter',
-            labelWidth: 50,
-            width: 400,
+            labelWidth: 30,
+            width: 200,
             value: 'none',
             editable: false,
             store: 'AccountsFilter',
