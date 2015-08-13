@@ -890,7 +890,7 @@ class Charge(Base):
         trailing whitespace, whitespace between words replaced by
         underscores.
         """
-        return sub('(\s|_)+', '_', charge_description.strip().upper())
+        return sub('[\s\-_]+', '_', charge_description.strip().upper())
 
     @staticmethod
     def get_simple_formula(register_binding):
