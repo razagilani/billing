@@ -80,9 +80,9 @@ Estimated_Pepco_Avg_Charge                     | Pepco Electrical Estimate
 Residential_Aid_Discount_Surcharge             | RADS
 RBA_Rate_Adjustment                            | RBA
 Rights?.Of.Way                                 | RIGHT_OF_WAY
-Sales_Tax                                      | SALES_TAX
-Sales_Tax_Commodity                            | SALES_TAX_COMMODITY
-Sales_Tax_Distribution                         | SALES_TAX_DISTRIBUTION
+^Sales_Tax                                      | SALES_TAX
+^Sales_Tax_Commodity                            | SALES_TAX_COMMODITY
+^Sales_Tax_Distribution                         | SALES_TAX_DISTRIBUTION
 Service_Charge                                 | SERVICE_CHARGE
 Subtotal									   | SUBTOTAL
 Sustain(able)?_Energy_Trust_Fund               | SETF
