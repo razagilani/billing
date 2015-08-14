@@ -3,7 +3,7 @@ Administrative_Credit                          | ADMIN_CREDIT
 All_Applicable_Riders                          | ALL_APPLICABLE_RIDERS
 APRP_Adjustment                                | APRP_ADJUSTMENT
 APRP_Surcharge                                 | APRP_SURCHARGE
-Balancing(_Service_Fee)?                       | BALANCING
+Balancing                                      | BALANCING
 Baseline_Gas_Commodity_Charge                  | BASELINE
 Block_1                                        | BLOCK_ONE
 Block_3                                        | BLOCK_THREE
@@ -80,9 +80,9 @@ Estimated_Pepco_Avg_Charge                     | Pepco Electrical Estimate
 Residential_Aid_Discount_Surcharge             | RADS
 RBA_Rate_Adjustment                            | RBA
 Rights?.Of.Way                                 | RIGHT_OF_WAY
-^Sales_Tax                                      | SALES_TAX
-^Sales_Tax_Commodity                            | SALES_TAX_COMMODITY
-^Sales_Tax_Distribution                         | SALES_TAX_DISTRIBUTION
+^Sales_Tax$                                    | SALES_TAX
+^Sales_Tax_Commodity                           | SALES_TAX_COMMODITY
+^Sales_Tax_Distribution                        | SALES_TAX_DISTRIBUTION
 Service_Charge                                 | SERVICE_CHARGE
 Subtotal									   | SUBTOTAL
 Sustain(able)?_Energy_Trust_Fund               | SETF
@@ -94,7 +94,6 @@ State_Surcharge                                | STATE_SURCHARGE
 San_Jose_Franchise_Surcharge                   | STATE_SURCHARGE
 State_Tax                                      | STATE_TAX
 STRIDE                                         | STRIDE
-Balancing                                      | SUPPLY_BALANCING
 ^Supply(_Charges?)?                            | SUPPLY_CHARGE
 Summer_Intermediate                            | SUPPLY_SUMMER_INTERMEDIATE
 Summer_Intermediate_Increase                   | SUPPLY_SUMMER_INTERMEDIATE_RATE_INCREASE
