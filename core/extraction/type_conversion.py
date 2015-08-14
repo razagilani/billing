@@ -187,8 +187,11 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
                                 rsi_bindings))
     elif len(rsi_bindings) == 0:
         # use sanitized name as rsi_binding
-        new_cnm = ChargeNameMap(display_regex=charge_name_clean,
-            rsi_bindings=charge_name_clean, reviewed=False)
+        # surround name with ^ and $ to ensure that a very short charge name
+        # doesn't lead to ambiguous matches for other charges.
+        charge_name_regex = "^%s$" % re.escape(charge_name_clean)
+        new_cnm = ChargeNameMap(display_name_regex=charge_name_regex,
+            rsi_binding=charge_name_clean, reviewed=False)
         s = Session()
         s.add(new_cnm)
         return charge_name_clean
