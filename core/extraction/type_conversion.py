@@ -186,29 +186,12 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
                               '"%s": %s' % (len(rsi_bindings), charge_name,
                                 rsi_bindings))
     elif len(rsi_bindings) == 0:
-        # if no matches, use fuzzy regexes to find a similar charge
-        # description in the database.
+        # use sanitized name as rsi_binding
+        new_cnm = ChargeNameMap(display_regex=charge_name_clean,
+            rsi_bindings=charge_name_clean)
         s = Session()
-        charges = s.query(Charge.description,Charge.rsi_binding).filter(
-            Charge.description != 'New Charge - Insert description '
-                                  'here').distinct().all()
-        charge_name_regex = regex.escape(charge_name_clean)
-        min_distance = None
-        closest_charge = None
-        for c in charges:
-            charge_desc_clean = Charge.description_to_rsi_binding(c.description)
-            m = regex.match(r'(%s){e<=10}' % charge_name_regex, charge_desc_clean,
-                    regex.IGNORECASE, regex.BESTMATCH)
-            if m:
-                edit_distance = sum(m.fuzzy_counts)
-                if min_distance is None or edit_distance < min_distance:
-                    min_distance = sum(m.fuzzy_counts)
-                    closest_charge = c
-        if closest_charge is not None:
-            return closest_charge.rsi_binding
-        else:
-            # use sanitized name as rsi_binding
-            return charge_name_clean
+        s.add(new_cnm)
+        return charge_name_clean
     return rsi_bindings[0]
 
 
