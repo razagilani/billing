@@ -16,9 +16,9 @@ class QuoteFileProcessor(object):
     # maps each supplier id to the class for parsing its quote file
     CLASSES_FOR_SUPPLIERS = {
         14: quote_parsers.DirectEnergyMatrixParser,
-        91: quote_parsers.ChampionMatrixParser,
         95: quote_parsers.AEPMatrixParser,
         199: quote_parsers.USGEMatrixParser,
+        928: quote_parsers.ChampionMatrixParser,
     }
 
     # number of quotes to read and insert at once. larger is faster as long
