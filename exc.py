@@ -121,3 +121,10 @@ class ApplicationError(ExtractionError):
     """Failed to apply an extracted value to a bill.
     """
     pass
+
+class ValidationError(ExtractionError):
+    """
+    Exception raised while validating a bill.
+    NOTE: Not the same as a bill successfuly completing, but failing validation.
+    """
+    pass
