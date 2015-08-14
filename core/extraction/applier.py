@@ -9,10 +9,10 @@ from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
 
-from core.model import Session, RateClass
+from core.model import Session, RateClass, UtilBill
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
-from exc import ApplicationError, ConversionError
+from exc import ApplicationError, ConversionError, ValidationError
 from core.utilbill_loader import UtilBillLoader
 
 
@@ -220,6 +220,7 @@ class UtilBillApplier(Applier):
         ApplicationErrors)
         """
         good, errors = extractor.get_values(utilbill, bill_file_handler)
+        success_keys = []
         success_count = 0
         for key in self.get_keys():
             try:
@@ -233,6 +234,128 @@ class UtilBillApplier(Applier):
                 errors[key] = error
             else:
                 success_count += 1
+                success_keys.append(key)
+        validation_state = Validator.validate_bill(utilbill, success_keys)
+        # TODO add validatoin_state column to UtilBill table
         for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
+
+class Validator:
+    """
+    A class for validating extracted data from utility bills. Validation
+    involves making sure that extracted values make sense (e.g. start date
+    before end date, dates after Jan. 1900) and that they are not too unusual
+    for a given utility account.
+    Bills can be marked FAILED, REVIEW, or SUCCEEDED depending on whether the
+    data for a bill is incorrect, unusual, or valid.
+    """
+
+    # This represents different states for validation of a bill.
+    # FAILED - validation has failed, and the extracted data is incorrect
+    # REVIEW - the extracted data is unusual/irregular, and should be
+    #          reviewed by a human
+    # SUCCEEDED - the extracted data is valid, and does not need to be reviewed.
+    FAILED = 'failed'
+    REVIEW = 'review'
+    SUCCEEDED = 'succeeded'
+    # the ordering here is important, states go from worst to best.
+    VALIDATION_STATES = [FAILED, REVIEW, SUCCEEDED]
+
+    # VALIDATION FUNCTIONS
+    # These take a utility bill, a list of bills in the same utility account,
+    #  and a value.
+    # The functions return an element in self.VALIDATION_STATES, depending on
+    #  the
+    @staticmethod
+    def validate_start(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_end(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_next_read(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_billing_address(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_service_address(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_total(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_supplier(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_rate_class(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_energy(self, utilbill, bills_in_account, value):
+        pass
+
+    @staticmethod
+    def validate_charges(self, utilbill, bills_in_account, value):
+        pass
+
+    # Map from an applier key (representing a field on a bill) to a function
+    # to validate it.
+    KEYS = OrderedDict([
+        (UtilBillApplier.START, validate_start),
+        (UtilBillApplier.END, validate_end),
+        (UtilBillApplier.NEXT_READ, validate_next_read),
+        (UtilBillApplier.BILLING_ADDRESS, validate_billing_address),
+        (UtilBillApplier.SERVICE_ADDRESS, validate_service_address),
+        (UtilBillApplier.SUPPLIER, validate_supplier),
+        (UtilBillApplier.TOTAL, validate_total),
+        (UtilBillApplier.RATE_CLASS, validate_rate_class),
+        (UtilBillApplier.ENERGY, validate_energy),
+        (UtilBillApplier.CHARGES, validate_charges),
+    ])
+
+
+    @staticmethod
+    def worst_validation_state(states):
+        """
+        Given a set of states, return the worst validation state.
+        This is based on the ordering in Validator.VALIDATION_STATES,
+        which goes from worst to best.
+        """
+        for vs in Validator.VALIDATION_STATES:
+            if vs in states:
+                return vs
+
+    @staticmethod
+    def validate_bill(utilbill, keys=KEYS.keys()):
+        """
+        Validate a bill, using a specific set of fields. By default,
+        all fields in Validator.KEYS are used.
+        Returns the validation state for the bill, which is the worst
+        validation state returned by any of the fields.
+        e.g. if one field fails, the whole bill fails.
+        """
+        s = Session()
+        bills_in_account = s.query(UtilBill).filter(
+            UtilBill.utility_account_id == utilbill.utility_account_id,
+            UtilBill.id != utilbill.id).all()
+
+        bill_validation = Validator.SUCCEEDED
+        for (applier_key, func) in Validator.KEYS.iteritems():
+            if applier_key in keys:
+                value = UtilBillApplier.GETTERS[applier_key](utilbill)
+                field_validation = func(utilbill, bills_in_account, value)
+
+                # update bill validation state with worst validation state
+                bill_validation = Validator.worst_validation_state([
+                    bill_validation, field_validation])
+
+        return bill_validation
