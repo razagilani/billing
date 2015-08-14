@@ -18,6 +18,7 @@ def upgrade():
     op.create_table('charge_name_map',
         sa.Column('charge_name_map_id', sa.Integer(), primary_key=True),
         sa.Column('display_name_regex', sa.String(), nullable=False),
+        sa.Column('reviewed', sa.Boolean(), nullable=False),
         sa.Column('rsi_binding', sa.String(), nullable=False))
 
 

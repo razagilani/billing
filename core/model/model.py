@@ -657,3 +657,6 @@ class ChargeNameMap(Base):
 
     # the corresponding charge's rsi binding.
     rsi_binding = Column(String, nullable=False)
+
+    # whether this entry has been reviewed by a human
+    reviewed = Column(Boolean, nullable=False)
