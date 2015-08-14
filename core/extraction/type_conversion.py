@@ -188,7 +188,7 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
     elif len(rsi_bindings) == 0:
         # use sanitized name as rsi_binding
         new_cnm = ChargeNameMap(display_regex=charge_name_clean,
-            rsi_bindings=charge_name_clean)
+            rsi_bindings=charge_name_clean, reviewed=False)
         s = Session()
         s.add(new_cnm)
         return charge_name_clean
