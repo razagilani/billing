@@ -47,7 +47,8 @@ def create_layout_extractors(s):
         elif f.applier_key == UtilBillApplier.RATE_CLASS:
             f.bounding_box = BoundingBox(x0=39, y0=725, x1=105, y1=735)
         elif f.applier_key == UtilBillApplier.CHARGES:
-            f.bounding_box = BoundingBox(x0=99, y0=437, x1=372, y1=571)
+            f.bounding_box = BoundingBox(x0=99, y0=230, x1=372, y1=620)
+            f.table_start_regex=r"balance brought forward"
         elif f.applier_key == UtilBillApplier.TOTAL:
             f.bounding_box = BoundingBox(x0=0, y0=0, x1=170, y1=10)
         elif f.applier_key == UtilBillApplier.SUPPLIER:
