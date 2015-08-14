@@ -63,7 +63,8 @@ def create_layout_extractors(s):
         applier_key=UtilBillApplier.RATE_CLASS))
     washington_gas_layout.fields.append(LayoutExtractor.TableField(
         page_num=2,
-        bounding_box=BoundingBox(x0=99, y0=437, x1=372, y1=571),
+        bounding_box=BoundingBox(x0=99, y0=230, x1=372, y1=620),
+        table_start_regex=r"balance brought forward",
         table_stop_regex=r"total washington gas charges|ways to pay",
         corner=Corners.TOP_LEFT, type=Field.TABLE_CHARGES,
         applier_key=UtilBillApplier.CHARGES, enabled=False))
