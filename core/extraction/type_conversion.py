@@ -30,21 +30,29 @@ def convert_table_charges(rows):
             continue
 
         if len(row) == 1:
-            # If this label is not in all caps and has no colon at the end,
-            # assume it is part of the next row's charge name that got wrapped.
-            if re.search(r"[a-z]", row[0]) and not re.search(":$", row[0]):
-                # if the next row exists, and is an actual charge row,
-                # append this current row's text to the next row's name
-                if i < len(rows) - 1 and len(rows[i+1]) > 1:
-                    rows[i+1][0] = row[0] + " " + rows[i+1][0]
-                    continue
-            # check if this row is a header for a type of charge.
-            if re.search(r"suppl[iy]|generation|transmission", row[0],
-                    re.IGNORECASE):
-                charge_type = Charge.SUPPLY
+            # check if this table cell contains a name and a price in the
+            # same box
+            m = re.search("(.*?)([$\-\d.,]+){2,}$", row[0])
+            if m:
+                row = m.groups()
             else:
-                charge_type = Charge.DISTRIBUTION
-            continue
+                # If a label is in all caps or has a colon at the end, assume
+                # it's some sort of heading indicating charge type.
+                if not re.search(r"[a-z]", row[0]) or re.search(":$", row[0]):
+                    # check if this row is a header for a type of charge.
+                    if re.search(r"suppl[iy]|generation|transmission", row[0],
+                                 re.IGNORECASE):
+                        charge_type = Charge.SUPPLY
+                    else:
+                        charge_type = Charge.DISTRIBUTION
+                else:
+                    # Otherwise, assume this row is part of the next row's charge name
+                    # that got wrapped.
+                    # if the next row exists, and is an actual charge row,
+                    # append this current row's text to the next row's name
+                    if i < len(rows) - 1 and len(rows[i+1]) > 1:
+                        rows[i+1][0] = row[0] + " " + rows[i+1][0]
+                continue
         try:
             charges.append(process_charge(charge_names_map, row, charge_type))
         except NoRSIBindingError:
