@@ -266,7 +266,8 @@ class Validator:
     # These take a utility bill, a list of bills in the same utility account,
     #  and a value.
     # The functions return an element in self.VALIDATION_STATES, depending on
-    #  the
+    #  the result of the validation.
+    
     @staticmethod
     def validate_start(self, utilbill, bills_in_account, value):
         pass
