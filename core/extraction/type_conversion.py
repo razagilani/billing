@@ -50,6 +50,9 @@ def convert_table_charges(rows):
                     # that got wrapped.
                     # if the next row exists, and is an actual charge row,
                     # append this current row's text to the next row's name
+                    # TODO In some bills the value is on the last line of the
+                    # charge name, other times it's on the first
+                    # a better way is needed to detect overflowing cells.
                     if i < len(rows) - 1 and len(rows[i+1]) > 1:
                         rows[i+1][0] = row[0] + " " + rows[i+1][0]
                 continue
