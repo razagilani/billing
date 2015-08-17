@@ -70,6 +70,8 @@ class ChargeUnitTests(testing_utils.TestCase):
                                                                      '12.35'))
         self.assertEqual('CHARGE', Charge.description_to_rsi_binding('charge @'
                                                                      '0.4335'))
+        self.assertEqual('TIER_1_USAGE',
+            Charge.description_to_rsi_binding('Tier 1 Usage @ 0.204 x 45 kwH'))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
