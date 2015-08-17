@@ -262,15 +262,16 @@ class Validator:
     #  the result of the validation.
 
     @staticmethod
-    def _set_bill_state_if_unprocessed(bill, state):
+    def _set_bill_state_if_unprocessed(bill, state, checkworst=True):
         """
         Checks if a bill is unprocessed, and then sets its validation_state.
-        This method was mainly created to deal with the circular import issue in
-        which BEUtilBill must be locally imported.
-        However it's also convenient not to repreat the 'unprocessed' check
-        everywhere.
+        If checkworst is True (it is by default), then the bill's state is
+        only modified if the new state is worst.
         """
         from billentry.billentry_model import BEUtilBill
+        if checkworst:
+            state = Validator.worst_validation_state([state,
+                bill.validation_state])
         if not (isinstance(bill, BEUtilBill) and bill.is_entered()):
                     bill.validation_state = state
 
@@ -377,6 +378,8 @@ class Validator:
                 continue
             if abs(value - b.next_meter_read_date).days < 20:
                 has_overlap = True
+                new_bill_state = Validator.worst_validation_state([
+                    b.validation_state, UtilBill.REVIEW])
                 Validator._set_bill_state_if_unprocessed(b, UtilBill.REVIEW)
         if has_overlap:
             return UtilBill.REVIEW
