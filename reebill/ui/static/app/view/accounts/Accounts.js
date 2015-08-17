@@ -177,8 +177,9 @@ Ext.define('ReeBill.view.accounts.Accounts', {
 
     dockedItems: [{
         dock: 'top',
-        layout: {
-            overflowHandler: 'Menu'
+        layout:{
+            type:'hbox',
+            align:'stretch'
         },
         items: [{
             xtype: 'button',
@@ -200,6 +201,19 @@ Ext.define('ReeBill.view.accounts.Accounts', {
             text: 'Merge',
             iconCls: 'silk-merge',
             disabled: true
+        },{
+            xtype: 'combo',
+            name: 'accountsFilter',
+            fieldLabel: 'Filter',
+            labelWidth: 30,
+            width: 200,
+            value: 'none',
+            editable: false,
+            store: 'AccountsFilter',
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'label',
+            forceSelection: true
         }]
     }]
 });
