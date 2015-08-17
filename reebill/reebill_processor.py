@@ -639,7 +639,7 @@ class ReebillProcessor(object):
         for b in reebills:
             issue_date = datetime.utcnow()
             b.issue(issue_date, self,
-                    corrections=self.get_unissued_corrections(b.get_account()))
+                    corrections=b.reebill_customer.get_unissued_corrections())
 
         # Summary depends on data of first ReeBill of those summarized 
         self.mail_summary("issue_summary_template.html", "Energy Bill(s) Due", reebills, summary_recipient)
