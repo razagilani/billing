@@ -66,6 +66,10 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.assertEqual('AA_B_C', Charge.description_to_rsi_binding('aa b  c'))
         self.assertEqual('A_1_2_3',
                          Charge.description_to_rsi_binding('a_1 2 3'))
+        self.assertEqual('CHARGE', Charge.description_to_rsi_binding('charge '
+                                                                     '12.35'))
+        self.assertEqual('CHARGE', Charge.description_to_rsi_binding('charge @'
+                                                                     '0.4335'))
 
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
