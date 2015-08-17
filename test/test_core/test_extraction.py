@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from celery.exceptions import TaskRevokedError
+from dateutil.relativedelta import relativedelta
 import os
 from unittest import TestCase, skip
 
@@ -22,7 +23,7 @@ from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import Applier, UtilBillApplier, Validator
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge, LayoutElement, BoundingBox
 from core.model.utilbill import UtilBill, Charge
@@ -96,6 +97,8 @@ class ApplierTest(TestCase):
         extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
         extractor.get_values.return_value = (good, extractor_errors)
         bfh = Mock(autospec=BillFileHandler)
+        # validator is tested in ValidatorTest
+        Validator.validate_bill = Mock(return_value=UtilBill.SUCCEEDED)
 
         success_count, applier_errors = self.applier.apply_values(
             extractor, self.bill, bfh)
@@ -482,7 +485,7 @@ class TestTypeConversion(TestCase):
             Charge(None, description='DC Rights-of-Way Fee',
                 unit='dollars',
                 type=Charge.DISTRIBUTION, target_total=5.77),
-            Charge(None, description='Sustainable Energy Trust Fund', \
+            Charge(None, description='Sustainable Energy Trust Fund',
             unit='dollars',
                 rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88),
             Charge(None, description='Energy Assistance Trust Fund',
@@ -538,6 +541,202 @@ class TestTypeConversion(TestCase):
         pass
 
 
+class ValidatorTest(TestCase):
+    """ Test bill validation. (i.e making sure extracted data has reasonable
+    values)
+    """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def tearDown(self):
+        clear_db()
+
+    def setUp(self):
+        clear_db()
+        self.utilbill = Mock(autospec=UtilBill)
+        self.utilbill.utility_account_id = 1
+        self.utilbill.period_start=date(2014, 1, 1)
+        self.utilbill.period_end=date(2014, 1, 31)
+        self.utilbill.next_meter_read_date=date(2014, 2, 28)
+
+        self.utilbill_no_dates = Mock(autospec=UtilBill)
+        self.utilbill_no_dates.utility_account_id = 1
+        self.utilbill_no_dates.period_start=None
+        self.utilbill_no_dates.period_end=None
+        self.utilbill_no_dates.next_meter_read_date=None
+
+        bill2 = Mock(autospec=UtilBill)
+        bill2.utility_account_id=1
+        bill2.period_start=date(2014, 2, 1)
+        bill2.period_end=date(2014, 2, 28)
+        bill2.next_meter_read_date=date(2014, 3, 31)
+
+        bill3 = Mock(autospec=UtilBill)
+        bill3.utility_account_id=1
+        bill3.period_start=date(2014, 3, 1)
+        bill3.period_end=date(2014, 3, 31)
+        bill3.next_meter_read_date=date(2014, 4, 30)
+
+        bill4 = Mock(autospec=UtilBill)
+        bill4.utility_account_id=1
+        bill4.period_start=date(2014, 4, 1)
+        bill4.period_end=date(2014, 4, 30)
+        bill4.next_meter_read_date=date(2014, 5, 31)
+        self.other_bills = [bill2, bill3, bill4]
+
+
+    def test_worst_validation_state(self):
+        with self.assertRaises(ValueError):
+            Validator.worst_validation_state([])
+
+        self.assertEqual(UtilBill.SUCCEEDED,
+            Validator.worst_validation_state([UtilBill.SUCCEEDED,
+                UtilBill.SUCCEEDED]))
+
+        self.assertEqual(UtilBill.REVIEW, Validator.worst_validation_state([
+            UtilBill.SUCCEEDED, UtilBill.REVIEW, UtilBill.SUCCEEDED]))
+
+        self.assertEqual(UtilBill.FAILED, Validator.worst_validation_state([
+            UtilBill.SUCCEEDED, UtilBill.REVIEW,
+            UtilBill.FAILED, UtilBill.SUCCEEDED]))
+
+    def test_date_utils(self):
+        # simple test of _check_date_bounds
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 12, 30)))
+        # bounds are inclusive
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 6, 7), date(2014, 12, 30)))
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 6, 7)))
+        # false results:
+        self.assertFalse(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 8, 1), date(2014, 12, 30)))
+        self.assertFalse(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 2, 7)))
+
+        # testing _overlaps_bill_period
+        self.assertTrue(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 15)))
+        # start is inclusive
+        self.assertTrue(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 1)))
+        # end is exclusive
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 31)))
+        # false results:
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2012, 2, 23)))
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 2, 23)))
+        # return false if bill period dates are None
+        self.assertFalse(Validator._overlaps_bill_period(
+            self.utilbill_no_dates, date(2014, 1, 15)))
+
+    def test_validate_start(self):
+        simple_validation = Validator.validate_start(self.utilbill,
+            self.other_bills, date(2014, 1, 1))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # a start date from the distant past
+        baroque_error = Validator.validate_start(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # a start date from the future
+        future_error = Validator.validate_start(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # start date is out of range, relative to bill's end date
+        short_period_error = Validator.validate_start(self.utilbill,
+            [], date(2014, 1, 21))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_start(self.utilbill,
+            [], date(2013, 12, 1))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # start date that overlaps with another bill's period
+        bill_overlap_error = Validator.validate_start(self.utilbill_no_dates,
+            self.other_bills, date(2014, 2, 15))
+        self.assertEqual(UtilBill.FAILED, bill_overlap_error)
+        # TODO test that other bill was also marked invalid
+
+        # start date that doesn't overlap with other bills, but is unusually
+        # clsoe to other start dates.
+        bill_short_gap_error = Validator.validate_start(self.utilbill_no_dates,
+            self.other_bills, date(2014, 1, 28))
+        self.assertEqual(UtilBill.FAILED, bill_short_gap_error)
+
+    def test_validate_end(self):
+        simple_validation = Validator.validate_end(self.utilbill,
+            self.other_bills, date(2014, 1, 31))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # an end date from the distant past
+        baroque_error = Validator.validate_end(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # an end date from the future
+        future_error = Validator.validate_end(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # end date is out of range, relative to bill's start date
+        short_period_error = Validator.validate_end(self.utilbill,
+            [], date(2014, 1, 5))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_end(self.utilbill,
+            [], date(2014, 2, 21))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # end date that overlaps with another bill's period
+        bill_overlap_error = Validator.validate_end(self.utilbill_no_dates,
+            self.other_bills, date(2014, 2, 15))
+        self.assertEqual(UtilBill.FAILED, bill_overlap_error)
+        # TODO test that other bill was also marked invalid
+
+        # end date that doesn't overlap with other bills, but is unusually
+        # close to other end dates.
+        bill_short_gap_error = Validator.validate_end(self.utilbill_no_dates,
+            self.other_bills, date(2014, 5, 5))
+        self.assertEqual(UtilBill.FAILED, bill_short_gap_error)
+
+    def test_validate_next_read(self):
+        simple_validation = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date(2014, 2, 28))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # a next read date from the distant past
+        baroque_error = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # a next read date from the future
+        future_error = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # next read date is out of range, relative to bill's end date
+        short_period_error = Validator.validate_next_read(self.utilbill,
+            [], date(2014, 2, 5))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_next_read(self.utilbill,
+            [], date(2014, 3, 31))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # next read date  is unusually close to other next read dates.
+        bill_short_gap_error = Validator.validate_next_read(self.utilbill_no_dates,
+            self.other_bills, date(2014, 4, 27))
+        self.assertEqual(UtilBill.REVIEW, bill_short_gap_error)
 
 
 class TestIntegration(TestCase):
