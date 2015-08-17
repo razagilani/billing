@@ -185,8 +185,9 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
     # look for matching patterns in charge_names_map
     for charge_entry in charge_names_map:
         charge_regex = charge_entry.display_name_regex
-
-        if re.search(charge_regex, charge_name_clean, re.IGNORECASE):
+        if regex.fullmatch("(%s){i<=3,d<=3,e<=3}" % charge_regex,
+                charge_name_clean,
+                regex.IGNORECASE):
             rsi_bindings.append(charge_entry.rsi_binding)
     if len(rsi_bindings) > 1:
         raise ConversionError('Multiple (%d) RSI bindings match to charge name '
@@ -196,7 +197,7 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
         # use sanitized name as rsi_binding
         # surround name with ^ and $ to ensure that a very short charge name
         # doesn't lead to ambiguous matches for other charges.
-        charge_name_regex = "^%s$" % re.escape(charge_name_clean)
+        charge_name_regex = re.escape(charge_name_clean)
         new_cnm = ChargeNameMap(display_name_regex=charge_name_regex,
             rsi_binding=charge_name_clean, reviewed=False)
         s = Session()
