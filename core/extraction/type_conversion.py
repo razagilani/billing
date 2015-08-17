@@ -101,6 +101,7 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     unit_format = r"kWd|kWh|dollars|th|therms|BTU|MMBTU|\$"
     # matches text of the form <quantity> <unit> x <rate>
     #   e.g. 1,362.4 TH x .014
+    # TODO only works for wash gas, pepco bills
     register_format = r"(%s)\s*(%s)\s*x\s*\$?(%s)" % (num_format, unit_format,
     num_format)
 
@@ -141,7 +142,7 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     # so check all columns
     for i in range(0, len(row)):
         cell = row[i]
-        match = re.match(r"(.*?)\s*%s" % register_format, cell,
+        match = re.search(r"(.*?)\s*%s" % register_format, cell,
             re.IGNORECASE)
         if match:
             reg_quantity = match.group(2)
@@ -190,6 +191,7 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
     # look for matching patterns in charge_names_map
     for charge_entry in charge_names_map:
         charge_regex = charge_entry.display_name_regex
+
         if re.search(charge_regex, charge_name_clean, re.IGNORECASE):
             rsi_bindings.append(charge_entry.rsi_binding)
     if len(rsi_bindings) > 1:
@@ -205,6 +207,10 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
             rsi_binding=charge_name_clean, reviewed=False)
         s = Session()
         s.add(new_cnm)
+        # need to do this, since charge_names_map is only updated once per bill.
+        # This will create duplicate entries if bill has multiple of the same
+        #  charge name.
+        charge_names_map.append(new_cnm)
         return charge_name_clean
     return rsi_bindings[0]
 
