@@ -32,7 +32,7 @@ def convert_table_charges(rows):
         if len(row) == 1:
             # check if this table cell contains a name and a price in the
             # same box
-            m = re.search("(.*?)([$\-\d.,]+){2,}$", row[0])
+            m = re.search("([a-z].+?)([$\-\d.,]+){2,}$", row[0])
             if m:
                 row = m.groups()
             else:
@@ -60,7 +60,6 @@ def convert_table_charges(rows):
             charges.append(process_charge(charge_names_map, row, charge_type))
         except NoRSIBindingError:
             # if no rsi binding is found, skip this bill.
-            print "*** no rsi binding for: %s" % row
             continue
     return filter(None, charges)
 
@@ -102,12 +101,14 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     # matches text of the form <quantity> <unit> x <rate>
     #   e.g. 1,362.4 TH x .014
     # TODO only works for wash gas, pepco bills
-    register_format = r"(%s)\s*(%s)\s*x\s*\$?(%s)" % (num_format, unit_format,
+    register_format = r"(%s)\s*(%s)\s*[@x]\s*\$?(%s)" % (num_format,
+    unit_format,
     num_format)
 
     # first cell in row is the name of the charge (and sometimes contains
     # rate info as well), while the last cell in row is the value of the
     # charge.
+    print row
     text = row[0]
     value = row[-1]
     if not text or not value:
