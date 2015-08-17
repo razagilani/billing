@@ -435,13 +435,13 @@ class TestTypeConversion(TestCase):
                 rsi_binding='DIST_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="pgc",
                 rsi_binding='PGC_CHARGE', reviewed=False),
-            ChargeNameMap(display_name_regex="tax",
+            ChargeNameMap(display_name_regex="(delivery )?tax",
                 rsi_binding='TAX', reviewed=False),
-            ChargeNameMap(display_name_regex="fee",
+            ChargeNameMap(display_name_regex="(dc_rights_of_way_)?fee",
                 rsi_binding='FEE', reviewed=False),
-            ChargeNameMap(display_name_regex="total",
+            ChargeNameMap(display_name_regex="total.*",
                 rsi_binding='TOTAL_CHARGE', reviewed=False),
-            ChargeNameMap(display_name_regex="trust_fund",
+            ChargeNameMap(display_name_regex=".*trust_fund",
                 rsi_binding='TRUST_FUND', reviewed=False)]
         type_conversion._get_charge_names_map = Mock(
             return_value=self.charge_names_map)
@@ -462,11 +462,6 @@ class TestTypeConversion(TestCase):
         dist_charge_name = _get_rsi_binding_from_name(
             self.charge_names_map, "distribution charge")
         self.assertEqual("DIST_CHARGE", dist_charge_name)
-
-        # ambiguous charge name
-        with self.assertRaises(ConversionError):
-            _get_rsi_binding_from_name(self.charge_names_map,
-                                       "distribution charge pgc charge")
 
         # new charge name
         new_charge_binding = _get_rsi_binding_from_name(
@@ -645,13 +640,13 @@ class TestIntegration(TestCase):
                 rsi_binding='PEAK_USAGE_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="pgc",
                 rsi_binding='PGC_CHARGE', reviewed=False),
-            ChargeNameMap(display_name_regex="tax",
+            ChargeNameMap(display_name_regex="(sales_|delivery_)?tax",
                 rsi_binding='TAX', reviewed=False),
-            ChargeNameMap(display_name_regex="rights?.of.way",
+            ChargeNameMap(display_name_regex=".*rights?.of.way(.fee)?",
                 rsi_binding='RIGHT_OF_WAY', reviewed=False),
             ChargeNameMap(display_name_regex="total",
                 rsi_binding='TOTAL_CHARGE', reviewed=False),
-            ChargeNameMap(display_name_regex="trust_fund",
+            ChargeNameMap(display_name_regex=".*trust_fund.*",
                 rsi_binding='TRUST_FUND', reviewed=False)]
 
         # create bill with file
@@ -717,7 +712,8 @@ class TestIntegration(TestCase):
              Charge('DISTRIBUTION_CHARGE', name='Customer Charge',
                  target_total=14.0,
                     type=D, unit='therms'),
-             Charge('PGC_CHARGE', name='PGC', target_total=417.91, type=S,
+             Charge('PGC_CHARGE', name='PGC', target_total=417.91,
+                 type=S,
                     unit='therms'),
              Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
                     target_total=15.79, type=D, unit='therms'),

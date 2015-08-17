@@ -24,7 +24,6 @@ log = logging.getLogger(__name__)
 
 def upgrade():
     alembic_upgrade('1226d67c4c53')
-
     init_model()
     s = Session()
     cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'

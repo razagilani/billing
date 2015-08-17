@@ -53,9 +53,6 @@ Local_Tax                                      | LOCAL_TAX
 LP_LEAC                                        | LP_LEAC
 MD_Gross_Receipts_Surcharge                    | MD_GROSS_RECEIPTS_SURCHARGE
 MD_GRT_Surcharge                               | MD_GRT_SURCHARGE
-MD_Sales_Tax$                                  | MD_STATE_SALES_TAX
-MD_Sales_Tax_Distribution                      | MD_STATE_SALES_TAX
-MD_Distribution_Sales_Tax                      | MD_STATE_SALES_TAX
 MD_Supply_Sales_Tax                            | MD_SUPPLY_SALES_TAX
 Md_Universal_Service_Prog.                     | MD_UNIVERSAL
 Montgomery_C(ou)?nty_Surcharge                 | MONT_COUNTY_SURCHARGE
