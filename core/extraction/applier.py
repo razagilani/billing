@@ -4,7 +4,9 @@ specifically on the UtilBill class should go here.
 """
 from abc import ABCMeta
 from collections import OrderedDict
+from datetime import date
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
@@ -12,7 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.model import Session, RateClass, UtilBill
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
-from exc import ApplicationError, ConversionError, ValidationError
+from exc import ApplicationError
 from core.utilbill_loader import UtilBillLoader
 
 
@@ -236,10 +238,12 @@ class UtilBillApplier(Applier):
                 success_count += 1
                 success_keys.append(key)
         validation_state = Validator.validate_bill(utilbill, success_keys)
+        utilbill.validation_state = validation_state
         # TODO add validatoin_state column to UtilBill table
         for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
+
 
 class Validator:
     """
@@ -251,76 +255,191 @@ class Validator:
     data for a bill is incorrect, unusual, or valid.
     """
 
-    # This represents different states for validation of a bill.
-    # FAILED - validation has failed, and the extracted data is incorrect
-    # REVIEW - the extracted data is unusual/irregular, and should be
-    #          reviewed by a human
-    # SUCCEEDED - the extracted data is valid, and does not need to be reviewed.
-    FAILED = 'failed'
-    REVIEW = 'review'
-    SUCCEEDED = 'succeeded'
-    # the ordering here is important, states go from worst to best.
-    VALIDATION_STATES = [FAILED, REVIEW, SUCCEEDED]
-
     # VALIDATION FUNCTIONS
     # These take a utility bill, a list of bills in the same utility account,
     #  and a value.
     # The functions return an element in self.VALIDATION_STATES, depending on
     #  the result of the validation.
-    
+
     @staticmethod
-    def validate_start(self, utilbill, bills_in_account, value):
+    def _set_bill_state_if_unprocessed(bill, state):
+        """
+        Checks if a bill is unprocessed, and then sets its validation_state.
+        This method was mainly created to deal with the circular import issue in
+        which BEUtilBill must be locally imported.
+        However it's also convenient not to repreat the 'unprocessed' check
+        everywhere.
+        """
+        from billentry.billentry_model import BEUtilBill
+        if not (isinstance(bill, BEUtilBill) and bill.is_entered()):
+                    bill.validation_state = state
+
+    @staticmethod
+    def _check_date_bounds(date, start, end):
+        """ Checks if a date is within bounds, inclusive. """
+        return start <= date <= end
+
+    @staticmethod
+    def _overlaps_bill_period(bill, date):
+        """ Checks if a date is within the period of a bill. """
+        if bill.period_start is None or bill.period_end is None:
+            return False
+        return bill.period_start <= date < bill.period_end
+
+    @staticmethod
+    def validate_start(utilbill, bills_in_account, value):
+        """ Validates a bill's start date by checking it against absolute
+        min/max bounds, by comparing it to the end date, and by checking
+        for overlap with other bills' start dates. """
+
+        # check start date min / max values
+        if not Validator._check_date_bounds(value, date(
+                2000, 01, 01), date.today()):
+            return UtilBill.FAILED
+
+        # check this bill's period is a reasonable length
+        if utilbill.period_end is not None and not 20 < (utilbill.period_end -
+                value).days < 40:
+            return UtilBill.FAILED
+
+        # Check overlap with other bills
+        has_overlap = False
+        for b in bills_in_account:
+            # check for overlaps / short gaps with other bills
+            if b.period_start is None:
+                continue
+            if Validator._overlaps_bill_period(b, value) or abs(value -
+                    b.period_start).days < 20:
+                has_overlap = True
+                Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
+        if has_overlap:
+            return UtilBill.FAILED
+
+        return UtilBill.SUCCEEDED
+
+
+    @staticmethod
+    def validate_end(utilbill, bills_in_account, value):
+        """ Validates a bill's end date by checking it against absolute
+        min/max bounds, by comparing it to the start date, and by checking
+        for overlap with other bills' end dates. """
+
+        # check end date min / max values
+        if not Validator._check_date_bounds(value, date(
+                2000, 01, 01), date.today()):
+            return UtilBill.FAILED
+
+        # check this bill's period is a reasonable length
+        if utilbill.period_start is not None and not 20 < (value -
+                utilbill.period_start).days < 40:
+            return UtilBill.FAILED
+
+        # Check overlap with other bills
+        has_overlap = False
+        for b in bills_in_account:
+            # check for overlaps / short gaps with other bills
+            if b.period_end is None:
+                continue
+            if Validator._overlaps_bill_period(b, value) or abs(value -
+                    b.period_end).days < 20:
+                has_overlap = True
+                Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
+        if has_overlap:
+            return UtilBill.FAILED
+
+        return UtilBill.SUCCEEDED
+
+    @staticmethod
+    def validate_next_read(utilbill, bills_in_account, value):
+        """ Validate a bill's next meter read. Checks that the date is within
+        absolute bounds, that it is not too close to the current bill's
+        period_end, and that it is not too close to other bill's
+        next_meter_read. The last check returns REVIEW instead of FAIL,
+        since next_meter_reads tend to be more estimated than exact dates.
+        """
+
+        # check next read date min / max values (next read date can be up to
+        # one month in the future)
+        if not Validator._check_date_bounds(value, date(2000, 01, 01),
+                        date.today() + relativedelta(months=1)):
+            return UtilBill.FAILED
+
+        if utilbill.period_end is not None and not 20 < (value -
+                utilbill.period_end).days < 40:
+            return UtilBill.FAILED
+
+        # Check overlap with other bills' next meter read date. These can be
+        # estimates, so mark discrepancies as REVIEW instead of FAILED
+        has_overlap = False
+        for b in bills_in_account:
+            # check for short gaps with other bills' next read dates.
+            if b.next_meter_read_date is None:
+                continue
+            if abs(value - b.next_meter_read_date).days < 20:
+                has_overlap = True
+                Validator._set_bill_state_if_unprocessed(b, UtilBill.REVIEW)
+        if has_overlap:
+            return UtilBill.REVIEW
+
+        return UtilBill.SUCCEEDED
+
+    @staticmethod
+    def validate_billing_address(utilbill, bills_in_account, value):
+        """ Validates billing address by making sure it's a real address,
+        and then checking if previous bills have a similar billing address.
+        """
+        # TODO validate address w/ USPS
+
+        if value in [b.billing_address for b in bills_in_account]:
+            return UtilBill.SUCCEEDED
+        else:
+            return UtilBill.REVIEW
+
+    @staticmethod
+    def validate_service_address(utilbill, bills_in_account, value):
+        """ Validates service address by making sure it's a real address,
+        and then checking if previous bills have a similar service address.
+        """
+        # TODO validate address w/ USPS
+
+        if value in [b.service_address for b in bills_in_account]:
+            return UtilBill.SUCCEEDED
+        else:
+            return UtilBill.REVIEW
+
+    @staticmethod
+    def validate_total(utilbill, bills_in_account, value):
         pass
 
     @staticmethod
-    def validate_end(self, utilbill, bills_in_account, value):
+    def validate_supplier(utilbill, bills_in_account, value):
         pass
 
     @staticmethod
-    def validate_next_read(self, utilbill, bills_in_account, value):
+    def validate_rate_class(utilbill, bills_in_account, value):
         pass
 
     @staticmethod
-    def validate_billing_address(self, utilbill, bills_in_account, value):
+    def validate_energy(utilbill, bills_in_account, value):
         pass
 
     @staticmethod
-    def validate_service_address(self, utilbill, bills_in_account, value):
-        pass
-
-    @staticmethod
-    def validate_total(self, utilbill, bills_in_account, value):
-        pass
-
-    @staticmethod
-    def validate_supplier(self, utilbill, bills_in_account, value):
-        pass
-
-    @staticmethod
-    def validate_rate_class(self, utilbill, bills_in_account, value):
-        pass
-
-    @staticmethod
-    def validate_energy(self, utilbill, bills_in_account, value):
-        pass
-
-    @staticmethod
-    def validate_charges(self, utilbill, bills_in_account, value):
+    def validate_charges(utilbill, bills_in_account, value):
         pass
 
     # Map from an applier key (representing a field on a bill) to a function
     # to validate it.
     KEYS = OrderedDict([
-        (UtilBillApplier.START, validate_start),
-        (UtilBillApplier.END, validate_end),
-        (UtilBillApplier.NEXT_READ, validate_next_read),
-        (UtilBillApplier.BILLING_ADDRESS, validate_billing_address),
-        (UtilBillApplier.SERVICE_ADDRESS, validate_service_address),
-        (UtilBillApplier.SUPPLIER, validate_supplier),
-        (UtilBillApplier.TOTAL, validate_total),
-        (UtilBillApplier.RATE_CLASS, validate_rate_class),
-        (UtilBillApplier.ENERGY, validate_energy),
-        (UtilBillApplier.CHARGES, validate_charges),
+        (UtilBillApplier.START, validate_start.__func__),
+        (UtilBillApplier.END, validate_end.__func__),
+        (UtilBillApplier.NEXT_READ, validate_next_read.__func__),
+        (UtilBillApplier.BILLING_ADDRESS, validate_billing_address.__func__),
+        (UtilBillApplier.SERVICE_ADDRESS, validate_service_address.__func__),
+        (UtilBillApplier.SUPPLIER, validate_supplier.__func__),
+        (UtilBillApplier.TOTAL, validate_total.__func__),
+        (UtilBillApplier.RATE_CLASS, validate_rate_class.__func__),
+        (UtilBillApplier.ENERGY, validate_energy.__func__),
+        (UtilBillApplier.CHARGES, validate_charges.__func__),
     ])
 
 
@@ -328,18 +447,20 @@ class Validator:
     def worst_validation_state(states):
         """
         Given a set of states, return the worst validation state.
-        This is based on the ordering in Validator.VALIDATION_STATES,
+        This is based on the ordering in UtilBill.VALIDATION_STATES,
         which goes from worst to best.
+        If an empty list of states is given, ValueError is raised.
         """
-        for vs in Validator.VALIDATION_STATES:
+        for vs in UtilBill.VALIDATION_STATES:
             if vs in states:
                 return vs
+        raise ValueError("empty list passed to worst_validation_state")
 
     @staticmethod
     def validate_bill(utilbill, keys=KEYS.keys()):
         """
         Validate a bill, using a specific set of fields. By default,
-        all fields in Validator.KEYS are used.
+        all fields in UtilBill.KEYS are used.
         Returns the validation state for the bill, which is the worst
         validation state returned by any of the fields.
         e.g. if one field fails, the whole bill fails.
@@ -349,11 +470,12 @@ class Validator:
             UtilBill.utility_account_id == utilbill.utility_account_id,
             UtilBill.id != utilbill.id).all()
 
-        bill_validation = Validator.SUCCEEDED
+        bill_validation = UtilBill.SUCCEEDED
         for (applier_key, func) in Validator.KEYS.iteritems():
             if applier_key in keys:
                 value = UtilBillApplier.GETTERS[applier_key](utilbill)
-                field_validation = func(utilbill, bills_in_account, value)
+                field_validation = func(utilbill, bills_in_account,
+                    value)
 
                 # update bill validation state with worst validation state
                 bill_validation = Validator.worst_validation_state([
