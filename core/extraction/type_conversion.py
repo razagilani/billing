@@ -154,16 +154,10 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
         if i == 0:
             description = match.group(1) if match else cell
 
-    # Get rsi binding from database, by looking for existing charges with
-    # the same description.
-    # TODO Use some sort of charge name map
+    # Get rsi binding from database.
     # TODO also filter by charge type in this query?
     rsi_binding = _get_rsi_binding_from_name(charge_names_map, description)
-    if rsi_binding is None:
-        # TODO what to do if existing RSI binding not found?
-        # right now simply skip this charge by returning None
-        return None
-
+    
     return Charge(description=description, unit=unit, rate=rate,
         rsi_binding=rsi_binding, type=ctype, target_total=target_total)
 
