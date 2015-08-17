@@ -108,7 +108,6 @@ def process_charge(charge_names_map, row, ctype=Charge.DISTRIBUTION):
     # first cell in row is the name of the charge (and sometimes contains
     # rate info as well), while the last cell in row is the value of the
     # charge.
-    print row
     text = row[0]
     value = row[-1]
     if not text or not value:
