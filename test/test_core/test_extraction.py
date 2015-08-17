@@ -16,7 +16,8 @@ from mock import Mock, NonCallableMock
 # dependency might cause the wrong config to be loaded.
 from core.extraction.task import test_bill, reduce_bill_results
 from core.extraction.type_conversion import convert_unit, convert_address, \
-    process_charge, convert_table_charges, _get_charge_names_map
+    process_charge, convert_table_charges, _get_charge_names_map, \
+    _get_rsi_binding_from_name
 from core.model.model import ChargeNameMap
 from test import init_test_config
 
@@ -429,21 +430,21 @@ class TestTypeConversion(TestCase):
     def setUp(self):
         clear_db()
         # set up a fake charge names map
-        charge_names_map = [
+        self.charge_names_map = [
             ChargeNameMap(display_name_regex="(distribution|customer)_charge",
-                rsi_binding='DIST_CHARGE'),
+                rsi_binding='DIST_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="pgc",
-                rsi_binding='PGC_CHARGE'),
+                rsi_binding='PGC_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="tax",
-                rsi_binding='TAX'),
+                rsi_binding='TAX', reviewed=False),
             ChargeNameMap(display_name_regex="fee",
-                rsi_binding='FEE'),
+                rsi_binding='FEE', reviewed=False),
             ChargeNameMap(display_name_regex="total",
-                rsi_binding='TOTAL_CHARGE'),
+                rsi_binding='TOTAL_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="trust_fund",
-                rsi_binding='TRUST_FUND')]
+                rsi_binding='TRUST_FUND', reviewed=False)]
         type_conversion._get_charge_names_map = Mock(
-            return_value=charge_names_map)
+            return_value=self.charge_names_map)
 
     def test_convert_unit(self):
         # for units already in CHARGE_UNITS, just return them
@@ -455,6 +456,22 @@ class TestTypeConversion(TestCase):
         self.assertEqual(convert_unit('$'), 'dollars')
         with self.assertRaises(ConversionError):
             convert_unit('lol not a unit')
+
+    def test_get_rsi_binding_from_name(self):
+        # simple charge rsi binding retrieval
+        dist_charge_name = _get_rsi_binding_from_name(
+            self.charge_names_map, "distribution charge")
+        self.assertEqual("DIST_CHARGE", dist_charge_name)
+
+        # ambiguous charge name
+        with self.assertRaises(ConversionError):
+            _get_rsi_binding_from_name(self.charge_names_map,
+                                       "distribution charge pgc charge")
+
+        # new charge name
+        new_charge_binding = _get_rsi_binding_from_name(
+            self.charge_names_map, "lol not a real charge")
+        self.assertEqual("LOL_NOT_A_REAL_CHARGE", new_charge_binding)
 
     def test_process_charge(self):
         bagel_cnm = ChargeNameMap(display_name_regex=r"bagel|donut",
@@ -623,19 +640,19 @@ class TestIntegration(TestCase):
         #TODO add charge name map
         self.charge_names_map = [
             ChargeNameMap(display_name_regex="(distribution|customer)_charge",
-                rsi_binding='DISTRIBUTION_CHARGE'),
+                rsi_binding='DISTRIBUTION_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="peak",
-                rsi_binding='PEAK_USAGE_CHARGE'),
+                rsi_binding='PEAK_USAGE_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="pgc",
-                rsi_binding='PGC_CHARGE'),
+                rsi_binding='PGC_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="tax",
-                rsi_binding='TAX'),
+                rsi_binding='TAX', reviewed=False),
             ChargeNameMap(display_name_regex="rights?.of.way",
-                rsi_binding='RIGHT_OF_WAY'),
+                rsi_binding='RIGHT_OF_WAY', reviewed=False),
             ChargeNameMap(display_name_regex="total",
-                rsi_binding='TOTAL_CHARGE'),
+                rsi_binding='TOTAL_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="trust_fund",
-                rsi_binding='TRUST_FUND')]
+                rsi_binding='TRUST_FUND', reviewed=False)]
 
         # create bill with file
         self.bill = UtilBill(account, utility, rate_class)

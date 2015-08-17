@@ -656,7 +656,7 @@ class ChargeNameMap(Base):
     display_name_regex = Column(String, nullable=False)
 
     # the corresponding charge's rsi binding.
-    rsi_binding = Column(String, nullable=False)
+    rsi_binding = Column(String, nullable=False, default=False)
 
     # whether this entry has been reviewed by a human
     reviewed = Column(Boolean, nullable=False)
