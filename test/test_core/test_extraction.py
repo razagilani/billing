@@ -579,6 +579,10 @@ class ValidatorTest(TestCase):
         self.bill2.period_end=date(2014, 2, 28)
         self.bill2.next_meter_read_date=date(2014, 3, 31)
         self.bill2.validation_state=UtilBill.SUCCEEDED
+        self.bill2.billing_address=Address(addressee="Bob Billingsworth",
+            street="1234 Nextility St", city="Baltimore", state="MD")
+        self.bill2.service_address=Address(addressee=None,
+            street="15 35th St", city="Baltimore", state="MD")
 
         self.bill3 = Mock(spec=UtilBill)
         self.bill3.utility_account_id=1
@@ -769,6 +773,39 @@ class ValidatorTest(TestCase):
         self.assertEqual(UtilBill.REVIEW, self.bill3.validation_state)
         self.bill3.validation_state = UtilBill.SUCCEEDED
 
+    def test_validate_billing_address(self):
+        # this address matches bill2's address
+        correct_address = Address(addressee="Bob Billingsworth",
+            street="1234 Nextility St", city="Baltimore", state="MD")
+        validation_result = Validator.validate_billing_address(self.utilbill,
+            self.other_bills, correct_address)
+        self.assertEqual(UtilBill.SUCCEEDED, validation_result)
+
+        # a valid address, but not found elsewhere in the account
+        wrong_address = Address(addressee="Not Bob",
+            street="5678 Skyline Dr", city="Ithaca", state="NY")
+        validation_error = Validator.validate_billing_address(self.utilbill,
+            self.other_bills, wrong_address)
+        self.assertEqual(UtilBill.REVIEW, validation_error)
+
+        # TODO add address validation so we can test against an invalid address
+
+    def test_validate_service_address(self):
+        # this address matches bill2's service address
+        correct_address = Address(addressee=None, street="15 35th St",
+            city="Baltimore", state="MD")
+        validation_result = Validator.validate_service_address(self.utilbill,
+            self.other_bills, correct_address)
+        self.assertEqual(UtilBill.SUCCEEDED, validation_result)
+
+        # a valid address, but not found elsewhere in the account
+        wrong_address = Address(addressee=None,
+            street="5 35th St", city="Baltimore", state="MA")
+        validation_error = Validator.validate_service_address(self.utilbill,
+            self.other_bills, wrong_address)
+        self.assertEqual(UtilBill.REVIEW, validation_error)
+
+        # TODO add address validation so we can test against an invalid address
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
