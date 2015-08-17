@@ -1194,7 +1194,7 @@ class SummaryBillDoc(BillDoc):
 
         fr2 = []
         fr2.append(
-            Frame(35, 35, 542, 730, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='SecondPagebillList2', showBoundary=_showBoundaries)
+            Frame(35, 35, 543, 760, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='SecondPagebillList2', showBoundary=_showBoundaries)
         )
 
         return [fr1, fr2]
