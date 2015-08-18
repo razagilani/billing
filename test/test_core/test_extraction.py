@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import random
 from celery.exceptions import TaskRevokedError
 from dateutil.relativedelta import relativedelta
 import numpy
@@ -635,6 +636,29 @@ class ValidatorTest(TestCase):
             UtilBill.REVIEW, checkworst=False)
         self.assertNotEqual(UtilBill.REVIEW, processed_bill.validation_state)
 
+    def test_previous_bill(self):
+        bill = Mock(spec=UtilBill, create=False)
+        bill.period_end = None
+        # test bill with no period_end
+        with self.assertRaises(ValueError):
+            Validator._get_previous_bill(bill, self.other_bills)
+
+
+        # no previous bill
+        bill.period_end = date(2013, 1, 05)
+        self.assertIsNone(Validator._get_previous_bill(bill, self.other_bills))
+
+        # normal test
+        bill.period_end = date(2014, 3, 31)
+        prev_bill = Validator._get_previous_bill(bill, self.other_bills)
+        self.assertEqual(prev_bill, self.bill2)
+
+        # bills out of order
+        bill.period_end = date(2014, 3, 31)
+        prev_bill = Validator._get_previous_bill(bill,
+            [self.bill3, self.bill4, self.bill2])
+        self.assertEqual(prev_bill, self.bill2)
+
     def test_check_numerical_value(self):
         # basic range check
         self.assertTrue(Validator._check_numerical_value(5, 1000))
@@ -877,6 +901,12 @@ class ValidatorTest(TestCase):
         unusually_high = Validator.validate_energy(self.utilbill,
             self.other_bills, 400.5)
         self.assertEqual(UtilBill.REVIEW, unusually_high)
+
+    def test_validate_supplier(self):
+        pass
+
+    def test_rate_class(self):
+        pass
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
