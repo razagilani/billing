@@ -29,6 +29,8 @@ def convert_table_charges(rows):
         if not row:
             continue
 
+        # if a table row only has one cell, it might be a heading,
+        # or it might have the charge name and value in the same textbox.
         if len(row) == 1:
             # check if this table cell contains a name and a price in the
             # same box
@@ -185,7 +187,9 @@ def _get_rsi_binding_from_name(charge_names_map, charge_name):
     # look for matching patterns in charge_names_map
     for charge_entry in charge_names_map:
         charge_regex = charge_entry.display_name_regex
-        if regex.fullmatch("(%s){i<=3,d<=3,e<=3}" % charge_regex,
+        # allow up to 3 insertions or deletions, and up to 3 changes overall
+        fuzziness_rule = "{i<=3,d<=3,e<=3}"
+        if regex.fullmatch("(%s)%s" % (charge_regex, fuzziness_rule),
                 charge_name_clean,
                 regex.IGNORECASE):
             rsi_bindings.append(charge_entry.rsi_binding)
