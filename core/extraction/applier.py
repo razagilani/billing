@@ -451,10 +451,10 @@ class Validator:
         """
         # TODO validate address w/ USPS
 
-        if value in [b.billing_address for b in bills_in_account]:
-            return UtilBill.SUCCEEDED
-        else:
-            return UtilBill.REVIEW
+        for b in bills_in_account:
+            if repr(value) == repr(b.billing_address):
+                return UtilBill.SUCCEEDED
+        return UtilBill.REVIEW
 
     @staticmethod
     def validate_service_address(utilbill, bills_in_account, value):
@@ -463,10 +463,10 @@ class Validator:
         """
         # TODO validate address w/ USPS
 
-        if value in [b.service_address for b in bills_in_account]:
-            return UtilBill.SUCCEEDED
-        else:
-            return UtilBill.REVIEW
+        for b in bills_in_account:
+            if repr(value) == repr(b.service_address):
+                return UtilBill.SUCCEEDED
+        return UtilBill.REVIEW
 
     @staticmethod
     def validate_total(utilbill, bills_in_account, value):
@@ -636,6 +636,7 @@ class Validator:
                 value = UtilBillApplier.GETTERS[applier_key](utilbill)
                 field_validation = func(utilbill, bills_in_account,
                     value)
+                print applier_key, value, field_validation, bill_validation
 
                 # update bill validation state with worst validation state
                 bill_validation = Validator.worst_validation_state([
