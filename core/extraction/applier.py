@@ -313,17 +313,19 @@ class Validator:
         """
         if value < 0 or value > max:
             return False
-        if other_values is not None and len(other_values):
-            mean = sum(other_values) / len(other_values)
-            if max_stdev is not None and len(other_values) > 5:
-                stdev = numpy.std(other_values, axis=0)
-                if stdev == 0:
-                    return value == mean
-                return abs(float(value - mean)) / stdev <= max_stdev
-            elif dev_ratio is not None:
-                if mean == 0:
-                    return value == mean
-                return abs(float(value - mean)) / mean <=  dev_ratio
+        if other_values is not None:
+            other_values = filter(None, other_values)
+            if len(other_values):
+                mean = sum(other_values) / len(other_values)
+                if max_stdev is not None and len(other_values) > 5:
+                    stdev = numpy.std(other_values, axis=0)
+                    if stdev == 0:
+                        return value == mean
+                    return abs(float(value - mean)) / stdev <= max_stdev
+                elif dev_ratio is not None:
+                    if mean == 0:
+                        return value == mean
+                    return abs(float(value - mean)) / mean <=  dev_ratio
         return True
 
     @staticmethod
@@ -333,13 +335,18 @@ class Validator:
         other_bills that is the most recent previous bill.
         Raises ValueError if bill has no period_end, and if there is no
         previous bill, None is returned.
+        If other_bills contain bills with null period dates, those will be
+        treated as the earlier than all other bills, so if all bills don't
+        have a period_end date, one of those will be returned.
         """
         if bill.period_end is None:
             raise ValueError("Bill's period_end is None, can't get previous "
                              "bill")
         # sort bills from most recent to earliest
-        sorted_bills = sorted(other_bills, key=lambda b: b.period_end, \
-            reverse=True)
+        # if bill date is None, treat it as 1AD in comparisons.
+        sorted_bills = sorted(other_bills, key=lambda b: b.period_end or
+                                                         date(1,1,1),
+                              reverse=True)
         old_bills = filter(lambda b: b.period_end is not None and
                                      b.period_end<bill.period_end, sorted_bills)
         if len(old_bills) == 0:
@@ -368,8 +375,9 @@ class Validator:
             # check for overlaps / short gaps with other bills
             if b.period_end is None:
                 continue
-            if Validator._overlaps_bill_period(b, value) or abs(value -
-                    b.period_end).days < 20:
+            # subtract one day from value because end is exclusive
+            if Validator._overlaps_bill_period(b, value-relativedelta(
+                    days=1)) or abs(value - b.period_end).days < 20:
                 has_overlap = True
                 Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
         if has_overlap:
@@ -482,7 +490,7 @@ class Validator:
 
         charges_check = UtilBill.SUCCEEDED
         if utilbill.charges is not None and len(utilbill.charges) > 0:
-            total_charges = sum([c.target_total for c in utilbill.charges])
+            total_charges = sum([c.target_total or 0 for c in utilbill.charges])
             if total_charges != value:
                 charges_check = UtilBill.FAILED
 
@@ -548,7 +556,6 @@ class Validator:
         """
         if value is None or len(value) == 0:
             return UtilBill.FAILED
-
         # set of charge names should be the same as in previous bills
         prev_bills_name_check = UtilBill.REVIEW
         charge_names_set = set([c.description for c in value])
@@ -577,7 +584,7 @@ class Validator:
                 charge_total_check = UtilBill.REVIEW
 
         # check that sum of target_totals equals bill's target_totals
-        charges_sum = sum(c.target_total for c in value)
+        charges_sum = sum(c.target_total or 0 for c in value)
         if utilbill.target_total is not None and utilbill.target_total != \
                 charges_sum:
             bill_total_check = UtilBill.FAILED
@@ -630,16 +637,14 @@ class Validator:
             UtilBill.utility_account_id == utilbill.utility_account_id,
             UtilBill.id != utilbill.id).all()
 
-        bill_validation = UtilBill.SUCCEEDED
+        validation_states = []
         for (applier_key, func) in Validator.KEYS.iteritems():
             if applier_key in keys:
                 value = UtilBillApplier.GETTERS[applier_key](utilbill)
-                field_validation = func(utilbill, bills_in_account,
-                    value)
-                print applier_key, value, field_validation, bill_validation
+                if value is None:
+                    field_validation = UtilBill.FAILED
+                else:
+                    field_validation = func(utilbill, bills_in_account, value)
+                validation_states.append(field_validation)
 
-                # update bill validation state with worst validation state
-                bill_validation = Validator.worst_validation_state([
-                    bill_validation, field_validation])
-
-        return bill_validation
+        return Validator.worst_validation_state(validation_states)
