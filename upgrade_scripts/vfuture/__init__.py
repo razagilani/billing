@@ -21,13 +21,8 @@ log = logging.getLogger(__name__)
     # TODO: add charge_name_map's for other utilities
 
 def upgrade():
-    alembic_upgrade('4d54d21b2c7a')
+    alembic_upgrade('3482c138b392')
 
     initialize()
-    from core.model import Base, Session
+    from core.model import Base
     print '\n'.join(sorted(t for t in Base.metadata.tables))
-
-    s = Session()
-    create_layout_extractors(s)
-    s.commit()
-

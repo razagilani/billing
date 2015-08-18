@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from celery.exceptions import TaskRevokedError
+from dateutil.relativedelta import relativedelta
 import os
 from unittest import TestCase, skip
 
@@ -13,6 +14,7 @@ from mock import Mock, NonCallableMock
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
+from billentry.billentry_model import BEUtilBill
 from core.extraction.task import test_bill, reduce_bill_results
 from core.extraction.type_conversion import convert_unit, convert_address, \
     process_charge, convert_table_charges
@@ -22,7 +24,7 @@ from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import Applier, UtilBillApplier, Validator
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge, LayoutElement, BoundingBox
 from core.model.utilbill import UtilBill, Charge
@@ -90,12 +92,14 @@ class ApplierTest(TestCase):
     def test_apply_values(self):
         # one field is good, 2 have ApplicationErrors (one with wrong value
         # type, one with unknown key)
-        extractor = Mock(autospec=Extractor)
+        extractor = Mock(spec=Extractor)
         good = {UtilBillApplier.START: date(2000, 1, 1),
                 UtilBillApplier.CHARGES: 'wrong type', 'wrong key': 1}
         extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
         extractor.get_values.return_value = (good, extractor_errors)
-        bfh = Mock(autospec=BillFileHandler)
+        bfh = Mock(spec=BillFileHandler)
+        # validator is tested in ValidatorTest
+        Validator.validate_bill = Mock(return_value=UtilBill.SUCCEEDED)
 
         success_count, applier_errors = self.applier.apply_values(
             extractor, self.bill, bfh)
@@ -137,12 +141,12 @@ class ExtractorTest(TestCase):
         self.e.fields = [f1, f2, f3, f4]
         self.e._prepare_input = Mock(return_value='input string')
 
-        self.utilbill = Mock(autospec=UtilBill)
-        self.bill_file_handler = Mock(autospec=BillFileHandler)
+        self.utilbill = Mock(spec=UtilBill)
+        self.bill_file_handler = Mock(spec=BillFileHandler)
 
         # applying f1 succeeds, applying f3 fails (and f2 never gets applied
         # because its value couldn't be extracted)
-        self.applier = Mock(autospec=Applier)
+        self.applier = Mock(spec=Applier)
         self.applier.apply.side_effect = [None, ApplicationError]
 
     def test_get_values(self):
@@ -180,9 +184,9 @@ class TextFieldTest(TestCase):
 class TextExtractorTest(TestCase):
     def setUp(self):
         self.text = 'Bill Text 1234.5 More Text  '
-        self.bfh = Mock(autospec=BillFileHandler)
+        self.bfh = Mock(spec=BillFileHandler)
         self.te = TextExtractor()
-        self.bill = Mock(autospec=UtilBill)
+        self.bill = Mock(spec=UtilBill)
         self.bill.get_text.return_value = self.text
 
     def test_prepare_input(self):
@@ -190,7 +194,7 @@ class TextExtractorTest(TestCase):
 
 class VerifyFieldTest(TestCase):
     def setUp(self):
-        self.rate_class = Mock(autospec=RateClass)
+        self.rate_class = Mock(spec=RateClass)
         self.rate_class.name = "Some Rate Class"
 
     def test_verify_field(self):
@@ -228,11 +232,11 @@ class LayoutExtractorTest(TestCase):
             bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
         self.layout_elts = [[self.le3, self.le1], [self.le4], [self.le2]]
 
-        self.bfh = Mock(autospec=BillFileHandler)
+        self.bfh = Mock(spec=BillFileHandler)
         self.le = LayoutExtractor()
         self.le_with_align = LayoutExtractor(origin_regex='wot', origin_x=10,
             origin_y=10)
-        self.bill = Mock(autospec=UtilBill)
+        self.bill = Mock(spec=UtilBill)
         self.bill.get_layout.return_value = self.layout_elts
 
     def test_prepare_input(self):
@@ -266,8 +270,8 @@ class BoundingBoxFieldTest(TestCase):
             bounding_box=BoundingBox(x0=50, y0=50, x1=70, y1=70), type=TEXTLINE)
         self.layout_elts = [[self.le1, self.le3], [self.le4, self.le5],
                             [self.le2, self.le6]]
-        self.bfh = Mock(autospec=BillFileHandler)
-        self.bill = Mock(autospec=UtilBill)
+        self.bfh = Mock(spec=BillFileHandler)
+        self.bill = Mock(spec=UtilBill)
 
         #add a mis-alignment for testing
         self.input = (self.layout_elts, 5, 5)
@@ -482,7 +486,7 @@ class TestTypeConversion(TestCase):
             Charge(None, description='DC Rights-of-Way Fee',
                 unit='dollars',
                 type=Charge.DISTRIBUTION, target_total=5.77),
-            Charge(None, description='Sustainable Energy Trust Fund', \
+            Charge(None, description='Sustainable Energy Trust Fund',
             unit='dollars',
                 rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88),
             Charge(None, description='Energy Assistance Trust Fund',
@@ -538,7 +542,270 @@ class TestTypeConversion(TestCase):
         pass
 
 
+class ValidatorTest(TestCase):
+    """ Test bill validation. (i.e making sure extracted data has reasonable
+    values)
+    """
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
 
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def tearDown(self):
+        clear_db()
+
+    def setUp(self):
+        clear_db()
+        self.utilbill = Mock(spec=UtilBill)
+        self.utilbill.utility_account_id = 1
+        self.utilbill.period_start=date(2014, 1, 1)
+        self.utilbill.period_end=date(2014, 1, 31)
+        self.utilbill.next_meter_read_date=date(2014, 2, 28)
+
+        self.utilbill_no_dates = Mock(spec=UtilBill)
+        self.utilbill_no_dates.utility_account_id = 1
+        self.utilbill_no_dates.period_start=None
+        self.utilbill_no_dates.period_end=None
+        self.utilbill_no_dates.next_meter_read_date=None
+
+        self.bill2 = Mock(spec=UtilBill)
+        self.bill2.utility_account_id=1
+        self.bill2.period_start=date(2014, 2, 1)
+        self.bill2.period_end=date(2014, 2, 28)
+        self.bill2.next_meter_read_date=date(2014, 3, 31)
+        self.bill2.validation_state=UtilBill.SUCCEEDED
+        self.bill2.billing_address=Address(addressee="Bob Billingsworth",
+            street="1234 Nextility St", city="Baltimore", state="MD")
+        self.bill2.service_address=Address(addressee=None,
+            street="15 35th St", city="Baltimore", state="MD")
+
+        self.bill3 = Mock(spec=UtilBill)
+        self.bill3.utility_account_id=1
+        self.bill3.period_start=date(2014, 3, 1)
+        self.bill3.period_end=date(2014, 3, 31)
+        self.bill3.next_meter_read_date=date(2014, 4, 30)
+        self.bill3.validation_state=UtilBill.SUCCEEDED
+
+        self.bill4 = Mock(spec=UtilBill)
+        self.bill4.utility_account_id=1
+        self.bill4.period_start=date(2014, 4, 1)
+        self.bill4.period_end=date(2014, 4, 30)
+        self.bill4.next_meter_read_date=date(2014, 5, 31)
+        self.bill4.validation_state=UtilBill.SUCCEEDED
+        self.other_bills = [self.bill2, self.bill3, self.bill4]
+
+
+    def test_worst_validation_state(self):
+        with self.assertRaises(ValueError):
+            Validator.worst_validation_state([])
+
+        self.assertEqual(UtilBill.SUCCEEDED,
+            Validator.worst_validation_state([UtilBill.SUCCEEDED,
+                UtilBill.SUCCEEDED]))
+
+        self.assertEqual(UtilBill.REVIEW, Validator.worst_validation_state([
+            UtilBill.SUCCEEDED, UtilBill.REVIEW, UtilBill.SUCCEEDED]))
+
+        self.assertEqual(UtilBill.FAILED, Validator.worst_validation_state([
+            UtilBill.SUCCEEDED, UtilBill.REVIEW,
+            UtilBill.FAILED, UtilBill.SUCCEEDED]))
+
+    def test_set_bill_state_if_unprocessed(self):
+        # by default, only updates bill if new state is worst
+        self.utilbill.validation_state=UtilBill.FAILED
+        Validator._set_bill_state_if_unprocessed(self.utilbill, UtilBill.REVIEW)
+        self.assertEqual(UtilBill.FAILED, self.utilbill.validation_state)
+
+        self.utilbill.validation_state=UtilBill.FAILED
+        Validator._set_bill_state_if_unprocessed(self.utilbill,
+            UtilBill.REVIEW, checkworst=False)
+        self.assertEqual(UtilBill.REVIEW, self.utilbill.validation_state)
+
+        # if a bill is processed, its validation state should not be modified.
+        processed_bill = Mock(spec=BEUtilBill)
+        processed_bill.billentry_date = date.today()
+        processed_bill.validation_state = UtilBill.FAILED
+        Validator._set_bill_state_if_unprocessed(processed_bill,
+            UtilBill.REVIEW, checkworst=False)
+        self.assertNotEqual(UtilBill.REVIEW, processed_bill.validation_state)
+
+    def test_date_utils(self):
+        # simple test of _check_date_bounds
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 12, 30)))
+        # bounds are inclusive
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 6, 7), date(2014, 12, 30)))
+        self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 6, 7)))
+        # false results:
+        self.assertFalse(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 8, 1), date(2014, 12, 30)))
+        self.assertFalse(Validator._check_date_bounds(date(2014, 6, 7),
+            date(2014, 1, 1), date(2014, 2, 7)))
+
+        # testing _overlaps_bill_period
+        self.assertTrue(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 15)))
+        # start is inclusive
+        self.assertTrue(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 1)))
+        # end is exclusive
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 1, 31)))
+        # false results:
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2012, 2, 23)))
+        self.assertFalse(Validator._overlaps_bill_period(self.utilbill,
+            date(2014, 2, 23)))
+        # return false if bill period dates are None
+        self.assertFalse(Validator._overlaps_bill_period(
+            self.utilbill_no_dates, date(2014, 1, 15)))
+
+    def test_validate_start(self):
+        simple_validation = Validator.validate_start(self.utilbill,
+            self.other_bills, date(2014, 1, 1))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # a start date from the distant past
+        baroque_error = Validator.validate_start(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # a start date from the future
+        future_error = Validator.validate_start(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # start date is out of range, relative to bill's end date
+        short_period_error = Validator.validate_start(self.utilbill,
+            [], date(2014, 1, 21))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_start(self.utilbill,
+            [], date(2013, 12, 1))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # start date that overlaps with another bill's period
+        bill_overlap_error = Validator.validate_start(self.utilbill_no_dates,
+            self.other_bills, date(2014, 2, 15))
+        self.assertEqual(UtilBill.FAILED, bill_overlap_error)
+        self.assertEqual(UtilBill.FAILED, self.bill2.validation_state)
+        self.bill2.validation_state = UtilBill.SUCCEEDED
+
+        # start date that doesn't overlap with other bills, but is unusually
+        # close to other start dates.
+        bill_short_gap_error = Validator.validate_start(self.utilbill_no_dates,
+            self.other_bills, date(2014, 1, 28))
+        self.assertEqual(UtilBill.FAILED, bill_short_gap_error)
+        self.assertEqual(UtilBill.FAILED, self.bill2.validation_state)
+        self.bill2.validation_state = UtilBill.SUCCEEDED
+
+    def test_validate_end(self):
+        simple_validation = Validator.validate_end(self.utilbill,
+            self.other_bills, date(2014, 1, 31))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # an end date from the distant past
+        baroque_error = Validator.validate_end(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # an end date from the future
+        future_error = Validator.validate_end(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # end date is out of range, relative to bill's start date
+        short_period_error = Validator.validate_end(self.utilbill,
+            [], date(2014, 1, 5))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_end(self.utilbill,
+            [], date(2014, 2, 21))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # end date that overlaps with another bill's period
+        bill_overlap_error = Validator.validate_end(self.utilbill_no_dates,
+            self.other_bills, date(2014, 2, 15))
+        self.assertEqual(UtilBill.FAILED, bill_overlap_error)
+        self.assertEqual(UtilBill.FAILED, self.bill2.validation_state)
+        self.bill2.validation_state = UtilBill.SUCCEEDED
+
+        # end date that doesn't overlap with other bills, but is unusually
+        # close to other end dates.
+        bill_short_gap_error = Validator.validate_end(self.utilbill_no_dates,
+            self.other_bills, date(2014, 5, 5))
+        self.assertEqual(UtilBill.FAILED, bill_short_gap_error)
+        self.assertEqual(UtilBill.FAILED, self.bill4.validation_state)
+        self.bill4.validation_state = UtilBill.SUCCEEDED
+
+    def test_validate_next_read(self):
+        simple_validation = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date(2014, 2, 28))
+        self.assertEqual(UtilBill.SUCCEEDED, simple_validation)
+
+        # a next read date from the distant past
+        baroque_error = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date(1675, 1, 23))
+        self.assertEqual(UtilBill.FAILED, baroque_error)
+
+        # a next read date from the future
+        future_error = Validator.validate_next_read(self.utilbill,
+            self.other_bills, date.today() + relativedelta(days=100))
+        self.assertEqual(UtilBill.FAILED, future_error)
+
+        # next read date is out of range, relative to bill's end date
+        short_period_error = Validator.validate_next_read(self.utilbill,
+            [], date(2014, 2, 5))
+        self.assertEqual(UtilBill.FAILED, short_period_error)
+        long_period_error = Validator.validate_next_read(self.utilbill,
+            [], date(2014, 3, 31))
+        self.assertEqual(UtilBill.FAILED, long_period_error)
+
+        # next read date  is unusually close to other next read dates.
+        bill_short_gap_error = Validator.validate_next_read(self.utilbill_no_dates,
+            self.other_bills, date(2014, 4, 27))
+        self.assertEqual(UtilBill.REVIEW, bill_short_gap_error)
+        self.assertEqual(UtilBill.REVIEW, self.bill3.validation_state)
+        self.bill3.validation_state = UtilBill.SUCCEEDED
+
+    def test_validate_billing_address(self):
+        # this address matches bill2's address
+        correct_address = Address(addressee="Bob Billingsworth",
+            street="1234 Nextility St", city="Baltimore", state="MD")
+        validation_result = Validator.validate_billing_address(self.utilbill,
+            self.other_bills, correct_address)
+        self.assertEqual(UtilBill.SUCCEEDED, validation_result)
+
+        # a valid address, but not found elsewhere in the account
+        wrong_address = Address(addressee="Not Bob",
+            street="5678 Skyline Dr", city="Ithaca", state="NY")
+        validation_error = Validator.validate_billing_address(self.utilbill,
+            self.other_bills, wrong_address)
+        self.assertEqual(UtilBill.REVIEW, validation_error)
+
+        # TODO add address validation so we can test against an invalid address
+
+    def test_validate_service_address(self):
+        # this address matches bill2's service address
+        correct_address = Address(addressee=None, street="15 35th St",
+            city="Baltimore", state="MD")
+        validation_result = Validator.validate_service_address(self.utilbill,
+            self.other_bills, correct_address)
+        self.assertEqual(UtilBill.SUCCEEDED, validation_result)
+
+        # a valid address, but not found elsewhere in the account
+        wrong_address = Address(addressee=None,
+            street="5 35th St", city="Baltimore", state="MA")
+        validation_error = Validator.validate_service_address(self.utilbill,
+            self.other_bills, wrong_address)
+        self.assertEqual(UtilBill.REVIEW, validation_error)
+
+        # TODO add address validation so we can test against an invalid address
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
