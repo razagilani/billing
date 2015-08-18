@@ -540,7 +540,52 @@ class Validator:
 
     @staticmethod
     def validate_charges(utilbill, bills_in_account, value):
-        pass
+        """ Validates charges by comparing the set of charge names found in
+        previous bills. For each charge, looks at similar charges in past
+        bills and compares their target_totals.
+        Also makes sure that this bill's target_total matches the sum of all
+        charges.
+        """
+        if value is None or len(value) == 0:
+            return UtilBill.FAILED
+
+        # set of charge names should be the same as in previous bills
+        prev_bills_name_check = UtilBill.REVIEW
+        charge_names_set = set([c.description for c in value])
+        for b in bills_in_account:
+            if b.charges is None or len(b.charges) == 0:
+                continue
+            other_charge_names_set = set([c.description for c in b.charges])
+            if charge_names_set == other_charge_names_set:
+                prev_bills_name_check = UtilBill.SUCCEEDED
+
+        # TODO look at distribution charges of other bills in same rate class
+        # TODO look at supply charges of other bills in same supply group
+
+        # compare individual charge totals to similar charges in past bills
+        charge_total_check = UtilBill.SUCCEEDED
+        for c in value:
+            # get similar charges from past bills
+            other_totals = []
+            for b in bills_in_account:
+                for bc in b.charges:
+                    if bc.rsi_binding == c.rsi_binding:
+                        other_totals.append(bc.target_total)
+
+            if not Validator._check_numerical_value(c.target_total,
+                    Validator.MAX_PRICE, other_totals, 0.5, 2):
+                charge_total_check = UtilBill.REVIEW
+
+        # check that sum of target_totals equals bill's target_totals
+        charges_sum = sum(c.target_total for c in value)
+        if utilbill.target_total is not None and utilbill.target_total != \
+                charges_sum:
+            bill_total_check = UtilBill.FAILED
+        else:
+            bill_total_check = UtilBill.SUCCEEDED
+
+        return Validator.worst_validation_state([prev_bills_name_check,
+            charge_total_check, bill_total_check])
 
     # Map from an applier key (representing a field on a bill) to a function
     # to validate it.

@@ -920,7 +920,7 @@ class ValidatorTest(TestCase):
             supplier)
         self.assertEqual(UtilBill.SUCCEEDED, prev_bill_match)
 
-    def test_rate_class(self):
+    def test_validate_rate_class(self):
         rate_class = Mock(spec=RateClass)
         rate_class.utility_id=1
         rate_class.name="some rate class"
@@ -946,7 +946,62 @@ class ValidatorTest(TestCase):
             self.other_bills, rate_class)
         self.assertEqual(UtilBill.REVIEW, prev_bill_different)
 
-        pass
+    def test_validate_charges(self):
+        charge1 = Mock(spec=Charge)
+        charge1.description="Charge Name 1"
+        charge1.rsi_binding="CHARGE_BINDING_1"
+        charge1.target_total = 100
+        charge2 = Mock(spec=Charge)
+        charge2.description="Charge Name 2"
+        charge2.rsi_binding="CHARGE_BINDING_2"
+        charge2.target_total = 200
+        charge3 = Mock(spec=Charge)
+        charge3.description="Charge Name 3"
+        charge3.rsi_binding="CHARGE_BINDING_3"
+        charge3.target_total = 300
+        charge4 = Mock(spec=Charge)
+        charge4.description="Charge Name 4"
+        charge4.rsi_binding="CHARGE_BINDING_4"
+        charge4.target_total = 400
+        huge_charge = Mock(spec=Charge)
+        huge_charge.description="Charge Name 1"
+        huge_charge.rsi_binding="CHARGE_BINDING_1"
+        huge_charge.target_total = 1e12
+        weird_charge = Mock(spec=Charge)
+        weird_charge.description="Garbonzo 1"
+        weird_charge.rsi_binding="GARBONZO_1"
+        weird_charge.target_total = 100
+        charges = [charge1, charge2, charge3, charge4]
+        self.utilbill.target_total = 1000
+        self.bill2.charges = charges
+        self.bill3.charges = charges
+        self.bill4.charges = charges
+
+        self.assertEqual(UtilBill.FAILED, Validator.validate_charges(
+            self.utilbill, self.other_bills, []))
+
+        # charges match set of charge names in previous bills
+        matches_prev_bill_names = Validator.validate_charges(self.utilbill,
+            self.other_bills, charges)
+        self.assertEqual(UtilBill.SUCCEEDED, matches_prev_bill_names)
+        # charges don't match set of charge names in previous nills
+        doesnt_match_prev_bill_names = Validator.validate_charges(self.utilbill,
+            self.other_bills, charges[1:] + [weird_charge])
+        self.assertEqual(UtilBill.REVIEW, doesnt_match_prev_bill_names)
+
+        # don't test total comparison here
+        self.utilbill.target_total = 1.0000000009e+12
+        weird_charge_value = Validator.validate_charges(self.utilbill,
+            self.other_bills, charges[1:] + [huge_charge])
+        self.assertEqual(UtilBill.REVIEW, weird_charge_value)
+
+        self.utilbill.target_total = 1000
+        self.utilbill.target_total = 50
+        doesnt_match_bill_total = Validator.validate_charges(self.utilbill,
+            self.other_bills, charges)
+        self.assertEqual(UtilBill.FAILED, doesnt_match_bill_total)
+
+
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
