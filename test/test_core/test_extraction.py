@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from celery.exceptions import TaskRevokedError
 from dateutil.relativedelta import relativedelta
+import numpy
 import os
 from unittest import TestCase, skip
 
@@ -634,6 +635,42 @@ class ValidatorTest(TestCase):
             UtilBill.REVIEW, checkworst=False)
         self.assertNotEqual(UtilBill.REVIEW, processed_bill.validation_state)
 
+    def test_check_numerical_value(self):
+        # basic range check
+        self.assertTrue(Validator._check_numerical_value(5, 1000))
+        # negative number check
+        self.assertFalse(Validator._check_numerical_value(-5, 1000))
+        # ratio deviation from the mean:
+        self.assertTrue(Validator._check_numerical_value(10, 1000, [10, 12,
+            14], 0.5))
+        self.assertFalse(Validator._check_numerical_value(4, 1000, [10, 12,
+            14], 0.5))
+        # if mean of 0, check that value is 0 as well:
+        self.assertTrue(Validator._check_numerical_value(0, 1000, [-10, 10],
+            0.5))
+        self.assertFalse(Validator._check_numerical_value(0.1, 1000, [-10, 10],
+            0.5))
+        # standard deviation test:
+        sample = [4, 6, 8, 10, 12, 14, 16]
+        # standard deviation is 4
+        max_stddev = 2
+        out_of_range_value = 10 + 8.8
+        in_range_value = 10 + 4.5
+        self.assertTrue(Validator._check_numerical_value(in_range_value,
+            1000, sample, 0.5, max_stddev))
+        self.assertFalse(Validator._check_numerical_value(out_of_range_value,
+            1000, sample, 0.5, max_stddev))
+
+        # std dev of 0:
+        self.assertTrue(Validator._check_numerical_value(3, 1000, [3,3,3,3,3,
+            3], 0.5, 2))
+        self.assertFalse(Validator._check_numerical_value(3.1, 1000, [3,3,3,
+            3,3,3], 0.5, 2))
+
+        # for small samples, revert to checking the mean:
+        self.assertTrue(Validator._check_numerical_value(10, 1000, [10, 12,
+            14], 0.5, 0))
+
     def test_date_utils(self):
         # simple test of _check_date_bounds
         self.assertTrue(Validator._check_date_bounds(date(2014, 6, 7),
@@ -806,6 +843,40 @@ class ValidatorTest(TestCase):
         self.assertEqual(UtilBill.REVIEW, validation_error)
 
         # TODO add address validation so we can test against an invalid address
+
+    def test_validate_total(self):
+        self.bill2.target_total = 10
+        self.bill3.target_total = 11
+        self.bill4.target_total = 12
+        self.utilbill.charges = []
+
+        pass_result = Validator.validate_total(self.utilbill,
+            self.other_bills, 11)
+        self.assertEqual(UtilBill.SUCCEEDED, pass_result)
+        unusually_high = Validator.validate_total(self.utilbill,
+            self.other_bills, 400.5)
+        self.assertEqual(UtilBill.REVIEW, unusually_high)
+
+        for i in range(3):
+            c = Mock(spec=Charge)
+            c.target_total = 10
+            self.utilbill.charges.append(c)
+        matches_charges = Validator.validate_total(self.utilbill, [], 30)
+        self.assertEqual(UtilBill.SUCCEEDED, matches_charges)
+        doesnt_match_charges = Validator.validate_total(self.utilbill, [], 35)
+        self.assertEqual(UtilBill.FAILED, doesnt_match_charges)
+
+    def test_validate_energy(self):
+        self.bill2.get_total_energy = Mock(return_value=10)
+        self.bill3.get_total_energy = Mock(return_value=10)
+        self.bill4.get_total_energy = Mock(return_value=10)
+
+        pass_result = Validator.validate_energy(self.utilbill,
+            self.other_bills, 11)
+        self.assertEqual(UtilBill.SUCCEEDED, pass_result)
+        unusually_high = Validator.validate_energy(self.utilbill,
+            self.other_bills, 400.5)
+        self.assertEqual(UtilBill.REVIEW, unusually_high)
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and

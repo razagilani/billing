@@ -7,6 +7,8 @@ from collections import OrderedDict
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
+from numpy import std
+import numpy
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import NoResultFound
@@ -255,6 +257,14 @@ class Validator:
     data for a bill is incorrect, unusual, or valid.
     """
 
+    # minimum allowable date for a field
+    # max date is date.today(), which can't easily be declared as a constant
+    MIN_DATE = date(2000, 1, 1)
+
+    # max expected amounts for total energy and price
+    MAX_PRICE  = 1000000
+    MAX_ENERGY = 1000000
+
     # VALIDATION FUNCTIONS
     # These take a utility bill, a list of bills in the same utility account,
     #  and a value.
@@ -288,14 +298,49 @@ class Validator:
         return bill.period_start <= date < bill.period_end
 
     @staticmethod
+    def _check_numerical_value(value, max, other_values=None, dev_ratio=None,
+                               max_stdev=None):
+        """
+        Performs a check on a numerical value. The value is checked to be
+        non-negativ and not greater than the maximum.
+        If a sample of other values is provided, further checks are done:
+        If there are more than five samples, value is checked to be less than
+        `max_stdev` standard deviations from the mean. Otherwise, dev_ratio
+        is used as an upper bound on the ration between the value and the mean.
+        If the standard deviation is 0, or if the mean is 0 and there are too
+        few samples, the value is simply checked to be equal to the mean.
+        :param value: The value to be checked
+        :param max: The maximum allowable value
+        :param other_values: A sample of other values
+        :param dev_ratio: The max allowable ratio (value - mean)/mean
+        :param max_stdev: The max number of standard deviations the value can
+                          vary from the mean.
+        :return: True if the value passed all the checks, false otherwise.
+        """
+        if value < 0 or value > max:
+            return False
+        if other_values is not None and len(other_values):
+            mean = sum(other_values) / len(other_values)
+            if max_stdev is not None and len(other_values) > 5:
+                stdev = numpy.std(other_values, axis=0)
+                if stdev == 0:
+                    return value == mean
+                return abs(float(value - mean)) / stdev <= max_stdev
+            elif dev_ratio is not None:
+                if mean == 0:
+                    return value == mean
+                return abs(float(value - mean)) / mean <=  dev_ratio
+        return True
+
+    @staticmethod
     def validate_start(utilbill, bills_in_account, value):
         """ Validates a bill's start date by checking it against absolute
         min/max bounds, by comparing it to the end date, and by checking
         for overlap with other bills' start dates. """
 
         # check start date min / max values
-        if not Validator._check_date_bounds(value, date(
-                2000, 01, 01), date.today()):
+        if not Validator._check_date_bounds(value, Validator.MIN_DATE,
+                date.today()):
             return UtilBill.FAILED
 
         # check this bill's period is a reasonable length
@@ -326,8 +371,8 @@ class Validator:
         for overlap with other bills' end dates. """
 
         # check end date min / max values
-        if not Validator._check_date_bounds(value, date(
-                2000, 01, 01), date.today()):
+        if not Validator._check_date_bounds(value, Validator.MIN_DATE,
+                date.today()):
             return UtilBill.FAILED
 
         # check this bill's period is a reasonable length
@@ -361,7 +406,7 @@ class Validator:
 
         # check next read date min / max values (next read date can be up to
         # one month in the future)
-        if not Validator._check_date_bounds(value, date(2000, 01, 01),
+        if not Validator._check_date_bounds(value, Validator.MIN_DATE,
                         date.today() + relativedelta(months=1)):
             return UtilBill.FAILED
 
@@ -412,7 +457,23 @@ class Validator:
 
     @staticmethod
     def validate_total(utilbill, bills_in_account, value):
-        pass
+        """ Validates the total energy field of a bill. Checks that the value is
+         within a reasonable range, and that it matches the sum of the charges
+         on the bill (if the bill has charges)
+        """
+        if Validator._check_numerical_value(value, Validator.MAX_PRICE,
+                [b.target_total for b in bills_in_account], 0.5, 2):
+            numeric_check = UtilBill.SUCCEEDED
+        else:
+            numeric_check = UtilBill.REVIEW
+
+        charges_check = UtilBill.SUCCEEDED
+        if utilbill.charges is not None and len(utilbill.charges) > 0:
+            total_charges = sum([c.target_total for c in utilbill.charges])
+            if total_charges != value:
+                charges_check = UtilBill.FAILED
+
+        return Validator.worst_validation_state([numeric_check, charges_check])
 
     @staticmethod
     def validate_supplier(utilbill, bills_in_account, value):
@@ -424,7 +485,14 @@ class Validator:
 
     @staticmethod
     def validate_energy(utilbill, bills_in_account, value):
-        pass
+        """ Validates the total energy field of a bill. Checks that the value is
+         within a reasonable range
+        """
+        if Validator._check_numerical_value(value, Validator.MAX_ENERGY,
+                [b.get_total_energy() for b in bills_in_account], 0.5, 2):
+            return UtilBill.SUCCEEDED
+        else:
+            return UtilBill.REVIEW
 
     @staticmethod
     def validate_charges(utilbill, bills_in_account, value):
