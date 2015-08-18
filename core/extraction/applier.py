@@ -2,12 +2,11 @@
 objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
-from abc import ABCMeta
 from collections import OrderedDict
 from datetime import date
 
+from abc import ABCMeta
 from dateutil.relativedelta import relativedelta
-from numpy import std
 import numpy
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -241,7 +240,6 @@ class UtilBillApplier(Applier):
                 success_keys.append(key)
         validation_state = Validator.validate_bill(utilbill, success_keys)
         utilbill.validation_state = validation_state
-        # TODO add validatoin_state column to UtilBill table
         for key in set(good.iterkeys()) - set(self.get_keys()):
             errors[key] = ApplicationError('Unknown key "%s"' % key)
         return success_count, errors
@@ -302,13 +300,9 @@ class Validator:
                                max_stdev=None):
         """
         Performs a check on a numerical value. The value is checked to be
-        non-negativ and not greater than the maximum.
-        If a sample of other values is provided, further checks are done:
-        If there are more than five samples, value is checked to be less than
-        `max_stdev` standard deviations from the mean. Otherwise, dev_ratio
-        is used as an upper bound on the ration between the value and the mean.
-        If the standard deviation is 0, or if the mean is 0 and there are too
-        few samples, the value is simply checked to be equal to the mean.
+        non-negative and not greater than the maximum.
+        If a sample of other values is provided, the mean is taken and the
+        value is checked not to deviate too much frmo the mean.
         :param value: The value to be checked
         :param max: The maximum allowable value
         :param other_values: A sample of other values
@@ -331,6 +325,26 @@ class Validator:
                     return value == mean
                 return abs(float(value - mean)) / mean <=  dev_ratio
         return True
+
+    @staticmethod
+    def _get_previous_bill(bill, other_bills):
+        """
+        Given a bill with a non-null period_end, returns the utility bill in
+        other_bills that is the most recent previous bill.
+        Raises ValueError if bill has no period_end, and if there is no
+        previous bill, None is returned.
+        """
+        if bill.period_end is None:
+            raise ValueError("Bill's period_end is None, can't get previous "
+                             "bill")
+        # sort bills from most recent to earliest
+        sorted_bills = sorted(other_bills, key=lambda b: b.period_end, \
+            reverse=True)
+        old_bills = filter(lambda b: b.period_end is not None and
+                                     b.period_end<bill.period_end, sorted_bills)
+        if len(old_bills) == 0:
+            return None
+        return old_bills[0]
 
     @staticmethod
     def validate_start(utilbill, bills_in_account, value):
@@ -477,11 +491,43 @@ class Validator:
 
     @staticmethod
     def validate_supplier(utilbill, bills_in_account, value):
-        pass
+        """ Check if a bill's supplier matches the previous bill's supplier.
+        """
+        # get previous bill, if possible:
+        prev_bill_check = UtilBill.SUCCEEDED
+        if utilbill.period_end is not None:
+            prev_bill = Validator._get_previous_bill(utilbill, bills_in_account)
+            if prev_bill is not None and value != prev_bill.get_supplier:
+                prev_bill_check = UtilBill.REVIEW
+
+        # Don't know if necessaru, as function returns UtilBill.REVIEW anyway
+        # # check that supplier is an existing supplier
+        # s = Session()
+        # if value not in s.query(Supplier).all():
+        #     return UtilBill.REVIEW
+
+        return Validator.worst_validation_state([prev_bill_check])
 
     @staticmethod
     def validate_rate_class(utilbill, bills_in_account, value):
-        pass
+        """ Check if a rate class matches the previous bill's rate class,
+        and if it belongs to the same utility as the bill.
+        """
+        # get previous bill, if possible:
+        prev_bill_check =  UtilBill.SUCCEEDED
+        if utilbill.period_end is not None:
+            prev_bill = Validator._get_previous_bill(utilbill, bills_in_account)
+            if prev_bill is not None and  value != prev_bill.rate_class:
+                prev_bill_check = UtilBill.REVIEW
+
+        # check that rate class is in the same utility as bill
+        if value.utility_id == utilbill.utility_id:
+            utility_check = UtilBill.SUCCEEDED
+        else:
+            utility_check = UtilBill.REVIEW
+
+        return Validator.worst_validation_state([prev_bill_check, utility_check])
+
 
     @staticmethod
     def validate_energy(utilbill, bills_in_account, value):
