@@ -299,10 +299,6 @@ class Exporter(object):
                 if not reebill.issued==1:
                     continue
 
-                # Reebills with > 1 utilitybills are no longer supported.
-                # Skip them
-                if len(reebill.utilbills) > 1:
-                    continue
                 utilbill = reebill.utilbill
 
                 period_start, period_end = reebill.get_period()
