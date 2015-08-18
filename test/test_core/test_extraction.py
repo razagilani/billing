@@ -947,6 +947,7 @@ class ValidatorTest(TestCase):
         self.assertEqual(UtilBill.REVIEW, prev_bill_different)
 
     def test_validate_charges(self):
+        # some sample charges
         charge1 = Mock(spec=Charge)
         charge1.description="Charge Name 1"
         charge1.rsi_binding="CHARGE_BINDING_1"
@@ -1001,7 +1002,47 @@ class ValidatorTest(TestCase):
             self.other_bills, charges)
         self.assertEqual(UtilBill.FAILED, doesnt_match_bill_total)
 
+    def test_validate_bill(self):
+        keys = [UtilBillApplier.START, UtilBillApplier.SERVICE_ADDRESS,
+                UtilBillApplier.TOTAL]
 
+        # set up db sample data
+        s = Session()
+        utility = Utility(name='washington gas')
+        rate_class = RateClass(utility = utility)
+        account = UtilityAccount('', '123', None, None, None, Address(),
+                                 Address())
+        success_bill = UtilBill(account, utility, rate_class)
+        success_bill.period_start = date(2014, 1, 1)
+        success_bill.service_address = Address(street="123 Nextility Drive")
+        success_bill.target_total = 104
+
+        # This bill will fail because of the period start
+        fail_bill = UtilBill(account, utility, rate_class)
+        fail_bill.period_start = date(4102, 1, 1)
+        fail_bill.service_address = Address(street="123 Nextility Drive")
+        fail_bill.target_total = 104
+        # This bill will be marked REVIEW because of the service address
+        review_bill = UtilBill(account, utility, rate_class)
+        review_bill.period_start = date(2014, 2, 1)
+        review_bill.service_address = Address(street="567 Gorp Street")
+        review_bill.target_total = 104
+        # This bill is another bill in the same account, as reference
+        prev_bill = UtilBill(account, utility, rate_class)
+        prev_bill.period_start = date(2013, 12, 1)
+        prev_bill.service_address = Address(street="123 Nextility Drive")
+        prev_bill.target_total = 104
+
+        s.add_all([utility, rate_class, account, success_bill, fail_bill,
+            review_bill, prev_bill])
+        s.commit()
+
+        self.assertEqual(UtilBill.SUCCEEDED, Validator.validate_bill(
+            success_bill, keys))
+        self.assertEqual(UtilBill.REVIEW, Validator.validate_bill(
+            review_bill, keys))
+        self.assertEqual(UtilBill.FAILED, Validator.validate_bill(
+            fail_bill, keys))
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
