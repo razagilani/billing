@@ -347,38 +347,6 @@ class Validator:
         return old_bills[0]
 
     @staticmethod
-    def validate_start(utilbill, bills_in_account, value):
-        """ Validates a bill's start date by checking it against absolute
-        min/max bounds, by comparing it to the end date, and by checking
-        for overlap with other bills' start dates. """
-
-        # check start date min / max values
-        if not Validator._check_date_bounds(value, Validator.MIN_DATE,
-                date.today()):
-            return UtilBill.FAILED
-
-        # check this bill's period is a reasonable length
-        if utilbill.period_end is not None and not 20 < (utilbill.period_end -
-                value).days < 40:
-            return UtilBill.FAILED
-
-        # Check overlap with other bills
-        has_overlap = False
-        for b in bills_in_account:
-            # check for overlaps / short gaps with other bills
-            if b.period_start is None:
-                continue
-            if Validator._overlaps_bill_period(b, value) or abs(value -
-                    b.period_start).days < 20:
-                has_overlap = True
-                Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
-        if has_overlap:
-            return UtilBill.FAILED
-
-        return UtilBill.SUCCEEDED
-
-
-    @staticmethod
     def validate_end(utilbill, bills_in_account, value):
         """ Validates a bill's end date by checking it against absolute
         min/max bounds, by comparing it to the start date, and by checking
@@ -402,6 +370,37 @@ class Validator:
                 continue
             if Validator._overlaps_bill_period(b, value) or abs(value -
                     b.period_end).days < 20:
+                has_overlap = True
+                Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
+        if has_overlap:
+            return UtilBill.FAILED
+
+        return UtilBill.SUCCEEDED
+
+    @staticmethod
+    def validate_start(utilbill, bills_in_account, value):
+        """ Validates a bill's start date by checking it against absolute
+        min/max bounds, by comparing it to the end date, and by checking
+        for overlap with other bills' start dates. """
+
+        # check start date min / max values
+        if not Validator._check_date_bounds(value, Validator.MIN_DATE,
+                date.today()):
+            return UtilBill.FAILED
+
+        # check this bill's period is a reasonable length
+        if utilbill.period_end is not None and not 20 < (utilbill.period_end -
+                value).days < 40:
+            return UtilBill.FAILED
+
+        # Check overlap with other bills
+        has_overlap = False
+        for b in bills_in_account:
+            # check for overlaps / short gaps with other bills
+            if b.period_start is None:
+                continue
+            if Validator._overlaps_bill_period(b, value) or abs(value -
+                    b.period_start).days < 20:
                 has_overlap = True
                 Validator._set_bill_state_if_unprocessed(b, UtilBill.FAILED)
         if has_overlap:
@@ -494,11 +493,11 @@ class Validator:
         """ Check if a bill's supplier matches the previous bill's supplier.
         """
         # get previous bill, if possible:
-        prev_bill_check = UtilBill.SUCCEEDED
+        prev_bill_check = UtilBill.REVIEW
         if utilbill.period_end is not None:
             prev_bill = Validator._get_previous_bill(utilbill, bills_in_account)
-            if prev_bill is not None and value != prev_bill.get_supplier:
-                prev_bill_check = UtilBill.REVIEW
+            if prev_bill is not None and value == prev_bill.supplier:
+                prev_bill_check = UtilBill.SUCCEEDED
 
         # Don't know if necessaru, as function returns UtilBill.REVIEW anyway
         # # check that supplier is an existing supplier
@@ -514,11 +513,11 @@ class Validator:
         and if it belongs to the same utility as the bill.
         """
         # get previous bill, if possible:
-        prev_bill_check =  UtilBill.SUCCEEDED
+        prev_bill_check = UtilBill.REVIEW
         if utilbill.period_end is not None:
             prev_bill = Validator._get_previous_bill(utilbill, bills_in_account)
-            if prev_bill is not None and  value != prev_bill.rate_class:
-                prev_bill_check = UtilBill.REVIEW
+            if prev_bill is not None and  value == prev_bill.rate_class:
+                prev_bill_check = UtilBill.SUCCEEDED
 
         # check that rate class is in the same utility as bill
         if value.utility_id == utilbill.utility_id:
@@ -527,7 +526,6 @@ class Validator:
             utility_check = UtilBill.REVIEW
 
         return Validator.worst_validation_state([prev_bill_check, utility_check])
-
 
     @staticmethod
     def validate_energy(utilbill, bills_in_account, value):

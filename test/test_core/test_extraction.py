@@ -28,7 +28,7 @@ from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
 from core.extraction.applier import Applier, UtilBillApplier, Validator
 from core.model import UtilityAccount, Utility, Session, Address, \
-    RateClass, Charge, LayoutElement, BoundingBox
+    RateClass, Charge, LayoutElement, BoundingBox, Supplier
 from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
 from exc import ConversionError, ExtractionError, MatchError, ApplicationError
@@ -94,14 +94,14 @@ class ApplierTest(TestCase):
     def test_apply_values(self):
         # one field is good, 2 have ApplicationErrors (one with wrong value
         # type, one with unknown key)
-        extractor = Mock(spec=Extractor)
+        extractor = Mock(spec = Extractor)
         good = {UtilBillApplier.START: date(2000, 1, 1),
                 UtilBillApplier.CHARGES: 'wrong type', 'wrong key': 1}
         extractor_errors = {UtilBillApplier.END: ExtractionError('an error')}
         extractor.get_values.return_value = (good, extractor_errors)
-        bfh = Mock(spec=BillFileHandler)
+        bfh = Mock(spec = BillFileHandler)
         # validator is tested in ValidatorTest
-        Validator.validate_bill = Mock(return_value=UtilBill.SUCCEEDED)
+        Validator.validate_bill = Mock(return_value = UtilBill.SUCCEEDED)
 
         success_count, applier_errors = self.applier.apply_values(
             extractor, self.bill, bfh)
@@ -134,21 +134,21 @@ class ExtractorTest(TestCase):
         f1 = Field(applier_key='a')
         f1.get_value = Mock(return_value=123)
         f2 = Field(applier_key='b')
-        f2.get_value = Mock(side_effect=ExtractionError)
+        f2.get_value = Mock(side_effect = ExtractionError)
         f3 = Field(applier_key='c')
-        f3.get_value = Mock(return_value=date(2000, 1, 1))
-        f4 = Field(applier_key='c', enabled=False)
+        f3.get_value = Mock(return_value = date(2000, 1, 1))
+        f4 = Field(applier_key='c', enabled = False)
 
         self.e = Extractor()
         self.e.fields = [f1, f2, f3, f4]
         self.e._prepare_input = Mock(return_value='input string')
 
-        self.utilbill = Mock(spec=UtilBill)
-        self.bill_file_handler = Mock(spec=BillFileHandler)
+        self.utilbill = Mock(spec = UtilBill)
+        self.bill_file_handler = Mock(spec = BillFileHandler)
 
         # applying f1 succeeds, applying f3 fails (and f2 never gets applied
         # because its value couldn't be extracted)
-        self.applier = Mock(spec=Applier)
+        self.applier = Mock(spec = Applier)
         self.applier.apply.side_effect = [None, ApplicationError]
 
     def test_get_values(self):
@@ -161,7 +161,7 @@ class ExtractorTest(TestCase):
 class TextFieldTest(TestCase):
     def setUp(self):
         self.field = TextExtractor.TextField(
-            regex=r'([A-Za-z]+ [0-9]{1,2}, [0-9]{4})', type=Field.DATE)
+            regex = r'([A-Za-z]+ [0-9]{1,2}, [0-9]{4})', type = Field.DATE)
 
     def test_get_value(self):
         self.assertEqual(date(2000, 1, 1),
@@ -177,18 +177,18 @@ class TextFieldTest(TestCase):
 
         # multiple matches
         with self.assertRaises(MatchError):
-            field_multiple_matches = TextExtractor.TextField(regex=r'(\d+) ('
+            field_multiple_matches = TextExtractor.TextField(regex = r'(\d+) ('
                                                                    r'\d+)',
-                type=Field.FLOAT)
+                type = Field.FLOAT)
             print self.field.get_value('3342 2321')
 
 
 class TextExtractorTest(TestCase):
     def setUp(self):
         self.text = 'Bill Text 1234.5 More Text  '
-        self.bfh = Mock(spec=BillFileHandler)
+        self.bfh = Mock(spec = BillFileHandler)
         self.te = TextExtractor()
-        self.bill = Mock(spec=UtilBill)
+        self.bill = Mock(spec = UtilBill)
         self.bill.get_text.return_value = self.text
 
     def test_prepare_input(self):
@@ -196,7 +196,7 @@ class TextExtractorTest(TestCase):
 
 class VerifyFieldTest(TestCase):
     def setUp(self):
-        self.rate_class = Mock(spec=RateClass)
+        self.rate_class = Mock(spec = RateClass)
         self.rate_class.name = "Some Rate Class"
 
     def test_verify_field(self):
@@ -224,21 +224,21 @@ class VerifyFieldTest(TestCase):
 class LayoutExtractorTest(TestCase):
     def setUp(self):
         self.le1 = LayoutElement(text='hello', page_num=0,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.le2 = LayoutElement(text='text', page_num=2,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.le3 = LayoutElement(text='wot', page_num=0,
-            bounding_box=BoundingBox(x0=0, y0=200, x1=100, y1=200),
-            type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=200, x1=100, y1=200),
+            type = TEXTLINE)
         self.le4 = LayoutElement(text='sample', page_num=1,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.layout_elts = [[self.le3, self.le1], [self.le4], [self.le2]]
 
-        self.bfh = Mock(spec=BillFileHandler)
+        self.bfh = Mock(spec = BillFileHandler)
         self.le = LayoutExtractor()
         self.le_with_align = LayoutExtractor(origin_regex='wot', origin_x=10,
             origin_y=10)
-        self.bill = Mock(spec=UtilBill)
+        self.bill = Mock(spec = UtilBill)
         self.bill.get_layout.return_value = self.layout_elts
 
     def test_prepare_input(self):
@@ -258,22 +258,22 @@ class BoundingBoxFieldTest(TestCase):
     """
     def setUp(self):
         self.le1 = LayoutElement(text='hello', page_num=0,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.le2 = LayoutElement(text='text', page_num=2,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.le3 = LayoutElement(text='wot', page_num=0,
-            bounding_box=BoundingBox(x0=0, y0=200, x1=100, y1=200),
-            type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=200, x1=100, y1=200),
+            type = TEXTLINE)
         self.le4 = LayoutElement(text='sample', page_num=1,
-            bounding_box=BoundingBox(x0=0, y0=0, x1=100, y1=200), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
         self.le5 = LayoutElement(text='', page_num=1,
-            bounding_box=BoundingBox(x0=50, y0=50, x1=70, y1=70), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=50, y0=50, x1=70, y1=70), type = TEXTLINE)
         self.le6 = LayoutElement(text='woo', page_num=2,
-            bounding_box=BoundingBox(x0=50, y0=50, x1=70, y1=70), type=TEXTLINE)
+            bounding_box = BoundingBox(x0=50, y0=50, x1=70, y1=70), type = TEXTLINE)
         self.layout_elts = [[self.le1, self.le3], [self.le4, self.le5],
                             [self.le2, self.le6]]
-        self.bfh = Mock(spec=BillFileHandler)
-        self.bill = Mock(spec=UtilBill)
+        self.bfh = Mock(spec = BillFileHandler)
+        self.bill = Mock(spec = UtilBill)
 
         #add a mis-alignment for testing
         self.input = (self.layout_elts, 5, 5)
@@ -284,14 +284,14 @@ class BoundingBoxFieldTest(TestCase):
             bb_field.get_value(self.input)
 
     def test_get_bounding_box(self):
-        bb_field = LayoutExtractor.BoundingBoxField(bounding_box=BoundingBox(
+        bb_field = LayoutExtractor.BoundingBoxField(bounding_box = BoundingBox(
             x0=0-5, y0=0-5, x1=100-5, y1=200-5), page_num=2,
             bbregex='([a-z]ampl[a-z])', corner=0)
         self.assertEqual('sample', bb_field.get_value(self.input))
 
     def test_bbox_alignment_error(self):
         # in this test, forget to align by 5 pixels
-        bb_field = LayoutExtractor.BoundingBoxField(bounding_box=BoundingBox(
+        bb_field = LayoutExtractor.BoundingBoxField(bounding_box = BoundingBox(
             x0=0, y0=0, x1=100, y1=200), page_num=2, bbregex='([a-z]ampl['
                                                              'a-z])', corner=0)
         with self.assertRaises(ExtractionError):
@@ -325,7 +325,7 @@ class BoundingBoxFieldTest(TestCase):
         matches offset_regex.
         """
         bb_offset = LayoutExtractor.BoundingBoxField(page_num=1, maxpage=3,
-            offset_regex=r'text', corner=0, bounding_box=BoundingBox(x0=50,
+            offset_regex = r'text', corner=0, bounding_box = BoundingBox(x0=50,
                 y0=50, x1=60, y1=60))
         self.assertEqual('woo', bb_offset.get_value(self.input))
 
@@ -334,7 +334,7 @@ class BoundingBoxFieldTest(TestCase):
         layout element or a regex returning an empty string
         """
         bb_field_fail = LayoutExtractor.BoundingBoxField(
-            bounding_box=BoundingBox(x0=50-5, y0=50-5, x1=60-5, y1=60-5),
+            bounding_box = BoundingBox(x0=50-5, y0=50-5, x1=60-5, y1=60-5),
             page_num=2, corner=0)
         with self.assertRaises(ExtractionError):
             bb_field_fail.get_value(self.input)
@@ -351,19 +351,19 @@ class TableFieldTest(TestCase):
         self.layout_elements_pg2 = []
         for y in range(100, 10, -10):
             for x in range(20, 50, 10):
-                elt1 = LayoutElement(bounding_box=BoundingBox(x0=x, y0=y,
+                elt1 = LayoutElement(bounding_box = BoundingBox(x0=x, y0=y,
                     x1=x+5, y1=y + 5), text="%d %d text" % (x, y),
-                    type=TEXTLINE, page_num=1)
-                elt2 = LayoutElement(bounding_box=BoundingBox(x0=x, y0=y,
+                    type = TEXTLINE, page_num=1)
+                elt2 = LayoutElement(bounding_box = BoundingBox(x0=x, y0=y,
                     x1=x+5, y1=y + 5), text="%d %d text" % (x, y),
-                    type=TEXTLINE, page_num=1)
+                    type = TEXTLINE, page_num=1)
                 self.layout_elements_pg1.append(elt1)
                 self.layout_elements_pg2.append(elt2)
-        self.layout_elements_pg1.append(LayoutElement(bounding_box=BoundingBox(
-            x0=0, y0=0, x1=5, y1=5), text="not in table", type=TEXTLINE,
+        self.layout_elements_pg1.append(LayoutElement(bounding_box = BoundingBox(
+            x0=0, y0=0, x1=5, y1=5), text="not in table", type = TEXTLINE,
             page_num=1))
-        self.layout_elements_pg2.append(LayoutElement(bounding_box=BoundingBox(
-            x0=0, y0=0, x1=5, y1=5), text="not in table", type=TEXTLINE,
+        self.layout_elements_pg2.append(LayoutElement(bounding_box = BoundingBox(
+            x0=0, y0=0, x1=5, y1=5), text="not in table", type = TEXTLINE,
             page_num=2))
 
         # Create processed input data
@@ -375,14 +375,14 @@ class TableFieldTest(TestCase):
         """ Test getting tabular data wihtin a bounding box
         """
         tablefield = LayoutExtractor.TableField(page_num=1,
-            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45))
+            bounding_box = BoundingBox(x0=30, y0=30, x1=45, y1=45))
         expected_output = [["30 40 text", "40 40 text"],
                             ["30 30 text", "40 30 text"]]
         self.assertEqual(expected_output, tablefield._extract(self.input))
 
     def test_start_stop_regex(self):
         regex_tablefield = LayoutExtractor.TableField(page_num=1,
-            bounding_box=BoundingBox(x0=30, y0=20, x1=45, y1=55),
+            bounding_box = BoundingBox(x0=30, y0=20, x1=45, y1=55),
             table_start_regex="30 50 text", table_stop_regex="30 20 text")
         expected_output = [["30 40 text", "40 40 text"],
                             ["30 30 text", "40 30 text"]]
@@ -396,7 +396,7 @@ class TableFieldTest(TestCase):
 
     def test_multipage_table(self):
         multipage_tablefield= LayoutExtractor.TableField(page_num=1,
-            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45), multipage_table=True,
+            bounding_box = BoundingBox(x0=30, y0=30, x1=45, y1=45), multipage_table = True,
             nextpage_top=35, maxpage=2)
         # 1st and 2nd rows come from 1st page, 3rd row from 2nd page
         expected_output = [["30 40 text", "40 40 text"],
@@ -407,7 +407,7 @@ class TableFieldTest(TestCase):
 
     def test_no_values_found(self):
         tablefield= LayoutExtractor.TableField(page_num=1,
-            bounding_box=BoundingBox(x0=30, y0=30, x1=45, y1=45))
+            bounding_box = BoundingBox(x0=30, y0=30, x1=45, y1=45))
         with self.assertRaises(ExtractionError):
             # give tablefield data representing a single empty page.
             tablefield._extract(([[]], 0, 0))
@@ -480,24 +480,24 @@ class TestTypeConversion(TestCase):
 
         expected_charges = [
             Charge(None, description='Distribution Charge', unit='dollars',
-                rate=0.3158, type=Charge.DISTRIBUTION, target_total=65.05),
+                rate=0.3158, type = Charge.DISTRIBUTION, target_total=65.05),
             Charge(None, description='Customer Charge', unit='dollars',
-                type=Charge.DISTRIBUTION, target_total=33.00),
+                type = Charge.DISTRIBUTION, target_total=33.00),
             Charge(None, description='PGC', unit='dollars',
-                rate=0.5542, type=Charge.SUPPLY, target_total=114.17),
+                rate=0.5542, type = Charge.SUPPLY, target_total=114.17),
             Charge(None, description='DC Rights-of-Way Fee',
                 unit='dollars',
-                type=Charge.DISTRIBUTION, target_total=5.77),
+                type = Charge.DISTRIBUTION, target_total=5.77),
             Charge(None, description='Sustainable Energy Trust Fund',
             unit='dollars',
-                rate=0.014, type=Charge.DISTRIBUTION, target_total=2.88),
+                rate=0.014, type = Charge.DISTRIBUTION, target_total=2.88),
             Charge(None, description='Energy Assistance Trust Fund',
                 unit='dollars',
-                rate=0.006, type=Charge.DISTRIBUTION, target_total=1.24),
+                rate=0.006, type = Charge.DISTRIBUTION, target_total=1.24),
             Charge(None, description='Delivery Tax', unit='dollars',
-                rate=0.0707, type=Charge.DISTRIBUTION, target_total=14.56),
+                rate=0.0707, type = Charge.DISTRIBUTION, target_total=14.56),
             Charge(None, description='Total Current Washington Gas Charges',
-                unit='dollars', type=Charge.DISTRIBUTION, target_total=236.67)
+                unit='dollars', type = Charge.DISTRIBUTION, target_total=236.67)
         ]
 
         output_charges = convert_table_charges(table_charges_rows)
@@ -563,42 +563,42 @@ class ValidatorTest(TestCase):
 
     def setUp(self):
         clear_db()
-        self.utilbill = Mock(spec=UtilBill)
+        self.utilbill = Mock(spec = UtilBill)
         self.utilbill.utility_account_id = 1
-        self.utilbill.period_start=date(2014, 1, 1)
-        self.utilbill.period_end=date(2014, 1, 31)
-        self.utilbill.next_meter_read_date=date(2014, 2, 28)
+        self.utilbill.period_start = date(2014, 1, 1)
+        self.utilbill.period_end = date(2014, 1, 31)
+        self.utilbill.next_meter_read_date = date(2014, 2, 28)
 
-        self.utilbill_no_dates = Mock(spec=UtilBill)
+        self.utilbill_no_dates = Mock(spec = UtilBill)
         self.utilbill_no_dates.utility_account_id = 1
-        self.utilbill_no_dates.period_start=None
-        self.utilbill_no_dates.period_end=None
-        self.utilbill_no_dates.next_meter_read_date=None
+        self.utilbill_no_dates.period_start = None
+        self.utilbill_no_dates.period_end = None
+        self.utilbill_no_dates.next_meter_read_date = None
 
-        self.bill2 = Mock(spec=UtilBill)
+        self.bill2 = Mock(spec = UtilBill)
         self.bill2.utility_account_id=1
-        self.bill2.period_start=date(2014, 2, 1)
-        self.bill2.period_end=date(2014, 2, 28)
-        self.bill2.next_meter_read_date=date(2014, 3, 31)
-        self.bill2.validation_state=UtilBill.SUCCEEDED
-        self.bill2.billing_address=Address(addressee="Bob Billingsworth",
+        self.bill2.period_start = date(2014, 2, 1)
+        self.bill2.period_end = date(2014, 2, 28)
+        self.bill2.next_meter_read_date = date(2014, 3, 31)
+        self.bill2.validation_state = UtilBill.SUCCEEDED
+        self.bill2.billing_address = Address(addressee="Bob Billingsworth",
             street="1234 Nextility St", city="Baltimore", state="MD")
-        self.bill2.service_address=Address(addressee=None,
+        self.bill2.service_address = Address(addressee = None,
             street="15 35th St", city="Baltimore", state="MD")
 
-        self.bill3 = Mock(spec=UtilBill)
+        self.bill3 = Mock(spec = UtilBill)
         self.bill3.utility_account_id=1
-        self.bill3.period_start=date(2014, 3, 1)
-        self.bill3.period_end=date(2014, 3, 31)
-        self.bill3.next_meter_read_date=date(2014, 4, 30)
-        self.bill3.validation_state=UtilBill.SUCCEEDED
+        self.bill3.period_start = date(2014, 3, 1)
+        self.bill3.period_end = date(2014, 3, 31)
+        self.bill3.next_meter_read_date = date(2014, 4, 30)
+        self.bill3.validation_state = UtilBill.SUCCEEDED
 
-        self.bill4 = Mock(spec=UtilBill)
+        self.bill4 = Mock(spec = UtilBill)
         self.bill4.utility_account_id=1
-        self.bill4.period_start=date(2014, 4, 1)
-        self.bill4.period_end=date(2014, 4, 30)
-        self.bill4.next_meter_read_date=date(2014, 5, 31)
-        self.bill4.validation_state=UtilBill.SUCCEEDED
+        self.bill4.period_start = date(2014, 4, 1)
+        self.bill4.period_end = date(2014, 4, 30)
+        self.bill4.next_meter_read_date = date(2014, 5, 31)
+        self.bill4.validation_state = UtilBill.SUCCEEDED
         self.other_bills = [self.bill2, self.bill3, self.bill4]
 
 
@@ -619,25 +619,25 @@ class ValidatorTest(TestCase):
 
     def test_set_bill_state_if_unprocessed(self):
         # by default, only updates bill if new state is worst
-        self.utilbill.validation_state=UtilBill.FAILED
+        self.utilbill.validation_state = UtilBill.FAILED
         Validator._set_bill_state_if_unprocessed(self.utilbill, UtilBill.REVIEW)
         self.assertEqual(UtilBill.FAILED, self.utilbill.validation_state)
 
-        self.utilbill.validation_state=UtilBill.FAILED
+        self.utilbill.validation_state = UtilBill.FAILED
         Validator._set_bill_state_if_unprocessed(self.utilbill,
-            UtilBill.REVIEW, checkworst=False)
+            UtilBill.REVIEW, checkworst = False)
         self.assertEqual(UtilBill.REVIEW, self.utilbill.validation_state)
 
         # if a bill is processed, its validation state should not be modified.
-        processed_bill = Mock(spec=BEUtilBill)
+        processed_bill = Mock(spec = BEUtilBill)
         processed_bill.billentry_date = date.today()
         processed_bill.validation_state = UtilBill.FAILED
         Validator._set_bill_state_if_unprocessed(processed_bill,
-            UtilBill.REVIEW, checkworst=False)
+            UtilBill.REVIEW, checkworst = False)
         self.assertNotEqual(UtilBill.REVIEW, processed_bill.validation_state)
 
     def test_previous_bill(self):
-        bill = Mock(spec=UtilBill, create=False)
+        bill = Mock(spec = UtilBill, create = False)
         bill.period_end = None
         # test bill with no period_end
         with self.assertRaises(ValueError):
@@ -853,14 +853,14 @@ class ValidatorTest(TestCase):
 
     def test_validate_service_address(self):
         # this address matches bill2's service address
-        correct_address = Address(addressee=None, street="15 35th St",
+        correct_address = Address(addressee = None, street="15 35th St",
             city="Baltimore", state="MD")
         validation_result = Validator.validate_service_address(self.utilbill,
             self.other_bills, correct_address)
         self.assertEqual(UtilBill.SUCCEEDED, validation_result)
 
         # a valid address, but not found elsewhere in the account
-        wrong_address = Address(addressee=None,
+        wrong_address = Address(addressee = None,
             street="5 35th St", city="Baltimore", state="MA")
         validation_error = Validator.validate_service_address(self.utilbill,
             self.other_bills, wrong_address)
@@ -882,7 +882,7 @@ class ValidatorTest(TestCase):
         self.assertEqual(UtilBill.REVIEW, unusually_high)
 
         for i in range(3):
-            c = Mock(spec=Charge)
+            c = Mock(spec = Charge)
             c.target_total = 10
             self.utilbill.charges.append(c)
         matches_charges = Validator.validate_total(self.utilbill, [], 30)
@@ -903,9 +903,49 @@ class ValidatorTest(TestCase):
         self.assertEqual(UtilBill.REVIEW, unusually_high)
 
     def test_validate_supplier(self):
-        pass
+        supplier = Mock(spec=Supplier)
+        supplier.name = "some supplier"
+        bill = Mock(spec=UtilBill)
+        # so that self.bill2 is the previous bill
+        bill.period_end = date(2014, 3, 31)
+
+        # previous bill does not have same supplier
+        prev_bill_different = Validator.validate_supplier(bill,
+            self.other_bills, supplier)
+        self.assertEqual(UtilBill.REVIEW, prev_bill_different)
+
+        # previous bill does have same supplier
+        self.bill2.supplier = supplier
+        prev_bill_match = Validator.validate_supplier(bill, self.other_bills,
+            supplier)
+        self.assertEqual(UtilBill.SUCCEEDED, prev_bill_match)
 
     def test_rate_class(self):
+        rate_class = Mock(spec=RateClass)
+        rate_class.utility_id=1
+        rate_class.name="some rate class"
+
+        bill = Mock(spec=UtilBill)
+        bill.utility_id = 1
+        bill.period_end = date(2014, 3, 31)
+
+        # previous bill does not have same rate class
+        prev_bill_different = Validator.validate_rate_class(bill,
+            self.other_bills, rate_class)
+        self.assertEqual(UtilBill.REVIEW, prev_bill_different)
+
+        # previous bill does have same rate class
+        self.bill2.rate_class = rate_class
+        prev_bill_match = Validator.validate_rate_class(bill, self.other_bills,
+            rate_class)
+        self.assertEqual(UtilBill.SUCCEEDED, prev_bill_match)
+
+        # if rate class has incorrect utility id
+        rate_class.utility_id = 34
+        prev_bill_different = Validator.validate_rate_class(bill,
+            self.other_bills, rate_class)
+        self.assertEqual(UtilBill.REVIEW, prev_bill_different)
+
         pass
 
 class TestIntegration(TestCase):
@@ -933,10 +973,10 @@ class TestIntegration(TestCase):
         s3_connection = S3Connection(
             config.get('aws_s3', 'aws_access_key_id'),
             config.get('aws_s3', 'aws_secret_access_key'),
-            is_secure=config.get('aws_s3', 'is_secure'),
-            port=config.get('aws_s3', 'port'),
-            host=config.get('aws_s3', 'host'),
-            calling_format=config.get('aws_s3', 'calling_format'))
+            is_secure = config.get('aws_s3', 'is_secure'),
+            port = config.get('aws_s3', 'port'),
+            host = config.get('aws_s3', 'host'),
+            calling_format = config.get('aws_s3', 'calling_format'))
         url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
             config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.bfh = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
@@ -955,7 +995,7 @@ class TestIntegration(TestCase):
             'Delivery Tax': 'DELIVERY_TAX',
             'Sales Tax': 'SALES_TAX',
         }
-        rate_class = RateClass(utility=utility)
+        rate_class = RateClass(utility = utility)
         account = UtilityAccount('', '123', None, None, None, Address(),
                                  Address())
 
@@ -980,21 +1020,21 @@ class TestIntegration(TestCase):
         # wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+^(.*)$^.*$Next read date'
         wg_rate_class_regex = r'Rate Class:\s+Meter number:\s+([^\n]+).*Next read date'
         e1.fields = [
-            TextExtractor.TextField(regex=wg_start_regex, type=Field.DATE,
-                                    applier_key=UtilBillApplier.START),
-            TextExtractor.TextField(regex=wg_end_regex, type=Field.DATE,
-                                    applier_key=UtilBillApplier.END),
-            TextExtractor.TextField(regex=wg_energy_regex, type=Field.FLOAT,
-                                    applier_key=UtilBillApplier.ENERGY),
-            TextExtractor.TextField(regex=wg_next_meter_read_regex,
-                                    type=Field.DATE,
-                                    applier_key=UtilBillApplier.NEXT_READ),
-            TextExtractor.TextField(regex=wg_charges_regex,
-                                    type=Field.WG_CHARGES,
-                                    applier_key=UtilBillApplier.CHARGES),
-            TextExtractor.TextField(regex=wg_rate_class_regex,
-                                    type=Field.STRING,
-                                    applier_key=UtilBillApplier.RATE_CLASS),
+            TextExtractor.TextField(regex = wg_start_regex, type = Field.DATE,
+                                    applier_key = UtilBillApplier.START),
+            TextExtractor.TextField(regex = wg_end_regex, type = Field.DATE,
+                                    applier_key = UtilBillApplier.END),
+            TextExtractor.TextField(regex = wg_energy_regex, type = Field.FLOAT,
+                                    applier_key = UtilBillApplier.ENERGY),
+            TextExtractor.TextField(regex = wg_next_meter_read_regex,
+                                    type = Field.DATE,
+                                    applier_key = UtilBillApplier.NEXT_READ),
+            TextExtractor.TextField(regex = wg_charges_regex,
+                                    type = Field.WG_CHARGES,
+                                    applier_key = UtilBillApplier.CHARGES),
+            TextExtractor.TextField(regex = wg_rate_class_regex,
+                                    type = Field.STRING,
+                                    applier_key = UtilBillApplier.RATE_CLASS),
         ]
 
         e2 = TextExtractor(name='Another')
@@ -1018,22 +1058,22 @@ class TestIntegration(TestCase):
 
         expected = [
              Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
-                    target_total=158.7, type=D, unit='therms'),
+                    target_total=158.7, type = D, unit='therms'),
              Charge('CUSTOMER_CHARGE', name='Customer Charge', target_total=14.0,
-                    type=D, unit='therms'),
-             Charge('PGC', name='PGC', target_total=417.91, type=S,
+                    type = D, unit='therms'),
+             Charge('PGC', name='PGC', target_total=417.91, type = S,
                     unit='therms'),
              Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
-                    target_total=15.79, type=D, unit='therms'),
+                    target_total=15.79, type = D, unit='therms'),
              Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
-                    target_total=13.42, type=D, unit='therms'),
+                    target_total=13.42, type = D, unit='therms'),
              Charge('SETF', name='Sustainable Energy Trust Fund',
-                    target_total=7.06, type=D, unit='therms'),
+                    target_total=7.06, type = D, unit='therms'),
              Charge('EATF', name='Energy Assistance Trust Fund',
-                    target_total=3.03, type=D, unit='therms'),
+                    target_total=3.03, type = D, unit='therms'),
              Charge('DELIVERY_TAX', name='Delivery Tax', target_total=39.24,
-                    type=D, unit='therms'),
-             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
+                    type = D, unit='therms'),
+             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type = D,
                     unit='therms')]
         
         self.assertEqual(len(expected), len(self.bill.charges))
@@ -1100,7 +1140,7 @@ class TestIntegration(TestCase):
         # do everything in memory without requiring real celery server
         from core import celery
         celery.conf.update(
-            dict(BROKER_BACKEND='memory', CELERY_ALWAYS_EAGER=True))
+            dict(BROKER_BACKEND='memory', CELERY_ALWAYS_EAGER = True))
 
         s = Session()
         s.commit()
@@ -1139,7 +1179,7 @@ class TestIntegration(TestCase):
 
         #set up extractor result with non-nullable fields
         extractor_result = ExtractorResult(task_id="", parent_id="",
-            bills_to_run=4, started=datetime.utcnow())
+            bills_to_run=4, started = datetime.utcnow())
         #apply results to extractor result
         extractor_result.set_results(total_result)
         self.assertGreater(extractor_result.finished, extractor_result.started)
