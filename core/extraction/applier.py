@@ -365,8 +365,8 @@ class Validator:
             return UtilBill.FAILED
 
         # check this bill's period is a reasonable length
-        if utilbill.period_start is not None and not 20 < (value -
-                utilbill.period_start).days < 40:
+        if utilbill.period_start is not None and not 20 <= (value -
+                utilbill.period_start).days <= 40:
             return UtilBill.FAILED
 
         # Check overlap with other bills
@@ -397,8 +397,8 @@ class Validator:
             return UtilBill.FAILED
 
         # check this bill's period is a reasonable length
-        if utilbill.period_end is not None and not 20 < (utilbill.period_end -
-                value).days < 40:
+        if utilbill.period_end is not None and not 20 <= (utilbill.period_end -
+                value).days <= 40:
             return UtilBill.FAILED
 
         # Check overlap with other bills
@@ -431,8 +431,8 @@ class Validator:
                         date.today() + relativedelta(months=1)):
             return UtilBill.FAILED
 
-        if utilbill.period_end is not None and not 20 < (value -
-                utilbill.period_end).days < 40:
+        if utilbill.period_end is not None and not 20 <= (value -
+                utilbill.period_end).days <= 40:
             return UtilBill.FAILED
 
         # Check overlap with other bills' next meter read date. These can be
