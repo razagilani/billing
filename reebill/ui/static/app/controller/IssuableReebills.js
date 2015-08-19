@@ -352,6 +352,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         success: successFunc
                     });
                 }
+                else{
+                    Ext.getBody().unmask();
+                }
             });
         }, failureFunc);
         Ext.getBody().mask('Please wait, this may take some time...');
