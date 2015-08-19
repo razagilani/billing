@@ -49,6 +49,7 @@ def create_layout_extractors(s):
         elif f.applier_key == UtilBillApplier.CHARGES:
             f.bounding_box = BoundingBox(x0=99, y0=230, x1=372, y1=620)
             f.table_start_regex=r"balance brought forward"
+            f.table_stop_regex=r"ways to pay"
         elif f.applier_key == UtilBillApplier.TOTAL:
             f.bounding_box = BoundingBox(x0=0, y0=0, x1=170, y1=10)
         elif f.applier_key == UtilBillApplier.SUPPLIER:
