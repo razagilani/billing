@@ -35,7 +35,7 @@ def update_layout_extractors(s):
         elif f.applier_key == UtilBillApplier.END:
             f.bounding_box = BoundingBox(x0=411, y0=713, x1=441, y1=723)
         elif f.applier_key == UtilBillApplier.ENERGY:
-            f.bounding_box = BoundingBox(x0=225, y0=624, x1=300, y1=647)
+            f.bounding_box = BoundingBox(x0=225, y0=624, x1=300, y1=648)
         elif f.applier_key == UtilBillApplier.NEXT_READ:
             f.bounding_box = BoundingBox(x0=280, y0=713, x1=330, y1=723)
         elif f.applier_key == UtilBillApplier.SERVICE_ADDRESS:
