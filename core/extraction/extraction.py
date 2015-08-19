@@ -491,7 +491,7 @@ class LayoutExtractor(Extractor):
                 #Either use initial bounding box for first page,
                 # or use bounding box with the top y value of 'nextpage_top'
                 bbox = BoundingBox.get_shifted_bbox(self.bounding_box, dx, dy)
-                if i != self.page_num - 1:
+                if i != self.page_num - 1 and self.nextpage_top:
                     bbox.y1 = self.nextpage_top + dy
 
                 search = lambda lo: (lo.type == TEXTLINE) and \

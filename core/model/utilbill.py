@@ -907,7 +907,7 @@ class Charge(Base):
         end of the charge, as long as they are at least two digits long.
         This preserved things like 'Tier 1 Usage'.
         """
-        charge_description = re.sub(r'([@(]|\d[\d.]).*', '',
+        charge_description = re.sub(r'([@(:]|\d[\d.]).*', '',
                                     charge_description.upper())
         return sub('[\s\-_]+', '_', charge_description.strip().upper())
 
