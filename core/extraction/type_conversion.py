@@ -143,12 +143,13 @@ def process_charge(row, ctype=Charge.DISTRIBUTION):
     # the same description.
     # TODO Use some sort of charge name map
     # TODO also filter by charge type in this query?
-    q = Session.query(Charge.rsi_binding).filter(
-        Charge.description == description, Charge.rsi_binding != '')
-    rsi_binding = q.first()
-    if rsi_binding is None:
+    rsi_binding_result = Session.query(Charge.rsi_binding).filter(
+        Charge.description == description, Charge.rsi_binding != '').first()
+    if rsi_binding_result is None:
         #TODO what to do if existing RSI binding not found?
         pass
+    else:
+        rsi_binding = rsi_binding_result.rsi_binding
 
     return Charge(description=description, unit=unit, rate=rate,
         rsi_binding=rsi_binding, type=ctype, target_total=target_total)

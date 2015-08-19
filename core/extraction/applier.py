@@ -528,7 +528,7 @@ class Validator:
                 prev_bill_check = UtilBill.SUCCEEDED
 
         # check that rate class is in the same utility as bill
-        if value.utility_id == utilbill.utility_id:
+        if value.utility_id == utilbill.id:
             utility_check = UtilBill.SUCCEEDED
         else:
             utility_check = UtilBill.REVIEW
