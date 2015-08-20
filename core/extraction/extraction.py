@@ -2,26 +2,28 @@
 from utility bill files.
 """
 from datetime import datetime
-import re
 
+import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
+    UniqueConstraint, DateTime, func, Boolean, Float
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement, BoundingBox, Address, Charge, Supplier
-from exc import ConversionError, ExtractionError, ApplicationError, MatchError
+from core.model import BoundingBox, Address, Charge, Supplier, Session, \
+    RateClass
+from exc import ConversionError, ExtractionError, MatchError
+from util import dateutils
 from util.layout import tabulate_objects, \
-    group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
+    in_bounds, get_text_line, get_corner, \
     get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil
 
@@ -125,6 +127,7 @@ class Field(model.Base):
     ADDRESS = 'address'
     DATE = 'date'
     FLOAT = 'float'
+    IDENTITY = 'identity'
     STRING = 'string'
     SUPPLIER = 'supplier'
     TABLE_CHARGES = 'table charges'
@@ -136,6 +139,7 @@ class Field(model.Base):
         ADDRESS: convert_address,
         DATE: lambda x: dateutil_parser.parse(x).date(),
         FLOAT: lambda x: float(x.replace(',','')),
+        IDENTITY: lambda x: x,
         STRING: unicode,
         SUPPLIER: convert_supplier,
         TABLE_CHARGES: convert_table_charges,
@@ -556,6 +560,438 @@ class LayoutExtractor(Extractor):
                 dx = alignment_box.x0 - self.origin_x
                 dy = alignment_box.y1 - self.origin_y
         return (pages, dx, dy)
+
+
+# feel free to give this a better name
+class FormatAgnosticExtractor(Extractor):
+    """
+    Extracts fields from the bill based on pre-existing data in the database.
+    Doesn't depend on bill format, but more conservative than other
+    extractors; it won't extract names (e.g. rate class names or charge
+    descriptions) that it hasn't seen before.
+    Therefore, it's meant to complement layout extractors / human entry,
+    not 100% replace them.
+
+    Like Layout Extractor, this relies on PDF layout information from bills.
+    """
+    __mapper_args__ = {'polymorphic_identity': 'formatagnosticextractor'}
+
+    class FormatAgnosticField(Field):
+        """
+        A field that extracts data in a format-agnostic way, using existing
+        data in the database.
+
+        Works somewhat like a map-reduce:
+        First it gets some data from the db to use as a reference.
+        Then, in the 'map' step, i.e. :func:`process_textboxes` iterates
+        over all textboxes in the bill and produces a set of potential,
+        preliminary outputs.
+        Lastly, the 'reduce', ie.e. :func:`process_results` step processes
+        these
+        into a final
+        value.
+        """
+        __mapper_args__ = {'polymorphic_identity': 'formatagnosticfield'}
+
+        def _extract(self, input):
+            bill, pages = input
+            db_data = self.load_db_data(bill)
+            map_results = self.process_textboxes(pages, db_data)
+            possible_values = self.process_results(map_results)
+            return possible_values
+
+        def load_db_data(self, utilbill):
+            """
+            Load relevant data from the database, e.g. a list of existing
+            rate class names.
+            """
+            raise NotImplementedError
+
+        def process_textboxes(self, pages, db_data):
+            """
+            Iterate over textboxes and return a list of preliminary results.
+            """
+            raise NotImplementedError
+
+        def process_results(self, map_results):
+            """
+            Take output from process_textboxes, and process them into a final value.
+            """
+            raise NotImplementedError
+
+    # feel free to rename
+    class ChargeGobbler(FormatAgnosticField):
+        """
+        Finds and processes charges on a given bill.
+        This field searches for all text boxes on a bill that match an
+        existing charge name.
+        If one is found, the charge rate and value are captured by looking at
+        textboxes on the same row.
+        This works under the assumption that charges are stored in a table
+        format, with charge names on the left and charge values on the right.
+        This assumption doesn't always hold true (e.g. some bills have the charge
+        name and value in the same textbox, and multiple charges on the same
+        horizontal line). When this is the case the field acts conservatively,
+        and simply ignores those textboxes.
+
+        This field doesn't find *all* charges for a bill, but works for almost
+        any format, and captures supply charges that are often not found in a
+        single, predictable region on the page, so in some cases this is more
+        effective than a layout extractor.
+        Thus, this could be a good preliminary tool for populating the database
+        with charges of bills, before using layout extractors and human review.
+        """
+        __mapper_args__ = {'polymorphic_identity': 'chargegobbler'}
+
+        def __init__(self, *args, **kwargs):
+            """
+            This field's type is always TABLE_CHARGES, this field's applier
+            key is always CHARGES
+            """
+            super(Field, self).__init__(
+                applier_key=UtilBillApplier.CHARGES, type=Field.TABLE_CHARGES,
+                *args, **kwargs)
+
+        def load_db_data(self, utilbill):
+            """ Get charge names from the database
+            """
+            s = Session()
+            q = s.query(Charge.description, Charge.rsi_binding).filter(
+                (Charge.description != 'New Charge - Insert description here') &
+                (Charge.description != '')).distinct()
+            charge_results = q.all()
+            return charge_results
+
+        def process_textboxes(self, pages, charge_results):
+            """
+            Finds table rows corresponding to charges in a bill.
+            Takes a list of text boxes and a list of existing charges as input.
+            :param charge_results: A list of SQLAlchemy results, with teh
+                    fields Charge.description and Charge.rsi_binding.
+            :return: A 2d array of strings, as input for
+            :func:`convert_table_charges`
+            """
+            charge_rows = []
+            for p in pages:
+                obj_index = 0
+                while obj_index < len(p):
+                    obj = p[obj_index]
+                    sanitized_textline = Charge.description_to_rsi_binding(obj.text)
+                    if not sanitized_textline:
+                        obj_index += 1
+                        continue
+
+                    matching_charge = None
+                    for c in charge_results:
+                        sanitized_charge_name = Charge.description_to_rsi_binding(
+                            c.description)
+                        if sanitized_textline == sanitized_charge_name:
+                            matching_charge = c
+                            break
+                    if matching_charge is None:
+                        obj_index += 1
+                        continue
+
+                    # get whole row to the right of current box
+                    row = [obj.text.strip()]
+                    obj_index += 1
+                    while obj_index < len(p) and p[obj_index].bounding_box.y0 == \
+                            obj.bounding_box.y0:
+                        row.append(p[obj_index].text.strip())
+                        obj_index += 1
+                    # ignore rows with only one piece of text, as they are most
+                    # likely not charges.
+                    if len(row) > 1:
+                        charge_rows.append(row)
+            return charge_rows
+
+        def process_results(self, charge_rows):
+            """
+            In this case, we don't have to do anything before return this and
+            passing it onto the type conversion function.
+            :return: its input, unmodified
+            """
+            return charge_rows
+
+    class RateClassGobbler(FormatAgnosticField):
+        """
+        Field that looks for pieces of text in a bill that matches an existing
+        rate class. The rate classes for the bill's utility are loaded, and are
+        normalized to a standard name to account for formatting differences in
+        the database. Then, for any piece of text that matches an existing rate
+        class name, the corresponding rate class is returned.
+
+        If only one rate class is found, it is returned. Otherwise an error
+        is raised. Note that some bills can have multiple rate classes,
+        e.g. BGE which has both gas and eletric services in one bill.
+        """
+
+        __mapper_args__ = {'polymorphic_identity': 'rateclassgobbler'}
+
+        def __init__(self, *args, **kwargs):
+            """
+            This field's type is always IDENTITY,
+            this field's applier key is always RATE_CLASS
+            """
+            super(Field, self).__init__(applier_key =UtilBillApplier.RATE_CLASS,
+                                        type=Field.IDENTITY, *args, **kwargs)
+
+        def load_db_data(self, utilbill):
+            """
+            Loads rate classes from the database that have the same utility
+            as utilbill.
+            Rate classes are grouped by normalized name to account for minor
+            changes in formatting in the database.
+            :return: A map {<normalized rate class name> : <representative rate
+            class> }
+            """
+            s = Session()
+            q = s.query(RateClass).filter(RateClass.utility_id ==
+                                          utilbill.utility_id)
+            rate_classes = q.all()
+
+            # group rate classes by normalized name
+            rc_map = {self.normalize_text(rc.name): rc for rc in rate_classes}
+            return rc_map
+
+        def process_textboxes(self, pages, rc_map):
+            """
+            For each textbox that has the same text as an existing rate class
+            name, return the corresponding rate class.
+            :param pages: The layout elements of the bill
+            :param rc_map: A map of normalized rate class name to RateClass
+            object.
+            :return: A set of rate classes, unique up to normalized name,
+            found in the bill.
+            """
+            matching_rate_classes = {}
+            if len(rc_map.keys()) == 0:
+                return []
+            for p in pages:
+                for obj in p:
+                    sanitized_textline = self.sanitize_rate_class_name(obj.text)
+                    normalized_textline = self.normalize_text(
+                        sanitized_textline)
+                    if not normalized_textline:
+                        continue
+
+                    for norm_name, rc in rc_map.iteritems():
+                        if normalized_textline == norm_name:
+                            matching_rate_classes[norm_name]= rc
+                            break
+            return matching_rate_classes.values()
+
+        def process_results(self, rate_classes):
+            """
+            Takes a list of rate classes. If exactly one rate class is found,
+            it is returned. Otherwise, an error is raised.
+            :param rate_class_map: A list of rate classes.
+            :return:
+            """
+            if len(rate_classes) == 1:
+                return  rate_classes[0]
+            elif len(rate_classes) == 0:
+                raise ExtractionError("No rate classes found in this bill.")
+            else:
+                raise ExtractionError("Multiple rate classes found: %s") % \
+                      rate_classes
+
+        @classmethod
+        def sanitize_rate_class_name(cls, text):
+            """
+            Removes some common prefixes / suffixes that are often attached
+            to rate class names.
+            :param text: Text containing a rate class name
+            :return: The rate class name contained in text.
+            """
+            # e.g. 'rate class: residential'
+            text = re.sub("^rate(?: class)?:\s*", "", text, flags=re.IGNORECASE)
+            # e.g. 'rate class: non-residential service number 12345'
+            text = re.sub("service number[\d\s]+", "", text, flags=re.IGNORECASE)
+            return text
+
+        @staticmethod
+        def normalize_text(text):
+            """
+            NOTE: Currently only used by RateClassGobbler, but this is a
+            pretty generic method that could be moved somewhere else.
+
+            Normalizes text by removing non-alphanumeric characters and replacing
+            them with underscores. Trailing and leading non-alphanumeric characters
+            are removed.
+            """
+            text = text.upper()
+            text = re.sub(r'[^A-Z0-9]', ' ', text)
+            text = text.strip().lstrip()
+            return re.sub(r'\s+', '_', text)
+
+    class BillPeriodGobbler(FormatAgnosticField):
+        """
+        A function that attempts to get the billing period of a bill.
+        1. First, all dates on the bill are loaded, and their location stored.
+        2. Then, pairs of dates that are roughly one month apart are grouped as
+         potential start and end dates.
+        3. The start and end dates that are geometrically closest (usually in the
+         same textbox, so a distance of 0) are then chosen as the most likely
+         bill period.
+         *** (Note: the x distance is weighted less than the y distance,
+         since pieces of text on the same line are more likely to be related than
+         pieces of text that are vertically aligned but on different lines.
+        4. It's possible for a bill (e.g. for BGE, with both gas and electric
+         services) to have multiple periods on it, so an array of possibly
+         periods is returned.
+        :param bill: The bill to be analyzed
+        :return: A list of possible bill periods. Each bill period is a tuple (
+        start_date, end_date, distance), where distance is the geometrical
+        distance on the bill's page.
+        """
+
+        __mapper_args__ = {'polymorphic_identity': 'billperiodgobbler'}
+
+        date_long_format = r'[A-Za-z]+\s*[0-9]{1,2},\s*[0-9]{4}'
+        date_mm_dd_yy_format = r'\d{2}\/\d{2}\/\d{2,4}'
+
+        def __init__(self, *args, **kwargs):
+            """
+            This field's type is always IDENTITY
+            """
+
+            # TODO self.applier_key = 'bill period'
+            # not a valid applier key, since this field does both period
+            # start and period end. Need to find a better way to fit
+            # FormatAgnosticExtractor into the structure of extractor.
+
+            super(Field, self).__init__(type=Field.IDENTITY, *args, **kwargs)
+
+        def load_db_data(self, utilbill):
+            """
+            This field doesn't use data from the database.
+            """
+            return None
+
+        def process_textboxes(self, pages, db_data):
+            """
+            Gets all dates on the bill and their position.
+            :return: a list of {'date':<date>, 'obj':<layout_element>}
+            """
+            dates = []
+            for p in pages:
+                for obj in p:
+                    matches = re.findall(self.date_long_format, obj.text)
+                    matches += re.findall(self.date_mm_dd_yy_format, obj.text)
+                    for s in matches:
+                        date = dateutils.parse_date(s)
+                        # store obj to keep track of page number, x, y
+                        date_obj = {'date': date, 'obj': obj }
+                        dates.append(date_obj)
+            dates = sorted(dates, key=lambda do: do['date'])
+            return dates
+
+        def process_results(self, date_objs):
+            """
+            Given a set of date objects from a bill,
+            :param date_objs: A list of {'date':<date>, 'obj':<layout_element>}
+            :return: A pair (start_date, end_date) or throws an error if
+            multiple / no periods are found.
+            """
+            # Find potential ~1 month periods
+            periods = []
+            for idx, start_obj in enumerate(date_objs):
+                for end_obj in date_objs[idx+1:]:
+                    # skip if dates are on a different page
+                    if start_obj['obj'].page_num != end_obj['obj'].page_num:
+                        continue
+                    # bill period length must be in [20, 40]
+                    if (end_obj['date'] - start_obj['date']).days < 20:
+                        continue
+                    if (end_obj['date'] - start_obj['date']).days > 40:
+                        break
+                    # get geometric (manhattan) distance of text boxes
+                    dx = abs(start_obj['obj'].bounding_box.x0 -
+                             end_obj['obj'].bounding_box.x0)
+                    dy = abs(start_obj['obj'].bounding_box.y1 -
+                             end_obj['obj'].bounding_box.y1)
+                    # x distance is less improtant than y - pieces of text on
+                    # different lines are less likely to be related.
+                    distance = 0.25 * dx + 1.0 * dy
+                    periods.append((start_obj['date'], end_obj['date'], distance))
+
+            # sort by geometric distance on bill, after removing duplicate values
+            periods = sorted(set(periods), key=lambda p: p[2])
+            # get only the pairs of dates that are closest to each other on the page
+            likeliest_periods = filter(lambda p: p[2] == periods[0][2], periods)
+
+            if len(likeliest_periods) == 1:
+                p = likeliest_periods[0]
+                return (p[0], p[1])
+            elif len(likeliest_periods) == 0:
+                raise ExtractionError("No potential bill periods found in this "
+                                      "bill.")
+            else:
+                raise ExtractionError("Multiple potential bill periods found: %s") % likeliest_periods
+
+    def __init__(self):
+        self.rate_class_field = FormatAgnosticExtractor.RateClassGobbler(
+            enabled=True)
+        self.charges_field = FormatAgnosticExtractor.ChargeGobbler(enabled=True)
+        self.bill_period_field = FormatAgnosticExtractor.BillPeriodGobbler(
+            enabled=True)
+
+    def get_values(self, utilbill, bill_file_handler):
+        """
+        :param utilbill: UtilBill
+        :param bill_file_handler: BillFileHandler
+        :return: dictionary of applier key -> extracted value for fields that
+        succeeded in extracted values, and dictionary of applier key ->
+        ExtractionError for fields that failed.
+        """
+        self._input = self._prepare_input(utilbill, bill_file_handler)
+        good, errors = {}, {}
+        # TODO this code is highly repetitive, since bill_period_gobbler
+        # returns both start and end at once. Need to refactor to make more
+        # general, or ideally refactor so we don't have to override
+        # Extractor.get_values
+        if self.rate_class_field.enabled is not False:
+            try:
+                rate_class_value = self.rate_class_field.get_value(self._input)
+            except ExtractionError as error:
+                errors[self.rate_class_field.applier_key] = error
+            else:
+                good[self.rate_class_field.applier_key] = rate_class_value
+        if self.charges_field.enabled is not False:
+            try:
+                charges_value = self.charges_field.get_value(self._input)
+            except ExtractionError as error:
+                errors[self.charges_field.applier_key] = error
+            else:
+                good[self.charges_field.applier_key] = charges_value
+        if self.bill_period_field.enabled is not None:
+            try:
+                bill_period = self.bill_period_field.get_value(self._input)
+            except ExtractionError as error:
+                errors[UtilBillApplier.START] = error
+                errors[UtilBillApplier.END] = error
+            else:
+                good[UtilBillApplier.START] = bill_period[0]
+                good[UtilBillApplier.END] = bill_period[1]
+
+        return good, errors
+
+
+    def _prepare_input(self, utilbill, bill_file_handler):
+        """
+        Prepares input for format-agnostic extractor extractor by getting PDF
+        text objects and keeping track of the utility bill itself, to use for
+        database queries in the fields.
+        """
+        pages = utilbill.get_layout(bill_file_handler, PDFUtil())
+        pages = [filter(lambda o: o.type == TEXTLINE, p) for p in pages]
+        # check if bill has no text
+        if len(pages) == 0:
+            raise ExtractionError("Bill has no pages.")
+        if sum(len(p) for p in pages) == 0:
+            raise ExtractionError("Bill has no text.")
+        return (utilbill, pages)
 
 
 class ExtractorResult(model.Base):
