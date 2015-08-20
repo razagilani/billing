@@ -132,33 +132,5 @@ def upgrade():
         # 'reviewed' is True because this file was curated by hand
         s.add(ChargeNameMap(display_name_regex=regex.strip(),
             rsi_binding=rsi_binding.strip(), reviewed=True))
-
-    ######
-    # Remove incorrect rate classes from database that were entered by text
-    # extractors. This is a temporary problem, as layout extractors are much
-    # better are entering correct data or failing safely. But for now I
-    # manually remove these rate classes from the database for local
-    # development.
-    q = s.query(RateClass).filter(RateClass.id >= 282 )
-    q =  q.filter(RateClass.name.like('Page%') |
-                  RateClass.name.like('Days%') |
-                  RateClass.name.like('%$%') |
-                  RateClass.name.like('Charges%') |
-                  RateClass.name.like('Used%') |
-                  RateClass.name.like('%2014%') |
-                  RateClass.name.like('Gas you\'ve used this period%'))
-
-    rate_classes = q.all()
-    for rc in rate_classes:
-        register_templates = s.query(RegisterTemplate).filter(
-            RegisterTemplate.rate_class_id == rc.id).all()
-        for rt in register_templates:
-            s.delete(rt)
-
-        bills = s.query(UtilBill).filter(UtilBill.rate_class_id == rc.id).all()
-        for b in bills:
-            b.rate_class_id = None
-
-        s.delete(rc)
     s.commit()
 
