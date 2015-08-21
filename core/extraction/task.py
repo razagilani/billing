@@ -17,6 +17,7 @@ from core import init_config, init_celery, init_model
 # init_model can't be called here because it will cause a circular import
 # with billentry
 from core import config
+from exc import ExtractionError
 from util.pdf import PDFUtil
 
 if not config:
@@ -158,12 +159,12 @@ def test_bill(self, extractor_id, bill_id):
                 response['fields_correct'][applier_key] = 1
             else:
                 response['fields_incorrect'][applier_key] = 1
-                print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
-                      "extracted value: %s, database value: %s" % (bill_id,
-                applier_key, field_value, db_val)
+                # print "**** VERIFICATION FAILED id: %d, applier key: %s, " \
+                #       "extracted value: %s, database value: %s" % (bill_id,
+                # applier_key, field_value, db_val)
 
     # print out debug information in celery log
-    debug = True
+    debug = False
     if len(good) != len(extractor.fields) and debug:
         print "\n$$$$$$$"
         print "Extractor Name: ", extractor.name

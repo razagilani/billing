@@ -267,7 +267,13 @@ class Extractor(model.Base):
         succeeded in extracted values, and dictionary of applier key ->
         ExtractionError for fields that failed.
         """
-        self._input = self._prepare_input(utilbill, bill_file_handler)
+        try:
+            self._input = self._prepare_input(utilbill, bill_file_handler)
+        except ExtractionError as e:
+            good = {}
+            errors = {ak: e for ak in [f.applier_key for f in
+                self.fields]}
+            return good, errors
         good, errors = {}, {}
         for field in self.fields:
             # still extract data if field.enabled is None
@@ -587,9 +593,7 @@ class FormatAgnosticExtractor(Extractor):
         over all textboxes in the bill and produces a set of potential,
         preliminary outputs.
         Lastly, the 'reduce', ie.e. :func:`process_results` step processes
-        these
-        into a final
-        value.
+        these into a final value.
         """
         __mapper_args__ = {'polymorphic_identity': 'formatagnosticfield'}
 
@@ -730,11 +734,11 @@ class FormatAgnosticExtractor(Extractor):
 
         def __init__(self, *args, **kwargs):
             """
-            This field's type is always IDENTITY,
+            This field's type is always STRING,
             this field's applier key is always RATE_CLASS
             """
             super(Field, self).__init__(applier_key =UtilBillApplier.RATE_CLASS,
-                                        type=Field.IDENTITY, *args, **kwargs)
+                                        type=Field.STRING, *args, **kwargs)
 
         def load_db_data(self, utilbill):
             """
@@ -784,17 +788,17 @@ class FormatAgnosticExtractor(Extractor):
         def process_results(self, rate_classes):
             """
             Takes a list of rate classes. If exactly one rate class is found,
-            it is returned. Otherwise, an error is raised.
+            its name is returned. Otherwise, an error is raised.
             :param rate_class_map: A list of rate classes.
-            :return:
+            :return: The name of the bill's rate class
             """
             if len(rate_classes) == 1:
-                return  rate_classes[0]
+                return  rate_classes[0].name
             elif len(rate_classes) == 0:
                 raise ExtractionError("No rate classes found in this bill.")
             else:
-                raise ExtractionError("Multiple rate classes found: %s") % \
-                      rate_classes
+                raise ExtractionError("Multiple rate classes found: %s" %
+                                      [rc.name for rc in rate_classes])
 
         @classmethod
         def sanitize_rate_class_name(cls, text):
@@ -853,15 +857,30 @@ class FormatAgnosticExtractor(Extractor):
 
         def __init__(self, *args, **kwargs):
             """
-            This field's type is always IDENTITY
+            This field's type is always IDENTITY, and its applier_key must be
+            START or END
             """
-
-            # TODO self.applier_key = 'bill period'
-            # not a valid applier key, since this field does both period
-            # start and period end. Need to find a better way to fit
-            # FormatAgnosticExtractor into the structure of extractor.
-
+            if 'applier_key' in kwargs and kwargs['applier_key'] not in [
+                UtilBillApplier.START, UtilBillApplier.END]:
+                raise ExtractionError("BillPeriodGobbler must have %s or %s "
+                                      "as applier key." % (
+                    UtilBillApplier.START, UtilBillApplier.END))
             super(Field, self).__init__(type=Field.IDENTITY, *args, **kwargs)
+
+        def get_value(self, input):
+            """
+            Since this field gets two values (the start and end date),
+            it can return different valeus depending on which applier key it
+            is given.
+            """
+            period = super(FormatAgnosticExtractor.BillPeriodGobbler,
+                self).get_value(input)
+            if self.applier_key == UtilBillApplier.START:
+                return period[0]
+            elif self.applier_key == UtilBillApplier.END:
+                return period[1]
+            else:
+                return period
 
         def load_db_data(self, utilbill):
             """
@@ -928,55 +947,7 @@ class FormatAgnosticExtractor(Extractor):
                 raise ExtractionError("No potential bill periods found in this "
                                       "bill.")
             else:
-                raise ExtractionError("Multiple potential bill periods found: %s") % likeliest_periods
-
-    def __init__(self):
-        self.rate_class_field = FormatAgnosticExtractor.RateClassGobbler(
-            enabled=True)
-        self.charges_field = FormatAgnosticExtractor.ChargeGobbler(enabled=True)
-        self.bill_period_field = FormatAgnosticExtractor.BillPeriodGobbler(
-            enabled=True)
-
-    def get_values(self, utilbill, bill_file_handler):
-        """
-        :param utilbill: UtilBill
-        :param bill_file_handler: BillFileHandler
-        :return: dictionary of applier key -> extracted value for fields that
-        succeeded in extracted values, and dictionary of applier key ->
-        ExtractionError for fields that failed.
-        """
-        self._input = self._prepare_input(utilbill, bill_file_handler)
-        good, errors = {}, {}
-        # TODO this code is highly repetitive, since bill_period_gobbler
-        # returns both start and end at once. Need to refactor to make more
-        # general, or ideally refactor so we don't have to override
-        # Extractor.get_values
-        if self.rate_class_field.enabled is not False:
-            try:
-                rate_class_value = self.rate_class_field.get_value(self._input)
-            except ExtractionError as error:
-                errors[self.rate_class_field.applier_key] = error
-            else:
-                good[self.rate_class_field.applier_key] = rate_class_value
-        if self.charges_field.enabled is not False:
-            try:
-                charges_value = self.charges_field.get_value(self._input)
-            except ExtractionError as error:
-                errors[self.charges_field.applier_key] = error
-            else:
-                good[self.charges_field.applier_key] = charges_value
-        if self.bill_period_field.enabled is not None:
-            try:
-                bill_period = self.bill_period_field.get_value(self._input)
-            except ExtractionError as error:
-                errors[UtilBillApplier.START] = error
-                errors[UtilBillApplier.END] = error
-            else:
-                good[UtilBillApplier.START] = bill_period[0]
-                good[UtilBillApplier.END] = bill_period[1]
-
-        return good, errors
-
+                raise ExtractionError("Multiple potential bill periods found: %s" % likeliest_periods)
 
     def _prepare_input(self, utilbill, bill_file_handler):
         """

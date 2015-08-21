@@ -22,6 +22,5 @@ def upgrade():
                   nullable=False),
         sa.Column('rsi_binding', sa.String(), nullable=False))
 
-
 def downgrade():
     raise NotImplementedError

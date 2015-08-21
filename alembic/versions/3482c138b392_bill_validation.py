@@ -22,16 +22,18 @@ def upgrade():
     # # https://bitbucket.org/zzzeek/alembic/issue/270/altering-enum-type
     # # AND postgres won't let you run "alter type" inside a transaction either.
     # # https://bitbucket.org/zzzeek/alembic/issue/123/a-way-to-run-non-transactional-ddl
-    # connection = op.get_bind()
-    # connection.execution_options(isolation_level='AUTOCOMMIT')
-    # for value in UtilBill.VALIDATION_STATES:
-    #     op.execute("alter type validation_state add value '%s'" % value)
+
+    # add 'identity' to field_type
+    connection = op.get_bind()
+    connection.execution_options(isolation_level='AUTOCOMMIT')
+    op.execute("alter type field_type add value 'identity'")
 
     validation_state_enum = sa.Enum(*UtilBill.VALIDATION_STATES,
         name='validation_state')
     validation_state_enum.create(op.get_bind(), checkfirst=False)
     op.add_column('utilbill', sa.Column('validation_state',
         validation_state_enum, server_default=UtilBill.FAILED))
+
 
 
 def downgrade():
