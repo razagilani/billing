@@ -11,7 +11,8 @@ import logging
 import re
 from core.extraction import Applier, Extractor
 from core.extraction.applier import UtilBillApplier
-from core.extraction.extraction import LayoutExtractor, Field
+from core.extraction.extraction import LayoutExtractor, Field, \
+    FormatAgnosticExtractor
 from core.model import BoundingBox, Session, RateClass, UtilBill
 from core.model.model import ChargeNameMap, RegisterTemplate
 from upgrade_scripts import alembic_upgrade
@@ -119,11 +120,33 @@ def update_layout_extractors(s):
         if f.applier_key == UtilBillApplier.TOTAL:
             f.bounding_box = BoundingBox(x0=0, y0=-10, x1=255, y1=0)
 
+def add_format_agnostic_extractors(s):
+    """
+    Adds format agnostic extractor.
+    BillPeriodGobbler is added twice, which is wasteful.
+    FormatAgnosticExtractor doesn't fit perfectly into the structure of
+    Extractor.
+    """
+    fae = FormatAgnosticExtractor(name="Format Agnostic Extractor")
+    charge_field = FormatAgnosticExtractor.ChargeGobbler(enabled=True)
+    rate_class_field = FormatAgnosticExtractor.RateClassGobbler(enabled=True)
+    start_field = FormatAgnosticExtractor.BillPeriodGobbler(enabled=True,
+        applier_key=UtilBillApplier.START)
+    end_field = FormatAgnosticExtractor.BillPeriodGobbler(enabled=True,
+        applier_key=UtilBillApplier.END)
+    fae.fields.extend([charge_field, rate_class_field, start_field, end_field])
+    s.add(fae)
+
 def upgrade():
+    alembic_upgrade('1226d67c4c53')
+    s = Session()
+    s.commit()
+
     alembic_upgrade('3482c138b392')
     init_model()
     s = Session()
     update_layout_extractors(s)
+    add_format_agnostic_extractors(s)
 
     cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'
     cnm_infile = open(cnm_filename, 'r')
