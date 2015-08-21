@@ -28,7 +28,7 @@ from test import init_test_config
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
 from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
-    verify_field, ExtractorResult, LayoutExtractor
+    verify_field, ExtractorResult, LayoutExtractor, FormatAgnosticExtractor
 from core.extraction.applier import Applier, UtilBillApplier, Validator
 from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, Charge, LayoutElement, BoundingBox, Supplier
@@ -414,6 +414,283 @@ class TableFieldTest(TestCase):
         with self.assertRaises(ExtractionError):
             # give tablefield data representing a single empty page.
             tablefield._extract(([[]], 0, 0))
+
+class FormatAgnosticExtractorTest(TestCase):
+    """
+    Test the format agnostic extractor. The only function specific to this
+    class is self._prepare_input, all other functionality is either inherited
+    or relies on fields such as ChargeGobbler.
+    """
+
+    def setUp(self):
+        self.le1 = LayoutElement(text='hello', page_num=0,
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
+        self.le2 = LayoutElement(text='text', page_num=2,
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
+        self.le3 = LayoutElement(text='wot', page_num=0,
+            bounding_box = BoundingBox(x0=0, y0=200, x1=100, y1=200),
+            type = TEXTLINE)
+        self.le4 = LayoutElement(text='sample', page_num=1,
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type = TEXTLINE)
+        self.le_image = LayoutElement(page_num=1,
+            bounding_box = BoundingBox(x0=0, y0=0, x1=100, y1=200), type =IMAGE)
+        self.layout_elts = [[self.le3, self.le1], [self.le4, self.le_image],
+            [self.le2]]
+        self.layout_textlines = [[self.le3, self.le1], [self.le4],
+            [self.le2]]
+
+        self.bfh = Mock(spec = BillFileHandler)
+        self.fae = FormatAgnosticExtractor()
+        self.bill = Mock(spec = UtilBill)
+        self.bill.get_layout.return_value = self.layout_elts
+
+    def test_prepare_input(self):
+        # layout elements, sorted by page and position, remove non-textlines
+        fae_input = self.fae._prepare_input(self.bill, self.bfh)
+        self.assertEqual((self.bill, self.layout_textlines), fae_input)
+
+        empty_bill = Mock(spec = UtilBill)
+        # error on bill with no pages
+        empty_bill.get_layout.return_value = []
+        with self.assertRaises(ExtractionError):
+            self.fae._prepare_input(empty_bill, self.bfh)
+        # error on bill with no text
+        empty_bill.get_layout.return_value = [[], [], []]
+        with self.assertRaises(ExtractionError):
+            self.fae._prepare_input(empty_bill, self.bfh)
+
+class BillPeriodGobblerTest(TestCase):
+    def setUp(self):
+        self.bpg = FormatAgnosticExtractor.BillPeriodGobbler()
+        self.le_2_dates = LayoutElement(text='Jan 1, 2014 - Jan 30, 2014',
+            page_num=1, bounding_box=BoundingBox(x0=100, y0=100, x1=200,
+                y1=200), type=TEXTLINE)
+        self.le_date1 = LayoutElement(text='Jan 12, 2014',
+            page_num=1, bounding_box=BoundingBox(x0=200, y0=200, x1=300,
+                y1=300), type=TEXTLINE)
+        self.le_date2 = LayoutElement(text='Feb 12, 2014',
+            page_num=2, bounding_box=BoundingBox(x0=200, y0=200, x1=300,
+                y1=300), type=TEXTLINE)
+        self.le_date_short = LayoutElement(text='09/14/1996',
+            page_num=3, bounding_box=BoundingBox(x0=200, y0=200, x1=300,
+                y1=300), type=TEXTLINE)
+        self.pages = [[self.le_2_dates, self.le_date1], [self.le_date2],
+            [self.le_date_short]]
+
+        self.expected_date_objs = [
+            {'date': date(1996, 9, 14), 'obj': self.le_date_short},
+            {'date': date(2014, 1, 1), 'obj': self.le_2_dates},
+            {'date': date(2014, 1, 12), 'obj': self.le_date1},
+            {'date': date(2014, 1, 30), 'obj': self.le_2_dates},
+            {'date': date(2014, 2, 12), 'obj': self.le_date2},
+        ]
+
+    def test_field_init(self):
+        # field type is always IDENTITY
+        bpg = FormatAgnosticExtractor.BillPeriodGobbler()
+        self.assertEqual(bpg.type, Field.IDENTITY)
+        # if applier key is not end or start, and error is raised.
+        with self.assertRaises(ExtractionError):
+            bpg = FormatAgnosticExtractor.BillPeriodGobbler(applier_key =
+            UtilBillApplier.CHARGES)
+
+    def test_load_db_data(self):
+        ub = Mock(spec=UtilBill)
+        self.assertIsNone(self.bpg.load_db_data(ub))
+
+    def test_process_textlines(self):
+        """
+        Test getting dates from text objects
+        """
+        out_date_objs = self.bpg.process_textlines(self.pages, None)
+        self.assertEqual(self.expected_date_objs, out_date_objs)
+
+    def test_process_results(self):
+        # simple test, get geometrically closest dates on the page, that are
+        # around one month apart
+        out_period = self.bpg.process_results(self.expected_date_objs)
+        self.assertEqual(out_period, (date(2014, 1, 1), date(2014, 1, 30)))
+
+        # test error with multiple periods
+        with self.assertRaises(ExtractionError):
+            ambiguous_dates = [
+                {'date': date(1996, 9, 14), 'obj': self.le_date_short},
+                {'date': date(1996, 10, 14), 'obj': self.le_date_short},
+                {'date': date(2014, 1, 1), 'obj': self.le_2_dates},
+                {'date': date(2014, 1, 12), 'obj': self.le_date1},
+                {'date': date(2014, 1, 30), 'obj': self.le_2_dates},
+                {'date': date(2014, 2, 12), 'obj': self.le_date2},
+            ]
+            self.bpg.process_results(ambiguous_dates)
+
+        # test error with no bill periods found
+        with self.assertRaises(ExtractionError):
+            # dates are too far (>40 days) apart, so no bill periods will be
+            # found
+            no_period_dates = [
+                {'date': date(1996, 9, 14), 'obj': self.le_date_short},
+                {'date': date(1996, 11, 14), 'obj': self.le_date_short},
+                {'date': date(2014, 1, 1), 'obj': self.le_2_dates},
+                {'date': date(2014, 3, 12), 'obj': self.le_date1},
+                {'date': date(2014, 5, 30), 'obj': self.le_2_dates},
+                {'date': date(2014, 9, 12), 'obj': self.le_date2},
+            ]
+            self.bpg.process_results(ambiguous_dates)
+
+class RateClassGobblerTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def tearDown(self):
+        clear_db()
+
+    def setUp(self):
+        s = Session()
+        self.rcg = FormatAgnosticExtractor.RateClassGobbler()
+        self.utility = Utility()
+        self.account = UtilityAccount('', '123', None, None, None, Address(),
+                                 Address())
+        self.rate_class1 = RateClass(name="some rate class",
+            utility=self.utility)
+        self.rate_class2 = RateClass(name="another rate class",
+            utility=self.utility)
+        self.rate_class2_dup = RateClass(name="Another RATE class!",
+            utility=self.utility)
+        self.bill = UtilBill(self.account, self.utility, None)
+        s.add_all([self.bill, self.rate_class1, self.rate_class2,
+            self.rate_class2_dup])
+        s.commit()
+
+        self.expected_data = {'SOME_RATE_CLASS': self.rate_class1,
+            'ANOTHER_RATE_CLASS': self.rate_class2}
+
+    def test_init_field(self):
+        # make sure that RateClassGobbler has the correct built-in applier
+        # key and field type
+        rcg = FormatAgnosticExtractor.RateClassGobbler()
+        self.assertEqual(UtilBillApplier.RATE_CLASS, rcg.applier_key)
+        self.assertEqual(Field.STRING, rcg.type)
+
+    def test_load_db_data(self):
+        # Test loading rate class data from db
+        data = self.rcg.load_db_data(self.bill)
+        self.assertEqual(data, self.expected_data)
+
+    def test_process_textlines(self):
+        """
+        Test getting rate classes from layout elements
+        """
+        # This test doesn't need the bounding boxes
+        default_bb = BoundingBox(0,0,0,0)
+        # sample layout elements to process
+        le_rc1 = LayoutElement(text='SOME rate class',
+            bounding_box=default_bb, page_num=1)
+        le_rc1_dup = LayoutElement(text='some rate class service number 123 '
+                                        '123', bounding_box=default_bb, page_num=1)
+        le_rc2 = LayoutElement(text='rate: another rate class',
+            bounding_box=default_bb, page_num=2)
+        rc_map = self.expected_data
+        
+        rate_classes = self.rcg.process_textlines([[le_rc1, le_rc1_dup],
+            [le_rc2]], rc_map)
+        self.assertItemsEqual(rate_classes, [self.rate_class1,
+            self.rate_class2])
+
+    def test_process_results(self):
+        # simple test with one rate class
+        self.assertEqual(self.rcg.process_results([self.rate_class1]),
+            self.rate_class1.name)
+        # throw an error if multiple rate classes
+        with self.assertRaises(ExtractionError):
+            self.rcg.process_results([self.rate_class1, self.rate_class2])
+        # throw an error if no rate classes
+        with self.assertRaises(ExtractionError):
+            self.rcg.process_results([])
+
+class ChargesGobbler(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        create_tables()
+        init_model()
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    def tearDown(self):
+        clear_db()
+
+    def setUp(self):
+        s = Session()
+        self.utility = Utility()
+        self.account = UtilityAccount('', '123', None, None, None, Address(),
+                                 Address())
+        self.bill = UtilBill(self.account, self.utility, None)
+        self.charge1 = Charge(description="Charge 1", rsi_binding="CHARGE_1",
+            unit='kWh')
+        self.charge1_dup = Charge(description="Charge 1",
+            rsi_binding="CHARGE_1", unit='kWh')
+        self.charge2 = Charge(description="Charge 2", rsi_binding="CHARGE_2",
+            unit='kWh')
+        self.bill.charges = [self.charge1, self.charge1_dup, self.charge2]
+        s.add_all([self.bill, self.charge1, self.charge1_dup,
+            self.charge2])
+        s.commit()
+
+        self.charges_gobbler = FormatAgnosticExtractor.ChargeGobbler()
+        c1 = Mock(description='Charge 1', rsi_binding='CHARGE_1')
+        c2 = Mock(description='Charge 2', rsi_binding='CHARGE_2')
+        self.unique_charges = [c1, c2]
+
+        # set up a mock bill full of charges
+        # charge 1, name and value
+        self.le_charge1_name=LayoutElement(text='Charge 1: ', page_num=1,
+            bounding_box=BoundingBox(0, 900, 100, 1000))
+        self.le_charge1_value=LayoutElement(text=' $100.00', page_num=1,
+            bounding_box=BoundingBox(200, 900, 300, 1000))
+        # charge 2, name and value
+        self.le_charge2_name=LayoutElement(text='Charge 2: ', page_num=1,
+            bounding_box=BoundingBox(0, 600, 100, 700))
+        self.le_charge2_value=LayoutElement(text=' $200.00', page_num=1,
+            bounding_box=BoundingBox(200, 600, 300, 700))
+        # a name that matches an rsi binding, but not a charge
+        self.le_charge1_other=LayoutElement(text='Charge 1', page_num=1,
+            bounding_box=BoundingBox(100, 500, 200, 600))
+        # a textbox that does not correspond to a charge
+        self.le_charge1_other=LayoutElement(text='lol not a charge', page_num=1,
+            bounding_box=BoundingBox(100, 100, 200, 200))
+
+        self.bill_pages = [[self.le_charge1_name, self.le_charge1_value,
+            self.le_charge2_name, self.le_charge2_value, self.le_charge1_other]]
+
+    def test_load_db_data(self):
+        out_charges = self.charges_gobbler.load_db_data(self.bill)
+        self.assertEqual([(c.description, c.rsi_binding) for c in out_charges],
+            [(c.description, c.rsi_binding) for c in out_charges])
+
+    def test_process_textlines(self):
+        # get charge names and values from bill, store as 2d array of strings
+        expected_charge_rows = [['Charge 1:', '$100.00'], ['Charge 2:',
+            '$200.00']]
+        out_charge_rows = self.charges_gobbler.process_textlines(
+            self.bill_pages, self.unique_charges)
+        self.assertEqual(expected_charge_rows, out_charge_rows)
+
+    def test_process_results(self):
+        # currently ChargeGobbler doesn't use process_results
+        charge_rows = [['Charge 1:', '$100.00'], ['Charge 2:',
+            '$200.00']]
+        self.assertEqual(charge_rows, self.charges_gobbler.process_results(
+            charge_rows))
+
 
 class TestTypeConversion(TestCase):
     """ Test type conversion functions

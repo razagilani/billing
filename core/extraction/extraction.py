@@ -589,7 +589,7 @@ class FormatAgnosticExtractor(Extractor):
 
         Works somewhat like a map-reduce:
         First it gets some data from the db to use as a reference.
-        Then, in the 'map' step, i.e. :func:`process_textboxes` iterates
+        Then, in the 'map' step, i.e. :func:`process_textlines` iterates
         over all textboxes in the bill and produces a set of potential,
         preliminary outputs.
         Lastly, the 'reduce', ie.e. :func:`process_results` step processes
@@ -600,9 +600,9 @@ class FormatAgnosticExtractor(Extractor):
         def _extract(self, input):
             bill, pages = input
             db_data = self.load_db_data(bill)
-            map_results = self.process_textboxes(pages, db_data)
-            possible_values = self.process_results(map_results)
-            return possible_values
+            map_results = self.process_textlines(pages, db_data)
+            value = self.process_results(map_results)
+            return value
 
         def load_db_data(self, utilbill):
             """
@@ -611,7 +611,7 @@ class FormatAgnosticExtractor(Extractor):
             """
             raise NotImplementedError
 
-        def process_textboxes(self, pages, db_data):
+        def process_textlines(self, pages, db_data):
             """
             Iterate over textboxes and return a list of preliminary results.
             """
@@ -619,7 +619,7 @@ class FormatAgnosticExtractor(Extractor):
 
         def process_results(self, map_results):
             """
-            Take output from process_textboxes, and process them into a final value.
+            Take output from process_textlines, and process them into a final value.
             """
             raise NotImplementedError
 
@@ -652,9 +652,9 @@ class FormatAgnosticExtractor(Extractor):
             This field's type is always TABLE_CHARGES, this field's applier
             key is always CHARGES
             """
-            super(Field, self).__init__(
-                applier_key=UtilBillApplier.CHARGES, type=Field.TABLE_CHARGES,
-                *args, **kwargs)
+            kwargs['applier_key'] = UtilBillApplier.CHARGES
+            kwargs['type'] = Field.TABLE_CHARGES
+            super(Field, self).__init__(*args, **kwargs)
 
         def load_db_data(self, utilbill):
             """ Get charge names from the database
@@ -666,7 +666,7 @@ class FormatAgnosticExtractor(Extractor):
             charge_results = q.all()
             return charge_results
 
-        def process_textboxes(self, pages, charge_results):
+        def process_textlines(self, pages, charge_results):
             """
             Finds table rows corresponding to charges in a bill.
             Takes a list of text boxes and a list of existing charges as input.
@@ -728,6 +728,10 @@ class FormatAgnosticExtractor(Extractor):
         If only one rate class is found, it is returned. Otherwise an error
         is raised. Note that some bills can have multiple rate classes,
         e.g. BGE which has both gas and eletric services in one bill.
+
+        NOTE: currently only the name of the resulting rate class is
+        returned, for compatibility with UtilBillApplier.RATE_CLASS,
+        which points to a function which accepts a string.
         """
 
         __mapper_args__ = {'polymorphic_identity': 'rateclassgobbler'}
@@ -737,8 +741,9 @@ class FormatAgnosticExtractor(Extractor):
             This field's type is always STRING,
             this field's applier key is always RATE_CLASS
             """
-            super(Field, self).__init__(applier_key =UtilBillApplier.RATE_CLASS,
-                                        type=Field.STRING, *args, **kwargs)
+            kwargs['applier_key'] = UtilBillApplier.RATE_CLASS
+            kwargs['type'] = Field.STRING
+            super(Field, self).__init__(*args, **kwargs)
 
         def load_db_data(self, utilbill):
             """
@@ -758,7 +763,7 @@ class FormatAgnosticExtractor(Extractor):
             rc_map = {self.normalize_text(rc.name): rc for rc in rate_classes}
             return rc_map
 
-        def process_textboxes(self, pages, rc_map):
+        def process_textlines(self, pages, rc_map):
             """
             For each textbox that has the same text as an existing rate class
             name, return the corresponding rate class.
@@ -845,9 +850,8 @@ class FormatAgnosticExtractor(Extractor):
          services) to have multiple periods on it, so an array of possibly
          periods is returned.
         :param bill: The bill to be analyzed
-        :return: A list of possible bill periods. Each bill period is a tuple (
-        start_date, end_date, distance), where distance is the geometrical
-        distance on the bill's page.
+        :return: A potential bill period as (start_date, end_date) or an
+        error if 0 or multiple bill periods have been found.
         """
 
         __mapper_args__ = {'polymorphic_identity': 'billperiodgobbler'}
@@ -865,7 +869,8 @@ class FormatAgnosticExtractor(Extractor):
                 raise ExtractionError("BillPeriodGobbler must have %s or %s "
                                       "as applier key." % (
                     UtilBillApplier.START, UtilBillApplier.END))
-            super(Field, self).__init__(type=Field.IDENTITY, *args, **kwargs)
+            kwargs['type'] = Field.IDENTITY
+            super(Field, self).__init__(*args, **kwargs)
 
         def get_value(self, input):
             """
@@ -888,7 +893,7 @@ class FormatAgnosticExtractor(Extractor):
             """
             return None
 
-        def process_textboxes(self, pages, db_data):
+        def process_textlines(self, pages, db_data):
             """
             Gets all dates on the bill and their position.
             :return: a list of {'date':<date>, 'obj':<layout_element>}
