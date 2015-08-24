@@ -119,5 +119,6 @@ cron { read_quote_files:
 cron { export_accounts_data:
     command => "source /home/reebill-stage/.bash_profile && cd /var/local/reebill-stage/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-stage/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/reebill-stage/logs/export_accounts_to_xls_stderr.log",
     user => $username,
+    hour => 1,
     minute => 0
 }
