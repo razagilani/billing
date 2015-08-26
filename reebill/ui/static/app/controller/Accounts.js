@@ -99,7 +99,6 @@ Ext.define('ReeBill.controller.Accounts', {
                 var sortDir = store.getOrCreate('default_account_sort_direction', 'DESC').get('value');
 
                 memStore.sort({property: sortColumn, direction: sortDir});
-                memStore.loadPage(1);
             },
             scope: this
         });
