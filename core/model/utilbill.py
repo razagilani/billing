@@ -154,6 +154,7 @@ class UtilBill(Base):
     # 1. UtilityEstimated: actual utility bill whose contents were estimated by
     # the utility, and will be corrected in a later bill.
     # 2. Estimated: a bill that is estimated by us, not the utility.
+    # Estimated bills do not have a file associated with them.
     Complete, UtilityEstimated, Estimated = range(3)
 
     def __init__(self, utility_account, utility, rate_class, supplier=None,
@@ -463,6 +464,12 @@ class UtilBill(Base):
         '''
         if not self.editable():
             raise UnEditableBillError('Utility bill is not editable')
+
+    def has_file(self):
+        """Return True if this bill has a file (i.e. is not Estimated),
+        False otherwise.
+        """
+        return self.state <= self.UtilityEstimated
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
