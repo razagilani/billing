@@ -1,0 +1,67 @@
+!rate_structure
+name: Rate Schedule 2 - Firm Service Other than Residential 
+service: Gas
+effective: 
+expires:
+registers: 
+    - !register
+      descriptor: REG_TOTAL
+      description: Total therms register
+      quantity: 0
+      quantityunits: therms
+rates:
+# looks like wash gas rounds up charge item totals
+    - !rate_structure_item
+      descriptor: SYSTEM_CHARGE
+      description: System Charge
+      quantity: 1
+      #total: 13.15 if (REG_TOTAL.annual.quantity < 3075) else 26.40
+      total: 26.40
+    - !rate_structure_item
+      descriptor: DISTRIBUTION_CHARGE
+      description: Distribution charge for all therms
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.2939
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: PGC
+      description: Purchased Gas Charge
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.7625
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: RIGHT_OF_WAY
+      description: DC Rights-of-Way Fee
+      quantity: REG_TOTAL.quantity
+      quantityunits: REG_TOTAL.quantityunits
+      rate: 0.03034
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: SETF
+      description: Sustainable Energy Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.014
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: EATF 
+      description: DC Energy Assistance Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.006
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: DELIVERY_TAX
+      description: Delivery tax
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.0707
+      rateunits: dollars
+      total:
