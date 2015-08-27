@@ -53,20 +53,8 @@ Ext.define('ReeBill.view.Viewport', {
                 },
 
                 items: [{
-                    xtype: 'panel',
-                    name: 'accountsTab',
-                    title: 'Accounts',
-                    layout: 'accordion',
-                    defaults: {
-                        collapsible: true
-                    },
-                    items: [{
-                        xtype: 'accounts',
-                        id: 'accountsGrid'
-                    },{
-                        xtype: 'accountForm',
-                        id: 'newAccountForm'
-                    }]
+                    xtype: 'accounts',
+                    id: 'accountsGrid'
                 },{
                     xtype: 'panel',
                     name: 'utilityBillsTab',
@@ -107,7 +95,7 @@ Ext.define('ReeBill.view.Viewport', {
                         id: 'TOUMeteringForm',
                         region: 'south',
                         collapsible:false,
-                        floatable: false,
+                        floatable: false
                     }]
                 },{
                     xtype: 'panel',
@@ -176,7 +164,7 @@ Ext.define('ReeBill.view.Viewport', {
                     }]
                 },{
                     xtype: 'issuableReebills',
-                    id: 'issuableReebillsGrid',
+                    id: 'issuableReebillsGrid'
                 },{
                     xtype: 'panel',
                     name: 'journalTab',
@@ -210,10 +198,10 @@ Ext.define('ReeBill.view.Viewport', {
                         region: 'center',
                         items: [{
                             xtype: 'reconciliations',
-                            id: 'reconciliationsGrid',
+                            id: 'reconciliationsGrid'
                         },{
                             xtype: 'estimatedRevenue',
-                            id: 'estimatedRevenueGrid',
+                            id: 'estimatedRevenueGrid'
                         },]
                     }]
                 },{

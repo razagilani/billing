@@ -270,6 +270,7 @@ class AccountsResourceTest(TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street': '123 Test Street',
+            'service_type': 'thermal'
         }]})
         self.assertEqual(utility_account.account_number, '987654321')
 
@@ -311,6 +312,7 @@ class AccountsResourceTest(TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street': '123 Test Street',
+            'service_type': 'thermal'
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some tag', 'some other tag'])
@@ -351,6 +353,7 @@ class AccountsResourceTest(TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street': '123 Test Street',
+            'service_type': 'thermal'
         }]})
         self.assertEqual([g.name for g in reebill_customer.get_groups()],
                          ['some other tag', 'one more tag'])

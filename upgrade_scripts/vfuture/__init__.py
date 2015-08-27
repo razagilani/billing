@@ -8,34 +8,31 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 import logging
-
+import re
+from core.extraction import Applier
+from core.extraction.applier import UtilBillApplier
+from core.extraction.extraction import LayoutExtractor, Field
+from core.model import BoundingBox, Session
+from core.model.model import ChargeNameMap
 from upgrade_scripts import alembic_upgrade
 from core import init_model, initialize, init_config
+from util.layout import Corners
 
 log = logging.getLogger(__name__)
 
     # TODO: add charge_name_map's for other utilities
 
 def upgrade():
-    # initialize()
-    # from core.model import Base, Session
-    # s = Session()
-    # s.execute('drop type if exists field_type')
-    # Field.__table__.drop(Session.bind, checkfirst=True)
-    # Extractor.__table__.drop(Session.bind, checkfirst=True)
-    # Base.metadata.drop_all()
-    # Base.metadata.create_all()
-    alembic_upgrade('30597f9f53b9')
-
-    initialize()
-    from core.model import Base, Session
-    print '\n'.join(sorted(t for t in Base.metadata.tables))
+    alembic_upgrade('1226d67c4c53')
+    init_model()
     s = Session()
+    cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'
+    cnm_infile = open(cnm_filename, 'r')
+    for line in cnm_infile.readlines():
+        (regex, rsi_binding) = re.split(r"\s+\|\s+", line)
+        # 'reviewed' is True because this file was curated by hand
+        s.add(ChargeNameMap(display_name_regex=regex.strip(),
+            rsi_binding=rsi_binding.strip(), reviewed=True))
 
-
-    # s.query(Field).delete()
-    # s.query(Extractor).delete()
-    # hstore won't work unless it's specifically turned on
-    s.execute('create extension if not exists hstore')
     s.commit()
 

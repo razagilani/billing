@@ -382,8 +382,7 @@ class UploadUtilityBillResource(BaseResource):
         for hash_digest in session.get('hash-digest'):
             # skip extracting data because it's currently slow
             ub = self.utilbill_processor.create_utility_bill_with_existing_file(
-                utility_account, hash_digest, service_address=address,
-                skip_extraction=True)
+                utility_account, hash_digest, service_address=address)
             s.add(ub)
         # remove the consumed hash-digest from session
         session.pop('hash-digest')
@@ -438,8 +437,9 @@ class ChargeResource(BaseResource):
         charge = s.query(Charge).filter_by(id=id).one()
         if args['rsi_binding'] is not None:
             # convert name to all caps with underscores instead of spaces
-            charge.rsi_binding = args['rsi_binding'].strip().upper().replace(
-                ' ', '_')
+            charge.rsi_binding = Charge.description_to_rsi_binding(
+                args['rsi_binding'])
+
         if args['target_total'] is not None:
             charge.target_total = args['target_total']
         s.commit()
