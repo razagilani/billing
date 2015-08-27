@@ -226,6 +226,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street': '123 Test Street',
+            'service_type': 'thermal'
             }, {
             'utility_account_id': utility_account_1.id,
             'account': '100001',
@@ -254,6 +255,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street': '123 Test Street',
+            'service_type': 'thermal'
             }, {
             'utility_account_id': utility_account_0.id,
             'account': '100000',
@@ -282,6 +284,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street':'123 Test Street',
+            'service_type': 'thermal'
         }], data)
 
         # get only one account
@@ -315,6 +318,7 @@ class ReebillProcessingTest(testing_utils.TestCase):
             'sa_postal_code': '12345',
             'sa_state': 'XX',
             'sa_street':'123 Test Street',
+            'service_type': 'thermal'
         }], data)
 
     def test_set_payee_for_utility_account(self):

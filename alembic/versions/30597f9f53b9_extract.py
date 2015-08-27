@@ -42,31 +42,34 @@ def upgrade():
     )
     op.create_table('field',
         sa.Column('field_id', sa.Integer(), nullable=False),
-                    sa.Column('discriminator', sa.String(), nullable=False),
+        sa.Column('discriminator', sa.String(), nullable=False),
         sa.Column('extractor_id', sa.Integer(), nullable=True),
         sa.Column('type',
-            sa.Enum('address', 'date', 'float', 'pepco old charges', 'pepco new charges', 'rate class', 'string', 'wg charges',
+            sa.Enum('address', 'date', 'float', 'pepco old charges',
+                'pepco new charges', 'rate class', 'string', 'wg charges',
                 name='field_type'), nullable=True),
-        sa.Column('applier_key', sa.Enum('billing address', 'charges', 'rate class', 'next read', 'energy', 'end', 'service address', 'start', name='applier_key'),
+        sa.Column('applier_key',
+            sa.Enum('billing address', 'charges', 'rate class', 'next read',
+                'energy', 'end', 'service address', 'start', 'supplier',
+                name='applier_key'),
             nullable=True),
         sa.Column('regex', sa.String(length=1000), nullable=False),
-        sa.Column('page_num', sa.Integer()),
-        sa.Column('bbminx', sa.Float(), nullable=True),
-        sa.Column('bbminy', sa.Float(), nullable=True),
-        sa.Column('bbmaxx', sa.Float(), nullable=True),
-        sa.Column('bbmaxy', sa.Float(), nullable=True),
+        sa.Column('page_num', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['extractor_id'], ['extractor.extractor_id'], ),
         sa.PrimaryKeyConstraint('field_id'),
         sa.UniqueConstraint('extractor_id', 'applier_key')
     )
     op.add_column(u'charge', sa.Column('name', sa.String(), nullable=True))
     op.add_column(u'utilbill', sa.Column('text', sa.String(), nullable=True))
-    op.add_column(u'utility', sa.Column('charge_name_map', postgresql.HSTORE(), nullable=False, server_default=''))
+    op.add_column(u'utility',
+        sa.Column('charge_name_map', postgresql.HSTORE(), nullable=False,
+            server_default=''))
     op.create_table('extractor_result',
         sa.Column('extractor_result_id', sa.Integer(), primary_key=True),
         sa.Column('task_id', sa.String(), nullable=False),
         sa.Column('parent_id', sa.String(), nullable=False),
-        sa.Column('extractor_id', sa.Integer(), sa.ForeignKey('extractor.extractor_id')),
+        sa.Column('extractor_id', sa.Integer(),
+            sa.ForeignKey('extractor.extractor_id')),
         sa.Column('bills_to_run', sa.Integer(), nullable=False),
         sa.Column('started', sa.DateTime(), nullable=False),
         sa.Column('finished', sa.DateTime()),
@@ -100,6 +103,7 @@ def upgrade():
         sa.Column('field_rate_class_fraction', sa.Float()),
         sa.Column('field_service_address_fraction', sa.Float()),
         sa.Column('field_start_fraction', sa.Float()),)
+
 
 def downgrade():
     raise NotImplementedError

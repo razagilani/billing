@@ -2,7 +2,7 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     extend: 'Ext.grid.Panel',
     requires: [
         'ReeBill.store.AccountsFilter'],
-    title: 'Accounts Processing Status',
+    title: 'Accounts',
     alias: 'widget.accounts',   
     store: 'Accounts',
     selModel: {
@@ -12,7 +12,12 @@ Ext.define('ReeBill.view.accounts.Accounts', {
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
             clicksToEdit: 2
-        })
+        }),
+        {
+            ptype: 'bufferedrenderer',
+            trailingBufferZone: 20,  // Keep 20 rows rendered in the table behind scroll
+            leadingBufferZone: 50   // Keep 50 rows rendered in the table ahead of scroll
+        }
     ],
     
     viewConfig: {
@@ -172,17 +177,43 @@ Ext.define('ReeBill.view.accounts.Accounts', {
 
     dockedItems: [{
         dock: 'top',
-        xtype: 'toolbar',
-        layout: {
-            overflowHandler: 'Menu'
+        layout:{
+            type:'hbox',
+            align:'stretch'
         },
         items: [{
+            xtype: 'button',
+            itemId: 'createNewAccount',
+            action: 'createAccount',
+            text: 'New',
+            iconCls: 'silk-add'
+        },{
+            xtype: 'button',
+            itemId: 'editAccountRecord',
+            action: 'editRecord',
+            text: 'Edit',
+            iconCls: 'silk-edit',
+            disabled: true
+        },{
             xtype: 'button',
             itemId: 'mergeAccountRecord',
             action: 'mergeRecords',
             text: 'Merge',
             iconCls: 'silk-merge',
             disabled: true
+        },{
+            xtype: 'combo',
+            name: 'accountsFilter',
+            fieldLabel: 'Filter',
+            labelWidth: 30,
+            width: 200,
+            value: 'none',
+            editable: false,
+            store: 'AccountsFilter',
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'label',
+            forceSelection: true
         }]
     }]
 });

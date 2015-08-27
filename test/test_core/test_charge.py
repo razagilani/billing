@@ -56,6 +56,23 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   ('range(20) + somevar', ['somevar'])]:
             self.assertEqual(expected, Charge._get_variable_names(formula))
 
+    def test_description_to_rsi_binding(self):
+        self.assertEqual('', Charge.description_to_rsi_binding(''))
+        self.assertEqual('', Charge.description_to_rsi_binding(' \n  \t'))
+        self.assertEqual('', Charge.description_to_rsi_binding(' \r\n  \t'))
+        self.assertEqual('_', Charge.description_to_rsi_binding(' _  _ '))
+        self.assertEqual('AA', Charge.description_to_rsi_binding('aa '))
+        self.assertEqual('AA_B', Charge.description_to_rsi_binding('aa b'))
+        self.assertEqual('AA_B_C', Charge.description_to_rsi_binding('aa b  c'))
+        self.assertEqual('A_1_2_3',
+                         Charge.description_to_rsi_binding('a_1 2 3'))
+        self.assertEqual('CHARGE', Charge.description_to_rsi_binding('charge '
+                                                                     '12.35'))
+        self.assertEqual('CHARGE', Charge.description_to_rsi_binding('charge @'
+                                                                     '0.4335'))
+        self.assertEqual('TIER_1_USAGE',
+            Charge.description_to_rsi_binding('Tier 1 Usage @ 0.204 x 45 kwH'))
+
     def test_evaluate_formula(self):
         test_cases = [('5 + ', None, 'Syntax error'),
                       ('OTHER_VAR.quantity', 4, None),

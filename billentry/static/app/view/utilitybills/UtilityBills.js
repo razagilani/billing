@@ -88,15 +88,6 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         minWidth: 200,
         flex: 1
     },{
-        header: 'Usage',
-        dataIndex: 'total_energy',
-        editor: {
-            xtype: 'numberfield',
-            allowBlank: false,
-            selectOnFocus: true
-        },
-        width: 100
-    },{
         header: 'Total Charges',
         dataIndex: 'supply_total',
         width: 100,
@@ -145,6 +136,15 @@ Ext.define('BillEntry.view.utilitybills.UtilityBills', {
         renderer: function(val, metaDate, record){
             return record.get('rate_class');
         }
+    },{
+        header: 'Usage',
+        dataIndex: 'total_energy',
+        editor: {
+            xtype: 'numberfield',
+            allowBlank: false,
+            selectOnFocus: true
+        },
+        width: 100
     },{
         header: 'Supplier',
         dataIndex: 'supplier_id',
