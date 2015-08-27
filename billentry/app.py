@@ -384,15 +384,11 @@ def before_request():
         'login_page', 'locallogin',
         # special endpoint name for all static files--not a URL
         'static']
-    SAVE_NEXT_URL_FOR_THESE_URLS = ['admin', 'index']
 
     if not user.is_authenticated():
         if request.endpoint in ALLOWED_ENDPOINTS:
             return
-        if (request.endpoint in SAVE_NEXT_URL_FOR_THESE_URLS or 'admin' in
-                        request.path or 'index' in request.path):
-            set_next_url()
-            return redirect(url_for('login_page'))
+        set_next_url()
         return redirect(url_for('login_page'))
     if user.is_authenticated():
         update_user_session_last_request_time(user)
