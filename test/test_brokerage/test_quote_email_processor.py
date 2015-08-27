@@ -176,6 +176,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         )
         self.altitude_supplier = Company(name=self.supplier.name)
 
+        # extra supplier that will never match any email: there should be at
+        # least 2, because with only 1, that one is always a unique match for
+        # every email.
+        Session().add(Supplier(name='Wrong Supplier',
+                               matrix_email_sender='wrong@example.com'))
+
     def tearDown(self):
         self.email_file.close()
         clear_db()
@@ -196,9 +202,13 @@ class TestQuoteEmailProcessorWithDB(TestCase):
             self.qep.process_email(self.email_file)
 
         # both are present but supplier doesn't match the email
+        # (all 3 have to be changed to a non-matching value because any one
+        # by itself is enough to find a unique matching supplier.)
         self.email_file.seek(0)
         Session().add(self.supplier)
+        self.supplier.matrix_email_sender = 'nobody@example.com'
         self.supplier.matrix_email_recipient = 'nobody@example.com'
+        self.supplier.matrix_email_subject = 'unrecognized subject'
         with self.assertRaises(UnknownSupplierError):
             self.qep.process_email(self.email_file)
 
