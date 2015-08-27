@@ -43,8 +43,7 @@ Ext.define('BillEntry.view.charges.Charges', {
             triggerAction: 'all',
             valueField: 'name',
             displayField: 'name',
-            forceSelection: true,
-            selectOnFocus: true
+            forceSelection: false
         },
         width: 180
     },{

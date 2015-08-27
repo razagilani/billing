@@ -646,7 +646,7 @@ class UtilbillProcessingTest(testing_utils.TestCase):
             utility_account, file_hash,
             # TODO: add due date
             #due_date=datetime(2000,1,1),
-            target_total=100, service_address=the_address, skip_extraction=True)
+            target_total=100, service_address=the_address)
         # the only one of these arguments that is visible in the UI is "total"
         data, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)

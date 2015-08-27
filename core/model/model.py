@@ -647,4 +647,21 @@ class UtilityAccount(Base):
         except ValueError:
             raise NoSuchBillException
 
+class ChargeNameMap(Base):
+    """
+    Represents a mapping between a charge's name/description as it appears on a
+    bill, and its standardized name.
+    """
 
+    __tablename__ = 'charge_name_map'
+
+    charge_name_map_id = Column(Integer, primary_key=True)
+
+    # a pattern that matches the name of a charge as it is displayed on a bill.
+    display_name_regex = Column(String, nullable=False)
+
+    # the corresponding charge's rsi binding.
+    rsi_binding = Column(String, nullable=False)
+
+    # whether this entry has been reviewed by a human
+    reviewed = Column(Boolean, nullable=False, server_default="False")
