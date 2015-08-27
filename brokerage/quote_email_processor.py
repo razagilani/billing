@@ -36,11 +36,16 @@ class QuoteDAO(object):
         self.altitude_session = AltitudeSession()
 
     def get_supplier_objects_for_message(self, from_addr, to_addr, subject):
-        """Determine which supplier an email is from using the sender and
-        recipient email addresses.
+        """Determine which supplier an email is from using the sender's email
+        address, recipient's address, and subject. Since different suppliers'
+        emails may be identified in differnt ways, each of these criteria is
+        only considered if there is at least one supplier that matches it; if
+        none of them match it, it's ignored. Any combination of matching
+        criteria is OK as long as exactly one supplier matches it. (This
+        means that if there's only one supplier, it will match every email.)
 
         Raise UnknownSupplierError if there was not exactly one supplier
-        corresponding to the email in the main database and another with the
+        corresponding to the email in the main database, and another with the
         same name in the Altitude database.
 
         :param from_addr: regular expression string for email sender address
@@ -50,22 +55,28 @@ class QuoteDAO(object):
         main database, brokerage.brokerage_model.Company representing the
         same supplier in the Altitude database.
         """
-        q = Session().query(Supplier).filter(
-            or_(Supplier.matrix_email_sender == None,
-                Supplier.matrix_email_sender.like(from_addr)),
-            or_(Supplier.matrix_email_recipient == None,
-                Supplier.matrix_email_recipient.like(to_addr)),
-            or_(Supplier.matrix_email_subject == None,
-                Supplier.matrix_email_subject.like(subject)))
+        # the matching behavior is implemented by counting the number of
+        # matching suppliers for each criterion, and then only filtering by that
+        # criterion if the count > 0. i couldn't think of a way that avoids
+        # doing multiple queries.
+        s = Session()
+        query = s.query(Supplier)
+        filter_functions = [
+            lambda q: q.filter(Supplier.matrix_email_sender.like(from_addr)),
+            lambda q: q.filter(Supplier.matrix_email_recipient.like(to_addr)),
+            lambda q: q.filter(Supplier.matrix_email_subject.like(subject)),
+        ]
+        for func in filter_functions:
+            if func(s.query(Supplier)).count() > 0:
+                query = func(query)
         try:
-            supplier = q.one()
+            supplier = query.one()
         except (NoResultFound, MultipleResultsFound):
             raise UnknownSupplierError
 
         # match supplier in Altitude database by name--this means names
         # for the same supplier must always be the same
-        q = self.altitude_session.query(
-            Company).filter_by(name=supplier.name)
+        q = self.altitude_session.query(Company).filter_by(name=supplier.name)
         try:
             altitude_supplier = q.one()
         except (NoResultFound, MultipleResultsFound):
