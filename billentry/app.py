@@ -394,7 +394,7 @@ def before_request():
                         request.path or 'index' in request.path):
             set_next_url()
             return redirect(url_for('login_page'))
-        return Response('Could not verify your access level for that URL', 401)
+        return redirect(url_for('login_page'))
     if user.is_authenticated():
         update_user_session_last_request_time(user)
 
