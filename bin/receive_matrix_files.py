@@ -23,7 +23,7 @@ if __name__ == '__main__':
         qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, QuoteDAO())
         qep.process_email(stdin)
     except Exception as e:
-        logger.error('Error when processing email:\n%s' % (
+        logging.error('Error when processing email:\n%s' % (
             traceback.format_exc()))
     finally:
         Session.remove()
