@@ -20,19 +20,7 @@ from util.layout import Corners
 
 log = logging.getLogger(__name__)
 
-    # TODO: add charge_name_map's for other utilities
-
 def upgrade():
-    alembic_upgrade('1226d67c4c53')
+    alembic_upgrade('482dddf4fe5d')
+
     init_model()
-    s = Session()
-    cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'
-    cnm_infile = open(cnm_filename, 'r')
-    for line in cnm_infile.readlines():
-        (regex, rsi_binding) = re.split(r"\s+\|\s+", line)
-        # 'reviewed' is True because this file was curated by hand
-        s.add(ChargeNameMap(display_name_regex=regex.strip(),
-            rsi_binding=rsi_binding.strip(), reviewed=True))
-
-    s.commit()
-
