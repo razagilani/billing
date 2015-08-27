@@ -117,9 +117,3 @@ cron { read_quote_files:
     minute => '*/10'
 }
 
-cron { receive_matrix_files:
-    command => "source /var/local/reebill-stage/bin/activate && python /var/local/reebill-stage/billing/bin/receive_matrix_files.py"
-    user => $username,
-    hour => 0,
-    minute => 5
-}
