@@ -64,8 +64,8 @@ class TestQuoteEmailProcessor(TestCase):
         with self.assertRaises(UnknownSupplierError):
             self.qep.process_email(StringIO(self.message.as_string()))
 
-        self.quote_dao.get_supplier_objects_for_message.assert_has_calls([
-            call(self.sender, self.recipient, self.subject)])
+        self.quote_dao.get_supplier_objects_for_message.assert_called_once_with(
+            self.recipient)
         self.assertEqual(0, self.quote_dao.begin_nested.call_count)
         self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
         self.assertEqual(0, self.quote_dao.rollback.call_count)
@@ -115,7 +115,7 @@ class TestQuoteEmailProcessor(TestCase):
         with self.assertRaises(ValidationError):
             self.qep.process_email(email_file)
 
-        # quote parser doesn't like the file firmat, so no quotes are extracted
+        # quote parser doesn't like the file format, so no quotes are extracted
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
         self.assertEqual(1, self.quote_dao.begin_nested.call_count)
@@ -201,14 +201,11 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         with self.assertRaises(UnknownSupplierError):
             self.qep.process_email(self.email_file)
 
-        # both are present but supplier doesn't match the email
-        # (all 3 have to be changed to a non-matching value because any one
-        # by itself is enough to find a unique matching supplier.)
+        # both are present but supplier doesn't match the email's recipient
+        # address
         self.email_file.seek(0)
         Session().add(self.supplier)
-        self.supplier.matrix_email_sender = 'nobody@example.com'
         self.supplier.matrix_email_recipient = 'nobody@example.com'
-        self.supplier.matrix_email_subject = 'unrecognized subject'
         with self.assertRaises(UnknownSupplierError):
             self.qep.process_email(self.email_file)
 

@@ -35,22 +35,16 @@ class QuoteDAO(object):
     def __init__(self):
         self.altitude_session = AltitudeSession()
 
-    def get_supplier_objects_for_message(self, from_addr, to_addr, subject):
-        """Determine which supplier an email is from using the sender's email
-        address, recipient's address, and subject. Since different suppliers'
-        emails may be identified in differnt ways, each of these criteria is
-        only considered if there is at least one supplier that matches it; if
-        none of them match it, it's ignored. Any combination of matching
-        criteria is OK as long as exactly one supplier matches it. (This
-        means that if there's only one supplier, it will match every email.)
+    def get_supplier_objects_for_message(self, to_addr):
+        """Determine which supplier an email is from using the recipient's
+        email address. This works because emails containing matrices are
+        forwarded to a unique address for each supplier.
 
         Raise UnknownSupplierError if there was not exactly one supplier
         corresponding to the email in the main database, and another with the
         same name in the Altitude database.
 
         :param from_addr: regular expression string for email sender address
-        :param to_addr: regular expression string for email recipient address
-        :param subject: regular expression string for email subject
         :return: core.model.Supplier representing the supplier table int the
         main database, brokerage.brokerage_model.Company representing the
         same supplier in the Altitude database.
@@ -60,15 +54,7 @@ class QuoteDAO(object):
         # criterion if the count > 0. i couldn't think of a way that avoids
         # doing multiple queries.
         s = Session()
-        query = s.query(Supplier)
-        filter_functions = [
-            lambda q: q.filter(Supplier.matrix_email_sender.like(from_addr)),
-            lambda q: q.filter(Supplier.matrix_email_recipient.like(to_addr)),
-            lambda q: q.filter(Supplier.matrix_email_subject.like(subject)),
-        ]
-        for func in filter_functions:
-            if func(s.query(Supplier)).count() > 0:
-                query = func(query)
+        query = s.query(Supplier).filter_by(matrix_email_recipient=to_addr)
         try:
             supplier = query.one()
         except (NoResultFound, MultipleResultsFound):
@@ -203,8 +189,7 @@ class QuoteEmailProcessor(object):
             raise EmailError('Invalid email format')
 
         supplier, altitude_supplier = \
-            self._quote_dao.get_supplier_objects_for_message(
-            from_addr, to_addr, subject)
+            self._quote_dao.get_supplier_objects_for_message(to_addr)
 
         # load quotes from the file into the database
         self.logger.info('Matched email with supplier: %s' % supplier.name)
