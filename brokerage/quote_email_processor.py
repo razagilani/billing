@@ -7,7 +7,7 @@ import re
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
-from brokerage.brokerage_model import Company
+from brokerage.brokerage_model import Company, CompanyPGSupplier
 from brokerage import quote_parsers
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
@@ -54,19 +54,23 @@ class QuoteDAO(object):
         # criterion if the count > 0. i couldn't think of a way that avoids
         # doing multiple queries.
         s = Session()
-        query = s.query(Supplier).filter_by(matrix_email_recipient=to_addr)
+        q = s.query(Supplier).filter_by(matrix_email_recipient=to_addr)
+        count = q.count()
         try:
-            supplier = query.one()
+            supplier = q.one()
         except (NoResultFound, MultipleResultsFound):
-            raise UnknownSupplierError
+            raise UnknownSupplierError(
+                '%s suppliers matched recipient address %s' % (count, to_addr))
 
         # match supplier in Altitude database by name--this means names
         # for the same supplier must always be the same
         q = self.altitude_session.query(Company).filter_by(name=supplier.name)
+        count = q.count()
         try:
             altitude_supplier = q.one()
         except (NoResultFound, MultipleResultsFound):
-            raise UnknownSupplierError
+            raise UnknownSupplierError(
+                '%s Altitude suppliers matched %s' % (count, supplier))
 
         return supplier, altitude_supplier
 
