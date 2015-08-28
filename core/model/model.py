@@ -286,12 +286,10 @@ class Supplier(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False, unique=True)
 
-    # for importing matrix quotes from emailed files. each is a regular
-    # expression. all fields are optional but all included ones should match
-    # for the email to be processed.
-    matrix_email_sender = Column(String)
+    # for importing matrix quotes from emailed files. file name is a regular
+    # expression because file names can contain the current date or other
+    # varying text.
     matrix_email_recipient = Column(String)
-    matrix_email_subject = Column(String)
     matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))

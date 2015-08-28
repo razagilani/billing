@@ -166,21 +166,17 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         # add a supplier to match the example email
         clear_db()
         self.supplier = Supplier(
-            id=199, name='USGE',
-            matrix_email_sender='Sender Name <sender@supplier.example.com>',
-            matrix_file_name='2. USGE Gas.xlsx',
-            matrix_email_subject="Today's Matrix Rates",
-            matrix_email_recipient=('Recipient1 '
-                                   '<recipient2@nextility.example.com>, '
-                                   'Recipient2 <recipient1@nextility.com>'),
-        )
+            id=199, name='USGE', matrix_file_name='2. USGE Gas.xlsx',
+            matrix_email_recipient=(
+                'Recipient1 <recipient2@nextility.example.com>, '
+                'Recipient2 <recipient1@nextility.com>'))
         self.altitude_supplier = Company(name=self.supplier.name)
 
         # extra supplier that will never match any email: there should be at
         # least 2, because with only 1, that one is always a unique match for
         # every email.
         Session().add(Supplier(name='Wrong Supplier',
-                               matrix_email_sender='wrong@example.com'))
+                               matrix_email_recipient='wrong@example.com'))
 
     def tearDown(self):
         self.email_file.close()

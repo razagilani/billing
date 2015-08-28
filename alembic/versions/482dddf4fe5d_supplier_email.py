@@ -16,8 +16,6 @@ from sqlalchemy.dialects import postgresql
 
 def upgrade():
     op.add_column('supplier', sa.Column('matrix_email_recipient', sa.String(), nullable=True))
-    op.add_column('supplier', sa.Column('matrix_email_sender', sa.String(), nullable=True))
-    op.add_column('supplier', sa.Column('matrix_email_subject', sa.String(), nullable=True))
 
 
 def downgrade():
