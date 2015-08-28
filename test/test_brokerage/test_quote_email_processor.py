@@ -172,9 +172,8 @@ class TestQuoteEmailProcessorWithDB(TestCase):
                 'Recipient2 <recipient1@nextility.com>'))
         self.altitude_supplier = Company(name=self.supplier.name)
 
-        # extra supplier that will never match any email: there should be at
-        # least 2, because with only 1, that one is always a unique match for
-        # every email.
+        # extra supplier that will never match any email, to make sure the
+        # right one is chosen
         Session().add(Supplier(name='Wrong Supplier',
                                matrix_email_recipient='wrong@example.com'))
 
