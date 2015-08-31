@@ -203,8 +203,8 @@ class QuoteEmailProcessor(object):
             self.logger.warn(
                 'Email from %s has no attachments' % supplier.name)
         for file_name, file_content in attachments:
-            if (supplier.matrix_file_name is not None
-                and not re.match(supplier.matrix_file_name, file_name)):
+            if (supplier.matrix_attachment_name is not None
+                and not re.match(supplier.matrix_attachment_name, file_name)):
                 self.logger.warn(
                     ('Skipped attachment from %s with unexpected '
                     'name: "%s"') % (supplier.name, file_name))
