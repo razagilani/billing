@@ -24,3 +24,5 @@ def upgrade():
     alembic_upgrade('482dddf4fe5d')
 
     init_model()
+    s = Session()
+    s.commit()
