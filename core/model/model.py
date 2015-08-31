@@ -289,7 +289,10 @@ class Supplier(Base):
     # for importing matrix quotes from emailed files. file name is a regular
     # expression because file names can contain the current date or other
     # varying text.
-    matrix_email_recipient = Column(String)
+    matrix_email_recipient = Column(String, unique=True)
+    matrix_attachment_name = Column(String)
+
+    # for importing matrix quotes from files in Dropbox (depricated)
     matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
