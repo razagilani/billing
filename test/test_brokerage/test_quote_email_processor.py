@@ -89,7 +89,7 @@ class TestQuoteEmailProcessor(TestCase):
     def test_process_email_non_matching_attachment(self):
         # supplier requires a specific attachment name, which doesn't match
         # the one in the email
-        self.supplier.matrix_file_name = 'matrix_file.xls'
+        self.supplier.matrix_attachment_name = 'matrix_file.xls'
         self.message.add_header('Content-Disposition', 'attachment',
                                 filename='unknown.xyz')
         email_file = StringIO(self.message.as_string())
@@ -166,7 +166,7 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         # add a supplier to match the example email
         clear_db()
         self.supplier = Supplier(
-            id=199, name='USGE', matrix_file_name='2. USGE Gas.xlsx',
+            id=199, name='USGE', matrix_attachment_name='2. USGE Gas.xlsx',
             matrix_email_recipient=(
                 'Recipient1 <recipient2@nextility.example.com>, '
                 'Recipient2 <recipient1@nextility.com>'))
