@@ -69,13 +69,45 @@ file { "/etc/httpd/conf.d/billentry-prod.conf":
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
-ensure => file,
-content => template('conf/billing-exchange.conf.erb')
+    ensure => file,
+    content => template('conf/billing-exchange.conf.erb')
 }
 
 file { "/etc/init/billentry-${env}-exchange.conf":
-ensure => file,
-content => template('conf/billentry-exchange.conf.erb')
+    ensure => file,
+    content => template('conf/billentry-exchange.conf.erb')
+}
+
+# this needs to be executed by postfix, not reebill-${env}.
+# consider putting it in a different directory.
+$receive_matrix_email_script = "/home/${username}/receive_matrix_email.sh"
+file { $receive_matrix_email_script:
+    ensure => file,
+    content => template('conf/receive_matrix_email.sh'),
+    mode => 755,
+    owner => $username
+}
+
+# email aliases for receiving matrix quote emails
+mailalias { 'matrix-directenergy':
+  name      => 'matrix-directenergy',
+  ensure    => present,
+  recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-aep':
+    name      => 'matrix-aep',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-usge':
+    name      => 'matrix-usge',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-champion':
+    name      => 'matrix-champion',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
