@@ -76,6 +76,17 @@ file { $receive_matrix_email_script:
     mode => 755,
     owner => $username
 }
+# directory containg the shell script must be executable for other users,
+# and virtualenv directory must also be executable to activate the virtualenv
+file { "/home/${username}":
+    ensure => directory,
+    mode => 701
+}
+#file { "/var/local/${username}":
+#    path => "/var/local/${username}",
+#    ensure => directory,
+#    mode => 755
+#}
 
 # email aliases for receiving matrix quote emails
 mailalias { 'matrix-directenergy':
