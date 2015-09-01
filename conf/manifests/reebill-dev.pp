@@ -109,6 +109,12 @@ mailalias { 'matrix-champion':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
+# Puppet doesn't rebuild the mail aliases database by default
+# (we could use "subscribe" and "refreshonly" but it would
+# require listing every mail alias here)
+exec { newaliases:
+    path        => ["/usr/bin", "/usr/sbin"]
+}
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
     # TODO: either avoid using a specific host name here or ensure that host gets created and configured along with this one
