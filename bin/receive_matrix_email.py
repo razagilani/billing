@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Receive quotes from suppliers' "matrix" spreadsheets in email attachments.
 Pipe an email into stdin to process it.
 """
