@@ -10,5 +10,4 @@
 source ~<%= @username%>/.bash_profile
 
 #Output the contents of stdin to the python application
-VIRT_FILE="/var/local/<%= @username%>/billing/bin/receive_matrix_email.py"
-./$VIRT_FILE < $1
+python /var/local/<%= @username%>/billing/bin/receive_matrix_email.py
