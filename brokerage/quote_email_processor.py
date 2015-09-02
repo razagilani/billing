@@ -187,7 +187,7 @@ class QuoteEmailProcessor(object):
         """
         self.logger.info('Staring to read email')
         message = email.message_from_file(email_file)
-        from_addr, to_addr = message['From'], message['To']
+        from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
         if None in (from_addr, to_addr, subject):
             raise EmailError('Invalid email format')
