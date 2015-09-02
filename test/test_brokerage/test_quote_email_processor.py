@@ -41,7 +41,8 @@ class TestQuoteEmailProcessor(TestCase):
         self.sender, self.recipient, self.subject = (
             'Sender', 'Recipient', 'Subject')
         self.message['From'] = self.sender
-        self.message['To'] = self.recipient
+        self.message['To'] = 'Original Recipient'
+        self.message['Delivered-To'] = self.recipient
         self.message['Subject'] = self.subject
 
     def test_process_email_malformed(self):
@@ -167,9 +168,7 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         clear_db()
         self.supplier = Supplier(
             id=199, name='USGE', matrix_attachment_name='2. USGE Gas.xlsx',
-            matrix_email_recipient=(
-                'Recipient1 <recipient2@nextility.example.com>, '
-                'Recipient2 <recipient1@nextility.com>'))
+            matrix_email_recipient='recipient1@nextility.example.com')
         self.altitude_supplier = Company(name=self.supplier.name)
 
         # extra supplier that will never match any email, to make sure the
