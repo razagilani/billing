@@ -299,10 +299,6 @@ class Exporter(object):
                 if not reebill.issued==1:
                     continue
 
-                # Reebills with > 1 utilitybills are no longer supported.
-                # Skip them
-                if len(reebill.utilbills) > 1:
-                    continue
                 utilbill = reebill.utilbill
 
                 period_start, period_end = reebill.get_period()
@@ -348,8 +344,8 @@ class Exporter(object):
                 row = [account,
                        reebill.sequence,
                        reebill.version,
-                       str(reebill.billing_address),
-                       str(reebill.service_address),
+                       unicode(reebill.billing_address),
+                       unicode(reebill.service_address),
                        reebill.issue_date.isoformat(),
                        period_start.isoformat(),
                        period_end.isoformat(),
