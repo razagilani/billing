@@ -821,6 +821,10 @@ class AmerigreenMatrixParser(QuoteParser):
     START_DAY_COL = 'G'
     PRICE_COL = 'N'
 
+    # Amerigreen builds in the broker fee to the prices, so it must be
+    # subtracted from the prices shown
+    BROKER_FEE_CELL = (22, 'F')
+
     EXPECTED_SHEET_TITLES = None
     EXPECTED_CELLS = [
         (0, 11, 'C', 'AMERIgreen Energy Daily Matrix Pricing'),
@@ -847,6 +851,9 @@ class AmerigreenMatrixParser(QuoteParser):
     DATE_FILE_NAME_REGEX = 'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+'
 
     def _extract_quotes(self):
+        broker_fee = self._reader.get(0, self.BROKER_FEE_CELL[0],
+                                      self.BROKER_FEE_CELL[1], float)
+
         # "Valid for accounts with annual volume of up to 50,000 therms"
         min_volume, limit_volume = 0, 50000
 
@@ -870,7 +877,7 @@ class AmerigreenMatrixParser(QuoteParser):
             # TODO: does "1st of the month" really mean starting only on one day?
             start_until = start_from + timedelta(days=1)
 
-            price = self._reader.get(0, row, self.PRICE_COL, float)
+            price = self._reader.get(0, row, self.PRICE_COL, float) - broker_fee
 
             for rate_class_id in self.get_rate_class_ids_for_alias(
                     rate_class_alias):
