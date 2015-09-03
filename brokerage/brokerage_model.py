@@ -152,8 +152,10 @@ class Quote(AltitudeBase):
         'polymorphic_on': discriminator,
     }
 
+    MIN_START_FROM = datetime(2000, 1, 1)
+    MAX_START_FROM = datetime(2020, 1, 1)
     MIN_TERM_MONTHS = 1
-    MAX_TERM_MONTHS = 36
+    MAX_TERM_MONTHS = 48
     MIN_PRICE = .01
     MAX_PRICE = 2.0
 
@@ -168,6 +170,9 @@ class Quote(AltitudeBase):
         """
         conditions = {
             self.start_from < self.start_until: 'start_from >= start_until',
+            self.start_from >= self.MIN_START_FROM and self.start_from <=
+                                                      self.MAX_START_FROM:
+                'start_from too early: %s' % self.start_from,
             self.term_months >= self.MIN_TERM_MONTHS and self.term_months <=
                                                          self.MAX_TERM_MONTHS:
                 'Expected term_months between %s and %s, found %s' % (
