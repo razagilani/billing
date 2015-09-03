@@ -257,7 +257,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.AMERIGREEN_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet,
+                             file_name='Amerigreen Matrix 08-03-2015.xlsx')
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -273,10 +274,9 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 9, 2), q1.start_until)
         self.assertEqual(3, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        # TODO: date shown on spreadsheet is not the real date. we need a
-        # different way to find out the quote validity dates
-        # self.assertEqual(datetime(2015, 8, 10), q1.valid_from)
-        # self.assertEqual(datetime(2015, 8, 11), q1.valid_until)
+        # quote validity dates come from file name
+        self.assertEqual(datetime(2015, 8, 3), q1.valid_from)
+        self.assertEqual(datetime(2015, 8, 4), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(50000, q1.limit_volume)
         self.assertEqual('NY-Con Ed', q1.rate_class_alias)
