@@ -359,7 +359,6 @@ class DirectEnergyMatrixParser(QuoteParser):
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
-
     EXPECTED_SHEET_TITLES = [
         'Daily Matrix Price',
     ]
