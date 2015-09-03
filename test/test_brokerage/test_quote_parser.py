@@ -282,4 +282,4 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('NY-Con Ed', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.36025833996486833, q1.price)
+        self.assertEqual(0.34025833996486833, q1.price)
