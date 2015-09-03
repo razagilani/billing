@@ -105,6 +105,7 @@ CLASSES_FOR_SUPPLIERS = {
     95: quote_parsers.AEPMatrixParser,
     199: quote_parsers.USGEMatrixParser,
     928: quote_parsers.ChampionMatrixParser,
+        125: quote_parsers.AmerigreenMatrixParser,
 }
 
 class QuoteEmailProcessor(object):
