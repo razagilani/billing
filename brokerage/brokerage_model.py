@@ -98,6 +98,7 @@ def get_quote_status():
         q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
         desc(q.c.total_count))
 
+
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
