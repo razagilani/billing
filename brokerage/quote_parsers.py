@@ -245,10 +245,16 @@ class QuoteParser(object):
     # expected contents of certain cells
     EXPECTED_CELLS = []
 
-    # optional (row, col, regex) for for the validity/expiration date of every
-    # quote in this matrix: regex must have 1 parenthesized group that can be
-    # parsed as a date
+    # two ways to get the validity/expiration date of every quote in this
+    # matrix. both can't be used in the same QuoteParser class, so at least
+    # one must be None.
+    # DATE_CELL is an optional (row, col, regex) tuple; regex can be None if
+    # the cell value is already a datetime.
+    # DATE_FILE_NAME_REGEX is used to extract the date from the file name.
+    # in both cases the regex must have 1 parenthesized group that can be
+    # parsed as a date.
     DATE_CELL = None
+    DATE_FILE_NAME_REGEX = None
 
     def __init__(self):
         self._reader = SpreadsheetReader()
@@ -267,12 +273,15 @@ class QuoteParser(object):
         # avoid repeated queries
         self._rate_class_aliases = load_rate_class_aliases()
 
-    def load_file(self, quote_file):
+    def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
+        :param file_name: name of the file, used in some formats to get
+        valid_from and valid_until dates for the quotes
         """
         self._reader.load_file(quote_file, self.FILE_FORMAT)
+        self._file_name = file_name
         self._validated = False
 
     def validate(self):
@@ -305,6 +314,33 @@ class QuoteParser(object):
             return [None]
         return rate_class_ids
 
+    def _get_date(self):
+        """Return the validity/expiration date for all quotes in the file
+        using DATE_CELL or DATE_FILE_NAME_REGEX.
+        """
+        assert None in (self.DATE_CELL, self.DATE_FILE_NAME_REGEX)
+
+        if self.DATE_CELL is not None:
+            sheet_number_or_title, row, col, regex = self.DATE_CELL
+            if regex is None:
+                cell_value = self._reader.get(sheet_number_or_title, row, col,
+                                              (datetime, int, float))
+                if isinstance(cell_value, (int, float)):
+                    cell_value = excel_number_to_datetime(cell_value)
+                return cell_value
+            return self._reader.get_matches(
+                sheet_number_or_title, row, col, regex, parse_datetime)
+
+        if self.DATE_FILE_NAME_REGEX is not None:
+            assert isinstance(self._file_name, basestring)
+            match = re.match(self.DATE_FILE_NAME_REGEX, self._file_name)
+            if match == None:
+                raise ValidationError('No match for "%s" in file name "%s"' % (
+                    self.DATE_FILE_NAME_REGEX, self._file_name))
+            return parse_datetime(match.group(1))
+
+        return None
+
     def extract_quotes(self):
         """Yield Quotes extracted from the file. Raise ValidationError if the
         quote file is malformed (no other exceptions should not be raised).
@@ -314,17 +350,8 @@ class QuoteParser(object):
         if not self._validated:
             self.validate()
 
-        # extract the date using DATE_CELL
-        sheet_number_or_title, row, col, regex = self.DATE_CELL
-        if regex is None:
-            cell_value = self._reader.get(sheet_number_or_title, row, col,
-                                          (datetime, int, float))
-            if isinstance(cell_value, (int, float)):
-                cell_value = excel_number_to_datetime(cell_value)
-            self._date = cell_value
-        else:
-            self._date = self._reader.get_matches(sheet_number_or_title, row,
-                                                  col, regex, parse_datetime)
+        self._date = self._get_date()
+
         for quote in self._extract_quotes():
             self._count += 1
             yield quote
@@ -776,21 +803,6 @@ class ChampionMatrixParser(QuoteParser):
                         yield quote
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class AmerigreenMatrixParser(QuoteParser):
     """Parser for Amerigreen spreadsheet.
     """
@@ -832,7 +844,7 @@ class AmerigreenMatrixParser(QuoteParser):
         (0, HEADER_ROW, 'M', "Heat"),
         (0, HEADER_ROW, 'N', "Flat"),
     ]
-    DATE_CELL = (0, 13, 'D', None)
+    DATE_FILE_NAME_REGEX = 'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+'
 
     def _extract_quotes(self):
         # "Valid for accounts with annual volume of up to 50,000 therms"
