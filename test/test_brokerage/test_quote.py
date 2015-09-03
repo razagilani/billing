@@ -31,7 +31,7 @@ class QuoteTest(TestCase):
         q = self.quote.clone()
         q.term_months = 0
         self.assertRaises(ValidationError, q.validate)
-        q.term_months = 37
+        q.term_months = 49
         self.assertRaises(ValidationError, q.validate)
 
         q = self.quote.clone()
