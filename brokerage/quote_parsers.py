@@ -801,7 +801,7 @@ class ConstellationMatrixParser(QuoteParser):
     STATE_COL = 'A'
     UTILITY_COL = 'B'
     TERM_COL = 'C'
-    VOLUME_RANGE_START_COL = 3
+    START_FROM_START_COL = 3
     DATE_COL = 'K'
     PRICE_START_COL = 3
     PRICE_END_COL = 38
@@ -866,22 +866,19 @@ class ConstellationMatrixParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 price = self._reader.get(0, row, col,
                                          (int, float, type(None)))
-                if price == None:
-                    continue
-                if price < 0:
-                    # many cells that look blank in Excel actually have
-                    # negative prices, such as (35,27) (in tablib's numbering)
-                    # where the price is -0.995
+                # skip blank cells. also, many cells that look blank in Excel
+                #  actually have negative prices, such as (35,27) (in
+                # tablib's numbering) where the price is -0.995
+                if price == None or price < 0:
                     continue
 
-                # (term col + 1) + greatest multiple of 4 <= (col - term col - 1)
-                # least multiple of 4 < x is 4 * (x / 4)
-                # TODO: rename
-                # TODO use time zone here
-                start_from_col = self.VOLUME_RANGE_START_COL + (
-                    col - self.VOLUME_RANGE_START_COL) / 4 * 4
-                start_from = self._reader.get(0, self.HEADER_ROW,
-                                              start_from_col, datetime)
+                # the 'start_from' date is in the first cell of the group of
+                # 4 that started at a multiple of 4 columns away from
+                # 'START_FROM_START_COL'
+                start_from_col = self.START_FROM_START_COL + (
+                    col - self.START_FROM_START_COL) / 4 * 4
+                start_from = self._reader.get(
+                    0, self.HEADER_ROW, start_from_col, datetime)
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
