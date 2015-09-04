@@ -255,10 +255,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.07686, q1.price)
 
-        
-        
-        
-        
     def test_amerigreen(self):
         parser = AmerigreenMatrixParser()
         self.assertEqual(0, parser.get_count())
@@ -291,14 +287,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.34025833996486833, q1.price)
 
-
-        
-        
-        
-        
-        
-        
-        
     def test_constellation(self):
         parser = ConstellationMatrixParser()
         self.assertEqual(0, parser.get_count())
