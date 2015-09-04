@@ -6,7 +6,8 @@ from brokerage.brokerage_model import RateClass, RateClassAlias
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (DirectEnergyMatrixParser, USGEMatrixParser,
     AEPMatrixParser, AmerigreenMatrixParser, ChampionMatrixParser,
-    ConstellationMatrixParser, MajorEnergyMatrixParser)
+    MajorEnergyMatrixParser)
+from brokerage.quote_parser import ConstellationMatrixParser
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 
@@ -52,6 +53,8 @@ class MatrixQuoteParsersTest(TestCase):
             'PA-DQE-GS-General Service',
             # Amerigreen
             'NY-Con Ed',
+            # Constellation
+            'CLP',
             # Major Energy
             'IL-ComEd',
         ]
