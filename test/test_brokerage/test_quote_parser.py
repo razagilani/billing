@@ -4,10 +4,10 @@ from unittest import TestCase
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from core import ROOT_PATH, init_altitude_db, init_model
-from brokerage.quote_parsers import (DirectEnergyMatrixParser, USGEMatrixParser,
-    AEPMatrixParser, AmerigreenMatrixParser, ChampionMatrixParser,
+from brokerage.quote_parsers import (
+    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser,
+    AmerigreenMatrixParser, ChampionMatrixParser, ConstellationMatrixParser,
     MajorEnergyMatrixParser)
-from brokerage.quote_parser import ConstellationMatrixParser
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 
