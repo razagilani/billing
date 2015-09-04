@@ -163,6 +163,12 @@ class SpreadsheetReader(object):
         # tablib does not count the "header" as a row
         return self._get_sheet(sheet_number_or_title).height + 1
 
+    def _get_cell(self, sheet, x, y):
+        if y == -1:
+            # 1st row is the header, 2nd row is index "0"
+            return sheet.headers[x]
+        return sheet[y][x]
+
     def get(self, sheet_number_or_title, row, col, the_type):
         """Return a value extracted from the cell of the given sheet at (row,
         col), and expect the given type (e.g. int, float, basestring, datetime).
@@ -177,17 +183,27 @@ class SpreadsheetReader(object):
         y = self._row_number_to_index(row)
         x = col if isinstance(col, int) else self._col_letter_to_index(col)
         try:
-            if y == -1:
-                # 1st row is the header, 2nd row is index "0"
-                value = sheet.headers[x]
-            else:
-                value = sheet[y][x]
+            value = self._get_cell(sheet, x, y)
         except IndexError:
             raise ValidationError('No cell (%s, %s)' % (row, col))
+
+        def get_neighbor_str():
+            result = ''
+            # clockwise: left up right down
+            for dir, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
+                                ('left', x - 1, y), ('right', x + 1, y)]:
+                try:
+                    nvalue = self._get_cell(sheet, nx, ny)
+                except IndexError as e:
+                    nvalue = repr(e)
+                result += '%s: %s ' % (dir, nvalue)
+            return result
+
         if not isinstance(value, the_type):
             raise ValidationError(
-                'At (%s,%s), expected type %s, found "%s" with type %s' % (
-                    row, col, the_type, value, type(value)))
+                'At (%s,%s), expected type %s, found "%s" with type %s. '
+                'neighbors are %s' % (row, col, the_type, value, type(value),
+                                      get_neighbor_str()))
         return value
 
     def get_matches(self, sheet_number_or_title, row, col, regex, types):
@@ -246,14 +262,19 @@ class QuoteParser(object):
     EXPECTED_CELLS = []
 
     # two ways to get the validity/expiration date of every quote in this
-    # matrix. both can't be used in the same QuoteParser class, so at least
-    # one must be None.
-    # DATE_CELL is an optional (row, col, regex) tuple; regex can be None if
-    # the cell value is already a datetime.
+    # matrix. either VALIDITY_DATE_CELL (and optionally
+    # VALIDITY_INCLUSIVE_END_CELL) can be used, or DATE_FILE_NAME_REGEX,
+    # but not both.
+    # VALIDITY_DATE_CELL and VALIDITY_INCLUSIVE_END_CELL are optional (row,
+    # col, regex) tuples; the regex can be None if the cell value is already
+    # a datetime. if VALIDITY_DATE_CELL is not defined and
+    # VALIDITY_INCLUSIVE_END_CELL is not, then quotes are assumed to be valid
+    # for 1 day.
     # DATE_FILE_NAME_REGEX is used to extract the date from the file name.
     # in both cases the regex must have 1 parenthesized group that can be
     # parsed as a date.
-    DATE_CELL = None
+    VALIDITY_DATE_CELL = None
+    VALIDITY_INCLUSIVE_END_CELL = None
     DATE_FILE_NAME_REGEX = None
 
     def __init__(self):
@@ -318,21 +339,33 @@ class QuoteParser(object):
 
     def _get_dates(self):
         """Return the validity/expiration date for all quotes in the file
-        using DATE_CELL or DATE_FILE_NAME_REGEX.
+        using VALIDITY_DATE_CELL or DATE_FILE_NAME_REGEX.
         """
-        assert None in (self.DATE_CELL, self.DATE_FILE_NAME_REGEX)
+        assert None in (self.VALIDITY_DATE_CELL, self.DATE_FILE_NAME_REGEX)
 
-        if self.DATE_CELL is not None:
-            sheet_number_or_title, row, col, regex = self.DATE_CELL
+        # use cell definition to extract date (see description at definition
+        # of VALIDITY_DATE_CELL etc.)
+        def get_date_from_cell(cell_definition):
+            sheet_number_or_title, row, col, regex = cell_definition
             if regex is None:
-                valid_from = self._reader.get(sheet_number_or_title, row, col,
-                                              (datetime, int, float))
-                if isinstance(valid_from, (int, float)):
-                    valid_from = excel_number_to_datetime(valid_from)
-                return valid_from, valid_from + timedelta(days=1)
-            valid_from = self._reader.get_matches(sheet_number_or_title, row,
-                                                  col, regex, parse_datetime)
-            return valid_from, valid_from + timedelta(days=1)
+                value = self._reader.get(sheet_number_or_title, row, col,
+                                         (datetime, int, float))
+                if isinstance(value, (int, float)):
+                    value = excel_number_to_datetime(value)
+                return value
+            return self._reader.get_matches(sheet_number_or_title, row, col,
+                                            regex, parse_datetime)
+
+        if self.VALIDITY_DATE_CELL is not None:
+            valid_from = get_date_from_cell(self.VALIDITY_DATE_CELL)
+            if self.VALIDITY_INCLUSIVE_END_CELL is None:
+                valid_until = valid_from + timedelta(days=1)
+            else:
+                # inclusive end date is specified as the beginning of the
+                # last day of the period, so 1 day must be added to it
+                valid_until = get_date_from_cell(
+                    self.VALIDITY_INCLUSIVE_END_CELL) + timedelta(days=1)
+            return valid_from, valid_until
 
         if self.DATE_FILE_NAME_REGEX is not None:
             assert isinstance(self._file_name, basestring)
@@ -404,7 +437,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
+    VALIDITY_DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really
@@ -503,7 +536,7 @@ class USGEMatrixParser(QuoteParser):
             (sheet, 5, 4, '(UOM)|(Zone)'),
     ] for sheet in ['KY', 'MD', 'NJ', 'NY', 'OH', 'PA']))
 
-    DATE_CELL = ('PA', 2, 3, None)
+    VALIDITY_DATE_CELL = ('PA', 2, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, sheet, row, col):
@@ -624,7 +657,7 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 13, 'F', "Rate Codes/Description"),
         (SHEET, 13, 'G', "Start Month"),
     ]
-    DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
+    VALIDITY_DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
     # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
     # below the date cell
 
@@ -742,7 +775,7 @@ class ChampionMatrixParser(QuoteParser):
         'MD'
     ]
 
-    DATE_CELL = ('PA', 8, 'C', None)
+    VALIDITY_DATE_CELL = ('PA', 8, 'C', None)
 
     def _extract_volume_range(self, sheet,row, col):
         regex = r'(\d+)-(\d+) MWh'
@@ -899,3 +932,190 @@ class AmerigreenMatrixParser(QuoteParser):
                     quote.rate_class_id = rate_class_id
                 yield quote
 
+
+
+                        
+                        
+                        
+class ConstellationMatrixParser(QuoteParser):
+    FILE_FORMAT = formats.xlsx
+
+    HEADER_ROW = 4
+    VOLUME_RANGE_ROW = 5
+    QUOTE_START_ROW = 6
+    STATE_COL = 'A'
+    UTILITY_COL = 'B'
+    TERM_COL = 'C'
+    START_FROM_START_COL = 3
+    DATE_COL = 'K'
+    PRICE_START_COL = 3
+    PRICE_END_COL = 38
+
+    EXPECTED_SHEET_TITLES = [
+        'SMB Cost+ Matrix',
+    ]
+    EXPECTED_CELLS = [
+        (0, 1, 0, 'Fixed Fully Bundled'),
+        (0, 1, 'I', 'Small Business Cost\+ Pricing'),
+        (0, 2, 'A', 'Matrix pricing for customers up to 1000 Ann MWh'),
+        (0, 4, 'A', 'ISO'),
+        (0, 4, 'B', 'Utility'),
+        (0, 4, 'C', 'Term'),
+    ]
+    VALIDITY_DATE_CELL = (0, 2, DATE_COL, None)
+
+    def _extract_volume_range(self, row, col):
+        regex = r'(\d+)\s*-\s*(\d+)\s+MWh'
+        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
+        # low value is really 1 higher than it should be in cases like
+        # "151-300" preceded by "0-150"
+        _assert_true(low == 0 or low % 10 == 1)
+        if low % 10 == 1:
+            low -= 1
+        return low * 1000, high * 1000
+
+    def _extract_quotes(self):
+        volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
+                         for col in xrange(self.PRICE_START_COL,
+                                           self.PRICE_END_COL + 1)]
+        # # volume ranges should be contiguous or restarting at 0
+        for i, vr in enumerate(volume_ranges[:-1]):
+            next_vr = volume_ranges[i + 1]
+            if next_vr[0] != 0:
+                _assert_equal(vr[1], next_vr[0])
+
+        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+            utility = self._reader.get(0, row, self.UTILITY_COL,
+                                       (basestring, type(None), datetime))
+            if utility is None:
+                continue
+            elif isinstance(utility, datetime):
+                # repeat of the top of the spreadsheet
+                _assert_equal('Fixed Fully Bundled',
+                              self._reader.get(0, row, 0, basestring))
+                _assert_equal('Small Business Cost+ Pricing',
+                              self._reader.get(0, row, 'I', basestring))
+                _assert_equal(self._valid_from, self._reader.get(
+                    0, row + 1, self.DATE_COL, datetime))
+                continue
+            elif utility == 'Utility':
+                # repeat of the header row
+                continue
+            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+
+            # there's no fine-grained classification of customers
+            rate_class_alias = utility
+            rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
+
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
+                price = self._reader.get(0, row, col,
+                                         (int, float, type(None)))
+                # skip blank cells. also, many cells that look blank in Excel
+                #  actually have negative prices, such as (35,27) (in
+                # tablib's numbering) where the price is -0.995
+                if price == None or price < 0:
+                    continue
+
+                # the 'start_from' date is in the first cell of the group of
+                # 4 that started at a multiple of 4 columns away from
+                # 'START_FROM_START_COL'
+                start_from_col = self.START_FROM_START_COL + (
+                    col - self.START_FROM_START_COL) / 4 * 4
+                start_from = self._reader.get(
+                    0, self.HEADER_ROW, start_from_col, datetime)
+                start_until = date_to_datetime((Month(start_from) + 1).first)
+
+                min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
+                for rate_class_id in rate_class_ids:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
+                        min_volume=min_vol, limit_volume=max_vol,
+                        rate_class_alias=rate_class_alias,
+                        purchase_of_receivables=False, price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class_id is not None:
+                        quote.rate_class_id = rate_class_id
+                    yield quote
+                    
+                    
+class MajorEnergyMatrixParser(QuoteParser):
+    """Parser for Major Energy spreadsheet.
+    """
+    FILE_FORMAT = formats.xlsx
+
+    HEADER_ROW = 14
+    QUOTE_START_ROW = 15
+    START_COL = 'B'
+    TERM_COL = 'C'
+    STATE_COL = 'D'
+    UTILITY_COL = 'E'
+    ZONE_COL = 'F'
+    PRICE_START_COL = 6
+    PRICE_END_COL = 9
+
+    # beware of hidden sheet that contains similar data. "Matrix" is the
+    # visible one
+    EXPECTED_SHEET_TITLES = ['Map - Info', 'Matrix']
+    SHEET = 'Matrix'
+    EXPECTED_CELLS = [
+        (SHEET, 3, 'B', 'Effective:'),
+        (SHEET, 5, 'B', 'Start'),
+        (SHEET, 5, 'C', 'State'),
+        (SHEET, 5, 'D', 'Utility'),
+        (SHEET, 5, 'E', 'Zone'),
+        (SHEET, 5, 'F', 'Usage'),
+        (SHEET, 5, 'G', 'Agent Fee'),
+        (SHEET, 11, 'B', 'GRT/SUT/POR Included where applicable'),
+        (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
+    ]
+    VALIDITY_DATE_CELL = (SHEET, 3, 'C', None)
+    VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None) # TODO: inclusive or exclusive?
+
+    def _extract_volume_range(self, row, col):
+        # these cells are strings like like "0-74" where "74" really means 75
+        regex = r'(\d+)\s*-\s*(\d+)'
+        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
+                                             (float, float))
+        return low * 1000, high * 1000
+
+    def _extract_quotes(self):
+        # note: these are NOT contiguous. the first two are "0-74" and
+        # "75-149" but they are contiguous after that. for now, assume they
+        # really mean what they say.
+        volume_ranges = [self._extract_volume_range(self.HEADER_ROW, col)
+                         for col in xrange(self.PRICE_START_COL,
+                                           self.PRICE_END_COL + 1)]
+
+        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+            # TODO use time zone here
+            start_from = self._reader.get(self.SHEET, row, self.START_COL,
+                                          datetime)
+            start_until = date_to_datetime((Month(start_from) + 1).first)
+            term_months = self._reader.get(self.SHEET, row, self.TERM_COL, int)
+
+            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
+                                       basestring)
+            state = self._reader.get(self.SHEET, row, self.STATE_COL,
+                                     basestring)
+            rate_class_alias = '-'.join([state, utility])
+            rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
+
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
+                min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
+                price = self._reader.get(self.SHEET, row, col, (int, float))
+                for rate_class_id in rate_class_ids:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
+                        min_volume=min_vol, limit_volume=max_vol,
+                        purchase_of_receivables=False,
+                        rate_class_alias=rate_class_alias, price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class_id is not None:
+                        quote.rate_class_id = rate_class_id
+                    yield quote
