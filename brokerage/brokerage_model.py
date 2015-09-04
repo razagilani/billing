@@ -98,6 +98,7 @@ def get_quote_status():
         q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
         desc(q.c.total_count))
 
+
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
@@ -178,7 +179,9 @@ class Quote(AltitudeBase):
                 'Expected term_months between %s and %s, found %s' % (
                     self.MIN_TERM_MONTHS, self.MAX_TERM_MONTHS,
                     self.term_months),
-            self.valid_from < self.valid_until: 'valid_from >= valid_until',
+            self.valid_from < self.valid_until:
+                'valid_from %s >= valid_until %s' % (self.valid_from,
+                                                     self.valid_until),
             self.price >= self.MIN_PRICE and self.price <= self.MAX_PRICE:
                 'Expected price between %s and %s, found %s' % (
             self.MIN_PRICE, self.MAX_PRICE, self.price)

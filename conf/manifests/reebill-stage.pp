@@ -71,13 +71,62 @@ file { "/etc/httpd/conf.d/billentry-stage.conf":
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
-ensure => file,
-content => template('conf/billing-exchange.conf.erb')
+    ensure => file,
+    content => template('conf/billing-exchange.conf.erb')
 }
 
 file { "/etc/init/billentry-${env}-exchange.conf":
-ensure => file,
-content => template('conf/billentry-exchange.conf.erb')
+    ensure => file,
+    content => template('conf/billentry-exchange.conf.erb')
+}
+
+# this needs to be executed by postfix, not reebill-${env}.
+# consider putting it in a different directory.
+$receive_matrix_email_script = "/home/${username}/receive_matrix_email.sh"
+file { $receive_matrix_email_script:
+    ensure => file,
+    content => template('conf/receive_matrix_email.sh'),
+    mode => 755,
+    owner => $username
+}
+# directory containg the shell script must be executable for other users,
+# and virtualenv directory must also be executable to activate the virtualenv
+file { "/home/${username}":
+    ensure => directory,
+    mode => 701
+}
+file { '/var/local/${username} directory permission':
+    path => "/var/local/${username}/",
+    ensure => directory,
+    mode => 755
+}
+
+# email aliases for receiving matrix quote emails
+mailalias { 'matrix-directenergy':
+    name      => 'matrix-directenergy',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-aep':
+    name      => 'matrix-aep',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-usge':
+    name      => 'matrix-usge',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-champion':
+    name      => 'matrix-champion',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+# Puppet doesn't rebuild the mail aliases database by default
+# (we could use "subscribe" and "refreshonly" but it would
+# require listing every mail alias here)
+exec { newaliases:
+    path        => ["/usr/bin", "/usr/sbin"]
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
@@ -122,3 +171,4 @@ cron { export_accounts_data:
     hour => 1,
     minute => 0
 }
+
