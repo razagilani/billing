@@ -351,6 +351,8 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
+        self.assertEqual(datetime(2015, 7, 27), q1.valid_from)
+        self.assertEqual(datetime(2015, 8, 1), q1.valid_until)
         self.assertEqual(datetime(2015, 8, 1), q1.start_from)
         self.assertEqual(datetime(2015, 9, 1), q1.start_until)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())

@@ -262,17 +262,19 @@ class QuoteParser(object):
     EXPECTED_CELLS = []
 
     # two ways to get the validity/expiration date of every quote in this
-    # matrix. either VALIDITY_DATE_CELL (and optionally VALIDITY_END_CELL)
-    # can be used, or DATE_FILE_NAME_REGEX, but not both.
-    # VALIDITY_DATE_CELL and VALIDITY_END_CELL are optional (row, col, regex)
-    # tuples; the regex can be None if the cell value is already a datetime.
-    # if VALIDITY_DATE_CELL is not defined and VALIDITY_END_CELL is not,
-    # then quotes are assumed to be valid for 1 day.
+    # matrix. either VALIDITY_DATE_CELL (and optionally
+    # VALIDITY_INCLUSIVE_END_CELL) can be used, or DATE_FILE_NAME_REGEX,
+    # but not both.
+    # VALIDITY_DATE_CELL and VALIDITY_INCLUSIVE_END_CELL are optional (row,
+    # col, regex) tuples; the regex can be None if the cell value is already
+    # a datetime. if VALIDITY_DATE_CELL is not defined and
+    # VALIDITY_INCLUSIVE_END_CELL is not, then quotes are assumed to be valid
+    # for 1 day.
     # DATE_FILE_NAME_REGEX is used to extract the date from the file name.
     # in both cases the regex must have 1 parenthesized group that can be
     # parsed as a date.
     VALIDITY_DATE_CELL = None
-    VALIDITY_END_CELL = None
+    VALIDITY_INCLUSIVE_END_CELL = None
     DATE_FILE_NAME_REGEX = None
 
     def __init__(self):
@@ -356,10 +358,13 @@ class QuoteParser(object):
 
         if self.VALIDITY_DATE_CELL is not None:
             valid_from = get_date_from_cell(self.VALIDITY_DATE_CELL)
-            if self.VALIDITY_END_CELL is None:
+            if self.VALIDITY_INCLUSIVE_END_CELL is None:
                 valid_until = valid_from + timedelta(days=1)
             else:
-                valid_until = get_date_from_cell(self.VALIDITY_END_CELL)
+                # inclusive end date is specified as the beginning of the
+                # last day of the period, so 1 day must be added to it
+                valid_until = get_date_from_cell(
+                    self.VALIDITY_INCLUSIVE_END_CELL) + timedelta(days=1)
             return valid_from, valid_until
 
         if self.DATE_FILE_NAME_REGEX is not None:
@@ -1067,7 +1072,7 @@ class MajorEnergyMatrixParser(QuoteParser):
         (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
     ]
     VALIDITY_DATE_CELL = (SHEET, 3, 'C', None)
-    VALIDITY_END_CELL = (SHEET, 3, 'E', None) # TODO: inclusive or exclusive?
+    VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None) # TODO: inclusive or exclusive?
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "0-74" where "74" really means 75
