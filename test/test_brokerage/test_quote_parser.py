@@ -41,34 +41,26 @@ class MatrixQuoteParsersTest(TestCase):
         # TODO: it would be better to mock 'get_rate_class_for_alias' than
         # actually try to create a RateClassAlias for every one that might be
         # checked in a test
+        aliases = [
+            # Direct Energy
+            'CT-CLP-37, R35',
+            # USGE
+            'Columbia of Kentucky-Residential-Residential',
+            # AEP
+            'DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A',
+            # Champion
+            'PA-DQE-GS-General Service',
+            # Amerigreen
+            'NY-Con Ed',
+            # Major Energy
+            'IL-ComEd',
+        ]
         session = AltitudeSession()
         session.add(self.rate_class)
         session.flush()
-        session.add_all([
-            # Direct Energy
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                rate_class_alias='CT-CLP-37, R35'),
-            # USGE
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                           rate_class_alias='Columbia of '
-                                            'Kentucky-Residential-Residential'),
-            # AEP
-            RateClassAlias(
-                rate_class_id=self.rate_class.rate_class_id,
-                rate_class_alias='DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A'),
-            # Champion
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                           rate_class_alias='PA-DQE-GS-General Service'),
-            # Amerigreen
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                           rate_class_alias='NY-Con Ed'),
-            # Constellation
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                           rate_class_alias='CLP'),
-            # Major
-            RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
-                           rate_class_alias='IL-ComEd'),
-        ])
+        session.add_all(
+            [RateClassAlias(rate_class_id=self.rate_class.rate_class_id,
+                             rate_class_alias=a) for a in aliases])
         session.flush()
 
     def tearDown(self):
