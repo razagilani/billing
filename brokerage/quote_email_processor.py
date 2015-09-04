@@ -7,11 +7,11 @@ import re
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
-from brokerage.brokerage_model import Company, CompanyPGSupplier
-from brokerage import quote_parsers
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
 from util.email_util import get_attachments
+from brokerage.brokerage_model import Company, CompanyPGSupplier
+from brokerage import quote_parsers
 
 LOG_NAME = 'read_quotes'
 
@@ -102,10 +102,10 @@ class QuoteDAO(object):
 
 CLASSES_FOR_SUPPLIERS = {
     14: quote_parsers.DirectEnergyMatrixParser,
-    95: quote_parsers.AEPMatrixParser,
+    95:  quote_parsers.AEPMatrixParser,
     199: quote_parsers.USGEMatrixParser,
     928: quote_parsers.ChampionMatrixParser,
-        125: quote_parsers.AmerigreenMatrixParser,
+    125: quote_parsers.AmerigreenMatrixParser,
 }
 
 class QuoteEmailProcessor(object):
