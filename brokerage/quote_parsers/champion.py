@@ -34,7 +34,7 @@ class ChampionMatrixParser(QuoteParser):
         'MD'
     ]
 
-    DATE_CELL = ('PA', 8, 'C', None)
+    VALIDITY_DATE_CELL = ('PA', 8, 'C', None)
 
     def _extract_volume_range(self, sheet,row, col):
         regex = r'(\d+)-(\d+) MWh'

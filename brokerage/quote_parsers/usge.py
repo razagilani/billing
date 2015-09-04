@@ -48,7 +48,7 @@ class USGEMatrixParser(QuoteParser):
             (sheet, 5, 4, '(UOM)|(Zone)'),
     ] for sheet in ['KY', 'MD', 'NJ', 'NY', 'OH', 'PA']))
 
-    DATE_CELL = ('PA', 2, 3, None)
+    VALIDITY_DATE_CELL = ('PA', 2, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, sheet, row, col):

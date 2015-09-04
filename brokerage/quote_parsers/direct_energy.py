@@ -37,7 +37,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
+    VALIDITY_DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_volume_range(self, row, col):
         # these cells are strings like like "75-149" where "149" really

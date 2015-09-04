@@ -43,7 +43,7 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 13, 'F', "Rate Codes/Description"),
         (SHEET, 13, 'G', "Start Month"),
     ]
-    DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
+    VALIDITY_DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
     # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
     # below the date cell
 
