@@ -261,10 +261,16 @@ class QuoteParser(object):
     # expected contents of certain cells
     EXPECTED_CELLS = []
 
-    # optional (row, col, regex) for for the validity/expiration date of every
-    # quote in this matrix: regex must have 1 parenthesized group that can be
-    # parsed as a date
+    # two ways to get the validity/expiration date of every quote in this
+    # matrix. both can't be used in the same QuoteParser class, so at least
+    # one must be None.
+    # DATE_CELL is an optional (row, col, regex) tuple; regex can be None if
+    # the cell value is already a datetime.
+    # DATE_FILE_NAME_REGEX is used to extract the date from the file name.
+    # in both cases the regex must have 1 parenthesized group that can be
+    # parsed as a date.
     DATE_CELL = None
+    DATE_FILE_NAME_REGEX = None
 
     def __init__(self):
         self._reader = SpreadsheetReader()
@@ -272,9 +278,11 @@ class QuoteParser(object):
         # whether validation has been done yet
         self._validated = False
 
-        # optional validity date and expiration date of all quotes (matrix
-        # quote spreadsheets tend have a date on them and are good for one day)
-        self._date = None
+        # optional validity date and expiration dates for all quotes (matrix
+        # quote spreadsheets tend have a date on them and are good for one
+        # day; some are valid for a longer period of time)
+        self._valid_from = None
+        self._valid_until = None
 
         # number of quotes read so far
         self._count = 0
@@ -283,12 +291,15 @@ class QuoteParser(object):
         # avoid repeated queries
         self._rate_class_aliases = load_rate_class_aliases()
 
-    def load_file(self, quote_file):
+    def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
+        :param file_name: name of the file, used in some formats to get
+        valid_from and valid_until dates for the quotes
         """
         self._reader.load_file(quote_file, self.FILE_FORMAT)
+        self._file_name = file_name
         self._validated = False
 
     def validate(self):
@@ -321,6 +332,35 @@ class QuoteParser(object):
             return [None]
         return rate_class_ids
 
+    def _get_dates(self):
+        """Return the validity/expiration date for all quotes in the file
+        using DATE_CELL or DATE_FILE_NAME_REGEX.
+        """
+        assert None in (self.DATE_CELL, self.DATE_FILE_NAME_REGEX)
+
+        if self.DATE_CELL is not None:
+            sheet_number_or_title, row, col, regex = self.DATE_CELL
+            if regex is None:
+                valid_from = self._reader.get(sheet_number_or_title, row, col,
+                                              (datetime, int, float))
+                if isinstance(valid_from, (int, float)):
+                    valid_from = excel_number_to_datetime(valid_from)
+                return valid_from, valid_from + timedelta(days=1)
+            valid_from = self._reader.get_matches(sheet_number_or_title, row,
+                                                  col, regex, parse_datetime)
+            return valid_from, valid_from + timedelta(days=1)
+
+        if self.DATE_FILE_NAME_REGEX is not None:
+            assert isinstance(self._file_name, basestring)
+            match = re.match(self.DATE_FILE_NAME_REGEX, self._file_name)
+            if match == None:
+                raise ValidationError('No match for "%s" in file name "%s"' % (
+                    self.DATE_FILE_NAME_REGEX, self._file_name))
+            valid_from = parse_datetime(match.group(1))
+            return valid_from, valid_from + timedelta(days=1)
+
+        return None
+
     def extract_quotes(self):
         """Yield Quotes extracted from the file. Raise ValidationError if the
         quote file is malformed (no other exceptions should not be raised).
@@ -330,17 +370,8 @@ class QuoteParser(object):
         if not self._validated:
             self.validate()
 
-        # extract the date using DATE_CELL
-        sheet_number_or_title, row, col, regex = self.DATE_CELL
-        if regex is None:
-            cell_value = self._reader.get(sheet_number_or_title, row, col,
-                                          (datetime, int, float))
-            if isinstance(cell_value, (int, float)):
-                cell_value = excel_number_to_datetime(cell_value)
-            self._date = cell_value
-        else:
-            self._date = self._reader.get_matches(sheet_number_or_title, row,
-                                                  col, regex, parse_datetime)
+        self._valid_from, self._valid_until = self._get_dates()
+
         for quote in self._extract_quotes():
             self._count += 1
             yield quote
@@ -374,7 +405,6 @@ class DirectEnergyMatrixParser(QuoteParser):
     TERM_COL = 'H'
     PRICE_START_COL = 8
     PRICE_END_COL = 13
-
 
     EXPECTED_SHEET_TITLES = [
         'Daily Matrix Price',
@@ -438,8 +468,8 @@ class DirectEnergyMatrixParser(QuoteParser):
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
-                        term_months=term_months, valid_from=self._date,
-                        valid_until=self._date + timedelta(days=1),
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
@@ -562,9 +592,10 @@ class USGEMatrixParser(QuoteParser):
                         for rate_class_id in rate_class_ids:
                             quote = MatrixQuote(
                                 start_from=start_from, start_until=start_until,
-                                term_months=term, valid_from=self._date,
-                                valid_until=self._date + timedelta(days=1),
-                                min_volume=min_volume, limit_volume=limit_volume,
+                                term_months=term, valid_from=self._valid_from,
+                                valid_until=self._valid_until,
+                                min_volume=min_volume,
+                                limit_volume=limit_volume,
                                 purchase_of_receivables=False, price=price,
                                 rate_class_alias=rate_class_alias)
                             # TODO: rate_class_id should be determined automatically
@@ -690,8 +721,8 @@ class AEPMatrixParser(QuoteParser):
                             rate_class_alias):
                         quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
-                            term_months=term, valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
+                            term_months=term, valid_from=self._valid_from,
+                            valid_until=self._valid_until,
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
                             rate_class_alias=rate_class_alias, price=price)
@@ -780,8 +811,8 @@ class ChampionMatrixParser(QuoteParser):
                             rate_class_alias):
                         quote = MatrixQuote(start_from=start_from,
                             start_until=start_until, term_months=term,
-                            valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
+                            valid_from=self._valid_from,
+                            valid_until=self._valid_until,
                             min_volume=min_volume,
                             limit_volume=limit_volume,
                             purchase_of_receivables=False, price=price,
@@ -792,6 +823,103 @@ class ChampionMatrixParser(QuoteParser):
                             quote.rate_class_id = rate_class_id
                         yield quote
 
+
+class AmerigreenMatrixParser(QuoteParser):
+    """Parser for Amerigreen spreadsheet.
+    """
+    # original spreadsheet is in "xlsx" format. but reading it using
+    # tablib.formats.xls gives this error from openpyxl:
+    # "ValueError: Negative dates (-0.007) are not supported"
+    # solution: open in Excel and re-save in "xls" format.
+    FILE_FORMAT = formats.xls
+
+    HEADER_ROW = 25
+    QUOTE_START_ROW = 26
+    UTILITY_COL = 'C'
+    STATE_COL = 'D'
+    TERM_COL = 'E'
+    START_MONTH_COL = 'F'
+    START_DAY_COL = 'G'
+    PRICE_COL = 'N'
+
+    # Amerigreen builds in the broker fee to the prices, so it must be
+    # subtracted from the prices shown
+    BROKER_FEE_CELL = (22, 'F')
+
+    EXPECTED_SHEET_TITLES = None
+    EXPECTED_CELLS = [
+        (0, 11, 'C', 'AMERIgreen Energy Daily Matrix Pricing'),
+        (0, 13, 'C', "Today's Date:"),
+        (0, 15, 'C', 'The Matrix Rates include a \$0.0200/therm Broker Fee'),
+        (0, 15, 'J', 'All rates are quoted at the burner tip and include LDC '
+                     'Line Loss fees'),
+        (0, 16, 'J', 'Quotes are valid through the end of the business day'),
+        (0, 17, 'J',
+         'Valid for accounts with annual volume of up to 50,000 therms'),
+        (0, 19, 'J',
+         "O&R and PECO rates are in Ccf's, all others are in Therms"),
+        (0, HEADER_ROW, 'C', 'LDC'),
+        (0, HEADER_ROW, 'D', 'State'),
+        (0, HEADER_ROW, 'E', 'Term \(Months\)'),
+        (0, HEADER_ROW, 'F', 'Start Month'),
+        (0, HEADER_ROW, 'G', 'Start Day'),
+        (0, HEADER_ROW, 'J', 'Broker Fee'),
+        (0, HEADER_ROW, 'K', "Add'l Fee"),
+        (0, HEADER_ROW, 'L', "Total Fee"),
+        (0, HEADER_ROW, 'M', "Heat"),
+        (0, HEADER_ROW, 'N', "Flat"),
+    ]
+    DATE_FILE_NAME_REGEX = 'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+'
+
+    def _extract_quotes(self):
+        broker_fee = self._reader.get(0, self.BROKER_FEE_CELL[0],
+                                      self.BROKER_FEE_CELL[1], float)
+
+        # "Valid for accounts with annual volume of up to 50,000 therms"
+        min_volume, limit_volume = 0, 50000
+
+        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
+            # detect end of quotes by blank cell in first column
+            if utility == "":
+                break
+
+            state = self._reader.get(0, row, self.STATE_COL, basestring)
+            rate_class_alias = state + '-' + utility
+
+            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+
+            start_from = excel_number_to_datetime(
+                self._reader.get(0, row, self.START_MONTH_COL, float))
+            start_day_str = self._reader.get(0, row, self.START_DAY_COL,
+                                             basestring)
+            _assert_true(start_day_str in ('1st of the Month',
+                                           'On Cycle Read Date'))
+            # TODO: does "1st of the month" really mean starting only on one day?
+            start_until = start_from + timedelta(days=1)
+
+            price = self._reader.get(0, row, self.PRICE_COL, float) - broker_fee
+
+            for rate_class_id in self.get_rate_class_ids_for_alias(
+                    rate_class_alias):
+                quote = MatrixQuote(
+                    start_from=start_from, start_until=start_until,
+                    term_months=term_months, valid_from=self._valid_from,
+                    valid_until=self._valid_until,
+                    min_volume=min_volume, limit_volume=limit_volume,
+                    rate_class_alias=rate_class_alias,
+                    purchase_of_receivables=False, price=price)
+                # TODO: rate_class_id should be determined automatically
+                # by setting rate_class
+                if rate_class_id is not None:
+                    quote.rate_class_id = rate_class_id
+                yield quote
+
+
+
+                        
+                        
+                        
 class ConstellationMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xlsx
 
@@ -850,9 +978,8 @@ class ConstellationMatrixParser(QuoteParser):
                               self._reader.get(0, row, 0, basestring))
                 _assert_equal('Small Business Cost+ Pricing',
                               self._reader.get(0, row, 'I', basestring))
-                _assert_equal(self._date,
-                              self._reader.get(0, row + 1,
-                                               self.DATE_COL, datetime))
+                _assert_equal(self._valid_from, self._reader.get(
+                    0, row + 1, self.DATE_COL, datetime))
                 continue
             elif utility == 'Utility':
                 # repeat of the header row
@@ -885,8 +1012,8 @@ class ConstellationMatrixParser(QuoteParser):
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
-                        term_months=term_months, valid_from=self._date,
-                        valid_until=self._date + timedelta(days=1),
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=False, price=price)
