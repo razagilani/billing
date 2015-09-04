@@ -790,3 +790,88 @@ class ChampionMatrixParser(QuoteParser):
 
 
 
+class MajorEnergyMatrixParser(QuoteParser):
+    """Parser for Major Energy spreadsheet.
+    """
+    FILE_FORMAT = formats.xlsx
+
+    HEADER_ROW = 14
+    QUOTE_START_ROW = 15
+    START_COL = 'B'
+    TERM_COL = 'C'
+    STATE_COL = 'D'
+    UTILITY_COL = 'E'
+    ZONE_COL = 'F'
+    VOLUME_RANGE_START_COL = 'G'
+    VOLUME_RANGE_END_COL = 'H'
+
+    EXPECTED_SHEET_TITLES = ['Matrix']
+    EXPECTED_CELLS = [
+        (0, 3, 'B', 'Effective:'),
+        (0, 5, 'B', 'Start'),
+        (0, 5, 'C', 'State'),
+        (0, 5, 'D', 'Utility'),
+        (0, 5, 'E', 'Zone'),
+        (0, 5, 'F', 'Usage'),
+        (0, 5, 'G', 'Agent Fee'),
+    ]
+    VALID_FROM_DATE_CELL = (3, 'C')
+    VALID_UNTIL_DATE_CELL = (3, 'E') # TODO: inclusive or exclusive? look at "spec"
+
+    def _extract_volume_range(self, row, col):
+        # these cells are strings like like "75-149" where "149" really
+        # means < 150, so 1 is added to the 2nd number--unless it is the
+        # highest volume range, in which case the 2nd number really means
+        # what it says.
+        regex = r'(\d+)\s*-\s*(\d+)'
+        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
+        if col != self.PRICE_END_COL:
+            high += 1
+        return low * 1000, high * 1000
+
+    def _extract_quotes(self):
+        # volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
+        #                  for col in xrange(self.PRICE_START_COL,
+        #                                    self.PRICE_END_COL + 1)]
+        # # volume ranges should be contiguous
+        # for i, vr in enumerate(volume_ranges[:-1]):
+        #     next_vr = volume_ranges[i + 1]
+        #     _assert_equal(vr[1], next_vr[0])
+
+        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+            # TODO use time zone here
+            start_from = excel_number_to_datetime(
+                self._reader.get(0, row, 0, (int, float)))
+            start_until = date_to_datetime((Month(start_from) + 1).first)
+            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+
+            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
+                                          basestring)
+            state = self._reader.get(0, row, self.STATE_COL,
+                                     basestring)
+            utility = self._reader.get(0, row, self.UTILITY_COL,
+                                       basestring)
+            rate_class_alias = '-'.join([state, utility, rate_class])
+            rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
+
+            special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
+                                               basestring)
+            _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
+
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
+                min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
+                price = self._reader.get(0, row, col, (int, float)) / 1000.
+                for rate_class_id in rate_class_ids:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._date,
+                        valid_until=self._date + timedelta(days=1),
+                        min_volume=min_vol, limit_volume=max_vol,
+                        rate_class_alias=rate_class_alias,
+                        purchase_of_receivables=(special_options == 'POR'),
+                        price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class_id is not None:
+                        quote.rate_class_id = rate_class_id
+                    yield quote
