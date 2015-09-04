@@ -262,9 +262,11 @@ class QuoteParser(object):
         # whether validation has been done yet
         self._validated = False
 
-        # optional validity date and expiration date of all quotes (matrix
-        # quote spreadsheets tend have a date on them and are good for one day)
-        self._date = None
+        # optional validity date and expiration dates for all quotes (matrix
+        # quote spreadsheets tend have a date on them and are good for one
+        # day; some are valid for a longer period of time)
+        self._valid_from = None
+        self._valid_until = None
 
         # number of quotes read so far
         self._count = 0
@@ -314,7 +316,7 @@ class QuoteParser(object):
             return [None]
         return rate_class_ids
 
-    def _get_date(self):
+    def _get_dates(self):
         """Return the validity/expiration date for all quotes in the file
         using DATE_CELL or DATE_FILE_NAME_REGEX.
         """
@@ -323,13 +325,14 @@ class QuoteParser(object):
         if self.DATE_CELL is not None:
             sheet_number_or_title, row, col, regex = self.DATE_CELL
             if regex is None:
-                cell_value = self._reader.get(sheet_number_or_title, row, col,
+                valid_from = self._reader.get(sheet_number_or_title, row, col,
                                               (datetime, int, float))
-                if isinstance(cell_value, (int, float)):
-                    cell_value = excel_number_to_datetime(cell_value)
-                return cell_value
-            return self._reader.get_matches(
-                sheet_number_or_title, row, col, regex, parse_datetime)
+                if isinstance(valid_from, (int, float)):
+                    valid_from = excel_number_to_datetime(valid_from)
+                return valid_from, valid_from + timedelta(days=1)
+            valid_from = self._reader.get_matches(sheet_number_or_title, row,
+                                                  col, regex, parse_datetime)
+            return valid_from, valid_from + timedelta(days=1)
 
         if self.DATE_FILE_NAME_REGEX is not None:
             assert isinstance(self._file_name, basestring)
@@ -337,7 +340,8 @@ class QuoteParser(object):
             if match == None:
                 raise ValidationError('No match for "%s" in file name "%s"' % (
                     self.DATE_FILE_NAME_REGEX, self._file_name))
-            return parse_datetime(match.group(1))
+            valid_from = parse_datetime(match.group(1))
+            return valid_from, valid_from + timedelta(days=1)
 
         return None
 
@@ -350,7 +354,7 @@ class QuoteParser(object):
         if not self._validated:
             self.validate()
 
-        self._date = self._get_date()
+        self._valid_from, self._valid_until = self._get_dates()
 
         for quote in self._extract_quotes():
             self._count += 1
@@ -448,8 +452,8 @@ class DirectEnergyMatrixParser(QuoteParser):
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
-                        term_months=term_months, valid_from=self._date,
-                        valid_until=self._date + timedelta(days=1),
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
@@ -572,9 +576,10 @@ class USGEMatrixParser(QuoteParser):
                         for rate_class_id in rate_class_ids:
                             quote = MatrixQuote(
                                 start_from=start_from, start_until=start_until,
-                                term_months=term, valid_from=self._date,
-                                valid_until=self._date + timedelta(days=1),
-                                min_volume=min_volume, limit_volume=limit_volume,
+                                term_months=term, valid_from=self._valid_from,
+                                valid_until=self._valid_until,
+                                min_volume=min_volume,
+                                limit_volume=limit_volume,
                                 purchase_of_receivables=False, price=price,
                                 rate_class_alias=rate_class_alias)
                             # TODO: rate_class_id should be determined automatically
@@ -700,8 +705,8 @@ class AEPMatrixParser(QuoteParser):
                             rate_class_alias):
                         quote = MatrixQuote(
                             start_from=start_from, start_until=start_until,
-                            term_months=term, valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
+                            term_months=term, valid_from=self._valid_from,
+                            valid_until=self._valid_until,
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
                             rate_class_alias=rate_class_alias, price=price)
@@ -790,8 +795,8 @@ class ChampionMatrixParser(QuoteParser):
                             rate_class_alias):
                         quote = MatrixQuote(start_from=start_from,
                             start_until=start_until, term_months=term,
-                            valid_from=self._date,
-                            valid_until=self._date + timedelta(days=1),
+                            valid_from=self._valid_from,
+                            valid_until=self._valid_until,
                             min_volume=min_volume,
                             limit_volume=limit_volume,
                             purchase_of_receivables=False, price=price,
@@ -883,8 +888,8 @@ class AmerigreenMatrixParser(QuoteParser):
                     rate_class_alias):
                 quote = MatrixQuote(
                     start_from=start_from, start_until=start_until,
-                    term_months=term_months, valid_from=self._date,
-                    valid_until=self._date + timedelta(days=1),
+                    term_months=term_months, valid_from=self._valid_from,
+                    valid_until=self._valid_until,
                     min_volume=min_volume, limit_volume=limit_volume,
                     rate_class_alias=rate_class_alias,
                     purchase_of_receivables=False, price=price)
