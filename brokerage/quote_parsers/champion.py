@@ -4,6 +4,7 @@ from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import excel_number_to_datetime, QuoteParser
+from util.units import unit_registry
 
 
 class ChampionMatrixParser(QuoteParser):
@@ -36,14 +37,6 @@ class ChampionMatrixParser(QuoteParser):
 
     VALIDITY_DATE_CELL = ('PA', 8, 'C', None)
 
-    def _extract_volume_range(self, sheet,row, col):
-        regex = r'(\d+)-(\d+) MWh'
-        low, high = self._reader.get_matches(sheet, row, col, regex,
-                                             (int, int))
-        if low % 10 == 1:
-            low -= 1
-        return low * 1000, high * 1000
-
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
 
@@ -70,8 +63,10 @@ class ChampionMatrixParser(QuoteParser):
 
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
-                min_volume, limit_volume = self._extract_volume_range(sheet,row,
-                                                        self.VOLUME_RANGE_COL)
+                min_volume, limit_volume = self._extract_volume_range(sheet,
+                    row, self.VOLUME_RANGE_COL,
+                    r'(?P<low>\d+)-(?P<high>\d+) MWh',
+                    unit_registry.MWh, unit_registry.kWh, fudge_low=True)
 
                 for col in self._reader.column_range(self.TERM_START_COL,
                                                      self.TERM_END_COL):

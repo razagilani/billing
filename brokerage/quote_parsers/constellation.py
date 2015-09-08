@@ -6,6 +6,7 @@ from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, _assert_equal, _assert_true
+from util.units import unit_registry
 
 
 class ConstellationMatrixParser(QuoteParser):
@@ -35,21 +36,15 @@ class ConstellationMatrixParser(QuoteParser):
     ]
     VALIDITY_DATE_CELL = (0, 2, DATE_COL, None)
 
-    def _extract_volume_range(self, row, col):
-        regex = r'(\d+)\s*-\s*(\d+)\s+MWh'
-        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
-        # low value is really 1 higher than it should be in cases like
-        # "151-300" preceded by "0-150"
-        _assert_true(low == 0 or low % 10 == 1)
-        if low % 10 == 1:
-            low -= 1
-        return low * 1000, high * 1000
-
     def _extract_quotes(self):
-        volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
-                         for col in xrange(self.PRICE_START_COL,
-                                           self.PRICE_END_COL + 1)]
-        # # volume ranges should be contiguous or restarting at 0
+        volume_ranges = [
+            self._extract_volume_range(
+                0, self.VOLUME_RANGE_ROW, col,
+                r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
+                unit_registry.MWh, unit_registry.kWh, fudge_low=True)
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
+
+        # volume ranges should be contiguous or restarting at 0
         for i, vr in enumerate(volume_ranges[:-1]):
             next_vr = volume_ranges[i + 1]
             if next_vr[0] != 0:

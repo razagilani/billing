@@ -65,6 +65,8 @@ class USGEMatrixParser(QuoteParser):
             low = 0
         return low, high
 
+    # TODO: can't use superclass method here because there's more than one
+    # regex to use, with different behavior for each one.
 
     def _extract_quotes(self):
         for sheet in ['KY', 'MD', 'NJ', 'NY', 'OH', 'PA']:
