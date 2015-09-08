@@ -5,7 +5,8 @@ from unittest import TestCase
 from mock import Mock, call
 from brokerage.brokerage_model import Company, Quote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO, CLASSES_FOR_SUPPLIERS
+    UnknownSupplierError, QuoteDAO
+from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
 from core.model import Supplier, Session, AltitudeSession
