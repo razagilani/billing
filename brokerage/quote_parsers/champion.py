@@ -21,7 +21,7 @@ class ChampionMatrixParser(QuoteParser):
     EDC_COL = 'E'
     DESCRIPTION_COL = 'G'
     TERM_START_COL = 'I'
-    TERM_END_COL = 'L'
+    TERM_END_COL = 'K'
     PRICE_START_COL = 'I'
     PRICE_END_COL = 'K'
     STATE_COL = 'D'

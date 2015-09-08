@@ -42,7 +42,8 @@ class ConstellationMatrixParser(QuoteParser):
                 0, self.VOLUME_RANGE_ROW, col,
                 r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
                 unit_registry.MWh, unit_registry.kWh, fudge_low=True)
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
+            for col in self._reader.column_range(self.PRICE_START_COL,
+                                                 self.PRICE_END_COL)]
 
         # volume ranges should be contiguous or restarting at 0
         for i, vr in enumerate(volume_ranges[:-1]):
