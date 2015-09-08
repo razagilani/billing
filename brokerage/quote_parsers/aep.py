@@ -95,9 +95,10 @@ class AEPMatrixParser(QuoteParser):
                 try:
                     next_vol_col = self.VOLUME_RANGE_COLS[i + 1]
                 except IndexError:
-                    next_vol_col = 'Y'
+                    next_vol_col = 'X'
 
-                for col in self._reader.column_range(vol_col, next_vol_col):
+                for col in self._reader.column_range(vol_col, next_vol_col,
+                                                     inclusive=False):
                     # skip column that says "End May '18" since we don't know
                     # what contract length that really is
                     if self._reader.get(

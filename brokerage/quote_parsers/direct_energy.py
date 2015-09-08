@@ -46,7 +46,9 @@ class DirectEnergyMatrixParser(QuoteParser):
                 0, self.VOLUME_RANGE_ROW, col,
                 r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', unit_registry.MWh,
                 unit_registry.kWh, fudge_high=True, fudge_block_size=5)
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
+            for col in self._reader.column_range(self.PRICE_START_COL,
+                                                 self.PRICE_END_COL)]
+
         # volume ranges should be contiguous
         for i, vr in enumerate(volume_ranges[:-1]):
             next_vr = volume_ranges[i + 1]
