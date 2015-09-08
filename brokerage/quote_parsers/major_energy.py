@@ -6,6 +6,7 @@ from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser
+from util.units import unit_registry
 
 
 class MajorEnergyMatrixParser(QuoteParser):
@@ -39,22 +40,17 @@ class MajorEnergyMatrixParser(QuoteParser):
         (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
     ]
     VALIDITY_DATE_CELL = (SHEET, 3, 'C', None)
-    VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None) # TODO: inclusive or exclusive?
-
-    def _extract_volume_range(self, row, col):
-        # these cells are strings like like "0-74" where "74" really means 75
-        regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
-                                             (float, float))
-        return low * 1000, high * 1000
+    VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None)
 
     def _extract_quotes(self):
         # note: these are NOT contiguous. the first two are "0-74" and
         # "75-149" but they are contiguous after that. for now, assume they
         # really mean what they say.
-        volume_ranges = [self._extract_volume_range(self.HEADER_ROW, col)
-                         for col in xrange(self.PRICE_START_COL,
-                                           self.PRICE_END_COL + 1)]
+        volume_ranges = [
+            self._extract_volume_range(self.SHEET, self.HEADER_ROW, col,
+                                       r'(?P<low>\d+)\s*-\s*(?P<high>\d+)',
+                                       unit_registry.MWh, unit_registry.kWh)
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
 
         for row in xrange(self.QUOTE_START_ROW,
                          self._reader.get_height(self.SHEET) + 1):
