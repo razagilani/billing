@@ -5,6 +5,7 @@ from brokerage.quote_parser import _assert_true, QuoteParser, _assert_equal, \
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
+from util.units import unit_registry
 
 
 class DirectEnergyMatrixParser(QuoteParser):
@@ -39,21 +40,13 @@ class DirectEnergyMatrixParser(QuoteParser):
     ]
     VALIDITY_DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
-    def _extract_volume_range(self, row, col):
-        # these cells are strings like like "75-149" where "149" really
-        # means < 150, so 1 is added to the 2nd number--unless it is the
-        # highest volume range, in which case the 2nd number really means
-        # what it says.
-        regex = r'(\d+)\s*-\s*(\d+)'
-        low, high = self._reader.get_matches(0, row, col, regex, (float, float))
-        if col != self.PRICE_END_COL:
-            high += 1
-        return low * 1000, high * 1000
-
     def _extract_quotes(self):
-        volume_ranges = [self._extract_volume_range(self.VOLUME_RANGE_ROW, col)
-                         for col in xrange(self.PRICE_START_COL,
-                                           self.PRICE_END_COL + 1)]
+        volume_ranges = [
+            self._extract_volume_range(
+                0, self.VOLUME_RANGE_ROW, col,
+                r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', unit_registry.MWh,
+                unit_registry.kWh, fudge_high=True, fudge_block_size=5)
+            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
         # volume ranges should be contiguous
         for i, vr in enumerate(volume_ranges[:-1]):
             next_vr = volume_ranges[i + 1]
@@ -68,10 +61,8 @@ class DirectEnergyMatrixParser(QuoteParser):
 
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
-            state = self._reader.get(0, row, self.STATE_COL,
-                                     basestring)
-            utility = self._reader.get(0, row, self.UTILITY_COL,
-                                       basestring)
+            state = self._reader.get(0, row, self.STATE_COL, basestring)
+            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
             rate_class_alias = '-'.join([state, utility, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 

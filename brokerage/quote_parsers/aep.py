@@ -5,6 +5,7 @@ from brokerage.quote_parser import QuoteParser, _assert_true, \
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
+from util.units import unit_registry
 
 
 class AEPMatrixParser(QuoteParser):
@@ -60,14 +61,6 @@ class AEPMatrixParser(QuoteParser):
     # columns for headers like "Customer Size: 101-250 Annuals MWhs"
     VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
 
-    def _extract_volume_range(self, row, col):
-        regex = r'Customer Size: (\d+)-(\d+) Annuals MWhs'
-        low, high = self._reader.get_matches(self.SHEET, row, col, regex,
-                                             (int, int))
-        if low % 10 == 1:
-            low -= 1
-        return low, high
-
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(self.SHEET)):
@@ -94,7 +87,9 @@ class AEPMatrixParser(QuoteParser):
 
             for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
                 min_volume, limit_volume = self._extract_volume_range(
-                    self.VOLUME_RANGE_ROW, vol_col)
+                    self.SHEET, self.VOLUME_RANGE_ROW, vol_col,
+                    r'Customer Size: (?P<low>\d+)-(?P<high>\d+) Annuals MWhs',
+                    unit_registry.MWh, unit_registry.MWh, fudge_low=True)
 
                 # TODO: ugly
                 try:

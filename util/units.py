@@ -4,6 +4,7 @@ from pint import UnitRegistry
 unit_registry = UnitRegistry()
 unit_registry.define('thms = 1 * therm = therms')
 unit_registry.define('kilowatthour = kWh = kwh')
+unit_registry.define('megatwatthour = MWh = 1000 * kWh')
 unit_registry.define('centumcubicfoot = 1 * therm = ccf = therms')
 unit_registry.define('kilowattdaily = 0 * therm = kwd = kWD')
 unit_registry.define('MMBTU = 10**6 * btu')
