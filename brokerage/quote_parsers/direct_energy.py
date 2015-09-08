@@ -40,11 +40,13 @@ class DirectEnergyMatrixParser(QuoteParser):
     ]
     DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
             0, self.VOLUME_RANGE_ROW, self.PRICE_START_COL, self.PRICE_END_COL,
-            r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', unit_registry.MWh,
-            unit_registry.kWh, fudge_high=True, fudge_block_size=5)
+            r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', fudge_high=True,
+            fudge_block_size=5)
 
         for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
             # TODO use time zone here

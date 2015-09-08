@@ -37,6 +37,8 @@ class ChampionMatrixParser(QuoteParser):
 
     DATE_CELL = ('PA', 8, 'C', None)
 
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
 
@@ -65,8 +67,7 @@ class ChampionMatrixParser(QuoteParser):
 
                 min_volume, limit_volume = self._extract_volume_range(sheet,
                     row, self.VOLUME_RANGE_COL,
-                    r'(?P<low>\d+)-(?P<high>\d+) MWh',
-                    unit_registry.MWh, unit_registry.kWh, fudge_low=True)
+                    r'(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True)
 
                 for col in self._reader.column_range(self.TERM_START_COL,
                                                      self.TERM_END_COL):
