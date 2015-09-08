@@ -20,6 +20,7 @@ from brokerage.brokerage_model import MatrixQuote, load_rate_class_aliases
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
 # - extract duplicate code for volume ranges across subclasses
+from util.units import unit_registry
 
 
 def _assert_true(p):
@@ -202,8 +203,8 @@ class SpreadsheetReader(object):
         if not isinstance(value, the_type):
             raise ValidationError(
                 'At (%s,%s), expected type %s, found "%s" with type %s. '
-                'neighbors are %s' % (row, col, the_type, value, type(value),
-                                      get_neighbor_str()))
+                'neighbors are %s' % (
+                row, col, the_type, value, type(value), get_neighbor_str()))
         return value
 
     def get_matches(self, sheet_number_or_title, row, col, regex, types):
@@ -311,7 +312,7 @@ class QuoteParser(object):
         assert self._reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
-                    set(self._reader.get_sheet_titles())))
+                set(self._reader.get_sheet_titles())))
         for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
             text = self._reader.get(sheet_number_or_title, row, col, basestring)
             _assert_match(regex, text)
@@ -388,4 +389,52 @@ class QuoteParser(object):
         :return: number of quotes read so far
         """
         return self._count
+
+    def _extract_volume_range(self, sheet, row, col, regex, expected_unit,
+                             target_unit, fudge_low=False, fudge_high=False):
+        """
+        Extract numbers representing a range of energy consumption from a
+        spreadsheet cell with a string in it like "150-200 MWh" or
+        "Below 50,000 ccf/therms".
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :param row: row index (int)
+        :param col: column index (int) or letter (string)
+        :param regex: regular expression string or re.RegexObject containing
+        either or both of two named groups, "low" and "high". (Notation is
+        "(?P<name>...)": see
+        https://docs.python.org/2/library/re.html#regular-expression-syntax)
+        :param expected_unit: pint.unit.Quantity representing the unit used
+        in the spreadsheet (such as util.units.unit_registry.MWh)
+        :param target_unit: pint.unit.Quantity representing the unit to be
+        used in the return value (such as util.units.unit_registry.kWh)
+        :param fudge_low: if True, and the low value of the range is 1 away
+        from a multiple of 10, adjust it to the nearest multiple of 10.
+        :param fudge_high: if True, and the high value of the range is 1 away
+        from a multiple of 10, adjust it to the nearest multiple of 10.
+        :return: low value (int), high value (int)
+        """
+        if isinstance(regex, basestring):
+            regex = re.compile(regex)
+        assert regex.groupindex in ({'low': 1, 'high': 2},
+                                    {'low': 2, 'high': 1})
+        values = self._reader.get_matches(sheet, row, col, regex,
+                                          (int,) * regex.groups)
+        if regex.groupindex['low'] == 1:
+            low, high = values
+        else:
+            high, low = values
+        if fudge_low:
+            if low % 10 == 1:
+                low -= 1
+            elif low % 10 == 9:
+                low += 1
+        if fudge_high:
+            if high % 10 == 1:
+                high -= 1
+            elif high % 10 == 9:
+                high += 1
+        low = low * expected_unit.to(target_unit) / target_unit
+        high = high * expected_unit.to(target_unit) / target_unit
+        return low, high
 

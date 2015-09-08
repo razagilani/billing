@@ -1,14 +1,18 @@
 from datetime import datetime
 from os.path import join
+import re
 from unittest import TestCase
+from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
+from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
     AEPMatrixParser, AmerigreenMatrixParser, ChampionMatrixParser, \
     ConstellationMatrixParser
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
+from util.units import unit_registry
 
 
 def setUpModule():
@@ -16,6 +20,45 @@ def setUpModule():
     create_tables()
     init_model()
     init_altitude_db()
+
+class QuoteParserTest(TestCase):
+    def setUp(self):
+        reader = Mock(autospec=SpreadsheetReader)
+        class ExampleQuoteParser(QuoteParser):
+            def __init__(self):
+                super(ExampleQuoteParser, self).__init__()
+                self._reader = reader
+            def _extract_quotes(self):
+                pass
+        self.qp = ExampleQuoteParser()
+        self.reader = reader
+        self.regex = re.compile(r'from (?P<low>\d+) to (?P<high>\d+)')
+
+    def test_extract_volume_range_normal(self):
+        self.reader.get_matches.return_value = 1, 2
+        low, high = self.qp._extract_volume_range(
+            0, 0, 0, self.regex, unit_registry.MWh, unit_registry.kWh)
+        self.assertEqual((1000, 2000), (low, high))
+        self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
+                                                        (int, int))
+
+    def test_extract_volume_range_fudge(self):
+        self.reader.get_matches.return_value = 11, 20
+        low, high = self.qp._extract_volume_range(
+            0, 0, 0, self.regex, unit_registry.kWh, unit_registry.kWh,
+            fudge_low=True, fudge_high=True)
+        self.assertEqual((10, 20), (low, high))
+        self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
+                                                        (int, int))
+
+        self.reader.reset_mock()
+        self.reader.get_matches.return_value = 10, 19
+        low, high = self.qp._extract_volume_range(
+            0, 0, 0, self.regex, unit_registry.kWh, unit_registry.kWh,
+            fudge_low=True, fudge_high=True)
+        self.assertEqual((10, 20), (low, high))
+        self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
+                                                        (int, int))
 
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
