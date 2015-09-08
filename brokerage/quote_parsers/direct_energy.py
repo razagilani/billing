@@ -61,10 +61,8 @@ class DirectEnergyMatrixParser(QuoteParser):
 
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
                                                basestring)
-            state = self._reader.get(0, row, self.STATE_COL,
-                                     basestring)
-            utility = self._reader.get(0, row, self.UTILITY_COL,
-                                       basestring)
+            state = self._reader.get(0, row, self.STATE_COL, basestring)
+            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
             rate_class_alias = '-'.join([state, utility, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
