@@ -100,14 +100,6 @@ class QuoteDAO(object):
         self.altitude_session.commit()
 
 
-CLASSES_FOR_SUPPLIERS = {
-    14: quote_parsers.DirectEnergyMatrixParser,
-    95:  quote_parsers.AEPMatrixParser,
-    199: quote_parsers.USGEMatrixParser,
-    928: quote_parsers.ChampionMatrixParser,
-    125: quote_parsers.AmerigreenMatrixParser,
-}
-
 class QuoteEmailProcessor(object):
     """Receives emails from suppliers containing matrix quote files as
     attachments, and extracts the quotes from the attachments.
