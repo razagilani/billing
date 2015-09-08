@@ -391,7 +391,8 @@ class QuoteParser(object):
         return self._count
 
     def _extract_volume_range(self, sheet, row, col, regex, expected_unit,
-                             target_unit, fudge_low=False, fudge_high=False):
+                             target_unit, fudge_low=False, fudge_high=False,
+                             fudge_block_size=10):
         """
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
@@ -409,11 +410,18 @@ class QuoteParser(object):
         :param target_unit: pint.unit.Quantity representing the unit to be
         used in the return value (such as util.units.unit_registry.kWh)
         :param fudge_low: if True, and the low value of the range is 1 away
-        from a multiple of 10, adjust it to the nearest multiple of 10.
+        from a multiple of 'fudge_block_size', adjust it to the nearest
+        multiple of 'fudge_block_size'.
         :param fudge_high: if True, and the high value of the range is 1 away
-        from a multiple of 10, adjust it to the nearest multiple of 10.
+        from a multiple of 'fudge_block_size', adjust it to the nearest
+        multiple of 'fudge_block_size'.
+        :param fudge_block_size: int (10 usually works; 100 would provide
+        extra validation; sometimes 5 is needed)
         :return: low value (int), high value (int)
         """
+        # TODO: probably should allow callers to specify whether the fudging
+        # should be positive only or negative only (it's never both). this
+        # will help prevent errors.
         if isinstance(regex, basestring):
             regex = re.compile(regex)
         assert regex.groupindex in ({'low': 1, 'high': 2},
@@ -425,14 +433,14 @@ class QuoteParser(object):
         else:
             high, low = values
         if fudge_low:
-            if low % 10 == 1:
+            if low % fudge_block_size == 1:
                 low -= 1
-            elif low % 10 == 9:
+            elif low % fudge_block_size == fudge_block_size - 1:
                 low += 1
         if fudge_high:
-            if high % 10 == 1:
+            if high % fudge_block_size == 1:
                 high -= 1
-            elif high % 10 == 9:
+            elif high % fudge_block_size == fudge_block_size - 1:
                 high += 1
         low = low * expected_unit.to(target_unit) / target_unit
         high = high * expected_unit.to(target_unit) / target_unit
