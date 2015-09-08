@@ -449,3 +449,26 @@ class QuoteParser(object):
         high = high * expected_unit.to(target_unit) / target_unit
         return low, high
 
+    def _extract_volume_ranges_horizontal(
+            self, sheet, row, start_col, end_col, regex, expected_unit,
+            target_unit, allow_restarting_at_0=False, **kwargs):
+        """Extract a set of energy consumption ranges along a row, and also
+        check that the ranges are contiguous.
+        :param allow_restarting_at_0: if True, going from a big number back
+        to 0 doesn't violate contiguity.
+        See _extract_volume_range for other arguments.
+        """
+        # TODO: too many arguments. use of **kwargs makes code hard to follow.
+        # some of these arguments could be instance variables instead.
+        result = [
+            self._extract_volume_range(sheet, row, col, regex, expected_unit,
+                                       target_unit, **kwargs)
+            for col in self._reader.column_range(start_col, end_col)]
+
+        # volume ranges should be contiguous or restarting at 0
+        for i, vr in enumerate(result[:-1]):
+            next_vr = result[i + 1]
+            if not allow_restarting_at_0 or next_vr[0] != 0:
+                _assert_equal(vr[1], next_vr[0])
+
+        return result
