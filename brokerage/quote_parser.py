@@ -65,20 +65,23 @@ class SpreadsheetReader(object):
     LETTERS = ''.join(chr(ord('A') + i) for i in xrange(26))
 
     @classmethod
-    def column_range(cls, start, stop, step=1):
+    def column_range(cls, start, stop, step=1, inclusive=True):
         """Return a list of column numbers numbers between the given column
-        numbers or letters (like the built-in "range" function, but allows
-        letters).
+        numbers or letters (like the built-in "range" function, but inclusive
+        by default and allows letters).
         :param start: inclusive start column letter or number (required
         unlike in the "range" function)
-        :param end: exclusive end column letter or number
+        :param stop: inclusive end column letter or number
         :param step: int
+        :param inclusive: if False, 'stop' column is not included
         """
         if isinstance(start, basestring):
             start = cls._col_letter_to_index(start)
         if isinstance(stop, basestring):
-            limit = cls._col_letter_to_index(stop)
-        return range(start, limit, step)
+            stop = cls._col_letter_to_index(stop)
+        if inclusive:
+            stop += 1
+        return range(start, stop, step)
 
     @classmethod
     def _col_letter_to_index(cls, letter):
