@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from tablib import formats
 
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, _assert_equal, _assert_true
+from brokerage.quote_parser import QuoteParser, _assert_equal
 from util.units import unit_registry
 
 
@@ -36,19 +36,13 @@ class ConstellationMatrixParser(QuoteParser):
     ]
     VALIDITY_DATE_CELL = (0, 2, DATE_COL, None)
 
-    def _extract_quotes(self):
-        volume_ranges = [
-            self._extract_volume_range(
-                0, self.VOLUME_RANGE_ROW, col,
-                r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
-                unit_registry.MWh, unit_registry.kWh, fudge_low=True)
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
-        # volume ranges should be contiguous or restarting at 0
-        for i, vr in enumerate(volume_ranges[:-1]):
-            next_vr = volume_ranges[i + 1]
-            if next_vr[0] != 0:
-                _assert_equal(vr[1], next_vr[0])
+    def _extract_quotes(self):
+        volume_ranges = self._extract_volume_ranges_horizontal(
+                0, self.VOLUME_RANGE_ROW, self.PRICE_START_COL,
+            self.PRICE_END_COL, r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
+            allow_restarting_at_0=True, fudge_low=True)
 
         for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
             utility = self._reader.get(0, row, self.UTILITY_COL,

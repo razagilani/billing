@@ -1,6 +1,6 @@
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, _assert_equal, \
+from brokerage.quote_parser import _assert_true, QuoteParser, \
     excel_number_to_datetime
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -40,17 +40,13 @@ class DirectEnergyMatrixParser(QuoteParser):
     ]
     VALIDITY_DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
     def _extract_quotes(self):
-        volume_ranges = [
-            self._extract_volume_range(
-                0, self.VOLUME_RANGE_ROW, col,
-                r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', unit_registry.MWh,
-                unit_registry.kWh, fudge_high=True, fudge_block_size=5)
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
-        # volume ranges should be contiguous
-        for i, vr in enumerate(volume_ranges[:-1]):
-            next_vr = volume_ranges[i + 1]
-            _assert_equal(vr[1], next_vr[0])
+        volume_ranges = self._extract_volume_ranges_horizontal(
+            0, self.VOLUME_RANGE_ROW, self.PRICE_START_COL, self.PRICE_END_COL,
+            r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', fudge_high=True,
+            fudge_block_size=5)
 
         for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
             # TODO use time zone here

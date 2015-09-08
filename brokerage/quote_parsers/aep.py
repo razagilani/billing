@@ -58,6 +58,9 @@ class AEPMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
 
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+    TARGET_ENERGY_UNIT = unit_registry.MWh
+
     # columns for headers like "Customer Size: 101-250 Annuals MWhs"
     VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
 
@@ -89,15 +92,16 @@ class AEPMatrixParser(QuoteParser):
                 min_volume, limit_volume = self._extract_volume_range(
                     self.SHEET, self.VOLUME_RANGE_ROW, vol_col,
                     r'Customer Size: (?P<low>\d+)-(?P<high>\d+) Annuals MWhs',
-                    unit_registry.MWh, unit_registry.MWh, fudge_low=True)
+                    fudge_low=True)
 
                 # TODO: ugly
                 try:
                     next_vol_col = self.VOLUME_RANGE_COLS[i + 1]
                 except IndexError:
-                    next_vol_col = 'Y'
+                    next_vol_col = 'X'
 
-                for col in self._reader.column_range(vol_col, next_vol_col):
+                for col in self._reader.column_range(vol_col, next_vol_col,
+                                                     inclusive=False):
                     # skip column that says "End May '18" since we don't know
                     # what contract length that really is
                     if self._reader.get(
