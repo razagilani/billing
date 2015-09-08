@@ -263,14 +263,19 @@ class QuoteParser(object):
     EXPECTED_CELLS = []
 
     # two ways to get the validity/expiration date of every quote in this
-    # matrix. both can't be used in the same QuoteParser class, so at least
-    # one must be None.
-    # DATE_CELL is an optional (row, col, regex) tuple; regex can be None if
-    # the cell value is already a datetime.
+    # matrix. either VALIDITY_DATE_CELL (and optionally
+    # VALIDITY_INCLUSIVE_END_CELL) can be used, or DATE_FILE_NAME_REGEX,
+    # but not both.
+    # VALIDITY_DATE_CELL and VALIDITY_INCLUSIVE_END_CELL are optional (row,
+    # col, regex) tuples; the regex can be None if the cell value is already
+    # a datetime. if VALIDITY_DATE_CELL is not defined and
+    # VALIDITY_INCLUSIVE_END_CELL is not, then quotes are assumed to be valid
+    # for 1 day.
     # DATE_FILE_NAME_REGEX is used to extract the date from the file name.
     # in both cases the regex must have 1 parenthesized group that can be
     # parsed as a date.
-    DATE_CELL = None
+    VALIDITY_DATE_CELL = None
+    VALIDITY_INCLUSIVE_END_CELL = None
     DATE_FILE_NAME_REGEX = None
 
     def __init__(self):
@@ -335,21 +340,33 @@ class QuoteParser(object):
 
     def _get_dates(self):
         """Return the validity/expiration date for all quotes in the file
-        using DATE_CELL or DATE_FILE_NAME_REGEX.
+        using VALIDITY_DATE_CELL or DATE_FILE_NAME_REGEX.
         """
-        assert None in (self.DATE_CELL, self.DATE_FILE_NAME_REGEX)
+        assert None in (self.VALIDITY_DATE_CELL, self.DATE_FILE_NAME_REGEX)
 
-        if self.DATE_CELL is not None:
-            sheet_number_or_title, row, col, regex = self.DATE_CELL
+        # use cell definition to extract date (see description at definition
+        # of VALIDITY_DATE_CELL etc.)
+        def get_date_from_cell(cell_definition):
+            sheet_number_or_title, row, col, regex = cell_definition
             if regex is None:
-                valid_from = self._reader.get(sheet_number_or_title, row, col,
-                                              (datetime, int, float))
-                if isinstance(valid_from, (int, float)):
-                    valid_from = excel_number_to_datetime(valid_from)
-                return valid_from, valid_from + timedelta(days=1)
-            valid_from = self._reader.get_matches(sheet_number_or_title, row,
-                                                  col, regex, parse_datetime)
-            return valid_from, valid_from + timedelta(days=1)
+                value = self._reader.get(sheet_number_or_title, row, col,
+                                         (datetime, int, float))
+                if isinstance(value, (int, float)):
+                    value = excel_number_to_datetime(value)
+                return value
+            return self._reader.get_matches(sheet_number_or_title, row, col,
+                                            regex, parse_datetime)
+
+        if self.VALIDITY_DATE_CELL is not None:
+            valid_from = get_date_from_cell(self.VALIDITY_DATE_CELL)
+            if self.VALIDITY_INCLUSIVE_END_CELL is None:
+                valid_until = valid_from + timedelta(days=1)
+            else:
+                # inclusive end date is specified as the beginning of the
+                # last day of the period, so 1 day must be added to it
+                valid_until = get_date_from_cell(
+                    self.VALIDITY_INCLUSIVE_END_CELL) + timedelta(days=1)
+            return valid_from, valid_until
 
         if self.DATE_FILE_NAME_REGEX is not None:
             assert isinstance(self._file_name, basestring)
@@ -445,4 +462,3 @@ class QuoteParser(object):
         low = low * expected_unit.to(target_unit) / target_unit
         high = high * expected_unit.to(target_unit) / target_unit
         return low, high
-

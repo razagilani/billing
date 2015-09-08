@@ -34,7 +34,7 @@ class ConstellationMatrixParser(QuoteParser):
         (0, 4, 'B', 'Utility'),
         (0, 4, 'C', 'Term'),
     ]
-    DATE_CELL = (0, 2, DATE_COL, None)
+    VALIDITY_DATE_CELL = (0, 2, DATE_COL, None)
 
     def _extract_quotes(self):
         volume_ranges = [

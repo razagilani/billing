@@ -38,7 +38,7 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
+    VALIDITY_DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_quotes(self):
         volume_ranges = [
