@@ -1,0 +1,90 @@
+!rate_structure
+name: Rate Schedule 2 - Firm Commercial and Industrial Sales Service
+service: Gas
+effective: 2004-02-03
+expires:
+registers: 
+    - !register
+      descriptor: REG_TOTAL
+      description: Total therms register
+      quantity: 0
+      quantityunits: therms
+rates:
+# looks like wash gas rounds up charge item totals
+    - !rate_structure_item
+      descriptor: SYSTEM_CHARGE
+      description: System Charge
+      quantity: 1
+      total: 36.25
+    - !rate_structure_item
+      descriptor: ENERGY_FIRST_BLOCK
+      description: The first 300 therms
+      quantity: (300) if (REG_TOTAL.quantity > 300) else (REG_TOTAL.quantity)
+      quantityunits: therms
+      # this rate is affected by information not known until bill is received
+      rate: 0.3610
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: ENERGY_SECOND_BLOCK
+      description: The next 6700 therms
+      quantity: (6700) if (REG_TOTAL.quantity > 7000) else ( (0) if (REG_TOTAL.quantity <300) else (REG_TOTAL.quantity-300  ) )
+      # this rate is affected by information not known until bill is received
+      quantityunits: therms
+      rate: 0.2152
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: ENERGY_REMAINDER_BLOCK
+      description: Over 7,000 therms
+      quantity: (REG_TOTAL.quantity - 7000) if (REG_TOTAL.quantity > 7000 ) else (0)
+      # this rate is affected by information not known until bill is received
+      quantityunits: therms
+      rate: 0.1573
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: MD_STATE_SALES_TAX
+      description: Per therm tax
+      quantity: SYSTEM_CHARGE.total + ENERGY_FIRST_BLOCK.total + ENERGY_SECOND_BLOCK.total + ENERGY_REMAINDER_BLOCK.total
+      quantityunits: dollars
+      rate: 0.06
+      rateunits: percent
+      total: 
+    - !rate_structure_item
+      descriptor: MD_GROSS_RECEIPTS_SURCHARGE
+      description: MD Gross Receipts Surcharge
+      # Varies month to month
+      total: 0.02
+    - !rate_structure_item
+      descriptor: PG_COUNTY_ENERGY_TAX
+      description: Prince Georges County energy tax
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.07
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: SUPPLY_COMMODITY
+      description: Commodity
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.86
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: SUPPLY_BALANCING
+      description: Balancing
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.0148
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: MD_SUPPLY_SALES_TAX
+      description: MD Sales tax commodity
+      quantity: SUPPLY_COMMODITY.total + SUPPLY_BALANCING.total
+      quantityunits: dollars
+      rate: 0.06
+      rateunits: percent
+      total: 
