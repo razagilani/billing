@@ -31,13 +31,14 @@ class QuoteParserTest(TestCase):
             def _extract_quotes(self):
                 pass
         self.qp = ExampleQuoteParser()
+        self.qp.EXPECTED_ENERGY_UNIT = unit_registry.MWh
+        self.qp.TARGET_ENERGY_UNIT = unit_registry.kWh
         self.reader = reader
         self.regex = re.compile(r'from (?P<low>\d+) to (?P<high>\d+)')
 
     def test_extract_volume_range_normal(self):
         self.reader.get_matches.return_value = 1, 2
-        low, high = self.qp._extract_volume_range(
-            0, 0, 0, self.regex, unit_registry.MWh, unit_registry.kWh)
+        low, high = self.qp._extract_volume_range(0, 0, 0, self.regex)
         self.assertEqual((1000, 2000), (low, high))
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
@@ -45,18 +46,16 @@ class QuoteParserTest(TestCase):
     def test_extract_volume_range_fudge(self):
         self.reader.get_matches.return_value = 11, 20
         low, high = self.qp._extract_volume_range(
-            0, 0, 0, self.regex, unit_registry.kWh, unit_registry.kWh,
-            fudge_low=True, fudge_high=True)
-        self.assertEqual((10, 20), (low, high))
+            0, 0, 0, self.regex, fudge_low=True, fudge_high=True)
+        self.assertEqual((10000, 20000), (low, high))
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
 
         self.reader.reset_mock()
         self.reader.get_matches.return_value = 10, 19
         low, high = self.qp._extract_volume_range(
-            0, 0, 0, self.regex, unit_registry.kWh, unit_registry.kWh,
-            fudge_low=True, fudge_high=True)
-        self.assertEqual((10, 20), (low, high))
+            0, 0, 0, self.regex, fudge_low=True, fudge_high=True)
+        self.assertEqual((10000, 20000), (low, high))
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
 

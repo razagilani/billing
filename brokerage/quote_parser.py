@@ -276,6 +276,13 @@ class QuoteParser(object):
     DATE_CELL = None
     DATE_FILE_NAME_REGEX = None
 
+    # energy unit that the supplier uses: convert from this. subclass should
+    # specify it.
+    EXPECTED_ENERGY_UNIT = None
+
+    # energy unit for resulting quotes: convert to this
+    TARGET_ENERGY_UNIT = unit_registry.kWh
+
     def __init__(self):
         self._reader = SpreadsheetReader()
 
@@ -393,9 +400,8 @@ class QuoteParser(object):
         """
         return self._count
 
-    def _extract_volume_range(self, sheet, row, col, regex, expected_unit,
-                             target_unit, fudge_low=False, fudge_high=False,
-                             fudge_block_size=10):
+    def _extract_volume_range(self, sheet, row, col, regex, fudge_low=False,
+                              fudge_high=False, fudge_block_size=10):
         """
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
@@ -445,13 +451,15 @@ class QuoteParser(object):
                 high -= 1
             elif high % fudge_block_size == fudge_block_size - 1:
                 high += 1
-        low = low * expected_unit.to(target_unit) / target_unit
-        high = high * expected_unit.to(target_unit) / target_unit
+        low = int(low * self.EXPECTED_ENERGY_UNIT.to(
+            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
+        high = int(high * self.EXPECTED_ENERGY_UNIT.to(
+            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
         return low, high
 
     def _extract_volume_ranges_horizontal(
-            self, sheet, row, start_col, end_col, regex, expected_unit,
-            target_unit, allow_restarting_at_0=False, **kwargs):
+            self, sheet, row, start_col, end_col, regex,
+            allow_restarting_at_0=False, **kwargs):
         """Extract a set of energy consumption ranges along a row, and also
         check that the ranges are contiguous.
         :param allow_restarting_at_0: if True, going from a big number back
@@ -461,8 +469,7 @@ class QuoteParser(object):
         # TODO: too many arguments. use of **kwargs makes code hard to follow.
         # some of these arguments could be instance variables instead.
         result = [
-            self._extract_volume_range(sheet, row, col, regex, expected_unit,
-                                       target_unit, **kwargs)
+            self._extract_volume_range(sheet, row, col, regex, **kwargs)
             for col in self._reader.column_range(start_col, end_col)]
 
         # volume ranges should be contiguous or restarting at 0

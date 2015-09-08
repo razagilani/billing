@@ -36,12 +36,13 @@ class ConstellationMatrixParser(QuoteParser):
     ]
     DATE_CELL = (0, 2, DATE_COL, None)
 
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
                 0, self.VOLUME_RANGE_ROW, self.PRICE_START_COL,
             self.PRICE_END_COL, r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
-            unit_registry.MWh, unit_registry.kWh, allow_restarting_at_0=True,
-            fudge_low=True)
+            allow_restarting_at_0=True, fudge_low=True)
 
         for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
             utility = self._reader.get(0, row, self.UTILITY_COL,
