@@ -12,10 +12,11 @@ from .usge import USGEMatrixParser
 # subclass. each time a subclass is written for a new supplier, add it to
 # this dictionary.
 CLASSES_FOR_SUPPLIERS = {
-    14: DirectEnergyMatrixParser,
     95: AEPMatrixParser,
-    199: USGEMatrixParser,
-    928: ChampionMatrixParser,
     125: AmerigreenMatrixParser,
+    928: ChampionMatrixParser,
+    103: ConstellationMatrixParser,
+    14: DirectEnergyMatrixParser,
+    199: USGEMatrixParser,
 }
 
