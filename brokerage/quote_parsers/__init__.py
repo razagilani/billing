@@ -19,4 +19,3 @@ CLASSES_FOR_SUPPLIERS = {
     14: DirectEnergyMatrixParser,
     199: USGEMatrixParser,
 }
-
