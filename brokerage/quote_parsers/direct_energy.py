@@ -1,7 +1,7 @@
 from tablib import formats
 
 from brokerage.quote_parser import _assert_true, QuoteParser, \
-    excel_number_to_datetime
+    excel_number_to_datetime, SimpleCellDateGetter
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -38,9 +38,10 @@ class DirectEnergyMatrixParser(QuoteParser):
         (0, HEADER_ROW, 6, 'Billing Method'),
         (0, HEADER_ROW, 7, 'Term'),
     ]
-    DATE_CELL = (0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
+    date_getter = SimpleCellDateGetter(0, 3, 0, 'as of (\d+/\d+/\d+)')
 
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
