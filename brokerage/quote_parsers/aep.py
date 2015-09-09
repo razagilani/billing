@@ -1,7 +1,7 @@
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, _assert_true, \
-    excel_number_to_datetime
+    excel_number_to_datetime, SimpleCellDateGetter
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -44,9 +44,6 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 13, 'F', "Rate Codes/Description"),
         (SHEET, 13, 'G', "Start Month"),
     ]
-    DATE_CELL = (SHEET, 3, 'W', None) # TODO: correct cell but value is a float
-    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
-    # below the date cell
 
     VOLUME_RANGE_ROW = 11
     HEADER_ROW = 13
@@ -63,6 +60,10 @@ class AEPMatrixParser(QuoteParser):
 
     # columns for headers like "Customer Size: 101-250 Annuals MWhs"
     VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']
+
+    # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
+    # below the date cell
+    date_getter = SimpleCellDateGetter(SHEET, 3, 'W', None)
 
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
