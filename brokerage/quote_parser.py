@@ -334,11 +334,10 @@ class FileNameDateGetter(DateGetter):
         self._regex = regex
 
     def get_dates(self, quote_parser):
-        # TODO: use of private variable
-        match = re.match(self._regex, quote_parser._file_name)
+        match = re.match(self._regex, quote_parser.file_name)
         if match == None:
             raise ValidationError('No match for "%s" in file name "%s"' % (
-                self._regex, quote_parser._file_name))
+                self._regex, quote_parser.file_name))
         valid_from = parse_datetime(match.group(1))
         return valid_from, valid_from + timedelta(days=1)
 
@@ -399,8 +398,8 @@ class QuoteParser(object):
         valid_from and valid_until dates for the quotes
         """
         self._reader.load_file(quote_file, self.FILE_FORMAT)
-        self._file_name = file_name
         self._validated = False
+        self.file_name = file_name
 
     def validate(self):
         """Raise ValidationError if the file does not match expectations about
