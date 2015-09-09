@@ -320,6 +320,7 @@ class QuoteParser(object):
         problems the contents in advance.
         """
         assert self._reader.is_loaded()
+        print self._reader.get_sheet_titles()
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
                 set(self._reader.get_sheet_titles())))
