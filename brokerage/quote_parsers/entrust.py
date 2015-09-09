@@ -58,18 +58,25 @@ class EntrustMatrixParser(QuoteParser):
     DATE_ROW = 5
     UTILITY_ROW = 6
     VOLUME_RANGE_ROW = 7
+    TERM_ROW = 8
     QUOTE_START_ROW = 9
     START_COL = 'D'
     UTILITY_COL = 'E'
     PRICE_START_COL = 'E'
     DATE_COL = 'F'
+    # certain columns have term length in a different place
+    SWEET_SPOT_PRICE_COL = 'I'
+    SWEET_SPOT_TERM_COL = 'J'
+
     VOLUME_RANGE_COLS = ['E', 'L', 'S', 'Z']
 
     EXPECTED_ENERGY_UNIT = unit_registry.kWh
 
-    date_getter = SimpleCellDateGetter(0, 4, 'F', DATE_REGEX)
+    date_getter = SimpleCellDateGetter(0, DATE_ROW, 'F', DATE_REGEX)
 
     def _validate(self):
+        # since only the first sheet is the offical source of the date,
+        # make sure all others have the same date in them
         all_dates = [
             self._reader.get(sheet, self.DATE_ROW, self.DATE_COL, object) for
             sheet in self.EXPECTED_SHEET_TITLES]
@@ -77,11 +84,17 @@ class EntrustMatrixParser(QuoteParser):
             raise ValidationError('Dates are not the same in all sheets')
 
     def _process_sheet(self, sheet):
-        # could get the utility from the sheet name, but this seems better
+        # could get the utility from the sheet name, but this seems better.
+        # includes utility and zone name.
         utility = self._reader.get(sheet, self.UTILITY_ROW, self.UTILITY_COL,
                                    basestring)
-        max_only_regex = r'<\s*(?P<high>[\d,]+)\s*kWh Annually'
-        min_and_max_regex = r'\s*(?P<low>[\d,]+)\s*<\s*kWh Annually\s*<\s*(?P<high>[\d,]+)'
+        rate_class_alias = utility
+        rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
+
+        # they spell "Annually" wrong in some columns
+        max_only_regex = r'<\s*(?P<high>[\d,]+)\s*kWh Annuall?y'
+        min_and_max_regex = (r'\s*(?P<low>[\d,]+)\s*<\s*kWh Annuall?y\s*<'
+                             r'\s*(?P<high>[\d,]+)\s*')
         volume_ranges = [
             self._extract_volume_range(sheet, self.VOLUME_RANGE_ROW,
                                        self.VOLUME_RANGE_COLS[0],
@@ -89,18 +102,55 @@ class EntrustMatrixParser(QuoteParser):
             self._extract_volume_range(sheet, self.VOLUME_RANGE_ROW, col,
                                        min_and_max_regex) for col in
             self.VOLUME_RANGE_COLS[1:]]
-        print volume_ranges
+        # width of volume range block includes 4 regular columns,
+        # 2 "Sweet Spot" columns, and 1 empty space
+        first_vol_range_index = SpreadsheetReader.col_letter_to_index(
+            self.VOLUME_RANGE_COLS[0])
+        vol_range_block_width = len(self.VOLUME_RANGE_COLS) + 3
 
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(sheet)):
             start_from = self._reader.get(sheet, row, self.START_COL, datetime)
+            start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for col in SpreadsheetReader.column_range(
                     self.PRICE_START_COL, self._reader.get_width(sheet),
                     inclusive=False):
+                if col == self.SWEET_SPOT_TERM_COL:
+                    # not a price, but the term length for the previous column
+                    continue
                 price = self._reader.get(sheet, row, col, object)
-                print price
+                if price is None:
+                    # blank space
+                    continue
+
+                if col == self.SWEET_SPOT_PRICE_COL:
+                    # this price has its term length in the next column
+                    term_months = self._reader.get_matches(
+                        sheet, row, self.SWEET_SPOT_TERM_COL, '(\d+) Months',
+                        int)
+                else:
+                    min_volume, limit_volume = volume_ranges[
+                        (col - first_vol_range_index) / vol_range_block_width]
+                    print self.TERM_ROW, col, self.SWEET_SPOT_PRICE_COL, self.SWEET_SPOT_TERM_COL
+                    term_months = self._reader.get(
+                        sheet, self.TERM_ROW, col, int)
+
+                for rate_class_id in rate_class_ids:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term_months, valid_from=self._valid_from,
+                        valid_until=self._valid_until,
+                        min_volume=min_volume, limit_volume=limit_volume,
+                        rate_class_alias=rate_class_alias,
+                        purchase_of_receivables=False, price=price)
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    if rate_class_id is not None:
+                        quote.rate_class_id = rate_class_id
+                    yield quote
 
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
-            self._process_sheet(sheet)
+            for quote in self._process_sheet(sheet):
+                yield quote
