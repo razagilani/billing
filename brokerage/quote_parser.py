@@ -167,6 +167,14 @@ class SpreadsheetReader(object):
         # tablib does not count the "header" as a row
         return self._get_sheet(sheet_number_or_title).height + 1
 
+    def get_width(self, sheet_number_or_title):
+        """Return the number of columns in the given sheet.
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :return: int
+        """
+        return self._get_sheet(sheet_number_or_title).width
+
     def _get_cell(self, sheet, x, y):
         if y == -1:
             # 1st row is the header, 2nd row is index "0"

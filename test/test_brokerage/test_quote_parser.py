@@ -390,8 +390,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0669, q1.price)
         
-        
-
     def test_entrust(self):
         parser = EntrustMatrixParser()
         self.assertEqual(0, parser.get_count())
