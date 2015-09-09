@@ -5,7 +5,8 @@ from tablib import formats
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, _assert_equal
+from brokerage.quote_parser import QuoteParser, _assert_equal, \
+    SimpleCellDateGetter
 from util.units import unit_registry
 
 
@@ -34,9 +35,9 @@ class ConstellationMatrixParser(QuoteParser):
         (0, 4, 'B', 'Utility'),
         (0, 4, 'C', 'Term'),
     ]
-    VALIDITY_DATE_CELL = (0, 2, DATE_COL, None)
-
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
+    date_getter = SimpleCellDateGetter(0, 2, DATE_COL, None)
 
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
