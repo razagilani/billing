@@ -3,7 +3,7 @@ from datetime import timedelta
 from tablib import formats
 
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import _assert_true, QuoteParser
+from brokerage.quote_parser import _assert_true, QuoteParser, FileNameDateGetter
 from brokerage.quote_parser import excel_number_to_datetime
 
 
@@ -52,7 +52,9 @@ class AmerigreenMatrixParser(QuoteParser):
         (0, HEADER_ROW, 'M', "Heat"),
         (0, HEADER_ROW, 'N', "Flat"),
     ]
-    DATE_FILE_NAME_REGEX = 'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+'
+
+    date_getter = FileNameDateGetter(
+        'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
 
     def _extract_quotes(self):
         broker_fee = self._reader.get(0, self.BROKER_FEE_CELL[0],
