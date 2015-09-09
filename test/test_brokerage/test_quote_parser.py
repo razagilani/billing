@@ -7,9 +7,10 @@ from mock import Mock
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from core import ROOT_PATH, init_altitude_db, init_model
-from brokerage.quote_parsers import DirectEnergyMatrixParser, USGEMatrixParser, \
-    AEPMatrixParser, AmerigreenMatrixParser, ChampionMatrixParser, \
-    ConstellationMatrixParser
+from brokerage.quote_parsers import (
+    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser,
+    AmerigreenMatrixParser, ChampionMatrixParser, ConstellationMatrixParser,
+    MajorEnergyMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -73,6 +74,7 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
     CONSTELLATION_FILE_PATH = join(DIRECTORY,
                                    'Matrix 5 Example - Constellation.xlsx')
+    MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
 
     def setUp(self):
         clear_db()
@@ -95,6 +97,8 @@ class MatrixQuoteParsersTest(TestCase):
             'NY-Con Ed',
             # Constellation
             'CLP',
+            # Major Energy
+            'IL-ComEd',
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -355,3 +359,32 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.103578, q1.price)
 
+    def test_major_energy(self):
+        parser = MajorEnergyMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.MAJOR_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        # 936 rows * 4 columns
+        self.assertEqual(3744, len(quotes))
+
+        for quote in quotes:
+            quote.validate()
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 7, 27), q1.valid_from)
+        self.assertEqual(datetime(2015, 8, 1), q1.valid_until)
+        self.assertEqual(datetime(2015, 8, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 9, 1), q1.start_until)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(74000, q1.limit_volume)
+        self.assertEqual('IL-ComEd', q1.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.0669, q1.price)

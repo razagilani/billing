@@ -3,7 +3,8 @@ from tablib import formats
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import excel_number_to_datetime, QuoteParser
+from brokerage.quote_parser import excel_number_to_datetime, QuoteParser, \
+    SimpleCellDateGetter
 from util.units import unit_registry
 
 
@@ -35,7 +36,7 @@ class ChampionMatrixParser(QuoteParser):
         'MD'
     ]
 
-    DATE_CELL = ('PA', 8, 'C', None)
+    date_getter = SimpleCellDateGetter('PA', 8, 'C', None)
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 

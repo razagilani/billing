@@ -6,9 +6,10 @@ from .amerigreen import AmerigreenMatrixParser
 from .champion import ChampionMatrixParser
 from .constellation import ConstellationMatrixParser
 from .direct_energy import DirectEnergyMatrixParser
+from .major_energy import MajorEnergyMatrixParser
 from .usge import USGEMatrixParser
 
-# mapping of each supplier's primary keys in database to its QuoteParser
+# mapping of each supplier's primary key in the database to its QuoteParser
 # subclass. each time a subclass is written for a new supplier, add it to
 # this dictionary.
 CLASSES_FOR_SUPPLIERS = {
@@ -17,6 +18,7 @@ CLASSES_FOR_SUPPLIERS = {
     928: ChampionMatrixParser,
     103: ConstellationMatrixParser,
     14: DirectEnergyMatrixParser,
+    78: MajorEnergyMatrixParser,
     199: USGEMatrixParser,
 }
 
