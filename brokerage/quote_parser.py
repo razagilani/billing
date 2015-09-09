@@ -75,15 +75,15 @@ class SpreadsheetReader(object):
         :param inclusive: if False, 'stop' column is not included
         """
         if isinstance(start, basestring):
-            start = cls._col_letter_to_index(start)
+            start = cls.col_letter_to_index(start)
         if isinstance(stop, basestring):
-            stop = cls._col_letter_to_index(stop)
+            stop = cls.col_letter_to_index(stop)
         if inclusive:
             stop += 1
         return range(start, stop, step)
 
     @classmethod
-    def _col_letter_to_index(cls, letter):
+    def col_letter_to_index(cls, letter):
         """
         :param letter: A-Z (string)
         :return index of spreadsheet column.
@@ -192,7 +192,7 @@ class SpreadsheetReader(object):
         """
         sheet = self._get_sheet(sheet_number_or_title)
         y = self._row_number_to_index(row)
-        x = col if isinstance(col, int) else self._col_letter_to_index(col)
+        x = col if isinstance(col, int) else self.col_letter_to_index(col)
         try:
             value = self._get_cell(sheet, x, y)
         except IndexError:
@@ -223,6 +223,9 @@ class SpreadsheetReader(object):
         are converted from strings to the given types. Raise ValidationError
         if there are 0 matches or the wrong number of matches or any value
         could not be converted to the expected type.
+
+        Commas are removed from strings before converting to 'int' or 'float'.
+
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
@@ -232,6 +235,7 @@ class SpreadsheetReader(object):
         that converts a string to that type, or a list/tuple of them whose
         length corresponds to the number of matches.
         :return: resulting value or list of values
+
         Example:
         >>> self.get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
         >>> self.get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
@@ -245,10 +249,15 @@ class SpreadsheetReader(object):
             raise ValidationError
         results = []
         for group, the_type in zip(m.groups(), types):
+            # remove commas from number strings before converting
+            # (might not be a good place to do this)
+            if the_type in (int, float):
+                group = group.replace(',', '')
             try:
                 value = the_type(group)
             except ValueError:
-                raise ValidationError
+                raise ValidationError('String "%s" couldn\'t be converted to '
+                                      'type %s' % (group, the_type))
             results.append(value)
         if len(results) == 1:
             return results[0]
