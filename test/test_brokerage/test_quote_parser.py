@@ -74,8 +74,8 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
     CONSTELLATION_FILE_PATH = join(DIRECTORY,
                                    'Matrix 5 Example - Constellation.xlsx')
+    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
-    SFE_FILE_PATH = join(DIRECTORY, 'Matrix 8 Example - SFE.xlsx')
 
     def setUp(self):
         clear_db()
