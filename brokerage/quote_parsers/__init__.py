@@ -6,6 +6,7 @@ from .amerigreen import AmerigreenMatrixParser
 from .champion import ChampionMatrixParser
 from .constellation import ConstellationMatrixParser
 from .direct_energy import DirectEnergyMatrixParser
+from .entrust import EntrustMatrixParser
 from .major_energy import MajorEnergyMatrixParser
 from .usge import USGEMatrixParser
 
@@ -18,7 +19,7 @@ CLASSES_FOR_SUPPLIERS = {
     928: ChampionMatrixParser,
     103: ConstellationMatrixParser,
     14: DirectEnergyMatrixParser,
+    56: EntrustMatrixParser,
     78: MajorEnergyMatrixParser,
     199: USGEMatrixParser,
 }
-
