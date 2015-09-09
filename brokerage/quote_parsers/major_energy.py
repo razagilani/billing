@@ -42,6 +42,10 @@ class MajorEnergyMatrixParser(QuoteParser):
     VALIDITY_DATE_CELL = (SHEET, 3, 'C', None)
     VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None)
 
+    # spreadsheet says "kWh usage tier" but the numbers are small, so they
+    # probably are MWh
+    EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
     def _extract_quotes(self):
         # note: these are NOT contiguous. the first two are "0-74" and
         # "75-149" but they are contiguous after that. for now, assume they
