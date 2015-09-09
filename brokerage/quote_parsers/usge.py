@@ -3,7 +3,8 @@ from datetime import datetime
 
 from tablib import formats
 
-from brokerage.quote_parser import QuoteParser, parse_number
+from brokerage.quote_parser import QuoteParser, parse_number, \
+    SimpleCellDateGetter
 from exc import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -48,7 +49,7 @@ class USGEMatrixParser(QuoteParser):
             (sheet, 5, 4, '(UOM)|(Zone)'),
     ] for sheet in ['KY', 'MD', 'NJ', 'NY', 'OH', 'PA']))
 
-    VALIDITY_DATE_CELL = ('PA', 2, 3, None)
+    date_getter = SimpleCellDateGetter('PA', 2, 3, None)
     # TODO: include validity time like "4 PM EPT" in the date
 
     def _extract_volume_range(self, sheet, row, col):

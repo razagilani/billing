@@ -5,7 +5,7 @@ from tablib import formats
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
 from util.units import unit_registry
 
 
@@ -39,12 +39,12 @@ class MajorEnergyMatrixParser(QuoteParser):
         (SHEET, 11, 'B', 'GRT/SUT/POR Included where applicable'),
         (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
     ]
-    VALIDITY_DATE_CELL = (SHEET, 3, 'C', None)
-    VALIDITY_INCLUSIVE_END_CELL = (SHEET, 3, 'E', None)
 
     # spreadsheet says "kWh usage tier" but the numbers are small, so they
     # probably are MWh
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
+    date_getter = StartEndCellDateGetter(SHEET, 3, 'C', 3, 'E', None)
 
     def _extract_quotes(self):
         # note: these are NOT contiguous. the first two are "0-74" and
