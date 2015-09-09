@@ -57,7 +57,6 @@ def excel_number_to_datetime(number):
     """
     return datetime(1899, 12, 30) + timedelta(days=number)
 
-
 class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
     spreadsheets.
@@ -363,8 +362,9 @@ class QuoteParser(object):
     # subclasses can set this to use sheet titles to validate the file
     EXPECTED_SHEET_TITLES = None
 
-    # subclassses can fill this with (row, col, regex) tuples to assert
-    # expected contents of certain cells
+    # subclassses can fill this with (row, col, value) tuples to assert
+    # expected contents of certain cells. if value is a string it is
+    # interpreted as a regex (so remember to escape characters like '$').
     EXPECTED_CELLS = []
 
     # energy unit that the supplier uses: convert from this. subclass should
@@ -419,9 +419,16 @@ class QuoteParser(object):
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
                 set(self._reader.get_sheet_titles())))
-        for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
-            text = self._reader.get(sheet_number_or_title, row, col, basestring)
-            _assert_match(regex, text)
+        for sheet_number_or_title, row, col, expected_value in \
+                self.EXPECTED_CELLS:
+            if isinstance(expected_value, basestring):
+                text = self._reader.get(sheet_number_or_title, row, col,
+                                        basestring)
+                _assert_match(expected_value, text)
+            else:
+                actual_value = self._reader.get(sheet_number_or_title, row, col,
+                                                object)
+                _assert_equal(expected_value, actual_value)
         self._validate()
         self._validated = True
 
@@ -468,8 +475,9 @@ class QuoteParser(object):
         """
         return self._count
 
-    def _extract_volume_range(self, sheet, row, col, regex, fudge_low=False,
-                              fudge_high=False, fudge_block_size=10):
+    def _extract_volume_range(
+            self, sheet, row, col, regex, fudge_low=False, fudge_high=False,
+            fudge_block_size=10, expected_unit=None, target_unit=None):
         """
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
@@ -501,28 +509,39 @@ class QuoteParser(object):
         # will help prevent errors.
         if isinstance(regex, basestring):
             regex = re.compile(regex)
-        assert regex.groupindex in ({'low': 1, 'high': 2},
-                                    {'low': 2, 'high': 1})
+        assert set(regex.groupindex.iterkeys()).issubset({'low', 'high'})
         values = self._reader.get_matches(sheet, row, col, regex,
                                           (int,) * regex.groups)
-        if regex.groupindex['low'] == 1:
+        # TODO: can this be made less verbose?
+        if regex.groupindex.keys() == ['low']:
+            low, high = values, None
+        elif regex.groupindex.keys() == ['high']:
+            low, high = None, values
+        elif regex.groupindex['low'] == 1:
             low, high = values
         else:
+            assert regex.groupindex['high'] == 1
             high, low = values
-        if fudge_low:
-            if low % fudge_block_size == 1:
-                low -= 1
-            elif low % fudge_block_size == fudge_block_size - 1:
-                low += 1
-        if fudge_high:
-            if high % fudge_block_size == 1:
-                high -= 1
-            elif high % fudge_block_size == fudge_block_size - 1:
-                high += 1
-        low = int(low * self.EXPECTED_ENERGY_UNIT.to(
-            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
-        high = int(high * self.EXPECTED_ENERGY_UNIT.to(
-            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
+
+        if expected_unit is None:
+            expected_unit = self.EXPECTED_ENERGY_UNIT
+        if target_unit is None:
+            target_unit = self.TARGET_ENERGY_UNIT
+
+        if low is not None:
+            if fudge_low:
+                if low % fudge_block_size == 1:
+                    low -= 1
+                elif low % fudge_block_size == fudge_block_size - 1:
+                    low += 1
+            low = int(low * expected_unit.to(target_unit) / target_unit)
+        if high is not None:
+            if fudge_high:
+                if high % fudge_block_size == 1:
+                    high -= 1
+                elif high % fudge_block_size == fudge_block_size - 1:
+                    high += 1
+            high = int(high * expected_unit.to(target_unit) / target_unit)
         return low, high
 
     def _extract_volume_ranges_horizontal(
