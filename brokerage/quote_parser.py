@@ -381,7 +381,9 @@ class QuoteParser(object):
         if not self._validated:
             self.validate()
 
-        self._valid_from, self._valid_until = self._get_dates()
+        dates = self._get_dates()
+        if dates is not None:
+            self._valid_from, self._valid_until = dates
 
         for quote in self._extract_quotes():
             self._count += 1
