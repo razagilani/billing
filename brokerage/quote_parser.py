@@ -1,27 +1,21 @@
-"""Code for reading quote files. Could include both matrix quotes and custom
-quotes.
+"""Framework code for parsing matrix quote files, and related tools. Code for
+specific suppliers' matrix formats should go in separate files.
 """
 from abc import ABCMeta, abstractmethod
-from itertools import chain, izip
 import re
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 
 from tablib import Databook, formats
-from core.model import AltitudeSession
 
 from exc import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime, date_to_datetime, \
-    excel_number_to_datetime
-from util.monthmath import Month
-from brokerage.brokerage_model import MatrixQuote, load_rate_class_aliases
+from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
+from brokerage.brokerage_model import load_rate_class_aliases
+from util.units import unit_registry
 
 
 # TODO:
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
-# - extract duplicate code for volume ranges across subclasses
-from util.units import unit_registry
-
 
 def _assert_true(p):
     if not p:
@@ -48,14 +42,6 @@ def parse_number(string):
         return int(result)
     return result
 
-
-def excel_number_to_datetime(number):
-    """Dates in some XLS spreadsheets will appear as numbers of days since
-    (apparently) December 30, 1899.
-    :param number: int or float
-    :return: datetime
-    """
-    return datetime(1899, 12, 30) + timedelta(days=number)
 
 class SpreadsheetReader(object):
     """Wrapper for tablib.Databook with methods to easily get data from
@@ -201,13 +187,13 @@ class SpreadsheetReader(object):
         def get_neighbor_str():
             result = ''
             # clockwise: left up right down
-            for dir, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
-                                ('left', x - 1, y), ('right', x + 1, y)]:
+            for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
+                                      ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
                     nvalue = self._get_cell(sheet, nx, ny)
                 except IndexError as e:
                     nvalue = repr(e)
-                result += '%s: %s ' % (dir, nvalue)
+                result += '%s: %s ' % (direction, nvalue)
             return result
 
         if not isinstance(value, the_type):
@@ -389,6 +375,7 @@ class QuoteParser(object):
 
     def __init__(self):
         self._reader = SpreadsheetReader()
+        self._file_name = None
 
         # whether validation has been done yet
         self._validated = False
@@ -490,8 +477,7 @@ class QuoteParser(object):
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
         "Below 50,000 ccf/therms".
-        :param sheet_number_or_title: 0-based index (int) or title (string)
-        of the sheet to use
+        :param sheet: 0-based index (int) or title (string) of the sheet to use
         :param row: row index (int)
         :param col: column index (int) or letter (string)
         :param regex: regular expression string or re.RegexObject containing
