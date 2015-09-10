@@ -65,8 +65,11 @@ class EntrustMatrixParser(QuoteParser):
     PRICE_START_COL = 'E'
     DATE_COL = 'F'
     # certain columns have term length in a different place
-    SWEET_SPOT_PRICE_COL = 'I'
-    SWEET_SPOT_TERM_COL = 'J'
+    # (indices are used instead of letters to enable comparison)
+    # each of the prices has a corresponding term in the cell whose row is
+    # the same and whose column is at the same index in the second list
+    SWEET_SPOT_PRICE_COLS = [8, 15, 22, 29]
+    SWEET_SPOT_TERM_COLS = [x + 1 for x in SWEET_SPOT_PRICE_COLS]
 
     VOLUME_RANGE_COLS = ['E', 'L', 'S', 'Z']
 
@@ -108,6 +111,8 @@ class EntrustMatrixParser(QuoteParser):
             self.VOLUME_RANGE_COLS[0])
         vol_range_block_width = len(self.VOLUME_RANGE_COLS) + 3
 
+        print '*****', len(self._reader.get_sheet_titles())
+
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(sheet)):
             start_from = self._reader.get(sheet, row, self.START_COL, datetime)
@@ -116,7 +121,7 @@ class EntrustMatrixParser(QuoteParser):
             for col in SpreadsheetReader.column_range(
                     self.PRICE_START_COL, self._reader.get_width(sheet),
                     inclusive=False):
-                if col == self.SWEET_SPOT_TERM_COL:
+                if col in self.SWEET_SPOT_TERM_COLS:
                     # not a price, but the term length for the previous column
                     continue
                 price = self._reader.get(sheet, row, col, object)
@@ -124,15 +129,17 @@ class EntrustMatrixParser(QuoteParser):
                     # blank space
                     continue
 
-                if col == self.SWEET_SPOT_PRICE_COL:
-                    # this price has its term length in the next column
+                if col in self.SWEET_SPOT_PRICE_COLS:
+                    # this price has its term length in the next column, which
+                    # is in the corresponding position in SWEET_SPOT_TERM_COLS
+                    term_col = self.SWEET_SPOT_TERM_COLS[
+                        self.SWEET_SPOT_PRICE_COLS.index(col)]
                     term_months = self._reader.get_matches(
-                        sheet, row, self.SWEET_SPOT_TERM_COL, '(\d+) Months',
-                        int)
+                        sheet, row, term_col, '(\d+) Months', int)
                 else:
                     min_volume, limit_volume = volume_ranges[
                         (col - first_vol_range_index) / vol_range_block_width]
-                    print self.TERM_ROW, col, self.SWEET_SPOT_PRICE_COL, self.SWEET_SPOT_TERM_COL
+                    #print self.TERM_ROW, col, self.SWEET_SPOT_PRICE_COL, self.SWEET_SPOT_TERM_COL
                     term_months = self._reader.get(
                         sheet, self.TERM_ROW, col, int)
 
