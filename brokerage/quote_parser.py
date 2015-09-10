@@ -242,6 +242,9 @@ class SpreadsheetReader(object):
         """
         if not isinstance(types, (list, tuple)):
             types = [types]
+        # substitute 'parse_number' function for regular int/float
+        types = [{int: parse_number, float: parse_number}.get(t, t)
+                 for t in types]
         text = self.get(sheet_number_or_title, row, col, basestring)
         _assert_match(regex, text)
         m = re.match(regex, text)
@@ -249,10 +252,6 @@ class SpreadsheetReader(object):
             raise ValidationError
         results = []
         for group, the_type in zip(m.groups(), types):
-            # remove commas from number strings before converting
-            # (might not be a good place to do this)
-            if the_type in (int, float):
-                group = group.replace(',', '')
             try:
                 value = the_type(group)
             except ValueError:
