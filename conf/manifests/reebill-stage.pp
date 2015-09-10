@@ -106,12 +106,6 @@ file { $receive_matrix_email_script:
 file { "/home/${username}":
     ensure => directory,
     mode => 701,
-    require => Host::App_user['appuser']
-}
-file { '/var/local/${username} directory permission':
-    path => "/var/local/${username}/",
-    ensure => directory,
-    mode => 755
 }
 
 # email aliases for receiving matrix quote emails
