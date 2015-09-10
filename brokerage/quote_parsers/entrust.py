@@ -111,12 +111,11 @@ class EntrustMatrixParser(QuoteParser):
             self.VOLUME_RANGE_COLS[0])
         vol_range_block_width = len(self.VOLUME_RANGE_COLS) + 3
 
-        print '*****', len(self._reader.get_sheet_titles())
-
         for row in xrange(self.QUOTE_START_ROW,
-                          self._reader.get_height(sheet)):
+                          self._reader.get_height(sheet) + 1):
             start_from = self._reader.get(sheet, row, self.START_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
+            print start_from, start_until
 
             for col in SpreadsheetReader.column_range(
                     self.PRICE_START_COL, self._reader.get_width(sheet),
@@ -142,6 +141,7 @@ class EntrustMatrixParser(QuoteParser):
                     #print self.TERM_ROW, col, self.SWEET_SPOT_PRICE_COL, self.SWEET_SPOT_TERM_COL
                     term_months = self._reader.get(
                         sheet, self.TERM_ROW, col, int)
+                print '* (%s,%s) %s' % (row, col, price)
 
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
