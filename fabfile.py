@@ -29,7 +29,7 @@ env.roledefs.update({
 #
 common.CommonFabTask.update_deployment_configs({
     "dev": {
-        "deploy_version":"3", 
+        "deploy_version":"4", 
         "app_name":"reebill-dev", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-dev", 
@@ -92,7 +92,7 @@ common.CommonFabTask.update_deployment_configs({
         "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "extraction-worker-stage": {
-        "deploy_version":"3", 
+        "deploy_version":"4", 
         "app_name":"extraction-worker-stage", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-stage", 
@@ -123,7 +123,7 @@ common.CommonFabTask.update_deployment_configs({
         "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "stage": {
-        "deploy_version":"3", 
+        "deploy_version":"4", 
         "app_name":"reebill-stage", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-stage", 
@@ -155,7 +155,7 @@ common.CommonFabTask.update_deployment_configs({
         "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "prod": {
-        "deploy_version":"3", 
+        "deploy_version":"4", 
         "app_name":"reebill-prod", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-prod", 
