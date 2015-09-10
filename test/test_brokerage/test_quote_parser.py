@@ -105,7 +105,7 @@ class MatrixQuoteParsersTest(TestCase):
             # SFE
             'A (NiMo, NYSEG)',
             # Entrust
-            'Com Ed',
+            'Com Ed', 'ConEd Zone J',
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -435,24 +435,36 @@ class MatrixQuoteParsersTest(TestCase):
 
         quotes = list(parser.extract_quotes())
         # 26 sheets * 4 tables * 5 columns (of prices) * 6 rows
-        # TODO
-        #self.assertEqual(3120, len(quotes))
+        self.assertEqual(3120, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
-        q1 = quotes[0]
-        self.assertEqual(datetime(2015, 9, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 10, 1), q1.start_until)
-        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(12, q1.term_months)
-        self.assertEqual(0, q1.min_volume)
-        self.assertEqual(15000, q1.limit_volume)
-        self.assertEqual('Com Ed', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
-        self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0707760701559456, q1.price)
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 9, 1), q.start_from)
+        self.assertEqual(datetime(2015, 10, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(15000, q.limit_volume)
+        self.assertEqual('Com Ed', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.08121965893896807, q.price)
 
-
+        # since this one is especially complicated and also missed a row,
+        # check the last quote too. (this also checks the "sweet spot"
+        # columns which work differently from the other ones)
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(17, q.term_months)
+        self.assertEqual(3e5, q.min_volume)
+        self.assertEqual(1e6, q.limit_volume)
+        self.assertEqual('ConEd Zone J', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.08106865957514724, q.price)
 
 
