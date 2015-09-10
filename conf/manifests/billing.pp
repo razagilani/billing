@@ -3,7 +3,11 @@
 # app level
 $username = "billing"
 $app = "billing"
-$env = "prod"
+
+# The $environment variable is set by fabric at run time to whatever the user specifies
+# at the configure_app_env environment prompt
+$env = $environment
+
 
 host::app_user {'appuser':
     app        => $app,
