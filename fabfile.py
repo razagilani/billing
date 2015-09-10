@@ -58,6 +58,7 @@ common.CommonFabTask.update_deployment_configs({
             'billing-dev-exchange',
             'billentry-dev-exchange'
         ],
+        "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "extraction-worker-dev": {
         "deploy_version":"3", 
@@ -88,6 +89,7 @@ common.CommonFabTask.update_deployment_configs({
         "services":[
             'billing-dev-worker'
         ],
+        "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "extraction-worker-stage": {
         "deploy_version":"3", 
@@ -118,6 +120,7 @@ common.CommonFabTask.update_deployment_configs({
         "services":[
             'billing-stage-worker'
         ],
+        "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "stage": {
         "deploy_version":"3", 
@@ -149,6 +152,7 @@ common.CommonFabTask.update_deployment_configs({
             'billing-stage-exchange',
             'billentry-stage-exchange'
         ],
+        "puppet_manifest": 'conf/manifests/billing.pp'
     },
     "prod": {
         "deploy_version":"3", 
@@ -180,6 +184,7 @@ common.CommonFabTask.update_deployment_configs({
             'billing-prod-exchange',
             'billentry-prod-exchange'
         ],
+        "puppet_manifest": 'conf/manifests/billing.pp'
     },
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
