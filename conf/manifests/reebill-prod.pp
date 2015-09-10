@@ -34,14 +34,17 @@ package { 'mysql-server':
 package { 'html2ps':
     ensure  => installed
 }
-package { 'libevent-devel':
-    ensure  => installed
-}
 package { 'freetds':
     ensure  => installed
 }
 package { 'freetds-devel':
     ensure  => installed
+}
+package { 'sendmail':
+    ensure => absent,
+}
+package { 'postfix':
+    ensure => installed
 }
 file { "/var/local/${username}/www":
     ensure      => directory,
@@ -78,6 +81,14 @@ file { "/etc/init/billentry-${env}-exchange.conf":
     content => template('conf/billentry-exchange.conf.erb')
 }
 
+file { "/etc/postfix/main.cf":
+    ensure => file,
+    content => template('conf/main.cf.erb'),
+    mode => 644,
+    owner => 'root',
+    require => Package['postfix']
+}
+
 # this needs to be executed by postfix, not reebill-${env}.
 # consider putting it in a different directory.
 $receive_matrix_email_script = "/home/${username}/receive_matrix_email.sh"
@@ -85,13 +96,15 @@ file { $receive_matrix_email_script:
     ensure => file,
     content => template('conf/receive_matrix_email.sh'),
     mode => 755,
-    owner => $username
+    owner => $username,
+    require => Host::App_user['appuser']
 }
 # directory containg the shell script must be executable for other users,
 # and virtualenv directory must also be executable to activate the virtualenv
 file { "/home/${username}":
     ensure => directory,
-    mode => 701
+    mode => 701,
+    require => Host::App_user['appuser']
 }
 file { '/var/local/${username} directory permission':
     path => "/var/local/${username}/",
@@ -100,23 +113,39 @@ file { '/var/local/${username} directory permission':
 }
 
 # email aliases for receiving matrix quote emails
-mailalias { 'matrix-directenergy':
-  name      => 'matrix-directenergy',
-  ensure    => present,
-  recipient => "|${receive_matrix_email_script}"
-}
 mailalias { 'matrix-aep':
-    name      => 'matrix-aep',
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
-mailalias { 'matrix-usge':
-    name      => 'matrix-usge',
+mailalias { 'matrix-amerigreen':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
 mailalias { 'matrix-champion':
-    name      => 'matrix-champion',
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-constellation':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-directenergy':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-entrust':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-majorenergy':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-sfe':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-usge':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
@@ -124,7 +153,8 @@ mailalias { 'matrix-champion':
 # (we could use "subscribe" and "refreshonly" but it would
 # require listing every mail alias here)
 exec { newaliases:
-  path        => ["/usr/bin", "/usr/sbin"]
+    path => ["/usr/bin", "/usr/sbin"],
+    require => Package['postfix']
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
