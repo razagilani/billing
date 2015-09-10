@@ -477,6 +477,7 @@ class QuoteParser(object):
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
         "Below 50,000 ccf/therms".
+
         :param sheet: 0-based index (int) or title (string) of the sheet to use
         :param row: row index (int)
         :param col: column index (int) or letter (string)
@@ -484,6 +485,8 @@ class QuoteParser(object):
         either or both of two named groups, "low" and "high". (Notation is
         "(?P<name>...)": see
         https://docs.python.org/2/library/re.html#regular-expression-syntax)
+        If only "high" is included, the low value will be 0. If only "low" is
+        given, the high value will be None.
         :param expected_unit: pint.unit.Quantity representing the unit used
         in the spreadsheet (such as util.units.unit_registry.MWh)
         :param target_unit: pint.unit.Quantity representing the unit to be
@@ -529,6 +532,8 @@ class QuoteParser(object):
                 elif low % fudge_block_size == fudge_block_size - 1:
                     low += 1
             low = int(low * expected_unit.to(target_unit) / target_unit)
+        else:
+            low = 0
         if high is not None:
             if fudge_high:
                 if high % fudge_block_size == 1:
