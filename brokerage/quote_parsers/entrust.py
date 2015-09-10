@@ -55,7 +55,7 @@ class EntrustMatrixParser(QuoteParser):
           (sheet, 9, 'C', 'Start Month'),
           ] for sheet in EXPECTED_SHEET_TITLES])
 
-    DATE_ROW = 5
+    DATE_ROW = 4
     UTILITY_ROW = 6
     VOLUME_RANGE_ROW = 7
     TERM_ROW = 8
