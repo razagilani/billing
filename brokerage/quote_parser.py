@@ -190,7 +190,7 @@ class SpreadsheetReader(object):
             for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
                                       ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
-                    nvalue = self._get_cell(sheet, nx, ny)
+                    nvalue = self._get_cell(sheet, ny, nx)
                 except IndexError as e:
                     nvalue = repr(e)
                 result += '%s: %s ' % (direction, nvalue)
