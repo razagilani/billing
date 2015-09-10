@@ -1,7 +1,13 @@
+# This file
+
 # app level
-$username = "reebill-prod"
+$username = "billing"
 $app = "billing"
-$env = "prod"
+
+# The $environment variable is set by fabric at run time to whatever the user specifies
+# at the configure_app_env environment prompt
+$env = $environment
+
 
 host::app_user {'appuser':
     app        => $app,
@@ -62,13 +68,13 @@ file { "/home/reebill-${env}/logs":
     owner       => $username,
     group       => $username,
 }
-file { "/etc/httpd/conf.d/billing-prod.conf":
+file { "/etc/httpd/conf.d/billing-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-prod.conf"
+    source => "puppet:///modules/conf/vhosts/billing-${env}.conf"
 }
-file { "/etc/httpd/conf.d/billentry-prod.conf":
+file { "/etc/httpd/conf.d/billentry-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-prod.conf"
+    source => "puppet:///modules/conf/vhosts/billentry-${env}.conf"
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
@@ -152,31 +158,51 @@ exec { newaliases:
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => 'rabbit@portal-prod.nextility.net'
+    cluster => "rabbit@portal-${env}.nextility.net"
 }
 rabbit_mq::base_resource_configuration {$env:
     env => $env
 }
-cron { backup:
-    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-prod/billing/scripts && python backup.py backup billing-prod-backup --access-key AKIAI46IGKZFBH4ILWFA --secret-key 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 > /home/reebill-prod/backup_stdout.log 2> /home/reebill-prod/backup_stderr.log",
-    user => $username,
-    hour => 1,
-    minute => 0
+
+# only prod makes backups
+if $env == "prod" {
+    cron { backup:
+        command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/scripts && python backup.py backup billing-prod-backup --access-key AKIAI46IGKZFBH4ILWFA --secret-key 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 > /home/${username}/backup_stdout.log 2> /home/${username}/backup_stderr.log",
+        user    => $username,
+        hour    => 1,
+        minute  => 0
+    }
 }
+
+# only stage restores data from backup
+if $env == "stage" {
+    cron { destage_from_production:
+        command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/scripts && python backup.py restore --scrub billing-prod-backup --access-key AKIAJUVUCMECRLXFEUMA --secret-key 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 > /home/${username}/destage_stdout.log 2> /home/${username}/destage_stderr.log",
+        user    => $username,
+        hour    => 1,
+        minute  => 0
+    }
+    cron { destage_bills_from_production:
+        command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/scripts &&  python backup.py restore-files-s3 d6b434b4ac de5cd1b859 --access-key AKIAJH4OHWNBRJVKFIWQ --secret-key 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 > /home/${username}/destage_bills_stdout.log 2> /home/${username}/destage_bills_stderr.log",
+        user    => $username,
+        hour    => 1,
+        minute  => 0
+    }
+}
+
 cron { run_reports:
-    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-stage/billing/scripts &&  python run_reports.py > /home/reebill-stage/run_reports_stdout.log 2> /home/reebill-stage/run_reports_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}}/billing/scripts &&  python run_reports.py > /home/${username}/run_reports_stdout.log 2> /home/${username}/run_reports_stderr.log",
     user => $username,
     hour => 3,
     minute => 0
 }
 cron { export_pg_data:
-    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-prod/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/reebill-prod/logs/export_pg_data_altitude_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/${username}/logs/export_pg_data_altitude_stderr.log",
     user => $username,
     minute => 0
 }
-
 cron { export_accounts_data:
-    command => "source /home/reebill-prod/.bash_profile && cd /var/local/reebill-prod/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-prod/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/reebill-prod/logs/export_accounts_to_xls_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/${username}/logs/export_accounts_to_xls_stderr.log",
     user => $username,
     hour => 1,
     minute => 0
