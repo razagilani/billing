@@ -31,12 +31,6 @@ package { 'postgresql93':
 package { 'postgresql93-devel':
     ensure  => installed
 }
-package { 'mysql-devel':
-    ensure  => installed
-}
-package { 'mysql-server':
-    ensure  => installed
-}
 package { 'html2ps':
     ensure  => installed
 }
@@ -63,7 +57,7 @@ file { "/db-${env}":
     owner       => $username,
     group       => $username,
 }
-file { "/home/reebill-${env}/logs":
+file { "/home/${username}/logs":
     ensure      => directory,
     owner       => $username,
     group       => $username,
@@ -104,12 +98,6 @@ file { $receive_matrix_email_script:
     mode => 755,
     owner => $username,
     require => Host::App_user['appuser']
-}
-# directory containg the shell script must be executable for other users,
-# and virtualenv directory must also be executable to activate the virtualenv
-file { "/home/${username}":
-    ensure => directory,
-    mode => 701,
 }
 
 # email aliases for receiving matrix quote emails
