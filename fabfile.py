@@ -10,23 +10,18 @@ import os
 
 from core import init_config, get_db_params
 
-#
-# fab create_reebill_revision common.deploy_interactive -R skyline_internal_prod
-#
+# Target deployment roles, each role can contain 1 or more hosts,
+# each host will have the same commands from Fabric run on them.
 env.roledefs.update({
-    'skyline-internal-prod': ['skyline-internal-prod'],
-    'skyline-internal-stage': ['skyline-internal-stage'],
-    'billing-stage': ['billing-stage'],
-    'billing-prod-01': ['billing-prod-01'],
     'billing-prod': ['billing-prod'],
+    'billing-stage': ['billing-stage'],
+    'billing-dev': ['billing-dev'],
     'billingworker-dev': ['billingworker1-dev', 'billingworker2-dev'],
     'billingworker-stage': ['billingworker1-stage', 'billingworker2-stage'],
-    'billing-dev': ['billing-dev'],
 })
 
-#
-# Configurations that are specific to this app
-#
+# Target environments, each environment specifies where code is deployed, the os user, config files, and more.
+# Each environment should have all the key specified in the example fabfile (deploy/fabfile_example.py)
 common.CommonFabTask.update_deployment_configs({
     "dev": {
         "deploy_version":"4", 
@@ -35,8 +30,6 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"billing", 
         "os_group":"billing",
         "default_deployment_dir":"/var/local/billing/billing",
-        # set up mappings between names and remote files so that a local file can be 
-        # associated and deployed to the value of the name below
         "deployment_dirs": {
             # package name:destination path
             # package names are specified in tasks wrapper decorators
@@ -46,6 +39,7 @@ common.CommonFabTask.update_deployment_configs({
             "doc": "/home/billing/doc",
             "mydoc": "/tmp",
         },
+        # ("relative/path/to/local/file", "full/path/to/remote/file")
         "config_files": [
             ("conf/configs/settings-dev-template.cfg", "/var/local/billing/billing/settings.cfg"),
             ("conf/configs/alembic-dev.ini", "/var/local/billing/billing/alembic.ini"),
@@ -67,11 +61,7 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"billing", 
         "os_group":"billing",
         "default_deployment_dir":"/var/local/billing/billing",
-        # set up mappings between names and remote files so that a local file can be 
-        # associated and deployed to the value of the name below
         "deployment_dirs": {
-            # package name:destination path
-            # package names are specified in tasks wrapper decorators
             "app": "/var/local/billing/billing",
             "www": "/var/local/billing/billing/www",
             "skyliner": "/var/local/billing/billing/skyliner",
@@ -98,11 +88,7 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"billing", 
         "os_group":"billing",
         "default_deployment_dir":"/var/local/billing/billing",
-        # set up mappings between names and remote files so that a local file can be 
-        # associated and deployed to the value of the name below
         "deployment_dirs": {
-            # package name:destination path
-            # package names are specified in tasks wrapper decorators
             "app": "/var/local/billing/billing",
             "www": "/var/local/billing/billing/www",
             "skyliner": "/var/local/billing/billing/skyliner",
@@ -129,11 +115,7 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"billing", 
         "os_group":"billing",
         "default_deployment_dir":"/var/local/billing/billing",
-        # set up mappings between names and remote files so that a local file can be 
-        # associated and deployed to the value of the name below
         "deployment_dirs": {
-            # package name:destination path
-            # package names are specified in tasks wrapper decorators
             "app": "/var/local/billing/billing",
             "www": "/var/local/billing/billing/www",
             "skyliner": "/var/local/billing/billing/skyliner",
@@ -161,11 +143,7 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"billing", 
         "os_group":"billing",
         "default_deployment_dir":"/var/local/billing/billing",
-        # set up mappings between names and remote files so that a local file can be 
-        # associated and deployed to the value of the name below
         "deployment_dirs": {
-            # package name:destination path
-            # package names are specified in tasks wrapper decorators
             "app": "/var/local/billing/billing",
             "www": "/var/local/billing/billing/www",
             "skyliner": "/var/local/billing/billing/skyliner",
