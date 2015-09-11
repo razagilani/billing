@@ -138,9 +138,12 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _process_subtable(self, sheet, start_row):
-        utility = self._reader.get(sheet, start_row, self.UTILITY_COL, basestring)
+        utility = self._reader.get(sheet, start_row, self.UTILITY_COL,
+                                   basestring)
         zone = self._reader.get(sheet, start_row, self.ZONE_COL, basestring)
-        rate_class = self._reader.get(sheet, start_row, self.RATE_CLASS_COL, basestring)
+        rate_class = self._reader.get(sheet, start_row, self.RATE_CLASS_COL,
+                                      basestring)
+        # TODO: determine what this should actually be
         rate_class_alias = rate_class
 
         quote_start_row = start_row + 4
@@ -151,6 +154,7 @@ class LibertyMatrixParser(QuoteParser):
                 [(self._reader.get(sheet, row, col, object) in (None, '')) for
                  col in self._reader.column_range('A', 'H')])
 
+        # TODO: it would probably be simpler to have only one loop
         dates = []
         for row in xrange(quote_start_row, self._reader.get_height(sheet)):
             # blank cell means this is the end of the block
