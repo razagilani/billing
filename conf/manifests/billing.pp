@@ -40,8 +40,8 @@ package { 'freetds':
 package { 'freetds-devel':
     ensure  => installed
 }
-package { 'sendmail':
-    ensure => absent,
+service { 'sendmail':
+    ensure => stopped,
 }
 package { 'postfix':
     ensure => installed
@@ -62,13 +62,28 @@ file { "/home/${username}/logs":
     owner       => $username,
     group       => $username,
 }
+
+
+$billentry_http_python_processes = $env ? {
+    'prod'  => 5,
+    'stage'  => 1,
+    'dev'  => 1,
+    default => 1
+}
+$reebill_http_python_processes = $env ? {
+    'prod'  => 2,
+    'stage'  => 1,
+    'dev'  => 1,
+    default => 1
+}
+
 file { "/etc/httpd/conf.d/billing-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-${env}.conf"
+    content => template('conf/vhosts/billing.conf.erb')
 }
 file { "/etc/httpd/conf.d/billentry-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-${env}.conf"
+    content => template('conf/vhosts/billentry.conf.erb')
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
