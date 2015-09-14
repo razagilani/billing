@@ -46,6 +46,9 @@ service { 'sendmail':
 package { 'postfix':
     ensure => installed
 }
+service { 'postfix':
+    ensure => running,
+}
 file { "/var/local/${username}/www":
     ensure      => directory,
     owner       => $username,

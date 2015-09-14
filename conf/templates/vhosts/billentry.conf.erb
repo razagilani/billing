@@ -28,7 +28,7 @@
 
     WSGIScriptAlias / /var/local/<%= @username%>/billing/bin/run_billentry.py
 
-    WSGIDaemonProcess billentry-<%= @env%> processes=<%= @http_python_processes%> threads=1 user=<%= @username%> group=<%= @username%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
+    WSGIDaemonProcess billentry-<%= @env%> processes=<%= @billentry_http_python_processes%> threads=1 user=<%= @username%> group=<%= @username%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
     WSGIApplicationGroup %{GLOBAL}
 
     WSGIProcessGroup billentry-<%= @env%>
