@@ -77,9 +77,9 @@ $reebill_http_python_processes = $env ? {
     default => 1
 }
 
-file { "/etc/httpd/conf.d/billing-${env}.conf":
+file { "/etc/httpd/conf.d/reebill-${env}.conf":
     ensure => file,
-    content => template('conf/vhosts/billing.conf.erb')
+    content => template('conf/vhosts/reebill.conf.erb')
 }
 file { "/etc/httpd/conf.d/billentry-${env}.conf":
     ensure => file,
