@@ -5,8 +5,9 @@ Pipe an email into stdin to process it.
 import logging
 from sys import stdin
 import traceback
-from brokerage.quote_email_processor import QuoteEmailProcessor, LOG_NAME
-from brokerage.quote_email_processor import CLASSES_FOR_SUPPLIERS, QuoteDAO
+from brokerage.quote_email_processor import QuoteEmailProcessor
+from brokerage.quote_email_processor import QuoteDAO
+from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from core import initialize
 from core.model import AltitudeSession, Session
 
