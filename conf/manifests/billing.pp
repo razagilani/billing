@@ -28,6 +28,10 @@ require httpd::httpd_server
 package { 'postgresql93':
     ensure  => installed
 }
+# needed for gevent python package in skyliner requirements to install
+package { 'libevent-devel':
+    ensure  => installed
+}
 package { 'postgresql93-devel':
     ensure  => installed
 }
