@@ -117,6 +117,7 @@ class QuoteEmailProcessor(object):
         :param quote_dao: QuoteDAO object for handling database access.
         """
         self.logger = logging.getLogger(LOG_NAME)
+        self.logger.setLevel(logging.DEBUG)
         self._clases_for_suppliers = classes_for_suppliers
         self._quote_dao = quote_dao
 
@@ -178,7 +179,7 @@ class QuoteEmailProcessor(object):
 
         :param email_file: text file with the full content of an email
         """
-        self.logger.info('Staring to read email')
+        self.logger.info('Starting to read email')
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
