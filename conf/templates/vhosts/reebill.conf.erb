@@ -32,7 +32,7 @@
 
     WSGIScriptAlias /reebill /var/local/<%= @username%>/billing/bin/run_reebill.py
 
-    WSGIDaemonProcess billing-<%= @env%> user=<%= @username%> processes=<%= @reebill_http_python_processes%> threads=1 group=<%= @env%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
+    WSGIDaemonProcess billing-<%= @env%> user=<%= @username%> processes=<%= @reebill_http_python_processes%> threads=1 group=<%= @username%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
     WSGIApplicationGroup %{GLOBAL}
 
     WSGIProcessGroup billing-<%= @env%>
