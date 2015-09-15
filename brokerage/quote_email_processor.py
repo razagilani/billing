@@ -42,7 +42,7 @@ class MultipleErrors(QuoteProcessingError):
 
     def __str__(self):
         return '%s files processed, %s errors:\n\n%s' % (
-            self.file_count, len(self.messages), '\n\n'.join(self.messages))
+            self.file_count, len(self.messages), '\n'.join(self.messages))
 
 
 class QuoteDAO(object):
@@ -245,7 +245,7 @@ class QuoteEmailProcessor(object):
                 continue
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
-                supplier.name, count, file_name))
+                count, supplier.name, file_name))
 
         if len(error_messages) > 0:
             raise MultipleErrors(len(attachments), error_messages)
