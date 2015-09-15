@@ -14,7 +14,7 @@ class AmerigreenMatrixParser(QuoteParser):
     # tablib.formats.xls gives this error from openpyxl:
     # "ValueError: Negative dates (-0.007) are not supported"
     # solution: open in Excel and re-save in "xls" format.
-    FILE_FORMAT = formats.xls
+    FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 25
     QUOTE_START_ROW = 26
