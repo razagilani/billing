@@ -26,12 +26,21 @@ def upgrade():
     init_model()
     s = Session()
 
-    # TODO: still doesn't create the right aliases--either hard-code them or
-    # just do it manually
+    # create email addresses for supported suppliers
     from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
+    names = {
+        95: 'aep',
+        125: 'amerigreen',
+        928: 'champion',
+        103: 'constellation',
+        14: 'directenergy',
+        78: 'majorenergy',
+        1362: 'sfe',
+        199: 'usge',
+    }
     for supplier_id in CLASSES_FOR_SUPPLIERS:
         supplier = s.query(Supplier).filter_by(id=supplier_id).one()
         email_address = 'matrix-%s@billing-%s.nextility.net' % (
-            re.sub('\W+', '', supplier.name.lower()), ENVIRONMENT_NAME)
+            names[supplier_id], ENVIRONMENT_NAME)
         supplier.matrix_email_recipient = email_address
     s.commit()
