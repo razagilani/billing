@@ -3,6 +3,7 @@ import email
 from itertools import islice
 import logging
 import re
+import traceback
 
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
@@ -26,6 +27,22 @@ class UnknownSupplierError(QuoteProcessingError):
     """Could not match the an email to a supplier, or more than one supplier
     matched it.
     """
+
+class MultipleErrors(QuoteProcessingError):
+    """Used to report a series of one or more error messages from processing
+    multiple files.
+    """
+    def __init__(self, file_count, messages):
+        """
+        :param messages: list of (Exception, stack trace string) tuples
+        """
+        super(QuoteProcessingError, self).__init__()
+        self.file_count = file_count
+        self.messages = messages
+
+    def __str__(self):
+        return '%s files processed, %s errors:\n\n%s' % (
+            self.file_count, len(self.messages), '\n\n'.join(self.messages))
 
 
 class QuoteDAO(object):
@@ -193,9 +210,17 @@ class QuoteEmailProcessor(object):
         self.logger.info('Matched email with supplier: %s' % supplier.name)
 
         attachments = get_attachments(message)
+        # TODO: should 0 attachments be considered an error?
         if len(attachments) == 0:
             self.logger.warn(
                 'Email from %s has no attachments' % supplier.name)
+
+        # since an exception when processing one file causes that file to be
+        # skipped, but other files are still processed, error messages must
+        # be stored so they can be reported after all files have been processed.
+        # to avoid complexity this is done even if there was only one error.
+        error_messages = []
+
         for file_name, file_content in attachments:
             if (supplier.matrix_attachment_name is not None
                 and not re.match(supplier.matrix_attachment_name, file_name)):
@@ -210,12 +235,20 @@ class QuoteEmailProcessor(object):
             try:
                 count = self._process_quote_file(supplier, altitude_supplier,
                                                  file_content)
-            except:
+            except Exception as e:
                 self._quote_dao.rollback()
-                raise
+                message = 'Error when processing attachment "%s":\n%s' % (
+                    file_name, traceback.format_exc())
+                # TODO: is logging this here redundant?
+                self.logger.error(message)
+                error_messages.append(message)
+                continue
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
                 supplier.name, count, file_name))
+
+        if len(error_messages) > 0:
+            raise MultipleErrors(len(attachments), error_messages)
 
         self.logger.info('Finished email from %s' % supplier)
 

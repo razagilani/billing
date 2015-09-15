@@ -5,7 +5,7 @@ from unittest import TestCase
 from mock import Mock, call
 from brokerage.brokerage_model import Company, Quote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO
+    UnknownSupplierError, QuoteDAO, MultipleErrors
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
@@ -114,7 +114,7 @@ class TestQuoteEmailProcessor(TestCase):
         email_file = StringIO(self.message.as_string())
         self.quote_parser.extract_quotes.side_effect = ValidationError
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(MultipleErrors):
             self.qep.process_email(email_file)
 
         # quote parser doesn't like the file format, so no quotes are extracted
