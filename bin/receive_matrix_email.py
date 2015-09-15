@@ -5,8 +5,8 @@ Pipe an email into stdin to process it.
 import logging
 from sys import stdin
 import traceback
-from brokerage.quote_email_processor import QuoteEmailProcessor
-from brokerage.quote_email_processor import QuoteDAO
+
+from brokerage.quote_email_processor import QuoteEmailProcessor, QuoteDAO
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from core import initialize
 from core.model import AltitudeSession, Session
@@ -19,6 +19,10 @@ if __name__ == '__main__':
     except Exception as e:
         logging.error('Error when processing email:\n%s' % (
             traceback.format_exc()))
+        # it is important to exit with non-0 status when an error happened,
+        # because that causes Postfix to send a bounce email with the error
+        # message
+        raise
     finally:
         Session.remove()
         AltitudeSession.remove()
