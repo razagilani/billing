@@ -138,7 +138,8 @@ class QuoteEmailProcessor(object):
         self._clases_for_suppliers = classes_for_suppliers
         self._quote_dao = quote_dao
 
-    def _process_quote_file(self, supplier, altitude_supplier, file_content):
+    def _process_quote_file(self, supplier, altitude_supplier, file_name,
+                            file_content):
         """Process quotes from a single quote file for the given supplier.
         :param supplier: core.model.Supplier instance
         :param altitude_supplier: brokerage.brokerage_model.Company instance
@@ -146,6 +147,7 @@ class QuoteEmailProcessor(object):
         representing a supplier. Not to be confused with the "supplier" table
         (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
         mapping between these two. May be None if the supplier is unknown.
+        :param file_name: name of quote file (can be used to get the date)
         :param file_content: content of a quote file as a string. (A file
         object would be better, but the Python 'email' module processes a
         whole file at a time so it all has to be in memory anyway.)
@@ -156,7 +158,7 @@ class QuoteEmailProcessor(object):
         # pick a QuoteParser class for the given supplier, and load the file
         # into it, and validate the file
         quote_parser = self._clases_for_suppliers[supplier.id]()
-        quote_parser.load_file(quote_file)
+        quote_parser.load_file(quote_file, file_name=file_name)
         quote_parser.validate()
 
         # read and insert quotes in groups of 'BATCH_SIZE'
@@ -234,7 +236,7 @@ class QuoteEmailProcessor(object):
             self._quote_dao.begin_nested()
             try:
                 count = self._process_quote_file(supplier, altitude_supplier,
-                                                 file_content)
+                                                 file_name, file_content)
             except Exception as e:
                 self._quote_dao.rollback()
                 message = 'Error when processing attachment "%s":\n%s' % (
