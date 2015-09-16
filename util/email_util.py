@@ -86,14 +86,16 @@ def send_email(from_user, recipients, subject, originator, password, smtp_host,
 
     server.close()
 
-def get_attachments(email_body):
+
+def get_attachments(message):
     """Get attachments from a MIME email body.
-    :param email_body: MIME email string
+    :param message: some object from the 'email' module, can't tell what type
+    it is
     :return: list of (name, contents) tuples containing the name and contents
     of each attachment as strings.
     """
     result = []
-    for part in email.message_from_string(email_body).walk():
+    for part in message.walk():
         if part.get_content_maintype() == 'multipart':
             continue
         if part.get('Content-Disposition') is None:
@@ -101,6 +103,8 @@ def get_attachments(email_body):
         file_name = part.get_filename()
         if file_name == '':
             continue
+        # this part is an attachment
         file_content = part.get_payload(decode=True)
         result.append((file_name, file_content))
     return result
+

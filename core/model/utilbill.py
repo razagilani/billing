@@ -1,6 +1,7 @@
 from StringIO import StringIO
 import ast
 from datetime import datetime, date
+import re
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LAParams, LTComponent, LTTextLine, LTTextBox, LTPage, \
     LTCurve, LTImage, LTText
@@ -686,7 +687,7 @@ class LayoutElement(Base):
 
     layout_element_id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'))
-    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"))
+    type = Column(Enum(*LAYOUT_TYPES, name="layout_type"), nullable=False)
     page_num = Column(Integer, nullable=False)
     bounding_box_id = Column(Integer, ForeignKey(
         'bounding_box.bounding_box_id'), nullable=False)
@@ -895,9 +896,13 @@ class Charge(Base):
         :param charge_description: display name of the charge (string)
         :return: name converted to standardized name: all caps, no leading or
         trailing whitespace, whitespace between words replaced by
-        underscores.
+        underscores. Dates, prices, and other numbers are removed from the
+        end of the charge, as long as they are at least two digits long.
+        This preserved things like 'Tier 1 Usage'.
         """
-        return sub('(\s|_)+', '_', charge_description.strip().upper())
+        charge_description = re.sub(r'([@(]|\d[\d.]).*', '',
+                                    charge_description.upper())
+        return sub('[\s\-_]+', '_', charge_description.strip().upper())
 
     @staticmethod
     def get_simple_formula(register_binding):
