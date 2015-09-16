@@ -556,7 +556,7 @@ def quote_status():
         'total_count': row.total_count,
         'good': row.today_count > 0,
     } for row in get_quote_status()])
-    AltitudeSession().remove()
+    AltitudeSession.remove()
     Session.remove()
     return result
 
