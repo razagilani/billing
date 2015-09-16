@@ -1,5 +1,4 @@
-"""Receive quotes from suppliers' "matrix" spreadsheets (files from a Dropbox
-directory or email attachments).
+"""Receive quotes from suppliers' "matrix" spreadsheets in a local directory.
 """
 from fcntl import flock, LOCK_EX, LOCK_NB
 from core import initialize
