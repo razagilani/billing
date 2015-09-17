@@ -260,6 +260,17 @@ class UtilBillTest(TestCase):
         self.assertEqual(0, bfh.write_copy_to_file.call_count)
         self.assertEqual(0, pdf_util.get_pdf_text.call_count)
 
+    def test_has_file(self):
+        # UtilBill is created with default state Complete, which means it has
+        # a file. UtilityEstimated also has a file, but Estimated does not.
+        utilbill = UtilBill(MagicMock(), None, None)
+        self.assertEqual(UtilBill.Complete, utilbill.state)
+        self.assertTrue(utilbill.has_file())
+        utilbill.state = UtilBill.UtilityEstimated
+        self.assertTrue(utilbill.has_file())
+        utilbill.state = UtilBill.Estimated
+        self.assertFalse(utilbill.has_file())
+
     def test_replace_estimated_with_complete(self):
         # estimated bill and real bill have different data
         est_bill = UtilBill(MagicMock(), None, None, state=UtilBill.Estimated,
