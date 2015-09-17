@@ -40,26 +40,6 @@ class MyAdminIndexView(AdminIndexView):
         return redirect(url_for('login', next=request.url))
 
 
-class CustomModelView(ModelView):
-    # Disable create, update and delete on model
-    can_create = False
-    can_delete = False
-    can_edit = False
-
-    def is_accessible(self):
-        from core import config
-        if config.get('billentry', 'disable_authentication'):
-            return True
-        return login.current_user.is_authenticated()
-
-    def _handle_view(self, name, **kwargs):
-        if not self.is_accessible():
-            return redirect(url_for('login', next=request.url))
-
-    def __init__(self, model, session, **kwargs):
-        super(CustomModelView, self).__init__(model, session, **kwargs)
-
-
 class LoginModelView(ModelView):
     def is_accessible(self):
         from core import config
@@ -73,6 +53,18 @@ class LoginModelView(ModelView):
 
     def __init__(self, model, session, **kwargs):
         super(LoginModelView, self).__init__(model, session, **kwargs)
+
+class ReadOnlyModelView(LoginModelView):
+    # Disable create, update and delete on model
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+
+class EditOnlyModelView(LoginModelView):
+    can_create = False
+    can_delete = False
+    can_edit = True
 
 
 class SupplierModelView(LoginModelView):
@@ -140,8 +132,8 @@ def make_admin(app):
     the admin UI.
     '''
     admin = Admin(app, index_view=MyAdminIndexView())
-    admin.add_view(CustomModelView(UtilityAccount, Session))
-    admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
+    admin.add_view(ReadOnlyModelView(UtilityAccount, Session))
+    admin.add_view(EditOnlyModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Utility, Session))
     admin.add_view(SupplierModelView(Session))
     admin.add_view(LoginModelView(AltitudeSupplier, Session))
@@ -152,7 +144,7 @@ def make_admin(app):
     admin.add_view(
         LoginModelView(RoleBEUser, Session, name='BillEntry User Role'))
     admin.add_view(ReeBillCustomerModelView(Session, name='ReeBill Account'))
-    admin.add_view(CustomModelView(ReeBill, Session, name='Reebill'))
+    admin.add_view(ReadOnlyModelView(ReeBill, Session, name='Reebill'))
     admin.add_view(customer_group_model_view)
     # it seems that flask-admin doesn't really work with inheritance
     # from core.extraction import TextExtractor, Field, Extractor
