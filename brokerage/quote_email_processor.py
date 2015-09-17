@@ -3,6 +3,7 @@ import email
 from itertools import islice
 import logging
 import re
+import traceback
 
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
@@ -26,6 +27,22 @@ class UnknownSupplierError(QuoteProcessingError):
     """Could not match the an email to a supplier, or more than one supplier
     matched it.
     """
+
+class MultipleErrors(QuoteProcessingError):
+    """Used to report a series of one or more error messages from processing
+    multiple files.
+    """
+    def __init__(self, file_count, messages):
+        """
+        :param messages: list of (Exception, stack trace string) tuples
+        """
+        super(QuoteProcessingError, self).__init__()
+        self.file_count = file_count
+        self.messages = messages
+
+    def __str__(self):
+        return '%s files processed, %s errors:\n\n%s' % (
+            self.file_count, len(self.messages), '\n'.join(self.messages))
 
 
 class QuoteDAO(object):
@@ -117,10 +134,12 @@ class QuoteEmailProcessor(object):
         :param quote_dao: QuoteDAO object for handling database access.
         """
         self.logger = logging.getLogger(LOG_NAME)
+        self.logger.setLevel(logging.DEBUG)
         self._clases_for_suppliers = classes_for_suppliers
         self._quote_dao = quote_dao
 
-    def _process_quote_file(self, supplier, altitude_supplier, file_content):
+    def _process_quote_file(self, supplier, altitude_supplier, file_name,
+                            file_content):
         """Process quotes from a single quote file for the given supplier.
         :param supplier: core.model.Supplier instance
         :param altitude_supplier: brokerage.brokerage_model.Company instance
@@ -128,6 +147,7 @@ class QuoteEmailProcessor(object):
         representing a supplier. Not to be confused with the "supplier" table
         (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
         mapping between these two. May be None if the supplier is unknown.
+        :param file_name: name of quote file (can be used to get the date)
         :param file_content: content of a quote file as a string. (A file
         object would be better, but the Python 'email' module processes a
         whole file at a time so it all has to be in memory anyway.)
@@ -138,7 +158,7 @@ class QuoteEmailProcessor(object):
         # pick a QuoteParser class for the given supplier, and load the file
         # into it, and validate the file
         quote_parser = self._clases_for_suppliers[supplier.id]()
-        quote_parser.load_file(quote_file)
+        quote_parser.load_file(quote_file, file_name=file_name)
         quote_parser.validate()
 
         # read and insert quotes in groups of 'BATCH_SIZE'
@@ -178,7 +198,7 @@ class QuoteEmailProcessor(object):
 
         :param email_file: text file with the full content of an email
         """
-        self.logger.info('Staring to read email')
+        self.logger.info('Starting to read email')
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
@@ -192,9 +212,17 @@ class QuoteEmailProcessor(object):
         self.logger.info('Matched email with supplier: %s' % supplier.name)
 
         attachments = get_attachments(message)
+        # TODO: should 0 attachments be considered an error?
         if len(attachments) == 0:
             self.logger.warn(
                 'Email from %s has no attachments' % supplier.name)
+
+        # since an exception when processing one file causes that file to be
+        # skipped, but other files are still processed, error messages must
+        # be stored so they can be reported after all files have been processed.
+        # to avoid complexity this is done even if there was only one error.
+        error_messages = []
+
         for file_name, file_content in attachments:
             if (supplier.matrix_attachment_name is not None
                 and not re.match(supplier.matrix_attachment_name, file_name)):
@@ -208,13 +236,21 @@ class QuoteEmailProcessor(object):
             self._quote_dao.begin_nested()
             try:
                 count = self._process_quote_file(supplier, altitude_supplier,
-                                                 file_content)
-            except:
+                                                 file_name, file_content)
+            except Exception as e:
                 self._quote_dao.rollback()
-                raise
+                message = 'Error when processing attachment "%s":\n%s' % (
+                    file_name, traceback.format_exc())
+                # TODO: is logging this here redundant?
+                self.logger.error(message)
+                error_messages.append(message)
+                continue
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
-                supplier.name, count, file_name))
+                count, supplier.name, file_name))
+
+        if len(error_messages) > 0:
+            raise MultipleErrors(len(attachments), error_messages)
 
         self.logger.info('Finished email from %s' % supplier)
 
