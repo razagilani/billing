@@ -99,6 +99,14 @@ class QuoteDAO(object):
         """
         self.altitude_session.bulk_save_objects(quote_list)
 
+    def begin(self):
+        """Start transaction in Altitude database for one quote file.
+        (Temporary replacement for begin_nested which works on Postgres but
+        hasn't been working on SQL server.)
+        """
+        # there is nothing to do because a transaction always exists.
+        pass
+
     def begin_nested(self):
         """Start nested transaction in Altitude database for one quote file.
         """
@@ -186,8 +194,10 @@ class QuoteEmailProcessor(object):
 
         If there are no attachments, nothing happens.
 
-        Quotes inserted with a savepoint after each file is completed, so an
-        error in a later file won't affect earlier ones.
+        Quotes should be inserted with a savepoint after each file is
+        completed, so an error in a later file won't affect earlier ones. But
+        for now we are using one transaction per file.
+        TODO: get savepoints working on SQL Server.
 
         Raise EmailError if something went wrong with the email.
         Raise UnknownSupplierError if there was not exactly one supplier
@@ -233,7 +243,7 @@ class QuoteEmailProcessor(object):
 
             self.logger.info('Processing attachment from %s: "%s"' % (
                 supplier.name, file_name))
-            self._quote_dao.begin_nested()
+            self._quote_dao.begin()
             try:
                 count = self._process_quote_file(supplier, altitude_supplier,
                                                  file_name, file_content)
@@ -253,4 +263,5 @@ class QuoteEmailProcessor(object):
             raise MultipleErrors(len(attachments), error_messages)
 
         self.logger.info('Finished email from %s' % supplier)
+        AltitudeSession.remove()
 
