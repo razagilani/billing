@@ -1,7 +1,9 @@
 from datetime import datetime
+import os
 from os.path import join
 import re
 from unittest import TestCase
+
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -22,6 +24,17 @@ def setUpModule():
     create_tables()
     init_model()
     init_altitude_db()
+
+class SpreadsheetFileConverterTest(TestCase):
+    def setUp(self):
+        pass
+
+    def test_convert(self):
+        sfc = SpreadsheetFileConverter()
+        DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage')
+        AEP_FILE_PATH = join(DIRECTORY, 'AEP Energy Matrix 3.0 2015-07-21.xls')
+        with open(AEP_FILE_PATH) as f:
+            sfc.convert_file('AEP Energy Matrix 3.0 2015-07-21.xls', f)
 
 class QuoteParserTest(TestCase):
     def setUp(self):
@@ -254,8 +267,9 @@ class MatrixQuoteParsersTest(TestCase):
         parser = AEPMatrixParser()
         self.assertEqual(0, parser.get_count())
 
-        with open(self.AEP_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+        path = '/Users/dan/n/billing/test/test_brokerage/AEP Energy Matrix 3.0 2015-09-18.xlsb'
+        with open(path, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet, file_name=os.path.basename(path))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
