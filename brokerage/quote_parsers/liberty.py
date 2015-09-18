@@ -11,6 +11,66 @@ from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
 from util.units import unit_registry
 
 
+class PriceQuoteCell(object):
+    def __init__(self, matrix_parser, reader, sheet, row, col):
+        self.matrix_parser = matrix_parser
+        self.reader = reader
+        self.sheet = sheet
+        self.row = row
+        self.col = col
+
+    def generate_quote(self, ):
+        raise NotImplemented
+
+
+class SuperSaverPriceCell(PriceQuoteCell):
+    def __init__(self, matrix_parser, reader, sheet, row, col):
+        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col)
+
+    def generate_quote(self):
+
+        price = self.reader.get(self.sheet, self.row, self.col, float)
+
+        # Fetch Term (in months)
+        term_months = self.reader.get(self.sheet, self.row, self.col - 1, int)
+
+        # Fetch usage tier
+        min_vol, limit_vol = self.matrix_parser._extract_volume_range(
+            self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
+            '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
+            fudge_block_size=5)
+
+        # Fetch start date
+        est_date_row = self.row
+        while self._reader.get(self.sheet, self.row,
+                               self.matrix_parser.START_COL, basestring) == '':
+            est_date_row = est_date_row - 1
+
+        start_from = date_to_datetime(parse_date(
+            self._reader.get(self.sheet, est_date_row,
+                             self.START_COL, basestring)))
+        start_until = date_to_datetime((Month(start_from) + 1).first)
+
+        return MatrixQuote(
+            start_from=start_from, start_until=start_until,
+            term_months=term_months, valid_from=self.matrix_parser._valid_from,
+            valid_until=self.matrix_parser._valid_until,
+            min_volume=min_vol, limit_volume=limit_vol,
+            purchase_of_receivables=False,
+            rate_class_alias='temp', price=price)
+
+
+
+
+
+class NormalPriceCell(object):
+    def __init__(self, matrix_parser, reader, sheet, row, col):
+        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col)
+
+    def generate_quote(self):
+        pass
+
+
 class LibertyMatrixParser(QuoteParser):
     """Parser for Liberty Power spreadsheet.
     """
@@ -138,6 +198,7 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _process_subtable(self, sheet, start_row):
+
         utility = self._reader.get(sheet, start_row, self.UTILITY_COL,
                                    basestring)
         zone = self._reader.get(sheet, start_row, self.ZONE_COL, basestring)
