@@ -1,7 +1,7 @@
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, _assert_true, \
-    excel_number_to_datetime, SimpleCellDateGetter
+    excel_number_to_datetime, SimpleCellDateGetter, SpreadsheetFileConverter
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -65,9 +65,21 @@ class AEPMatrixParser(QuoteParser):
     # below the date cell
     date_getter = SimpleCellDateGetter(SHEET, 3, 'W', None)
 
+    def _preprocess_file(self, quote_file, file_name=None):
+        sfc = SpreadsheetFileConverter()
+        converted_file = sfc.convert_file(quote_file, file_name)
+        return converted_file
+
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(self.SHEET)):
+            # TODO: "state" column (and other column) values actually are 0.0 instead of state names in version converted by soffice
+            # (at least as read by tablib)
+            print '\n'.join(self._reader.get_sheet_titles())
+            sheet = next(s for s in self._reader._databook.sheets() if
+                        s.title == self.SHEET)
+            for i in xrange(16):
+                print '**********', sheet[i]
             state = self._reader.get(self.SHEET, row, self.STATE_COL,
                                      basestring)
             # blank line means end of sheet
