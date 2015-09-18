@@ -5,14 +5,12 @@ import logging
 import re
 import traceback
 
-from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
 from util.email_util import get_attachments
-from brokerage.brokerage_model import Company, CompanyPGSupplier
-from brokerage import quote_parsers
+from brokerage.brokerage_model import Company
 
 LOG_NAME = 'read_quotes'
 
