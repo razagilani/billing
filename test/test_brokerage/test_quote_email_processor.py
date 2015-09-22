@@ -52,7 +52,8 @@ class TestQuoteEmailProcessor(TestCase):
 
         self.assertEqual(
             0, self.quote_dao.get_supplier_objects_for_message.call_count)
-        self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        #self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(0, self.quote_dao.begin.call_count)
         self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
         self.assertEqual(0, self.quote_parser.load_file.call_count)
         self.assertEqual(0, self.quote_parser.extract_quotes.call_count)
@@ -68,7 +69,8 @@ class TestQuoteEmailProcessor(TestCase):
 
         self.quote_dao.get_supplier_objects_for_message.assert_called_once_with(
             self.recipient)
-        self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        #self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(0, self.quote_dao.begin.call_count)
         self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(0, self.quote_dao.commit.call_count)
@@ -81,7 +83,8 @@ class TestQuoteEmailProcessor(TestCase):
         # to do
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
-        self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        #self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(0, self.quote_dao.begin.call_count)
         self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
         self.assertEqual(0, self.quote_parser.load_file.call_count)
         self.assertEqual(0, self.quote_parser.extract_quotes.call_count)
@@ -101,8 +104,8 @@ class TestQuoteEmailProcessor(TestCase):
         # because the file is ignored
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
-        self.assertEqual(0, self.quote_dao.begin_nested.call_count)
-        self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
+        #self.assertEqual(0, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(0, self.quote_dao.begin.call_count)
         self.assertEqual(0, self.quote_parser.load_file.call_count)
         self.assertEqual(0, self.quote_parser.extract_quotes.call_count)
         self.assertEqual(0, self.quote_dao.rollback.call_count)
@@ -120,7 +123,8 @@ class TestQuoteEmailProcessor(TestCase):
         # quote parser doesn't like the file format, so no quotes are extracted
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
-        self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        #self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(1, self.quote_dao.begin.call_count)
         self.assertEqual(0, self.quote_dao.insert_quotes.call_count)
         self.assertEqual(1, self.quote_parser.load_file.call_count)
         self.quote_parser.extract_quotes.assert_called_once_with()
@@ -138,7 +142,8 @@ class TestQuoteEmailProcessor(TestCase):
         # in a nested transaction
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
-        self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        #self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(1, self.quote_dao.begin.call_count)
         self.assertEqual(len(self.quotes),
                          self.quote_dao.insert_quotes.call_count)
         self.assertEqual(1, self.quote_parser.load_file.call_count)
@@ -207,4 +212,4 @@ class TestQuoteEmailProcessorWithDB(TestCase):
     def test_process_email_no_altitude_supplier(self):
         Session().add(self.supplier)
         with self.assertRaises(UnknownSupplierError):
-            self.qep.process_email(self.email_file)
+             self.qep.process_email(self.email_file)
