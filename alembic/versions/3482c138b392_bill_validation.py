@@ -10,7 +10,7 @@ Create Date: 2015-08-17 13:32:34.882940
 from core.model import UtilBill
 
 revision = '3482c138b392'
-down_revision = '1226d67c4c53'
+down_revision = '482dddf4fe5d'
 
 from alembic import op
 import sqlalchemy as sa

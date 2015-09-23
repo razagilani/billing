@@ -507,6 +507,14 @@ class UtilbillProcessingTest(testing_utils.TestCase):
         _, count = self.views.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
+    def test_upload_estimated_bill(self):
+        # at least check that this doesn't raise an exception (due to trying
+        # to extract a utility bills that doesn't have a file). not sure what
+        # else it would be useful to check.
+        account = '99999'
+        self.utilbill_processor.upload_utility_bill(
+            account, None, state=UtilBill.Estimated)
+
     def test_replace_estimated_bill_with_real(self):
         account = '99999'
 

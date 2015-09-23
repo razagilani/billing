@@ -549,7 +549,6 @@ class TestTypeConversion(TestCase):
         """ Tests the address conversion function. Takes into account
         formatting issues, such as switching street and city/state lines. 
         """
-
         # simple address test, with C/O line
         lines = "\n".join(("John Smith", "C/O Smith Johnson", "",
         "1234 Everton Road", "Baltimore, MD 12345"))
@@ -583,6 +582,19 @@ class TestTypeConversion(TestCase):
 
     def test_convert_wg_charges_std(self):
         pass
+
+
+class MainTest(TestCase):
+    def setUp(self):
+        self.bfh = Mock(autospec=BillFileHandler)
+        self.bill = Mock(autospec=UtilBill)
+        
+    
+    def test_extract_bill_without_file(self):
+        self.bill.has_file.return_value = False
+        result = Main(self.bfh).extract(self.bill)
+        # not sure how to test that nothing happened.
+        self.assertFalse(result)
 
 
 class ValidatorTest(TestCase):
@@ -1199,7 +1211,7 @@ class TestIntegration(TestCase):
         clear_db()
 
     def test_extract_real_bill(self):
-        Main(self.bfh).extract(self.bill)
+        self.assertTrue(Main(self.bfh).extract(self.bill))
 
         self.assertEqual(date(2014, 3, 19), self.bill.period_start)
         self.assertEqual(date(2014, 4, 16), self.bill.period_end)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest import TestCase
+from unittest import TestCase, skip
 from brokerage.brokerage_model import Quote, MatrixQuote, \
     load_rate_class_aliases, RateClassAlias, RateClass
 from core import init_altitude_db, init_model
@@ -31,7 +31,7 @@ class QuoteTest(TestCase):
         q = self.quote.clone()
         q.term_months = 0
         self.assertRaises(ValidationError, q.validate)
-        q.term_months = 37
+        q.term_months = 49
         self.assertRaises(ValidationError, q.validate)
 
         q = self.quote.clone()
