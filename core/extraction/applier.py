@@ -455,7 +455,7 @@ class Validator:
     @staticmethod
     def validate_billing_address(utilbill, bills_in_account, value):
         """ Validates billing address by making sure it's a real address,
-        and then checking if previous bills have a similar billing address.
+        and then checking if any previous bill has the same billing address.
         """
         # TODO validate address w/ USPS
 
@@ -467,9 +467,9 @@ class Validator:
     @staticmethod
     def validate_service_address(utilbill, bills_in_account, value):
         """ Validates service address by making sure it's a real address,
-        and then checking if previous bills have a similar service address.
+        and then checking if any previous bill has the same service address.
         """
-        # TODO validate address w/ USPS
+        # TODO validate address w/ USPS: if not valid here, FAILED
 
         for b in bills_in_account:
             if repr(value) == repr(b.service_address):
@@ -618,6 +618,7 @@ class Validator:
         which goes from worst to best.
         If an empty list of states is given, ValueError is raised.
         """
+        # these constants are listed from worst to best
         for vs in UtilBill.VALIDATION_STATES:
             if vs in states:
                 return vs

@@ -1092,10 +1092,12 @@ class ValidatorTest(TestCase):
 
         self.assertEqual(UtilBill.SUCCEEDED, Validator.validate_bill(
             success_bill, keys))
+        # TODO: this comes out as SUCCEEDED only when run as part of the whole module.
         self.assertEqual(UtilBill.REVIEW, Validator.validate_bill(
             review_bill, keys))
         self.assertEqual(UtilBill.FAILED, Validator.validate_bill(
             fail_bill, keys))
+
 
 class TestIntegration(TestCase):
     """Integration test for all extraction-related classes with real bill and
