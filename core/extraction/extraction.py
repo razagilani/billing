@@ -43,15 +43,23 @@ class Main(object):
         self.log = logging.getLogger()
 
     def extract(self, utilbill):
-        """Update the given bill with data extracted from its file. An
-        extractor is chosen automatically.
+        """Update the given bill with data extracted from its file (if it has
+        one). An extractor is chosen automatically.
         :param utilbill: UtilBill
+        :return: True if extraction was performed (regardless of whether any
+        field values were sucessfully extracted and applied), False otherwise
+        (e.g. the bill has no file, or there were no extractors).
         """
+        if not utilbill.has_file():
+            self.log.info(
+                'Skipped extraction for bill %s with no file' % utilbill.id)
+            return False
+
         # try all extractors and use the one that works best, i.e. gets the
         # largest absolute number of fields.
         extractors = model.Session().query(Extractor).all()
         if len(extractors) == 0:
-            return
+            return False
         best_extractor = max(extractors, key=lambda e: e.get_success_count(
             utilbill, self._bill_file_handler))
 
@@ -71,6 +79,7 @@ class Main(object):
                 start=utilbill.period_start, end=utilbill.period_end,
                 received=utilbill.date_received, success=success_count,
                 total=success_count + len(errors), errors=error_list_str))
+        return True
 
     def test_extractor(self, extractor, utilbills):
         """Check performance of the given Extractor on the given set of bills.
@@ -297,6 +306,8 @@ class TextExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
 
+        # TODO: why is declared_attr needed? if possibel define this the
+        # normal way, as a class attribute
         @declared_attr
         def regex(cls):
             "regex column, if not present already."
@@ -324,6 +335,7 @@ class TextExtractor(Extractor):
                 self.regex, text.strip()[:20]))
             return match_groups[0]
 
+    # TODO: why is this commented out? delete if unnecessary
     #fields = relationship(TextField, backref='extractor')
 
     def _prepare_input(self, utilbill, bill_file_handler):

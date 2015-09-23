@@ -118,19 +118,11 @@ def update_layout_extractors(s):
             f.bounding_box = BoundingBox(x0=40, y0=100, x1=200, y1=161)
         if f.applier_key == UtilBillApplier.TOTAL:
             f.bounding_box = BoundingBox(x0=0, y0=-10, x1=255, y1=0)
-
 def upgrade():
-    alembic_upgrade('3482c138b392')
+    alembic_upgrade('482dddf4fe5d')
+
     init_model()
     s = Session()
     update_layout_extractors(s)
 
-    cnm_filename = 'upgrade_scripts/vfuture/charge names map.txt'
-    cnm_infile = open(cnm_filename, 'r')
-    for line in cnm_infile.readlines():
-        (regex, rsi_binding) = re.split(r"\s+\|\s+", line)
-        # 'reviewed' is True because this file was curated by hand
-        s.add(ChargeNameMap(display_name_regex=regex.strip(),
-            rsi_binding=rsi_binding.strip(), reviewed=True))
     s.commit()
-

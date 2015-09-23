@@ -286,7 +286,13 @@ class Supplier(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), nullable=False, unique=True)
 
-    # for importing matrix quotes from files
+    # for importing matrix quotes from emailed files. file name is a regular
+    # expression because file names can contain the current date or other
+    # varying text.
+    matrix_email_recipient = Column(String, unique=True)
+    matrix_attachment_name = Column(String)
+
+    # for importing matrix quotes from files in Dropbox (depricated)
     matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))

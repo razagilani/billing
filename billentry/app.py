@@ -41,7 +41,7 @@ from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import Applier, UtilBillApplier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, Utility
+from core.model import Session, UtilBill, Utility, AltitudeSession
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
 from exc import UnEditableBillError, MissingFileError
@@ -384,17 +384,12 @@ def before_request():
         'login_page', 'locallogin',
         # special endpoint name for all static files--not a URL
         'static']
-    NON_REST_ENDPOINTS = ['admin', 'index']
 
     if not user.is_authenticated():
         if request.endpoint in ALLOWED_ENDPOINTS:
             return
-        if (
-                    request.endpoint in NON_REST_ENDPOINTS or 'admin' in
-                        request.path or 'index' in request.path):
-            set_next_url()
-            return redirect(url_for('login_page'))
-        return Response('Could not verify your access level for that URL', 401)
+        set_next_url()
+        return redirect(url_for('login_page'))
     if user.is_authenticated():
         update_user_session_last_request_time(user)
 
@@ -554,13 +549,16 @@ def quote_status():
     format_date = lambda d: None if d is None else d.replace(
         tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
 
-    return render_template('quote-status.html', data=[{
+    result = render_template('quote-status.html', data=[{
         'name': row.name,
         'date_received': format_date(row.date_received),
         'today_count': row.today_count,
         'total_count': row.total_count,
         'good': row.today_count > 0,
     } for row in get_quote_status()])
+    AltitudeSession.remove()
+    Session.remove()
+    return result
 
 def get_hashed_password(plain_text_password):
     # Hash a password for the first time
