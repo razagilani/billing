@@ -11,9 +11,9 @@ from core import init_config, init_altitude_db
     help='Check validation and parsing of a matrix quote file. SUPPLIER NAME '
          'can be any part of a name of one of the parser classes in the '
          'quote_parsers module (case insensitive).')
-@click.argument('supplier')
+@click.argument('supplier_name')
 @click.argument('file_path')
-def read_file(supplier, file_path):
+def read_file(supplier_name, file_path):
     def clean_name(name):
         return name.lower().replace(' ', '')
 
@@ -21,7 +21,7 @@ def read_file(supplier, file_path):
         parser_class = next(
             getattr(quote_parsers, attr_name)
             for attr_name in dir(quote_parsers) if
-            clean_name(attr_name).find(clean_name(supplier)) != -1)
+            clean_name(attr_name).find(clean_name(supplier_name)) != -1)
         print 'Using', parser_class.__name__
         parser = parser_class()
 
