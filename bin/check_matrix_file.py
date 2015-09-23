@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+from sys import stderr
 
 import click
 
@@ -18,10 +19,15 @@ def read_file(supplier_name, file_path):
         return name.lower().replace(' ', '')
 
     with open(file_path, 'rb') as matrix_file:
-        parser_class = next(
-            getattr(quote_parsers, attr_name)
-            for attr_name in dir(quote_parsers) if
-            clean_name(attr_name).find(clean_name(supplier_name)) != -1)
+        try:
+            parser_class = next(
+                getattr(quote_parsers, attr_name)
+                for attr_name in dir(quote_parsers) if
+                clean_name(attr_name).find(clean_name(supplier_name)) != -1)
+        except StopIteration:
+            print >> stderr, 'Unknown supplier:', supplier_name
+            exit(1)
+
         print 'Using', parser_class.__name__
         parser = parser_class()
 
