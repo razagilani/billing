@@ -420,18 +420,12 @@ class TestTypeConversion(TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        init_test_config()
         create_tables()
         init_model()
-        # FakeS3Manager.start()
 
     @classmethod
     def tearDownClass(cls):
-        # FakeS3Manager.stop()
         pass
-
-    def tearDown(self):
-        clear_db()
 
     def setUp(self):
         clear_db()
@@ -451,6 +445,9 @@ class TestTypeConversion(TestCase):
                 rsi_binding='TRUST_FUND', reviewed=False)]
         type_conversion._get_charge_names_map = Mock(
             return_value=self.charge_names_map)
+
+    def tearDown(self):
+        clear_db()
 
     def test_convert_unit(self):
         # for units already in CHARGE_UNITS, just return them
