@@ -207,12 +207,12 @@ cron { run_reports:
     minute => 0
 }
 cron { export_pg_data:
-    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/${username}/logs/export_pg_data_altitude_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-${env}/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/${username}/logs/export_pg_data_altitude_stderr.log",
     user => $username,
     minute => 0
 }
 cron { export_accounts_data:
-    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/${username}/logs/export_accounts_to_xls_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-${env}/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/${username}/logs/export_accounts_to_xls_stderr.log",
     user => $username,
     hour => 1,
     minute => 0
