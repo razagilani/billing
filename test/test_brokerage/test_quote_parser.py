@@ -63,7 +63,7 @@ class QuoteParserTest(TestCase):
 
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
-    DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage')
+    DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY, 'AEP Energy Matrix 3.0 2015-07-21.xls')
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
