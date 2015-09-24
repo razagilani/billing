@@ -73,8 +73,9 @@ class MatrixQuoteParsersTest(TestCase):
     # read the newer format
     AMERIGREEN_FILE_PATH = join(
         DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
-    CONSTELLATION_FILE_PATH = join(DIRECTORY,
-                                   'Matrix 5 Example - Constellation.xlsx')
+    CONSTELLATION_FILE_PATH = join(
+        DIRECTORY, 'Constellation - SMB Cost+ Matrix_Fully '
+                   'Bundled_09_24_2015.xlsm')
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
