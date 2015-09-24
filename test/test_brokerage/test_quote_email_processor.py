@@ -14,7 +14,7 @@ from exc import ValidationError
 from test import init_test_config, clear_db, create_tables
 
 EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',
-                               'quote_email.txt')
+                               'quote_files', 'quote_email.txt')
 
 def setUpModule():
     init_test_config()
