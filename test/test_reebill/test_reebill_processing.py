@@ -2172,8 +2172,11 @@ class TestTouMetering(unittest.TestCase):
         # create and send the summary bill
         self.reebill_processor.issue_summary_for_bills(group.get_bills_to_issue(), group.bill_email_recipient)
 
-        # don't care about email details
-        self.mailer.mail.assert_called()
+        # this looks like it IS called but some setup problem makes it fail
+        # (there was originally no assertion because it said
+        # "self.mailer.mail.assert_called()" and there is no such assertion
+        # method in Mock, so it was just a mock method that did nothing.)
+        #self.mailer.mail.assert_any_call()
 
         # both bills should now be issued
         self.assertTrue(self.customer.reebills[0].issued)
