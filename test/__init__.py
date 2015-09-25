@@ -67,10 +67,14 @@ def clear_db():
     after running any test that inserts data.
     """
     for S in [Session, AltitudeSession]:
+        # OK to skip any database that is not initialized (in practice should
+        # only apply to AltitudeSession)
+        if S.bind is None:
+            return
         # databases should be initialized, and tests should never be
         # configured to access a remote database
+        assert S.bind.url.host == 'localhost'
         s = S()
-        assert s.bind is None or S.bind.url.host == 'localhost'
 
         S.rollback()
 
