@@ -105,7 +105,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.delete_file(self.utilbill)
 
         #Ensure the file is gone
-        self.utilbill_loader.count_utilbills_with_hash.assert_with(
+        self.utilbill_loader.count_utilbills_with_hash.assert_called_with(
             self.file_hash)
         self.key.delete.assert_called_once_with()
 
