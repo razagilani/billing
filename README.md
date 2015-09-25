@@ -29,4 +29,4 @@ This README would normally document whatever steps are necessary to get your app
 * Other community or team 
 
 
-https://codeship.com/projects/5cafdd50-3d56-0133-7c4d-1abe7f570a4c/status?branch=master
+![Codeship Status for skylineitops/billing](https://codeship.com/projects/5cafdd50-3d56-0133-7c4d-1abe7f570a4c/status?branch=default)
