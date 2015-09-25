@@ -161,6 +161,7 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         create_tables()
         init_model()
         init_altitude_db()
+        clear_db()
 
     def setUp(self):
         # example email containing a USGE matrix spreadsheet, matches the
