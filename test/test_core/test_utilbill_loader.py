@@ -19,15 +19,12 @@ from core.utilbill_loader import UtilBillLoader
 from exc import NoSuchBillException
 
 
-def setUpModule():
-    init_test_config()
-    create_tables()
-    init_model()
-
-
 class UtilbillLoaderTest(unittest.TestCase):
 
     def setUp(self):
+        init_test_config()
+        create_tables()
+        init_model()
         clear_db()
 
         self.session = Session()
