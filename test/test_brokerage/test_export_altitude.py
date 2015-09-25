@@ -44,6 +44,9 @@ class TestUtilityAccountLoaderMethods(TestCase):
         self.rate_class = RateClass(name='test rate class',
                                     utility=self.utility)
 
+    def tearDown(self):
+        clear_db()
+
     def test_create_brokerage_accounts_for_utility_accounts(self):
         ua1 = UtilityAccount('', '20022', self.utility, self.supplier,
                              self.rate_class, Address(), Address())
