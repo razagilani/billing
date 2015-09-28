@@ -196,6 +196,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.qep.process_email(self.email_file)
         self.assertEqual(2144, a.query(Quote).count())
 
+        # TODO: tests block forever without this here. it doesn't even work
+        # when this is moved to tearDown because AltitudeSession (unlike
+        # Session) returns a different object each time it is called. i
+        # haven't figured out why that is yet.
+        a.rollback()
+
     def test_process_email_no_supplier_match(self):
         # supplier is missing but altitude_supplier is present
         AltitudeSession().add(self.altitude_supplier)
