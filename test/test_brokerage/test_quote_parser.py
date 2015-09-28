@@ -274,7 +274,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 7, 21), q1.valid_from)
         self.assertEqual(datetime(2015, 7, 22), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual(100, q1.limit_volume)
+        self.assertEqual(100 * 1000, q1.limit_volume)
         self.assertEqual('DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
