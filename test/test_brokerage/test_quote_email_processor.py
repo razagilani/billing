@@ -5,7 +5,7 @@ from unittest import TestCase
 from mock import Mock, call
 from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO, MultipleErrors
+    UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
@@ -77,7 +77,8 @@ class TestQuoteEmailProcessor(TestCase):
 
     def test_process_email_no_attachment(self):
         # email has no attachment in it
-        self.qep.process_email(StringIO(self.message.as_string()))
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(StringIO(self.message.as_string()))
 
         # supplier objects are looked up and found, but there is nothing else
         # to do
@@ -98,7 +99,8 @@ class TestQuoteEmailProcessor(TestCase):
         self.message.add_header('Content-Disposition', 'attachment',
                                 filename='unknown.xyz')
         email_file = StringIO(self.message.as_string())
-        self.qep.process_email(email_file)
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(email_file)
 
         # supplier objects are looked up and found, but nothing else happens
         # because the file is ignored
