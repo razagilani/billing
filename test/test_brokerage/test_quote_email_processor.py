@@ -3,7 +3,7 @@ from email.message import Message
 import os
 from unittest import TestCase
 from mock import Mock, call
-from brokerage.brokerage_model import Company, Quote
+from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
     UnknownSupplierError, QuoteDAO, MultipleErrors
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
@@ -196,6 +196,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.qep.process_email(self.email_file)
         self.assertEqual(2144, a.query(Quote).count())
 
+        # TODO: tests block forever without this here. it doesn't even work
+        # when this is moved to tearDown because AltitudeSession (unlike
+        # Session) returns a different object each time it is called. i
+        # haven't figured out why that is yet.
+        a.rollback()
+
     def test_process_email_no_supplier_match(self):
         # supplier is missing but altitude_supplier is present
         AltitudeSession().add(self.altitude_supplier)
@@ -211,6 +217,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
             self.qep.process_email(self.email_file)
 
     def test_process_email_no_altitude_supplier(self):
+        # TODO: this should not be necessary here--clear_db() should take
+        # care of it. but without these lines, the test fails except when run
+        #  by itself (presumably because of data left over from previous tests)
+        AltitudeSession().query(MatrixQuote).delete()
+        AltitudeSession().query(Company).delete()
+
         Session().add(self.supplier)
         with self.assertRaises(UnknownSupplierError):
              self.qep.process_email(self.email_file)
