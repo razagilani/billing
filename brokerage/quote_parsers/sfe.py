@@ -57,12 +57,15 @@ class SFEMatrixParser(QuoteParser):
         super(SFEMatrixParser, self).__init__()
 
         # for interpreting volume ranges:
-        # K adds an extra factor of 1000; M adds an extra 1 million
+        # each pattern comes with a factor to multiply the base unit by,
+        # but the base unit itself could be either therms or kWh depending on
+        # the service type (gas or electric).
+        # K adds an extra factor of 1000 to the unit; M adds an extra 1 million.
         self._volume_range_patterns = [
-            ('(?P<low>\d+)-(?P<high>\d+)K', 1000 * unit_registry.kWh),
-            ('(?P<low>\d+)-(?P<high>\d+)M', 1e6 * unit_registry.kWh),
-            ('(?P<low>\d+)K\+', 1000 * unit_registry.kWh),
-            ('(?P<low>\d+)M\+', 1e6 * unit_registry.kWh),
+            ('(?P<low>\d+)-(?P<high>\d+)K', 1000),
+            ('(?P<low>\d+)-(?P<high>\d+)M', 1e6),
+            ('(?P<low>\d+)K\+', 1000),
+            ('(?P<low>\d+)M\+', 1e6),
         ]
 
         self._service_names = ['Elec', 'Gas']
@@ -93,11 +96,13 @@ class SFEMatrixParser(QuoteParser):
             # service type.
             volume_text = self._reader.get(
                 0, row, self.VOLUME_RANGE_COL, basestring)
-            for regex, unit in self._volume_range_patterns:
+            target_unit = self._target_units[service_type]
+            for regex, unit_factor in self._volume_range_patterns:
                 if re.match(regex, volume_text) is not None:
-                    min_vol, limit_vol = self._extract_volume_range(0, row,
-                        self.VOLUME_RANGE_COL, regex, expected_unit=unit,
-                        target_unit=self._target_units[service_type])
+                    min_vol, limit_vol = self._extract_volume_range(
+                        0, row, self.VOLUME_RANGE_COL, regex,
+                        expected_unit=target_unit * unit_factor,
+                        target_unit=target_unit)
                     break
             else:
                 raise ValidationError('Volume range text "%s" did not match '
