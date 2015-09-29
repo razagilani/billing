@@ -165,8 +165,6 @@ class TestQuoteEmailProcessor(TestCase):
         with self.assertRaises(NoQuotesError):
             self.qep.process_email(email_file)
 
-        # normal situation: quotes are extracted from the file and committed
-        # in a nested transaction
         self.assertEqual(
             1, self.quote_dao.get_supplier_objects_for_message.call_count)
         #self.assertEqual(1, self.quote_dao.begin_nested.call_count)
