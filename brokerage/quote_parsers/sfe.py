@@ -55,12 +55,16 @@ class SFEMatrixParser(QuoteParser):
 
     def __init__(self):
         super(SFEMatrixParser, self).__init__()
+
+        # for interpreting volume ranges:
+        # K adds an extra factor of 1000; M adds an extra 1 million
         self._volume_range_patterns = [
-            ('(?P<low>\d+)-(?P<high>\d+)K', unit_registry.kWh),
-            ('(?P<low>\d+)-(?P<high>\d+)M', unit_registry.MWh),
-            ('(?P<low>\d+)K\+', unit_registry.kWh),
-            ('(?P<low>\d+)M\+', unit_registry.MWh),
+            ('(?P<low>\d+)-(?P<high>\d+)K', 1000 * unit_registry.kWh),
+            ('(?P<low>\d+)-(?P<high>\d+)M', 1e6 * unit_registry.kWh),
+            ('(?P<low>\d+)K\+', 1000 * unit_registry.kWh),
+            ('(?P<low>\d+)M\+', 1e6 * unit_registry.kWh),
         ]
+
         self._service_names = ['Elec', 'Gas']
         self._target_units = {'Elec': unit_registry.kWh,
                               'Gas': unit_registry.therm}
