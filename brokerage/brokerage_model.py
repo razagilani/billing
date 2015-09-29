@@ -243,7 +243,6 @@ class MatrixQuote(Quote):
                     'volume range difference > %s: %s' % (
                     self.MAX_VOLUME_DIFFERENCE, difference))
         except AssertionError as e:
-            print self
             raise ValidationError(e.message)
 
     def __str__(self):
