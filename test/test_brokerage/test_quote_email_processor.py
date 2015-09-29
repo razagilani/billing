@@ -2,7 +2,10 @@ from cStringIO import StringIO
 from email.message import Message
 import os
 from unittest import TestCase
-from mock import Mock, call
+
+from mock import Mock
+import statsd
+
 from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
     UnknownSupplierError, QuoteDAO, MultipleErrors
@@ -33,10 +36,17 @@ class TestQuoteEmailProcessor(TestCase):
         # QuoteEmailProcessor expects QuoteParser.extract_quotes to return a
         # generator, not a list
         self.quote_parser.extract_quotes.return_value = (q for q in self.quotes)
+        self.quote_parser.get_count.return_value = len(self.quotes)
         QuoteParserClass = Mock()
         QuoteParserClass.return_value = self.quote_parser
 
-        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao)
+        # might as well use real objects for StatsD metrics; they don't need
+        # to connect to a server
+        self.email_counter = statsd.Counter('email')
+        self.quote_counter = statsd.Counter('quote')
+
+        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao,
+                                       self.email_counter, self.quote_counter)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
