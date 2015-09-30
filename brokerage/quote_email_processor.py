@@ -5,14 +5,12 @@ import logging
 import re
 import traceback
 
-from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from core.model import AltitudeSession, Session, Supplier
 from exc import BillingError
 from util.email_util import get_attachments
-from brokerage.brokerage_model import Company, CompanyPGSupplier
-from brokerage import quote_parsers
+from brokerage.brokerage_model import Company
 
 LOG_NAME = 'read_quotes'
 
@@ -140,17 +138,25 @@ class QuoteEmailProcessor(object):
     # rows allowed per insert statement in pymssql.)
     BATCH_SIZE = 1000
 
-    def __init__(self, classes_for_suppliers, quote_dao):
+    def __init__(self, classes_for_suppliers, quote_dao, email_counter,
+                 quote_counter):
         """
         :param classes_for_suppliers: dictionary mapping the primary keys of
         each Supplier (Supplier.id) to the QuoteParser subclass that handles
         its file format.
         :param quote_dao: QuoteDAO object for handling database access.
+        :param email_counter: statsd.Counter to track number of emails received.
+        :param quote_counter: statsd.Counter to track number of quotes received.
         """
         self.logger = logging.getLogger(LOG_NAME)
         self.logger.setLevel(logging.DEBUG)
         self._clases_for_suppliers = classes_for_suppliers
         self._quote_dao = quote_dao
+
+        # for submitting metrics to StatsD: number of emails received,
+        # number of quotes received
+        self._email_counter = email_counter
+        self._quote_counter = quote_counter
 
     def _process_quote_file(self, supplier, altitude_supplier, file_name,
                             file_content):
@@ -215,6 +221,7 @@ class QuoteEmailProcessor(object):
         :param email_file: text file with the full content of an email
         """
         self.logger.info('Starting to read email')
+        self._email_counter += 1
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
@@ -265,6 +272,7 @@ class QuoteEmailProcessor(object):
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
                 quotes_count, supplier.name, file_name))
+            self._quote_counter += quotes_count
             files_count += 1
 
         if len(error_messages) > 0:
