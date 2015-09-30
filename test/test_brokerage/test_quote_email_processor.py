@@ -3,7 +3,7 @@ from email.message import Message
 import os
 from unittest import TestCase
 
-from mock import Mock
+from mock import Mock, MagicMock
 import statsd
 
 from brokerage.brokerage_model import Company, Quote, MatrixQuote
@@ -179,7 +179,9 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         #  has a corresponding QuoteParser class.
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao)
+        email_counter, quote_counter = MagicMock(), MagicMock()
+        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao,
+                                       email_counter, quote_counter)
 
         # add a supplier to match the example email
         clear_db()
