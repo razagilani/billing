@@ -135,8 +135,9 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
     def test_process_email_good_attachment(self):
+        self.supplier.matrix_attachment_name = 'filename.xls'
         self.message.add_header('Content-Disposition', 'attachment',
-                                filename='filename.xls')
+                                filename='fileNAME.XLS')
         email_file = StringIO(self.message.as_string())
 
         self.qep.process_email(email_file)

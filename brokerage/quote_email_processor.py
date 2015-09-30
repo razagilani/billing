@@ -242,7 +242,8 @@ class QuoteEmailProcessor(object):
         files_count, quotes_count = 0, 0
         for file_name, file_content in attachments:
             if (supplier.matrix_attachment_name is not None
-                and not re.match(supplier.matrix_attachment_name, file_name)):
+                and not re.match(supplier.matrix_attachment_name, file_name,
+                                 flags=re.IGNORECASE)):
                 self.logger.warn(
                     ('Skipped attachment from %s with unexpected '
                     'name: "%s"') % (supplier.name, file_name))
