@@ -22,6 +22,7 @@ QUOTE_METRIC_NAME = 'quote.matrix.quote'
 if __name__ == '__main__':
     try:
         initialize()
+        # TODO: configure with server host and port
         email_counter = statsd.Counter(EMAIL_METRIC_NAME)
         quote_counter = statsd.Counter(QUOTE_METRIC_NAME)
         qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, QuoteDAO(),
