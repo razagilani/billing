@@ -2,7 +2,10 @@ from cStringIO import StringIO
 from email.message import Message
 import os
 from unittest import TestCase
-from mock import Mock, call
+
+from mock import Mock, MagicMock
+import statsd
+
 from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
     UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError, NoQuotesError
@@ -37,7 +40,13 @@ class TestQuoteEmailProcessor(TestCase):
         QuoteParserClass = Mock()
         QuoteParserClass.return_value = self.quote_parser
 
-        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao)
+        # might as well use real objects for StatsD metrics; they don't need
+        # to connect to a server
+        self.email_counter = statsd.Counter('email')
+        self.quote_counter = statsd.Counter('quote')
+
+        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao,
+                                       self.email_counter, self.quote_counter)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
@@ -192,7 +201,9 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         #  has a corresponding QuoteParser class.
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao)
+        email_counter, quote_counter = MagicMock(), MagicMock()
+        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao,
+                                       email_counter, quote_counter)
 
         # add a supplier to match the example email
         clear_db()
