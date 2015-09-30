@@ -22,9 +22,15 @@ QUOTE_METRIC_NAME = 'quote.matrix.quote'
 if __name__ == '__main__':
     try:
         initialize()
-        # TODO: configure with server host and port
+
+        # to submit metrics to StatsD
+        from core import config
+        statsd_connection = statsd.Connection(
+            config.get('monitoring', 'metrics_host'),
+            config.get('monitoring', 'metrics_port'))
         email_counter = statsd.Counter(EMAIL_METRIC_NAME)
         quote_counter = statsd.Counter(QUOTE_METRIC_NAME)
+
         qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, QuoteDAO(),
                                   email_counter, quote_counter)
         qep.process_email(stdin)
