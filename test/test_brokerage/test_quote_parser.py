@@ -402,22 +402,34 @@ class MatrixQuoteParsersTest(TestCase):
 
         quotes = list(parser.extract_quotes())
         # TODO: update to match this spreadsheet
-        self.assertEqual(3744, len(quotes))
+        self.assertEqual(1008, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         q1 = quotes[0]
+        q2 = quotes[-1]
+
         # TODO: update to match this spreadsheet
-        self.assertEqual(datetime(2015, 7, 27), q1.valid_from)
-        self.assertEqual(datetime(2015, 8, 1), q1.valid_until)
-        self.assertEqual(datetime(2015, 8, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 9, 1), q1.start_until)
+        self.assertEqual(datetime(2015, 9, 11), q1.valid_from)
+        self.assertEqual(datetime(2015, 9, 12), q1.valid_until)
+        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(6, q1.term_months)
+        self.assertEqual(3, q1.term_months)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual(74000, q1.limit_volume)
-        self.assertEqual('IL-ComEd', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(25000, q1.limit_volume)
+        self.assertEqual(0.10913, q1.price)
+        self.assertEqual('PEPCO-DC__PEPCO__Default', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0669, q1.price)
+
+        self.assertEqual(21, q2.term_months)
+        self.assertEqual(0.08087, q2.price)
+        self.assertEqual(datetime(2015, 9, 11), q2.valid_from)
+        self.assertEqual(datetime(2015, 9, 12), q2.valid_until)
+        self.assertEqual(datetime(2016, 3, 1), q2.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q2.start_until)
+        self.assertEqual('PEPCO-DC__PEPCO__GTLV/DMGT', q2.rate_class_alias)
+        self.assertEqual(500000, q2.min_volume)
+        self.assertEqual(2000000, q2.limit_volume)
