@@ -8,31 +8,34 @@ from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
     SimpleCellDateGetter
+from exc import ValidationError
 from util.units import unit_registry
 
 
 class PriceQuoteCell(object):
-    def __init__(self, matrix_parser, reader, sheet, row, col):
+    def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
         self.matrix_parser = matrix_parser
         self.reader = reader
         self.sheet = sheet
         self.row = row
         self.col = col
+        self.rate_class_alias = rate_class_alias
 
     def generate_quote(self, ):
         raise NotImplemented
 
 
 class SuperSaverPriceCell(PriceQuoteCell):
-    def __init__(self, matrix_parser, reader, sheet, row, col):
-        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col)
+    def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
+        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col, rate_class_alias)
 
     def generate_quote(self):
-
-        price = self.reader.get(self.sheet, self.row, self.col, float)
+        price = self.reader.get(self.sheet, self.row, self.col, basestring)
+        price = float(price)
 
         # Fetch Term (in months)
-        term_months = self.reader.get(self.sheet, self.row, self.col - 1, int)
+        term_months = self.reader.get(self.sheet, self.row, self.col - 1, basestring)
+        term_months = int(term_months)
 
         # Fetch usage tier
         min_vol, limit_vol = self.matrix_parser._extract_volume_range(
@@ -42,13 +45,13 @@ class SuperSaverPriceCell(PriceQuoteCell):
 
         # Fetch start date
         est_date_row = self.row
-        while self._reader.get(self.sheet, self.row,
-                               self.matrix_parser.START_COL, basestring) == '':
+        while self.reader.get(self.sheet, est_date_row,
+                              self.matrix_parser.START_COL, basestring) == '':
             est_date_row = est_date_row - 1
 
         start_from = date_to_datetime(parse_date(
-            self._reader.get(self.sheet, est_date_row,
-                             self.START_COL, basestring)))
+            self.reader.get(self.sheet, est_date_row,
+                            self.matrix_parser.START_COL, basestring)))
         start_until = date_to_datetime((Month(start_from) + 1).first)
 
         return MatrixQuote(
@@ -57,18 +60,61 @@ class SuperSaverPriceCell(PriceQuoteCell):
             valid_until=self.matrix_parser._valid_until,
             min_volume=min_vol, limit_volume=limit_vol,
             purchase_of_receivables=False,
-            rate_class_alias='temp', price=price)
+            rate_class_alias=self.rate_class_alias, price=price)
 
 
-
-
-
-class NormalPriceCell(object):
-    def __init__(self, matrix_parser, reader, sheet, row, col):
-        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col)
+class NormalPriceCell(PriceQuoteCell):
+    def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
+        super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col, rate_class_alias)
 
     def generate_quote(self):
-        pass
+        price = self.reader.get(self.sheet, self.row, self.col, basestring)
+        price = float(price)
+
+        # Fetch Term (in months). Ugh, while(True). Maybe find a way around this.
+        est_term_row = self.row
+        while True:
+            cell_val = self.reader.get(self.sheet, est_term_row, self.col, basestring)
+            try:
+                month_term = float(cell_val)
+
+                if month_term.is_integer():
+                    term_months = int(month_term)
+                    break
+                else:
+                    # This is just another price, keep going up
+                    est_term_row = est_term_row - 1
+            except ValueError:
+                # Hmm,, do something here.
+                raise
+
+        # Fetch usage tier
+        min_vol, limit_vol = self.matrix_parser._extract_volume_range(
+            self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
+            '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
+            fudge_block_size=5)
+
+        # Fetch start date
+        est_date_row = self.row
+        while self.reader.get(self.sheet, est_date_row,
+                              self.matrix_parser.START_COL, basestring) == '':
+            est_date_row = est_date_row - 1
+
+        start_from = date_to_datetime(parse_date(
+            self.reader.get(self.sheet, est_date_row,
+                            self.matrix_parser.START_COL, basestring)))
+        start_until = date_to_datetime((Month(start_from) + 1).first)
+
+        return MatrixQuote(
+            start_from=start_from, start_until=start_until,
+            term_months=term_months, valid_from=self.matrix_parser._valid_from,
+            valid_until=self.matrix_parser._valid_until,
+            min_volume=min_vol, limit_volume=limit_vol,
+            purchase_of_receivables=False,
+            rate_class_alias=self.rate_class_alias, price=price)
+
+
+
 
 
 class LibertyMatrixParser(QuoteParser):
@@ -198,67 +244,50 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _process_subtable(self, sheet, start_row):
+        pass
 
-        utility = self._reader.get(sheet, start_row, self.UTILITY_COL,
-                                   basestring)
-        zone = self._reader.get(sheet, start_row, self.ZONE_COL, basestring)
-        rate_class = self._reader.get(sheet, start_row, self.RATE_CLASS_COL,
-                                      basestring)
-        # TODO: determine what this should actually be
-        rate_class_alias = rate_class
+    def _scan_for_tables(self, sheet):
+        for row in xrange(1, 800):
+            try:
+                if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
+                    rate_class_alias = '%s__%s__%s' % (
+                        self._reader.get(sheet, row, 'B', basestring),
+                        self._reader.get(sheet, row, 'G', basestring),
+                        self._reader.get(sheet, row, 'M', basestring)
+                    )
+                    if ':' in rate_class_alias:
+                        raise ValueError('Invalid rate class alias %s' % rate_class_alias)
+                    yield (row, rate_class_alias)
+            except ValidationError:
+                pass
 
-        quote_start_row = start_row + 4
-        term_row = start_row + 3
+    def _scan_table_headers(self, sheet, table_start_row):
+        col_price_types = list()
+        for col in xrange(0, 100):
+            try:
+                cell_value = self._reader.get(sheet, table_start_row + 3, col, basestring)
+            except ValidationError:
+                continue
 
-        def row_is_all_blank(row):
-            return all(
-                [(self._reader.get(sheet, row, col, object) in (None, '')) for
-                 col in self._reader.column_range('A', 'H')])
-
-        # TODO: it would probably be simpler to have only one loop
-        dates = []
-        for row in xrange(quote_start_row, self._reader.get_height(sheet)):
-            # blank cell means this is the end of the block
-            if row_is_all_blank(row):
-                break
-            cell_value = self._reader.get(sheet, row, self.START_COL,
-                                          basestring)
-            if cell_value == '':
-                dates.append(dates[-1])
+            if cell_value.isdigit():
+                col_price_types.append((col, NormalPriceCell))
+            elif 'price' in cell_value.lower():
+                col_price_types.append((col, SuperSaverPriceCell))
             else:
-                start_from = date_to_datetime(parse_date(cell_value))
-                dates.append(start_from)
+                # This column then does not indicate that it contains a price quote
+                pass
 
-        for row in xrange(quote_start_row, self._reader.get_height(sheet)):
-            # blank cell means this is the end of the block
-            if row_is_all_blank(row):
-                break
-            start_from = dates[row - quote_start_row]
-            start_until = date_to_datetime((Month(start_from) + 1).first)
-
-            min_vol, limit_vol = self._extract_volume_range(
-                sheet, row, self.VOLUME_RANGE_COL,
-                '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
-                fudge_block_size=5)
-
-            for col in self._reader.column_range(self.PRICE_START_COL,
-                                                 self.PRICE_END_COL):
-                term_months = self._reader.get_matches(sheet, term_row, col,
-                                                       '(\d+)', int)
-                price = self._reader.get_matches(sheet, row, col, '(.*)', float)
-
-                # TODO: remember to handle rate class ids in caller
-                yield MatrixQuote(
-                    start_from=start_from, start_until=start_until,
-                    term_months=term_months, valid_from=self._valid_from,
-                    valid_until=self._valid_until,
-                    min_volume=min_vol, limit_volume=limit_vol,
-                    purchase_of_receivables=False,
-                    rate_class_alias=rate_class_alias, price=price)
-
+        return col_price_types
 
     def _extract_quotes(self):
+        """Go ahead and extract every quote from the spreadsheet"""
+
         sheet = 'DC-PEPCO-DC-SMB'
-        for quote in self._process_subtable(sheet, 5):
-            print quote
-            yield quote
+
+        for (table_start_row, rate_class_alias) in self._scan_for_tables(sheet):
+            for (col, price_type) in self._scan_table_headers(sheet, table_start_row):
+                row_offset = 4
+                while self._reader.get(sheet, table_start_row + row_offset, col, basestring) != '':
+                    yield price_type(self, self._reader, sheet, table_start_row + row_offset, col,
+                                     rate_class_alias).generate_quote()
+                    row_offset += 1
