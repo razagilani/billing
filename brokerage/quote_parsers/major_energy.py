@@ -26,8 +26,8 @@ class MajorEnergyMatrixParser(QuoteParser):
 
     # beware of hidden sheet that contains similar data. "Matrix" is the
     # visible one
-    EXPECTED_SHEET_TITLES = ['Map - Info', 'Matrix']
-    SHEET = 'Matrix'
+    EXPECTED_SHEET_TITLES = ['Commercial E']
+    SHEET = 'Commercial E'
     EXPECTED_CELLS = [
         (SHEET, 3, 'B', 'Effective:'),
         (SHEET, 5, 'B', 'Start'),
