@@ -110,7 +110,8 @@ class MatrixQuoteParsersTest(TestCase):
             # Constellation
             'CLP',
             # Major Energy
-            'NY-CenHud',
+            'electric-NY-CenHud-G - Hud Vil',
+            'gas-NY-RGE',
             # SFE
             'A (NiMo, NYSEG)',
             # Entrust
@@ -385,25 +386,43 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        # 936 rows * 4 columns
-        self.assertEqual(3744, len(quotes))
+        # there should be 936 rows * 4 columns of electric quotes, + 48 rows
+        # * 3 columns - 20 blank cells = 136 gas quotes
+        self.assertEqual(3868, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
-        q1 = quotes[0]
-        self.assertEqual(datetime(2015, 9, 21), q1.valid_from)
-        self.assertEqual(datetime(2015, 10, 7), q1.valid_until)
-        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
-        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(6, q1.term_months)
-        self.assertEqual(0, q1.min_volume)
-        self.assertEqual(74000, q1.limit_volume)
-        self.assertEqual('NY-CenHud', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
-        self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0878, q1.price)
+        # first quote is electric
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 9, 21), q.valid_from)
+        self.assertEqual(datetime(2015, 10, 7), q.valid_until)
+        self.assertEqual(datetime(2015, 10, 1), q.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(74000, q.limit_volume)
+        self.assertEqual('electric-NY-CenHud-G - Hud Vil', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.0878, q.price)
+
+        # last quote is gas
+        q = quotes[-1]
+        self.assertEqual(datetime(2015, 9, 21), q.valid_from)
+        self.assertEqual(datetime(2015, 10, 7), q.valid_until)
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(None, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual('gas-NY-RGE', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.3918, q.price)
+
 
     def test_sfe(self):
         parser = SFEMatrixParser()
