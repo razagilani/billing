@@ -28,6 +28,12 @@ class UnknownSupplierError(QuoteProcessingError):
     matched it.
     """
 
+class NoFilesError(QuoteProcessingError):
+    """There were no attachments or all were skipped."""
+
+class NoQuotesError(QuoteProcessingError):
+    """No quotes were read."""
+
 class MultipleErrors(QuoteProcessingError):
     """Used to report a series of one or more error messages from processing
     multiple files.
@@ -233,6 +239,7 @@ class QuoteEmailProcessor(object):
         # to avoid complexity this is done even if there was only one error.
         error_messages = []
 
+        files_count, quotes_count = 0, 0
         for file_name, file_content in attachments:
             if (supplier.matrix_attachment_name is not None
                 and not re.match(supplier.matrix_attachment_name, file_name)):
@@ -245,8 +252,8 @@ class QuoteEmailProcessor(object):
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
-                count = self._process_quote_file(supplier, altitude_supplier,
-                                                 file_name, file_content)
+                quotes_count = self._process_quote_file(
+                    supplier, altitude_supplier, file_name, file_content)
             except Exception as e:
                 self._quote_dao.rollback()
                 message = 'Error when processing attachment "%s":\n%s' % (
@@ -257,10 +264,18 @@ class QuoteEmailProcessor(object):
                 continue
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
-                count, supplier.name, file_name))
+                quotes_count, supplier.name, file_name))
+            files_count += 1
 
         if len(error_messages) > 0:
             raise MultipleErrors(len(attachments), error_messages)
+
+        # if all files were skipped, or at least one file was read but 0
+        # quotes were in them, it's considered an error
+        if files_count == 0:
+            raise NoFilesError('No files were read')
+        elif quotes_count == 0:
+            raise NoQuotesError('Files contained no quotes')
 
         self.logger.info('Finished email from %s' % supplier)
         AltitudeSession.remove()
