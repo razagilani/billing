@@ -16,11 +16,12 @@ class ConstellationMatrixParser(QuoteParser):
     HEADER_ROW = 4
     VOLUME_RANGE_ROW = 5
     QUOTE_START_ROW = 6
-    STATE_COL = 'A'
-    UTILITY_COL = 'B'
+    STATE_COL = 'B'
+    UDC_COL = 'C'
     TERM_COL = 'C'
     START_FROM_START_COL = 3
     DATE_COL = 'E'
+    # TODO: check these
     PRICE_START_COL = 3
     PRICE_END_COL = 38
 
@@ -46,28 +47,22 @@ class ConstellationMatrixParser(QuoteParser):
 
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(self.SHEET)):
-            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
-                                       (basestring, type(None), datetime))
-            if utility is None:
-                continue
-            elif isinstance(utility, datetime):
-                # repeat of the top of the spreadsheet
-                _assert_equal('Fixed Fully Bundled',
-                              self._reader.get(self.SHEET, row, 0, basestring))
-                _assert_equal('Small Business Cost+ Pricing',
-                              self._reader.get(self.SHEET, row, 'I', basestring))
-                _assert_equal(self._valid_from,
-                              self._reader.get(self.SHEET, row + 1,
-                                               self.DATE_COL, datetime))
-                continue
-            elif utility == 'Utility':
-                # repeat of the header row
-                continue
+            state = self._reader.get(self.SHEET, row, self.STATE_COL, basestring)
+            udc = self._reader.get(self.SHEET, row, self.UDC_COL, basestring)
+            # elif isinstance(utility, datetime):
+            #     # repeat of the top of the spreadsheet
+            #     _assert_equal('Fixed Fully Bundled',
+            #                   self._reader.get(self.SHEET, row, 0, basestring))
+            #     _assert_equal('Small Business Cost+ Pricing',
+            #                   self._reader.get(self.SHEET, row, 'I', basestring))
+            #     _assert_equal(self._valid_from,
+            #                   self._reader.get(self.SHEET, row + 1,
+            #                                    self.DATE_COL, datetime))
+            #     continue
             term_months = self._reader.get(self.SHEET, row, self.TERM_COL,
                                            (int, float))
 
-            # there's no fine-grained classification of customers
-            rate_class_alias = utility
+            rate_class_alias = '-'.join([state, udc])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
