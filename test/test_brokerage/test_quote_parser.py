@@ -363,16 +363,16 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 9, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 10, 1), q1.start_until)
+        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 1, 1), q1.start_until)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(6, q1.term_months)
         self.assertEqual(0, q1.min_volume)
-        self.assertEqual(150000, q1.limit_volume)
-        self.assertEqual('CLP', q1.rate_class_alias)
+        self.assertEqual(30000, q1.limit_volume)
+        self.assertEqual('CT-CLP', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.103578, q1.price)
+        self.assertEqual(0.114373, q1.price)
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()

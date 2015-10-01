@@ -20,57 +20,58 @@ class ConstellationMatrixParser(QuoteParser):
     UTILITY_COL = 'B'
     TERM_COL = 'C'
     START_FROM_START_COL = 3
-    DATE_COL = 'K'
+    DATE_COL = 'E'
     PRICE_START_COL = 3
     PRICE_END_COL = 38
 
-    EXPECTED_SHEET_TITLES = [
-        'SMB Cost+ Matrix',
-    ]
+    # ignore hidden sheet that is the same as the old format!
+    EXPECTED_SHEET_TITLES = [ 'SMB Cost+ Matrix_Data', ]
+    SHEET = 'SMB Cost+ Matrix_Data'
     EXPECTED_CELLS = [
-        (0, 1, 0, 'Fixed Fully Bundled'),
-        (0, 1, 'I', 'Small Business Cost\+ Pricing'),
-        (0, 2, 'A', 'Matrix pricing for customers up to 1000 Ann MWh'),
-        (0, 4, 'A', 'ISO'),
-        (0, 4, 'B', 'Utility'),
-        (0, 4, 'C', 'Term'),
+        (SHEET, 1, 'E', 'Small Business Cost\+ Pricing \(Fully Bundled\)'),
+        (SHEET, 2, 'A', 'Matrix pricing for customers up to 1000 Ann MWh'),
+        (SHEET, 6, 'B', 'State'),
+        (SHEET, 6, 'C', 'UDC'),
+        (SHEET, 6, 'D', 'Term'),
     ]
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
-    date_getter = SimpleCellDateGetter(0, 2, DATE_COL, None)
+    date_getter = SimpleCellDateGetter(SHEET, 5, DATE_COL, None)
 
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
-                0, self.VOLUME_RANGE_ROW, self.PRICE_START_COL,
+                self.SHEET, self.VOLUME_RANGE_ROW, self.PRICE_START_COL,
             self.PRICE_END_COL, r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
             allow_restarting_at_0=True, fudge_low=True)
 
-        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
-            utility = self._reader.get(0, row, self.UTILITY_COL,
+        for row in xrange(self.QUOTE_START_ROW,
+                          self._reader.get_height(self.SHEET)):
+            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        (basestring, type(None), datetime))
             if utility is None:
                 continue
             elif isinstance(utility, datetime):
                 # repeat of the top of the spreadsheet
                 _assert_equal('Fixed Fully Bundled',
-                              self._reader.get(0, row, 0, basestring))
+                              self._reader.get(self.SHEET, row, 0, basestring))
                 _assert_equal('Small Business Cost+ Pricing',
-                              self._reader.get(0, row, 'I', basestring))
+                              self._reader.get(self.SHEET, row, 'I', basestring))
                 _assert_equal(self._valid_from,
-                              self._reader.get(0, row + 1,
+                              self._reader.get(self.SHEET, row + 1,
                                                self.DATE_COL, datetime))
                 continue
             elif utility == 'Utility':
                 # repeat of the header row
                 continue
-            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = self._reader.get(self.SHEET, row, self.TERM_COL,
+                                           (int, float))
 
             # there's no fine-grained classification of customers
             rate_class_alias = utility
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
-                price = self._reader.get(0, row, col,
+                price = self._reader.get(self.SHEET, row, col,
                                          (int, float, type(None)))
                 # skip blank cells. also, many cells that look blank in Excel
                 #  actually have negative prices, such as (35,27) (in
@@ -84,7 +85,7 @@ class ConstellationMatrixParser(QuoteParser):
                 start_from_col = self.START_FROM_START_COL + (
                     col - self.START_FROM_START_COL) / 4 * 4
                 start_from = self._reader.get(
-                    0, self.HEADER_ROW, start_from_col, datetime)
+                    self.SHEET, self.HEADER_ROW, start_from_col, datetime)
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
