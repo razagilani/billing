@@ -15,7 +15,6 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     """
     FILE_FORMAT = formats.xlsx
 
-    # electric-specific coordinates
     HEADER_ROW = 14
     QUOTE_START_ROW = 15
     START_COL = 'B'
