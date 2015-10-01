@@ -28,6 +28,10 @@ require httpd::httpd_server
 package { 'postgresql93':
     ensure  => installed
 }
+# needed for gevent python package in skyliner requirements to install
+package { 'libevent-devel':
+    ensure  => installed
+}
 package { 'postgresql93-devel':
     ensure  => installed
 }
@@ -40,11 +44,14 @@ package { 'freetds':
 package { 'freetds-devel':
     ensure  => installed
 }
-package { 'sendmail':
-    ensure => absent,
+service { 'sendmail':
+    ensure => stopped,
 }
 package { 'postfix':
     ensure => installed
+}
+service { 'postfix':
+    ensure => running,
 }
 file { "/var/local/${username}/www":
     ensure      => directory,
@@ -62,13 +69,28 @@ file { "/home/${username}/logs":
     owner       => $username,
     group       => $username,
 }
-file { "/etc/httpd/conf.d/billing-${env}.conf":
+
+
+$billentry_http_python_processes = $env ? {
+    'prod'  => 5,
+    'stage'  => 1,
+    'dev'  => 1,
+    default => 1
+}
+$reebill_http_python_processes = $env ? {
+    'prod'  => 2,
+    'stage'  => 1,
+    'dev'  => 1,
+    default => 1
+}
+
+file { "/etc/httpd/conf.d/reebill-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billing-${env}.conf"
+    content => template('conf/vhosts/reebill.conf.erb')
 }
 file { "/etc/httpd/conf.d/billentry-${env}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/billentry-${env}.conf"
+    content => template('conf/vhosts/billentry.conf.erb')
 }
 
 file { "/etc/init/billing-${env}-exchange.conf":
@@ -185,12 +207,12 @@ cron { run_reports:
     minute => 0
 }
 cron { export_pg_data:
-    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/${username}/logs/export_pg_data_altitude_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_pg_data_altitude.py > /home/skyline-etl-${env}/Dropbox/skyline-etl/reebill_pg_utility_bills.csv  2> /home/${username}/logs/export_pg_data_altitude_stderr.log",
     user => $username,
     minute => 0
 }
 cron { export_accounts_data:
-    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-${env}}/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/${username}/logs/export_accounts_to_xls_stderr.log",
+    command => "source /home/${username}/.bash_profile && cd /var/local/${username}/billing/bin && python export_accounts_to_xls.py -f /home/skyline-etl-${env}/Dropbox/skyline-etl/reebill_accounts_export.xls  2> /home/${username}/logs/export_accounts_to_xls_stderr.log",
     user => $username,
     hour => 1,
     minute => 0
