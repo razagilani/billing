@@ -77,7 +77,9 @@ class MatrixQuoteParsersTest(TestCase):
     CONSTELLATION_FILE_PATH = join(DIRECTORY,
                                    'Matrix 5 Example - Constellation.xlsx')
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
-    MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
+    MAJOR_FILE_PATH = join(
+        DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
+                   'Gas Rack Rates September 21 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
 
     @classmethod
