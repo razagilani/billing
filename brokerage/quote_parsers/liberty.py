@@ -7,7 +7,7 @@ from util.dateutils import date_to_datetime, parse_date
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
-    SimpleCellDateGetter
+    SimpleCellDateGetter, _assert_equal
 from exc import ValidationError
 from util.units import unit_registry
 
@@ -237,29 +237,40 @@ class LibertyMatrixParser(QuoteParser):
         'PA-WPP-SOHO-National Green E',
         'PA-WPP-SOHO-PA Green']
 
-    EXPECTED_CELLS = chain.from_iterable([[
-        (sheet, 2, 'A', 'EFFECTIVE DATE'),
-        (sheet, 2, 'F', 'STATE'),
-        (sheet, 2, 'H', 'UTILITY'),
-        (sheet, 2, 'K', 'SEGMENT'),
-        (sheet, 2, 'N', 'SIZE REQUIREMENT'),
-        # TODO: these apply to sub-tables rather than the whole sheet
-        (sheet, 5, 'A', 'Utility:'),
-        (sheet, 5, 'F', 'Zone:'),
-        (sheet, 5, 'K', 'Service Class:'),
-        (sheet, 6, 'A', 'Start Date'),
-        (sheet, 6, 'B', 'Size Tier'),
-        (sheet, 6, 'D', 'FIXED PRICE:  Term in Months'),
-        (sheet, 8, 'J', 'Term'),
-        (sheet, 8, 'K', 'Price'),
-        (sheet, 8, 'L', 'Term'),
-        (sheet, 8, 'M', 'Price'),
-        (sheet, 6, 'J', 'Fixed Rate - Super Saver'),
-    # TODO: include other sheets that have different format
-    ] for sheet in ['DC-PEPCO-DC-SMB']])
+    LIBERTY_EXPECTED_CELLS = [
+        (2, 'A', 'EFFECTIVE DATE'),
+        #(2, 'F', 'STATE'),
+        #(2, 'H', 'UTILITY'),
+        #(2, 'K', 'SEGMENT'),
+        #(2, 'N', 'SIZE REQUIREMENT'),
+
+        # This applies to table (of which there are variable-number per sheet), but we check
+        # the existence of only one.
+        (5, 'A', 'Utility:'),
+        #(5, 'F', 'Zone:'),
+        #(5, 'K', 'Service Class:'),
+        (6, 'A', 'Start Date'),
+        (6, 'B', 'Size Tier'),
+        (6, 'D', 'FIXED PRICE:  Term in Months'),
+        #(8, 'J', 'Term'),
+        #(8, 'K', 'Price'),
+        #(8, 'L', 'Term'),
+        #(8, 'M', 'Price'),
+        #(6, 'J', 'Fixed Rate - Super Saver'),
+    ]
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
+
+    def _validate(self):
+        for sheet in self._reader.get_sheet_titles():
+
+            if not self._is_sheet_green(sheet):
+                for (row, col, regexp) in self.LIBERTY_EXPECTED_CELLS:
+                    _assert_equal(regexp, self._reader.get(sheet, row, col, basestring))
+
+                if not any(['2,000,000 kWh' in (self._reader.get(sheet, 3, col, object) or '') for col in xrange(0, 14)]):
+                    raise ValidationError('Size requirements has changed.')
 
     def _scan_for_tables(self, sheet):
         """
@@ -271,13 +282,28 @@ class LibertyMatrixParser(QuoteParser):
         for row in xrange(1, 400):
             try:
                 if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
-                    rate_class_alias = '%s__%s__%s' % (
+                    zone, service_class = None, None
+                    for col in range(0, 14):
+                        cell_val = self._reader.get(sheet, row, col, basestring)
+                        if 'Zone:' == cell_val:
+                            zone = self._reader.get(sheet, row, col+1, basestring) or \
+                                self._reader.get(sheet, row, col+2, basestring)
+                        elif 'Service Class:' == cell_val:
+                            service_class = self._reader.get(sheet, row, col+1, basestring) or \
+                                self._reader.get(sheet, row, col+2, basestring)
+
+                    if not any([zone, service_class]):
+                        raise ValueError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
+
+                    rate_class_alias = '%s-%s-%s' % (
                         self._reader.get(sheet, row, 'B', basestring),
-                        self._reader.get(sheet, row, 'G', basestring),
-                        self._reader.get(sheet, row, 'M', basestring)
+                        zone,
+                        service_class
                     )
+
                     if ':' in rate_class_alias:
                         raise ValueError('Invalid rate class alias %s' % rate_class_alias)
+
                     yield (row, rate_class_alias)
             except ValidationError:
                 pass
@@ -313,14 +339,10 @@ class LibertyMatrixParser(QuoteParser):
         :param sheet:
         :return:
         """
-        try:
-            val = self._reader.get(sheet, 2, 'F', basestring)
-            if 'STATE' in val:
-                return False
-            else:
-                return True
-        except ValidationError:
+        if " green" in sheet.lower() or " wind" in sheet.lower():
             return True
+        else:
+            return False
 
     def _extract_quotes(self):
         """Go ahead and extract every quote from the spreadsheet"""
