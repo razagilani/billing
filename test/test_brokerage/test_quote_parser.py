@@ -8,9 +8,9 @@ from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
-    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser,
-    AmerigreenMatrixParser, ChampionMatrixParser, ConstellationMatrixParser,
-    MajorEnergyMatrixParser, LibertyMatrixParser)
+    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    AmerigreenMatrix Parser, ChampionMatrixParser,LibertyMatrixParser)
+    MajorEnergyMatrixParser, SFEMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -18,9 +18,6 @@ from util.units import unit_registry
 
 def setUpModule():
     init_test_config()
-    create_tables()
-    init_model()
-    init_altitude_db()
 
 class QuoteParserTest(TestCase):
     def setUp(self):
@@ -29,6 +26,10 @@ class QuoteParserTest(TestCase):
             def __init__(self):
                 super(ExampleQuoteParser, self).__init__()
                 self._reader = reader
+            def _load_rate_class_aliases(self):
+                # avoid use of database in this test by overriding this methof
+                # where a database query is made. TODO better way to do this
+                return []
             def _extract_quotes(self):
                 pass
         self.qp = ExampleQuoteParser()
@@ -62,7 +63,7 @@ class QuoteParserTest(TestCase):
 
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
-    DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage')
+    DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY, 'AEP Energy Matrix 3.0 2015-07-21.xls')
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
@@ -74,9 +75,15 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
     CONSTELLATION_FILE_PATH = join(DIRECTORY,
                                    'Matrix 5 Example - Constellation.xlsx')
+    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
-    LIBERTY_FILE_PATH = join(
-        DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+
+    @classmethod
+    def setUpClass(cls):
+        create_tables()
+        init_model()
+        init_altitude_db()
 
     def setUp(self):
         clear_db()
@@ -101,6 +108,10 @@ class MatrixQuoteParsersTest(TestCase):
             'CLP',
             # Major Energy
             'IL-ComEd',
+            # SFE
+            'A (NiMo, NYSEG)',
+            # Entrust
+            'Com Ed', 'ConEd Zone J',
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -391,6 +402,77 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0669, q1.price)
 
+    def test_sfe(self):
+        parser = SFEMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.SFE_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet,
+            file_name='SFE Pricing Worksheet - Sep 8 2015')
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(4350, len(quotes))
+
+        for quote in quotes:
+            quote.validate()
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(150, q1.limit_volume)
+        self.assertEqual('A (NiMo, NYSEG)', q1.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.0678491858390411, q1.price)
+        
+    def test_entrust(self):
+        parser = EntrustMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.ENTRUST_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        # 26 sheets * 4 tables * 5 columns (of prices) * 6 rows
+        self.assertEqual(3120, len(quotes))
+
+        for quote in quotes:
+            quote.validate()
+
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 9, 1), q.start_from)
+        self.assertEqual(datetime(2015, 10, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(15000, q.limit_volume)
+        self.assertEqual('Com Ed', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.08121965893896807, q.price)
+
+        # since this one is especially complicated and also missed a row,
+        # check the last quote too. (this also checks the "sweet spot"
+        # columns which work differently from the other ones)
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(17, q.term_months)
+        self.assertEqual(3e5, q.min_volume)
+        self.assertEqual(1e6, q.limit_volume)
+        self.assertEqual('ConEd Zone J', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.08106865957514724, q.price)
+
     def test_liberty(self):
         parser = LibertyMatrixParser()
         self.assertEqual(0, parser.get_count())
@@ -444,3 +526,5 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('WPP__APS__SP30', q3.rate_class_alias)
         self.assertEqual(500000, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
+
+

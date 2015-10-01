@@ -61,15 +61,15 @@ class SpreadsheetReader(object):
         :param inclusive: if False, 'stop' column is not included
         """
         if isinstance(start, basestring):
-            start = cls._col_letter_to_index(start)
+            start = cls.col_letter_to_index(start)
         if isinstance(stop, basestring):
-            stop = cls._col_letter_to_index(stop)
+            stop = cls.col_letter_to_index(stop)
         if inclusive:
             stop += 1
         return range(start, stop, step)
 
     @classmethod
-    def _col_letter_to_index(cls, letter):
+    def col_letter_to_index(cls, letter):
         """
         :param letter: A-Z (string)
         :return index of spreadsheet column.
@@ -152,6 +152,14 @@ class SpreadsheetReader(object):
         # tablib does not count the "header" as a row
         return self._get_sheet(sheet_number_or_title).height + 1
 
+    def get_width(self, sheet_number_or_title):
+        """Return the number of columns in the given sheet.
+        :param sheet_number_or_title: 0-based index (int) or title (string)
+        of the sheet to use
+        :return: int
+        """
+        return self._get_sheet(sheet_number_or_title).width
+
     def _get_cell(self, sheet, x, y):
         if y == -1:
             # 1st row is the header, 2nd row is index "0"
@@ -170,7 +178,7 @@ class SpreadsheetReader(object):
         """
         sheet = self._get_sheet(sheet_number_or_title)
         y = self._row_number_to_index(row)
-        x = col if isinstance(col, int) else self._col_letter_to_index(col)
+        x = col if isinstance(col, int) else self.col_letter_to_index(col)
         try:
             value = self._get_cell(sheet, x, y)
         except IndexError:
@@ -182,7 +190,7 @@ class SpreadsheetReader(object):
             for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
                                       ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
-                    nvalue = self._get_cell(sheet, nx, ny)
+                    nvalue = self._get_cell(sheet, ny, nx)
                 except IndexError as e:
                     nvalue = repr(e)
                 result += '%s: %s ' % (direction, nvalue)
@@ -201,6 +209,9 @@ class SpreadsheetReader(object):
         are converted from strings to the given types. Raise ValidationError
         if there are 0 matches or the wrong number of matches or any value
         could not be converted to the expected type.
+
+        Commas are removed from strings before converting to 'int' or 'float'.
+
         :param sheet_number_or_title: 0-based index (int) or title (string)
         of the sheet to use
         :param row: row index (int)
@@ -210,12 +221,16 @@ class SpreadsheetReader(object):
         that converts a string to that type, or a list/tuple of them whose
         length corresponds to the number of matches.
         :return: resulting value or list of values
+
         Example:
         >>> self.get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
         >>> self.get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
         """
         if not isinstance(types, (list, tuple)):
             types = [types]
+        # substitute 'parse_number' function for regular int/float
+        types = [{int: parse_number, float: parse_number}.get(t, t)
+                 for t in types]
         text = self.get(sheet_number_or_title, row, col, basestring)
         _assert_match(regex, text)
         m = re.match(regex, text)
@@ -226,7 +241,8 @@ class SpreadsheetReader(object):
             try:
                 value = the_type(group)
             except ValueError:
-                raise ValidationError
+                raise ValidationError('String "%s" couldn\'t be converted to '
+                                      'type %s' % (group, the_type))
             results.append(value)
         if len(results) == 1:
             return results[0]
@@ -340,8 +356,9 @@ class QuoteParser(object):
     # subclasses can set this to use sheet titles to validate the file
     EXPECTED_SHEET_TITLES = None
 
-    # subclassses can fill this with (row, col, regex) tuples to assert
-    # expected contents of certain cells
+    # subclassses can fill this with (row, col, value) tuples to assert
+    # expected contents of certain cells. if value is a string it is
+    # interpreted as a regex (so remember to escape characters like '$').
     EXPECTED_CELLS = []
 
     # energy unit that the supplier uses: convert from this. subclass should
@@ -374,7 +391,12 @@ class QuoteParser(object):
 
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
-        self._rate_class_aliases = load_rate_class_aliases()
+        self._rate_class_aliases = self._load_rate_class_aliases()
+
+    def _load_rate_class_aliases(self):
+        # allow tests to avoid using the database by overriding this method
+        # TODO: using a separate DAO object would be a better way
+        return load_rate_class_aliases()
 
     def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
@@ -397,9 +419,16 @@ class QuoteParser(object):
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
                 set(self._reader.get_sheet_titles())))
-        for sheet_number_or_title, row, col, regex in self.EXPECTED_CELLS:
-            text = self._reader.get(sheet_number_or_title, row, col, basestring)
-            _assert_match(regex, text)
+        for sheet_number_or_title, row, col, expected_value in \
+                self.EXPECTED_CELLS:
+            if isinstance(expected_value, basestring):
+                text = self._reader.get(sheet_number_or_title, row, col,
+                                        basestring)
+                _assert_match(expected_value, text)
+            else:
+                actual_value = self._reader.get(sheet_number_or_title, row, col,
+                                                object)
+                _assert_equal(expected_value, actual_value)
         self._validate()
         self._validated = True
 
@@ -446,12 +475,14 @@ class QuoteParser(object):
         """
         return self._count
 
-    def _extract_volume_range(self, sheet, row, col, regex, fudge_low=False,
-                              fudge_high=False, fudge_block_size=10):
+    def _extract_volume_range(
+            self, sheet, row, col, regex, fudge_low=False, fudge_high=False,
+            fudge_block_size=10, expected_unit=None, target_unit=None):
         """
         Extract numbers representing a range of energy consumption from a
         spreadsheet cell with a string in it like "150-200 MWh" or
         "Below 50,000 ccf/therms".
+
         :param sheet: 0-based index (int) or title (string) of the sheet to use
         :param row: row index (int)
         :param col: column index (int) or letter (string)
@@ -459,6 +490,8 @@ class QuoteParser(object):
         either or both of two named groups, "low" and "high". (Notation is
         "(?P<name>...)": see
         https://docs.python.org/2/library/re.html#regular-expression-syntax)
+        If only "high" is included, the low value will be 0. If only "low" is
+        given, the high value will be None.
         :param expected_unit: pint.unit.Quantity representing the unit used
         in the spreadsheet (such as util.units.unit_registry.MWh)
         :param target_unit: pint.unit.Quantity representing the unit to be
@@ -478,28 +511,41 @@ class QuoteParser(object):
         # will help prevent errors.
         if isinstance(regex, basestring):
             regex = re.compile(regex)
-        assert regex.groupindex in ({'low': 1, 'high': 2},
-                                    {'low': 2, 'high': 1})
+        assert set(regex.groupindex.iterkeys()).issubset({'low', 'high'})
         values = self._reader.get_matches(sheet, row, col, regex,
                                           (int,) * regex.groups)
-        if regex.groupindex['low'] == 1:
+        # TODO: can this be made less verbose?
+        if regex.groupindex.keys() == ['low']:
+            low, high = values, None
+        elif regex.groupindex.keys() == ['high']:
+            low, high = None, values
+        elif regex.groupindex['low'] == 1:
             low, high = values
         else:
+            assert regex.groupindex['high'] == 1
             high, low = values
-        if fudge_low:
-            if low % fudge_block_size == 1:
-                low -= 1
-            elif low % fudge_block_size == fudge_block_size - 1:
-                low += 1
-        if fudge_high:
-            if high % fudge_block_size == 1:
-                high -= 1
-            elif high % fudge_block_size == fudge_block_size - 1:
-                high += 1
-        low = int(low * self.EXPECTED_ENERGY_UNIT.to(
-            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
-        high = int(high * self.EXPECTED_ENERGY_UNIT.to(
-            self.TARGET_ENERGY_UNIT) / self.TARGET_ENERGY_UNIT)
+
+        if expected_unit is None:
+            expected_unit = self.EXPECTED_ENERGY_UNIT
+        if target_unit is None:
+            target_unit = self.TARGET_ENERGY_UNIT
+
+        if low is not None:
+            if fudge_low:
+                if low % fudge_block_size == 1:
+                    low -= 1
+                elif low % fudge_block_size == fudge_block_size - 1:
+                    low += 1
+            low = int(low * expected_unit.to(target_unit) / target_unit)
+        else:
+            low = 0
+        if high is not None:
+            if fudge_high:
+                if high % fudge_block_size == 1:
+                    high -= 1
+                elif high % fudge_block_size == fudge_block_size - 1:
+                    high += 1
+            high = int(high * expected_unit.to(target_unit) / target_unit)
         return low, high
 
     def _extract_volume_ranges_horizontal(

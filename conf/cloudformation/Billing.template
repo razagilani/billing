@@ -31,6 +31,10 @@
       "Type" : "String",
       "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
     },
+    "EmailSecurityGroup" : {
+      "Type" : "String",
+      "Description" : "(Required) Security group allowing email traffic to reach the application instance"
+    },
     "SshSecurityGroup" : {
       "Type" : "String",
       "Description" : "Security group containing ssh access rules"
@@ -223,6 +227,16 @@
         "ToPort" : 80,
         "IpProtocol" : "tcp",
         "SourceSecurityGroupId" : {"Ref" : "ApplicationSecurityGroup"}
+      }
+    },
+    "EmailIngressRule" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "GroupId" : {"Ref" : "ApplicationSecurityGroup"},
+        "FromPort" : 25,
+        "ToPort" : 25,
+        "IpProtocol" : "tcp",
+        "SourceSecurityGroupId" : {"Ref" : "EmailSecurityGroup"}
       }
     },
     "InternalNatDns" : {
