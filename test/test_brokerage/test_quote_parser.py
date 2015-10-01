@@ -19,9 +19,6 @@ from util.units import unit_registry
 
 def setUpModule():
     init_test_config()
-    create_tables()
-    init_model()
-    init_altitude_db()
 
 class QuoteParserTest(TestCase):
     def setUp(self):
@@ -30,6 +27,10 @@ class QuoteParserTest(TestCase):
             def __init__(self):
                 super(ExampleQuoteParser, self).__init__()
                 self._reader = reader
+            def _load_rate_class_aliases(self):
+                # avoid use of database in this test by overriding this methof
+                # where a database query is made. TODO better way to do this
+                return []
             def _extract_quotes(self):
                 pass
         self.qp = ExampleQuoteParser()
@@ -79,6 +80,12 @@ class MatrixQuoteParsersTest(TestCase):
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+
+    @classmethod
+    def setUpClass(cls):
+        create_tables()
+        init_model()
+        init_altitude_db()
 
     def setUp(self):
         clear_db()
