@@ -13,6 +13,10 @@ from util.units import unit_registry
 
 
 class PriceQuoteCell(object):
+    """ Represents a cell containing a price. The generate_quote function contains the instructions
+    necessary to fetch all other data necesssary to produce the quote.
+    """
+
     def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
         self.matrix_parser = matrix_parser
         self.reader = reader
@@ -26,6 +30,9 @@ class PriceQuoteCell(object):
 
 
 class SuperSaverPriceCell(PriceQuoteCell):
+    """ Represents a price in the "Super Saver" columns.
+    """
+
     def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
         super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col, rate_class_alias)
 
@@ -38,10 +45,16 @@ class SuperSaverPriceCell(PriceQuoteCell):
         term_months = int(term_months)
 
         # Fetch usage tier
-        min_vol, limit_vol = self.matrix_parser._extract_volume_range(
-            self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
-            '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
-            fudge_block_size=5)
+        try:
+            min_vol, limit_vol = self.matrix_parser._extract_volume_range(
+                self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
+                '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
+                fudge_block_size=5)
+        except ValidationError as e:
+            if "No Price Tier" in e.message:
+                min_vol, limit_vol = 0, 2000000
+            else:
+                raise
 
         # Fetch start date
         est_date_row = self.row
@@ -64,6 +77,9 @@ class SuperSaverPriceCell(PriceQuoteCell):
 
 
 class NormalPriceCell(PriceQuoteCell):
+    """ Represents a price quote in the normal fixed-rate quote columns.
+    """
+
     def __init__(self, matrix_parser, reader, sheet, row, col, rate_class_alias):
         super(self.__class__, self).__init__(matrix_parser, reader, sheet, row, col, rate_class_alias)
 
@@ -89,10 +105,16 @@ class NormalPriceCell(PriceQuoteCell):
                 raise
 
         # Fetch usage tier
-        min_vol, limit_vol = self.matrix_parser._extract_volume_range(
-            self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
-            '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
-            fudge_block_size=5)
+        try:
+            min_vol, limit_vol = self.matrix_parser._extract_volume_range(
+                self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
+                '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
+                fudge_block_size=5)
+        except ValidationError as e:
+            if "No Price Tier" in e.message:
+                min_vol, limit_vol = 0, 2000000
+            else:
+                raise
 
         # Fetch start date
         est_date_row = self.row
@@ -112,9 +134,6 @@ class NormalPriceCell(PriceQuoteCell):
             min_volume=min_vol, limit_volume=limit_vol,
             purchase_of_receivables=False,
             rate_class_alias=self.rate_class_alias, price=price)
-
-
-
 
 
 class LibertyMatrixParser(QuoteParser):
@@ -240,14 +259,16 @@ class LibertyMatrixParser(QuoteParser):
     ] for sheet in ['DC-PEPCO-DC-SMB']])
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
-
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
-    def _process_subtable(self, sheet, start_row):
-        pass
-
     def _scan_for_tables(self, sheet):
-        for row in xrange(1, 800):
+        """
+        Scan the sheet, row by row, inferring which ones contain headers for tables
+        (which contains price quotes).
+        :param sheet:
+        :return Yields the rows and rate class alias as a tuple:
+        """
+        for row in xrange(1, 400):
             try:
                 if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
                     rate_class_alias = '%s__%s__%s' % (
@@ -262,6 +283,13 @@ class LibertyMatrixParser(QuoteParser):
                 pass
 
     def _scan_table_headers(self, sheet, table_start_row):
+        """
+        Yield column indexes and price quote handlers for a given table.
+        :param sheet:
+        :param table_start_row:
+        :return:
+        """
+
         col_price_types = list()
         for col in xrange(0, 100):
             try:
@@ -279,15 +307,29 @@ class LibertyMatrixParser(QuoteParser):
 
         return col_price_types
 
+    def _is_sheet_green(self, sheet):
+        """
+        Infers whether the given sheet contains
+        :param sheet:
+        :return:
+        """
+        try:
+            val = self._reader.get(sheet, 2, 'F', basestring)
+            if 'STATE' in val:
+                return False
+            else:
+                return True
+        except ValidationError:
+            return True
+
     def _extract_quotes(self):
         """Go ahead and extract every quote from the spreadsheet"""
 
-        sheet = 'DC-PEPCO-DC-SMB'
-
-        for (table_start_row, rate_class_alias) in self._scan_for_tables(sheet):
-            for (col, price_type) in self._scan_table_headers(sheet, table_start_row):
-                row_offset = 4
-                while self._reader.get(sheet, table_start_row + row_offset, col, basestring) != '':
-                    yield price_type(self, self._reader, sheet, table_start_row + row_offset, col,
-                                     rate_class_alias).generate_quote()
-                    row_offset += 1
+        for sheet in [s for s in self.EXPECTED_SHEET_TITLES if not self._is_sheet_green(s)]:
+            for (table_start_row, rate_class_alias) in self._scan_for_tables(sheet):
+                for (col, price_type) in self._scan_table_headers(sheet, table_start_row):
+                    row_offset = 4
+                    while self._reader.get(sheet, table_start_row + row_offset, col, basestring) != '':
+                        yield price_type(self, self._reader, sheet, table_start_row + row_offset, col,
+                                         rate_class_alias).generate_quote()
+                        row_offset += 1
