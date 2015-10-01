@@ -110,7 +110,7 @@ class MatrixQuoteParsersTest(TestCase):
             # Constellation
             'CLP',
             # Major Energy
-            'IL-ComEd',
+            'NY-CenHud',
             # SFE
             'A (NiMo, NYSEG)',
             # Entrust
@@ -392,18 +392,18 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 7, 27), q1.valid_from)
-        self.assertEqual(datetime(2015, 8, 1), q1.valid_until)
-        self.assertEqual(datetime(2015, 8, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 9, 1), q1.start_until)
+        self.assertEqual(datetime(2015, 9, 21), q1.valid_from)
+        self.assertEqual(datetime(2015, 10, 7), q1.valid_until)
+        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(6, q1.term_months)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(74000, q1.limit_volume)
-        self.assertEqual('IL-ComEd', q1.rate_class_alias)
+        self.assertEqual('NY-CenHud', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0669, q1.price)
+        self.assertEqual(0.0878, q1.price)
 
     def test_sfe(self):
         parser = SFEMatrixParser()
