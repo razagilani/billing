@@ -9,8 +9,8 @@ from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
-    AmerigreenMatrix Parser, ChampionMatrixParser,LibertyMatrixParser)
-    MajorEnergyMatrixParser, SFEMatrixParser)
+    AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
+    ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -78,6 +78,7 @@ class MatrixQuoteParsersTest(TestCase):
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(DIRECTORY, 'Matrix 7 Example - Major Energy.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+    LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
 
     @classmethod
     def setUpClass(cls):
