@@ -11,11 +11,12 @@ from mock import Mock
 from boto.s3.connection import S3Connection
 from testfixtures import TempDirectory
 
+from core.extraction import TextExtractor, Field
 from reebill.payment_dao import PaymentDAO
 from util.file_utils import make_directories_if_necessary
 from test import testing_utils as test_utils
 from core import pricing
-from core.model import Supplier, RateClass, UtilityAccount, Base, SupplyGroup
+from core.model import Supplier, RateClass, UtilityAccount, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
 from reebill import journal
 from reebill.reebill_model import Session, Register, Address, ReeBillCustomer
@@ -401,6 +402,10 @@ class TestCaseWithSetup(test_utils.TestCase):
                      period_end=date(2012, 1, 31), target_total=50.00,
                      date_received=date(2011, 2, 3), processed=True)
         session.add(u)
+
+        # at least one Extractor with at least one Field is needed in order
+        # to execute extraction-related code
+        session.add(TextExtractor(name='example extractor', fields=[
+            TextExtractor.TextField(regex='.*', type=Field.DATE)]))
         session.flush()
-        session.commit()
 

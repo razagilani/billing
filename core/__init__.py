@@ -154,7 +154,7 @@ def init_model(uri=None, schema_revision=None):
     check_schema_revision(schema_revision=schema_revision)
     Session.remove()
 
-    log.debug('Initialized database: ' + uri)
+    log.debug('Initialized database: %s' % engine.url)
 
 def init_altitude_db(uri=None):
     """Initialize the Altitude SQL Server database. This is a separate function
@@ -178,7 +178,7 @@ def init_altitude_db(uri=None):
     AltitudeBase.metadata.bind = engine
     AltitudeSession.remove()
 
-    log.debug('Initialized database: ' + uri)
+    log.debug('Initialized database: %s' % engine.url)
 
 def init_celery():
     from core import config

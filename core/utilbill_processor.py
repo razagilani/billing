@@ -251,7 +251,7 @@ class UtilbillProcessor(object):
         """
         # file-dependent validation
         if bill_file is None and state in (
-        UtilBill.UtilityEstimated, UtilBill.Complete):
+                UtilBill.UtilityEstimated, UtilBill.Complete):
             raise ValueError(("A file is required for a complete or "
                               "utility-estimated utility bill"))
         if bill_file is not None and state == UtilBill.Estimated:
