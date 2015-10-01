@@ -22,6 +22,6 @@ CLASSES_FOR_SUPPLIERS = {
     14: DirectEnergyMatrixParser,
     56: EntrustMatrixParser,
     78: MajorEnergyMatrixParser,
+    1362: SFEMatrixParser,
     199: USGEMatrixParser,
-    # TODO: SFE is not in the database yet
 }

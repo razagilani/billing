@@ -208,9 +208,42 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 2000
+    MAX_MIN_VOLUME = 1e6
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 2000
+    MAX_LIMIT_VOLUME = 5e6
+    # TODO SFE has close-together ranges but its units may be wrong--this
+    # number could be bigger
+    MIN_VOLUME_DIFFERENCE = 0
+    MAX_VOLUME_DIFFERENCE = 2e6
+
+    def validate(self):
+        super(MatrixQuote, self).validate()
+        try:
+            if self.min_volume is not None:
+                assert self.min_volume >= self.MIN_MIN_VOLUME, (
+                    'min_volume below %s: %s' % (
+                    self.MIN_MIN_VOLUME, self.min_volume))
+                assert self.min_volume <= self.MAX_MIN_VOLUME, (
+                    'min_volume above %s: %s' % (
+                        self.MAX_MIN_VOLUME, self.min_volume))
+            if self.limit_volume is not None:
+                assert self.limit_volume >= self.MIN_LIMIT_VOLUME, (
+                    'limit_volume below %s: %s' % (
+                    self.MIN_LIMIT_VOLUME, self.limit_volume))
+                assert self.limit_volume <= self.MAX_LIMIT_VOLUME, (
+                    'limit_volume above %s: %s' % (
+                    self.MAX_LIMIT_VOLUME, self.limit_volume))
+            if None not in (self.min_volume, self.limit_volume):
+                difference = self.limit_volume - self.min_volume
+                assert (difference >= self.MIN_VOLUME_DIFFERENCE), (
+                    'volume range difference < %s: %s' %
+                    (self.MIN_VOLUME_DIFFERENCE, difference))
+                assert (self.limit_volume - self.min_volume <=
+                        self.MAX_VOLUME_DIFFERENCE), (
+                    'volume range difference > %s: %s' % (
+                    self.MAX_VOLUME_DIFFERENCE, difference))
+        except AssertionError as e:
+            raise ValidationError(e.message)
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
