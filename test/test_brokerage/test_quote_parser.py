@@ -490,8 +490,13 @@ class MatrixQuoteParsersTest(TestCase):
         for quote in quotes:
             quote.validate()
 
+        # First quote on first page from first table
         q1 = quotes[0]
+
+        # Last quote from first page from last table (super saver)
         q2 = quotes[1007]
+
+        # Last quote (super saver) from last table on last readable sheet
         q3 = quotes[-1]
 
         # TODO: update to match this spreadsheet
@@ -504,7 +509,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(25000, q1.limit_volume)
         self.assertEqual(0.10913, q1.price)
-        self.assertEqual('PEPCO-DC__PEPCO__Default', q1.rate_class_alias)
+        self.assertEqual('PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
 
@@ -514,18 +519,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 9, 12), q2.valid_until)
         self.assertEqual(datetime(2016, 3, 1), q2.start_from)
         self.assertEqual(datetime(2016, 4, 1), q2.start_until)
-        self.assertEqual('PEPCO-DC__PEPCO__GTLV/DMGT', q2.rate_class_alias)
+        self.assertEqual('PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
         self.assertEqual(500000, q2.min_volume)
         self.assertEqual(2000000, q2.limit_volume)
 
-        self.assertEqual(24, q3.term_months)
-        self.assertEqual(0.06807, q3.price)
+        self.assertEqual(15, q3.term_months)
+        self.assertEqual(0.07868, q3.price)
         self.assertEqual(datetime(2015, 9, 11), q3.valid_from)
         self.assertEqual(datetime(2015, 9, 12), q3.valid_until)
-        self.assertEqual(datetime(2015, 12, 1), q3.start_from)
-        self.assertEqual(datetime(2016, 1, 1), q3.start_until)
-        self.assertEqual('WPP__APS__SP30', q3.rate_class_alias)
-        self.assertEqual(500000, q3.min_volume)
+        self.assertEqual(datetime(2016, 3, 1), q3.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q3.start_until)
+        self.assertEqual('WPP-APS-SOHO (Tax ID Required)', q3.rate_class_alias)
+        self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
 
 
