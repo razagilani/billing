@@ -33,27 +33,31 @@ from test.setup_teardown import create_utilbill_processor, \
     TestCaseWithSetup, create_reebill_objects, FakeS3Manager, create_nexus_util
 
 
-def setUpModule():
-    init_test_config()
-    create_tables()
-    init_model()
-    FakeS3Manager.start()
-
-def tearDownModule():
-    FakeS3Manager.stop()
-
 class UtilbillProcessingTest(testing_utils.TestCase):
     """Integration tests for features of the ReeBill application that deal
     with utility bills including database.
     """
     @classmethod
     def setUpClass(cls):
+        # moved these from setUpModule because nosetests doesn't seem to run
+        # setUpModule, leading to failures
+        init_test_config()
+        create_tables()
+        init_model()
+        FakeS3Manager.start()
+
         # these objects don't change during the tests, so they should be
         # created only once.
         cls.utilbill_processor = create_utilbill_processor()
         cls.billupload = cls.utilbill_processor.bill_file_handler
         cls.reebill_processor, cls.views = create_reebill_objects()
         cls.nexus_util = create_nexus_util()
+
+    @classmethod
+    def tearDownClass(cls):
+        # moved from tearDownModule because nosetests doesn't seem to run
+        # setUpModule, leading to failures
+        FakeS3Manager.stop()
 
     def setUp(self):
         clear_db()

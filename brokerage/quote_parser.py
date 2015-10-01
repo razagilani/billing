@@ -391,7 +391,12 @@ class QuoteParser(object):
 
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
-        self._rate_class_aliases = load_rate_class_aliases()
+        self._rate_class_aliases = self._load_rate_class_aliases()
+
+    def _load_rate_class_aliases(self):
+        # allow tests to avoid using the database by overriding this method
+        # TODO: using a separate DAO object would be a better way
+        return load_rate_class_aliases()
 
     def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
