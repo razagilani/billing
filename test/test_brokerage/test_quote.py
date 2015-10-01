@@ -59,8 +59,8 @@ class MatrixQuoteTest(TestCase):
             self.quote.validate()
 
         # min too high
-        self.quote.min_volume = 2e6
-        self.quote.limit_volume = 3e6
+        self.quote.min_volume = 7e6
+        self.quote.limit_volume = 4e6
         with self.assertRaises(ValidationError):
             self.quote.validate()
 
@@ -72,7 +72,7 @@ class MatrixQuoteTest(TestCase):
 
         # limit too high
         self.quote.min_volume = 0
-        self.quote.limit_volume = 1e7
+        self.quote.limit_volume = 2e7
         with self.assertRaises(ValidationError):
             self.quote.validate()
 

@@ -208,13 +208,11 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 1e6
+    MAX_MIN_VOLUME = 1e7
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 5e6
-    # TODO SFE has close-together ranges but its units may be wrong--this
-    # number could be bigger
+    MAX_LIMIT_VOLUME = 1e7
     MIN_VOLUME_DIFFERENCE = 0
-    MAX_VOLUME_DIFFERENCE = 2e6
+    MAX_VOLUME_DIFFERENCE = 1e7
 
     def validate(self):
         super(MatrixQuote, self).validate()
