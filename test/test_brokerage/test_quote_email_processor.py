@@ -5,7 +5,7 @@ from unittest import TestCase
 from mock import Mock, call
 from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO, MultipleErrors
+    UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError, NoQuotesError
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
@@ -33,6 +33,7 @@ class TestQuoteEmailProcessor(TestCase):
         # QuoteEmailProcessor expects QuoteParser.extract_quotes to return a
         # generator, not a list
         self.quote_parser.extract_quotes.return_value = (q for q in self.quotes)
+        self.quote_parser.get_count.return_value = len(self.quotes)
         QuoteParserClass = Mock()
         QuoteParserClass.return_value = self.quote_parser
 
@@ -77,7 +78,8 @@ class TestQuoteEmailProcessor(TestCase):
 
     def test_process_email_no_attachment(self):
         # email has no attachment in it
-        self.qep.process_email(StringIO(self.message.as_string()))
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(StringIO(self.message.as_string()))
 
         # supplier objects are looked up and found, but there is nothing else
         # to do
@@ -98,7 +100,8 @@ class TestQuoteEmailProcessor(TestCase):
         self.message.add_header('Content-Disposition', 'attachment',
                                 filename='unknown.xyz')
         email_file = StringIO(self.message.as_string())
-        self.qep.process_email(email_file)
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(email_file)
 
         # supplier objects are looked up and found, but nothing else happens
         # because the file is ignored
@@ -132,8 +135,9 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
     def test_process_email_good_attachment(self):
+        self.supplier.matrix_attachment_name = 'filename.xls'
         self.message.add_header('Content-Disposition', 'attachment',
-                                filename='filename.xls')
+                                filename='fileNAME.XLS')
         email_file = StringIO(self.message.as_string())
 
         self.qep.process_email(email_file)
@@ -151,6 +155,26 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(1, self.quote_dao.commit.call_count)
 
+    def test_process_email_no_quotes(self):
+        self.message.add_header('Content-Disposition', 'attachment',
+                                filename='filename.xls')
+        email_file = StringIO(self.message.as_string())
+
+        self.quote_parser.extract_quotes.return_value = []
+        self.quote_parser.get_count.return_value = 0
+
+        with self.assertRaises(NoQuotesError):
+            self.qep.process_email(email_file)
+
+        self.assertEqual(
+            1, self.quote_dao.get_supplier_objects_for_message.call_count)
+        #self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(1, self.quote_dao.begin.call_count)
+        self.assertEqual(1, self.quote_dao.insert_quotes.call_count)
+        self.assertEqual(1, self.quote_parser.load_file.call_count)
+        self.quote_parser.extract_quotes.assert_called_once_with()
+        self.assertEqual(0, self.quote_dao.rollback.call_count)
+        self.assertEqual(1, self.quote_dao.commit.call_count)
 
 class TestQuoteEmailProcessorWithDB(TestCase):
     """Integration test using a real email with QuoteEmailProcessor,
