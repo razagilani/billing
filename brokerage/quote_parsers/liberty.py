@@ -101,8 +101,7 @@ class NormalPriceCell(PriceQuoteCell):
                     # This is just another price, keep going up
                     est_term_row = est_term_row - 1
             except ValueError:
-                # Hmm,, do something here.
-                raise
+                raise ValidationError('Expected integer indicating months, but got %s' % cell_val)
 
         # Fetch usage tier
         try:
@@ -279,49 +278,43 @@ class LibertyMatrixParser(QuoteParser):
         :param sheet:
         :return Yields the rows and rate class alias as a tuple:
         """
-        for row in xrange(1, 400):
-            try:
-                if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
-                    zone, service_class = None, None
-                    for col in range(0, 14):
-                        cell_val = self._reader.get(sheet, row, col, basestring)
-                        if 'Zone:' == cell_val:
-                            zone = self._reader.get(sheet, row, col+1, basestring) or \
-                                self._reader.get(sheet, row, col+2, basestring)
-                        elif 'Service Class:' == cell_val:
-                            service_class = self._reader.get(sheet, row, col+1, basestring) or \
-                                self._reader.get(sheet, row, col+2, basestring)
+        for row in xrange(1, self._reader.get_height(sheet)):
+            if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
+                zone, service_class = None, None
+                for col in range(0, self._reader.get_width(sheet)):
+                    cell_val = self._reader.get(sheet, row, col, basestring)
+                    if 'Zone:' == cell_val:
+                        zone = self._reader.get(sheet, row, col+1, basestring) or \
+                            self._reader.get(sheet, row, col+2, basestring)
+                    elif 'Service Class:' == cell_val:
+                        service_class = self._reader.get(sheet, row, col+1, basestring) or \
+                            self._reader.get(sheet, row, col+2, basestring)
 
-                    if not any([zone, service_class]):
-                        raise ValueError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
+                if not any([zone, service_class]):
+                    raise ValidationError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
 
-                    rate_class_alias = '%s-%s-%s' % (
-                        self._reader.get(sheet, row, 'B', basestring),
-                        zone,
-                        service_class
-                    )
+                rate_class_alias = '%s-%s-%s' % (
+                    self._reader.get(sheet, row, 'B', basestring),
+                    zone,
+                    service_class
+                )
 
-                    if ':' in rate_class_alias:
-                        raise ValueError('Invalid rate class alias %s' % rate_class_alias)
+                # If see a colon in the rate class alias, that means that it was incorrectly parsed
+                if ':' in rate_class_alias:
+                    raise ValidationError('Invalid rate class alias %s' % rate_class_alias)
 
-                    yield (row, rate_class_alias)
-            except ValidationError:
-                pass
+                yield (row, rate_class_alias)
 
     def _scan_table_headers(self, sheet, table_start_row):
         """
-        Yield column indexes and price quote handlers for a given table.
         :param sheet:
         :param table_start_row:
-        :return:
+        :return: Tuples containing columns and the type of price in each column (NormalPriceCell or SuperSaverCell)
         """
 
         col_price_types = list()
-        for col in xrange(0, 100):
-            try:
-                cell_value = self._reader.get(sheet, table_start_row + 3, col, basestring)
-            except ValidationError:
-                continue
+        for col in xrange(0, self._reader.get_width(sheet)):
+            cell_value = self._reader.get(sheet, table_start_row + 3, col, basestring)
 
             if cell_value.isdigit():
                 col_price_types.append((col, NormalPriceCell))
