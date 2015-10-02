@@ -40,23 +40,21 @@ class SuperSaverPriceCell(PriceQuoteCell):
         price = self.reader.get(self.sheet, self.row, self.col, basestring)
         price = float(price)
 
-        # Fetch Term (in months)
+        # Fetch Term (in months). This is at a known cell.
         term_months = self.reader.get(self.sheet, self.row, self.col - 1, basestring)
         term_months = int(term_months)
 
-        # Fetch usage tier
-        try:
+        # Fetch usage tier - Handle special case if cell contains "No Price Tier" first.
+        if self.reader.get(self.sheet, self.row,
+                            self.matrix_parser.VOLUME_RANGE_COL, basestring) == 'No Price Tier':
+            min_vol, limit_vol = 0, self.matrix_parser.LIBERTY_KWH_LIMIT
+        else:
             min_vol, limit_vol = self.matrix_parser._extract_volume_range(
                 self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
                 '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
                 fudge_block_size=5)
-        except ValidationError as e:
-            if "No Price Tier" in e.message:
-                min_vol, limit_vol = 0, 2000000
-            else:
-                raise
 
-        # Fetch start date
+        # Fetch start date. This has to be found.
         est_date_row = self.row
         while self.reader.get(self.sheet, est_date_row,
                               self.matrix_parser.START_COL, basestring) == '':
@@ -88,6 +86,8 @@ class NormalPriceCell(PriceQuoteCell):
         price = float(price)
 
         # Fetch Term (in months). Ugh, while(True). Maybe find a way around this.
+        # Keep going up, bypassing floats, until you get an int. Raise exception if
+        # you find anything else.
         est_term_row = self.row
         while True:
             cell_val = self.reader.get(self.sheet, est_term_row, self.col, basestring)
@@ -104,16 +104,14 @@ class NormalPriceCell(PriceQuoteCell):
                 raise ValidationError('Expected integer indicating months, but got %s' % cell_val)
 
         # Fetch usage tier
-        try:
+        if self.reader.get(self.sheet, self.row,
+                            self.matrix_parser.VOLUME_RANGE_COL, basestring) == 'No Price Tier':
+            min_vol, limit_vol = 0, self.matrix_parser.LIBERTY_KWH_LIMIT
+        else:
             min_vol, limit_vol = self.matrix_parser._extract_volume_range(
                 self.sheet, self.row, self.matrix_parser.VOLUME_RANGE_COL,
                 '(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True,
                 fudge_block_size=5)
-        except ValidationError as e:
-            if "No Price Tier" in e.message:
-                min_vol, limit_vol = 0, 2000000
-            else:
-                raise
 
         # Fetch start date
         est_date_row = self.row
@@ -149,6 +147,7 @@ class LibertyMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'M'
     PRICE_START_COL = 'D'
     PRICE_END_COL = 'H'
+    LIBERTY_KWH_LIMIT = 2000000
 
     EXPECTED_SHEET_TITLES = [
         'DC-PEPCO-DC-SMB',
@@ -263,12 +262,14 @@ class LibertyMatrixParser(QuoteParser):
 
     def _validate(self):
         for sheet in self._reader.get_sheet_titles():
-
             if not self._is_sheet_green(sheet):
                 for (row, col, regexp) in self.LIBERTY_EXPECTED_CELLS:
                     _assert_equal(regexp, self._reader.get(sheet, row, col, basestring))
 
-                if not any(['2,000,000 kWh' in (self._reader.get(sheet, 3, col, object) or '') for col in xrange(0, 14)]):
+                # Make sure every sheet maintains the limit KWH of 2,000,000
+                if not any(['%s kWh' % '{:,}'.format(self.LIBERTY_KWH_LIMIT)
+                            in (self._reader.get(sheet, 3, col, object) or '')
+                            for col in xrange(0, 14)]):
                     raise ValidationError('Size requirements has changed.')
 
     def _scan_for_tables(self, sheet):
@@ -328,9 +329,10 @@ class LibertyMatrixParser(QuoteParser):
 
     def _is_sheet_green(self, sheet):
         """
-        Infers whether the given sheet contains
+        Infers whether the given sheet is for "green" or "wind" quotes, which we
+        are not interested in.
         :param sheet:
-        :return:
+        :return: Boolean indicating whether sheet is green/wind or not.
         """
         if " green" in sheet.lower() or " wind" in sheet.lower():
             return True
@@ -343,6 +345,8 @@ class LibertyMatrixParser(QuoteParser):
         for sheet in [s for s in self.EXPECTED_SHEET_TITLES if not self._is_sheet_green(s)]:
             for (table_start_row, rate_class_alias) in self._scan_for_tables(sheet):
                 for (col, price_type) in self._scan_table_headers(sheet, table_start_row):
+                    # row_offset indicates how many rows between start of table and first row
+                    # of price data.
                     row_offset = 4
                     while self._reader.get(sheet, table_start_row + row_offset, col, basestring) != '':
                         yield price_type(self, self._reader, sheet, table_start_row + row_offset, col,
