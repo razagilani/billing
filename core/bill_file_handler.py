@@ -14,7 +14,6 @@ class BillFileHandler(object):
     # for validating file hash strings
     HASH_DIGEST_LENGTH = 64
     HASH_DIGEST_REGEX = '^[0-9a-f]{%s}$' % HASH_DIGEST_LENGTH
-    ALPHA_NUMERIC_REGEX = '^[0-9a-zA-Z]+$'
 
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         """param connection: boto.s3.S3Connection
