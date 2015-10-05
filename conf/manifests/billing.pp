@@ -44,6 +44,10 @@ package { 'freetds':
 package { 'freetds-devel':
     ensure  => installed
 }
+package { 'statsd':
+    ensure => installed
+}
+# TODO: how to ensure statsd is running?
 service { 'sendmail':
     ensure => stopped,
 }
