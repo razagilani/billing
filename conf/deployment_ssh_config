@@ -1,0 +1,479 @@
+# Example:
+# Host arbitraryName
+# HostName internalIP_of_target_host
+# ProxyCommand ssh -i PrivateKey ec2-user@IP_of_accessible_host exec nc %h %p
+# IdentityFile "path/to/private/key/of/target/host"
+# User ec2-user
+
+
+# OLD VPC HOSTS (INCLUDES STAGE, PROD, DEV)
+
+Host skyline-internal-prod
+Hostname skyline-internal-prod.skylineinnovations.net
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-internal-prod.pem
+User ec2-user
+
+Host skyline-external-prod
+Hostname skyline-external-prod.skylineinnovations.net
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-external-prod.pem
+User ec2-user
+
+Host edrop-external-prod
+Hostname edrop-external-prod.skylineinnovations.net
+IdentityFile ~/Dropbox/IT/ec2keys/edrop-external-prod.pem
+User ec2-user
+
+Host vpc-nat-prod
+Hostname vpc-nat-prod.skylineinnovations.net
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-vpc-nat.pem
+User ec2-user
+
+Host skyline-internal-proxy
+HostName 10.0.1.18
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-internal-proxy.pem
+User ec2-user
+
+Host skyline-vpn-prod
+HostName 10.0.1.98
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-vpn-stage.pem
+User ec2-user
+
+Host edrop-external-stage
+HostName 10.0.1.217
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/edrop-external-stage.pem
+User ec2-user
+
+Host www-prod
+HostName 10.0.1.23
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/www-prod.pem
+User ec2-user
+
+Host www-stage
+HostName 10.0.1.118
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/www-stage.pem
+User ec2-user
+
+Host vpc-external-nat
+HostName 10.0.0.234
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/vpc-external-nat.pem
+User ec2-user
+
+Host mta-prod
+HostName 10.0.0.210
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mta-prod.pem
+User ec2-user
+
+Host gae-migration-prod
+HostName 10.0.1.114
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/gaemigration-prod.pem
+User ec2-user
+
+Host billingwiki-prod
+HostName 10.0.1.61
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billingwiki-prod.pem
+User ec2-user
+
+Host steward-dev
+HostName 10.0.1.55
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/steward-dev.pem
+User ec2-user
+
+Host steward-stage
+HostName 10.0.1.201
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/steward-stage.pem
+User ec2-user
+
+Host steward-prod
+HostName 10.0.1.186
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/steward-prod.pem
+User ec2-user
+
+Host jrs-dev
+HostName 10.0.1.102
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/jrs-dev.pem
+User ec2-user
+
+# STAGE HOSTS
+
+Host nat-internal-stage
+HostName 54.165.130.104
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-stage.pem
+User ec2-user
+
+Host nat-external-stage
+HostName 54.84.202.5
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-stage.pem
+User ec2-user
+
+Host olap-stage
+HostName 10.1.1.226
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/olap-stage.pem
+User ec2-user
+
+Host oltp-stage
+HostName 10.1.1.42
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-stage.pem
+User ec2-user
+
+Host nexus-stage
+HostName 10.1.1.35
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nexus-stage.pem
+User ec2-user
+
+Host eureka-stage
+HostName 10.1.1.160
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/eureka-stage.pem
+User ec2-user
+
+Host olap-mongo-stage
+HostName 10.1.1.67
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-stage.pem
+User ec2-user
+
+Host oltp-mongo-stage
+HostName 10.1.1.9
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-stage.pem
+User ec2-user
+
+Host mongo-stage
+HostName 10.1.1.127
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-stage.pem
+User ec2-user
+
+Host portal-stage
+HostName 10.1.1.150
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/portal-stage.pem
+User ec2-user
+
+Host billing-stage
+HostName 10.1.1.144
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-stage.pem
+User ec2-user
+
+Host trurl-stage
+HostName 10.1.1.212
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/trurl-stage.pem
+User ec2-user
+
+Host prospektor-stage
+HostName 10.1.1.132
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/prospektor-stage.pem
+User ec2-user
+
+Host openvpn-stage
+HostName 10.1.0.32
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-stage.pem
+User ec2-user
+
+Host acquisitor-stage
+HostName 10.1.1.129
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/acquisitor-stage.pem
+User ec2-user
+
+Host notifier-stage
+HostName 10.1.1.30
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/notifier-stage.pem
+User ec2-user
+
+Host billingworker1-stage
+HostName 10.1.1.218
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-stage.pem
+User ec2-user
+
+Host billingworker2-stage
+HostName 10.1.1.126
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-stage.pem
+User ec2-user
+
+Host proxy-stage
+HostName 10.1.1.135
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/proxy-stage.pem
+User ec2-user
+
+Host periodik-stage
+HostName 10.1.1.26
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/periodik-stage.pem
+User ec2-user
+
+# PROD HOSTS
+
+Host nat-internal-prod
+HostName 52.4.208.171
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-prod.pem
+User ec2-user
+
+Host nat-external-prod
+HostName 52.5.161.241
+IdentityFile ~/Dropbox/IT/ec2keys/nat-external-prod.pem
+User ec2-user
+
+Host olap-prod
+HostName 10.1.1.249
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/olap-prod.pem
+User ec2-user
+
+Host nexus-prod
+HostName 10.1.1.147
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nexus-prod.pem
+User ec2-user
+
+Host eureka-prod
+HostName 10.1.1.166
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/eureka-prod.pem
+User ec2-user
+
+Host olap-mongo-prod
+HostName 10.1.1.33
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-prod.pem
+User ec2-user
+
+Host oltp-mongo-prod
+HostName 10.1.1.222
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-prod.pem
+User ec2-user
+
+Host mongo-prod
+HostName 10.1.1.34
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-prod.pem
+User ec2-user
+
+Host portal-prod
+HostName 10.1.1.78
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/portal-prod.pem
+User ec2-user
+
+Host billing-prod
+HostName 10.1.1.43
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-prod.pem
+User ec2-user
+
+Host trurl-prod
+HostName 10.1.1.169
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/trurl-prod.pem
+User ec2-user
+
+Host prospektor-prod
+HostName 10.1.1.191
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/prospektor-prod.pem
+User ec2-user
+
+Host openvpn-prod
+HostName 10.1.0.135
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-prod.pem
+User ec2-user
+
+Host acquisitor-prod
+HostName 10.1.1.68
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/acquisitor-prod.pem
+User ec2-user
+
+Host jaspersoftreportserver-prod
+HostName 10.1.1.135
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/jrs-prod.pem
+User ec2-user
+
+Host periodik-prod
+HostName 10.1.1.141
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/periodik-stage.pem
+User ec2-user
+
+Host oltp-prod
+HostName 10.1.1.163
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-prod.pem
+User ec2-user
+
+Host postfix-prod
+HostName 10.1.0.152
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mta-prod.pem
+User ec2-user
+
+
+# DEPRECATED HOSTS
+
+Host skyline-external-stage
+HostName 10.0.1.196
+ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/skyline-external-stage.pem
+User ec2-user
+
+#Host mta-dev
+#HostName 10.0.1.180
+#ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+#IdentityFile ~/Dropbox/IT/ec2keys/mta-dev.pem
+#User ec2-user
+
+#Host snipeit-dev
+#HostName 10.0.1.187
+#ProxyCommand ssh vpc-nat-prod  exec nc %h %p
+#IdentityFile ~/Dropbox/IT/ec2keys/snipeit-dev.pem
+#User ec2-user
+
+# DEV HOSTS
+
+Host nat-internal-dev
+HostName 54.165.153.25
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-dev.pem
+User ec2-user
+
+Host nat-external-dev
+HostName 52.5.106.42
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-dev.pem
+User ec2-user
+
+Host openvpnas-dev
+Hostname 10.1.0.227
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-dev.pem
+User openvpnas
+
+Host mongo-dev
+HostName 10.1.1.194
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-dev.pem
+User ec2-user
+
+Host oltp-dev
+HostName 10.1.1.23
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-dev.pem
+User ec2-user
+
+Host oltp-mongo-dev
+HostName 10.1.1.7
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/oltp-dev.pem
+User ec2-user
+
+Host billing-dev
+HostName 10.1.1.26
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-dev.pem
+User ec2-user
+
+Host mta-dev
+HostName 10.1.0.252
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mta-dev.pem
+User ec2-user
+
+
+
+Host billingworker1-dev
+HostName 10.1.1.181
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-dev.pem
+User ec2-user
+
+Host billingworker2-dev
+HostName 10.1.1.156
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/billing-dev.pem
+User ec2-user
+
+Host trurl-dev
+HostName 10.1.1.193
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/trurl-dev.pem
+User ec2-user
+
+Host prospektor-dev
+HostName 10.1.1.234
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/prospektor-dev.pem
+User ec2-user
+
+Host openvpn-dev
+HostName 10.1.0.102
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/nat-internal-dev.pem
+User ec2-user
+
+Host acquisitor-dev
+HostName 10.1.1.223
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/acquisitor-dev.pem
+User ec2-user
+
+Host olap-mongo-dev
+HostName 10.1.1.126
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-dev.pem
+User ec2-user
+
+Host notifier-dev
+HostName 10.1.1.139
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/notifier-dev.pem
+User ec2-user
+
+Host olap-dev
+HostName 10.1.1.179
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/olap-dev.pem
+User ec2-user
+
+Host proxy-dev
+HostName 10.1.1.143
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/proxy-dev.pem
+User ec2-user
+
+Host mongo-test-dev
+HostName 10.1.1.212
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mongo-dev.pem
+User ec2-user
+
+Host postfix-dev
+HostName 10.1.0.252
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+IdentityFile ~/Dropbox/IT/ec2keys/mta-dev.pem
+User ec2-user
+
