@@ -549,11 +549,12 @@ def quote_status():
     format_date = lambda d: None if d is None else d.replace(
         tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
 
+    format_number = lambda x: None if x is None else '{:,}'.format(x)
     result = render_template('quote-status.html', data=[{
         'name': row.name,
         'date_received': format_date(row.date_received),
-        'today_count': row.today_count,
-        'total_count': row.total_count,
+        'today_count': format_number(row.total_count),
+        'total_count': format_number(row.today_count),
         'good': row.today_count > 0,
     } for row in get_quote_status()])
     AltitudeSession.remove()
