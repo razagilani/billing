@@ -6,6 +6,11 @@
 # User ec2-user
 
 
+Host *
+   StrictHostKeyChecking no
+   UserKnownHostsFile=/dev/null
+
+
 # STAGE HOSTS
 
 Host nat-internal-stage
