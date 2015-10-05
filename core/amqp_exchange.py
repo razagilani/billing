@@ -68,13 +68,16 @@ def DueDateValidator():
 
 UtilbillMessageSchema = Schema({
     'utility_account_number': basestring,
+    'utility_account_number_normalized': Match(BillFileHandler.ALPHA_NUMERIC_REGEX),
     'sha256_hexdigest': Match(BillFileHandler.HASH_DIGEST_REGEX),
     'due_date': DueDateValidator(),
     'total': TotalValidator(),
     'service_address': basestring,
     'utility_provider_guid': Match(AltitudeGUID.REGEX),
+    'service_types': ['electricity', 'gas'],
+
     'account_guids': [basestring],
-    'message_version': MessageVersion(1)
+    'message_version': MessageVersion(2)
 }, required=True)
 
 
