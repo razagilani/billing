@@ -5,10 +5,8 @@
 # IdentityFile "path/to/private/key/of/target/host"
 # User ec2-user
 
-
-Host *
-   StrictHostKeyChecking no
-   UserKnownHostsFile=/dev/null
+StrictHostKeyChecking no
+UserKnownHostsFile=/dev/null
 
 
 # STAGE HOSTS
