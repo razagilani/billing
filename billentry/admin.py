@@ -15,7 +15,7 @@ from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
 from core.altitude import AltitudeSupplier
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, \
-    SupplyGroup
+    SupplyGroup, Address
 from core.model.utilbill import UtilBill
 from billentry.billentry_model import BillEntryUser, Role, RoleBEUser
 from reebill.reebill_model import ReeBillCustomer, ReeBill, CustomerGroup
@@ -53,6 +53,7 @@ class LoginModelView(ModelView):
 
     def __init__(self, model, session, **kwargs):
         super(LoginModelView, self).__init__(model, session, **kwargs)
+        
 
 class ReadOnlyModelView(LoginModelView):
     # Disable create, update and delete on model
@@ -66,6 +67,14 @@ class EditOnlyModelView(LoginModelView):
     can_delete = False
     can_edit = True
 
+
+class UtilBillModelView(EditOnlyModelView):
+    #form_excluded_columns = ['last_name', 'email']
+    #column_auto_select_related = True
+    inline_models = [ReeBill, ]
+
+    def __init__(self, session, **kwargs):
+        super(UtilBillModelView, self).__init__(UtilBill, session, **kwargs)
 
 class SupplierModelView(LoginModelView):
     form_columns = (
@@ -133,7 +142,7 @@ def make_admin(app):
     '''
     admin = Admin(app, index_view=MyAdminIndexView())
     admin.add_view(ReadOnlyModelView(UtilityAccount, Session))
-    admin.add_view(EditOnlyModelView(UtilBill, Session, name='Utility Bill'))
+    admin.add_view(UtilBillModelView(Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Utility, Session))
     admin.add_view(SupplierModelView(Session))
     admin.add_view(LoginModelView(AltitudeSupplier, Session))
