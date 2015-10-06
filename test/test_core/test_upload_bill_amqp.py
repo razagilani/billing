@@ -21,7 +21,7 @@ from test import init_test_config
 init_test_config()
 
 from core import init_model
-from util import FixMQ
+from util.fix_mq import FixMQ
 
 with FixMQ():
     from core.amqp_exchange import create_dependencies, \
