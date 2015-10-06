@@ -28,9 +28,9 @@ from exc import DatabaseError, \
     NoSuchBillException
 from util.units import unit_registry
 
-__all__ = ['Address', 'Base', 'AltitudeBase', 'MYSQLDB_DATETIME_MIN', 'Register', 'Session',
-           'AltitudeSession', 'altitude_metadata', 'Supplier', 'SupplyGroup',
-           'RateClass', 'Utility', 'UtilityAccount',
+__all__ = ['Address', 'Base', 'AltitudeBase', 'MYSQLDB_DATETIME_MIN',
+           'Register', 'Session', 'AltitudeSession', 'altitude_metadata',
+           'Supplier', 'SupplyGroup', 'RateClass', 'Utility', 'UtilityAccount',
            'check_schema_revision', ]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
@@ -67,11 +67,9 @@ SERVICES_TYPE = Enum(*SERVICES, name='services')
 
 
 class _Base(object):
-    '''Common methods for all SQLAlchemy model classes, for use both here
+    """Common methods for all SQLAlchemy model classes, for use both here
     and in consumers that define their own model classes.
-    '''
-
-
+    """
     @classmethod
     def column_names(cls):
         """Return list of attributes names in the class that correspond to
@@ -111,7 +109,7 @@ class _Base(object):
         cls = self.__class__
         foreign_key_columns = chain.from_iterable(
             c.columns for c in self.__table__.constraints if
-                isinstance(c, ForeignKeyConstraint))
+            isinstance(c, ForeignKeyConstraint))
         foreign_keys = set(col.key for col in foreign_key_columns)
 
         relevant_attr_names = [x for x in self.column_names() if
@@ -144,9 +142,9 @@ class _Base(object):
         """
         mapper = self._sa_instance_state.mapper
         return {column_property.columns[0].name: getattr(self, attr_name) for
-                  attr_name, column_property in mapper.column_attrs.items()
-                  if column_property.columns[ 0] not in mapper.primary_key
-                  and attr_name not in exclude}
+                attr_name, column_property in mapper.column_attrs.items()
+                if column_property.columns[0] not in mapper.primary_key
+                and attr_name not in exclude}
                   
     def _copy_data_from(self, other):
         """Copy all column values from 'other' (except primary key),  replacing
@@ -179,7 +177,6 @@ class _Base(object):
             setattr(self, name, other_value)
 
 
-
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
@@ -198,8 +195,7 @@ def check_schema_revision(schema_revision=None):
     if current_revision != schema_revision:
         raise DatabaseError("Database schema revision mismatch."
                             " Require revision %s; current revision %s" % (
-                            schema_revision, current_revision))
-
+            schema_revision, current_revision))
 
 
 class UtilbillCallback(MapperExtension):
@@ -209,8 +205,8 @@ class UtilbillCallback(MapperExtension):
     '''
 
     def before_update(self, mapper, connection, instance):
-        if object_session(instance).is_modified(instance,
-                include_collections=False):
+        if object_session(instance).is_modified(
+                instance, include_collections=False):
             instance.date_modified = datetime.utcnow()
 
 
@@ -277,6 +273,7 @@ class Utility(Base):
     def get_sos_supply_group(self):
         return self.sos_supply_group
 
+
 class Supplier(Base):
     '''A company that supplies energy and is responsible for the supply
     charges on utility bills. This may be the same as the utility in the
@@ -320,7 +317,8 @@ class Register(Base):
 
     # complete set of allowed register binding values (should match the
     # definition of enum columns in the database)
-    REGISTER_BINDINGS = [TOTAL, DEMAND, PEAK, INTERMEDIATE, OFFPEAK,
+    REGISTER_BINDINGS = [
+        TOTAL, DEMAND, PEAK, INTERMEDIATE, OFFPEAK,
         'REG_TOTAL_SECONDARY', 'REG_TOTAL_TERTIARY', 'REG_POWERFACTOR',
 
         # related to "sub-bills": these are regular meter readings but belong
@@ -534,7 +532,6 @@ class RateClass(Base):
         return self.sos_supply_group
 
 
-
 class UtilityAccount(Base):
     __tablename__ = 'utility_account'
 
@@ -562,8 +559,6 @@ class UtilityAccount(Base):
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=True)
     fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
                                 nullable=True)
-    fb_supply_group_id = Column(Integer, ForeignKey('supply_group.id'),
-        nullable=True)
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilityAccount.fb_supplier_id==Supplier.id')
@@ -608,7 +603,7 @@ class UtilityAccount(Base):
 
     def __repr__(self):
         return '<utility_account(name=%s, account=%s)>' % (
-        self.name, self.account)
+            self.name, self.account)
 
     def get_utility(self):
         """:return: the Utility of any bill for this account, or the value of
@@ -647,6 +642,7 @@ class UtilityAccount(Base):
             return max(g, key=lambda utilbill: utilbill.period_end)
         except ValueError:
             raise NoSuchBillException
+
 
 class ChargeNameMap(Base):
     """
