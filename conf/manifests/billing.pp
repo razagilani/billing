@@ -115,6 +115,18 @@ file { "/etc/postfix/main.cf":
     require => Package['postfix']
 }
 
+# make sure sendmail does not start when the host boots, and postfix does.
+# we saw sendmail run (maybe due to a cron error message?) and cause postfix
+# to be killed.
+exec { "chkconfig sendmail off":
+    path => ["/usr/bin/", "/sbin/"],
+    require => Package['postfix']
+}
+exec { "chkconfig postfix on":
+    path => ["/usr/bin/", "/sbin/"],
+    require => Package['postfix']
+}
+
 # this needs to be executed by postfix, not reebill-${env}.
 # consider putting it in a different directory.
 $receive_matrix_email_script = "/home/${username}/receive_matrix_email.sh"
