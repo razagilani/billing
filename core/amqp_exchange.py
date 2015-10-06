@@ -13,7 +13,7 @@ from core.bill_file_handler import BillFileHandler
 from core.model import Session, Address, UtilityAccount
 from core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
-from util import FixMQ
+from util.fix_mq import FixMQ
 
 with FixMQ():
     from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE

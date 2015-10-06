@@ -22,7 +22,7 @@ from exc import UnEditableBillError, MissingFileError
 from test import create_tables, clear_db
 from test.setup_teardown import FakeS3Manager
 from test.setup_teardown import create_utilbill_processor
-from util import FixMQ
+from util.fix_mq import FixMQ
 from util.dictutils import deep_map
 
 
