@@ -1,0 +1,25 @@
+<html>
+<head>
+	<title>Quote Status</title>
+</head>
+
+<body>
+<table cellpadding="10">
+	<tr>
+		<td><b>Supplier</b></td>
+		<td><b>Last Updated</b></td>
+		<td><b>Today's Quotes</b></td>
+		<td><b>Total Quotes</b></td>
+	</tr>
+    {% for row in data %}
+		<tr bgcolor={{ "palegreen" if row.good else "pink" }}>
+			<td>{{ row.name }}</td>
+			<td>{{ row.date_received }}</td>
+			<td>{{ row.today_count }}</td>
+			<td>{{ row.total_count }}</td>
+		</tr>
+    {% endfor %}
+</table>
+</body>
+
+</html>
