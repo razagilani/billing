@@ -23,6 +23,7 @@ host::skyline_dropbox {"$env":
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
 include mongo::mongo_tools
+include statsd::statsd # class name in manifest must match its file name
 require httpd::httpd_server
 
 package { 'postgresql93':
