@@ -131,6 +131,9 @@ def init_model(uri=None, schema_revision=None):
     from core.model import Session, Base, check_schema_revision
     from sqlalchemy import create_engine
     import logging
+    # TODO: init_model should only have an effect the first time it is called.
+    # if Session.bind is not None, return
+
     log = logging.getLogger(__name__)
 
     import_all_model_modules()
