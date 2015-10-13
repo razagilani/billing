@@ -85,6 +85,20 @@ class UtilBill(Base):
     # meaning that its charges and other data are supposed to be accurate.
     processed = Column(Boolean, nullable=False)
 
+    # This represents different states for validation of a bill.
+    # FAILED - validation has failed, and the extracted data is incorrect
+    # REVIEW - the extracted data is unusual/irregular, and should be
+    #          reviewed by a human
+    # SUCCEEDED - the extracted data is valid, and does not need to be reviewed.
+    FAILED = 'failed'
+    REVIEW = 'review'
+    SUCCEEDED = 'succeeded'
+    # the ordering here is important, states go from worst to best.
+    VALIDATION_STATES = [FAILED, REVIEW, SUCCEEDED]
+
+    validation_state = Column(Enum(*VALIDATION_STATES,
+        name='validation_state'), server_default=FAILED)
+
     # which Extractor was used to get data out of the bill file, and when
     date_extracted = Column('date_scraped', DateTime, )
 
@@ -900,7 +914,7 @@ class Charge(Base):
         end of the charge, as long as they are at least two digits long.
         This preserved things like 'Tier 1 Usage'.
         """
-        charge_description = re.sub(r'([@(]|\d[\d.]).*', '',
+        charge_description = re.sub(r'([@(:]|\d[\d.]).*', '',
                                     charge_description.upper())
         return sub('[\s\-_]+', '_', charge_description.strip().upper())
 
