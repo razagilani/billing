@@ -1,0 +1,64 @@
+# Example:
+# Host arbitraryName
+# HostName internalIP_of_target_host
+# ProxyCommand ssh -i PrivateKey ec2-user@IP_of_accessible_host exec nc %h %p
+# IdentityFile "path/to/private/key/of/target/host"
+# User ec2-user
+
+StrictHostKeyChecking no
+UserKnownHostsFile=/dev/null
+
+
+# STAGE HOSTS
+
+Host nat-internal-stage
+HostName 54.165.130.104
+User ec2-user
+
+Host billing-stage
+HostName 10.1.1.144
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+User ec2-user
+
+Host billingworker1-stage
+HostName 10.1.1.218
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+User ec2-user
+
+Host billingworker2-stage
+HostName 10.1.1.126
+ProxyCommand ssh nat-internal-stage exec nc %h %p
+User ec2-user
+
+# PROD HOSTS
+
+Host nat-internal-prod
+HostName 52.4.208.171
+User ec2-user
+
+Host billing-prod
+HostName 10.1.1.43
+ProxyCommand ssh nat-internal-prod exec nc %h %p
+User ec2-user
+
+
+# DEV HOSTS
+
+Host nat-internal-dev
+HostName 54.165.153.25
+User ec2-user
+
+Host billing-dev
+HostName 10.1.1.26
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+User ec2-user
+
+Host billingworker1-dev
+HostName 10.1.1.181
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+User ec2-user
+
+Host billingworker2-dev
+HostName 10.1.1.156
+ProxyCommand ssh nat-internal-dev exec nc %h %p
+User ec2-user
