@@ -62,6 +62,9 @@ Ext.define('ReeBill.controller.Reports', {
             },
             'button[action=export12MonthRevenue]': {
                 click: this.handleExport12MonthRevenue
+            },
+            'button[action=exportAllPayments]': {
+                click: this.handleExportAllPayments
             }
         });
     },
@@ -106,6 +109,22 @@ Ext.define('ReeBill.controller.Reports', {
         var form = dialog.down('form').getForm();
         form.baseParams = {type: '12MonthRevenue'};
         this.handleSubmitAccountDatePicker();
+    },
+
+    /**
+     * Handle the Export12MonthRevenue button.
+     */
+    handleExportAllPayments: function() {
+        var url = 'http://'+window.location.host+'/reebill/reports/export_all_payments'
+        var params = {
+            type: 'AllPayments'
+        };
+        Ext.Ajax.request({
+            url: url,
+            params: params,
+            success: function (response, options) { },
+            failure: function (response, options) { }
+        });
     },
 
     handleSubmitAccountDatePicker: function() {
