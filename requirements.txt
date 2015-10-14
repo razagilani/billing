@@ -55,4 +55,4 @@ Pint==0.6
 reportlab==2.5
 
 # experiment: latest version of "postal" module as its own repo with setup.py:
-git+ssh://git@bitbucket.org/dklothe/postal.git
+git+ssh://git@bitbucket.org/skylineitops/postal.git
