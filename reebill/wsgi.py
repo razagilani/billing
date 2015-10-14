@@ -1008,6 +1008,20 @@ class ReportsResource(WebResource):
 
                 return xls_file.read()
 
+        elif row['type'] == 'AllPayments':
+            """Responds with the utility bills data
+             in the form of a csv with a field to indicate if
+             the payment for the utility bill is applied."""
+            csv_name =  'all_payments.csv'
+
+            with open(os.path.join(self.estimated_revenue_report_dir,
+                                   'estimated_revenue_report.xls')) as xls_file:
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = \
+                    'attachment; filename=%s' % csv_name
+
+                return xls_file.read()
+
     @cherrypy.expose
     @cherrypy.tools.authenticate()
     def reconciliation(self, start, limit, *vpath, **params):
