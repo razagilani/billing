@@ -27,7 +27,12 @@ Ext.define('ReeBill.view.reports.Exports', {
             text: '12 Month Estimated Revenue',
             iconCls: 'silk-application-go',
             action: 'export12MonthRevenue'
+        },{
+            xtype: 'button',
+            text: 'Export Payments to CSV',
+            iconCls: 'silk-application-go',
+            action: 'export12MonthRevenue'
         }]
-    }],
+    }]
 
 });
