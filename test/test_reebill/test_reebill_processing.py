@@ -25,12 +25,10 @@ from test import testing_utils, init_test_config, create_tables, clear_db
 # TODO: this module is not runnable by itself through unittest/PyCharm because
 # setUpModule/tearDownModule code has been moved up to test_reebill/__init__.py
 def setUpModule():
-    from test import init_test_config
-    init_test_config()
-    FakeS3Manager.start()
+    pass
 
 def tearDownModule():
-    FakeS3Manager.stop()
+    pass
 
 class MockReeGetter(object):
     def __init__(self, quantity):
