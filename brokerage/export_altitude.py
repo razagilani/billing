@@ -93,7 +93,7 @@ class PGAltitudeExporter(object):
         # http://docs.sqlalchemy.org/en/latest/orm/query.html
         # #sqlalchemy.orm.query.Query.yield_per
         for ub in utilbills.yield_per(self.QUERY_BATCH_SIZE):
-            writer.writerow({
+            dict = {
                 'customer_account_guid': (
                     format_possible_none(
                         self._altitude_converter
@@ -129,7 +129,9 @@ class PGAltitudeExporter(object):
                 'ordering_date': format_date(ub.due_date),
                 'meter_number': ub.get_total_meter_identifier(),
                 'time_of_use': 'TRUE' if ub.tou else 'FALSE'
-            })
+            }
+            writer.writerow({k:v.encode('utf8') if isinstance(v, unicode)
+                else v for k,v in dict.items()})
         session.commit()
 
 # TODO maybe this is built into tablib already or should be added there.
