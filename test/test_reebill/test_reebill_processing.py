@@ -25,10 +25,12 @@ from test import testing_utils, init_test_config, create_tables, clear_db
 # TODO: this module is not runnable by itself through unittest/PyCharm because
 # setUpModule/tearDownModule code has been moved up to test_reebill/__init__.py
 def setUpModule():
-    pass
+    from test import init_test_config
+    init_test_config()
+    FakeS3Manager.start()
 
 def tearDownModule():
-    pass
+    FakeS3Manager.stop()
 
 class MockReeGetter(object):
     def __init__(self, quantity):
@@ -45,6 +47,7 @@ class ProcessTest(testing_utils.TestCase):
     '''
     @classmethod
     def setUpClass(cls):
+        init_model()
         # these objects don't change during the tests, so they should be
         # created only once.
         cls.utilbill_processor = create_utilbill_processor()
