@@ -31,6 +31,9 @@ Ext.define('ReeBill.controller.Reports', {
     },{
         ref: 'export12MonthRevenue',
         selector: 'button[action=export12MonthRevenue]'
+    },{
+        ref: 'exportAllPayments',
+        selector: 'button[action=exportAllPayments]'
     }],
     
     init: function() {
