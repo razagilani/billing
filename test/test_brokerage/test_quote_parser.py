@@ -113,7 +113,7 @@ class MatrixQuoteParsersTest(TestCase):
             'electric-NY-CenHud-G - Hud Vil',
             'gas-NY-RGE',
             # SFE
-            'A (NiMo, NYSEG)',
+            'NY-A (NiMo, NYSEG)',
             # Entrust
             'Com Ed', 'ConEd Zone J',
         ]
@@ -447,7 +447,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6, q1.term_months)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(150000, q1.limit_volume)
-        self.assertEqual('A (NiMo, NYSEG)', q1.rate_class_alias)
+        self.assertEqual('NY-A (NiMo, NYSEG)', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0678491858390411, q1.price)

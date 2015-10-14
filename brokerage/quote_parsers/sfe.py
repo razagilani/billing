@@ -86,13 +86,11 @@ class SFEMatrixParser(QuoteParser):
             service_type = self._reader.get(0, row, self.SERVICE_TYPE_COL,
                                             basestring)
             _assert_true(service_type in self._service_names)
-            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                          basestring)
             start_from = self._reader.get(0, row, self.START_DATE_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
                                           basestring)
-            rate_class_alias = rate_class
+            rate_class_alias = '-'.join([state, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             # volume range can have different format in each row, and the
