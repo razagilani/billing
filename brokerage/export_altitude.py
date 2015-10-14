@@ -130,7 +130,7 @@ class PGAltitudeExporter(object):
                 'meter_number': ub.get_total_meter_identifier(),
                 'time_of_use': 'TRUE' if ub.tou else 'FALSE'
             }
-        writer.writerow({k:v.encode('utf8') if isinstance(v, unicode)
+            writer.writerow({k:v.encode('utf8') if isinstance(v, unicode)
                 else v for k,v in dict.items()})
         session.commit()
 
