@@ -201,6 +201,33 @@ class TestExportAltitude(TestCase):
         self.pgae.write_csv(self.utilbills, s)
         self.assertGreater(s.tell(), 0)
 
+    def test_export_csv_with_unicode_chars(self):
+        u = Mock(autospec=UtilBill)
+        u.get_nextility_account_number.return_value = '3333'
+        u.get_service.return_value = None
+        u.get_utility_account_number.return_value = '3'
+        u.period_start = datetime(2000,3,15)
+        u.period_end = datetime(2000,4,15)
+        u.due_date = datetime(2000,5,15)
+        u.get_next_meter_read_date.return_value = datetime(2000,5,15)
+        u.get_total_energy_consumption.return_value = 30
+        u.get_supply_target_total.return_value = 300
+        u.get_rate_class_name.return_value = 'rate class 3'
+        u.service_address.street = u'1-800-427-6029 Espa\xf1ol'
+        u.service_address.city = 'Washington'
+        u.service_address.state = 'DC'
+        u.service_address.postal_code = '30000'
+        u.date_received = None
+        u.date_modified = None
+        u.supply_choice_id = '345xyz'
+        u.get_total_meter_identifier.return_value = ''
+        u.tou = False
+        utilbills = Mock(autospec=Query)
+        utilbills.yield_per.return_value = [u]
+        s = StringIO()
+        self.pgae.write_csv(utilbills, s)
+        self.assertGreater(s.tell(), 0)
+
 class TestAltitudeBillStorage(TestCase):
     """Test with the database, involving creating and
     querying AltitudeBill objects.
