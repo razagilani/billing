@@ -3,6 +3,7 @@ from os.path import dirname, realpath
 import re
 
 from celery import Celery
+import statsd
 
 from util.validated_config_parser import ValidatedConfigParser
 import configuration as config_file_schema
@@ -63,6 +64,10 @@ def init_config(filepath='settings.cfg', fp=None):
         value = config.get('aws_s3', key)
         if value is not None:
             boto.config.set('Boto', key, str(value))
+
+    statsd.Connection.set_defaults(
+        host=config.get('monitoring', 'metrics_host'),
+        port=config.get('monitoring', 'metrics_port'))
 
 def get_db_params():
     """:return a dictionary of parameters for connecting to the main

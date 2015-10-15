@@ -24,10 +24,6 @@ if __name__ == '__main__':
         initialize()
 
         # to submit metrics to StatsD
-        from core import config
-        statsd_connection = statsd.Connection(
-            config.get('monitoring', 'metrics_host'),
-            config.get('monitoring', 'metrics_port'))
         email_counter = statsd.Counter(EMAIL_METRIC_NAME)
         quote_counter = statsd.Counter(QUOTE_METRIC_NAME)
 
