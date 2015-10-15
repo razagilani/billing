@@ -67,6 +67,7 @@ class reebill(Schema):
     teva_accounts = String()
 
     reconciliation_report_path = String()
+    payment_csv_path = String()
 
 class billentry(Schema):
     google_client_id = String()

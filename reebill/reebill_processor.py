@@ -1,3 +1,4 @@
+from csv import DictWriter
 import os
 import traceback
 import re
@@ -15,11 +16,12 @@ from core.model import (Address, Session,
 from core.model.utilbill import UtilBill
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
-                                   CustomerGroup)
+                                   CustomerGroup, Payment)
 from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
                  FormulaError, RegisterError, BillingError,
                  ConfirmMultipleAdjustments)
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from util.dateutils import ISO_8601_DATETIME
 from util.pdf import PDFConcatenator
 from jinja2 import Template
 
@@ -37,6 +39,10 @@ class ReebillProcessor(object):
     the UI-related methods), except maybe the first two can stay in the same
     class.
     '''
+
+    # number of rows to load into memory at once
+    QUERY_BATCH_SIZE = 100
+
     def __init__(self, state_db, payment_dao, nexus_util, bill_mailer,
                  reebill_file_handler, ree_getter, journal_dao, logger=None):
         self.state_db = state_db
@@ -777,3 +783,64 @@ class ReebillProcessor(object):
             return
         reebill_customer.latechargerate = late_charge_rate
         return reebill_customer
+
+    def get_payment_info_for_bills(self):
+        """Return a list of all reebills that can be used to find out if
+        payments have been applied for that reebill
+        """
+        s = Session()
+        # b = "(select reebill_customer_id, max(issue_date) as max_issue_date " \
+        #     "from reebill group by reebill.reebill_customer_id) as b " \
+        #     "on a.reebill_customer_id = b.reebill_customer_id " \
+        #     "order by a.reebill_customer_id, date_applied"
+        # a = "(select reebill_customer.id as reebill_customer_id, " \
+        #     "reebill_customer.name as name, payment.credit, " \
+        #     "payment.date_received, payment.date_applied, " \
+        #     "utility_account.account, reebill_customer.payee, " \
+        #     "coalesce(address.addressee::text,'') || ',' || " \
+        #     "coalesce(address.street::text, '') || ',' || " \
+        #     "coalesce(address.city::text, '') || ',' || " \
+        #     "coalesce(address.state::text, '') as Address from payment join " \
+        #     "reebill_customer on payment.reebill_customer_id = " \
+        #     "reebill_customer.id join utility_account on " \
+        #     "reebill_customer.utility_account_id = utility_account.id join" \
+        #     " address on utility_account.fb_billing_address_id = address.id) " \
+        #     "as a"
+        # outer_select = "select a.account, a.payee as \"Remit To\", a.Address" \
+        #                " as \"Billing Address\", a.credit as " \
+        #                "\"Credit Amount\", a.date_received as " \
+        #                "\"Date Received\", b.max_issue_date, " \
+        #                "a.date_applied from "
+        a = s.query(Payment.credit, Payment.date_applied, Payment.date_received, ReeBillCustomer.name.label('name'), ReeBillCustomer.id.label('reebill_customer_id'), ReeBillCustomer.payee, Address.street, Address.state, Address.city, UtilityAccount.account).join(ReeBillCustomer, Payment.reebill_customer_id==ReeBillCustomer.id).join(UtilityAccount, ReeBillCustomer.utility_account_id==UtilityAccount.id).join(Address, UtilityAccount.fb_billing_address_id==Address.id).subquery('a')
+        b = s.query(ReeBill.reebill_customer_id, func.max(ReeBill.issue_date).label('max_issue_date')).group_by(ReeBill.reebill_customer_id).subquery('b')
+        outer_select = s.query(a.c.account, a.c.payee, a.c.city, a.c.state, a.c.street, a.c.credit, a.c.date_received, a.c.date_applied, b.c.max_issue_date).join(b, a.c.reebill_customer_id==b.c.reebill_customer_id)
+        return outer_select
+
+    def write_csv(self, reebills_data, file):
+        """Write CSV of reebills payment data to 'file'.
+        :param reebills_data: iterator of Reebills to include data from.
+        :param file: destination file.
+        """
+        writer = DictWriter(file, fieldnames=[
+            "Account",
+            "Remit To",
+            "Billing Address",
+            "Credit Amount",
+            "Date Received",
+            "Payment Applied",
+            "Date Applied",
+            "Max Issue Date"
+        ])
+        writer.writeheader()
+        for row in reebills_data.yield_per(self.QUERY_BATCH_SIZE):
+            writer.writerow({
+                "Account": row.account,
+                "Remit To": row.payee,
+                "Billing Address": row.street + ',' + row.city + ',' + row.state,
+                "Credit Amount": row.credit,
+                "Date Received": row.date_received,
+                "Payment Applied": True if row.date_received >
+                                           row.max_issue_date else False,
+                "Date Applied": row.date_applied,
+                "Max Issue Date": row.max_issue_date
+            })
