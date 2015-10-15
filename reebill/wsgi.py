@@ -131,6 +131,8 @@ class WebResource(object):
             'reebill', 'reconciliation_report_path')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
+        self.reebill_payment_csv_path = self.config.get(
+            'reebill', 'payment_csv_path')
 
     def dumps(self, data):
 
@@ -927,7 +929,6 @@ class ReportsResource(WebResource):
     @cherrypy.tools.authenticate()
     def default(self, *vpath, **params):
         row = cherrypy.request.params
-        print row
         account = row['account'] if row['account'] != '' else None
         begin_date = datetime.strptime(row['period_start'], '%m/%d/%Y').date() \
             if row['period_start'] != '' else None
@@ -1008,19 +1009,23 @@ class ReportsResource(WebResource):
 
                 return xls_file.read()
 
-        elif row['type'] == 'AllPayments':
-            """Responds with the utility bills data
-             in the form of a csv with a field to indicate if
-             the payment for the utility bill is applied."""
-            csv_name =  'all_payments.csv'
 
-            with open(os.path.join(self.estimated_revenue_report_dir,
-                                   'estimated_revenue_report.xls')) as xls_file:
-                cherrypy.response.headers['Content-Type'] = 'application/excel'
-                cherrypy.response.headers['Content-Disposition'] = \
-                    'attachment; filename=%s' % csv_name
+    @cherrypy.expose
+    @cherrypy.tools.authenticate()
+    def payments_report(self, *vpath, **params):
+        """Responds with all reebills bills payment data
+         in the form of a csv with a field to indicate if
+         the payment for the reebill is applied."""
 
-                return xls_file.read()
+        buff = StringIO()
+
+        reebills_data = self.reebill_processor.get_payment_info_for_bills()
+        self.reebill_processor.write_csv(reebills_data, buff)
+        cherrypy.response.headers['Content-Type'] = 'text/csv'
+        cherrypy.response.headers['Content-Disposition'] = \
+            'attachment; filename="payments.csv"'
+
+        return buff.getvalue()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
