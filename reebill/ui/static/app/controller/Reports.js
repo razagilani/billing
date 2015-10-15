@@ -115,16 +115,9 @@ Ext.define('ReeBill.controller.Reports', {
      * Handle the Export12MonthRevenue button.
      */
     handleExportAllPayments: function() {
-        var url = 'http://'+window.location.host+'/reebill/reports/export_all_payments'
-        var params = {
-            type: 'AllPayments'
-        };
-        Ext.Ajax.request({
-            url: url,
-            params: params,
-            success: function (response, options) { },
-            failure: function (response, options) { }
-        });
+        var url = 'http://'+window.location.host+'/reebill/reports/payments_report'
+
+        window.location.assign(url);
     },
 
     handleSubmitAccountDatePicker: function() {
