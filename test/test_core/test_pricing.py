@@ -19,7 +19,7 @@ from core.pricing import FuzzyPricingModel, PricingModel
 from core.model import RateClass, Utility, Supplier, SupplyGroup
 
 from core.model.utilbill import UtilBill, Charge
-from core.exc import NoSuchBillException
+from core.exceptions import NoSuchBillException
 
 class PricingModelTest(unittest.TestCase):
     def test_get_predicted_charges(self):

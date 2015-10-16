@@ -31,7 +31,7 @@ with FixMQ():
 
 from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from core.exc import DuplicateFileError
+from core.exceptions import DuplicateFileError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util

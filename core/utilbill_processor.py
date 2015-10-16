@@ -8,7 +8,7 @@ from core import extraction
 from core.model import Address, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill, Charge
-from core.exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
+from core.exceptions import NoSuchBillException, DuplicateFileError, BillingError, MergeError
 from core.utilbill_loader import UtilBillLoader
 from reebill.reebill_model import ReeBillCustomer, ReeBill
 

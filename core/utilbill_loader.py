@@ -3,7 +3,7 @@ from sqlalchemy.orm import joinedload
 
 from core.model import UtilityAccount, Session, RateClass
 from core.model.utilbill import UtilBill
-from core.exc import NoSuchBillException
+from core.exceptions import NoSuchBillException
 
 
 class UtilBillLoader(object):

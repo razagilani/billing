@@ -10,7 +10,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.model import Session, Address, Supplier
 from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
-from core.exc import ConversionError, NoRSIBindingError
+from core.exceptions import ConversionError, NoRSIBindingError
 
 
 def convert_table_charges(rows):

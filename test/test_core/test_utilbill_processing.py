@@ -22,7 +22,7 @@ from billentry.common import replace_utilbill_with_beutilbill
 from core import init_model
 
 from test import create_tables, clear_db
-from core.exc import DuplicateFileError, UnEditableBillError, BillingError
+from core.exceptions import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilityAccount, Utility, Address, Supplier, \
     RateClass, Register
 from core.model.utilbill import UtilBill, Charge

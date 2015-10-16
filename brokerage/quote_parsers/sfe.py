@@ -4,7 +4,7 @@ import re
 from tablib import formats
 
 from brokerage.quote_parser import _assert_true, QuoteParser, SpreadsheetReader, StartEndCellDateGetter
-from core.exc import ValidationError
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote

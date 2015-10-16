@@ -28,7 +28,7 @@ from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
-from core.exc import MissingFileError
+from core.exceptions import MissingFileError
 
 
 project_mgr_permission = Permission(RoleNeed('Project Manager'),
