@@ -22,7 +22,7 @@ init_test_config()
 from core.model.utilbill import UtilBill
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
-from core.exc import MissingFileError, DuplicateFileError
+from core.exceptions import MissingFileError, DuplicateFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):

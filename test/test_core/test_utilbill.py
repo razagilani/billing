@@ -21,7 +21,7 @@ from test import init_test_config, create_tables, clear_db
 from datetime import date
 from unittest import TestCase
 
-from core.exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
+from core.exceptions import RSIError, UnEditableBillError, NotProcessable, BillingError, \
     MissingFileError
 from core.model import Session, Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from core.model.utilbill import UtilBill, Charge

@@ -16,7 +16,7 @@ from core.model.utilbill import UtilBill
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
                                    CustomerGroup)
-from core.exc import NoSuchBillException, FormulaError, BillingError
+from core.exceptions import NoSuchBillException, FormulaError, BillingError
 from reebill.exceptions import IssuedBillError, ConfirmAdjustment, \
     ConfirmMultipleAdjustments
 from core.utilbill_processor import ACCOUNT_NAME_REGEX

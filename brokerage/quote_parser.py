@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-from core.exc import ValidationError, BillingError
+from core.exceptions import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
 from brokerage.brokerage_model import load_rate_class_aliases
 from util.units import unit_registry

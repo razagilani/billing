@@ -44,7 +44,7 @@ from core.extraction.task import test_bill, reduce_bill_results
 from core.model import Session, Utility, AltitudeSession
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
-from core.exc import UnEditableBillError, MissingFileError
+from core.exceptions import UnEditableBillError, MissingFileError
 
 LOG_NAME = 'billentry'
 

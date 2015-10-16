@@ -29,7 +29,7 @@ from core.model import UtilityAccount, Utility, Session, Address, \
     RateClass, LayoutElement, BoundingBox
 from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
-from core.exc import ConversionError, ExtractionError, MatchError, ApplicationError
+from core.exceptions import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
 from util.layout import TEXTLINE

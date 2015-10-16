@@ -1,4 +1,4 @@
-from core.exc import BillingError, BillStateError
+from core.exceptions import BillingError, BillStateError
 
 
 class Unauthenticated(BillingError):

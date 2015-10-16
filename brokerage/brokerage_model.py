@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship
 
 from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
-from core.exc import ValidationError
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 
 

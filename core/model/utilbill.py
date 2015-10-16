@@ -13,7 +13,7 @@ import tsort
 
 from core.model import Base, Address, Session, Register
 from core.model.model import UtilbillCallback, PHYSICAL_UNITS
-from core.exc import NotProcessable, UnEditableBillError, BillingError, \
+from core.exceptions import NotProcessable, UnEditableBillError, BillingError, \
     BillStateError, MissingFileError, FormulaSyntaxError, FormulaError
 from util.pdf import get_all_pdfminer_objs
 from util.layout import LAYOUT_TYPES, group_layout_elements_by_page, PAGE, \
