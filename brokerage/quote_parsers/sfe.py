@@ -55,12 +55,23 @@ class SFEMatrixParser(QuoteParser):
 
     def __init__(self):
         super(SFEMatrixParser, self).__init__()
+
+        # for interpreting volume ranges:
+        # each pattern comes with 2 factors to multiply the base unit by,
+        # but the base unit itself could be either therms or kWh depending on
+        # the service type (gas or electric). there is a separate factor for
+        # the low and high values because in some cases they have different
+        # effective units. (for example, "500-1M" actually means 500 * 1000
+        # to 1 million kWh.)
+        # K adds an extra factor of 1000 to the unit; M adds an extra 1 million.
         self._volume_range_patterns = [
-            ('(?P<low>\d+)-(?P<high>\d+)K', unit_registry.kWh),
-            ('(?P<low>\d+)-(?P<high>\d+)M', unit_registry.MWh),
-            ('(?P<low>\d+)K\+', unit_registry.kWh),
-            ('(?P<low>\d+)M\+', unit_registry.MWh),
+            # regular expression, low unit factor, high unit factor
+            ('(?P<low>\d+)-(?P<high>\d+)K', 1000, 1000),
+            ('(?P<low>\d+)-(?P<high>\d+)M', 1000, 1e6),
+            ('(?P<low>\d+)K\+', 1000, None),
+            ('(?P<low>\d+)M\+', 1e6, None),
         ]
+
         self._service_names = ['Elec', 'Gas']
         self._target_units = {'Elec': unit_registry.kWh,
                               'Gas': unit_registry.therm}
@@ -75,13 +86,11 @@ class SFEMatrixParser(QuoteParser):
             service_type = self._reader.get(0, row, self.SERVICE_TYPE_COL,
                                             basestring)
             _assert_true(service_type in self._service_names)
-            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                          basestring)
             start_from = self._reader.get(0, row, self.START_DATE_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
                                           basestring)
-            rate_class_alias = rate_class
+            rate_class_alias = '-'.join([state, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             # volume range can have different format in each row, and the
@@ -89,11 +98,18 @@ class SFEMatrixParser(QuoteParser):
             # service type.
             volume_text = self._reader.get(
                 0, row, self.VOLUME_RANGE_COL, basestring)
-            for regex, unit in self._volume_range_patterns:
+            target_unit = self._target_units[service_type]
+            for regex, low_unit_factor, high_unit_factor in \
+                    self._volume_range_patterns:
                 if re.match(regex, volume_text) is not None:
-                    min_vol, limit_vol = self._extract_volume_range(0, row,
-                        self.VOLUME_RANGE_COL, regex, expected_unit=unit,
-                        target_unit=self._target_units[service_type])
+                    min_vol, limit_vol = self._extract_volume_range(
+                        0, row, self.VOLUME_RANGE_COL, regex,
+                        expected_unit=target_unit,
+                        target_unit=target_unit)
+                    if min_vol is not None:
+                        min_vol *= low_unit_factor
+                    if limit_vol is not None:
+                        limit_vol *= high_unit_factor
                     break
             else:
                 raise ValidationError('Volume range text "%s" did not match '

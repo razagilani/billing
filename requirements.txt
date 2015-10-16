@@ -21,7 +21,8 @@ Flask-OAuth==0.12
 Flask-Principal==0.4.0
 Flask-KVSession==0.6.2
 flower==0.8.2
-mongoengine==0.10.0
+# this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4) but appears as version "8.7"
+git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f
 kombu-sqlalchemy==1.1.0
 pdfminer==20140328
 pika==0.9.14
@@ -39,6 +40,7 @@ pymongo==2.7.2
 # TODO: replace with link to actual pymssql or version number
 git+https://github.com/klothe/pymssql.git@ba8c5f45f52ef3602a29604428dc831fab7f3af3
 python-dateutil==2.1
+python-statsd
 pytz==2013.8
 regex==2015.7.19
 requests==0.14.0
@@ -52,3 +54,6 @@ testfixtures
 voluptuous==0.8.6
 Pint==0.6
 reportlab==2.5
+
+# experiment: latest version of "postal" module as its own repo with setup.py:
+#git+ssh://git@bitbucket.org/skylineitops/postal.git
