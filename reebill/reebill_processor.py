@@ -789,31 +789,23 @@ class ReebillProcessor(object):
         payments have been applied for that reebill
         """
         s = Session()
-        # b = "(select reebill_customer_id, max(issue_date) as max_issue_date " \
-        #     "from reebill group by reebill.reebill_customer_id) as b " \
-        #     "on a.reebill_customer_id = b.reebill_customer_id " \
-        #     "order by a.reebill_customer_id, date_applied"
-        # a = "(select reebill_customer.id as reebill_customer_id, " \
-        #     "reebill_customer.name as name, payment.credit, " \
-        #     "payment.date_received, payment.date_applied, " \
-        #     "utility_account.account, reebill_customer.payee, " \
-        #     "coalesce(address.addressee::text,'') || ',' || " \
-        #     "coalesce(address.street::text, '') || ',' || " \
-        #     "coalesce(address.city::text, '') || ',' || " \
-        #     "coalesce(address.state::text, '') as Address from payment join " \
-        #     "reebill_customer on payment.reebill_customer_id = " \
-        #     "reebill_customer.id join utility_account on " \
-        #     "reebill_customer.utility_account_id = utility_account.id join" \
-        #     " address on utility_account.fb_billing_address_id = address.id) " \
-        #     "as a"
-        # outer_select = "select a.account, a.payee as \"Remit To\", a.Address" \
-        #                " as \"Billing Address\", a.credit as " \
-        #                "\"Credit Amount\", a.date_received as " \
-        #                "\"Date Received\", b.max_issue_date, " \
-        #                "a.date_applied from "
-        a = s.query(Payment.credit, Payment.date_applied, Payment.date_received, ReeBillCustomer.name.label('name'), ReeBillCustomer.id.label('reebill_customer_id'), ReeBillCustomer.payee, Address.street, Address.state, Address.city, UtilityAccount.account).join(ReeBillCustomer, Payment.reebill_customer_id==ReeBillCustomer.id).join(UtilityAccount, ReeBillCustomer.utility_account_id==UtilityAccount.id).join(Address, UtilityAccount.fb_billing_address_id==Address.id).subquery('a')
-        b = s.query(ReeBill.reebill_customer_id, func.max(ReeBill.issue_date).label('max_issue_date')).group_by(ReeBill.reebill_customer_id).subquery('b')
-        outer_select = s.query(a.c.account, a.c.payee, a.c.city, a.c.state, a.c.street, a.c.credit, a.c.date_received, a.c.date_applied, b.c.max_issue_date).join(b, a.c.reebill_customer_id==b.c.reebill_customer_id)
+        a = s.query(Payment.credit, Payment.date_applied,
+                Payment.date_received, ReeBillCustomer.name.label('name'),
+                ReeBillCustomer.id.label('reebill_customer_id'),
+                ReeBillCustomer.payee, Address.street, Address.state,
+                Address.city, UtilityAccount.account).join(ReeBillCustomer,
+                Payment.reebill_customer_id==ReeBillCustomer.id).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).join(
+                Address, UtilityAccount.fb_billing_address_id==Address.id).\
+                subquery('a')
+        b = s.query(ReeBill.reebill_customer_id, func.max(ReeBill.issue_date)
+                    .label('max_issue_date')).group_by(
+                    ReeBill.reebill_customer_id).subquery('b')
+        outer_select = s.query(a.c.account, a.c.payee, a.c.city, a.c.state,
+                            a.c.street, a.c.credit, a.c.date_received,
+                            a.c.date_applied, b.c.max_issue_date).join(b,
+                            a.c.reebill_customer_id==b.c.reebill_customer_id)
         return outer_select
 
     def write_csv(self, reebills_data, file):
@@ -839,7 +831,7 @@ class ReebillProcessor(object):
                 "Billing Address": row.street + ',' + row.city + ',' + row.state,
                 "Credit Amount": row.credit,
                 "Date Received": row.date_received,
-                "Payment Applied": True if row.date_received >
+                "Payment Applied": True if row.date_applied >
                                            row.max_issue_date else False,
                 "Date Applied": row.date_applied,
                 "Max Issue Date": row.max_issue_date

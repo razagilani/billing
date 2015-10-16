@@ -8,12 +8,14 @@ from sqlalchemy.orm.exc import NoResultFound
 from testfixtures.tempdirectory import TempDirectory
 
 from core import init_model
+from reebill.payment_dao import PaymentDAO
+from reebill.reebill_dao import ReeBillDAO
 from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, ReeBillCustomer, \
     CustomerGroup
 from core.model.utilbill import UtilBill, Charge
-from core.model import UtilityAccount, Session, Address, Register, Charge
+from core.model import UtilityAccount, Session, Address, Register, Charge, Utility, Supplier, RateClass
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util
 from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
@@ -2179,3 +2181,78 @@ class TestTouMetering(unittest.TestCase):
         # both bills should now be issued
         self.assertTrue(self.customer.reebills[0].issued)
         self.assertTrue(customer2.reebills[0].issued)
+
+class TestExportBillPayments(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_test_config()
+        init_model()
+        #pass
+        # these objects don't change during the tests, so they should be
+        # created only once.
+        #cls.utilbill_processor = create_utilbill_processor()
+        cls.reebill_processor, cls.views = create_reebill_objects()
+
+    def setUp(self):
+        clear_db()
+
+        blank_address = Address()
+        self.utility = Utility(name='FB Test Utility Name',
+                               address=blank_address)
+        test_supplier = Supplier(name='FB Test Suplier', address=blank_address)
+        rate_class = RateClass(name='FB Test Rate Class',
+                                      utility=self.utility, service='gas')
+        self.utility_account = UtilityAccount('someaccount', 99999,
+                            self.utility, test_supplier,
+                            rate_class, blank_address, blank_address)
+        self.reebill_customer = ReeBillCustomer(name='Test Customer',
+                                    discount_rate=.12, late_charge_rate=.34,
+                                    service='thermal',
+                                    bill_email_recipient='example@example.com',
+                                    utility_account=self.utility_account,
+                                    payee='payee')
+        self.utilbill = UtilBill(self.utility_account, self.utility, rate_class,
+                             test_supplier,
+                             period_start=date(2012, 1, 1),
+                             period_end=date(2012, 2, 1))
+        self.utilbill._registers = [Register(Register.TOTAL, 'kWh')]
+        self.reebill = ReeBill(self.reebill_customer, 1, utilbill=self.utilbill)
+        self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
+
+        # currently it doesn't matter if the 2nd bill has the same utilbill
+        # as the first, but might need to change
+        self.acc = '99999'
+        self.session = Session()
+        self.session.add(self.utility_account)
+        self.session.add(self.reebill_customer)
+        self.session.add(self.utilbill)
+        self.session.add(self.reebill)
+        self.session.commit()
+        self.state_db = ReeBillDAO()
+        self.payment_dao = PaymentDAO()
+        self.utilbill_processor = create_utilbill_processor()
+        # self.utilbill = self.utilbill_processor.upload_utility_bill(
+        #     self.acc, StringIO('test'), date(2012, 1, 1), date(2012, 2, 1),
+        #     'gas')
+
+
+    def tearDown(self):
+        clear_db()
+
+    def test_export_bill_payments(self):
+
+        # one payment on jan 15
+        payment1 = self.payment_dao.create_payment(self.acc, datetime.utcnow(), 'payment 1', 100)
+        payment2 = self.payment_dao.create_payment(self.acc, datetime.utcnow()+timedelta(days=30), 'payment 2', 200)
+
+        self.reebill_processor.compute_reebill(self.acc, 1)
+        self.reebill_processor.issue(self.acc, 1)
+        result = self.reebill_processor.get_payment_info_for_bills()
+        bills = result.all()
+        self.assertEqual(2, len(bills))
+        self.assertTrue(bills[0].date_applied > bills[0].max_issue_date)
+        self.assertTrue(bills[1].date_applied < bills[1].max_issue_date)
+
+
+
+        pass
