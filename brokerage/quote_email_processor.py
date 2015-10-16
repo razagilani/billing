@@ -8,7 +8,7 @@ import traceback
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from core.model import AltitudeSession, Session, Supplier
-from core.exc import BillingError
+from core.exceptions import BillingError
 from util.email_util import get_attachments
 from brokerage.brokerage_model import Company
 

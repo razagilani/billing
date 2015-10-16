@@ -11,7 +11,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 
 from core.model.model import physical_unit_type
-from core.exc import RegisterError, UnEditableBillError
+from core.exceptions import RegisterError, UnEditableBillError
 from reebill.exceptions import IssuedBillError, NotIssuable
 from core.model import Base, Address, Register, Session
 from core.model.utilbill import Evaluation, Charge

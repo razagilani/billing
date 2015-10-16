@@ -8,7 +8,7 @@ from reebill import reebill_model
 from core.model.utilbill import UtilBill
 from util import dateutils
 from util.monthmath import approximate_month
-from core.exc import *
+from core.exceptions import *
 from core.model import Session, UtilityAccount
 
 pformat = pprint.PrettyPrinter().pformat

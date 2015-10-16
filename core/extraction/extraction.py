@@ -19,7 +19,7 @@ from core.extraction.type_conversion import \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
 from core.model import BoundingBox
-from core.exc import ConversionError, ExtractionError, MatchError
+from core.exceptions import ConversionError, ExtractionError, MatchError
 from util.layout import tabulate_objects, in_bounds, get_text_line, get_corner, \
     get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil

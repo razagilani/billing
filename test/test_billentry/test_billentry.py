@@ -19,7 +19,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from test import init_test_config
 init_test_config()
 
-from core.exc import MissingFileError
+from core.exceptions import MissingFileError
 from test.setup_teardown import FakeS3Manager
 from test.setup_teardown import create_utilbill_processor
 from util.fix_mq import FixMQ

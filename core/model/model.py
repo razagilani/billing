@@ -23,7 +23,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.inspection import inspect
 from alembic.migration import MigrationContext
 
-from core.exc import DatabaseError, \
+from core.exceptions import DatabaseError, \
     NoSuchBillException
 from util.units import unit_registry
 

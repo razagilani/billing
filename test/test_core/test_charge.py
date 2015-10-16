@@ -2,7 +2,7 @@ from datetime import date
 
 from core.model import Address, UtilityAccount, Utility
 from core.model.utilbill import UtilBill, ChargeEvaluation, Charge
-from core.exc import FormulaError
+from core.exceptions import FormulaError
 from test import testing_utils
 
 

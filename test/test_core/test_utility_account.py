@@ -3,7 +3,7 @@
 from datetime import date
 from unittest import TestCase
 
-from core.exc import NoSuchBillException
+from core.exceptions import NoSuchBillException
 
 
 # init_test_config has to be called first in every test module, because

@@ -13,7 +13,7 @@ from reebill.reebill_model import ReeBill, ReeBillCustomer, \
 from core.model.utilbill import UtilBill
 from core.model import UtilityAccount, Session, Address, Register, Charge
 from test.setup_teardown import TestCaseWithSetup, create_utilbill_processor, create_reebill_objects, create_nexus_util
-from core.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
+from core.exceptions import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     UnEditableBillError, BillingError
 from reebill.exceptions import IssuedBillError, ConfirmAdjustment
 from test import testing_utils, clear_db
