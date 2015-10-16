@@ -2,8 +2,9 @@ from StringIO import StringIO
 from datetime import date
 import time
 from os.path import join, dirname, realpath
-import unittest
+
 from mock import MagicMock, Mock
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -15,17 +16,15 @@ from test import init_test_config
 init_test_config()
 
 import requests
-from sqlalchemy import desc
 from sqlalchemy.orm.exc import NoResultFound
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from core import init_model
 
-from reebill.views import column_dict
 from test import create_tables, clear_db
-from exc import DuplicateFileError, UnEditableBillError, BillingError
+from core.exc import DuplicateFileError, UnEditableBillError, BillingError
 from core.model import UtilityAccount, Utility, Address, Supplier, \
-    RateClass, Register, Charge
+    RateClass, Register
 from core.model.utilbill import UtilBill, Charge
 from core.model import Session
 from test import testing_utils

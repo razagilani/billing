@@ -2,12 +2,13 @@
 """
 from StringIO import StringIO
 from datetime import datetime, date
-from time import sleep
 import unittest
 from json import loads
 import json
+
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -18,15 +19,14 @@ from sqlalchemy.orm.exc import NoResultFound
 from test import init_test_config
 init_test_config()
 
-from exc import UnEditableBillError, MissingFileError
-from test import create_tables, clear_db
+from core.exc import MissingFileError
 from test.setup_teardown import FakeS3Manager
 from test.setup_teardown import create_utilbill_processor
 from util.fix_mq import FixMQ
 from util.dictutils import deep_map
 
 
-from core.altitude import AltitudeBill, get_utilbill_from_guid, AltitudeAccount
+from core.altitude import AltitudeAccount
 
 import billentry
 from billentry import common
@@ -37,8 +37,7 @@ from billentry.common import replace_utilbill_with_beutilbill, \
     account_has_bills_for_data_entry
 
 from core import init_model, altitude
-from core.model import Session, UtilityAccount, Address, Utility,\
-    Charge, Register, RateClass
+from core.model import Session, UtilityAccount, Address, Utility, RateClass
 from core.model.utilbill import UtilBill, Charge
 from brokerage.brokerage_model import BrokerageAccount
 with FixMQ():

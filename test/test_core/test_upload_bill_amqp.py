@@ -4,12 +4,11 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 from datetime import date
-from pika import URLParameters
-from datetime import datetime
-from uuid import uuid4
-from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
+
+from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Invalid
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -32,8 +31,7 @@ with FixMQ():
 
 from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from core.utilbill_loader import UtilBillLoader
-from exc import DuplicateFileError
+from core.exc import DuplicateFileError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util

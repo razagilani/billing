@@ -3,13 +3,14 @@ objects so they can be stored in the database. Everything that depends
 specifically on the UtilBill class should go here.
 """
 import re
+
 import regex
 from sqlalchemy.orm.exc import NoResultFound
 
 from core.model import Session, Address, Supplier
 from core.model.model import ChargeNameMap
 from core.model.utilbill import Charge
-from exc import ConversionError, NoRSIBindingError
+from core.exc import ConversionError, NoRSIBindingError
 
 
 def convert_table_charges(rows):

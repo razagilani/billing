@@ -1,37 +1,34 @@
 """REST resource classes for the UI of the Bill Entry application.
 """
 from datetime import datetime
-import os
 
 from dateutil import parser as dateutil_parser
 from boto.s3.connection import S3Connection
 from flask import session
-from flask.ext.login import current_user, logout_user
+from flask.ext.login import current_user
 from flask.ext.principal import Permission, RoleNeed
-from flask.ext.restful import Resource, marshal, abort
-from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean,\
-    List
+from flask.ext.restful import Resource, marshal
+from flask.ext.restful.fields import Raw, String, Integer, Float, Boolean
 from flask.ext.restful.reqparse import RequestParser
 from sqlalchemy import desc, and_, func, case, cast, Integer as integer
 from sqlalchemy.orm import joinedload, with_polymorphic
 from sqlalchemy.orm.exc import NoResultFound
 import werkzeug
 
-from billentry.billentry_model import BEUtilBill, BEUserSession
+from billentry.billentry_model import BEUtilBill
 from billentry.billentry_model import BillEntryUser
 from billentry.common import replace_utilbill_with_beutilbill
 from billentry.common import account_has_bills_for_data_entry
 from brokerage.brokerage_model import BrokerageAccount
 from core.altitude import AltitudeAccount, update_altitude_account_guids
 from core.bill_file_handler import BillFileHandler
-from core.model import Session, Supplier, Utility, RateClass, Charge, SupplyGroup, Address
-
+from core.model import Session, Supplier, Utility, RateClass, Address
 from core.model.utilbill import UtilBill, Charge
 from core.model import UtilityAccount
 from core.pricing import FuzzyPricingModel
 from core.utilbill_loader import UtilBillLoader
 from core.utilbill_processor import UtilbillProcessor
-from exc import MissingFileError
+from core.exc import MissingFileError
 
 
 project_mgr_permission = Permission(RoleNeed('Project Manager'),

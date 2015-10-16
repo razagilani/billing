@@ -3,23 +3,20 @@ from StringIO import StringIO
 from datetime import date, datetime, timedelta
 
 from mock import Mock
-import mongoengine
 from sqlalchemy.orm.exc import NoResultFound
 from testfixtures.tempdirectory import TempDirectory
 
 from core import init_model
-from reebill.views import column_dict
 from skyliner.sky_handlers import cross_range
 from reebill.reebill_model import ReeBill, ReeBillCustomer, \
     CustomerGroup
-from core.model.utilbill import UtilBill, Charge
+from core.model.utilbill import UtilBill
 from core.model import UtilityAccount, Session, Address, Register, Charge
-from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
-    create_utilbill_processor, create_reebill_objects, create_nexus_util
-from exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, UnEditableBillError, IssuedBillError, NotIssuable, \
-    BillingError
-from test import testing_utils, init_test_config, create_tables, clear_db
+from test.setup_teardown import TestCaseWithSetup, create_utilbill_processor, create_reebill_objects, create_nexus_util
+from core.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
+    UnEditableBillError, BillingError
+from reebill.exceptions import IssuedBillError, ConfirmAdjustment
+from test import testing_utils, clear_db
 
 
 # TODO: this module is not runnable by itself through unittest/PyCharm because

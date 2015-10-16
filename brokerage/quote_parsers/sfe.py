@@ -1,10 +1,10 @@
 from datetime import datetime, time
 import re
+
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, \
-    excel_number_to_datetime, SpreadsheetReader, StartEndCellDateGetter
-from exc import ValidationError
+from brokerage.quote_parser import _assert_true, QuoteParser, SpreadsheetReader, StartEndCellDateGetter
+from core.exc import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote

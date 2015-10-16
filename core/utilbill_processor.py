@@ -2,14 +2,13 @@ import json
 from datetime import datetime, date
 
 from sqlalchemy.orm.exc import NoResultFound
-from brokerage.brokerage_model import BrokerageAccount
-from core.bill_file_handler import BillFileHandler
-from core import extraction
 
-from core.model import Address, Charge, Register, Session, Supplier, \
+from brokerage.brokerage_model import BrokerageAccount
+from core import extraction
+from core.model import Address, Register, Session, Supplier, \
     Utility, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill, Charge
-from exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
+from core.exc import NoSuchBillException, DuplicateFileError, BillingError, MergeError
 from core.utilbill_loader import UtilBillLoader
 from reebill.reebill_model import ReeBillCustomer, ReeBill
 

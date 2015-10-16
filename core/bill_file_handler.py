@@ -1,8 +1,7 @@
 import hashlib
-import string
 
 from core.model.utilbill import UtilBill
-from exc import MissingFileError, DuplicateFileError
+from core.exc import MissingFileError, DuplicateFileError
 
 class BillFileHandler(object):
     """Handles everything related to utility bill files. These are

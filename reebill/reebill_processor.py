@@ -1,27 +1,26 @@
 import os
 import traceback
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from StringIO import StringIO
 from itertools import groupby
 
 from sqlalchemy.sql import desc
 from sqlalchemy import not_, func
 from sqlalchemy.orm.exc import NoResultFound
+from jinja2 import Template
 
 from core.model import (Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass,
-                           Register)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, Register)
 from core.model.utilbill import UtilBill
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
                                    CustomerGroup)
-from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
-                 FormulaError, RegisterError, BillingError,
-                 ConfirmMultipleAdjustments)
+from core.exc import NoSuchBillException, FormulaError, BillingError
+from reebill.exceptions import IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
 from util.pdf import PDFConcatenator
-from jinja2 import Template
 
 
 class ReebillProcessor(object):

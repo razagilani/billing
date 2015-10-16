@@ -16,7 +16,7 @@ from core.model import Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill
 from core.utilbill_loader import UtilBillLoader
-from exc import NoSuchBillException
+from core.exc import NoSuchBillException
 
 
 class UtilbillLoaderTest(unittest.TestCase):

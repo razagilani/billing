@@ -5,8 +5,7 @@ from itertools import chain
 from logging import getLogger
 from sys import maxint
 
-from exc import NoSuchBillException
-from core.model import Utility
+from core.exc import NoSuchBillException
 from core.model.utilbill import UtilBill, Charge
 
 

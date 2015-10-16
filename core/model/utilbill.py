@@ -2,21 +2,18 @@ from StringIO import StringIO
 import ast
 from datetime import datetime, date
 import re
-from pdfminer.converter import PDFPageAggregator
-from pdfminer.layout import LAParams, LTComponent, LTTextLine, LTTextBox, LTPage, \
-    LTCurve, LTImage, LTText
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from re import sub
+
+from pdfminer.layout import LTComponent, LTTextLine, LTTextBox, LTPage, \
+    LTCurve, LTImage, LTText
 from sqlalchemy import CheckConstraint, Column, String, Integer, ForeignKey, \
     Date, Boolean, Float, DateTime, Enum, inspect
 from sqlalchemy.orm import relationship, backref, object_session
 import tsort
+
 from core.model import Base, Address, Session, Register
 from core.model.model import UtilbillCallback, PHYSICAL_UNITS
-from exc import NotProcessable, UnEditableBillError, BillingError, \
+from core.exc import NotProcessable, UnEditableBillError, BillingError, \
     BillStateError, MissingFileError, FormulaSyntaxError, FormulaError
 from util.pdf import get_all_pdfminer_objs
 from util.layout import LAYOUT_TYPES, group_layout_elements_by_page, PAGE, \

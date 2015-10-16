@@ -1,15 +1,15 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
-from collections import defaultdict
 from datetime import datetime
 import itertools
+
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float, Table, func, desc
+    Float, func, desc
 from sqlalchemy.orm import relationship
 
 from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
-from exc import ValidationError
+from core.exc import ValidationError
 from util.dateutils import date_to_datetime
 
 

@@ -2,7 +2,9 @@
 """
 from datetime import date
 from unittest import TestCase
-from exc import NoSuchBillException
+
+from core.exc import NoSuchBillException
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes

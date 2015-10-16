@@ -13,7 +13,7 @@ from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
 from core.model import Supplier, Session, AltitudeSession
-from exc import ValidationError
+from core.exc import ValidationError
 from test import init_test_config, clear_db, create_tables
 
 EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',

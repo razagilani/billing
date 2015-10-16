@@ -30,12 +30,11 @@ from reebill import journal, reebill_file_handler
 from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
-from exc import Unauthenticated, IssuedBillError, ConfirmAdjustment, \
-    ConfirmMultipleAdjustments, BillingError
+from reebill.exceptions import IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments, Unauthenticated
 from reebill.reports.excel_export import Exporter
 from core.model.utilbill import UtilBill
 from reebill.reebill_model import CustomerGroup
-
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
 

@@ -21,10 +21,9 @@ from sqlalchemy.types import Integer, String, Float, Boolean, \
 from sqlalchemy.util.langhelpers import symbol
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.inspection import inspect
-
 from alembic.migration import MigrationContext
 
-from exc import DatabaseError, \
+from core.exc import DatabaseError, \
     NoSuchBillException
 from util.units import unit_registry
 
