@@ -132,12 +132,12 @@ setup(
     # -tests-require-dependencies-of-a-distribute-setupto
     install_requires=install_requires + tests_require,
     tests_require=tests_require,
+
+    # TODO: what is this? remove or set to correct value
     test_suite="nose.collector",
+
     entry_points={
         'console_scripts': [
-            # 'acquisitor-exchange = messenger.acquisitor_exchange:main',
-            # 'acquisitor = acquisitor:main',
-
             # TODO: probably everything in bin/ goes here.
             # but how to include things that are not python module paths
             # starting from the root directory? bin is not and shouldn't be a
