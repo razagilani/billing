@@ -144,6 +144,13 @@ class aws_s3(Schema):
     max_retry_delay = Any(validators=[Number(), Empty()])
     http_socket_timeout = Any(validators=[Number(), Empty()])
 
+
+class monitoring(Schema):
+    # for submitting application metrics to a collection daemon such as StatsD
+    metrics_host = String()
+    metrics_port = TCPPort()
+
+
 #Logging
 
 class loggers(Schema):

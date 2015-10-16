@@ -13,7 +13,7 @@ from core.bill_file_handler import BillFileHandler
 from core.model import Session, Address, UtilityAccount
 from core.altitude import AltitudeUtility, get_utility_from_guid, \
     AltitudeGUID, update_altitude_account_guids
-from util import FixMQ
+from util.fix_mq import FixMQ
 
 with FixMQ():
     from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE
@@ -68,13 +68,16 @@ def DueDateValidator():
 
 UtilbillMessageSchema = Schema({
     'utility_account_number': basestring,
+    'utility_account_number_normalized': Match('^\w+$'),
     'sha256_hexdigest': Match(BillFileHandler.HASH_DIGEST_REGEX),
     'due_date': DueDateValidator(),
     'total': TotalValidator(),
     'service_address': basestring,
     'utility_provider_guid': Match(AltitudeGUID.REGEX),
+    'service_types': ['electricity', 'gas'],
+
     'account_guids': [basestring],
-    'message_version': MessageVersion(1)
+    'message_version': MessageVersion(2)
 }, required=True)
 
 
