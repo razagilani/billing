@@ -16,7 +16,8 @@ install_requires = [
     'argparse==1.2.1',
     'celery==3.1.18',
     'chardet==1.1',
-    'ecdsa==0.10',
+    'click', # argument parsing for command-line scripts
+    'ecdsa==0.11', # upgraded from 0.10 to match some other dependency that also uses it
     'formencode==1.3.0a1',
     'Flask==0.10.1',
     'Flask-RESTful==0.3.1',
@@ -141,6 +142,16 @@ setup(
             # but how to include things that are not python module paths
             # starting from the root directory? bin is not and shouldn't be a
             # python package.
+            # this only works if bin/__init__.py exists, making "bin" a module
+            'check_matrix_file = bin.check_matrix_file:main',
+            'export_accounts_to_xls = export_accounts_to_xls:main',
+            'export_pg_data_altitude = export_pg_data_altitude:main',
+            'receive_matrix_email = receive_matrix_email:main',
+            'run_billentry = run_billentry:main',
+            'run_billentry_amqp_consumer = run_billentry_amqp_consumer:main',
+            'run_reebill = run_reebill:main',
+            'run_reports = run_reports:main',
+            'run_utilbill_amqp_consumer = run_utilbill_amqp_consumer:main',
         ],
     }
 )
