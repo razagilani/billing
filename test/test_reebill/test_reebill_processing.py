@@ -2228,19 +2228,16 @@ class TestExportBillPayments(unittest.TestCase):
         self.state_db = ReeBillDAO()
         self.payment_dao = PaymentDAO()
         self.utilbill_processor = create_utilbill_processor()
-        # self.utilbill = self.utilbill_processor.upload_utility_bill(
-        #     self.acc, StringIO('test'), date(2012, 1, 1), date(2012, 2, 1),
-        #     'gas')
-
 
     def tearDown(self):
         clear_db()
 
     def test_export_bill_payments(self):
-
         # one payment on jan 15
-        payment1 = self.payment_dao.create_payment(self.acc, datetime.utcnow(), 'payment 1', 100)
-        payment2 = self.payment_dao.create_payment(self.acc, datetime.utcnow()+timedelta(days=30), 'payment 2', 200)
+        self.payment_dao.create_payment(
+            self.acc, datetime.utcnow(), 'payment 1', 100)
+        self.payment_dao.create_payment(
+            self.acc, datetime.utcnow() + timedelta( days=30), 'payment 2', 200)
 
         self.reebill_processor.compute_reebill(self.acc, 1)
         self.reebill_processor.issue(self.acc, 1)
