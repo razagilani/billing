@@ -2185,12 +2185,8 @@ class TestTouMetering(unittest.TestCase):
 class TestExportBillPayments(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        init_test_config()
-        init_model()
-        #pass
         # these objects don't change during the tests, so they should be
         # created only once.
-        #cls.utilbill_processor = create_utilbill_processor()
         cls.reebill_processor, cls.views = create_reebill_objects()
 
     def setUp(self):
@@ -2252,7 +2248,3 @@ class TestExportBillPayments(unittest.TestCase):
         self.assertEqual(2, len(bills))
         self.assertTrue(bills[0].date_applied > bills[0].max_issue_date)
         self.assertTrue(bills[1].date_applied < bills[1].max_issue_date)
-
-
-
-        pass

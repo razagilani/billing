@@ -785,8 +785,8 @@ class ReebillProcessor(object):
         return reebill_customer
 
     def get_payment_info_for_bills(self):
-        """Return a list of all reebills that can be used to find out if
-        payments have been applied for that reebill
+        """Return a Query that gets all reebills with information whether
+        Bill payments are applied
         """
         s = Session()
         a = s.query(Payment.credit, Payment.date_applied,
