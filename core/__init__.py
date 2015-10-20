@@ -1,9 +1,11 @@
 import os.path as path
 from os.path import dirname, realpath
 import re
-from celery import Celery
-from pint import UnitRegistry
 
+from celery import Celery
+import statsd
+
+from util.validated_config_parser import ValidatedConfigParser
 import configuration as config_file_schema
 
 __version__ = '23'
@@ -28,7 +30,6 @@ def init_config(filepath='settings.cfg', fp=None):
     :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
-    from util.validated_config_parser import ValidatedConfigParser
     import logging
 
     log = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ def init_config(filepath='settings.cfg', fp=None):
         value = config.get('aws_s3', key)
         if value is not None:
             boto.config.set('Boto', key, str(value))
+
+    # all statsd.Client objects will use these connection parameters by default
+    statsd.Connection.set_defaults(
+        host=config.get('monitoring', 'metrics_host'),
+        port=config.get('monitoring', 'metrics_port'))
 
 def get_db_params():
     """:return a dictionary of parameters for connecting to the main

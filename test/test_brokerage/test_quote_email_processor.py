@@ -2,10 +2,13 @@ from cStringIO import StringIO
 from email.message import Message
 import os
 from unittest import TestCase
-from mock import Mock, call
-from brokerage.brokerage_model import Company, Quote
+
+from mock import Mock, MagicMock
+import statsd
+
+from brokerage.brokerage_model import Company, Quote, MatrixQuote
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO, MultipleErrors
+    UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError, NoQuotesError
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
@@ -14,7 +17,7 @@ from exc import ValidationError
 from test import init_test_config, clear_db, create_tables
 
 EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',
-                               'quote_email.txt')
+                               'quote_files', 'quote_email.txt')
 
 def setUpModule():
     init_test_config()
@@ -33,10 +36,17 @@ class TestQuoteEmailProcessor(TestCase):
         # QuoteEmailProcessor expects QuoteParser.extract_quotes to return a
         # generator, not a list
         self.quote_parser.extract_quotes.return_value = (q for q in self.quotes)
+        self.quote_parser.get_count.return_value = len(self.quotes)
         QuoteParserClass = Mock()
         QuoteParserClass.return_value = self.quote_parser
 
-        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao)
+        # might as well use real objects for StatsD metrics; they don't need
+        # to connect to a server
+        self.email_counter = statsd.Counter('email')
+        self.quote_counter = statsd.Counter('quote')
+
+        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao,
+                                       self.email_counter, self.quote_counter)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
@@ -77,7 +87,8 @@ class TestQuoteEmailProcessor(TestCase):
 
     def test_process_email_no_attachment(self):
         # email has no attachment in it
-        self.qep.process_email(StringIO(self.message.as_string()))
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(StringIO(self.message.as_string()))
 
         # supplier objects are looked up and found, but there is nothing else
         # to do
@@ -98,7 +109,8 @@ class TestQuoteEmailProcessor(TestCase):
         self.message.add_header('Content-Disposition', 'attachment',
                                 filename='unknown.xyz')
         email_file = StringIO(self.message.as_string())
-        self.qep.process_email(email_file)
+        with self.assertRaises(NoFilesError):
+            self.qep.process_email(email_file)
 
         # supplier objects are looked up and found, but nothing else happens
         # because the file is ignored
@@ -132,8 +144,9 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
     def test_process_email_good_attachment(self):
+        self.supplier.matrix_attachment_name = 'filename.xls'
         self.message.add_header('Content-Disposition', 'attachment',
-                                filename='filename.xls')
+                                filename='fileNAME.XLS')
         email_file = StringIO(self.message.as_string())
 
         self.qep.process_email(email_file)
@@ -151,6 +164,26 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(1, self.quote_dao.commit.call_count)
 
+    def test_process_email_no_quotes(self):
+        self.message.add_header('Content-Disposition', 'attachment',
+                                filename='filename.xls')
+        email_file = StringIO(self.message.as_string())
+
+        self.quote_parser.extract_quotes.return_value = []
+        self.quote_parser.get_count.return_value = 0
+
+        with self.assertRaises(NoQuotesError):
+            self.qep.process_email(email_file)
+
+        self.assertEqual(
+            1, self.quote_dao.get_supplier_objects_for_message.call_count)
+        #self.assertEqual(1, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(1, self.quote_dao.begin.call_count)
+        self.assertEqual(1, self.quote_dao.insert_quotes.call_count)
+        self.assertEqual(1, self.quote_parser.load_file.call_count)
+        self.quote_parser.extract_quotes.assert_called_once_with()
+        self.assertEqual(0, self.quote_dao.rollback.call_count)
+        self.assertEqual(1, self.quote_dao.commit.call_count)
 
 class TestQuoteEmailProcessorWithDB(TestCase):
     """Integration test using a real email with QuoteEmailProcessor,
@@ -161,6 +194,7 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         create_tables()
         init_model()
         init_altitude_db()
+        clear_db()
 
     def setUp(self):
         # example email containing a USGE matrix spreadsheet, matches the
@@ -168,7 +202,9 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         #  has a corresponding QuoteParser class.
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao)
+        email_counter, quote_counter = MagicMock(), MagicMock()
+        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao,
+                                       email_counter, quote_counter)
 
         # add a supplier to match the example email
         clear_db()
@@ -195,6 +231,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.qep.process_email(self.email_file)
         self.assertEqual(2144, a.query(Quote).count())
 
+        # TODO: tests block forever without this here. it doesn't even work
+        # when this is moved to tearDown because AltitudeSession (unlike
+        # Session) returns a different object each time it is called. i
+        # haven't figured out why that is yet.
+        a.rollback()
+
     def test_process_email_no_supplier_match(self):
         # supplier is missing but altitude_supplier is present
         AltitudeSession().add(self.altitude_supplier)
@@ -210,6 +252,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
             self.qep.process_email(self.email_file)
 
     def test_process_email_no_altitude_supplier(self):
+        # TODO: this should not be necessary here--clear_db() should take
+        # care of it. but without these lines, the test fails except when run
+        #  by itself (presumably because of data left over from previous tests)
+        AltitudeSession().query(MatrixQuote).delete()
+        AltitudeSession().query(Company).delete()
+
         Session().add(self.supplier)
         with self.assertRaises(UnknownSupplierError):
              self.qep.process_email(self.email_file)
