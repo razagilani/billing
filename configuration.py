@@ -68,6 +68,7 @@ class reebill(Schema):
 
     reconciliation_report_path = String()
 
+
 class billentry(Schema):
     google_client_id = String()
     google_client_secret = String()
@@ -143,6 +144,13 @@ class aws_s3(Schema):
     num_retries = Any(validators=[Number(), Empty()])
     max_retry_delay = Any(validators=[Number(), Empty()])
     http_socket_timeout = Any(validators=[Number(), Empty()])
+
+
+class monitoring(Schema):
+    # for submitting application metrics to a collection daemon such as StatsD
+    metrics_host = String()
+    metrics_port = TCPPort()
+
 
 #Logging
 
