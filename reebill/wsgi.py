@@ -131,8 +131,6 @@ class WebResource(object):
             'reebill', 'reconciliation_report_path')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
-        self.reebill_payment_csv_path = self.config.get(
-            'reebill', 'payment_csv_path')
 
     def dumps(self, data):
 
