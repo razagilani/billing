@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
+# TODO: ValidationError should probably be specific to this module,
+# not a global thing. this kind of validation doesn't have anything in common
+#  with other validation.
 from core.exceptions import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
 from brokerage.brokerage_model import load_rate_class_aliases
