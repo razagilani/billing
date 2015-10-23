@@ -160,6 +160,10 @@ mailalias { 'matrix-entrust':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
+mailalias { 'matrix-liberty':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
 mailalias { 'matrix-majorenergy':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
