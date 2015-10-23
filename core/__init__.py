@@ -65,6 +65,7 @@ def init_config(filepath='settings.cfg', fp=None):
         if value is not None:
             boto.config.set('Boto', key, str(value))
 
+    # all statsd.Client objects will use these connection parameters by default
     statsd.Connection.set_defaults(
         host=config.get('monitoring', 'metrics_host'),
         port=config.get('monitoring', 'metrics_port'))
