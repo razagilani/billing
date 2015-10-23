@@ -8,7 +8,7 @@ from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
     SimpleCellDateGetter, _assert_equal
-from exc import ValidationError
+from core.exceptions import ValidationError
 from util.units import unit_registry
 
 
