@@ -7,7 +7,7 @@ from pika import URLParameters
 from datetime import datetime
 from sqlalchemy import cast, Integer
 from sqlalchemy.orm.exc import NoResultFound
-from voluptuous import Schema, Match, Any, Invalid
+from voluptuous import Schema, Match, Any, Invalid, ALLOW_EXTRA
 
 from core.bill_file_handler import BillFileHandler
 from core.model import Session, Address, UtilityAccount
@@ -78,7 +78,7 @@ UtilbillMessageSchema = Schema({
 
     'account_guids': [basestring],
     'message_version': MessageVersion(2)
-}, required=True)
+}, required=True, extra=ALLOW_EXTRA)
 
 
 def create_dependencies():
