@@ -13,6 +13,8 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     """Used by MajorEnergyMatrixParser for handling only the sheet that contains
     electricity quotes.
     """
+    NAME = ''
+
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 14
@@ -99,6 +101,8 @@ class MajorEnergyGasSheetParser(QuoteParser):
     """Used by MajorEnergyMatrixParser for handling only the sheet that contains
     gas quotes.
     """
+    NAME = ''
+
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 7
@@ -171,6 +175,8 @@ class MajorEnergyMatrixParser(QuoteParser):
     times, and because there is still some code duplication between the two
     classes that should be eliminated. But it works well enough.
     """
+    NAME = 'majorenergy'
+
     FILE_FORMAT = formats.xlsx
 
     # only validation that applies to the entire file goes in this class.

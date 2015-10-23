@@ -23,6 +23,7 @@ class QuoteParserTest(TestCase):
     def setUp(self):
         reader = Mock(autospec=SpreadsheetReader)
         class ExampleQuoteParser(QuoteParser):
+            NAME = 'example'
             def __init__(self):
                 super(ExampleQuoteParser, self).__init__()
                 self._reader = reader

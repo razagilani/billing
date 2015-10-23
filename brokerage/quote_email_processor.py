@@ -6,6 +6,7 @@ import re
 import traceback
 
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+import statsd
 
 from core.model import AltitudeSession, Session, Supplier
 from core.exceptions import BillingError
@@ -13,6 +14,12 @@ from util.email_util import get_attachments
 from brokerage.brokerage_model import Company
 
 LOG_NAME = 'read_quotes'
+
+# names used for metrics submitted to StatsD: quotes by supplier and total
+# emails.
+# when no StatsD server is running (e.g. while testing) nothing happens
+QUOTE_METRIC_FORMAT = 'quote.matrix.quote.%(suppliername)s'
+EMAIL_METRIC_NAME = 'quote.matrix.email'
 
 class QuoteProcessingError(BillingError):
     pass
@@ -138,25 +145,17 @@ class QuoteEmailProcessor(object):
     # rows allowed per insert statement in pymssql.)
     BATCH_SIZE = 1000
 
-    def __init__(self, classes_for_suppliers, quote_dao, email_counter,
-                 quote_counter):
+    def __init__(self, classes_for_suppliers, quote_dao):
         """
         :param classes_for_suppliers: dictionary mapping the primary keys of
         each Supplier (Supplier.id) to the QuoteParser subclass that handles
         its file format.
         :param quote_dao: QuoteDAO object for handling database access.
-        :param email_counter: statsd.Counter to track number of emails received.
-        :param quote_counter: statsd.Counter to track number of quotes received.
         """
         self.logger = logging.getLogger(LOG_NAME)
         self.logger.setLevel(logging.DEBUG)
         self._clases_for_suppliers = classes_for_suppliers
         self._quote_dao = quote_dao
-
-        # for submitting metrics to StatsD: number of emails received,
-        # number of quotes received
-        self._email_counter = email_counter
-        self._quote_counter = quote_counter
 
     def _process_quote_file(self, supplier, altitude_supplier, file_name,
                             file_content):
@@ -221,7 +220,9 @@ class QuoteEmailProcessor(object):
         :param email_file: text file with the full content of an email
         """
         self.logger.info('Starting to read email')
-        self._email_counter += 1
+        email_counter = statsd.Counter(EMAIL_METRIC_NAME)
+        email_counter += 1
+
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
@@ -239,6 +240,10 @@ class QuoteEmailProcessor(object):
         if len(attachments) == 0:
             self.logger.warn(
                 'Email from %s has no attachments' % supplier.name)
+
+        # for submitting metrics to StatsD
+        quote_counter = statsd.Counter(
+           QUOTE_METRIC_FORMAT % dict(suppliername=supplier.name))
 
         # since an exception when processing one file causes that file to be
         # skipped, but other files are still processed, error messages must
@@ -273,7 +278,7 @@ class QuoteEmailProcessor(object):
             self._quote_dao.commit()
             self.logger.info('Read %s quotes for %s from "%s"' % (
                 quotes_count, supplier.name, file_name))
-            self._quote_counter += quotes_count
+            quote_counter += quotes_count
             files_count += 1
 
         if len(error_messages) > 0:

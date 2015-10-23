@@ -14,6 +14,8 @@ from util.units import unit_registry
 class SFEMatrixParser(QuoteParser):
     """Parser for SFE spreadsheet.
     """
+    NAME = 'sfe'
+
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 21

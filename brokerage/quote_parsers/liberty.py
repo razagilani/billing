@@ -136,6 +136,8 @@ class NormalPriceCell(PriceQuoteCell):
 class LibertyMatrixParser(QuoteParser):
     """Parser for Liberty Power spreadsheet.
     """
+    NAME = 'liberty'
+
     # TODO: we couldn't open this in its original xlsx format
     # (might be fixed by upgrading openpyxl)
     FILE_FORMAT = formats.xls
