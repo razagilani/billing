@@ -179,7 +179,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '482dddf4fe5d'
+_schema_revision = '127c3e14d9d4'
 
 
 def check_schema_revision(schema_revision=None):
@@ -287,9 +287,6 @@ class Supplier(Base):
     # varying text.
     matrix_email_recipient = Column(String, unique=True)
     matrix_attachment_name = Column(String)
-
-    # for importing matrix quotes from files in Dropbox (depricated)
-    matrix_file_name = Column(String, unique=True)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")
