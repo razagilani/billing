@@ -6,7 +6,7 @@ from celery import Celery
 import statsd
 
 from util.validated_config_parser import ValidatedConfigParser
-import configuration as config_file_schema
+from core import configuration as config_file_schema
 
 __version__ = '23'
 
@@ -97,9 +97,7 @@ def import_all_model_modules():
     import core.model
     import core.altitude
     import core.extraction
-    import reebill.reebill_model
-    import brokerage.brokerage_model
-    import billentry.billentry_model
+
 
 def get_scrub_columns():
     """Return a dictionary mapping sqlalchemy.Column objects to values that
