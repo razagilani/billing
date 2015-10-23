@@ -15,6 +15,8 @@ from util.units import unit_registry
 class EntrustMatrixParser(QuoteParser):
     """Parser for Entrust spreadsheet.
     """
+    NAME = 'entrust'
+
     FILE_FORMAT = formats.xlsx
 
     EXPECTED_SHEET_TITLES = [

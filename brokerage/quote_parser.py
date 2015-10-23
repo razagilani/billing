@@ -353,6 +353,11 @@ class QuoteParser(object):
     """
     __metaclass__ = ABCMeta
 
+    # standardized short name of the format or supplier, used to determine names
+    # of StatsD metrics (and potentially other purposes). should be lowercase
+    # with no spaces or punctuation, like "directenergy". avoid changing this!
+    NAME = None
+
     # tablib submodule that should be used to import data from the spreadsheet
     FILE_FORMAT = None
 
@@ -377,6 +382,9 @@ class QuoteParser(object):
     date_getter = None
 
     def __init__(self):
+        # name should be defined
+        assert isinstance(self.NAME, basestring)
+
         self._reader = SpreadsheetReader()
         self._file_name = None
 
@@ -395,6 +403,12 @@ class QuoteParser(object):
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
         self._rate_class_aliases = self._load_rate_class_aliases()
+
+    def get_name(self):
+        """Rerturn the short standardized name of the format or supplier that
+        this parser is for.
+        """
+        return self.__class__.get_name()
 
     def _load_rate_class_aliases(self):
         # allow tests to avoid using the database by overriding this method

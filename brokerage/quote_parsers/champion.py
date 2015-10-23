@@ -11,6 +11,7 @@ from util.units import unit_registry
 class ChampionMatrixParser(QuoteParser):
     """ Parser for Champion Matrix Rates
     """
+    NAME = 'champion'
 
     FILE_FORMAT = formats.xls
 

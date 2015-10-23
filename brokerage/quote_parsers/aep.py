@@ -11,6 +11,8 @@ from util.units import unit_registry
 class AEPMatrixParser(QuoteParser):
     """Parser for AEP Energy spreadsheet.
     """
+    NAME = 'aep'
+
     FILE_FORMAT = formats.xls
 
     EXPECTED_SHEET_TITLES = [
