@@ -926,7 +926,6 @@ class ReportsResource(WebResource):
     @cherrypy.tools.authenticate()
     def default(self, *vpath, **params):
         row = cherrypy.request.params
-        print row
         account = row['account'] if row['account'] != '' else None
         begin_date = datetime.strptime(row['period_start'], '%m/%d/%Y').date() \
             if row['period_start'] != '' else None
@@ -1006,6 +1005,24 @@ class ReportsResource(WebResource):
                     'attachment; filename=%s' % spreadsheet_name
 
                 return xls_file.read()
+
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate()
+    def payments_report(self, *vpath, **params):
+        """Responds with all reebills bills payment data
+         in the form of a csv with a field to indicate if
+         the payment for the reebill is applied."""
+
+        buff = StringIO()
+
+        reebills_data = self.reebill_processor.get_payment_info_for_bills()
+        self.reebill_processor.write_csv(reebills_data, buff)
+        cherrypy.response.headers['Content-Type'] = 'text/csv'
+        cherrypy.response.headers['Content-Disposition'] = \
+            'attachment; filename="payments.csv"'
+
+        return buff.getvalue()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
