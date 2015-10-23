@@ -15,6 +15,8 @@ class USGEMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
     time along the columns.
     """
+    NAME = 'usgegas'
+
     FILE_FORMAT = formats.xlsx
 
     TERM_HEADER_ROW = 4

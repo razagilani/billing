@@ -45,8 +45,7 @@ class TestQuoteEmailProcessor(TestCase):
         self.email_counter = statsd.Counter('email')
         self.quote_counter = statsd.Counter('quote')
 
-        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao,
-                                       self.email_counter, self.quote_counter)
+        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
@@ -203,8 +202,7 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
         email_counter, quote_counter = MagicMock(), MagicMock()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao,
-                                       email_counter, quote_counter)
+        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao)
 
         # add a supplier to match the example email
         clear_db()
