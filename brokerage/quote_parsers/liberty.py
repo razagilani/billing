@@ -235,26 +235,17 @@ class LibertyMatrixParser(QuoteParser):
         'PA-WPP-SOHO-National Green E',
         'PA-WPP-SOHO-PA Green']
 
+    # instead of the normal EXPECTED_CELLS, which are in only one sheet,
+    # these are cells that are the same in all sheets (except "green" ones)
     LIBERTY_EXPECTED_CELLS = [
         (2, 'A', 'EFFECTIVE DATE'),
-        #(2, 'F', 'STATE'),
-        #(2, 'H', 'UTILITY'),
-        #(2, 'K', 'SEGMENT'),
-        #(2, 'N', 'SIZE REQUIREMENT'),
 
-        # This applies to table (of which there are variable-number per sheet), but we check
-        # the existence of only one.
+        # This applies to table (of which there are variable-number per
+        # sheet), but we check the existence of only one.
         (5, 'A', 'Utility:'),
-        #(5, 'F', 'Zone:'),
-        #(5, 'K', 'Service Class:'),
         (6, 'A', 'Start Date'),
         (6, 'B', 'Size Tier'),
         (6, 'D', 'FIXED PRICE:  Term in Months'),
-        #(8, 'J', 'Term'),
-        #(8, 'K', 'Price'),
-        #(8, 'L', 'Term'),
-        #(8, 'M', 'Price'),
-        #(6, 'J', 'Fixed Rate - Super Saver'),
     ]
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
@@ -264,7 +255,8 @@ class LibertyMatrixParser(QuoteParser):
         for sheet in self._reader.get_sheet_titles():
             if not self._is_sheet_green(sheet):
                 for (row, col, regexp) in self.LIBERTY_EXPECTED_CELLS:
-                    _assert_equal(regexp, self._reader.get(sheet, row, col, basestring))
+                    _assert_equal(regexp,
+                                  self._reader.get(sheet, row, col, basestring))
 
                 # Make sure every sheet maintains the limit KWH of 2,000,000
                 if not any(['%s kWh' % '{:,}'.format(self.LIBERTY_KWH_LIMIT)
