@@ -8,10 +8,9 @@ from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
-    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser,
-    AmerigreenMatrixParser, ChampionMatrixParser,
-    ConstellationMatrixParser, EntrustMatrixParser,
-    MajorEnergyMatrixParser, SFEMatrixParser)
+    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
+    ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -81,6 +80,7 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
                    'Gas Rack Rates September 21 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+    LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
 
     @classmethod
     def setUpClass(cls):
@@ -494,5 +494,64 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.08106865957514724, q.price)
+
+    def test_liberty(self):
+        parser = LibertyMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.LIBERTY_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        # TODO: update to match this spreadsheet
+        #self.assertEqual(1008, len(quotes))
+
+        for quote in quotes:
+            quote.validate()
+
+        # First quote on first page from first table
+        q1 = quotes[0]
+
+        # Last quote from first page from last table (super saver)
+        q2 = quotes[1007]
+
+        # Last quote (super saver) from last table on last readable sheet
+        q3 = quotes[-1]
+
+        # TODO: update to match this spreadsheet
+        self.assertEqual(datetime(2015, 9, 11), q1.valid_from)
+        self.assertEqual(datetime(2015, 9, 12), q1.valid_until)
+        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(3, q1.term_months)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(25000, q1.limit_volume)
+        self.assertEqual(0.10913, q1.price)
+        self.assertEqual('PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+
+        self.assertEqual(21, q2.term_months)
+        self.assertEqual(0.08087, q2.price)
+        self.assertEqual(datetime(2015, 9, 11), q2.valid_from)
+        self.assertEqual(datetime(2015, 9, 12), q2.valid_until)
+        self.assertEqual(datetime(2016, 3, 1), q2.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q2.start_until)
+        self.assertEqual('PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
+        self.assertEqual(500000, q2.min_volume)
+        self.assertEqual(2000000, q2.limit_volume)
+
+        self.assertEqual(15, q3.term_months)
+        self.assertEqual(0.07868, q3.price)
+        self.assertEqual(datetime(2015, 9, 11), q3.valid_from)
+        self.assertEqual(datetime(2015, 9, 12), q3.valid_until)
+        self.assertEqual(datetime(2016, 3, 1), q3.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q3.start_until)
+        self.assertEqual('WPP-APS-SOHO (Tax ID Required)', q3.rate_class_alias)
+        self.assertEqual(0, q3.min_volume)
+        self.assertEqual(2000000, q3.limit_volume)
 
 
