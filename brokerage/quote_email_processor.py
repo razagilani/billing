@@ -18,8 +18,8 @@ LOG_NAME = 'read_quotes'
 # names used for metrics submitted to StatsD: quotes by supplier and total
 # emails.
 # when no StatsD server is running (e.g. while testing) nothing happens
-QUOTE_METRIC_FORMAT = 'quote.matrix.quote.%(suppliername)s'
-EMAIL_METRIC_NAME = 'quote.matrix.email'
+QUOTE_METRIC_FORMAT = 'quote.matrix.%(suppliername)s'
+EMAIL_METRIC_NAME = 'quote.email'
 
 class QuoteProcessingError(BillingError):
     pass
