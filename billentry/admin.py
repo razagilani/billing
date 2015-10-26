@@ -80,7 +80,6 @@ class SupplierModelView(LoginModelView):
         'name',
         'matrix_email_recipient',
         'matrix_attachment_name',
-        'matrix_file_name',
     )
 
     def __init__(self, session, **kwargs):
