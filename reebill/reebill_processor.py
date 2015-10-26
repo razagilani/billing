@@ -830,7 +830,7 @@ class ReebillProcessor(object):
                 "Billing Address": row.street + ',' + row.city + ',' + row.state,
                 "Credit Amount": row.credit,
                 "Date Received": row.date_received,
-                "Payment Applied": True if row.date_applied >
+                "Payment Applied": True if row.date_applied <
                                            row.max_issue_date else False,
                 "Date Applied": row.date_applied,
                 "Max Issue Date": row.max_issue_date
