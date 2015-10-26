@@ -97,6 +97,16 @@ def import_all_model_modules():
     import core.model
     import core.altitude
     import core.extraction
+    import reebill.reebill_model
+    import brokerage.brokerage_model
+    import billentry.billentry_model
+    # ensure that these imports don't get auto-deleted! they have side effects.
+    core.model
+    core.altitude
+    core.extraction
+    reebill.reebill_model
+    brokerage.brokerage_model
+    billentry.billentry_model
 
 
 def get_scrub_columns():
