@@ -1,7 +1,8 @@
 from datetime import datetime
-from os.path import join
+from os.path import join, basename
 import re
 from unittest import TestCase
+
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -28,7 +29,7 @@ class QuoteParserTest(TestCase):
                 super(ExampleQuoteParser, self).__init__()
                 self._reader = reader
             def _load_rate_class_aliases(self):
-                # avoid use of database in this test by overriding this methof
+                # avoid use of database in this test by overriding this method
                 # where a database query is made. TODO better way to do this
                 return []
             def _extract_quotes(self):
@@ -357,7 +358,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.CONSTELLATION_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet,
+                             file_name=basename(self.CONSTELLATION_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 

@@ -6,7 +6,7 @@ from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, _assert_equal, \
-    SimpleCellDateGetter, SpreadsheetReader
+    SimpleCellDateGetter, SpreadsheetReader, FileNameDateGetter
 from util.units import unit_registry
 
 
@@ -36,7 +36,8 @@ class ConstellationMatrixParser(QuoteParser):
     ]
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
-    date_getter = SimpleCellDateGetter(SHEET, 5, DATE_COL, None)
+    date_getter = FileNameDateGetter(
+        r'.*Fully Bundled_(\d\d_\d\d_\d\d\d\d)\.xlsm')
 
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
