@@ -1,8 +1,9 @@
 from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
+
 from core.model import UtilityAccount, Session, RateClass
 from core.model.utilbill import UtilBill
-from exc import NoSuchBillException
+from core.exceptions import NoSuchBillException
 
 
 class UtilBillLoader(object):

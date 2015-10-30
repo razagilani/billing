@@ -16,18 +16,15 @@ from core.model import Session, \
     Address, Utility, Supplier, RateClass, UtilityAccount, SupplyGroup
 from core.model.utilbill import UtilBill
 from core.utilbill_loader import UtilBillLoader
-from exc import NoSuchBillException
-
-
-def setUpModule():
-    init_test_config()
-    create_tables()
-    init_model()
+from core.exceptions import NoSuchBillException
 
 
 class UtilbillLoaderTest(unittest.TestCase):
 
     def setUp(self):
+        init_test_config()
+        create_tables()
+        init_model()
         clear_db()
 
         self.session = Session()
