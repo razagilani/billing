@@ -1,0 +1,40 @@
+<VirtualHost *:80>
+    ServerName billing-<%= @env%>
+
+    serverAlias billing.nextility.net
+    serverAlias billing-<%= @env%>.nextility.net
+
+    ServerAdmin webmaster@localhost
+
+    RewriteEngine on
+    RewriteRule   ^/entry  http://billentry-<%= @env%>.nextility.net  [R]
+
+    DocumentRoot /var/local/<%= @username%>/billing/reebill/ui
+    <Directory /var/local/<%= @username%>/billing/reebill/ui>
+            DirectoryIndex /reebill
+            Options FollowSymLinks
+            AllowOverride None
+    </Directory>
+
+    # Reebill pdfs
+    Alias /reebills /db-<%= @env%>/skyline/bills/
+    <Directory /db-<%= @env%>/skyline/bills/>
+        Options Indexes FollowSymLinks MultiViews
+    </Directory>
+ 
+    ErrorLog /var/log/httpd/billing-<%= @env%>.log
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel debug
+
+    CustomLog /var/log/httpd/billing-<%= @env%>.log combined
+
+    WSGIScriptAlias /reebill /var/local/<%= @username%>/billing/bin/run_reebill.py
+
+    WSGIDaemonProcess billing-<%= @env%> user=<%= @username%> processes=<%= @reebill_http_python_processes%> threads=1 group=<%= @username%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
+    WSGIApplicationGroup %{GLOBAL}
+
+    WSGIProcessGroup billing-<%= @env%>
+
+</VirtualHost>
