@@ -343,7 +343,11 @@ class FileNameDateGetter(DateGetter):
         if match == None:
             raise ValidationError('No match for "%s" in file name "%s"' % (
                 self._regex, quote_parser.file_name))
-        valid_from = parse_datetime(match.group(1))
+        date_str = match.group(1)
+        # fix separator characters in the string so parse_datetime can handle
+        # them
+        date_str = re.sub('_', '-', date_str)
+        valid_from = parse_datetime(date_str)
         return valid_from, valid_from + timedelta(days=1)
 
 
