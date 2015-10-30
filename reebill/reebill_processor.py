@@ -1,27 +1,28 @@
+from csv import DictWriter
 import os
 import traceback
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from StringIO import StringIO
 from itertools import groupby
 
 from sqlalchemy.sql import desc
 from sqlalchemy import not_, func
 from sqlalchemy.orm.exc import NoResultFound
+from jinja2 import Template
 
 from core.model import (Address, Session,
-                           MYSQLDB_DATETIME_MIN, UtilityAccount, RateClass,
-                           Register)
+                           MYSQLDB_DATETIME_MIN, UtilityAccount, Register)
 from core.model.utilbill import UtilBill
 from reebill.reebill_file_handler import SummaryFileGenerator
 from reebill.reebill_model import (ReeBill, Reading, ReeBillCustomer,
-                                   CustomerGroup)
-from exc import (IssuedBillError, NoSuchBillException, ConfirmAdjustment,
-                 FormulaError, RegisterError, BillingError,
-                 ConfirmMultipleAdjustments)
+                                   CustomerGroup, Payment)
+from core.exceptions import NoSuchBillException, FormulaError, BillingError
+from reebill.exceptions import IssuedBillError, ConfirmAdjustment, \
+    ConfirmMultipleAdjustments
 from core.utilbill_processor import ACCOUNT_NAME_REGEX
+from util.dateutils import ISO_8601_DATETIME
 from util.pdf import PDFConcatenator
-from jinja2 import Template
 
 
 class ReebillProcessor(object):
@@ -37,6 +38,10 @@ class ReebillProcessor(object):
     the UI-related methods), except maybe the first two can stay in the same
     class.
     '''
+
+    # number of rows to load into memory at once
+    QUERY_BATCH_SIZE = 100
+
     def __init__(self, state_db, payment_dao, nexus_util, bill_mailer,
                  reebill_file_handler, ree_getter, journal_dao, logger=None):
         self.state_db = state_db
@@ -777,3 +782,56 @@ class ReebillProcessor(object):
             return
         reebill_customer.latechargerate = late_charge_rate
         return reebill_customer
+
+    def get_payment_info_for_bills(self):
+        """Return a Query that gets all reebills with information whether
+        Bill payments are applied
+        """
+        s = Session()
+        a = s.query(Payment.credit, Payment.date_applied,
+                Payment.date_received, ReeBillCustomer.name.label('name'),
+                ReeBillCustomer.id.label('reebill_customer_id'),
+                ReeBillCustomer.payee, Address.street, Address.state,
+                Address.city, UtilityAccount.account).join(ReeBillCustomer,
+                Payment.reebill_customer_id==ReeBillCustomer.id).join(
+                UtilityAccount,
+                ReeBillCustomer.utility_account_id==UtilityAccount.id).join(
+                Address, UtilityAccount.fb_billing_address_id==Address.id).\
+                subquery('a')
+        b = s.query(ReeBill.reebill_customer_id, func.max(ReeBill.issue_date)
+                    .label('max_issue_date')).group_by(
+                    ReeBill.reebill_customer_id).subquery('b')
+        outer_select = s.query(a.c.account, a.c.payee, a.c.city, a.c.state,
+                            a.c.street, a.c.credit, a.c.date_received,
+                            a.c.date_applied, b.c.max_issue_date).join(b,
+                            a.c.reebill_customer_id==b.c.reebill_customer_id)
+        return outer_select
+
+    def write_csv(self, reebills_data, file):
+        """Write CSV of reebills payment data to 'file'.
+        :param reebills_data: iterator of Reebills to include data from.
+        :param file: destination file.
+        """
+        writer = DictWriter(file, fieldnames=[
+            "Account",
+            "Remit To",
+            "Billing Address",
+            "Credit Amount",
+            "Date Received",
+            "Payment Applied",
+            "Date Applied",
+            "Max Issue Date"
+        ])
+        writer.writeheader()
+        for row in reebills_data.yield_per(self.QUERY_BATCH_SIZE):
+            writer.writerow({
+                "Account": row.account,
+                "Remit To": row.payee,
+                "Billing Address": row.street + ',' + row.city + ',' + row.state,
+                "Credit Amount": row.credit,
+                "Date Received": row.date_received,
+                "Payment Applied": True if row.date_applied <
+                                           row.max_issue_date else False,
+                "Date Applied": row.date_applied,
+                "Max Issue Date": row.max_issue_date
+            })

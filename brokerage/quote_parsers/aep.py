@@ -11,6 +11,8 @@ from util.units import unit_registry
 class AEPMatrixParser(QuoteParser):
     """Parser for AEP Energy spreadsheet.
     """
+    NAME = 'aep'
+
     FILE_FORMAT = formats.xls
 
     EXPECTED_SHEET_TITLES = [
@@ -56,7 +58,7 @@ class AEPMatrixParser(QuoteParser):
     START_MONTH_COL = 'G'
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
-    TARGET_ENERGY_UNIT = unit_registry.MWh
+    TARGET_ENERGY_UNIT = unit_registry.kWh
 
     # columns for headers like "Customer Size: 101-250 Annuals MWhs"
     VOLUME_RANGE_COLS = ['I', 'M', 'Q', 'U']

@@ -1,11 +1,11 @@
 from itertools import chain
 from datetime import datetime
+
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, \
-    excel_number_to_datetime, StartEndCellDateGetter, SimpleCellDateGetter, \
-    _assert_equal, SpreadsheetReader
-from exc import ValidationError
+from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
+    SpreadsheetReader
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -15,6 +15,8 @@ from util.units import unit_registry
 class EntrustMatrixParser(QuoteParser):
     """Parser for Entrust spreadsheet.
     """
+    NAME = 'entrust'
+
     FILE_FORMAT = formats.xlsx
 
     EXPECTED_SHEET_TITLES = [

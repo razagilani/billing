@@ -20,7 +20,7 @@ from util.dateutils import date_to_datetime
 
 
 
-def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
+def _make_big_interval_meter_test_csv(start_date, end_date, csv_file):
     '''Writes a sample CSV to csv_file with file with random energy values
     every 15 minutes from start_date to end_date (exclusive). Uses default
     interval meter data format.'''
@@ -35,7 +35,7 @@ def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
                 'therms'
             ])
 
-def make_atsite_test_csv(start_date, end_date, csv_file):
+def _make_atsite_test_csv(start_date, end_date, csv_file):
     '''Writes a sample CSV like the above, but imitating the format of AtSite's
     example file.'''
     csv.register_dialect('atsite', delimiter=',', quotechar='"',

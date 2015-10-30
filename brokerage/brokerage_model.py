@@ -1,15 +1,15 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
-from collections import defaultdict
 from datetime import datetime
 import itertools
+
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float, Table, func, desc
+    Float, func, desc
 from sqlalchemy.orm import relationship
 
 from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
-from exc import ValidationError
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 
 
@@ -208,9 +208,40 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 2000
+    MAX_MIN_VOLUME = 1e7
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 2000
+    MAX_LIMIT_VOLUME = 1e7
+    MIN_VOLUME_DIFFERENCE = 0
+    MAX_VOLUME_DIFFERENCE = 1e7
+
+    def validate(self):
+        super(MatrixQuote, self).validate()
+        try:
+            if self.min_volume is not None:
+                assert self.min_volume >= self.MIN_MIN_VOLUME, (
+                    'min_volume below %s: %s' % (
+                    self.MIN_MIN_VOLUME, self.min_volume))
+                assert self.min_volume <= self.MAX_MIN_VOLUME, (
+                    'min_volume above %s: %s' % (
+                        self.MAX_MIN_VOLUME, self.min_volume))
+            if self.limit_volume is not None:
+                assert self.limit_volume >= self.MIN_LIMIT_VOLUME, (
+                    'limit_volume below %s: %s' % (
+                    self.MIN_LIMIT_VOLUME, self.limit_volume))
+                assert self.limit_volume <= self.MAX_LIMIT_VOLUME, (
+                    'limit_volume above %s: %s' % (
+                    self.MAX_LIMIT_VOLUME, self.limit_volume))
+            if None not in (self.min_volume, self.limit_volume):
+                difference = self.limit_volume - self.min_volume
+                assert (difference >= self.MIN_VOLUME_DIFFERENCE), (
+                    'volume range difference < %s: %s' %
+                    (self.MIN_VOLUME_DIFFERENCE, difference))
+                assert (self.limit_volume - self.min_volume <=
+                        self.MAX_VOLUME_DIFFERENCE), (
+                    'volume range difference > %s: %s' % (
+                    self.MAX_VOLUME_DIFFERENCE, difference))
+        except AssertionError as e:
+            raise ValidationError(e.message)
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
