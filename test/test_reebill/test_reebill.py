@@ -3,17 +3,16 @@ reebill.reebill_model.
 """
 import unittest
 from datetime import date, datetime, timedelta
-from mock import Mock
-from core import init_model
 
-from core.model import Address, \
-    Charge, Register, Session, Utility, Supplier, RateClass, UtilityAccount
+from mock import Mock
+
+from core import init_model
+from core.model import Address, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from core.model.utilbill import UtilBill, Charge
-from core.model.model import RegisterTemplate
-from exc import NoSuchBillException, NotIssuable
+from reebill.exceptions import NotIssuable
 from reebill.reebill_model import ReeBill, ReeBillCustomer, Reading
 from reebill.reebill_processor import ReebillProcessor
-from test import init_test_config, clear_db, create_tables
+from test import init_test_config, create_tables
 
 
 def setUpModule():

@@ -11,6 +11,8 @@ from util.units import unit_registry
 class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
+    NAME = 'directenergy'
+
     FILE_FORMAT = formats.xls
 
     HEADER_ROW = 51

@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-from exc import ValidationError, BillingError
+# TODO: ValidationError should probably be specific to this module,
+# not a global thing. this kind of validation doesn't have anything in common
+#  with other validation.
+from core.exceptions import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
 from brokerage.brokerage_model import load_rate_class_aliases
 from util.units import unit_registry
@@ -71,14 +74,16 @@ class SpreadsheetReader(object):
     @classmethod
     def col_letter_to_index(cls, letter):
         """
-        :param letter: A-Z (string)
-        :return index of spreadsheet column.
+        :param letter: identify a spreadsheet column spreadsheet column
+        "letter", which can be A-Z or a multi-letter string (AA-AZ, BA-BZ...)
+        (case insensitive)
+        :return index of spreadsheet column (int)
         """
-        letter = letter.upper()
-        try:
-            return cls.LETTERS.index(letter)
-        except ValueError:
+        result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
+                    enumerate(reversed(letter.lower()))) - 1
+        if result < 0:
             raise ValueError('Invalid column letter "%s"' % letter)
+        return result
 
     @classmethod
     def _row_number_to_index(cls, number):
@@ -190,7 +195,7 @@ class SpreadsheetReader(object):
             for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
                                       ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
-                    nvalue = self._get_cell(sheet, ny, nx)
+                    nvalue = self._get_cell(sheet, nx, ny)
                 except IndexError as e:
                     nvalue = repr(e)
                 result += '%s: %s ' % (direction, nvalue)
@@ -350,6 +355,11 @@ class QuoteParser(object):
     """
     __metaclass__ = ABCMeta
 
+    # standardized short name of the format or supplier, used to determine names
+    # of StatsD metrics (and potentially other purposes). should be lowercase
+    # with no spaces or punctuation, like "directenergy". avoid changing this!
+    NAME = None
+
     # tablib submodule that should be used to import data from the spreadsheet
     FILE_FORMAT = None
 
@@ -374,6 +384,9 @@ class QuoteParser(object):
     date_getter = None
 
     def __init__(self):
+        # name should be defined
+        assert isinstance(self.NAME, basestring)
+
         self._reader = SpreadsheetReader()
         self._file_name = None
 
@@ -391,7 +404,18 @@ class QuoteParser(object):
 
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
-        self._rate_class_aliases = load_rate_class_aliases()
+        self._rate_class_aliases = self._load_rate_class_aliases()
+
+    def get_name(self):
+        """Rerturn the short standardized name of the format or supplier that
+        this parser is for.
+        """
+        return self.__class__.get_name()
+
+    def _load_rate_class_aliases(self):
+        # allow tests to avoid using the database by overriding this method
+        # TODO: using a separate DAO object would be a better way
+        return load_rate_class_aliases()
 
     def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of

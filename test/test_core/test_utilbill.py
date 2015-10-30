@@ -7,7 +7,7 @@ from sqlalchemy.inspection import inspect
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
-from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from sqlalchemy.exc import IntegrityError
 from test import init_test_config
 init_test_config()
 
@@ -21,10 +21,9 @@ from test import init_test_config, create_tables, clear_db
 from datetime import date
 from unittest import TestCase
 
-from exc import RSIError, UnEditableBillError, NotProcessable, BillingError, \
+from core.exceptions import RSIError, UnEditableBillError, NotProcessable, BillingError, \
     MissingFileError
-from core.model import Session, Charge,\
-    Address, Register, Utility, Supplier, RateClass, UtilityAccount
+from core.model import Session, Address, Register, Utility, Supplier, RateClass, UtilityAccount
 from core.model.utilbill import UtilBill, Charge
 from util.pdf import PDFUtil
 

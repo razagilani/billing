@@ -1,12 +1,13 @@
 from datetime import date, datetime
-from celery.exceptions import TaskRevokedError
-from core.extraction import type_conversion
 import os
 from unittest import TestCase, skip
 
+from celery.exceptions import TaskRevokedError
 from boto.s3.connection import S3Connection
-from celery.result import AsyncResult
 from mock import Mock, NonCallableMock
+
+from core.extraction import type_conversion
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -16,10 +17,8 @@ from mock import Mock, NonCallableMock
 # dependency might cause the wrong config to be loaded.
 from core.extraction.task import test_bill, reduce_bill_results
 from core.extraction.type_conversion import convert_unit, convert_address, \
-    process_charge, convert_table_charges, _get_charge_names_map, \
-    _get_rsi_binding_from_name
+    process_charge, convert_table_charges, _get_rsi_binding_from_name
 from core.model.model import ChargeNameMap
-from test import init_test_config
 
 from core import init_model, ROOT_PATH
 from core.bill_file_handler import BillFileHandler
@@ -27,13 +26,14 @@ from core.extraction.extraction import Field, Extractor, Main, TextExtractor, \
     verify_field, ExtractorResult, LayoutExtractor
 from core.extraction.applier import Applier, UtilBillApplier
 from core.model import UtilityAccount, Utility, Session, Address, \
-    RateClass, Charge, LayoutElement, BoundingBox
+    RateClass, LayoutElement, BoundingBox
 from core.model.utilbill import UtilBill, Charge
 from core.utilbill_loader import UtilBillLoader
-from exc import ConversionError, ExtractionError, MatchError, ApplicationError
+from core.exceptions import ConversionError, ExtractionError, MatchError, ApplicationError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import FakeS3Manager
-from util.layout import TEXTLINE, IMAGE, TEXTBOX, PAGE
+from util.layout import TEXTLINE
+
 
 def setUpModule():
     init_test_config()
