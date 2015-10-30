@@ -16,26 +16,24 @@ class ConstellationMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 4
-    VOLUME_RANGE_ROW = 5
-    QUOTE_START_ROW = 6
+    VOLUME_RANGE_ROW = 8
+    QUOTE_START_ROW = 10
     STATE_COL = 'B'
     UDC_COL = 'C'
-    TERM_COL = 'C'
+    TERM_COL = 'D'
     START_FROM_START_COL = 3
     DATE_COL = 'E'
-    # TODO: check these
-    PRICE_START_COL = 3
-    PRICE_END_COL = 38
+    PRICE_START_COL = 'E'
+    # TODO: check this
+    PRICE_END_COL = 'BO'
 
     # ignore hidden sheet that is the same as the old format!
     EXPECTED_SHEET_TITLES = [ 'SMB Cost+ Matrix_Data', ]
-    SHEET = 'SMB Cost+ Matrix_Data'
+    SHEET = 2 # title doesn't work for some reason
     EXPECTED_CELLS = [
-        (SHEET, 1, 'E', 'Small Business Cost\+ Pricing \(Fully Bundled\)'),
-        (SHEET, 2, 'A', 'Matrix pricing for customers up to 1000 Ann MWh'),
-        (SHEET, 6, 'B', 'State'),
-        (SHEET, 6, 'C', 'UDC'),
-        (SHEET, 6, 'D', 'Term'),
+        (SHEET, 6, STATE_COL, 'STATE'),
+        (SHEET, 6, UDC_COL, 'UDC'),
+        (SHEET, 6, TERM_COL, 'TERM'),
     ]
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
