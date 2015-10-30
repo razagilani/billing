@@ -5,16 +5,21 @@ import logging
 import re
 import traceback
 
-from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+import statsd
 
 from core.model import AltitudeSession, Session, Supplier
-from exc import BillingError
+from core.exceptions import BillingError
 from util.email_util import get_attachments
-from brokerage.brokerage_model import Company, CompanyPGSupplier
-from brokerage import quote_parsers
+from brokerage.brokerage_model import Company
 
 LOG_NAME = 'read_quotes'
+
+# names used for metrics submitted to StatsD: quotes by supplier and total
+# emails.
+# when no StatsD server is running (e.g. while testing) nothing happens
+QUOTE_METRIC_FORMAT = 'quote.matrix.%(suppliername)s'
+EMAIL_METRIC_NAME = 'quote.email'
 
 class QuoteProcessingError(BillingError):
     pass
@@ -155,16 +160,23 @@ class QuoteEmailProcessor(object):
     def _process_quote_file(self, supplier, altitude_supplier, file_name,
                             file_content):
         """Process quotes from a single quote file for the given supplier.
+
         :param supplier: core.model.Supplier instance
+
         :param altitude_supplier: brokerage.brokerage_model.Company instance
         corresponding to the Company table in the Altitude SQL Server database,
         representing a supplier. Not to be confused with the "supplier" table
         (core.model.Supplier) or core.altitude.AltitudeSupplier which is a
         mapping between these two. May be None if the supplier is unknown.
+
         :param file_name: name of quote file (can be used to get the date)
+
         :param file_content: content of a quote file as a string. (A file
         object would be better, but the Python 'email' module processes a
         whole file at a time so it all has to be in memory anyway.)
+
+        :return the QuoteParser instance used to process the given file (
+        which can be used to get the number of quotes).
         """
         # copy string into a StringIO :(
         quote_file = StringIO(file_content)
@@ -188,7 +200,7 @@ class QuoteEmailProcessor(object):
             count = quote_parser.get_count()
             # TODO: probably not a good way to find out that the parser is done
             if quote_list == []:
-                return count
+                return quote_parser
             self.logger.debug('%s quotes so far' % count)
 
     def process_email(self, email_file):
@@ -215,6 +227,9 @@ class QuoteEmailProcessor(object):
         :param email_file: text file with the full content of an email
         """
         self.logger.info('Starting to read email')
+        email_counter = statsd.Counter(EMAIL_METRIC_NAME)
+        email_counter += 1
+
         message = email.message_from_file(email_file)
         from_addr, to_addr = message['From'], message['Delivered-To']
         subject = message['Subject']
@@ -242,7 +257,8 @@ class QuoteEmailProcessor(object):
         files_count, quotes_count = 0, 0
         for file_name, file_content in attachments:
             if (supplier.matrix_attachment_name is not None
-                and not re.match(supplier.matrix_attachment_name, file_name)):
+                and not re.match(supplier.matrix_attachment_name, file_name,
+                                 flags=re.IGNORECASE)):
                 self.logger.warn(
                     ('Skipped attachment from %s with unexpected '
                     'name: "%s"') % (supplier.name, file_name))
@@ -252,7 +268,7 @@ class QuoteEmailProcessor(object):
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
-                quotes_count = self._process_quote_file(
+                quote_parser = self._process_quote_file(
                     supplier, altitude_supplier, file_name, file_content)
             except Exception as e:
                 self._quote_dao.rollback()
@@ -263,8 +279,13 @@ class QuoteEmailProcessor(object):
                 error_messages.append(message)
                 continue
             self._quote_dao.commit()
+            quotes_count = quote_parser.get_count()
             self.logger.info('Read %s quotes for %s from "%s"' % (
                 quotes_count, supplier.name, file_name))
+            quotes_counter = statsd.Counter(QUOTE_METRIC_FORMAT % dict(
+                suppliername=quote_parser.NAME))
+            # submit metric
+            quotes_counter += quotes_count
             files_count += 1
 
         if len(error_messages) > 0:
