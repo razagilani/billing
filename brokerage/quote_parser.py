@@ -74,14 +74,16 @@ class SpreadsheetReader(object):
     @classmethod
     def col_letter_to_index(cls, letter):
         """
-        :param letter: A-Z (string)
-        :return index of spreadsheet column.
+        :param letter: identify a spreadsheet column spreadsheet column
+        "letter", which can be A-Z or a multi-letter string (AA-AZ, BA-BZ...)
+        (case insensitive)
+        :return index of spreadsheet column (int)
         """
-        letter = letter.upper()
-        try:
-            return cls.LETTERS.index(letter)
-        except ValueError:
+        result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
+                    enumerate(reversed(letter.lower()))) - 1
+        if result < 0:
             raise ValueError('Invalid column letter "%s"' % letter)
+        return result
 
     @classmethod
     def _row_number_to_index(cls, number):
