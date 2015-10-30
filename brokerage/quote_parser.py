@@ -74,9 +74,8 @@ class SpreadsheetReader(object):
     @classmethod
     def col_letter_to_index(cls, letter):
         """
-        :param letter: identify a spreadsheet column spreadsheet column
-        "letter", which can be A-Z or a multi-letter string (AA-AZ, BA-BZ...)
-        (case insensitive)
+        :param letter: a spreadsheet column "letter" string, which can be A-Z
+        or a multiple letters like (AA-AZ, BA-BZ...), case insensitive
         :return index of spreadsheet column (int)
         """
         result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in

@@ -21,6 +21,7 @@ class ConstellationMatrixParser(QuoteParser):
     STATE_COL = 'B'
     UDC_COL = 'C'
     TERM_COL = 'D'
+    # must convert column letter to number to do arithmetic with it
     PRICE_START_COL = SpreadsheetReader.col_letter_to_index('E')
     DATE_COL = 'E'
     PRICE_END_COL = 'BO'
@@ -46,8 +47,9 @@ class ConstellationMatrixParser(QuoteParser):
 
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(self.SHEET)):
-            state = self._reader.get(self.SHEET, row, self.STATE_COL, basestring)
-            # "udc" and "term" can both be blank; if so, skip the row
+            state = self._reader.get(self.SHEET, row, self.STATE_COL,
+                                     basestring)
+            # "UDC" and "term" can both be blank; if so, skip the row
             udc = self._reader.get(self.SHEET, row, self.UDC_COL,
                                    (basestring, type(None)))
             if udc is None:
