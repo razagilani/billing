@@ -5,7 +5,7 @@ from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, parse_number, \
     SimpleCellDateGetter
-from exc import ValidationError
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -15,6 +15,8 @@ class USGEMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
     time along the columns.
     """
+    NAME = 'usgegas'
+
     FILE_FORMAT = formats.xlsx
 
     TERM_HEADER_ROW = 4

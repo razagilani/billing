@@ -11,6 +11,8 @@ from util.units import unit_registry
 
 
 class ConstellationMatrixParser(QuoteParser):
+    NAME = 'constellation'
+
     FILE_FORMAT = formats.xlsx
 
     HEADER_ROW = 4

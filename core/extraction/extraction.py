@@ -7,21 +7,20 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
+    UniqueConstraint, DateTime, func, Boolean, Float
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement, BoundingBox
-from exc import ConversionError, ExtractionError, ApplicationError, MatchError
-from util.layout import tabulate_objects, \
-    group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
+from core.model import BoundingBox
+from core.exceptions import ConversionError, ExtractionError, MatchError
+from util.layout import tabulate_objects, in_bounds, get_text_line, get_corner, \
     get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil
 

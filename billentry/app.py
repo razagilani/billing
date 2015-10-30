@@ -16,35 +16,35 @@ import uuid
 from urllib2 import Request, urlopen, URLError
 import json
 from datetime import datetime, timedelta
-
-from celery.exceptions import ChordError, TaskRevokedError
 import re
+
+from celery.exceptions import ChordError
 from celery.result import AsyncResult
 from dateutil import tz
 from sqlalchemy import desc, func
 import xkcdpass.xkcd_password  as xp
 from flask import Flask, url_for, request, flash, session, redirect, \
-    render_template, current_app, Response, jsonify
+    render_template, current_app, jsonify
 from flask_oauth import OAuth, OAuthException
 from celery import chord, group
 from celery.result import GroupResult
-
 from flask.ext.kvsession import KVSessionExtension
 from flask.ext.login import LoginManager, login_user, logout_user, current_user
 from flask.ext.restful import Api
 from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
     Principal, RoleNeed, identity_loaded, UserNeed, PermissionDenied
+
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
 from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import UtilBillApplier
 from core.extraction.task import test_bill, reduce_bill_results
-from core.model import Session, UtilBill, Utility, AltitudeSession
+from core.model import Session, Utility, AltitudeSession
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
-from exc import UnEditableBillError, MissingFileError
+from core.exceptions import UnEditableBillError, MissingFileError
 
 LOG_NAME = 'billentry'
 
@@ -549,11 +549,12 @@ def quote_status():
     format_date = lambda d: None if d is None else d.replace(
         tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
 
+    format_number = lambda x: None if x is None else '{:,}'.format(x)
     result = render_template('quote-status.html', data=[{
         'name': row.name,
         'date_received': format_date(row.date_received),
-        'today_count': row.today_count,
-        'total_count': row.total_count,
+        'today_count': format_number(row.total_count),
+        'total_count': format_number(row.today_count),
         'good': row.today_count > 0,
     } for row in get_quote_status()])
     AltitudeSession.remove()

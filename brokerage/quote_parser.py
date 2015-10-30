@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-from exc import ValidationError, BillingError
+# TODO: ValidationError should probably be specific to this module,
+# not a global thing. this kind of validation doesn't have anything in common
+#  with other validation.
+from core.exceptions import ValidationError, BillingError
 from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
 from brokerage.brokerage_model import load_rate_class_aliases
 from util.units import unit_registry
@@ -190,7 +193,7 @@ class SpreadsheetReader(object):
             for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
                                       ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
-                    nvalue = self._get_cell(sheet, ny, nx)
+                    nvalue = self._get_cell(sheet, nx, ny)
                 except IndexError as e:
                     nvalue = repr(e)
                 result += '%s: %s ' % (direction, nvalue)
@@ -350,6 +353,11 @@ class QuoteParser(object):
     """
     __metaclass__ = ABCMeta
 
+    # standardized short name of the format or supplier, used to determine names
+    # of StatsD metrics (and potentially other purposes). should be lowercase
+    # with no spaces or punctuation, like "directenergy". avoid changing this!
+    NAME = None
+
     # tablib submodule that should be used to import data from the spreadsheet
     FILE_FORMAT = None
 
@@ -374,6 +382,9 @@ class QuoteParser(object):
     date_getter = None
 
     def __init__(self):
+        # name should be defined
+        assert isinstance(self.NAME, basestring)
+
         self._reader = SpreadsheetReader()
         self._file_name = None
 
@@ -392,6 +403,12 @@ class QuoteParser(object):
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
         self._rate_class_aliases = self._load_rate_class_aliases()
+
+    def get_name(self):
+        """Rerturn the short standardized name of the format or supplier that
+        this parser is for.
+        """
+        return self.__class__.get_name()
 
     def _load_rate_class_aliases(self):
         # allow tests to avoid using the database by overriding this method
