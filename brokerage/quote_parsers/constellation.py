@@ -6,7 +6,7 @@ from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, _assert_equal, \
-    SimpleCellDateGetter
+    SimpleCellDateGetter, SpreadsheetReader
 from util.units import unit_registry
 
 
@@ -15,16 +15,14 @@ class ConstellationMatrixParser(QuoteParser):
 
     FILE_FORMAT = formats.xlsx
 
-    HEADER_ROW = 4
+    START_FROM_ROW = 6
     VOLUME_RANGE_ROW = 8
     QUOTE_START_ROW = 10
     STATE_COL = 'B'
     UDC_COL = 'C'
     TERM_COL = 'D'
-    START_FROM_START_COL = 3
+    PRICE_START_COL = SpreadsheetReader.col_letter_to_index('E')
     DATE_COL = 'E'
-    PRICE_START_COL = 'E'
-    # TODO: check this
     PRICE_END_COL = 'BO'
 
     # ignore hidden sheet that is the same as the old format!
@@ -43,29 +41,27 @@ class ConstellationMatrixParser(QuoteParser):
         volume_ranges = self._extract_volume_ranges_horizontal(
                 self.SHEET, self.VOLUME_RANGE_ROW, self.PRICE_START_COL,
             self.PRICE_END_COL, r'(?P<low>\d+)\s*-\s*(?P<high>\d+)\s+MWh',
-            allow_restarting_at_0=True, fudge_low=True)
+            allow_restarting_at_0=True, fudge_low=True, fudge_high=True,
+            fudge_block_size=5)
 
         for row in xrange(self.QUOTE_START_ROW,
                           self._reader.get_height(self.SHEET)):
             state = self._reader.get(self.SHEET, row, self.STATE_COL, basestring)
-            udc = self._reader.get(self.SHEET, row, self.UDC_COL, basestring)
-            # elif isinstance(utility, datetime):
-            #     # repeat of the top of the spreadsheet
-            #     _assert_equal('Fixed Fully Bundled',
-            #                   self._reader.get(self.SHEET, row, 0, basestring))
-            #     _assert_equal('Small Business Cost+ Pricing',
-            #                   self._reader.get(self.SHEET, row, 'I', basestring))
-            #     _assert_equal(self._valid_from,
-            #                   self._reader.get(self.SHEET, row + 1,
-            #                                    self.DATE_COL, datetime))
-            #     continue
+            # "udc" and "term" can both be blank; if so, skip the row
+            udc = self._reader.get(self.SHEET, row, self.UDC_COL,
+                                   (basestring, type(None)))
+            if udc is None:
+                continue
             term_months = self._reader.get(self.SHEET, row, self.TERM_COL,
-                                           (int, float))
+                                           (int, type(None)))
+            if term_months is None:
+                continue
 
             rate_class_alias = '-'.join([state, udc])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
-            for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
+            for col in self._reader.column_range(self.PRICE_START_COL,
+                                                 self.PRICE_END_COL):
                 price = self._reader.get(self.SHEET, row, col,
                                          (int, float, type(None)))
                 # skip blank cells. also, many cells that look blank in Excel
@@ -75,12 +71,12 @@ class ConstellationMatrixParser(QuoteParser):
                     continue
 
                 # the 'start_from' date is in the first cell of the group of
-                # 4 that started at a multiple of 4 columns away from
+                # 7 that started at a multiple of 7 columns away from
                 # 'START_FROM_START_COL'
-                start_from_col = self.START_FROM_START_COL + (
-                    col - self.START_FROM_START_COL) / 4 * 4
+                start_from_col = self.PRICE_START_COL + (
+                    col - self.PRICE_START_COL) / 7 * 7
                 start_from = self._reader.get(
-                    self.SHEET, self.HEADER_ROW, start_from_col, datetime)
+                    self.SHEET, self.START_FROM_ROW, start_from_col, datetime)
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]

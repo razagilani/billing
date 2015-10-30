@@ -110,7 +110,8 @@ class MatrixQuoteParsersTest(TestCase):
             # Amerigreen
             'NY-Con Ed',
             # Constellation
-            'CLP',
+            'CT-CLP',
+            'NJ-AECO',
             # Major Energy
             'electric-NY-CenHud-G - Hud Vil',
             'gas-NY-RGE',
@@ -361,22 +362,35 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(5567, len(quotes))
+        self.assertEqual(10451, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
-        q1 = quotes[0]
-        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 1, 1), q1.start_until)
-        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(6, q1.term_months)
-        self.assertEqual(0, q1.min_volume)
-        self.assertEqual(30000, q1.limit_volume)
-        self.assertEqual('CT-CLP', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
-        self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.114373, q1.price)
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 10, 1), q.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(30 * 1000, q.limit_volume)
+        self.assertEqual('CT-CLP', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.114373, q.price)
+
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 6, 1), q.start_from)
+        self.assertEqual(datetime(2016, 7, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(36, q.term_months)
+        self.assertEqual(500 * 1000, q.min_volume)
+        self.assertEqual(1000 * 1000, q.limit_volume)
+        self.assertEqual('NJ-AECO', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.090746, q.price)
+
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
