@@ -10,6 +10,8 @@ from brokerage.quote_parser import excel_number_to_datetime
 class AmerigreenMatrixParser(QuoteParser):
     """Parser for Amerigreen spreadsheet.
     """
+    NAME = 'amerigreen'
+
     # original spreadsheet is in "xlsx" format. but reading it using
     # tablib.formats.xls gives this error from openpyxl:
     # "ValueError: Negative dates (-0.007) are not supported"

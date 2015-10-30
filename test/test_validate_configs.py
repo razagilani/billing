@@ -9,7 +9,7 @@ from unittest import TestCase
 from glob import glob
 from os.path import join
 
-import configuration as config_file_schema
+import core.configuration as config_file_schema
 from core import ROOT_PATH
 from util.validated_config_parser import ValidatedConfigParser
 

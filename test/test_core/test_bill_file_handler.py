@@ -9,6 +9,7 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
 
+
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
 # app.py to be initialized with the regular config  instead of the test
@@ -21,7 +22,7 @@ init_test_config()
 from core.model.utilbill import UtilBill
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
-from exc import MissingFileError, DuplicateFileError
+from core.exceptions import MissingFileError, DuplicateFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):

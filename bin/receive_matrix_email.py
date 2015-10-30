@@ -6,11 +6,14 @@ import logging
 from sys import stdin
 import traceback
 
+import statsd
+
 from brokerage.quote_email_processor import QuoteEmailProcessor, QuoteDAO, \
     LOG_NAME
 from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
 from core import initialize
 from core.model import AltitudeSession, Session
+
 
 if __name__ == '__main__':
     try:
