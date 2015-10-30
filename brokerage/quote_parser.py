@@ -123,7 +123,7 @@ class SpreadsheetReader(object):
         of the sheet to use
         """
         if isinstance(sheet_number_or_title, int):
-            return self._databook.sheets()[0]
+            return self._databook.sheets()[sheet_number_or_title]
         assert isinstance(sheet_number_or_title, basestring)
         try:
             return next(s for s in self._databook.sheets() if
