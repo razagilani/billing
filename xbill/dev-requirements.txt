@@ -1,0 +1,9 @@
+coverage
+fabric
+ipdb
+mock
+nose
+nose-progressive
+pudb
+django-pdb
+boto
