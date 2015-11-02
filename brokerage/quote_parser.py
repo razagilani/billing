@@ -74,9 +74,8 @@ class SpreadsheetReader(object):
     @classmethod
     def col_letter_to_index(cls, letter):
         """
-        :param letter: identify a spreadsheet column spreadsheet column
-        "letter", which can be A-Z or a multi-letter string (AA-AZ, BA-BZ...)
-        (case insensitive)
+        :param letter: a spreadsheet column "letter" string, which can be A-Z
+        or a multiple letters like (AA-AZ, BA-BZ...), case insensitive
         :return index of spreadsheet column (int)
         """
         result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
@@ -123,7 +122,7 @@ class SpreadsheetReader(object):
         of the sheet to use
         """
         if isinstance(sheet_number_or_title, int):
-            return self._databook.sheets()[0]
+            return self._databook.sheets()[sheet_number_or_title]
         assert isinstance(sheet_number_or_title, basestring)
         try:
             return next(s for s in self._databook.sheets() if
@@ -344,7 +343,11 @@ class FileNameDateGetter(DateGetter):
         if match == None:
             raise ValidationError('No match for "%s" in file name "%s"' % (
                 self._regex, quote_parser.file_name))
-        valid_from = parse_datetime(match.group(1))
+        date_str = match.group(1)
+        # fix separator characters in the string so parse_datetime can handle
+        # them
+        date_str = re.sub('_', '-', date_str)
+        valid_from = parse_datetime(date_str)
         return valid_from, valid_from + timedelta(days=1)
 
 
