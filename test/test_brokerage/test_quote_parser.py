@@ -1,7 +1,8 @@
 from datetime import datetime
-from os.path import join
+from os.path import join, basename
 import re
 from unittest import TestCase
+
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -28,7 +29,7 @@ class QuoteParserTest(TestCase):
                 super(ExampleQuoteParser, self).__init__()
                 self._reader = reader
             def _load_rate_class_aliases(self):
-                # avoid use of database in this test by overriding this methof
+                # avoid use of database in this test by overriding this method
                 # where a database query is made. TODO better way to do this
                 return []
             def _extract_quotes(self):
@@ -74,8 +75,9 @@ class MatrixQuoteParsersTest(TestCase):
     # read the newer format
     AMERIGREEN_FILE_PATH = join(
         DIRECTORY, 'Amerigreen Matrix 08-03-2015 converted.xls')
-    CONSTELLATION_FILE_PATH = join(DIRECTORY,
-                                   'Matrix 5 Example - Constellation.xlsx')
+    CONSTELLATION_FILE_PATH = join(
+        DIRECTORY, 'Constellation - SMB Cost+ Matrix_Fully '
+                   'Bundled_09_24_2015.xlsm')
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
@@ -109,7 +111,8 @@ class MatrixQuoteParsersTest(TestCase):
             # Amerigreen
             'NY-Con Ed',
             # Constellation
-            'CLP',
+            'CT-CLP',
+            'NJ-AECO',
             # Major Energy
             'electric-NY-CenHud-G - Hud Vil',
             'gas-NY-RGE',
@@ -355,27 +358,41 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.CONSTELLATION_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet,
+                             file_name=basename(self.CONSTELLATION_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(5567, len(quotes))
+        self.assertEqual(10451, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
-        q1 = quotes[0]
-        self.assertEqual(datetime(2015, 9, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 10, 1), q1.start_until)
-        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(6, q1.term_months)
-        self.assertEqual(0, q1.min_volume)
-        self.assertEqual(150000, q1.limit_volume)
-        self.assertEqual('CLP', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
-        self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.103578, q1.price)
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 10, 1), q.start_from)
+        self.assertEqual(datetime(2015, 11, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(30 * 1000, q.limit_volume)
+        self.assertEqual('CT-CLP', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.114373, q.price)
+
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 6, 1), q.start_from)
+        self.assertEqual(datetime(2016, 7, 1), q.start_until)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(36, q.term_months)
+        self.assertEqual(500 * 1000, q.min_volume)
+        self.assertEqual(1000 * 1000, q.limit_volume)
+        self.assertEqual('NJ-AECO', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(0.090746, q.price)
+
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
