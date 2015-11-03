@@ -74,14 +74,15 @@ class SpreadsheetReader(object):
     @classmethod
     def col_letter_to_index(cls, letter):
         """
-        :param letter: A-Z (string)
-        :return index of spreadsheet column.
+        :param letter: a spreadsheet column "letter" string, which can be A-Z
+        or a multiple letters like (AA-AZ, BA-BZ...), case insensitive
+        :return index of spreadsheet column (int)
         """
-        letter = letter.upper()
-        try:
-            return cls.LETTERS.index(letter)
-        except ValueError:
+        result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
+                    enumerate(reversed(letter.lower()))) - 1
+        if result < 0:
             raise ValueError('Invalid column letter "%s"' % letter)
+        return result
 
     @classmethod
     def _row_number_to_index(cls, number):
@@ -121,7 +122,7 @@ class SpreadsheetReader(object):
         of the sheet to use
         """
         if isinstance(sheet_number_or_title, int):
-            return self._databook.sheets()[0]
+            return self._databook.sheets()[sheet_number_or_title]
         assert isinstance(sheet_number_or_title, basestring)
         try:
             return next(s for s in self._databook.sheets() if
@@ -193,7 +194,7 @@ class SpreadsheetReader(object):
             for direction, nx, ny in [('up', x, y - 1), ('down', x, y + 1),
                                       ('left', x - 1, y), ('right', x + 1, y)]:
                 try:
-                    nvalue = self._get_cell(sheet, ny, nx)
+                    nvalue = self._get_cell(sheet, nx, ny)
                 except IndexError as e:
                     nvalue = repr(e)
                 result += '%s: %s ' % (direction, nvalue)
@@ -342,7 +343,11 @@ class FileNameDateGetter(DateGetter):
         if match == None:
             raise ValidationError('No match for "%s" in file name "%s"' % (
                 self._regex, quote_parser.file_name))
-        valid_from = parse_datetime(match.group(1))
+        date_str = match.group(1)
+        # fix separator characters in the string so parse_datetime can handle
+        # them
+        date_str = re.sub('_', '-', date_str)
+        valid_from = parse_datetime(date_str)
         return valid_from, valid_from + timedelta(days=1)
 
 
