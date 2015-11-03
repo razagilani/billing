@@ -79,6 +79,27 @@ install_requires = [
     'python-dateutil==2.2',
     'PyYAML==3.11',
     'voluptuous==0.8.6',
+
+    # exclusively for xbill, taken from xbill/requirements.txt
+    'Django==1.5.1',
+    'wsgiref==0.1.2', # duplicate
+    'pycrypto==2.6.1', # duplicate
+    'django-widget-tweaks==1.3',
+    'python-social-auth==0.1.14',
+    'South==0.8.2',
+    'django-compressor==1.3',
+    'django-braces==1.2.2',
+    'django-extra-views==0.6.4',
+    'djangorestframework==2.3.13',
+    'Markdown==2.4',
+    'django-filter==0.7',
+    'django-pdb==0.3.2',
+    # xbill requriements that were duplicates but have an older version than
+    # ones above:
+    #'psycopg2==2.5.1',
+    #'python-dateutil==2.1',
+    #'pika==0.9.13'
+    #'boto==2.28.0',
 ]
 tests_require=[
     # actually for tests
@@ -93,6 +114,9 @@ tests_require=[
     # for deployment
     'fabric',
     'awscli', # command-line tool from Amazon for working with AWS
+
+    # from xbill/dev-requirements.txt
+    'django-pdb',
 ]
 
 setup(
