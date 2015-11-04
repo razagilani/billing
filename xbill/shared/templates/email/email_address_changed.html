@@ -1,0 +1,33 @@
+
+<h2>Your E-mail Address has changed</h2>
+
+<p>You have requested to change your e-mail address in our system. Please click the link below to verify your new e-mail address.</p>
+<p><a href="{{HOST_ADDRESS}}{% url 'intro:verify_email_address' token=token %}">Click here to verify your new E-mail address!</a></p>
+<p>If you cannot see this link please copy the following address in the URL-Bar in your browser:</p>
+<p>{{HOST_ADDRESS}}{% url 'intro:verify_email_address' token=token %}<p>
+
+<p>If you did not request to change your e-mail address or you have questions or concerns please send an email to <a href="mailto:support@skylineinnovations.com">support@skylineinnovations.com</a></p>
+
+<p>Best Regards,<br/>
+Skyline Innovations</p>
+<br/>--
+<div style="text-align:center">
+    <b>SKYLINE INNOVATIONS</b>
+</div>
+<div style="text-align:center">
+    <font color="#33CC00" size="1"><b>Guaranteed Savings Through Green Energy</b></font>
+</div>
+<div style="text-align:center">
+    <font size="1">1606 20th St NW, Second Floor, Washington DC 20009</font>
+</div>
+<div style="text-align:center">
+    <font size="1">Phone: (202) 719-5297  Fax: (888) 907-5996</font>
+</div>
+<div style="text-align:center">
+    <font size="1">
+        <a href="http://www.skylineinnovations.com" target="_blank">
+            <b>http://www.skylineinnovations.com</b>
+        </a>
+    </font>
+</div>
+<font color="#ffffff" size="0">{{email_token}}</font>
