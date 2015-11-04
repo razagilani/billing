@@ -68,6 +68,7 @@ echo $env | fab common.deploy_interactive_console -R "portal-$env"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
+ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput'"
 
 # restart xbill web server (not done by fabric script)
 ssh -t portal-$env "sudo service httpd restart"
