@@ -41,7 +41,7 @@ for param in "${params[@]}"; do
     echo $envname | fab common.stop_upstart_services -R $hosttype
 done
 
-# clean up dependency repositories installed in locally directory
+# clean up dependency repositories cloned in local working directory
 rm -rf postal
 
 # run database upgrade script if there is one
