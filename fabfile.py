@@ -57,7 +57,7 @@ common.deployment_params['configs'] = {
             ("mq/conf/config-template-dev.yml", "/var/local/billing/billing/mq/config.yml"),
         ],
         "services":[
-            'billing-dev-worker'
+            'billing-worker'
         ],
         "puppet_manifest": 'conf/manifests/billing.pp'
     },

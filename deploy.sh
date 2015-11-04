@@ -1,7 +1,6 @@
 #!/bin/bash
 # combined deployment script for billing and xbill.
 set -e
-#set -v
 
 if [ $# -lt 1 -o $# -gt 2 ]; then
     echo "1 or 2 arguments required"
@@ -21,7 +20,13 @@ version="$2"
 # variables used in Puppet scripts to do things differently on different hosts.
 params=()
 params[1]="billing-$env $env"
-params[2]="billingworker-$env extraction-worker-$env"
+# temporarily disabled to allow the rest of the process to work
+#params[2]="billingworker-$env extraction-worker-$env"
+
+# clone private repositories for dependencies inside the billing repository working
+# directory, because remote hosts don't have access to Bitbucket
+# (for now, there is only one)
+git clone ssh://git@bitbucket.org/skylineitops/postal.git
 
 for param in "${params[@]}"; do
     # split "params" into 2 parts
@@ -33,8 +38,11 @@ for param in "${params[@]}"; do
     echo $envname | fab common.install_requirements_files -R $hosttype
     echo $envname | fab create_pgpass_file -R $hosttype
     # type in Postgres datbase superuser password at the prompt
-    echo $envname | fab common.stop_upstart_services -R $hosttype || true
+    echo $envname | fab common.stop_upstart_services -R $hosttype
 done
+
+# clean up dependency repositories installed in locally directory
+rm -rf postal
 
 # run database upgrade script if there is one
 # (this could be done from any host)
@@ -53,8 +61,9 @@ for param in "${params[@]}"; do
     hosttype=$(echo $param | cut -f1 -d' ')
     envname=$(echo $param | cut -f2 -d' ')
 
-    echo $envname | fab common.start_upstart_services -R $hosttype || true
+    echo $envname | fab common.start_upstart_services -R $hosttype
 done
+
 
 ##############################################################################
 # xbill deployment
