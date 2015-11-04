@@ -1,0 +1,29 @@
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    ServerName xbill-dev.nextility.net
+    ServerAlias xbill-dev
+
+    <Directory /var/local/xbill-dev/xbill/wsgi/>
+        Order allow,deny
+        Allow from all
+    </Directory>
+    <Directory /var/local/xbill-dev/xbill/static_files/>
+        Order allow,deny
+        Allow from all
+    </Directory>
+
+    # Django admin static files (these are now the only static files)
+    Alias /static/admin/ "/var/local/xbill-dev/django/contrib/admin/static/admin/"
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel error
+
+    ErrorLog /etc/httpd/logs/xbill-dev_error.log
+    CustomLog /etc/httpd/logs/xbill-dev_access.log combined
+
+    WSGIScriptAlias / /var/local/xbill-dev/xbill/wsgi/wsgi.py
+    WSGIDaemonProcess xbill-dev user=xbill-dev group=xbill-dev home=/var/local/xbill-dev/xbill/ python-path=/var/local/xbill-dev/lib/python2.7/dist-packages:/var/local/xbill-dev/lib/python2.7/site-packages:/var/local/xbill-dev/xbill
+    WSGIProcessGroup xbill-dev
+    WSGIApplicationGroup %{GLOBAL}
+</VirtualHost>
