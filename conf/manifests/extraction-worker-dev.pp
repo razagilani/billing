@@ -1,4 +1,6 @@
-# app level
+# TODO: this file should not have "dev" in its name because it's also for production
+
+# TODO: remove "dev" from these
 $username = "reebill-dev"
 $app = "billing"
 $env = "dev"
