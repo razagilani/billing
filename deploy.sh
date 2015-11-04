@@ -20,8 +20,7 @@ version="$2"
 # variables used in Puppet scripts to do things differently on different hosts.
 params=()
 params[1]="billing-$env $env"
-# temporarily disabled to allow the rest of the process to work
-#params[2]="billingworker-$env extraction-worker-$env"
+params[2]="billingworker-$env extraction-worker-$env"
 
 # clone private repositories for dependencies inside the billing repository working
 # directory, because remote hosts don't have access to Bitbucket
