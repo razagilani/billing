@@ -59,7 +59,7 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
     },
     "extraction-worker-stage": {
         "deploy_version":"4", 
@@ -77,7 +77,7 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-stage-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
     },
     "stage": {
         "deploy_version":"4", 
