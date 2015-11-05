@@ -72,6 +72,7 @@ echo $env | fab common.configure_app_env -R "portal-$env"
 echo $env | fab common.deploy_interactive_console -R "portal-$env"
 
 # xbill requirements installation
+# TODO: find out why fab common.install_requirements_files didn't work here
 #ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do pip install -r $f; done'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
@@ -79,3 +80,6 @@ ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/loca
 
 # restart xbill web server (not done by fabric script)
 ssh -t portal-$env "sudo service httpd restart"
+
+echo $env | fab common.stop_upstart_services -R "portal-$env"
+echo $env | fab common.start_upstart_services -R "portal-$env"
