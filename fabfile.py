@@ -57,9 +57,9 @@ common.deployment_params['configs'] = {
             ("mq/conf/config-template-dev.yml", "/var/local/billing/billing/mq/config.yml"),
         ],
         "services":[
-            'billing-dev-worker'
+            'billing-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
     },
     "extraction-worker-stage": {
         "deploy_version":"4", 
@@ -77,7 +77,7 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-stage-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
     },
     "stage": {
         "deploy_version":"4", 
@@ -122,10 +122,18 @@ common.deployment_params['configs'] = {
 @fabtask
 def create_pgpass_file():
     execute(common.prompt_config)
-    env_cfg = common.deployment_params['configs'][common.deployment_params['selected_env']]
     env_name = common.deployment_params['selected_env']
+    # pick a config file path based on which environment is being deployed to.
+    # this is forced to be the same as the puppet manifest name, which means
+    # the file is not found for some puppet manifest names.
+    if env_name in ('extraction-worker-dev', 'extraction-worker-stage',
+                    'extraction-worker-prod',):
+        env_name = 'dev'
+    else:
+        assert env_name in ('dev', 'stage', 'prod')
+    env_cfg = common.deployment_params['configs'][common.deployment_params['selected_env']]
     config_path = os.path.join('conf','configs','settings-%s-template.cfg' % env_name)
-    
+
     init_config(filepath=config_path, fp=None)
     from core import config
     params = get_db_params()
