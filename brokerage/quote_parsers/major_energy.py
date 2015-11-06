@@ -5,7 +5,8 @@ from tablib import formats
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
+    _assert_true
 from util.units import unit_registry
 
 
@@ -130,7 +131,14 @@ class MajorEnergyGasSheetParser(QuoteParser):
                          self._reader.get_height(self.SHEET) + 1):
             # todo use time zone here
             start_from = self._reader.get(self.SHEET, row, self.START_COL,
-                                          datetime)
+                                          (datetime, basestring))
+            # one example of the file repeated the column headers in the
+            # first row of quotes, instead of actual quote data. probably a
+            # mistake that they'll fix later. handle it by skipping the row.
+            if start_from == 'Start':
+                continue
+            else:
+                _assert_true(isinstance(start_from, datetime))
             start_until = date_to_datetime((Month(start_from) + 1).first)
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
