@@ -121,7 +121,7 @@ tests_require=[
 
 setup(
     name="billing",
-    version="33",
+    version="35",
     packages=find_packages(),
     scripts=[
         'bin/check_matrix_file.py',
@@ -139,17 +139,20 @@ setup(
     # use of dependency_links seems to be deprecated or at least considered bad.
     dependency_links=[
         # Our forked repo of Flask-Admin
-        'git+https://github.com/nextilityinc/flask-admin.git@3ba9b936410d97839c99604dab25ba388e19cf1d',
+        'https://github.com/nextilityinc/flask-admin/archive/3ba9b936410d97839c99604dab25ba388e19cf1d.zip',
 
         # this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4) but appears as version "8.7"
-        'git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f',
+        'https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip',
 
-        'git+https://github.com/klothe/pymssql.git@ba8c5f45f52ef3602a29604428dc831fab7f3af3',
+        'https://github.com/klothe/pymssql/archive/ba8c5f45f52ef3602a29604428dc831fab7f3af3.zip',
 
         # for Bitbucket repositories,
         # replace ":" with "/" Bitbucket SSH URL, append modulename-version.
         # modulename must match the one used in install_requires.
         'git+ssh://git@bitbucket.org/skylineitops/postal.git#egg=postal-0',
+        # for zip files, URL format is like:
+        # 'https://bitbucket.org/skylineitops/postal/get/6349bcb8e970.zip',
+        # but this doesn't seem to work
     ],
     # install_requires includes test requirements. suggested by
     # https://stackoverflow.com/questions/4734292/specifying-where-to-install
