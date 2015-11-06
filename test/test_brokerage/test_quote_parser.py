@@ -175,6 +175,15 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
 
         self.assertEqual(quotes[0].price, 0.1017)
+        self.assertEqual(quotes[0].min_volume, 0)
+        self.assertEqual(quotes[0].limit_volume, 500000)
+        self.assertEqual(quotes[0].term_months, 6)
+        self.assertEqual(quotes[0].start_from, datetime(2015, 11, 01))
+        self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
+        self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 02))
+        self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
+
+
         self.assertEqual(quotes[1].price, 0.1000)
         self.assertEqual(quotes[2].price, 0.0969)
         self.assertEqual(quotes[-1].price, 0.0711)
