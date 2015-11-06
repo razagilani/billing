@@ -59,7 +59,7 @@ class QuoteParserTest(TestCase):
         self.reader.get_matches.return_value = 10, 19
         low, high = self.qp._extract_volume_range(
             0, 0, 0, self.regex, fudge_low=True, fudge_high=True)
-        self.assertEqual((10000, 20000), (low, high))
+        self.assertEqual((10000, 20000), (low, high)    )
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
 
@@ -81,7 +81,7 @@ class MatrixQuoteParsersTest(TestCase):
     SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Sep 9 2015.xlsx')
     MAJOR_FILE_PATH = join(
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
-                   'Gas Rack Rates September 21 2015.xlsx')
+                   'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
 
@@ -114,7 +114,7 @@ class MatrixQuoteParsersTest(TestCase):
             'CT-CLP',
             'NJ-AECO',
             # Major Energy
-            'electric-NY-CenHud-G - Hud Vil',
+            'electric-IL-ComEd-',
             'gas-NY-RGE',
             # SFE
             'NY-A (NiMo, NYSEG)',
@@ -404,34 +404,33 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        # there should be 936 rows * 4 columns of electric quotes, + 48 rows
-        # * 3 columns - 20 blank cells = 136 gas quotes
-        self.assertEqual(3868, len(quotes))
+        # 3744 non-blank cells in electric sheet + 148 in gas sheet
+        self.assertEqual(3892, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         # first quote is electric
         q = quotes[0]
-        self.assertEqual(datetime(2015, 9, 21), q.valid_from)
-        self.assertEqual(datetime(2015, 10, 7), q.valid_until)
-        self.assertEqual(datetime(2015, 10, 1), q.start_from)
-        self.assertEqual(datetime(2015, 11, 1), q.start_until)
+        self.assertEqual(datetime(2015, 10, 27), q.valid_from)
+        self.assertEqual(datetime(2015, 11, 3), q.valid_until)
+        self.assertEqual(datetime(2015, 11, 1), q.start_from)
+        self.assertEqual(datetime(2015, 12, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(74000, q.limit_volume)
-        self.assertEqual('electric-NY-CenHud-G - Hud Vil', q.rate_class_alias)
+        self.assertEqual('electric-IL-ComEd-', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0878, q.price)
+        self.assertEqual(0.0652, q.price)
 
         # last quote is gas
         q = quotes[-1]
-        self.assertEqual(datetime(2015, 9, 21), q.valid_from)
-        self.assertEqual(datetime(2015, 10, 7), q.valid_until)
-        self.assertEqual(datetime(2016, 1, 1), q.start_from)
-        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(datetime(2015, 10, 27), q.valid_from)
+        self.assertEqual(datetime(2015, 11, 3), q.valid_until)
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(24, q.term_months)
         self.assertEqual(None, q.min_volume)
@@ -439,7 +438,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('gas-NY-RGE', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.3918, q.price)
+        self.assertEqual(0.3843, q.price)
 
 
     def test_sfe(self):

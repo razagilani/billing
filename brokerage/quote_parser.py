@@ -201,10 +201,11 @@ class SpreadsheetReader(object):
             return result
 
         if not isinstance(value, the_type):
-            raise ValidationError(
-                'At (%s,%s), expected type %s, found "%s" with type %s. '
-                'neighbors are %s' % (
-                row, col, the_type, value, type(value), get_neighbor_str()))
+            message = ('At (%s, %s, %s), expected type %s, found "%s" with '
+                       'type %s. neighbors are %s') % (
+                sheet_number_or_title, row, col, the_type, value, type(value),
+                get_neighbor_str())
+            raise ValidationError(message)
         return value
 
     def get_matches(self, sheet_number_or_title, row, col, regex, types):
