@@ -13,21 +13,6 @@ from brokerage.brokerage_model import MatrixQuote
 
 __author__ = 'Bill Van Besien'
 
-
-class PriceCell(object):
-    def __init__(self, matrix_parser, reader, sheet, row, col):
-        self.matrix_parser = matrix_parser
-        self.reader = reader
-        self.sheet = sheet
-        self.row = row
-        self.col = col
-
-    def generate_quotes(self):
-        price = self.reader.get(self.sheet, self.row, self.col, basestring)
-
-
-
-
 class USGEElectricMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
     time along the columns.
@@ -38,7 +23,6 @@ class USGEElectricMatrixParser(QuoteParser):
     TERM_HEADER_ROW = 4
     HEADER_ROW = 5
     RATE_START_ROW = 6
-    RATE_END_ROW = 70
     UTILITY_COL = 0
     VOLUME_RANGE_COL = 3
     RATE_END_COL = 11
@@ -88,15 +72,16 @@ class USGEElectricMatrixParser(QuoteParser):
 
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
-
-            zone = self._reader.get(sheet,5,'E', object) #,[basestring, type(None)])
+            # Sometimes this can be None so we can't force it to expect a basestring
+            zone = self._reader.get(sheet,5,'E', object)
             if zone == 'Zone':
                 term_start_col = 6
-                term_end_col = 31
+                term_end_col = self._reader.get_width(sheet)
             else:
                 term_start_col = 5
-                term_end_col = 31
+                term_end_col = self._reader.get_width(sheet)
 
+            # This is the date at the top of the document in each spreadsheet
             valid_from = self._reader.get(sheet, 2, 'D', datetime)
             valid_until = valid_from + timedelta(days=1)
 
