@@ -5,7 +5,8 @@ from tablib import formats
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
+    _assert_true
 from util.units import unit_registry
 
 
@@ -29,15 +30,15 @@ class MajorEnergyElectricSheetParser(QuoteParser):
 
     SHEET = 'Commercial E'
     EXPECTED_CELLS = [
-        (SHEET, 3, 'B', 'Effective:'),
-        (SHEET, 5, 'B', 'Start'),
-        (SHEET, 5, 'C', 'State'),
-        (SHEET, 5, 'D', 'Utility'),
-        (SHEET, 5, 'E', 'Zone'),
-        (SHEET, 5, 'F', 'Usage'),
-        (SHEET, 5, 'G', 'Agent Fee'),
-        (SHEET, 11, 'B', 'GRT/SUT/POR Included where applicable'),
+        (SHEET, 11, 'B',
+         'Transfer Rates below include all applicable fees \(SUT/GRT/POR\)\s+To '
+         'apply these fees to your agent fee please use calculator above'),
         (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
+        (SHEET, HEADER_ROW, 'B', 'Start'),
+        (SHEET, HEADER_ROW, 'C', 'Term'),
+        (SHEET, HEADER_ROW, 'D', 'State'),
+        (SHEET, HEADER_ROW, 'E', 'Utility'),
+        (SHEET, HEADER_ROW, 'F', 'Zone'),
     ]
 
     # spreadsheet says "kWh usage tier" but the numbers are small, so they
@@ -67,11 +68,11 @@ class MajorEnergyElectricSheetParser(QuoteParser):
                                        basestring)
             state = self._reader.get(self.SHEET, row, self.STATE_COL,
                                      basestring)
-            rate_class_alias_parts = ['electric', state, utility]
             zone = self._reader.get(self.SHEET, row, self.ZONE_COL,
                                     (basestring, type(None)))
-            if zone is not None:
-                rate_class_alias_parts.append(zone)
+            if zone is None:
+                zone = ''
+            rate_class_alias_parts = ['electric', state, utility, zone]
             rate_class_alias = '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
@@ -105,21 +106,22 @@ class MajorEnergyGasSheetParser(QuoteParser):
 
     FILE_FORMAT = formats.xlsx
 
-    HEADER_ROW = 7
-    QUOTE_START_ROW = 8
+    HEADER_ROW = 13
+    QUOTE_START_ROW = 14
     START_COL = 'B'
     STATE_COL = 'C'
     UTILITY_COL = 'D'
     PRICE_START_COL = 'E'
-    PRICE_END_COL = 'G'
+    PRICE_END_COL = 'H'
 
     SHEET = 'NG R & SC'
     EXPECTED_CELLS = [
-        (SHEET, 3, 'B', 'Effective:'),
-        (SHEET, 7, 'B', 'Start'),
-        (SHEET, 7, 'C', 'State'),
-        (SHEET, 7, 'D', 'Utility'),
-        (SHEET, 5, 'B', 'GRT/SUT/POR Included where applicable'),
+        (SHEET, HEADER_ROW, 'B', 'Start'),
+        (SHEET, HEADER_ROW, 'C', 'State'),
+        (SHEET, HEADER_ROW, 'D', 'Utility'),
+        (SHEET, 11, 'B', ('Transfer Rates below include all applicable fees '
+                         '\(SUT/GRT/POR\)\s+To apply these fees to your agent '
+                         'fee please use calculator above'))
     ]
 
     date_getter = StartEndCellDateGetter(SHEET, 3, 'C', 3, 'E', None)
@@ -129,7 +131,14 @@ class MajorEnergyGasSheetParser(QuoteParser):
                          self._reader.get_height(self.SHEET) + 1):
             # todo use time zone here
             start_from = self._reader.get(self.SHEET, row, self.START_COL,
-                                          datetime)
+                                          (datetime, basestring))
+            # one example of the file repeated the column headers in the
+            # first row of quotes, instead of actual quote data. probably a
+            # mistake that they'll fix later. handle it by skipping the row.
+            if start_from == 'Start':
+                continue
+            else:
+                _assert_true(isinstance(start_from, datetime))
             start_until = date_to_datetime((Month(start_from) + 1).first)
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
