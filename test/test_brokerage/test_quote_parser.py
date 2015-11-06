@@ -180,8 +180,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[0].term_months, 6)
         self.assertEqual(quotes[0].start_from, datetime(2015, 11, 01))
         self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
-        self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 02))
-        self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 03))
+        self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 03))
+        self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
 
 
         self.assertEqual(quotes[1].price, 0.1000)
