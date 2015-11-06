@@ -12,9 +12,6 @@
         Allow from all
     </Directory>
 
-    # Django admin static files (these are now the only static files)
-    Alias /static/admin/ "/var/local/xbill-stage/django/contrib/admin/static/admin/"
-
     # Possible values include: debug, info, notice, warn, error, crit,
     # alert, emerg.
     LogLevel error
