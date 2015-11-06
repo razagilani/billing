@@ -1,5 +1,5 @@
 from itertools import chain
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from tablib import formats
 
@@ -97,6 +97,9 @@ class USGEElectricMatrixParser(QuoteParser):
                 term_start_col = 5
                 term_end_col = 31
 
+            valid_from = self._reader.get(sheet, 2, 'D', datetime)
+            valid_until = valid_from + timedelta(days=1)
+
             for row in xrange(self.RATE_START_ROW,
                               self._reader.get_height(sheet) + 1):
                 utility = self._reader.get(sheet, row, self.UTILITY_COL,
@@ -141,8 +144,8 @@ class USGEElectricMatrixParser(QuoteParser):
                         for rate_class_id in rate_class_ids:
                             quote = MatrixQuote(
                                 start_from=start_from, start_until=start_until,
-                                term_months=term, valid_from=self._valid_from,
-                                valid_until=self._valid_until,
+                                term_months=term, valid_from=valid_from,
+                                valid_until=valid_until,
                                 min_volume=min_volume,
                                 limit_volume=limit_volume,
                                 purchase_of_receivables=False, price=price,
