@@ -1,0 +1,40 @@
+{% if errormsgs %}
+    <div class="alert alert-error">
+        <h5 class="text-error">There was a problem with your request:</h5>
+        <ul class="no-marker-no-indent">
+            {% for error in errormsgs %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %} 
+{% if warningmsgs %}
+    <div class="alert alert-warning">
+        <h5 class="text-warning">Attention!</h5>
+        <ul class="no-marker-no-indent">
+            {% for warning in warningmsgs %}
+                <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %} 
+{% if successmsgs %}
+    <div class="alert alert-success">
+        <h5 class="text-success">Success!</h5>
+        <ul class="no-marker-no-indent">
+            {% for success in successmsgs %}
+                <li>{{ success }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %} 
+{% if infomsgs %}
+    <div class="alert alert-info">
+        <h5 class="text-info">Info:</h5>
+        <ul class="no-marker-no-indent">
+            {% for info in infomsgs %}
+                <li>{{ info }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %} 
