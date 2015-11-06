@@ -182,11 +182,52 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
         self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 03))
         self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
+        self.assertEqual(quotes[0].rate_class_alias, "Connecticut Light & Power-Residential-Residential")
 
 
         self.assertEqual(quotes[1].price, 0.1000)
+        self.assertEqual(quotes[1].min_volume, 0)
+        self.assertAlmostEqual(quotes[1].limit_volume, 500000, delta=2)
+        self.assertEqual(quotes[1].term_months, 6)
+        self.assertEqual(quotes[1].start_from, datetime(2015, 12, 01))
+        self.assertEqual(quotes[1].start_until, datetime(2016, 01, 01))
+        self.assertEqual(quotes[1].valid_until, datetime(2015, 11, 03))
+        self.assertEqual(quotes[1].valid_from, datetime(2015, 11, 02))
+        self.assertEqual(quotes[1].rate_class_alias, "Connecticut Light & Power-Residential-Residential")
+
         self.assertEqual(quotes[2].price, 0.0969)
+
+        found_needle = False
+        for quote in quotes:
+            # We need to make sure all important fields are not null - we earlier caught a problem
+            # in which valid_from was Null and the brokerage model did not catch it.
+            fields = ['price', 'rate_class_alias', 'min_volume', 'limit_volume', 'term_months',
+                      'valid_from', 'valid_until', 'start_from', 'start_until']
+            for field in fields:
+                self.assertIsNotNone(getattr(quote, field))
+
+            # This is a random one I picked out from the 3rd sheet in the spreadsheet.
+            if quote.price == 0.082 and quote.rate_class_alias == 'JCPL-Commercial-GSCL (>100KW Demand)' \
+                and quote.start_from == datetime(2015, 12, 01):
+                found_needle = True
+                self.assertAlmostEqual(quote.min_volume, 100000, delta=2)
+                self.assertAlmostEqual(quote.limit_volume, 500000, delta=2)
+                self.assertEqual(quote.term_months, 12)
+
+        # Assert that we found the above-mentioned quote.
+        self.assertTrue(found_needle)
+
+        # Last qouote from the spreadsheet.
         self.assertEqual(quotes[-1].price, 0.0711)
+        self.assertAlmostEqual(quotes[-1].min_volume, 500000, delta=2)
+        self.assertAlmostEqual(quotes[-1].limit_volume, 1000000, delta=2)
+        self.assertEqual(quotes[-1].term_months, 24)
+        self.assertEqual(quotes[-1].start_from, datetime(2016, 04, 01))
+        self.assertEqual(quotes[-1].start_until, datetime(2016, 05, 01))
+        self.assertEqual(quotes[-1].valid_until, datetime(2015, 11, 03))
+        self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
+        self.assertEqual(quotes[-1].rate_class_alias,
+                         "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
 
     def test_usge(self):
         parser = USGEMatrixParser()
