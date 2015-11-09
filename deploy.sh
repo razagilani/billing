@@ -1,6 +1,7 @@
 #!/bin/bash
 # combined deployment script for billing and xbill.
 set -e
+set -v
 
 if [ $# -lt 1 -o $# -gt 2 ]; then
     echo "1 or 2 arguments required"
@@ -68,6 +69,11 @@ done
 # xbill deployment
 
 cd xbill
+# delete any existing xbill-env directory, even though
+# "fab common.deploy_interactive_console" is supposed to completely replace
+# it, because somehow it still exists and that breaks the
+# "mange.py collectstatic" step below
+ssh -t portal-$env "sudo rm -rf /var/local/xbill-$env/"
 echo $env | fab common.configure_app_env -R "portal-$env"
 echo $env | fab common.deploy_interactive_console -R "portal-$env"
 
@@ -77,10 +83,16 @@ echo $env | fab common.deploy_interactive_console -R "portal-$env"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput'"
+
+# copy static files for Django Admin into the directory where they get served
+# by Apache. this is the standard Django way of doing it.
+ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput --verbosity=3'"
 
 # restart xbill web server (not done by fabric script)
-ssh -t portal-$env "sudo service httpd restart"
+ssh -t portal-$env "sudo service httpd reload"
+## httpd seems not to restart...
+#sleep 3
+#ssh -t portal-$env "sudo service httpd restart"
 
 echo $env | fab common.stop_upstart_services -R "portal-$env"
 echo $env | fab common.start_upstart_services -R "portal-$env"

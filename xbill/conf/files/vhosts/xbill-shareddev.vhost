@@ -7,7 +7,7 @@
         Order allow,deny
         Allow from all
     </Directory>
-    <Directory /var/local/xbill-dev/xbill/static_files/>
+    <Directory /var/local/xbill-dev/xbill/static/>
         Order allow,deny
         Allow from all
     </Directory>
