@@ -17,9 +17,16 @@ host::skyline_dropbox {"$env":
 
 host::aws_standard_packages {'std_packages':}
 host::wsgi_setup {'wsgi':}
-require host::hosts_file
+# nobody knows why this was here
+# require host::hosts_file
+
+package { 'httpd':
+    ensure  => installed,
+    before  => Host::Wsgi_setup['wsgi']
+}
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
+    cluster => 'rabbit@acquisitor-prod.nextility.net'
 }
 rabbit_mq::vhost {'prod':
     require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
