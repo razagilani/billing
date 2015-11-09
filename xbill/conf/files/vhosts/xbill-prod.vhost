@@ -8,6 +8,7 @@
         Order allow,deny
         Allow from all
     </Directory>
+    alias /static/ /var/local/xbill-prod/xbill/static/
     <Directory /var/local/xbill-prod/xbill/static/>
         Order allow,deny
         Allow from all
