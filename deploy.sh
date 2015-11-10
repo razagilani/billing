@@ -10,7 +10,21 @@ fi
 
 # should be "dev", "stage", or "prod"
 env="$1"
+
+# version number used for selecting database upgrade script to run (optional)
 version="$2"
+
+# used for deleting temporary files
+all_hosts="billing-$env billingworker1-$env billingworker2-$env portal-$env"
+
+function delete_temp_files {
+    # delete temporary files created and not deleted by previous deployments,
+    # to avoid filling up the disk
+    for host in $all_hosts; do
+        ssh -t $host "sudo rm -rf /tmp/tmp*"
+    done
+}
+
 
 ##############################################################################
 # billing deployment
@@ -26,8 +40,11 @@ params[2]="billingworker-$env extraction-worker-$env"
 # clone private repositories for dependencies inside the billing repository working
 # directory, because remote hosts don't have access to Bitbucket
 # (for now, there is only one)
+rm -rf postal
 git clone ssh://git@bitbucket.org/skylineitops/postal.git
 
+# main deployment steps
+delete_temp_files
 for param in "${params[@]}"; do
     # split "params" into 2 parts
     hosttype=$(echo $param | cut -f1 -d' ')
@@ -36,10 +53,13 @@ for param in "${params[@]}"; do
     echo $envname | fab common.configure_app_env -R $hosttype
     echo $envname | fab common.deploy_interactive_console -R $hosttype
     echo $envname | fab common.install_requirements_files -R $hosttype
+    # this doesn't work:
+    #echo printf "$envname\n$postgres_pw" | fab create_pgpass_file -R $hosttype
+    # so type in Postgres database superuser password at the prompt
     echo $envname | fab create_pgpass_file -R $hosttype
-    # type in Postgres datbase superuser password at the prompt
     echo $envname | fab common.stop_upstart_services -R $hosttype
 done
+delete_temp_files
 
 # clean up dependency repositories cloned in local working directory
 rm -rf postal
@@ -79,11 +99,12 @@ echo $env | fab common.deploy_interactive_console -R "portal-$env"
 
 # xbill requirements installation
 # TODO: find out why fab common.install_requirements_files didn't work here
-#ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do pip install -r $f; done'"
+ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do pip install -r $f; done'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
 
+delete_temp_files
 # copy static files for Django Admin into the directory where they get served
 # by Apache. this is the standard Django way of doing it.
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput --verbosity=3'"
