@@ -1,6 +1,6 @@
 from tablib import formats
 
-from util.dateutils import date_to_datetime
+from util.dateutils import date_to_datetime, parse_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import excel_number_to_datetime, QuoteParser, \
@@ -62,8 +62,10 @@ class ChampionMatrixParser(QuoteParser):
                 rate_class_alias = '-'.join(
                     [state, edc, rate_class_name, description])
 
-                start_from = excel_number_to_datetime(self._reader.get(
-                    sheet, row, self.START_DATE_COL, float))
+                month_str, year = self._reader.get_matches(sheet, row,
+                                                          self.START_DATE_COL,r'(\w+)-(\d\d\d\d)',(str,int))
+
+                start_from = parse_datetime('%s/1/%s' % (month_str,year))
 
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
