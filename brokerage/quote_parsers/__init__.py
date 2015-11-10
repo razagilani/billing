@@ -10,6 +10,7 @@ from .liberty import LibertyMatrixParser
 from .entrust import EntrustMatrixParser
 from .major_energy import MajorEnergyMatrixParser
 from .usge import USGEMatrixParser
+from .usge_electric import USGEElectricMatrixParser
 from .sfe import SFEMatrixParser
 
 # mapping of each supplier's primary key in the database to its QuoteParser
@@ -26,4 +27,5 @@ CLASSES_FOR_SUPPLIERS = {
     78: MajorEnergyMatrixParser,
     1362: SFEMatrixParser,
     199: USGEMatrixParser,
+    200: USGEElectricMatrixParser,
 }
