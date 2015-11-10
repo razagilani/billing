@@ -98,8 +98,9 @@ echo $env | fab common.configure_app_env -R "portal-$env"
 echo $env | fab common.deploy_interactive_console -R "portal-$env"
 
 # xbill requirements installation
-# TODO: find out why fab common.install_requirements_files didn't work here
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do pip install -r $f; done'"
+# this did not work:
+#ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do echo $f; pip install -r $f; done'"
+# (we couldn't figure out why)
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
 ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
