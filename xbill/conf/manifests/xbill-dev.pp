@@ -79,3 +79,12 @@ rabbit_mq::upstream {'altitude-dev':
     vhost => $env,
     require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
 }
+
+cron { rotate_rabbitmq_logs:
+    command => "rabbitmqctl rotate_logs .1",
+    user => root,
+    hour => 0,
+    minute => 0,
+    monthday => [1,15]
+}
+
