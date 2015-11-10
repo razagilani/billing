@@ -15,3 +15,4 @@ revision.txt
 # packages used by angular
 glob:*/node_modules/*
 glob:*/bower_components/*
+xbill/static/(?!hg_placeholder\.txt)

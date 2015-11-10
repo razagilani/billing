@@ -37,6 +37,9 @@ common.deployment_params['configs'] = {
         "makefiles":[
         ],
         "puppet_manifest":"conf/manifests/xbill-dev.pp",
+        'services': [
+            'xbill-dev-exchange',
+        ]
     },
     "stage": {
         "deploy_version":"4",
@@ -55,6 +58,9 @@ common.deployment_params['configs'] = {
         ],
         "makefiles":[
         ],
+        'services': [
+            'xbill-stage-exchange',
+        ]
     },
     "prod": {
         "deploy_version":"4",
@@ -74,5 +80,8 @@ common.deployment_params['configs'] = {
         "makefiles":[
         ],
         "puppet_manifest":"conf/manifests/xbill-prod.pp",
+        'services': [
+            'xbill-prod-exchange',
+        ]
     },
 }

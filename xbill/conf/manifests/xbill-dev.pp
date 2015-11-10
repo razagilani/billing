@@ -79,3 +79,4 @@ rabbit_mq::upstream {'altitude-dev':
     vhost => $env,
     require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
 }
+
