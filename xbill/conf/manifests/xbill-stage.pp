@@ -86,11 +86,3 @@ cron { destage_from_production:
     hour => 1,
     minute => 0
 }
-
-cron { rotate_rabbitmq_logs:
-    command => "rabbitmqctl rotate_logs .1",
-    user => root,
-    hour => 0,
-    minute => 0,
-    monthday => [1,15]
-}
