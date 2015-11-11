@@ -18,10 +18,10 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'
-        'NAME': 'xbill_prod', # Or path to database file if using sqlite3.
+        'NAME': 'billing_prod', # Or path to database file if using sqlite3.
         # The following settings are not used with sqlite3:
-        'USER': 'xbill_prod',
-        'PASSWORD': 'j6EE5rqOQbCQ4ANP',
+        'USER': 'billing_prod',
+        'PASSWORD': '0HdMBgiYkIwt6bbb',
         'HOST': 'postgres-prod.nextility.net', # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '', # Set to empty string for default.
     }
