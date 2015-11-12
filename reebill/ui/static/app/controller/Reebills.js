@@ -10,6 +10,7 @@ Ext.define('ReeBill.controller.Reebills', {
         'reebills.ReeBillVersions',
         'reebills.SequentialAccountInformation',
         'reebills.UploadIntervalMeter',
+        'reebills.AddressEditForm',
         'accounts.Accounts'
     ],
     
@@ -659,6 +660,30 @@ Ext.define('ReeBill.controller.Reebills', {
         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
          if (!selections.length)
              return;
+        var record = selections[0];
+        var addressEditWindow = Ext.create('Ext.window.Window', {
+            title: 'Edit Addresses',
+            closeAction: 'destroy',
+            id: 'editAddressWindow',
+            items: {xtype: 'addressEditForm',
+                    id: 'editAddressForm'}
+        });
+        var accountsForm = Ext.ComponentQuery.query('#editAddressForm')[0].getForm();
+        var ba = record.get('billing_address');
+        var sa = record.get('service_address');
+        accountsForm.setValues({
+                               'ba_addressee': ba.addressee,
+                               'ba_street': ba.street,
+                               'ba_city': ba.city,
+                               'ba_state': ba.state,
+                               'ba_postal_code': ba.postal_code,
+                               'sa_addressee': sa.addressee,
+                               'sa_street': sa.street,
+                               'sa_city': sa.city,
+                               'sa_state': sa.state,
+                               'sa_postal_code': sa.postal_code
+                               });
+        addressEditWindow.show();
     },
 
      /**
