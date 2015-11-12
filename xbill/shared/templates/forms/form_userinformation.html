@@ -1,0 +1,62 @@
+{% load staticfiles %}
+{% load widget_tweaks %}
+{% load compress %}
+
+{% compress js %}
+    <script type="text/javascript" src="{% static 'js/jquery.validate.min.js' %}"></script>
+{% endcompress %}
+{% compress js inline %}
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $(".controls input").popover({
+                        placement: "right",
+                        trigger: "manual",
+                        content: "",
+            });
+            $('#userInformationForm').validate({ // initialize the plugin
+                rules: {
+                    email1: {
+                        email: true
+                    },
+                    email2: {
+                        email: true,
+                        equalTo: "#{{form.email1.id_for_label}}"
+                    },
+                },
+                errorPlacement: function(label, element) {
+                    var po = $(element).data('popover');
+                    $(element).attr("data-content",$(label).text())
+                    $(element).popover('setContent');
+                    $(element).popover('show');
+                    return true;
+                },
+                success: function(label, element){
+                    $(element).popover('hide');
+                },
+            });
+        });
+    </script>
+{% endcompress %}
+<form id="userInformationForm" method="post" action="" class="form-horizontal">
+    {% csrf_token %}
+    <h5>Update your profile below. (All fields are optional)</h5>
+    <div class="no-marker-no-indent text-error">
+        {{ form.non_field_errors }}
+    </div>
+    {% for field in form %}
+        <div class="control-group {% if field.errors %} error {% endif %}">
+            <label class="control-label" for="{{field.id_for_label}}">{{field.label}}:</label>
+            <div class="controls">     
+                {% with placeholder="placeholder:"|add:field.label %}
+                    {{ field|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ field.errors }}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    <div class="clear"></div>
+    <button class="btn btn-large btn-success pull-right" type="submit" id="continueBtn">Save</button>
+    <a href="{% url 'intro:profile' %}" class="btn btn-large pull-right dashboard-js-link-profile hspace20">Back</a>
+</form>
