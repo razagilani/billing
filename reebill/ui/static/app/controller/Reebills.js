@@ -47,6 +47,9 @@ Ext.define('ReeBill.controller.Reebills', {
         ref: 'createNextButton',
         selector: '[action=createNext]'
     },{
+        ref: 'editAddressesButton',
+        selector: '[action=updateAddresses]'
+    },{
         ref: 'toggleReebillProcessedButton',
         selector: '[action=toggleReebillProcessed]'
     },{
@@ -117,6 +120,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             '[action=updateReadings]': {
                 click: this.handleUpdateReadings
+            },
+            '[action=updateAddresses]': {
+                click: this.handleUpdateAddresses
             },
             '[action=toggleReebillProcessed]': {
                 click: this.handleToggleReebillProcessed
@@ -210,6 +216,7 @@ Ext.define('ReeBill.controller.Reebills', {
             this.getSequentialAccountInformationForm().setDisabled(true);
             this.getUploadIntervalMeterForm().setDisabled(true);
             this.getEmailButton().setDisabled(true);
+            this.getEditAddressesButton().setDisabled(true);
             return
         }
 
@@ -227,6 +234,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getEmailButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
+        this.getEditAddressesButton().setDisabled(issued || processed);
         this.initializeUploadIntervalMeterForm();
         this.getUploadIntervalMeterForm().setDisabled(issued || processed);
     },
@@ -643,6 +651,15 @@ Ext.define('ReeBill.controller.Reebills', {
          store.resumeAutoSync();
          store.sync();
      },
+
+    /**
+      * Handles the click of the edit Addresses button
+      */
+     handleUpdateAddresses: function() {
+        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+    },
 
      /**
       * Handles the click of the Reset button in the Sequential Account

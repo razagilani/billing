@@ -148,8 +148,9 @@ Ext.define('ReeBill.view.reebills.Reebills', {
             disabled: true
         },{
             xtype: 'button',
-            text: 'Edit Address',
-            action: 'editAddress',
+            text: 'Edit Addresses',
+            action: 'updateAddresses',
+            iconCls: 'silk-edit',
             disabled: true
         },'-',{
             xtype: 'button',
