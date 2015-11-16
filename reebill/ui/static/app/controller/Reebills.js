@@ -700,6 +700,7 @@ Ext.define('ReeBill.controller.Reebills', {
     saveAddressChanges: function(){
         var addressEditForm = this.getAddressEditForm();
         var addressWindow = Ext.ComponentQuery.query('#editAddressWindow');
+        var store = this.getReebillsStore();
          if (addressEditForm.getForm().isValid()) {
              var values = addressEditForm.getValues();
              var url = 'http://'+window.location.host+'/reebill/reebills/update_addresses';
@@ -713,6 +714,7 @@ Ext.define('ReeBill.controller.Reebills', {
                                   }
                               });
              addressWindow[0].close();
+             store.reload();
          }
     },
 
