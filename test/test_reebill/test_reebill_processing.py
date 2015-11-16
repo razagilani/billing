@@ -1658,6 +1658,36 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertAlmostEqual(reebill_data[0]['ree_quantity'], energy_quantity)
         self.assertAlmostEqual(reebill_data[1]['ree_quantity'], energy_quantity)
 
+    def test_update_addresses(self):
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            self.account, StringIO('February'), date(2000, 2, 1),
+            date(2000, 3, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            self.account, StringIO('March'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+
+        # create 2 reebills
+        reebill_1 = self.reebill_processor.roll_reebill(
+            self.account, start_date=date(2000, 1, 1))
+        reebill_2 = self.reebill_processor.roll_reebill(self.account)
+
+        billing_address = self.reebill_processor.\
+            update_reebill_customer_address(
+            reebill_1.reebill_customer, 'Test addressee', 'Test street',
+            'Test city', 'VA', '20001', 'billing_address')
+        service_address = self.reebill_processor.\
+            update_reebill_customer_address(
+            reebill_1.reebill_customer, 'Test addressee', 'Test street',
+            'Test city', 'VA', '20001', 'service_address')
+        self.assertEqual(reebill_1.service_address, service_address)
+        self.assertEqual(reebill_2.service_address, service_address)
+        self.assertEqual(reebill_1.billing_address, billing_address)
+        self.assertEqual(reebill_2.billing_address, billing_address)
+
     def test_payment_application(self):
         """Test that payments are applied to reebills according their "date
             received", including when multiple payments are applied and multiple
@@ -1760,6 +1790,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         payment = self.payment_dao.get_payments(account)[0].column_dict()
         self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
+
 
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
