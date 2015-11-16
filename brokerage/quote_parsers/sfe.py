@@ -55,6 +55,9 @@ class SFEMatrixParser(QuoteParser):
 
     date_getter = StartEndCellDateGetter(0, 3, 'D', 4, 'D', None)
 
+    # special constant for determining volume range units by context
+    USE_LAST_HIGH_UNIT_FACTOR = object()
+
     def __init__(self):
         super(SFEMatrixParser, self).__init__()
 
@@ -63,13 +66,19 @@ class SFEMatrixParser(QuoteParser):
         # but the base unit itself could be either therms or kWh depending on
         # the service type (gas or electric). there is a separate factor for
         # the low and high values because in some cases they have different
-        # effective units. (for example, "500-1M" actually means 500 * 1000
-        # to 1 million kWh.)
+        # effective units.
         # K adds an extra factor of 1000 to the unit; M adds an extra 1 million.
+        # and as an added complication, in rows where the high value has an "M",
+        # the current row's low unit factor is the same as the previous row's
+        # high unit factor (which means this must not occur in the first row).
+        # for example, "500" in "500-1M" means 5e5 when preceded by "150-500K",
+        # but "1" in "1-2M" means 1e6 when preceded by "500-1M".
         self._volume_range_patterns = [
             # regular expression, low unit factor, high unit factor
             ('(?P<low>\d+)-(?P<high>\d+)K', 1000, 1000),
-            ('(?P<low>\d+)-(?P<high>\d+)M', 1000, 1e6),
+            ('(?P<low>\d+)-(?P<high>\d+)M',
+             # special value means context-dependent factor
+             self.USE_LAST_HIGH_UNIT_FACTOR, 1e6),
             ('(?P<low>\d+)K\+', 1000, None),
             ('(?P<low>\d+)M\+', 1e6, None),
         ]
@@ -108,6 +117,11 @@ class SFEMatrixParser(QuoteParser):
                         0, row, self.VOLUME_RANGE_COL, regex,
                         expected_unit=target_unit,
                         target_unit=target_unit)
+                    # note that 'last_unit_factor' will not exist if this is
+                    # the first row; it gets initialized at the end of the
+                    # row loop
+                    if low_unit_factor is self.USE_LAST_HIGH_UNIT_FACTOR:
+                        low_unit_factor = last_unit_factor
                     if min_vol is not None:
                         min_vol *= low_unit_factor
                     if limit_vol is not None:
@@ -149,4 +163,6 @@ class SFEMatrixParser(QuoteParser):
                     if rate_class_id is not None:
                         quote.rate_class_id = rate_class_id
                     yield quote
+
+            last_unit_factor = high_unit_factor
 
