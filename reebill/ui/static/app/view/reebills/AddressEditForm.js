@@ -1,6 +1,6 @@
 Ext.define('ReeBill.view.reebills.AddressEditForm', {
     extend: 'Ext.form.Panel',
-    title: 'Edit Billing/Service Addresses',
+    title: "Edit Customer's Billing/Service Addresses",
 
     alias: 'widget.addressEditForm',
 
@@ -67,6 +67,9 @@ Ext.define('ReeBill.view.reebills.AddressEditForm', {
             fieldLabel: 'Postal Code',
             name: 'sa_postal_code'
         }]
+    },{
+        xtype: 'hiddenfield',  //should use the more standard hiddenfield
+        name: 'reebill_id'
     }],
 
     dockedItems: [{
@@ -76,7 +79,7 @@ Ext.define('ReeBill.view.reebills.AddressEditForm', {
             xtype: 'button',
             text: 'Save',
             iconCls: 'silk-disk',
-            action: 'saveEditChanges'
+            action: 'saveAddressChanges'
         }]
     }]
 });
