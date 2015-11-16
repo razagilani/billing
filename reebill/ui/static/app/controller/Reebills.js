@@ -21,6 +21,9 @@ Ext.define('ReeBill.controller.Reebills', {
         ref: 'reebillsGrid',
         selector: 'grid[id=reebillsGrid]'        
     },{
+        ref: 'addressEditForm',
+        selector: 'addressEditForm'
+    },{
         ref: 'serviceForCharges',
         selector: 'combo[name=serviceForCharges]'        
     },{
@@ -140,6 +143,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=submitUploadIntervalMeter]': {
                 click: this.submitUploadIntervalMeter
+            },
+            'button[action=saveAddressChanges]': {
+                click: this.saveAddressChanges
             }
         });
 
@@ -662,16 +668,17 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
         var record = selections[0];
         var addressEditWindow = Ext.create('Ext.window.Window', {
-            title: 'Edit Addresses',
+            title: 'Edit ReeBill Addresses',
             closeAction: 'destroy',
             id: 'editAddressWindow',
             items: {xtype: 'addressEditForm',
                     id: 'editAddressForm'}
         });
-        var accountsForm = Ext.ComponentQuery.query('#editAddressForm')[0].getForm();
+        var addressForm = Ext.ComponentQuery.query('#editAddressForm')[0].getForm();
         var ba = record.get('billing_address');
         var sa = record.get('service_address');
-        accountsForm.setValues({
+        var reebill_id = record.get('id');
+        addressForm.setValues({
                                'ba_addressee': ba.addressee,
                                'ba_street': ba.street,
                                'ba_city': ba.city,
@@ -681,9 +688,32 @@ Ext.define('ReeBill.controller.Reebills', {
                                'sa_street': sa.street,
                                'sa_city': sa.city,
                                'sa_state': sa.state,
-                               'sa_postal_code': sa.postal_code
+                               'sa_postal_code': sa.postal_code,
+                               'reebill_id': reebill_id
                                });
         addressEditWindow.show();
+    },
+
+    /**
+     * Handles the click of save button in the Edit Addresses form
+     */
+    saveAddressChanges: function(){
+        var addressEditForm = this.getAddressEditForm();
+        var addressWindow = Ext.ComponentQuery.query('#editAddressWindow');
+         if (addressEditForm.getForm().isValid()) {
+             var values = addressEditForm.getValues();
+             var url = 'http://'+window.location.host+'/reebill/reebills/update_addresses';
+             Ext.Ajax.request({
+                                  url: url,
+                                  params: values,
+                                  method: 'POST',
+                                  failure: function () {
+                                  },
+                                  success: function (response) {
+                                  }
+                              });
+             addressWindow[0].close();
+         }
     },
 
      /**
