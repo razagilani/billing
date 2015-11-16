@@ -5,32 +5,17 @@ from abc import ABCMeta, abstractmethod
 import re
 from datetime import datetime, timedelta
 
-from tablib import Databook, formats
-
-from core.exceptions import BillingError
 from brokerage.validation import ValidationError, _assert_true, _assert_match, \
     _assert_equal
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.brokerage_model import load_rate_class_aliases
-from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
+from util.dateutils import parse_datetime, excel_number_to_datetime
 from util.units import unit_registry
 
 
 # TODO:
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
-
-def parse_number(string):
-    """Convert number string into a number.
-    :param string: number string formatted for American humans (with commas)
-    :return: int (if the number is really an integer) or float
-    """
-    result = float(string.replace(',', ''))
-    if result == round(result):
-        return int(result)
-    return result
-
-
 
 class DateGetter(object):
     """Handles determining the validity dates for quotes in QuoteParser.
