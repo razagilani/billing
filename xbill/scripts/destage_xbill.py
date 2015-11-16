@@ -2,7 +2,7 @@ from datetime import datetime
 import argparse
 import backup_tools
 import os
-from xbill import settings
+from xbill.xbill import settings
 
 if __name__ == '__main__':
 
