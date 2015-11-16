@@ -208,9 +208,9 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 1e7
+    MAX_MIN_VOLUME = 1e9
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 1e7
+    MAX_LIMIT_VOLUME = 1e9
     MIN_VOLUME_DIFFERENCE = 0
     MAX_VOLUME_DIFFERENCE = 1e7
 
