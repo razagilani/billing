@@ -1,0 +1,151 @@
+{% load staticfiles %}
+{% load webdesign %}
+{% load widget_tweaks %}
+{% load compress %}
+
+{% compress js %}
+    <script type="text/javascript" src="{% static 'js/jquery.validate.min.js' %}"></script>
+{% endcompress %}
+{% compress js inline %}
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $(".controls input").popover({
+                        placement: "right",
+                        trigger: "manual",
+                        content: ""
+            });
+            $('#enrollmentForm').validate({ // initialize the plugin
+                rules: {
+                    first_name: {
+                        required: true
+                    },
+                    last_name: {
+                        required: true
+                    },
+                    email1: {
+                        required: true,
+                        email: true
+                    },
+                    email2: {
+                        required: true,
+                        email: true,
+                        equalTo: "#{{form.email1.id_for_label}}"
+                    },
+                    password1: {
+                        required: true,
+                        minlength: 8
+                    },
+                    password2: {
+                        required: true,
+                        equalTo: "#{{form.password1.id_for_label}}"
+                    },
+                    TACcheckbox: {
+                        required: true
+                    }
+                },
+                errorPlacement: function(label, element) {
+                    var po = $(element).data('popover');
+                    $(element).attr("data-content",$(label).text())
+                    $(element).popover('setContent');
+                    $(element).popover('show');
+                    return true;
+                },
+                success: function(label, element){
+                    $(element).popover('hide');
+                }
+            });
+        });
+    </script>
+{% endcompress %}
+<form id="enrollmentForm" method="post" action="" class="form-horizontal">
+    {% csrf_token %}
+    <h5>New to XBill? Fill out the form below. (All fields are required)</h5>
+    <div class="no-marker-no-indent text-error">
+        {{ form.non_field_errors }}
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.first_name.id_for_label}}">{{form.first_name.label}}</label>
+        <div class="controls">     
+            {% with placeholder="placeholder:"|add:form.first_name.label %}
+                {{ form.first_name|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.first_name.errors }}
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.last_name.id_for_label}}">{{form.last_name.label}}</label>
+        <div class="controls">
+            {% with placeholder="placeholder:"|add:form.last_name.label %}
+                {{ form.last_name|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.last_name.errors }}
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.email1.id_for_label}}">{{form.email1.label}}</label>
+        <div class="controls">     
+            {% with placeholder="placeholder:"|add:form.email1.label %}
+                {{ form.email1|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.email1.errors }}
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.email2.id_for_label}}">{{form.email2.label}}</label>
+        <div class="controls">    
+            {% with placeholder="placeholder:"|add:form.email2.label %}
+                {{ form.email2|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.email2.errors }}
+            </div>
+        </div>
+    </div>
+    <h5>Protect this information with a password:</h5>
+    <p>Your password needs to contain at least 8 characters.</p>
+    <div class="control-group">
+        <label class="control-label" for="{{form.password1.id_for_label}}">{{form.password1.label}}</label>
+        <div class="controls">     
+            {% with placeholder="placeholder:"|add:form.password1.label %}
+                {{ form.password1|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.password1.errors }}
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.password2.id_for_label}}">{{form.password2.label}}</label>
+        <div class="controls">     
+            {% with placeholder="placeholder:"|add:form.password2.label %}
+                {{ form.password2|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.password2.errors }}
+            </div>
+        </div>
+    </div>
+{#        <p>Are you a human?</p>#}
+{#        <script type="text/javascript" src="http://www.google.com/recaptcha/api/challenge?k=your_public_key"></script>#}
+{#        <noscript>#}
+{#            <iframe src="http://www.google.com/recaptcha/api/noscript?k=your_public_key" height="300" width="500" frameborder="0"></iframe> <br/>#}
+{#            <textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>#}
+{#            <input type="hidden" name="recaptcha_response_field" value="manual_challenge">#}
+{#        </noscript>#}
+        <div class="control-group">
+            <div class="controls">     
+                {{ form.TACcheckbox|add_class:"hspace20" }}<span class="checkBox">I agree to the <a href="{% url 'intro:tou' %}" target="_blank">Terms of Use</a></span>
+                <div class="no-marker-no-indent text-error">
+                    {{ form.TACcheckbox.errors }}
+                </div>
+            </div>
+        </div>        
+        <div class="clear"></div>
+        <button class="btn btn-large btn-success pull-right" type="submit" id="continueBtn">Continue to step 2</button>
+</form>
