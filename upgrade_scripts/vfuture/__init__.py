@@ -8,20 +8,22 @@ import any other code that that expects an initialized data model without first
 calling :func:`.core.init_model`.
 """
 import logging
-import re
-from core.extraction import Applier
-from core.extraction.applier import UtilBillApplier
-from core.extraction.extraction import LayoutExtractor, Field
-from core.model import BoundingBox, Session
-from core.model.model import ChargeNameMap
-from upgrade_scripts import alembic_upgrade
-from core import init_model, initialize, init_config
-from util.layout import Corners
+import os
+import subprocess
+
+from core.model import Session
+from core import init_model, get_db_params
 
 log = logging.getLogger(__name__)
 
 def upgrade():
-    alembic_upgrade('482dddf4fe5d')
+    # restore data from xbill database backup into billing database
+    db_params = get_db_params()
+    command = 'python xbill/scripts/destage_xbill.py ' \
+              '--DBName %(db)s --DBUser %(user)s' % db_params
+    with open(os.devnull) as devnull:
+        status_code = subprocess.call(command.split(), stdout=devnull)
+    assert status_code == 0
 
     init_model()
     s = Session()
