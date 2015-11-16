@@ -166,7 +166,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(.07036, q1.price)
 
     def test_usge_electric(self):
-        parser = USGEElectricMatrixParser() #USGEElectricMatrixParser()
+        parser = USGEElectricMatrixParser()
         self.assertEqual(0, parser.get_count())
 
         with open(self.USGE_ELECTRIC_FILE_PATH, 'rb') as spreadsheet:

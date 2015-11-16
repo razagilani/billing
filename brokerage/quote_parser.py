@@ -7,33 +7,18 @@ from datetime import datetime, timedelta
 
 from tablib import Databook, formats
 
-# TODO: ValidationError should probably be specific to this module,
-# not a global thing. this kind of validation doesn't have anything in common
-#  with other validation.
-from core.exceptions import ValidationError, BillingError
-from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
+from core.exceptions import BillingError
+from brokerage.validation import ValidationError, _assert_true, _assert_match, \
+    _assert_equal
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.brokerage_model import load_rate_class_aliases
+from util.dateutils import parse_date, parse_datetime, excel_number_to_datetime
 from util.units import unit_registry
 
 
 # TODO:
 # - time zones are ignored but are needed because quote validity times,
 # start dates, are specific to customers in a specific time zone
-
-def _assert_true(p):
-    if not p:
-        raise ValidationError('Assertion failed')
-
-
-def _assert_equal(a, b):
-    if a != b:
-        raise ValidationError("Expected %s, found %s" % (a, b))
-
-
-def _assert_match(regex, string):
-    if not re.match(regex, string):
-        raise ValidationError('No match for "%s" in "%s"' % (regex, string))
-
 
 def parse_number(string):
     """Convert number string into a number.

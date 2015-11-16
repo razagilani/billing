@@ -1,7 +1,8 @@
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, \
-    excel_number_to_datetime, SimpleCellDateGetter
+from brokerage.quote_parser import QuoteParser, excel_number_to_datetime, \
+    SimpleCellDateGetter
+from brokerage.validation import _assert_true
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote

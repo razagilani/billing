@@ -1,12 +1,12 @@
 from datetime import datetime
 
 from tablib import formats
+from brokerage.validation import _assert_true
 
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
-    _assert_true
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
 from util.units import unit_registry
 
 

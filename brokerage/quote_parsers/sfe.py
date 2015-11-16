@@ -3,7 +3,9 @@ import re
 
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, SpreadsheetReader, StartEndCellDateGetter
+from brokerage.quote_parser import QuoteParser, SpreadsheetReader, \
+    StartEndCellDateGetter
+from brokerage.validation import _assert_true
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month

@@ -2,12 +2,12 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
+from brokerage.validation import _assert_equal
 
 from util.dateutils import date_to_datetime, parse_date
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
-    SimpleCellDateGetter, _assert_equal
+from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from core.exceptions import ValidationError
 from util.units import unit_registry
 

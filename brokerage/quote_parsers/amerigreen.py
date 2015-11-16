@@ -3,8 +3,9 @@ from datetime import timedelta
 from tablib import formats
 
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import _assert_true, QuoteParser, FileNameDateGetter
+from brokerage.quote_parser import QuoteParser, FileNameDateGetter
 from brokerage.quote_parser import excel_number_to_datetime
+from brokerage.validation import _assert_true
 
 
 class AmerigreenMatrixParser(QuoteParser):
