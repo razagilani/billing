@@ -615,6 +615,26 @@ class ReebillsResource(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
+    def update_addresses(self, **params):
+        params = cherrypy.request.params
+        r = self.state_db.get_reebill_by_id(int(params['reebill_id']))
+
+        self.reebill_processor.update_reebill_customer_address(
+                r.reebill_customer, params['sa_addressee'],
+                params['sa_street'], params['sa_city'],
+                params['sa_state'], params['sa_postal_code'],
+                'service_address')
+        self.reebill_processor.update_reebill_customer_address(
+                r.reebill_customer, params['ba_addressee'],
+                params['ba_street'], params['ba_city'],
+                params['ba_state'], params['ba_postal_code'],
+                'billing_address')
+
+        return self.dumps({'success': True, 'reebill': r.column_dict()})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
     def toggle_processed(self, **params):
         params = cherrypy.request.params
         r = self.state_db.get_reebill_by_id(int(params['reebill']))
