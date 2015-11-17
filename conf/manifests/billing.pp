@@ -12,7 +12,6 @@ $env = $environment
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
-    dropbox     => 'true',
     username   => $username,
 }
 
@@ -173,6 +172,10 @@ mailalias { 'matrix-sfe':
     recipient => "|${receive_matrix_email_script}"
 }
 mailalias { 'matrix-usge':
+    ensure    => present,
+    recipient => "|${receive_matrix_email_script}"
+}
+mailalias { 'matrix-usge-electric':
     ensure    => present,
     recipient => "|${receive_matrix_email_script}"
 }
