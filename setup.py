@@ -107,6 +107,7 @@ tests_require=[
     'nose',
     'nose-progressive',
     'coverage',
+    'pytest',
 
     # general development tools
     'ipdb',
