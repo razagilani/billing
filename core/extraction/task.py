@@ -84,7 +84,7 @@ def extract_bill(self, utilbill_id):
 
 
 @celery.task(bind=True, base=DBTask)
-def test_bill(self, extractor_id, bill_id):
+def check_bill(self, extractor_id, bill_id):
     '''
     Tests an extractor on a single bill, and returns whether or not it succeeded.
 
