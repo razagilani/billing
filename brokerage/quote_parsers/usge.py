@@ -3,8 +3,9 @@ from datetime import datetime
 
 from tablib import formats
 
-from brokerage.quote_parser import QuoteParser, parse_number, \
-    SimpleCellDateGetter
+from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
+from brokerage.reader import parse_number
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -16,6 +17,7 @@ class USGEMatrixParser(QuoteParser):
     time along the columns.
     """
     NAME = 'usgegas'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 

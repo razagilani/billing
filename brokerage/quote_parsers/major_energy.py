@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_true
 
 from util.dateutils import date_to_datetime
@@ -15,6 +16,7 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     electricity quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -103,6 +105,7 @@ class MajorEnergyGasSheetParser(QuoteParser):
     gas quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -185,7 +188,7 @@ class MajorEnergyMatrixParser(QuoteParser):
     classes that should be eliminated. But it works well enough.
     """
     NAME = 'majorenergy'
-
+    READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
 
     # only validation that applies to the entire file goes in this class.

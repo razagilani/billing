@@ -14,6 +14,7 @@ class ConstellationMatrixParser(QuoteParser):
     NAME = 'constellation'
 
     FILE_FORMAT = formats.xlsx
+    READER_CLASS = SpreadsheetReader
 
     START_FROM_ROW = 6
     VOLUME_RANGE_ROW = 8
