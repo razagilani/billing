@@ -1,4 +1,4 @@
-"""Code related to getting data out of Excel spreadsheets.
+"""Code related to getting quotes out of Excel spreadsheets.
 """
 from tablib import formats, Databook
 
