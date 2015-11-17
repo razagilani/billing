@@ -1,4 +1,5 @@
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
 
 from util.dateutils import date_to_datetime, parse_datetime
 from util.monthmath import Month
@@ -12,6 +13,7 @@ class ChampionMatrixParser(QuoteParser):
     """ Parser for Champion Matrix Rates
     """
     NAME = 'champion'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 

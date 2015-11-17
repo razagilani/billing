@@ -2,6 +2,7 @@ from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, excel_number_to_datetime, \
     SimpleCellDateGetter
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_true
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -13,6 +14,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
     NAME = 'directenergy'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 

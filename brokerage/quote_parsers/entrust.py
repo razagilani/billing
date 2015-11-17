@@ -16,6 +16,7 @@ class EntrustMatrixParser(QuoteParser):
     """Parser for Entrust spreadsheet.
     """
     NAME = 'entrust'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
