@@ -17,6 +17,7 @@ class SFEMatrixParser(QuoteParser):
     """Parser for SFE spreadsheet.
     """
     NAME = 'sfe'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 

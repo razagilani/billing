@@ -127,6 +127,9 @@ class QuoteParser(object):
     # with no spaces or punctuation, like "directenergy". avoid changing this!
     NAME = None
 
+    # determines which subclass of Reader to use for this file type
+    READER_CLASS = None
+
     # tablib submodule that should be used to import data from the spreadsheet
     FILE_FORMAT = None
 
@@ -154,7 +157,7 @@ class QuoteParser(object):
         # name should be defined
         assert isinstance(self.NAME, basestring)
 
-        self._reader = SpreadsheetReader()
+        self._reader = self.READER_CLASS()
         self._file_name = None
 
         # whether validation has been done yet

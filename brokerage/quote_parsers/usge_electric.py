@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 
 from tablib import formats
 
-from brokerage.quote_parser import QuoteParser, parse_number, \
-    SimpleCellDateGetter
+from brokerage.quote_parser import QuoteParser
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -18,6 +18,7 @@ class USGEElectricMatrixParser(QuoteParser):
     time along the columns.
     """
     NAME = 'usgeelectic'
+    READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
 
     TERM_HEADER_ROW = 4

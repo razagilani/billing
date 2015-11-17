@@ -2,6 +2,7 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_equal
 
 from util.dateutils import date_to_datetime, parse_date
@@ -137,6 +138,7 @@ class LibertyMatrixParser(QuoteParser):
     """Parser for Liberty Power spreadsheet.
     """
     NAME = 'liberty'
+    READER_CLASS = SpreadsheetReader
 
     # TODO: we couldn't open this in its original xlsx format
     # (might be fixed by upgrading openpyxl)
