@@ -1,0 +1,8 @@
+description "celery server"
+start on runlevel [2345]
+script
+su --login  <%= @username%> --session-command "cd /var/local/<%= @username%>/billing/;celery -A core.extraction.task worker --loglevel=info --logfile /home/<%= @username%>/logs/celery.log"
+end script
+console output
+respawn
+respawn limit 2 10
