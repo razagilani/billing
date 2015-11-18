@@ -733,7 +733,7 @@ class TestIntegration(TestCase):
                     target_total=3.03, type=D, unit='therms'),
              Charge('TAX', name='Delivery Tax', target_total=39.24,
                     type=D, unit='therms'),
-             Charge('TAX', name='Sales Tax', target_total=38.48, type=D,
+             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
                     unit='therms')]
 
         self.assertEqual(len(expected), len(self.bill.charges))
