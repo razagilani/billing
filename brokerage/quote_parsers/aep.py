@@ -1,3 +1,5 @@
+import datetime
+import time
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, _assert_true, \
@@ -17,8 +19,7 @@ class AEPMatrixParser(QuoteParser):
 
     EXPECTED_SHEET_TITLES = [
         'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
-        'Matrix Table-Energy Only', 'PLC Load Factor Calculator', 'A1-1',
-        'A1-2', 'Base', 'Base Energy Only']
+        'Matrix Table-Energy Only', 'PLC Load Factor Calculator']
 
     # FPAI is "Fixed-Price All-In"; we're ignoring the "Energy Only" quotes
     SHEET = 'Matrix Table-FPAI'
@@ -42,8 +43,8 @@ class AEPMatrixParser(QuoteParser):
         (SHEET, 11, 'U', "Customer Size: 501-1000 Annuals MWhs"),
         (SHEET, 13, 'C', "State"),
         (SHEET, 13, 'D', "Utility"),
-        (SHEET, 13, 'E', r"Rate Code\(s\)"),
-        (SHEET, 13, 'F', "Rate Codes/Description"),
+        (SHEET, 13, 'E', r"Profile"),
+        (SHEET, 13, 'F', "Rate Code\(s\)/Description"),
         (SHEET, 13, 'G', "Start Month"),
     ]
 
@@ -88,7 +89,8 @@ class AEPMatrixParser(QuoteParser):
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader.get(self.SHEET, row, self.START_MONTH_COL, float))
+                self._reader.get(self.SHEET, row, self.START_MONTH_COL,
+                                 float))
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
@@ -109,7 +111,7 @@ class AEPMatrixParser(QuoteParser):
                     # what contract length that really is
                     if self._reader.get(
                             self.SHEET, self.HEADER_ROW, col,
-                            (basestring, float)) == "End May '18":
+                            (basestring, float, int)) == "End May '18":
                         continue
                     # TODO: extracted unnecessarily many times
                     term = self._reader.get(

@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 import re
 from datetime import datetime, timedelta
 
-from tablib import Databook, formats
+from tablib import Databook, formats, Dataset
 
 # TODO: ValidationError should probably be specific to this module,
 # not a global thing. this kind of validation doesn't have anything in common
@@ -107,6 +107,9 @@ class SpreadsheetReader(object):
             file_format.import_book(result, quote_file)
         elif file_format in [formats.xls]:
             file_format.import_book(result, quote_file.read())
+        elif file_format in [formats.csv]:
+            result = Dataset()
+            file_format.import_set(result, quote_file.read())
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
         return result
