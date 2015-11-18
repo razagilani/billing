@@ -92,7 +92,8 @@ class MajorEnergyElectricSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='electric')
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -170,7 +171,8 @@ class MajorEnergyGasSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=None, limit_volume=None,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='gas')
                     # todo: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

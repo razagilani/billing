@@ -30,9 +30,11 @@ def upgrade():
     url = str(a.bind.url)
     if url.startswith('mssql'):
         a.execute("alter table Rate_Matrix alter column Supplier_Company_ID null")
+        # sql server has no enums
     else:
         assert url.startswith('postgresql')
         a.execute('alter table "Rate_Matrix" alter column "Supplier_Company_ID" drop not null;')
+    a.execute('alter table "Rate_Matrix" add column service_type varchar not null')
     a.commit()
 
     init_model()
