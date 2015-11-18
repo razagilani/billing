@@ -11,8 +11,8 @@ import logging
 import os
 import subprocess
 
-from core.model import Session
-from core import init_model, get_db_params
+from core.model import Session, AltitudeSession
+from core import init_model, get_db_params, init_altitude_db
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +24,16 @@ def upgrade():
     with open(os.devnull) as devnull:
         status_code = subprocess.call(command.split(), stdout=devnull)
     assert status_code == 0
+
+    init_altitude_db()
+    a = AltitudeSession()
+    url = str(a.bind.url)
+    if url.startswith('mssql'):
+        a.execute("alter table Rate_Matrix alter column Supplier_Company_ID null")
+    else:
+        assert url.startswith('postgresql')
+        a.execute('alter table "Rate_Matrix" alter column "Supplier_Company_ID" drop not null;')
+    a.commit()
 
     init_model()
     s = Session()
