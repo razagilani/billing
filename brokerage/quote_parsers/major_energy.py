@@ -159,10 +159,11 @@ class MajorEnergyGasSheetParser(QuoteParser):
                 term_months = self._reader.get_matches(
                     self.SHEET, self.HEADER_ROW, col, '(\d+) Months', int)
                 price = self._reader.get(self.SHEET, row, col,
-                                         (int, float, type(None)))
-                # skip blank cells
-                if price is None:
+                                         (int, float, type(None), basestring))
+                # skip blank cells (may be blank or None)
+                if price in (None, ''):
                     continue
+                _assert_true(isinstance(price, (float, int)))
 
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
