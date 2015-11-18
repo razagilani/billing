@@ -1,4 +1,5 @@
-"""Upgrade script for version 27.
+"""Placeholder for upgrade script for future changes not yet merged into
+the default branch.
 
 Script must define `upgrade`, the function for upgrading.
 
@@ -17,13 +18,6 @@ from core import init_model, get_db_params
 log = logging.getLogger(__name__)
 
 def upgrade():
-    # restore data from xbill database backup into billing database
-    db_params = get_db_params()
-    command = 'python xbill/scripts/destage_xbill.py ' \
-              '--DBName %(db)s --DBUser %(user)s' % db_params
-    with open(os.devnull) as devnull:
-        status_code = subprocess.call(command.split(), stdout=devnull)
-    assert status_code == 0
 
     init_model()
     s = Session()

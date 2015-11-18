@@ -35,7 +35,7 @@ function delete_temp_files {
 # variables used in Puppet scripts to do things differently on different hosts.
 params=()
 params[1]="billing-$env $env"
-params[2]="billingworker-$env extraction-worker-$env"
+params[2]="worker-$env worker-$env"
 
 # clone private repositories for dependencies inside the billing repository working
 # directory, because remote hosts don't have access to Bitbucket
@@ -87,15 +87,15 @@ done
 
 ##############################################################################
 # xbill deployment
+XBILL_FABFILE_PATH="xbill/fabfile.py"
 
-cd xbill
 # delete any existing xbill-env directory, even though
 # "fab common.deploy_interactive_console" is supposed to completely replace
 # it, because somehow it still exists and that breaks the
 # "mange.py collectstatic" step below
 ssh -t portal-$env "sudo rm -rf /var/local/xbill-$env/"
-echo $env | fab common.configure_app_env -R "portal-$env"
-echo $env | fab common.deploy_interactive_console -R "portal-$env"
+echo $env | fab -f $XBILL_FABFILE_PATH common.configure_app_env -R "portal-$env"
+echo $env | fab -f $XBILL_FABFILE_PATH common.deploy_interactive_console -R "portal-$env"
 
 # xbill requirements installation
 # this did not work:
@@ -116,5 +116,5 @@ ssh -t portal-$env "sudo service httpd reload"
 #sleep 3
 #ssh -t portal-$env "sudo service httpd restart"
 
-echo $env | fab common.stop_upstart_services -R "portal-$env"
-echo $env | fab common.start_upstart_services -R "portal-$env"
+echo $env | fab -f $XBILL_FABFILE_PATH common.stop_upstart_services -R "portal-$env"
+echo $env | fab -f $XBILL_FABFILE_PATH common.start_upstart_services -R "portal-$env"

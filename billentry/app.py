@@ -40,7 +40,7 @@ from brokerage.brokerage_model import get_quote_status
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import UtilBillApplier
-from core.extraction.task import test_bill, reduce_bill_results
+from core.extraction.task import check_bill, reduce_bill_results
 from core.model import Session, Utility, AltitudeSession
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
@@ -259,7 +259,7 @@ def run_test():
     if q.count() == 0:
         return jsonify({'bills_to_run':0})
     #run celery chord
-    job = group([test_bill.s(extractor_id, b.id) for b in q])
+    job = group([check_bill.s(extractor_id, b.id) for b in q])
     result = chord(job)(reduce_bill_results.s())
     result_parent = result.parent
     result_parent.save()

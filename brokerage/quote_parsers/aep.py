@@ -2,8 +2,10 @@ import datetime
 import time
 from tablib import formats
 
-from brokerage.quote_parser import QuoteParser, _assert_true, \
+from brokerage.quote_parser import QuoteParser, \
     excel_number_to_datetime, SimpleCellDateGetter
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_true
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -14,6 +16,7 @@ class AEPMatrixParser(QuoteParser):
     """Parser for AEP Energy spreadsheet.
     """
     NAME = 'aep'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 
@@ -132,6 +135,7 @@ class AEPMatrixParser(QuoteParser):
                             valid_until=self._valid_until,
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
-                            rate_class_alias=rate_class_alias, price=price)
+                            rate_class_alias=rate_class_alias, price=price,
+                            service_type='electric')
                         quote.rate_class_id = rate_class_id
                         yield quote
