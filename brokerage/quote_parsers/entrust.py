@@ -150,7 +150,8 @@ class EntrustMatrixParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=min_volume, limit_volume=limit_volume,
                         rate_class_alias=rate_class_alias,
-                        purchase_of_receivables=False, price=price)
+                        purchase_of_receivables=False, price=price,
+                        service_type='electric')
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

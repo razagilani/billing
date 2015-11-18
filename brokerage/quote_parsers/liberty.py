@@ -72,7 +72,8 @@ class SuperSaverPriceCell(PriceQuoteCell):
             valid_until=self.matrix_parser._valid_until,
             min_volume=min_vol, limit_volume=limit_vol,
             purchase_of_receivables=False,
-            rate_class_alias=self.rate_class_alias, price=price)
+            rate_class_alias=self.rate_class_alias, price=price,
+            service_type='electric')
 
 
 class NormalPriceCell(PriceQuoteCell):

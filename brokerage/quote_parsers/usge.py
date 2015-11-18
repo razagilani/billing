@@ -132,7 +132,8 @@ class USGEMatrixParser(QuoteParser):
                                 min_volume=min_volume,
                                 limit_volume=limit_volume,
                                 purchase_of_receivables=False, price=price,
-                                rate_class_alias=rate_class_alias)
+                                rate_class_alias=rate_class_alias,
+                                service_type='gas')
                             # TODO: rate_class_id should be determined automatically
                             # by setting rate_class
                             quote.rate_class_id = rate_class_id

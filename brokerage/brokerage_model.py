@@ -146,6 +146,9 @@ class Quote(AltitudeBase):
     # Percent Swing Allowable
     percent_swing = Column('Percent_Swing_Allowable', Float)
 
+    # should be "electric" or "gas"--unfortunately SQL Server has no enum type
+    service_type = Column(String, nullable=False)
+
     discriminator = Column(String(50), nullable=False)
 
     __mapper_args__ = {
