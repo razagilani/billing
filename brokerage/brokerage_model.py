@@ -107,7 +107,7 @@ class Quote(AltitudeBase):
     rate_id = Column('Rate_Matrix_ID', Integer, primary_key=True)
     supplier_id = Column('Supplier_Company_ID', Integer,
                          # foreign key to view is not allowed
-                         ForeignKey('Company.Company_ID'), nullable=False)
+                         ForeignKey('Company.Company_ID'))
 
     rate_class_alias = Column('rate_class_alias', String, nullable=False)
     rate_class_id = Column('Rate_Class_ID', Integer, nullable=True)
