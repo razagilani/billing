@@ -123,7 +123,7 @@ tests_require=[
 
 setup(
     name="billing",
-    version="35",
+    version="36",
     packages=find_packages(),
     scripts=[
         'bin/check_matrix_file.py',
