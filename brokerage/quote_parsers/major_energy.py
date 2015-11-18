@@ -1,12 +1,13 @@
 from datetime import datetime
 
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_true
 
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
-    _assert_true
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
 from util.units import unit_registry
 
 
@@ -15,6 +16,7 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     electricity quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -90,7 +92,8 @@ class MajorEnergyElectricSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='electric')
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -103,6 +106,7 @@ class MajorEnergyGasSheetParser(QuoteParser):
     gas quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -167,7 +171,8 @@ class MajorEnergyGasSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=None, limit_volume=None,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='gas')
                     # todo: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -185,7 +190,7 @@ class MajorEnergyMatrixParser(QuoteParser):
     classes that should be eliminated. But it works well enough.
     """
     NAME = 'majorenergy'
-
+    READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
 
     # only validation that applies to the entire file goes in this class.

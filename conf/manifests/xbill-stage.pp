@@ -36,6 +36,14 @@ package { 'postgresql93-devel':
     ensure  => installed
 }
 
+# needed to compile pymssql (in billing requirements)
+package { 'freetds':
+    ensure  => installed
+}
+package { 'freetds-devel':
+    ensure  => installed
+}
+
 file { "/etc/init/xbill-${env}-exchange.conf":
     ensure => file,
     content => template('conf/xbill-exchange.conf.erb')
