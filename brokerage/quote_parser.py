@@ -107,9 +107,6 @@ class SpreadsheetReader(object):
             file_format.import_book(result, quote_file)
         elif file_format in [formats.xls]:
             file_format.import_book(result, quote_file.read())
-        elif file_format in [formats.csv]:
-            result = Dataset()
-            file_format.import_set(result, quote_file.read())
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
         return result
