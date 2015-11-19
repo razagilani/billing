@@ -556,6 +556,10 @@ class ReeBillCustomer(Base):
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
     payee = Column(String(100), nullable=True)
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"
@@ -565,6 +569,11 @@ class ReeBillCustomer(Base):
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
+    billing_address = relationship('Address', uselist=False,
+        cascade='all',
+        primaryjoin='ReeBillCustomer.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='ReeBillCustomer.service_address_id==Address.id')
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',

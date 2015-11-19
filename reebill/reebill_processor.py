@@ -393,6 +393,26 @@ class ReebillProcessor(object):
             self.reebill_file_handler.delete_file(reebill, ignore_missing=True)
         return version
 
+    def update_reebill_customer_address(self, reebill_customer, addressee,
+            street, city, state, postal_code, type):
+        '''updates the service address of all reebills for the given \
+        reebill_customer
+        type must be a string with either service_address or
+        billing_address value'''
+
+        address = Address(addressee=addressee, street=street, city=city,
+                          state=state, postal_code=postal_code)
+        session = Session()
+        reebills = session.query(ReeBill).join(ReeBillCustomer).filter(
+            ReeBill.reebill_customer==reebill_customer)
+        if type == 'service_address':
+            for reebill in reebills:
+                reebill.service_address = address
+        else:
+            for reebill in reebills:
+                reebill.billing_address = address
+        return address
+
     def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
             template_account, utility_account_number, payee):
