@@ -98,6 +98,14 @@ def get_quote_status():
         q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
         desc(q.c.total_count))
 
+def count_active_matrix_quotes():
+    """Return the number of matrix quotes that are valid right now.
+    """
+    now = datetime.utcnow()
+    s = AltitudeSession()
+    return s.query(MatrixQuote).filter(MatrixQuote.valid_from <= now,
+                                MatrixQuote.valid_until < now).count()
+
 
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
@@ -107,7 +115,7 @@ class Quote(AltitudeBase):
     rate_id = Column('Rate_Matrix_ID', Integer, primary_key=True)
     supplier_id = Column('Supplier_Company_ID', Integer,
                          # foreign key to view is not allowed
-                         ForeignKey('Company.Company_ID'), nullable=False)
+                         ForeignKey('Company.Company_ID'))
 
     rate_class_alias = Column('rate_class_alias', String, nullable=False)
     rate_class_id = Column('Rate_Class_ID', Integer, nullable=True)
@@ -145,6 +153,9 @@ class Quote(AltitudeBase):
 
     # Percent Swing Allowable
     percent_swing = Column('Percent_Swing_Allowable', Float)
+
+    # should be "electric" or "gas"--unfortunately SQL Server has no enum type
+    service_type = Column(String, nullable=False)
 
     discriminator = Column(String(50), nullable=False)
 
@@ -208,9 +219,9 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 1e7
+    MAX_MIN_VOLUME = 1e9
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 1e7
+    MAX_LIMIT_VOLUME = 1e9
     MIN_VOLUME_DIFFERENCE = 0
     MAX_VOLUME_DIFFERENCE = 1e7
 

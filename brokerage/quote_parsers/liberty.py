@@ -2,12 +2,13 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_equal
 
 from util.dateutils import date_to_datetime, parse_date
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
-    SimpleCellDateGetter, _assert_equal
+from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from core.exceptions import ValidationError
 from util.units import unit_registry
 
@@ -71,7 +72,8 @@ class SuperSaverPriceCell(PriceQuoteCell):
             valid_until=self.matrix_parser._valid_until,
             min_volume=min_vol, limit_volume=limit_vol,
             purchase_of_receivables=False,
-            rate_class_alias=self.rate_class_alias, price=price)
+            rate_class_alias=self.rate_class_alias, price=price,
+            service_type='electric')
 
 
 class NormalPriceCell(PriceQuoteCell):
@@ -137,6 +139,7 @@ class LibertyMatrixParser(QuoteParser):
     """Parser for Liberty Power spreadsheet.
     """
     NAME = 'liberty'
+    READER_CLASS = SpreadsheetReader
 
     # TODO: we couldn't open this in its original xlsx format
     # (might be fixed by upgrading openpyxl)

@@ -16,8 +16,8 @@ env.roledefs.update({
     'billing-prod': ['billing-prod'],
     'billing-stage': ['billing-stage'],
     'billing-dev': ['billing-dev'],
-    'billingworker-dev': ['billingworker1-dev'],
-    'billingworker-stage': ['billingworker1-stage', 'billingworker2-stage'],
+    'worker-dev': ['billingworker1-dev'],
+    'worker-stage': ['billingworker1-stage', 'billingworker2-stage'],
 })
 
 # Target environments, each environment specifies where code is deployed, the os user, config files, and more.
@@ -43,7 +43,7 @@ common.deployment_params['configs'] = {
         ],
         "puppet_manifest": 'conf/manifests/billing.pp'
     },
-    "extraction-worker-dev": {
+    "worker-dev": {
         "deploy_version":"4", 
         "os_user":"billing", 
         "os_group":"billing",
@@ -59,9 +59,9 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-worker'
         ],
-        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
+        "puppet_manifest": 'conf/manifests/worker.pp'
     },
-    "extraction-worker-stage": {
+    "worker-stage": {
         "deploy_version":"4", 
         "os_user":"billing", 
         "os_group":"billing",
@@ -77,7 +77,7 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-stage-worker'
         ],
-        "puppet_manifest": 'conf/manifests/extraction-worker-dev.pp'
+        "puppet_manifest": 'conf/manifests/worker.pp'
     },
     "stage": {
         "deploy_version":"4", 
@@ -126,8 +126,7 @@ def create_pgpass_file():
     # pick a config file path based on which environment is being deployed to.
     # this is forced to be the same as the puppet manifest name, which means
     # the file is not found for some puppet manifest names.
-    if env_name in ('extraction-worker-dev', 'extraction-worker-stage',
-                    'extraction-worker-prod',):
+    if env_name in ('worker-dev', 'worker-stage', 'worker-prod',):
         env_name = 'dev'
     else:
         assert env_name in ('dev', 'stage', 'prod')
