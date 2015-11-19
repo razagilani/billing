@@ -36,7 +36,7 @@ common.deployment_params['configs'] = {
         # If the project has no makefiles, leave this list empty
         "makefiles":[
         ],
-        "puppet_manifest":"conf/manifests/xbill-dev.pp",
+        "puppet_manifest":"conf/manifests/xbill.pp",
         'services': [
             'xbill-dev-exchange',
         ]
@@ -58,6 +58,7 @@ common.deployment_params['configs'] = {
         ],
         "makefiles":[
         ],
+        "puppet_manifest":"conf/manifests/xbill.pp",
         'services': [
             'xbill-stage-exchange',
         ]
@@ -79,7 +80,7 @@ common.deployment_params['configs'] = {
         ],
         "makefiles":[
         ],
-        "puppet_manifest":"conf/manifests/xbill-prod.pp",
+        "puppet_manifest":"conf/manifests/xbill.pp",
         'services': [
             'xbill-prod-exchange',
         ]
