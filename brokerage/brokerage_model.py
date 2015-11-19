@@ -98,6 +98,14 @@ def get_quote_status():
         q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
         desc(q.c.total_count))
 
+def count_active_matrix_quotes():
+    """Return the number of matrix quotes that are valid right now.
+    """
+    now = datetime.utcnow()
+    s = AltitudeSession()
+    return s.query(MatrixQuote).filter(MatrixQuote.valid_from <= now,
+                                MatrixQuote.valid_until < now).count()
+
 
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
