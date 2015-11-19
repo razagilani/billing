@@ -75,7 +75,6 @@ class TestExportAltitude(TestCase):
         # TODO Altitude GUIDS
         u1.get_service.return_value = 'electric'
         u1.get_utility_account_number.return_value = '1'
-        u1.get_supplier.return_value = Supplier(name='supplier')
         u1.period_start = datetime(2000,1,1)
         u1.period_end = datetime(2000,2,1)
         u1.due_date = datetime(2000,3,1)
@@ -97,7 +96,6 @@ class TestExportAltitude(TestCase):
         u2.get_nextility_account_number.return_value = '22222'
         # TODO Altitude GUIDS
         u2.get_service.return_value = None
-        u2.get_supplier.return_value = Supplier(name='supplier')
         u2.get_utility_account_number.return_value = '2'
         u2.period_start = datetime(2000,1,15)
         u2.period_end = datetime(2000,2,15)
@@ -154,7 +152,6 @@ class TestExportAltitude(TestCase):
                              str(self.uuids[0]),
                              'A' * 36,
                              str(self.uuids[1]),
-                             'supplier',
                              'electric',
                              '1',
                              '2000-01-01T00:00:00Z',
@@ -180,7 +177,6 @@ class TestExportAltitude(TestCase):
                              str(self.uuids[2]),
                              'A' * 36,
                              str(self.uuids[3]),
-                             'supplier',
                              '',
                              '2',
                              '2000-01-15T00:00:00Z',
@@ -279,14 +275,14 @@ class TestAltitudeBillStorage(TestCase):
         self.pgae.write_csv(s.query(UtilBill), csv_file)
         expected_csv = (
             'customer_account_guid,billing_customer_id,utility_bill_guid,'
-            'utility_guid,supplier_guid,supplier_name,service_type,utility_account_number,'
+            'utility_guid,supplier_guid,service_type,utility_account_number,'
             'billing_period_start_date,billing_period_end_date,'
             'next_estimated_meter_read_date,total_usage,total_supply_charge,'
             'rate_class,secondary_utility_account_number,'
             'service_address_street,service_address_city,service_address_state,'
             'service_address_postal_code,create_date,modified_date,'
             'ordering_date,meter_number,time_of_use\r\n'
-            'aaa,,bbb,uuu,sss,Supplier,electric,,2000-01-01T00:00:00Z,'
+            'aaa,,bbb,uuu,sss,electric,,2000-01-01T00:00:00Z,'
             '2000-01-01T00:00:00Z,,150.0,0,Rate Class,,1 Service St.,,,,,%s,%s,%s,%s\r\n' %
             (self.utilbill.date_modified.strftime(ISO_8601_DATETIME),
             self.utilbill.due_date.strftime(ISO_8601_DATETIME),'GHIJKL', 'FALSE'))
