@@ -1,3 +1,0 @@
-deploy = ssh://hg@bitbucket.org/skylineitops/deploy
-mq = ssh://hg@bitbucket.org/skylineitops/mq
-prodops = ssh://hg@bitbucket.org/skylineitops/prodops

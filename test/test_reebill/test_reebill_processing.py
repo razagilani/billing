@@ -24,10 +24,12 @@ from test import testing_utils, clear_db
 # TODO: this module is not runnable by itself through unittest/PyCharm because
 # setUpModule/tearDownModule code has been moved up to test_reebill/__init__.py
 def setUpModule():
-    pass
+    from test.test_reebill import setUpModule
+    setUpModule()
 
 def tearDownModule():
-    pass
+    from test.test_reebill import tearDownModule
+    tearDownModule()
 
 class MockReeGetter(object):
     def __init__(self, quantity):

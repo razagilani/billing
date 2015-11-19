@@ -36,11 +36,12 @@ from flask.ext.principal import identity_changed, Identity, AnonymousIdentity, \
 
 from billentry.billentry_model import BillEntryUser, Role, BEUserSession
 from billentry.common import get_bcrypt_object
-from brokerage.brokerage_model import get_quote_status
+from brokerage.brokerage_model import get_quote_status, \
+    count_active_matrix_quotes
 from core import init_config, init_celery
 from core.extraction import Extractor, ExtractorResult
 from core.extraction.applier import UtilBillApplier
-from core.extraction.task import test_bill, reduce_bill_results
+from core.extraction.task import check_bill, reduce_bill_results
 from core.model import Session, Utility, AltitudeSession
 from core.model.utilbill import UtilBill
 from billentry import admin, resources
@@ -259,7 +260,7 @@ def run_test():
     if q.count() == 0:
         return jsonify({'bills_to_run':0})
     #run celery chord
-    job = group([test_bill.s(extractor_id, b.id) for b in q])
+    job = group([check_bill.s(extractor_id, b.id) for b in q])
     result = chord(job)(reduce_bill_results.s())
     result_parent = result.parent
     result_parent.save()
@@ -550,13 +551,17 @@ def quote_status():
         tzinfo=tz.gettz('UTC')).astimezone(local_tz).strftime(date_format)
 
     format_number = lambda x: None if x is None else '{:,}'.format(x)
-    result = render_template('quote-status.html', data=[{
-        'name': row.name,
-        'date_received': format_date(row.date_received),
-        'today_count': format_number(row.total_count),
-        'total_count': format_number(row.today_count),
-        'good': row.today_count > 0,
-    } for row in get_quote_status()])
+    result = render_template('quote-status.html', data={
+        'active_quotes': count_active_matrix_quotes(),
+        'status_by_supplier': [
+            {
+                'name': row.name,
+                'date_received': format_date(row.date_received),
+                'today_count': format_number(row.today_count),
+                'total_count': format_number(row.total_count),
+                'good': row.today_count > 0,
+            } for row in get_quote_status()]
+    })
     AltitudeSession.remove()
     Session.remove()
     return result
