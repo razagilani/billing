@@ -87,13 +87,13 @@ done
 
 ##############################################################################
 # xbill deployment
-XBILL_FABFILE_PATH="xbill/fabfile.py"
+XBILL_FABFILE_PATH="xbill_fabfile.py"
 
 # delete any existing xbill-env directory, even though
 # "fab common.deploy_interactive_console" is supposed to completely replace
 # it, because somehow it still exists and that breaks the
 # "mange.py collectstatic" step below
-ssh -t portal-$env "sudo rm -rf /var/local/xbill-$env/"
+ssh -t portal-$env "sudo rm -rf /var/local/billing/"
 echo $env | fab -f $XBILL_FABFILE_PATH common.configure_app_env -R "portal-$env"
 echo $env | fab -f $XBILL_FABFILE_PATH common.deploy_interactive_console -R "portal-$env"
 
@@ -101,14 +101,18 @@ echo $env | fab -f $XBILL_FABFILE_PATH common.deploy_interactive_console -R "por
 # this did not work:
 #ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do echo $f; pip install -r $f; done'"
 # (we couldn't figure out why)
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/xbill/requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/mq/requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/mq/dev-requirements.txt'"
 
 delete_temp_files
+
+# create a symbolic link in xbill directory that points at billing/mq directory
+ssh -t portal-$env "sudo ln -s /var/local/billing/billing/mq /var/local/billing/billing/xbill/mq"
+
 # copy static files for Django Admin into the directory where they get served
 # by Apache. this is the standard Django way of doing it.
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput --verbosity=3'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'python /var/local/billing/billing/xbill/manage.py collectstatic --noinput --verbosity=3'"
 
 # restart xbill web server (not done by fabric script)
 ssh -t portal-$env "sudo service httpd reload"
