@@ -3,7 +3,7 @@
     ServerName xbill-stage.nextility.net
     ServerAlias xbill-stage
 
-    <Directory /var/local/xbill-stage/xbill/wsgi/>
+    <Directory /var/local/billing/xbill/wsgi/>
         Order allow,deny
         Allow from all
     </Directory>
@@ -11,8 +11,8 @@
     # site, but we don't know why. we expected the "Directory" command below to
     # do it, or or Django to serve files in its "STATIC_ROOT" path by itself,
     # but this fixed 404 errors.
-    alias /static/ /var/local/xbill-stage/xbill/static/
-    <Directory /var/local/xbill-stage/xbill/static/>
+    alias /static/ /var/local/billing/xbill/static/
+    <Directory /var/local/billing/xbill/static/>
         Order allow,deny
         Allow from all
     </Directory>
@@ -24,8 +24,8 @@
     ErrorLog /etc/httpd/logs/xbill-stage_error.log
     CustomLog /etc/httpd/logs/xbill-stage_access.log combined
 
-    WSGIScriptAlias / /var/local/xbill-stage/xbill/wsgi/wsgi.py
-    WSGIDaemonProcess xbill-stage user=xbill-stage group=xbill-stage home=/var/local/xbill-stage/xbill/ python-path=/var/local/xbill-stage/lib/python2.7/site-packages:/var/local/xbill-stage/lib/python2.7/dist-packages:/var/local/xbill-stage/xbill
+    WSGIScriptAlias / /var/local/billing/xbill/wsgi/wsgi.py
+    WSGIDaemonProcess xbill-stage user=billing group=billing home=/var/local/billing/xbill/ python-path=/var/local/billing/lib/python2.7/site-packages:/var/local/billing/lib/python2.7/dist-packages:/var/local/billing/xbill
     WSGIProcessGroup xbill-stage
     WSGIApplicationGroup %{GLOBAL}
 </VirtualHost>
