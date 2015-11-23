@@ -1,6 +1,6 @@
 # Django settings for xbill project in production environment.
 
-SITE_ROOT="/var/local/xbill-dev/xbill"
+SITE_ROOT="/var/local/billing/billing/xbill"
 HOST_ADDRESS="https://xbill-dev.nextility.net"
 
 DEBUG = True
@@ -165,7 +165,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     #'django.contrib.auth.backends.ModelBackend',
 #)
 
-LOGGING_DIR_PATH = "/home/xbill-dev/"
+LOGGING_DIR_PATH = "/home/billing/"
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
