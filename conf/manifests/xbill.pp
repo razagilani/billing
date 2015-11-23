@@ -1,9 +1,9 @@
-$app = "xbill"
+$app = "billing/xbill"
 
 # The $environment variable is set by fabric at run time to whatever the user specifies
 # at the configure_app_env environment prompt
 $env = $environment
-$username = "xbill-${env}"
+$username = "billing"
 
 # app level
 host::app_user {'appuser':
@@ -95,7 +95,7 @@ rabbit_mq::upstream {'altitude-${env}':
 }
 
 cron { add_accounts:
-    command => "source /var/local/xbill-${env}/bin/activate && cd /var/local/xbill-${env}/xbill/ && python manage.py add_account > /home/xbill-${env}/add_account_stdout.log 2> /home/xbill-${env}/add_account_stderr.log",
+    command => "source /var/local/billing/bin/activate && cd /var/local/billing/billing/xbill/ && python manage.py add_account > /home/billing/add_account_stdout.log 2> /home/billing/add_account_stderr.log",
     user    => $username,
     minute  => '*/2'
 }
