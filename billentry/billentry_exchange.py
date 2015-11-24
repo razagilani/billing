@@ -1,6 +1,6 @@
 import logging
 from core.altitude import AltitudeGUID
-from util import FixMQ
+from util.fix_mq import FixMQ
 
 with FixMQ():
     from mq import MessageHandler, MessageHandlerManager, REJECT_MESSAGE

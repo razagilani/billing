@@ -76,7 +76,11 @@ class LoginModelView(ModelView):
 
 
 class SupplierModelView(LoginModelView):
-    form_columns = ('name', 'matrix_file_name')
+    form_columns = (
+        'name',
+        'matrix_email_recipient',
+        'matrix_attachment_name',
+    )
 
     def __init__(self, session, **kwargs):
         super(SupplierModelView, self).__init__(Supplier, session, **kwargs)

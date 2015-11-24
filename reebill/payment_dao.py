@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import and_
 
 from core.model import Session, UtilityAccount
-from exc import IssuedBillError
+from reebill.exceptions import IssuedBillError
 from reebill.reebill_model import ReeBillCustomer, Payment
 
 
