@@ -31,6 +31,27 @@ package { 'httpd':
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
     cluster => 'rabbit@acquisitor-${env}.nextility.net'
 }
+
+rabbit_mq::user_permission {'guest':
+    vhost => $env,
+    conf  => '.*',
+    write  => '.*',
+    read  => '.*',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]],
+}
+
+file { "/etc/httpd/conf.d/${username}.conf":
+    ensure => file,
+    source => "puppet:///modules/conf/vhosts/xbill-${env}.vhost"
+}
+
+rabbit_mq::user {'altitude-${env}':
+    password => 'altitude-${env}',
+    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
+}
+
+rabbit_mq::user_permission {'altitude-${env}':
+    vhost => $env,
 rabbit_mq::vhost {"${env}":
     require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
 }
@@ -54,27 +75,6 @@ file { "/etc/init/xbill-${env}-exchange.conf":
     ensure => file,
     content => template('conf/xbill-exchange.conf.erb')
 }
-
-rabbit_mq::user_permission {'guest':
-    vhost => $env,
-    conf  => '.*',
-    write  => '.*',
-    read  => '.*',
-    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server'], Rabbit_mq::Vhost[$env]],
-}
-
-file { "/etc/httpd/conf.d/${username}.conf":
-    ensure => file,
-    source => "puppet:///modules/conf/vhosts/xbill-${env}.vhost"
-}
-
-rabbit_mq::user {'altitude-${env}':
-    password => 'altitude-${env}',
-    require => [Rabbit_mq::Rabbit_mq_server['rabbit_mq_server']]
-}
-
-rabbit_mq::user_permission {'altitude-${env}':
-    vhost => $env,
     conf  => '.*',
     write  => '.*',
     read  => '.*',
