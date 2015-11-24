@@ -7,21 +7,20 @@ import re
 from dateutil import parser as dateutil_parser
 from flask import logging
 from sqlalchemy import Column, Integer, ForeignKey, String, Enum, \
-    UniqueConstraint, DateTime, func, Boolean, Float, CheckConstraint
+    UniqueConstraint, DateTime, func, Boolean, Float
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, object_session, MapperExtension
 
 from core import model
-from core.extraction.applier import Applier, UtilBillApplier
+from core.extraction.applier import UtilBillApplier
 from core.extraction.type_conversion import \
     convert_wg_charges_wgl, pep_old_convert_charges, pep_new_convert_charges, \
     convert_address, convert_table_charges, \
     convert_wg_charges_std, convert_supplier
-from core.model import LayoutElement, BoundingBox
-from exc import ConversionError, ExtractionError, ApplicationError, MatchError
-from util.layout import tabulate_objects, \
-    group_layout_elements_by_page, in_bounds, get_text_line, get_corner, \
+from core.model import BoundingBox
+from core.exceptions import ConversionError, ExtractionError, MatchError
+from util.layout import tabulate_objects, in_bounds, get_text_line, get_corner, \
     get_text_from_bounding_box, TEXTLINE
 from util.pdf import PDFUtil
 
@@ -43,15 +42,23 @@ class Main(object):
         self.log = logging.getLogger()
 
     def extract(self, utilbill):
-        """Update the given bill with data extracted from its file. An
-        extractor is chosen automatically.
+        """Update the given bill with data extracted from its file (if it has
+        one). An extractor is chosen automatically.
         :param utilbill: UtilBill
+        :return: True if extraction was performed (regardless of whether any
+        field values were sucessfully extracted and applied), False otherwise
+        (e.g. the bill has no file, or there were no extractors).
         """
+        if not utilbill.has_file():
+            self.log.info(
+                'Skipped extraction for bill %s with no file' % utilbill.id)
+            return False
+
         # try all extractors and use the one that works best, i.e. gets the
         # largest absolute number of fields.
         extractors = model.Session().query(Extractor).all()
         if len(extractors) == 0:
-            return
+            return False
         best_extractor = max(extractors, key=lambda e: e.get_success_count(
             utilbill, self._bill_file_handler))
 
@@ -71,6 +78,7 @@ class Main(object):
                 start=utilbill.period_start, end=utilbill.period_end,
                 received=utilbill.date_received, success=success_count,
                 total=success_count + len(errors), errors=error_list_str))
+        return True
 
     def test_extractor(self, extractor, utilbills):
         """Check performance of the given Extractor on the given set of bills.
@@ -199,11 +207,12 @@ class Field(model.Base):
         type_convert_func = self.TYPES[self.type]
         if self._value is None or input != self._input:
             self._input = input
-            value_str = self._extract(input)
+            value_output = self._extract(input)
             try:
-                value = type_convert_func(value_str)
+                value = type_convert_func(value_output)
             except Exception as e:
                 # don't clutter log files with huge strings
+                value_str = str(value_output)
                 if len(value_str) > 20:
                     value_str = value_str[:20] + '...'
                 raise ConversionError(
@@ -296,11 +305,12 @@ class TextExtractor(Extractor):
         """
         __mapper_args__ = {'polymorphic_identity': 'textfield'}
 
+        # TODO: why is declared_attr needed? if possibel define this the
+        # normal way, as a class attribute
         @declared_attr
         def regex(cls):
             "regex column, if not present already."
-            return Field.__table__.c.get('regex', Column(String,
-                nullable=False))
+            return Field.__table__.c.get('regex', Column(String))
 
         def __init__(self, *args, **kwargs):
             super(TextExtractor.TextField, self).__init__(*args, **kwargs)
@@ -324,6 +334,7 @@ class TextExtractor(Extractor):
                 self.regex, text.strip()[:20]))
             return match_groups[0]
 
+    # TODO: why is this commented out? delete if unnecessary
     #fields = relationship(TextField, backref='extractor')
 
     def _prepare_input(self, utilbill, bill_file_handler):

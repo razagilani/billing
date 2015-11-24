@@ -4,12 +4,11 @@ must be running separately before the test starts.
 '''
 from StringIO import StringIO
 from datetime import date
-from pika import URLParameters
-from datetime import datetime
-from uuid import uuid4
-from sqlalchemy.orm.exc import NoResultFound
 from unittest import TestCase
+
+from sqlalchemy.orm.exc import NoResultFound
 from voluptuous import Invalid
+
 
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
@@ -21,7 +20,7 @@ from test import init_test_config
 init_test_config()
 
 from core import init_model
-from util import FixMQ
+from util.fix_mq import FixMQ
 
 with FixMQ():
     from core.amqp_exchange import create_dependencies, \
@@ -32,8 +31,7 @@ with FixMQ():
 
 from core.model import Session, UtilityAccount, Utility, Address
 from core.altitude import AltitudeUtility, AltitudeGUID, AltitudeAccount
-from core.utilbill_loader import UtilBillLoader
-from exc import DuplicateFileError
+from core.exceptions import DuplicateFileError
 from test import init_test_config, clear_db, create_tables
 from test.setup_teardown import TestCaseWithSetup, FakeS3Manager, \
     create_utilbill_processor, create_reebill_objects, create_nexus_util
@@ -138,7 +136,7 @@ class TestUploadBillAMQP(TestCase):
         guid = 'c59fded5-53ed-482e-8ca4-87819042e687'
 
         message = create_channel_message_body(dict(
-            message_version=[1, 0],
+            message_version=[2, 0],
             utility_account_number='45',
             utility_provider_guid=guid,
             sha256_hexdigest=file_hash,
@@ -146,7 +144,10 @@ class TestUploadBillAMQP(TestCase):
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
-                           'D' * AltitudeGUID.LENGTH]))
+                           'D' * AltitudeGUID.LENGTH],
+            service_types=['electricity'],
+            utility_account_number_normalized='45'))
+
 
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message)
@@ -176,7 +177,7 @@ class TestUploadBillAMQP(TestCase):
         s.add(AltitudeUtility(utility, guid))
 
         message = create_channel_message_body(dict(
-            message_version=[1, 0],
+            message_version=[2, 0],
             utility_account_number='46',
             utility_provider_guid=guid,
             sha256_hexdigest=file_hash,
@@ -184,7 +185,9 @@ class TestUploadBillAMQP(TestCase):
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
-                           'D' * AltitudeGUID.LENGTH]))
+                           'D' * AltitudeGUID.LENGTH],
+            service_types=['electricity'],
+            utility_account_number_normalized='46'))
 
         message_obj = IncomingMessage(self.mock_method, self.mock_props, message)
 
@@ -229,7 +232,7 @@ class TestUploadBillAMQP(TestCase):
         # DuplicateFileError to be raised. the second message also checks the
         # "empty" values that are allowed for some fields in the message.
         message1 = create_channel_message_body(dict(
-            message_version=[1, 0],
+            message_version=[2, 0],
             utility_account_number='1',
             utility_provider_guid=guid_a,
             sha256_hexdigest=file_hash,
@@ -237,7 +240,9 @@ class TestUploadBillAMQP(TestCase):
             total='$231.12',
             service_address='123 Hollywood Drive',
             account_guids=['C' * AltitudeGUID.LENGTH,
-                           'D' * AltitudeGUID.LENGTH]))
+                           'D' * AltitudeGUID.LENGTH],
+            service_types=['electricity'],
+            utility_account_number_normalized='1'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props, message1)
 
         # Process the first message
@@ -245,14 +250,16 @@ class TestUploadBillAMQP(TestCase):
         self.handler.handle(message_obj)
 
         message2 = create_channel_message_body(dict(
-            message_version=[1, 0],
+            message_version=[2, 0],
             utility_account_number='2',
             utility_provider_guid=guid_b,
             sha256_hexdigest=file_hash,
             due_date='',
             total='',
             service_address='',
-            account_guids=[]))
+            account_guids=[],
+            service_types=['electricity'],
+            utility_account_number_normalized='4'))
         message_obj = IncomingMessage(self.mock_method, self.mock_props,
                                       message2)
 

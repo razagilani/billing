@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 from operator import attrgetter
 import os
-from argparse import ArgumentParser
 from itertools import groupby
 from errno import EEXIST, ENOENT
 
-from exc import InvalidParameter
-
+from reebill.exceptions import InvalidParameter
 from reebill.bill_templates import ThermalBillDoc
 from reebill.bill_templates import SummaryBillDoc
+
 
 class ReebillFileHandler(object):
     '''Methods for working with Reebill PDF files.
