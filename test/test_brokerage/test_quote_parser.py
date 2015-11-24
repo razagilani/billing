@@ -117,6 +117,9 @@ class MatrixQuoteParsersTest(TestCase):
             # Constellation
             'CT-CLP',
             'NJ-AECO',
+            # liberty
+            'PEPCO-DC-PEPCO-Default',
+            'PEPCO-DC-PEPCO-GTLV/DMGT',
             # Major Energy
             'electric-IL-ComEd-',
             'gas-NY-RGE',
@@ -635,7 +638,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(25000, q1.limit_volume)
         self.assertEqual(0.10913, q1.price)
         self.assertEqual('PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
-        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
 
         self.assertEqual(21, q2.term_months)
@@ -645,6 +648,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 3, 1), q2.start_from)
         self.assertEqual(datetime(2016, 4, 1), q2.start_until)
         self.assertEqual('PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q2.rate_class_id)
         self.assertEqual(500000, q2.min_volume)
         self.assertEqual(2000000, q2.limit_volume)
 
