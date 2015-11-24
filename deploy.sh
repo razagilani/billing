@@ -52,7 +52,7 @@ for param in "${params[@]}"; do
 
     echo $envname | fab common.configure_app_env -R $hosttype
     echo $envname | fab common.deploy_interactive_console -R $hosttype
-    echo $envname | fab common.install_requirements_files -R $hosttype
+    #echo $envname | fab common.install_requirements_files -R $hosttype
     # this doesn't work:
     #echo printf "$envname\n$postgres_pw" | fab create_pgpass_file -R $hosttype
     # so type in Postgres database superuser password at the prompt
