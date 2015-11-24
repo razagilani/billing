@@ -1,0 +1,14 @@
+glob:*.pyc
+glob:*.swp
+revision.txt
+.DS_Store
+glob:*.db
+.directory
+glob:*.log*
+glob:*.kate-swp
+node_modules/
+CACHE/
+.idea/
+.coverage
+htmlcov/
+regexp:^static/

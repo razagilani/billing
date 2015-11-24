@@ -1,10 +1,11 @@
 from datetime import datetime
 from unittest import TestCase
+
 from brokerage.brokerage_model import Quote, MatrixQuote, \
     load_rate_class_aliases, RateClassAlias, RateClass
 from core import init_altitude_db, init_model
 from core.model import AltitudeSession
-from exc import ValidationError
+from core.exceptions import ValidationError
 from test import init_test_config, clear_db, create_tables
 
 
@@ -31,7 +32,7 @@ class QuoteTest(TestCase):
         q = self.quote.clone()
         q.term_months = 0
         self.assertRaises(ValidationError, q.validate)
-        q.term_months = 37
+        q.term_months = 49
         self.assertRaises(ValidationError, q.validate)
 
         q = self.quote.clone()
@@ -52,8 +53,47 @@ class MatrixQuoteTest(TestCase):
                                  min_volume=0, limit_volume=100)
 
     def test_validate(self):
-        # TODO
-        pass
+        # min too low
+        self.quote.min_volume = -1
+        self.quote.limit_volume = 100
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # min too high
+        self.quote.min_volume = 7e6
+        self.quote.limit_volume = 4e6
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # limit too low
+        self.quote.min_volume = 0
+        self.quote.limit_volume = 10
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # limit too high
+        self.quote.min_volume = 0
+        self.quote.limit_volume = 2e7
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # too close together
+        self.quote.min_volume = 1
+        self.quote.limit_volume = 2
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # crossed
+        self.quote.min_volume = 200
+        self.quote.limit_volume = 100
+        with self.assertRaises(ValidationError):
+            self.quote.validate()
+
+        # good
+        self.quote.min_volume = 100
+        self.quote.limit_volume = 200
+        self.quote.validate()
+
 
 class TestLoadRateClassAliases(TestCase):
 

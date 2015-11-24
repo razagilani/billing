@@ -4,8 +4,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import func, and_
 from sqlalchemy.sql.expression import desc
 
-from exc import IssuedBillError
-from core.model import Address, Session, UtilityAccount
+from reebill.exceptions import IssuedBillError
+from core.model import Session, UtilityAccount
 from core.model.utilbill import UtilBill
 from reebill.reebill_model import ReeBill
 from reebill.reebill_model import ReeBillCustomer

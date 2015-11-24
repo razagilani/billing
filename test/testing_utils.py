@@ -1,12 +1,13 @@
 '''Miscellaneous code used by test cases.'''
 import unittest
 import urlparse
-import inspect
-import cherrypy
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from copy import deepcopy
+
+import cherrypy
 from pika.exceptions import ChannelClosed
-from exc import TestClientRoutingError
+
+from reebill.exceptions import TestClientRoutingError
 
 
 class TestCase(unittest.TestCase):
