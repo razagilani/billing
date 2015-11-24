@@ -5,6 +5,7 @@ import unittest
 
 from mock import Mock, call
 
+
 # init_test_config has to be called first in every test module, because
 # otherwise any module that imports billentry (directly or indirectly) causes
 # app.py to be initialized with the regular config  instead of the test
@@ -15,10 +16,10 @@ from test import init_test_config
 init_test_config()
 
 from core.pricing import FuzzyPricingModel, PricingModel
-from core.model import Charge, RateClass, Utility, Address, Supplier, SupplyGroup
+from core.model import RateClass, Utility, Supplier, SupplyGroup
 
 from core.model.utilbill import UtilBill, Charge
-from exc import NoSuchBillException
+from core.exceptions import NoSuchBillException
 
 class PricingModelTest(unittest.TestCase):
     def test_get_predicted_charges(self):

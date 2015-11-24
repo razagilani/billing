@@ -12,7 +12,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from core.model import Session, RateClass
 import core.model.utilbill
 from core.pricing import FuzzyPricingModel
-from exc import ApplicationError, ConversionError
+from core.exceptions import ApplicationError
 from core.utilbill_loader import UtilBillLoader
 
 

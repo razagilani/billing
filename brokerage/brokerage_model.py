@@ -1,15 +1,15 @@
 """SQLAlchemy model classes related to the brokerage/Power & Gas business.
 """
-from collections import defaultdict
 from datetime import datetime
 import itertools
+
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float, Table, func, desc
+    Float, func, desc
 from sqlalchemy.orm import relationship
 
 from core.model import UtilityAccount, Base, AltitudeSession
 from core.model.model import AltitudeBase
-from exc import ValidationError
+from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 
 
@@ -98,6 +98,15 @@ def get_quote_status():
         q).outerjoin(today, q.c.supplier_id == today.c.supplier_id).order_by(
         desc(q.c.total_count))
 
+def count_active_matrix_quotes():
+    """Return the number of matrix quotes that are valid right now.
+    """
+    now = datetime.utcnow()
+    s = AltitudeSession()
+    return s.query(MatrixQuote).filter(MatrixQuote.valid_from <= now,
+                                MatrixQuote.valid_until < now).count()
+
+
 class Quote(AltitudeBase):
     """Fixed-price candidate supply contract.
     """
@@ -106,7 +115,7 @@ class Quote(AltitudeBase):
     rate_id = Column('Rate_Matrix_ID', Integer, primary_key=True)
     supplier_id = Column('Supplier_Company_ID', Integer,
                          # foreign key to view is not allowed
-                         ForeignKey('Company.Company_ID'), nullable=False)
+                         ForeignKey('Company.Company_ID'))
 
     rate_class_alias = Column('rate_class_alias', String, nullable=False)
     rate_class_id = Column('Rate_Class_ID', Integer, nullable=True)
@@ -145,6 +154,9 @@ class Quote(AltitudeBase):
     # Percent Swing Allowable
     percent_swing = Column('Percent_Swing_Allowable', Float)
 
+    # should be "electric" or "gas"--unfortunately SQL Server has no enum type
+    service_type = Column(String, nullable=False)
+
     discriminator = Column(String(50), nullable=False)
 
     __mapper_args__ = {
@@ -152,8 +164,10 @@ class Quote(AltitudeBase):
         'polymorphic_on': discriminator,
     }
 
+    MIN_START_FROM = datetime(2000, 1, 1)
+    MAX_START_FROM = datetime(2020, 1, 1)
     MIN_TERM_MONTHS = 1
-    MAX_TERM_MONTHS = 36
+    MAX_TERM_MONTHS = 48
     MIN_PRICE = .01
     MAX_PRICE = 2.0
 
@@ -168,12 +182,17 @@ class Quote(AltitudeBase):
         """
         conditions = {
             self.start_from < self.start_until: 'start_from >= start_until',
+            self.start_from >= self.MIN_START_FROM and self.start_from <=
+                                                      self.MAX_START_FROM:
+                'start_from too early: %s' % self.start_from,
             self.term_months >= self.MIN_TERM_MONTHS and self.term_months <=
                                                          self.MAX_TERM_MONTHS:
                 'Expected term_months between %s and %s, found %s' % (
                     self.MIN_TERM_MONTHS, self.MAX_TERM_MONTHS,
                     self.term_months),
-            self.valid_from < self.valid_until: 'valid_from >= valid_until',
+            self.valid_from < self.valid_until:
+                'valid_from %s >= valid_until %s' % (self.valid_from,
+                                                     self.valid_until),
             self.price >= self.MIN_PRICE and self.price <= self.MAX_PRICE:
                 'Expected price between %s and %s, found %s' % (
             self.MIN_PRICE, self.MAX_PRICE, self.price)
@@ -200,9 +219,40 @@ class MatrixQuote(Quote):
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
     MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 2000
+    MAX_MIN_VOLUME = 1e9
     MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 2000
+    MAX_LIMIT_VOLUME = 1e9
+    MIN_VOLUME_DIFFERENCE = 0
+    MAX_VOLUME_DIFFERENCE = 1e7
+
+    def validate(self):
+        super(MatrixQuote, self).validate()
+        try:
+            if self.min_volume is not None:
+                assert self.min_volume >= self.MIN_MIN_VOLUME, (
+                    'min_volume below %s: %s' % (
+                    self.MIN_MIN_VOLUME, self.min_volume))
+                assert self.min_volume <= self.MAX_MIN_VOLUME, (
+                    'min_volume above %s: %s' % (
+                        self.MAX_MIN_VOLUME, self.min_volume))
+            if self.limit_volume is not None:
+                assert self.limit_volume >= self.MIN_LIMIT_VOLUME, (
+                    'limit_volume below %s: %s' % (
+                    self.MIN_LIMIT_VOLUME, self.limit_volume))
+                assert self.limit_volume <= self.MAX_LIMIT_VOLUME, (
+                    'limit_volume above %s: %s' % (
+                    self.MAX_LIMIT_VOLUME, self.limit_volume))
+            if None not in (self.min_volume, self.limit_volume):
+                difference = self.limit_volume - self.min_volume
+                assert (difference >= self.MIN_VOLUME_DIFFERENCE), (
+                    'volume range difference < %s: %s' %
+                    (self.MIN_VOLUME_DIFFERENCE, difference))
+                assert (self.limit_volume - self.min_volume <=
+                        self.MAX_VOLUME_DIFFERENCE), (
+                    'volume range difference > %s: %s' % (
+                    self.MAX_VOLUME_DIFFERENCE, difference))
+        except AssertionError as e:
+            raise ValidationError(e.message)
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
