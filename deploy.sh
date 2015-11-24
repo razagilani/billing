@@ -37,11 +37,16 @@ params=()
 params[1]="billing-$env $env"
 params[2]="worker-$env worker-$env"
 
-# clone private repositories for dependencies inside the billing repository working
-# directory, because remote hosts don't have access to Bitbucket
-# (for now, there is only one)
-rm -rf postal
-git clone ssh://git@bitbucket.org/skylineitops/postal.git
+## clone private repositories for dependencies inside the billing repository working
+## directory, because remote hosts don't have access to Bitbucket
+## (for now, there is only one)
+#rm -rf postal
+#git clone ssh://git@bitbucket.org/skylineitops/postal.git
+
+
+# fix problem with old packaves in ReeBill virtualenv by deleting
+# existing files. if we could do this for all hosts we would.
+ssh -t billing-$env "sudo rm -rf /var/local/*"
 
 # main deployment steps
 delete_temp_files
@@ -60,6 +65,12 @@ for param in "${params[@]}"; do
     echo $envname | fab common.stop_upstart_services -R $hosttype
 done
 delete_temp_files
+
+# ReeBill doesn't work unless the right version of MongoEngine is installed
+# in the Python virtualenv and the above does not install the right version
+# for no reason we can tell. this replaces the version installed above with
+# the right one.
+ssh -t billing-$env "sudo -u billing -i /bin/bash -c \"source /var/local/billing/bin/activate && pip uninstall mongoengine && pip install https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip\""
 
 # clean up dependency repositories cloned in local working directory
 rm -rf postal
