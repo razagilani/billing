@@ -25,8 +25,8 @@
     ErrorLog /etc/httpd/logs/xbill-prod_error.log
     CustomLog /etc/httpd/logs/xbill-prod_access.log combined
 
-    WSGIScriptAlias / /var/local/billing/xbill/wsgi/wsgi.py
-    WSGIDaemonProcess xbill-prod user=billing group=billing home=/var/local/billing/xbill/ python-path=/var/local/billing/lib/python2.7/site-packages:/var/local/billing/lib/python2.7/dist-packages:/var/local/billing/xbill
+    WSGIScriptAlias / /var/local/billing/billing/xbill/wsgi/wsgi.py
+    WSGIDaemonProcess xbill-prod user=billing group=billing home=/var/local/billing/billing/xbill/ python-path=/var/local/billing/lib/python2.7/site-packages:/var/local/billing/lib/python2.7/dist-packages:/var/local/billing/billing/xbill
     WSGIProcessGroup xbill-prod
     WSGIApplicationGroup %{GLOBAL}
 </VirtualHost>
