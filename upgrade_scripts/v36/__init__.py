@@ -30,7 +30,7 @@ def upgrade():
     a = AltitudeSession()
     url = str(a.bind.url)
     if url.startswith('mssql'):
-        a.execute("alter table Rate_Matrix alter column Supplier_Company_ID null")
+        a.execute("alter table Rate_Matrix alter column Supplier_Company_ID integer null")
         # sql server has no enums
     else:
         assert url.startswith('postgresql')
