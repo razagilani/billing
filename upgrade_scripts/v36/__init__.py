@@ -35,7 +35,7 @@ def upgrade():
     else:
         assert url.startswith('postgresql')
         a.execute('alter table "Rate_Matrix" alter column "Supplier_Company_ID" drop not null;')
-    a.execute('alter table "Rate_Matrix" add service_type varchar(8) not null')
+    a.execute('alter table "Rate_Matrix" add service_type varchar(8) not null default "electric"')
     a.commit()
 
     init_model()
