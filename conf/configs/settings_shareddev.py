@@ -70,7 +70,7 @@ MEDIA_URL = ''
 # in them, where the directory name happens to be the same as the username.
 # TODO: use the same path in every environment.
 import getpass
-STATIC_ROOT = '/var/local/' + getpass.getuser() + '/xbill/static/'
+STATIC_ROOT = '/var/local/' + getpass.getuser() + '/billing/xbill/static/'
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"

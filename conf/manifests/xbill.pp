@@ -66,8 +66,8 @@ rabbit_mq::user_permission {'guest':
 
 file { "/etc/httpd/conf.d/${username}.conf":
     ensure => file,
-    source => "puppet:///modules/conf/vhosts/xbill-${env}.vhost"
-}
+    source => "puppet:///modules/conf/vhosts/xbill-${env}.vhost"}
+
 
 rabbit_mq::user {'altitude-${env}':
     password => 'altitude-${env}',
