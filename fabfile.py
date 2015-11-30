@@ -18,6 +18,7 @@ env.roledefs.update({
     'billing-dev': ['billing-dev'],
     'worker-dev': ['billingworker1-dev'],
     'worker-stage': ['billingworker1-stage', 'billingworker2-stage'],
+    'worker-prod': ['billingworker1-prod'],
 })
 
 # Target environments, each environment specifies where code is deployed, the os user, config files, and more.
