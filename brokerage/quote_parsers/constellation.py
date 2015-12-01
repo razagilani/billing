@@ -38,7 +38,7 @@ class ConstellationMatrixParser(QuoteParser):
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
     date_getter = FileNameDateGetter(
-        r'.*Fully Bundled_(\d\d_\d\d_\d\d\d\d)\.xlsm')
+        r'.*Fully Bundled_(\d+_\d+_\d\d\d\d)\.xlsm')
 
     def _extract_quotes(self):
         volume_ranges = self._extract_volume_ranges_horizontal(
