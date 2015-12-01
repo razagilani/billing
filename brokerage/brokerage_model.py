@@ -218,6 +218,12 @@ class MatrixQuote(Quote):
     min_volume = Column('Minimum_Annual_Volume_KWH_Therm', Float)
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
+    # instance variable, not in database: may be set to any value to identify
+    # which file and part of the file (eg spreadsheet row and column) this
+    # quote came from, for troubleshooting. might be worth storing this in the
+    # databae.
+    file_reference = None
+
     MIN_MIN_VOLUME = 0
     MAX_MIN_VOLUME = 1e9
     MIN_LIMIT_VOLUME = 25

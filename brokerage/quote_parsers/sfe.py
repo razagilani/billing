@@ -58,6 +58,11 @@ class SFEMatrixParser(QuoteParser):
 
     date_getter = StartEndCellDateGetter(0, 3, 'D', 4, 'D', None)
 
+    # service type names used by SFE in the spreadsheet
+    _ELECTRIC = 'Elec'
+    _GAS = 'Gas'
+    _SERVICE_NAMES = [_ELECTRIC, _GAS]
+
     # special constant for determining volume range units by context
     USE_LAST_HIGH_UNIT_FACTOR = object()
 
@@ -86,7 +91,6 @@ class SFEMatrixParser(QuoteParser):
             ('(?P<low>\d+)M\+', 1e6, None),
         ]
 
-        self._service_names = ['Elec', 'Gas']
         self._target_units = {'Elec': unit_registry.kWh,
                               'Gas': unit_registry.therm}
 
@@ -95,11 +99,11 @@ class SFEMatrixParser(QuoteParser):
             self._reader.get_matches(0, self.HEADER_ROW, col, '(\d+) mth', int)
             for col in self.TERM_COL_RANGE]
 
-        for row in xrange(self.HEADER_ROW + 1, self._reader.get_height(0)):
+        for row in xrange(self.HEADER_ROW + 1, self._reader.get_height(0) + 1):
             state = self._reader.get(0, row, self.STATE_COL, basestring)
             service_type = self._reader.get(0, row, self.SERVICE_TYPE_COL,
                                             basestring)
-            _assert_true(service_type in self._service_names)
+            _assert_true(service_type in self._SERVICE_NAMES)
             start_from = self._reader.get(0, row, self.START_DATE_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
@@ -147,7 +151,13 @@ class SFEMatrixParser(QuoteParser):
                 elif isinstance(price, time):
                     continue
                 elif isinstance(price, float):
-                    price /= 100
+                    # rate class column shows the price unit for gas quotes
+                    # priced in dollars. (if unit is not shown, assume it's
+                    # cents.)
+                    if not (rate_class.strip().endswith(
+                            '($/therm)') or rate_class.strip().endswith(
+                        '($/ccf)')):
+                        price /= 100.
                 else:
                     raise ValidationError(
                         'Price at (%s, %s) has unexpected type %s: "%s"' % (
@@ -161,8 +171,11 @@ class SFEMatrixParser(QuoteParser):
                         limit_volume=limit_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=False, price=price,
-                        service_type='gas' if service_type.lower() == 'gas'
-                        else 'electric')
+                        service_type={
+                            self._GAS: 'gas',
+                            self._ELECTRIC: 'electric'
+                        }[service_type])
+                    quote.file_reference = (row, col)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
