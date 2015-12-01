@@ -253,9 +253,10 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         # TODO: this should not be necessary here--clear_db() should take
         # care of it. but without these lines, the test fails except when run
         #  by itself (presumably because of data left over from previous tests)
-        AltitudeSession().query(MatrixQuote).delete()
-        AltitudeSession().query(Company).delete()
+        a = AltitudeSession()
+        a.query(MatrixQuote).delete()
+        a.query(Company).delete()
 
         Session().add(self.supplier)
-        with self.assertRaises(UnknownSupplierError):
-             self.qep.process_email(self.email_file)
+        self.qep.process_email(self.email_file)
+        self.assertEqual(2144, a.query(Quote).count())
