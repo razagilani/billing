@@ -179,7 +179,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '127c3e14d9d4'
+_schema_revision = '2d5527ff438a'
 
 
 def check_schema_revision(schema_revision=None):
