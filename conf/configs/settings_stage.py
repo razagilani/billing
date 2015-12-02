@@ -1,6 +1,6 @@
 # Django settings for optility project in staging environment.
 
-SITE_ROOT="/var/local/xbill-stage/xbill"
+SITE_ROOT="/var/local/billing/billing/xbill"
 HOST_ADDRESS="http://portal-stage.nextility.net"
 
 DEBUG = True
@@ -164,7 +164,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 
 SOUTH_TESTS_MIGRATE = False
 
-LOGGING_DIR_PATH = "/home/xbill-stage/"
+LOGGING_DIR_PATH = "/home/billing/"
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,

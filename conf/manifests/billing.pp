@@ -193,7 +193,7 @@ exec { newaliases:
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => "rabbit@portal-${env}.nextility.net"
+    cluster => "rabbit@acquisitor-${env}.nextility.net"
 }
 rabbit_mq::base_resource_configuration {$env:
     env => $env
