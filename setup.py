@@ -60,7 +60,8 @@ install_requires = [
     'Pint==0.6',
     'reportlab==2.5',
 
-    'postal#'
+    # temporarily disabled to prevent Codehip build failure
+    #'postal#'
 
     # exclusively for "skyliner" library--move to skyliner/setup.py
     # all version numbers must be the same as previous occurrences above
@@ -107,6 +108,7 @@ tests_require=[
     'nose',
     'nose-progressive',
     'coverage',
+    'pytest',
 
     # general development tools
     'ipdb',
@@ -121,7 +123,7 @@ tests_require=[
 
 setup(
     name="billing",
-    version="35",
+    version="36",
     packages=find_packages(),
     scripts=[
         'bin/check_matrix_file.py',

@@ -59,10 +59,8 @@ def dump_mongo_to_file(database, host, collection, dump_file_path):
         raise Exception
 
 def restore_psql_from_file(database, hostname, user, dump_file_path):
-    val = call(["psql", "-v", "-d", "{0}".format(database), "-h",  "{0}".format(
+    return call(["psql", "-v", "-d", "{0}".format(database), "-h",  "{0}".format(
         hostname), "-U",  "{0}".format(user), "-f", "{0}".format(dump_file_path)])
-    if val != 0:
-        raise Exception
 
 def restore_mysql_from_file(database, user, password, dump_file_path):
     call(["mysql", "-u{0}".format(user), "-p{0}".format(password), '''-e "drop database if exists {0};"'''.format(database)])
@@ -80,6 +78,5 @@ def tar_directory(path):
         raise Exception
 
 def untar_directory(path):
-    val = call(["tar", "-x", "-v", "-P", "-f{0}".format(path)])
-    if val != 0:
-        raise Exception
+    return call(["tar", "-x", "-v", "-P", "-f{0}".format(path)])
+

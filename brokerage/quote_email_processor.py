@@ -73,9 +73,10 @@ class QuoteDAO(object):
         same name in the Altitude database.
 
         :param from_addr: regular expression string for email sender address
+
         :return: core.model.Supplier representing the supplier table int the
         main database, brokerage.brokerage_model.Company representing the
-        same supplier in the Altitude database.
+        same supplier in the Altitude database (may be None).
         """
         # the matching behavior is implemented by counting the number of
         # matching suppliers for each criterion, and then only filtering by that
@@ -93,13 +94,7 @@ class QuoteDAO(object):
         # match supplier in Altitude database by name--this means names
         # for the same supplier must always be the same
         q = self.altitude_session.query(Company).filter_by(name=supplier.name)
-        count = q.count()
-        try:
-            altitude_supplier = q.one()
-        except (NoResultFound, MultipleResultsFound):
-            raise UnknownSupplierError(
-                '%s Altitude suppliers matched %s' % (count, supplier))
-
+        altitude_supplier = q.first()
         return supplier, altitude_supplier
 
     def insert_quotes(self, quote_list):

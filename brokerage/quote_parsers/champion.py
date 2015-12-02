@@ -1,6 +1,7 @@
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
 
-from util.dateutils import date_to_datetime
+from util.dateutils import date_to_datetime, parse_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import excel_number_to_datetime, QuoteParser, \
@@ -12,6 +13,7 @@ class ChampionMatrixParser(QuoteParser):
     """ Parser for Champion Matrix Rates
     """
     NAME = 'champion'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 
@@ -62,8 +64,10 @@ class ChampionMatrixParser(QuoteParser):
                 rate_class_alias = '-'.join(
                     [state, edc, rate_class_name, description])
 
-                start_from = excel_number_to_datetime(self._reader.get(
-                    sheet, row, self.START_DATE_COL, float))
+                month_str, year = self._reader.get_matches(sheet, row,
+                                                          self.START_DATE_COL,r'(\w+)-(\d\d\d\d)',(str,int))
+
+                start_from = parse_datetime('%s/1/%s' % (month_str,year))
 
                 start_until = date_to_datetime((Month(start_from) + 1).first)
 
@@ -90,7 +94,7 @@ class ChampionMatrixParser(QuoteParser):
                             min_volume=min_volume,
                             limit_volume=limit_volume,
                             purchase_of_receivables=False, price=price,
-                            rate_class_alias=rate_class_alias)
+                            rate_class_alias=rate_class_alias, service_type='electric')
                         # TODO: rate_class_id should be determined automatically
                         # by setting rate_class
                         if rate_class_id is not None:
