@@ -2174,7 +2174,9 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
                              Address(), Address())
-        customer2 = ReeBillCustomer(utility_account=ua2, name='', payee='payee')
+        customer2 = ReeBillCustomer(utility_account=ua2, name='',
+                                    payee='payee', billing_address=Address(),
+                                    service_address=Address())
         utilbill2 = self.utilbill.clone()
         utilbill2.utility = self.utilbill.utility
         utilbill2.set_rate_class(self.utilbill.get_rate_class())
@@ -2237,7 +2239,9 @@ class TestExportBillPayments(unittest.TestCase):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account,
-                                    payee='payee')
+                                    payee='payee',
+                                    billing_address=blank_address,
+                                    service_address=blank_address)
         self.utilbill = UtilBill(self.utility_account, self.utility, rate_class,
                              test_supplier,
                              period_start=date(2012, 1, 1),
