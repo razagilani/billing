@@ -32,6 +32,16 @@ class GEEPriceQuote(object):
         pass
 
     def fetch_zone(self):
+        # Special notes:
+        # * If Zone contains "Sweet Spot", remove that label and add it as usual
+        # * If Zone contains "Cusom" - ignore everythign in that row.
+        pass
+
+    def fetch_start_date(self):
+        pass
+
+    def fetch_volumn_range(self):
+        # Should return a tuple
         pass
 
 class GEEMatrixParser(QuoteParser):
