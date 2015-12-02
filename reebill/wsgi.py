@@ -23,7 +23,7 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session, UtilityAccount
+from core.model import Session, UtilityAccount, Address
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
@@ -629,6 +629,19 @@ class ReebillsResource(RESTResource):
                 params['ba_street'], params['ba_city'],
                 params['ba_state'], params['ba_postal_code'],
                 'billing_address')
+
+        service_address = Address(
+                r.reebill_customer, params['sa_addressee'],
+                params['sa_street'], params['sa_city'],
+                params['sa_state'], params['sa_postal_code'],
+                'service_address')
+        billing_address = Address(
+                r.reebill_customer, params['ba_addressee'],
+                params['ba_street'], params['ba_city'],
+                params['ba_state'], params['ba_postal_code'],
+                'billing_address')
+        r.reebill_customer.set_service_address(service_address)
+        r.reebill_customer.set_billing_address(billing_address)
 
         return self.dumps({'success': True, 'reebill': r.column_dict()})
 
