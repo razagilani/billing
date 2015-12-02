@@ -236,26 +236,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[-1].rate_class_alias,
                          "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
 
-        # Now - Test the anomalous matrix file (This one weirdly failed)
-        # Question - Should this go in its own unit test, or in this one
-        # (I can make a case for either way, so for now I'm keeping it in this one).
-        del parser
-        del quotes
-        anom_parser = USGEElectricMatrixParser()
-        self.assertEqual(0, anom_parser.get_count())
-
-        with open(self.USGE_ELECTRIC_ANOMALY_PATH, 'rb') as spreadsheet:
-            anom_parser.load_file(spreadsheet)
-        anom_parser.validate()
-
-        quotes = list(anom_parser.extract_quotes())
-        self.assertEqual(quotes[0].price, 0.0940)
-        self.assertEqual(quotes[0].min_volume, 0)
-        self.assertEqual(quotes[0].limit_volume, 500000)
-
-        self.assertEqual(quotes[-1].price, 0.0705)
-        self.assertAlmostEqual(quotes[-1].min_volume, 500000, delta=2)
-        self.assertAlmostEqual(quotes[-1].limit_volume, 1000000, delta=2)
 
 
 
