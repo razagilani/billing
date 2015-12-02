@@ -72,6 +72,7 @@ class MatrixQuoteParsersTest(TestCase):
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
+    USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(DIRECTORY,'Matrix 4 Example - Champion.xls')
     # using version of the file converted to XLS because we can't currently
     # read the newer format
@@ -228,6 +229,24 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
         self.assertEqual(quotes[-1].rate_class_alias,
                          "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
+
+        # Now - Test the anomalous matrix file (This one weirdly failed)
+        # Question - Should this go in its own unit test, or in this one
+        # (I can make a case for either way, so for now I'm keeping it in this one).
+        del parser
+        del quotes
+        anom_parser = USGEElectricMatrixParser()
+        self.assertEqual(0, anom_parser.get_count())
+
+        with open(self.USGE_ELECTRIC_ANOMALY_PATH, 'rb') as spreadsheet:
+            anom_parser.load_file(spreadsheet)
+        anom_parser.validate()
+
+        quotes = list(anom_parser.extract_quotes())
+        self.assertEqual(quotes[0].price, 0.0940)
+        self.assertEqual(quotes[-1].price, 0.0705)
+
+
 
     def test_usge(self):
         parser = USGEMatrixParser()
