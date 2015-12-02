@@ -1,8 +1,0 @@
-description "xbill <%= @env%> exchange"
-start on started rabbitmq-server
-script
-su --login  <%= @username%> --session-command "cd /var/local/<%= @username%>/xbill/messenger/;python XBillExchange.py"
-end script
-console output
-respawn
-respawn limit 2 10
