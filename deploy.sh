@@ -37,11 +37,16 @@ params=()
 params[1]="billing-$env $env"
 params[2]="worker-$env worker-$env"
 
-# clone private repositories for dependencies inside the billing repository working
-# directory, because remote hosts don't have access to Bitbucket
-# (for now, there is only one)
-rm -rf postal
-git clone ssh://git@bitbucket.org/skylineitops/postal.git
+## clone private repositories for dependencies inside the billing repository working
+## directory, because remote hosts don't have access to Bitbucket
+## (for now, there is only one)
+#rm -rf postal
+#git clone ssh://git@bitbucket.org/skylineitops/postal.git
+
+
+# fix problem with old packaves in ReeBill virtualenv by deleting
+# existing files. if we could do this for all hosts we would.
+ssh -t billing-$env "sudo rm -rf /var/local/*"
 
 # main deployment steps
 delete_temp_files
@@ -60,6 +65,12 @@ for param in "${params[@]}"; do
     echo $envname | fab common.stop_upstart_services -R $hosttype
 done
 delete_temp_files
+
+# ReeBill doesn't work unless the right version of MongoEngine is installed
+# in the Python virtualenv and the above does not install the right version
+# for no reason we can tell. this replaces the version installed above with
+# the right one.
+ssh -t billing-$env "sudo -u billing -i /bin/bash -c \"source /var/local/billing/bin/activate && pip uninstall mongoengine && pip install https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip\""
 
 # clean up dependency repositories cloned in local working directory
 rm -rf postal
@@ -87,13 +98,13 @@ done
 
 ##############################################################################
 # xbill deployment
-XBILL_FABFILE_PATH="xbill/fabfile.py"
+XBILL_FABFILE_PATH="xbill_fabfile.py"
 
 # delete any existing xbill-env directory, even though
 # "fab common.deploy_interactive_console" is supposed to completely replace
 # it, because somehow it still exists and that breaks the
 # "mange.py collectstatic" step below
-ssh -t portal-$env "sudo rm -rf /var/local/xbill-$env/"
+ssh -t portal-$env "sudo rm -rf /var/local/billing/"
 echo $env | fab -f $XBILL_FABFILE_PATH common.configure_app_env -R "portal-$env"
 echo $env | fab -f $XBILL_FABFILE_PATH common.deploy_interactive_console -R "portal-$env"
 
@@ -101,14 +112,18 @@ echo $env | fab -f $XBILL_FABFILE_PATH common.deploy_interactive_console -R "por
 # this did not work:
 #ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'cd /var/local/xbill-$env/xbill && for f in \`find . -name '*requirements.txt'\`; do echo $f; pip install -r $f; done'"
 # (we couldn't figure out why)
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/requirements.txt'"
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/requirements.txt'"
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'pip install -r /var/local/xbill-$env/xbill/mq/dev-requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/xbill/requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/mq/requirements.txt'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'pip install -r /var/local/billing/billing/mq/dev-requirements.txt'"
 
 delete_temp_files
+
+# create a symbolic link in xbill directory that points at billing/mq directory
+ssh -t portal-$env "sudo ln -s /var/local/billing/billing/mq /var/local/billing/billing/xbill/mq"
+
 # copy static files for Django Admin into the directory where they get served
 # by Apache. this is the standard Django way of doing it.
-ssh -t portal-$env "sudo -u xbill-$env -i /bin/bash -c 'python /var/local/xbill-$env/xbill/manage.py collectstatic --noinput --verbosity=3'"
+ssh -t portal-$env "sudo -u billing -i /bin/bash -c 'python /var/local/billing/billing/xbill/manage.py collectstatic --noinput --verbosity=3'"
 
 # restart xbill web server (not done by fabric script)
 ssh -t portal-$env "sudo service httpd reload"

@@ -1,6 +1,6 @@
 # Django settings for xbill project in production environment.
 
-SITE_ROOT="/var/local/xbill-dev/xbill"
+SITE_ROOT="/var/local/billing/billing/xbill"
 HOST_ADDRESS="https://xbill-dev.nextility.net"
 
 DEBUG = True
@@ -70,7 +70,7 @@ MEDIA_URL = ''
 # in them, where the directory name happens to be the same as the username.
 # TODO: use the same path in every environment.
 import getpass
-STATIC_ROOT = '/var/local/' + getpass.getuser() + '/xbill/static/'
+STATIC_ROOT = '/var/local/' + getpass.getuser() + '/billing/xbill/static/'
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
@@ -165,7 +165,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     #'django.contrib.auth.backends.ModelBackend',
 #)
 
-LOGGING_DIR_PATH = "/home/xbill-dev/"
+LOGGING_DIR_PATH = "/home/billing/"
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
