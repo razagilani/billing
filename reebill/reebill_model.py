@@ -668,6 +668,12 @@ class ReeBillCustomer(Base):
         """
         return self.groups
 
+    def set_service_address(self, address):
+        self.service_address = address
+
+    def set_billing_address(self, address):
+        self.billing_address = address
+
 
 class ReeBillCharge(Base):
     """Table representing "hypothetical" versions of utility bill charges in
