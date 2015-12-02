@@ -250,7 +250,12 @@ class MatrixQuoteParsersTest(TestCase):
 
         quotes = list(anom_parser.extract_quotes())
         self.assertEqual(quotes[0].price, 0.0940)
+        self.assertEqual(quotes[0].min_volume, 0)
+        self.assertEqual(quotes[0].limit_volume, 500000)
+
         self.assertEqual(quotes[-1].price, 0.0705)
+        self.assertAlmostEqual(quotes[-1].min_volume, 500000, delta=2)
+        self.assertAlmostEqual(quotes[-1].limit_volume, 1000000, delta=2)
 
 
 
