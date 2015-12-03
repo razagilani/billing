@@ -13,10 +13,12 @@ import subprocess
 
 from core.model import Session, AltitudeSession
 from core import init_model, get_db_params, init_altitude_db
+from upgrade_scripts import alembic_upgrade
 
 log = logging.getLogger(__name__)
 
 def upgrade():
+    alembic_upgrade('4f589e8d4cab')
 
     init_model()
     s = Session()
