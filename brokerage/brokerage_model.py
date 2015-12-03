@@ -120,6 +120,8 @@ class MatrixFormat(Base):
 
     matrix_format_id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    name = Column(String)
+
     supplier = relationship(Supplier, backref='matrix_formats')
 
     # regular expression matching names of files that are expected to have
