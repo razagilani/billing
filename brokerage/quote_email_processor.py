@@ -183,11 +183,11 @@ class QuoteEmailProcessor(object):
         self._classes_for_formats = classes_for_formats
         self._quote_dao = quote_dao
 
-    def _process_quote_file(self, matrix_format, altitude_supplier, file_name,
+    def _process_quote_file(self, supplier, altitude_supplier, file_name,
                             file_content):
         """Process quotes from a single quote file for the given supplier.
 
-        :param matrix_format: brokerage.brokerage_model.MatrixFormat instance
+        :param supplier: core.model.Supplier instance
 
         :param altitude_supplier: brokerage.brokerage_model.Company instance
         corresponding to the Company table in the Altitude SQL Server database,
@@ -204,6 +204,11 @@ class QuoteEmailProcessor(object):
         :return the QuoteParser instance used to process the given file (
         which can be used to get the number of quotes).
         """
+        # find the MatrixFormat corresponding to this file
+        # (may raise UnknownFormatError)
+        matrix_format = self._quote_dao.get_matrix_format_for_file(
+            supplier, file_name)
+
         # copy string into a StringIO :(
         quote_file = StringIO(file_content)
 
@@ -225,7 +230,6 @@ class QuoteEmailProcessor(object):
                 quote_list.append(quote)
             self._quote_dao.insert_quotes(quote_list)
             count = quote_parser.get_count()
-            # TODO: probably not a good way to find out that the parser is done
             if quote_list == []:
                 return quote_parser
             self.logger.debug('%s quotes so far' % count)
@@ -283,22 +287,16 @@ class QuoteEmailProcessor(object):
 
         files_count, quotes_count = 0, 0
         for file_name, file_content in attachments:
-            # TODO: maybe move this into _process_quote_file
-            try:
-                matrix_format = self._quote_dao.get_matrix_format_for_file(
-                    supplier, file_name)
-            except UnknownFormatError:
-                self.logger.warn(
-                    ('Skipped attachment from %s with unexpected '
-                    'name: "%s"') % (supplier.name, file_name))
-                continue
-
             self.logger.info('Processing attachment from %s: "%s"' % (
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
                 quote_parser = self._process_quote_file(
-                    matrix_format, altitude_supplier, file_name, file_content)
+                    supplier, altitude_supplier, file_name, file_content)
+            except UnknownFormatError:
+                self.logger.warn(('Skipped attachment from %s with unexpected '
+                                 'name: "%s"') % (supplier.name, file_name))
+                continue
             except Exception as e:
                 self._quote_dao.rollback()
                 message = 'Error when processing attachment "%s":\n%s' % (
