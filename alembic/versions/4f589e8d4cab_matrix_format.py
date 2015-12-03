@@ -19,6 +19,7 @@ def upgrade():
         'matrix_format',
         sa.Column('matrix_format_id', sa.Integer(), nullable=False),
         sa.Column('supplier_id', sa.Integer(), nullable=False),
+        sa.Column('name', sa.String(), nullable=True),
         sa.Column('matrix_attachment_name', sa.String(), nullable=True),
         sa.ForeignKeyConstraint(['supplier_id'], ['supplier.id'], ),
         sa.PrimaryKeyConstraint('matrix_format_id')
