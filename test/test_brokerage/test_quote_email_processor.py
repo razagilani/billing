@@ -200,6 +200,9 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(1, self.quote_dao.commit.call_count)
 
     def test_multiple_formats(self):
+        """One email with 2 attachments, each of which should be read by a
+        different QuoteParser class depending on the file name.
+        """
         self.quote_dao.get_matrix_format_for_file.side_effect = [
             self.format_1, self.format_2]
 

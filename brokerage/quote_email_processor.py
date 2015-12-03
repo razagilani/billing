@@ -104,12 +104,12 @@ class QuoteDAO(object):
 
     def get_matrix_format_for_file(self, supplier, file_name):
         """
-        Returns the MatrixFormat object that determines which parser class
-        will be used for a file from the given supplier with the given name.
+        Return the MatrixFormat object that determines which parser class will
+        be used to parse a file from the given supplier with the given name.
 
         The chosen MatrixFormat is the one whose matrix attachment name
-        (regular expression) matches the file name (case-insensitive), or that
-        does not have a matrix attachment name. This should be unique.
+        (regular expression) matches the file name (case-insensitive), or whose
+        matrix attachment name is None. This should be unique.
         UnknownFormatError is raised if there is not exactly one match.
 
         :param supplier: core.model.Supplier
