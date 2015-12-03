@@ -108,15 +108,22 @@ def count_active_matrix_quotes():
 
 
 class MatrixFormat(Base):
+    """A file matrix format, related 1-many to suppliers and 1-1 to QuoteParser
+    classes.
+
+    Could also store any data specific to a file format that needs to be
+    user-editable (such as regular expressions for extracting dates from file
+    names, so file name changes can be handled without modifying code).
+    """
     __tablename__ = 'matrix_format'
 
     matrix_format_id = Column(Integer, primary_key=True)
     supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
     supplier = relationship(Supplier, backref='matrix_formats')
 
-    # for importing matrix quotes from emailed files. file name is a regular
-    # expression because file names can contain the current date or other
-    # varying text.
+    # regular expression matching names of files that are expected to have
+    # this format. should be unique, but may be null if all files from this
+    # supplier have this format (for suppliers that send only one file).
     matrix_attachment_name = Column(String)
 
 
