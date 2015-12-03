@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float, func, desc
 from sqlalchemy.orm import relationship
 
-from core.model import UtilityAccount, Base, AltitudeSession
+from core.model import UtilityAccount, Base, AltitudeSession, Supplier
 from core.model.model import AltitudeBase
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
@@ -105,6 +105,19 @@ def count_active_matrix_quotes():
     s = AltitudeSession()
     return s.query(MatrixQuote).filter(MatrixQuote.valid_from <= now,
                                 MatrixQuote.valid_until < now).count()
+
+
+class MatrixFormat(Base):
+    __tablename__ = 'matrix_format'
+
+    matrix_format_id = Column(Integer, primary_key=True)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    supplier = relationship(Supplier, backref='matrix_formats')
+
+    # for importing matrix quotes from emailed files. file name is a regular
+    # expression because file names can contain the current date or other
+    # varying text.
+    matrix_attachment_name = Column(String)
 
 
 class Quote(AltitudeBase):

@@ -1,15 +1,19 @@
 from cStringIO import StringIO
-from email.message import Message
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.message import Message, email
 import os
+from email.mime.base import MIMEBase
 from unittest import TestCase
 
 from mock import Mock, MagicMock
 import statsd
 
-from brokerage.brokerage_model import Company, Quote, MatrixQuote
+from brokerage.brokerage_model import Company, Quote, MatrixQuote, MatrixFormat
 from brokerage.quote_email_processor import QuoteEmailProcessor, EmailError, \
-    UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError, NoQuotesError
-from brokerage.quote_parsers import CLASSES_FOR_SUPPLIERS
+    UnknownSupplierError, QuoteDAO, MultipleErrors, NoFilesError, NoQuotesError, \
+    UnknownFormatError
+from brokerage.quote_parsers import CLASSES_FOR_FORMATS
 from brokerage.quote_parser import QuoteParser
 from core import init_altitude_db, init_model, ROOT_PATH
 from core.model import Supplier, Session, AltitudeSession
@@ -27,9 +31,11 @@ class TestQuoteEmailProcessor(TestCase):
     """
     def setUp(self):
         self.supplier = Supplier(id=1, name='The Supplier')
+        self.format_1 = MatrixFormat(matrix_format_id=1)
         self.quote_dao = Mock(autospec=QuoteDAO)
         self.quote_dao.get_supplier_objects_for_message.return_value = (
             self.supplier, Company(company_id=2, name='The Supplier'))
+        self.quote_dao.get_matrix_format_for_file.return_value = self.format_1
 
         self.quotes = [Mock(autospec=Quote), Mock(autospec=Quote)]
         self.quote_parser = Mock(autospec = QuoteParser)
@@ -37,15 +43,27 @@ class TestQuoteEmailProcessor(TestCase):
         # generator, not a list
         self.quote_parser.extract_quotes.return_value = (q for q in self.quotes)
         self.quote_parser.get_count.return_value = len(self.quotes)
-        QuoteParserClass = Mock()
-        QuoteParserClass.return_value = self.quote_parser
+        QuoteParserClass1 = Mock()
+        QuoteParserClass1.return_value = self.quote_parser
+
+        # a second QuoteParser for testing handing of multiple file formats
+        # in the same email
+        QuoteParserClass2 = Mock()
+        self.quote_parser_2 = Mock(autospec=QuoteParser)
+        QuoteParserClass2.return_value = self.quote_parser_2
+        self.quote_parser_2.extract_quotes.return_value = (
+            q for q in self.quotes)
+        self.quote_parser_2.get_count.return_value = len(self.quotes)
+        self.format_2 = MatrixFormat(matrix_format_id=2)
+        self.supplier.matrix_formats = [self.format_1, self.format_2]
 
         # might as well use real objects for StatsD metrics; they don't need
         # to connect to a server
         self.email_counter = statsd.Counter('email')
         self.quote_counter = statsd.Counter('quote')
 
-        self.qep = QuoteEmailProcessor({1: QuoteParserClass}, self.quote_dao)
+        self.qep = QuoteEmailProcessor(
+            {1: QuoteParserClass1, 2: QuoteParserClass2}, self.quote_dao)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
@@ -102,11 +120,8 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
     def test_process_email_non_matching_attachment(self):
-        # supplier requires a specific attachment name, which doesn't match
-        # the one in the email
-        self.supplier.matrix_attachment_name = 'matrix_file.xls'
-        self.message.add_header('Content-Disposition', 'attachment',
-                                filename='unknown.xyz')
+        self.quote_dao.get_matrix_format_for_file.side_effect = \
+            UnknownFormatError
         email_file = StringIO(self.message.as_string())
         with self.assertRaises(NoFilesError):
             self.qep.process_email(email_file)
@@ -143,7 +158,7 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
     def test_process_email_good_attachment(self):
-        self.supplier.matrix_attachment_name = 'filename.xls'
+        self.format_1.matrix_attachment_name = 'filename.xls'
         self.message.add_header('Content-Disposition', 'attachment',
                                 filename='fileNAME.XLS')
         email_file = StringIO(self.message.as_string())
@@ -184,6 +199,32 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(1, self.quote_dao.commit.call_count)
 
+    def test_multiple_formats(self):
+        self.quote_dao.get_matrix_format_for_file.side_effect = [
+            self.format_1, self.format_2]
+
+        # can't figure out how to create a well-formed email with 2 attachments
+        # using the Python "email" module, so here's one from a file
+        with open('test/test_brokerage/quote_files/quote_email.txt') as f:
+            self.qep.process_email(f)
+
+        # the 2 files are processed by 2 separate QuoteParsers
+        self.assertEqual(
+            1, self.quote_dao.get_supplier_objects_for_message.call_count)
+        self.assertEqual(
+            2, self.quote_dao.get_matrix_format_for_file.call_count)
+        #self.assertEqual(2, self.quote_dao.begin_nested.call_count)
+        self.assertEqual(2, self.quote_dao.begin.call_count)
+        self.assertEqual(2 * len(self.quotes),
+                         self.quote_dao.insert_quotes.call_count)
+        self.assertEqual(1, self.quote_parser.load_file.call_count)
+        self.quote_parser.extract_quotes.assert_called_once_with()
+        self.quote_parser_2.extract_quotes.assert_called_once_with()
+        self.assertEqual(1, self.quote_parser_2.load_file.call_count)
+        self.assertEqual(0, self.quote_dao.rollback.call_count)
+        self.assertEqual(2, self.quote_dao.commit.call_count)
+
+
 class TestQuoteEmailProcessorWithDB(TestCase):
     """Integration test using a real email with QuoteEmailProcessor,
     QuoteDAO, and QuoteParser, including the database.
@@ -202,13 +243,17 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
         email_counter, quote_counter = MagicMock(), MagicMock()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_SUPPLIERS, self.quote_dao)
+        self.qep = QuoteEmailProcessor(CLASSES_FOR_FORMATS, self.quote_dao)
 
         # add a supplier to match the example email
         clear_db()
         self.supplier = Supplier(
-            id=199, name='USGE', matrix_attachment_name='2. USGE Gas.xlsx',
-            matrix_email_recipient='recipient1@nextility.example.com')
+            id=199, name='USGE',
+            matrix_email_recipient='recipient1@nextility.example.com',
+            matrix_formats=[
+            # TODO: update this id when MatrixFormats are put in the database
+                MatrixFormat(matrix_format_id=199,
+                             matrix_attachment_name='2. USGE Gas.xlsx')])
         self.altitude_supplier = Company(name=self.supplier.name)
 
         # extra supplier that will never match any email, to make sure the

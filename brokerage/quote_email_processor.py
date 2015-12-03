@@ -29,7 +29,12 @@ class EmailError(QuoteProcessingError):
     """
 
 class UnknownSupplierError(QuoteProcessingError):
-    """Could not match the an email to a supplier, or more than one supplier
+    """Could not match an email to a supplier, or more than one supplier
+    matched it.
+    """
+
+class UnknownFormatError(QuoteProcessingError):
+    """Could not match a file a matrix format, or more than one format
     matched it.
     """
 
@@ -97,6 +102,32 @@ class QuoteDAO(object):
         altitude_supplier = q.first()
         return supplier, altitude_supplier
 
+    def get_matrix_format_for_file(self, supplier, file_name):
+        """
+        Returns the MatrixFormat object that determines which parser class
+        will be used for a file from the given supplier with the given name.
+
+        The chosen MatrixFormat is the one whose matrix attachment name
+        (regular expression) matches the file name (case-insensitive), or that
+        does not have a matrix attachment name. This should be unique.
+        UnknownFormatError is raised if there is not exactly one match.
+
+        :param supplier: core.model.Supplier
+        :param file_name: name of the matrix file
+        :return: brokerage.brokerage_model.MatrixFormat
+        """
+        matching_formats = [f for f in supplier.matrix_formats
+                            if f.matrix_attachment_name is None
+                            or re.match(f.matrix_attachment_name, file_name,
+                                        re.IGNORECASE)]
+        if len(matching_formats) == 0:
+            raise UnknownFormatError('No formats matched file name "%s"' %
+                                     file_name)
+        if len(matching_formats) > 1:
+            raise UnknownFormatError('Multiple formats matched file name '
+                                     '"%s"' % file_name)
+        return matching_formats[0]
+
     def insert_quotes(self, quote_list):
         """
         Insert Quotes into the Altitude database, using the SQLAlchemy "bulk
@@ -140,23 +171,23 @@ class QuoteEmailProcessor(object):
     # rows allowed per insert statement in pymssql.)
     BATCH_SIZE = 1000
 
-    def __init__(self, classes_for_suppliers, quote_dao):
+    def __init__(self, classes_for_formats, quote_dao):
         """
-        :param classes_for_suppliers: dictionary mapping the primary keys of
-        each Supplier (Supplier.id) to the QuoteParser subclass that handles
-        its file format.
+        :param classes_for_formats: dictionary mapping the primary key of
+        each MatrixFormat in the database to the QuoteParser subclass that
+        handles it.
         :param quote_dao: QuoteDAO object for handling database access.
         """
         self.logger = logging.getLogger(LOG_NAME)
         self.logger.setLevel(logging.DEBUG)
-        self._clases_for_suppliers = classes_for_suppliers
+        self._classes_for_formats = classes_for_formats
         self._quote_dao = quote_dao
 
-    def _process_quote_file(self, supplier, altitude_supplier, file_name,
+    def _process_quote_file(self, matrix_format, altitude_supplier, file_name,
                             file_content):
         """Process quotes from a single quote file for the given supplier.
 
-        :param supplier: core.model.Supplier instance
+        :param matrix_format: brokerage.brokerage_model.MatrixFormat instance
 
         :param altitude_supplier: brokerage.brokerage_model.Company instance
         corresponding to the Company table in the Altitude SQL Server database,
@@ -178,7 +209,8 @@ class QuoteEmailProcessor(object):
 
         # pick a QuoteParser class for the given supplier, and load the file
         # into it, and validate the file
-        quote_parser = self._clases_for_suppliers[supplier.id]()
+        quote_parser = self._classes_for_formats[
+            matrix_format.matrix_format_id]()
         quote_parser.load_file(quote_file, file_name=file_name)
         quote_parser.validate()
 
@@ -251,9 +283,11 @@ class QuoteEmailProcessor(object):
 
         files_count, quotes_count = 0, 0
         for file_name, file_content in attachments:
-            if (supplier.matrix_attachment_name is not None
-                and not re.match(supplier.matrix_attachment_name, file_name,
-                                 flags=re.IGNORECASE)):
+            # TODO: maybe move this into _process_quote_file
+            try:
+                matrix_format = self._quote_dao.get_matrix_format_for_file(
+                    supplier, file_name)
+            except UnknownFormatError:
                 self.logger.warn(
                     ('Skipped attachment from %s with unexpected '
                     'name: "%s"') % (supplier.name, file_name))
@@ -264,7 +298,7 @@ class QuoteEmailProcessor(object):
             self._quote_dao.begin()
             try:
                 quote_parser = self._process_quote_file(
-                    supplier, altitude_supplier, file_name, file_content)
+                    matrix_format, altitude_supplier, file_name, file_content)
             except Exception as e:
                 self._quote_dao.rollback()
                 message = 'Error when processing attachment "%s":\n%s' % (
