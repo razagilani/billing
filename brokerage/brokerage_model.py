@@ -108,8 +108,9 @@ def count_active_matrix_quotes():
 
 
 class MatrixFormat(Base):
-    """A file matrix format, related 1-many to suppliers and 1-1 to QuoteParser
-    classes.
+    """Represents the format of a matrix file. Related many-1 to
+    suppliers (because each supplier may have many formats, even in the same
+    email), and 1-1 to QuoteParser classes.
 
     Could also store any data specific to a file format that needs to be
     user-editable (such as regular expressions for extracting dates from file
