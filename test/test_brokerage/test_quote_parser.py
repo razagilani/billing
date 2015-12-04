@@ -3,6 +3,7 @@ from os.path import join, basename
 import re
 from unittest import TestCase, skip
 
+from nose.plugins.attrib import attr
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -12,7 +13,7 @@ from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser)
+    USGEElectricMatrixParser, GEEMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -88,6 +89,7 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    GEE_FILE_PATH_1 = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -467,6 +469,21 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
+    @attr('current')
+    def test_gee_electric(self):
+        parser = GEEMatrixParser()
+
+        with open(self.GEE_FILE_PATH_1, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        q = quotes[0]
+        self.assertEqual(datetime(2015, 12, 1), q.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(0.08381, q.price)
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()

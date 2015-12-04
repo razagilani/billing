@@ -10,6 +10,9 @@ import re
 
 from tablib import formats
 
+from dateutil.relativedelta import relativedelta
+
+from core.exceptions import ValidationError
 from util.units import unit_registry
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
     SpreadsheetReader
@@ -22,9 +25,9 @@ class GEEPriceQuote(object):
 
     MAX_SEARCH_CNT = 10
 
-    def __init__(self, matrix_parser, reader, sheet, row, col):
+    def __init__(self, matrix_parser, sheet, row, col):
         self.matrix_parser = matrix_parser
-        self.reader = reader
+        self.reader = matrix_parser._reader
         self.sheet = sheet
         self.row = row
         self.col = col
@@ -43,7 +46,7 @@ class GEEPriceQuote(object):
             min_volume=min_volume,
             limit_volume=limit_volume,
             purchase_of_receivables=False,
-            rate_class_alias=self.self.fetch_alias()
+            rate_class_alias=self.fetch_alias()
         )
 
     def fetch_price(self):
@@ -78,14 +81,15 @@ class GEEPriceQuote(object):
         # Search for the start date row
         for row_offset in xrange(0, self.MAX_SEARCH_CNT):
             try:
-                start_str = self._reader.get_matches(
-                    self.sheet, self.row - row_offset, self.col, r'([a-zA-Z]{3}-[\d]{2})', basestring)
-                start_from = datetime.datetime.strptime(start_str, '%b-%y')
-                start_until = start_from + datetime.timedelta(months=1)
-
+                start_date = self.reader.get(
+                    self.sheet,
+                    max(0, self.row - row_offset),
+                    self.col,
+                    datetime.datetime)
+                start_from = datetime.datetime(start_date.year, start_date.month, 1)
+                start_until = start_from + relativedelta(months=1)
                 return (start_from, start_until)
-            except:
-                # TODO - This exception needs to be specified - I don't know what it is though.
+            except ValidationError as e:
                 pass
         else:
             # After going through MAX_SEARCH_CNT cells - could not find a date.
@@ -97,7 +101,6 @@ class GEEPriceQuote(object):
         min_vol_kwh = int(vol_ranges.groups()[0]) * 1000
         limit_vol_kwh = ((int(vol_ranges.groups()[1]) + 1) * 1000) - 1
         return min_vol_kwh, limit_vol_kwh
-
 
 
 class GEEMatrixParser(QuoteParser):
@@ -114,11 +117,11 @@ class GEEMatrixParser(QuoteParser):
     RATE_SCH_COL = 'B'
     TERM_COL = 'C'
     START_DATE_LBL_COL = 'D'
-    FIRST_QUOTE_COL = 'D'
+    FIRST_QUOTE_COL = 3
     EFFECTIVE_DATE_COL = 'F'
     EFFECTIVE_DATE_ROW = 2
 
-    ASSUMED_PRICE_ROW_START = 3
+    ASSUMED_PRICE_ROW_START = 6
 
     def _validate(self):
         pass
@@ -133,13 +136,25 @@ class GEEMatrixParser(QuoteParser):
         self._valid_util = effective_date + datetime.timedelta(days=1)
 
         for sheet in self._reader.get_sheet_titles():
-            for price_row in xrange(self.ASSUMED_PRICE_ROW_START, self._reader.get_height(sheet)):
+            start_row = self.ASSUMED_PRICE_ROW_START
+            for test_row in xrange(0, self._reader.get_height(sheet)):
+                cell_val= self._reader.get(sheet, test_row, self.ZONE_COL, (basestring, type(None)))
+                if cell_val == 'Zone':
+                    start_row = test_row + 2
+                    break
+
+            for price_row in xrange(start_row, self._reader.get_height(sheet)):
                 for price_col in xrange(self.FIRST_QUOTE_COL, self._reader.get_width(sheet)):
                     try:
+                        print sheet, price_row, price_col
                         price = self._reader.get(sheet, price_row, price_col, float)
-                        quote = GEEPriceQuote(self, self._reader, sheet, price_row, price_col).evaluate()
+                    except ValidationError:
+                        continue
+
+                    try:
+                        x = self
+                        quote = GEEPriceQuote(x, sheet, price_row, price_col).evaluate()
                         if 'custom' not in quote.rate_class_alias.lower():
                             yield quote
-                    except:
-                        pass
-
+                    except Exception as e:
+                        raise
