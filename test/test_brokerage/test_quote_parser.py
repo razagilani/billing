@@ -485,6 +485,12 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6, q.term_months)
         self.assertEqual(0.08381, q.price)
 
+        ql = quotes[-1]
+        self.assertEqual(datetime(2016, 5, 1), ql.start_from)
+        self.assertEqual(datetime(2016, 6, 1), ql.start_until)
+        self.assertEqual(24, ql.term_months)
+        self.assertAlmostEqual(0.07573, ql.price, delta=0.000001)
+
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
         self.assertEqual(0, parser.get_count())
