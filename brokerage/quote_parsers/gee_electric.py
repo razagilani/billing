@@ -115,7 +115,31 @@ class GEEMatrixParser(QuoteParser):
     TERM_COL = 'C'
     START_DATE_LBL_COL = 'D'
     FIRST_QUOTE_COL = 'D'
+    EFFECTIVE_DATE_COL = 'F'
+    EFFECTIVE_DATE_ROW = 2
 
+    ASSUMED_PRICE_ROW_START = 3
 
+    def _validate(self):
+        pass
 
+    def _extract_quotes(self):
+
+        # First, we need to get the validitity dates for all quotes. This is a little annoying
+        # because it is ONLY available on the first sheet of each spreadsheet.
+        effective_str = self._reader.get(0, self.EFFECTIVE_DATE_ROW, self.EFFECTIVE_DATE_COL, basestring)
+        effective_date = datetime.datetime.strptime(effective_str.split(':')[1].strip(), '%B %d, %Y')
+        self._valid_from = effective_date
+        self._valid_util = effective_date + datetime.timedelta(days=1)
+
+        for sheet in self._reader.get_sheet_titles():
+            for price_row in xrange(self.ASSUMED_PRICE_ROW_START, self._reader.get_height(sheet)):
+                for price_col in xrange(self.FIRST_QUOTE_COL, self._reader.get_width(sheet)):
+                    try:
+                        price = self._reader.get(sheet, price_row, price_col, float)
+                        quote = GEEPriceQuote(self, self._reader, sheet, price_row, price_col).evaluate()
+                        if 'custom' not in quote.rate_class_alias.lower():
+                            yield quote
+                    except:
+                        pass
 
