@@ -7,9 +7,9 @@ from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
     Float, func, desc
 from sqlalchemy.orm import relationship
 
+from brokerage.validation import MatrixQuoteValidator
 from core.model import UtilityAccount, Base, AltitudeSession, Supplier
 from core.model.model import AltitudeBase
-from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 
 
@@ -187,43 +187,19 @@ class Quote(AltitudeBase):
         'polymorphic_on': discriminator,
     }
 
-    MIN_START_FROM = datetime(2000, 1, 1)
-    MAX_START_FROM = datetime(2020, 1, 1)
-    MIN_TERM_MONTHS = 1
-    MAX_TERM_MONTHS = 48
-    MIN_PRICE = .01
-    MAX_PRICE = 2.0
-
     def __init__(self, **kwargs):
         super(Quote, self).__init__(**kwargs)
         if self.date_received is None:
             self.date_received = datetime.utcnow()
 
-    # TODO: validation needs to be extensible for subclasses
+        # pick a MatrixQuoteValidator class based on service type
+        self._validator = MatrixQuoteValidator.get_instance(self.service_type)
+
     def validate(self):
         """Sanity check to catch any values that are obviously wrong.
         """
-        conditions = {
-            self.start_from < self.start_until: 'start_from >= start_until',
-            self.start_from >= self.MIN_START_FROM and self.start_from <=
-                                                      self.MAX_START_FROM:
-                'start_from too early: %s' % self.start_from,
-            self.term_months >= self.MIN_TERM_MONTHS and self.term_months <=
-                                                         self.MAX_TERM_MONTHS:
-                'Expected term_months between %s and %s, found %s' % (
-                    self.MIN_TERM_MONTHS, self.MAX_TERM_MONTHS,
-                    self.term_months),
-            self.valid_from < self.valid_until:
-                'valid_from %s >= valid_until %s' % (self.valid_from,
-                                                     self.valid_until),
-            self.price >= self.MIN_PRICE and self.price <= self.MAX_PRICE:
-                'Expected price between %s and %s, found %s' % (
-            self.MIN_PRICE, self.MAX_PRICE, self.price)
-        }
-        all_errors = [error_message for value, error_message in
-                      conditions.iteritems() if not value]
-        if all_errors != []:
-            raise ValidationError('. '.join(all_errors))
+        self._validator.validate(self)
+
 
 class MatrixQuote(Quote):
     """Fixed-price candidate supply contract that applies to any customer with
@@ -247,43 +223,9 @@ class MatrixQuote(Quote):
     # databae.
     file_reference = None
 
-    MIN_MIN_VOLUME = 0
-    MAX_MIN_VOLUME = 1e9
-    MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 1e9
-    MIN_VOLUME_DIFFERENCE = 0
-    MAX_VOLUME_DIFFERENCE = 1e7
-
-    def validate(self):
-        super(MatrixQuote, self).validate()
-        try:
-            if self.min_volume is not None:
-                assert self.min_volume >= self.MIN_MIN_VOLUME, (
-                    'min_volume below %s: %s' % (
-                    self.MIN_MIN_VOLUME, self.min_volume))
-                assert self.min_volume <= self.MAX_MIN_VOLUME, (
-                    'min_volume above %s: %s' % (
-                        self.MAX_MIN_VOLUME, self.min_volume))
-            if self.limit_volume is not None:
-                assert self.limit_volume >= self.MIN_LIMIT_VOLUME, (
-                    'limit_volume below %s: %s' % (
-                    self.MIN_LIMIT_VOLUME, self.limit_volume))
-                assert self.limit_volume <= self.MAX_LIMIT_VOLUME, (
-                    'limit_volume above %s: %s' % (
-                    self.MAX_LIMIT_VOLUME, self.limit_volume))
-            if None not in (self.min_volume, self.limit_volume):
-                difference = self.limit_volume - self.min_volume
-                assert (difference >= self.MIN_VOLUME_DIFFERENCE), (
-                    'volume range difference < %s: %s' %
-                    (self.MIN_VOLUME_DIFFERENCE, difference))
-                assert (self.limit_volume - self.min_volume <=
-                        self.MAX_VOLUME_DIFFERENCE), (
-                    'volume range difference > %s: %s' % (
-                    self.MAX_VOLUME_DIFFERENCE, difference))
-        except AssertionError as e:
-            raise ValidationError(e.message)
-
     def __str__(self):
         return '\n'.join(['Matrix quote'] +
                          ['%s: %s' % (name, getattr(self, name)) for name in
                           self.column_names()] + [''])
+
+
