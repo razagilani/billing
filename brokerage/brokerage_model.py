@@ -192,11 +192,13 @@ class Quote(AltitudeBase):
         if self.date_received is None:
             self.date_received = datetime.utcnow()
 
-        # pick a MatrixQuoteValidator class based on service type
+        # pick a MatrixQuoteValidator class based on service type (mandatory)
+        assert self.service_type is not None
         self._validator = MatrixQuoteValidator.get_instance(self.service_type)
 
     def validate(self):
-        """Sanity check to catch any values that are obviously wrong.
+        """Sanity check to catch any obviously-wrong values. Raise
+        ValidationError if there are any.
         """
         self._validator.validate(self)
 
