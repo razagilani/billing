@@ -15,6 +15,7 @@ from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
     SpreadsheetReader
 from brokerage.brokerage_model import MatrixQuote
 
+
 class GEEPriceQuote(object):
     """ Represents a price cell in the spreadsheet and contains
         the rules to find or calculate each of its properties """
