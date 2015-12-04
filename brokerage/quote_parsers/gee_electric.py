@@ -150,7 +150,6 @@ class GEEMatrixParser(QuoteParser):
             for price_row in xrange(start_row, self._reader.get_height(sheet)):
                 for price_col in xrange(self.FIRST_QUOTE_COL, self._reader.get_width(sheet)):
                     try:
-                        print sheet, price_row, price_col
                         price = self._reader.get(sheet, price_row, price_col, float)
                     except ValidationError:
                         continue
