@@ -121,9 +121,9 @@ class MatrixQuoteValidator(object):
 class ElectricValidator(MatrixQuoteValidator):
     """Specifically for electricity quotes.
     """
-    # $.03/kWh - $.25/kWh
+    # normal range is $.03/kWh - $.25/kWh
     MIN_PRICE = .01
-    MAX_PRICE = 2.0
+    MAX_PRICE = 1.0
 
     # TODO: replace with narrower electric-specific values
     MAX_MIN_VOLUME = 1e9
@@ -136,8 +136,8 @@ class ElectricValidator(MatrixQuoteValidator):
 class GasValidator(MatrixQuoteValidator):
     """Specifically for gas quotes.
     """
-    # $.25/therm - $1/therm
-    MIN_PRICE = .01
+    # normal range is $.25/therm - $1/therm
+    MIN_PRICE = .10
     MAX_PRICE = 2.0
 
     # TODO: replace with narrower gas-specific values
