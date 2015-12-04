@@ -90,6 +90,8 @@ class MatrixQuoteParsersTest(TestCase):
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
     GEE_FILE_PATH_1 = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
+    GEE_FILE_PATH_2 = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
+    GEE_FILE_PATH_3 = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -473,11 +475,22 @@ class MatrixQuoteParsersTest(TestCase):
     def test_gee_electric(self):
         parser = GEEMatrixParser()
 
+        with open(self.GEE_FILE_PATH_3, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+            parser.validate()
+            quotes3 = list(parser.extract_quotes())
+
+        with open(self.GEE_FILE_PATH_2, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+            parser.validate()
+            quotes2 = list(parser.extract_quotes())
+
         with open(self.GEE_FILE_PATH_1, 'rb') as spreadsheet:
             parser.load_file(spreadsheet)
+            parser.validate()
+            quotes = list(parser.extract_quotes())
 
-        parser.validate()
-        quotes = list(parser.extract_quotes())
+        self.assertEqual(len(quotes3) + len(quotes2) + len(quotes), 4)
 
         q = quotes[0]
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
