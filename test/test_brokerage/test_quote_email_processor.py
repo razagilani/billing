@@ -227,6 +227,48 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(2, self.quote_dao.commit.call_count)
 
+class TestQuoteDAO(TestCase):
+    @classmethod
+    def setUpClass(self):
+        create_tables()
+        init_model()
+        clear_db()
+
+    def setUp(self):
+        self.dao = QuoteDAO()
+        self.format1 = MatrixFormat()
+        self.format2 = MatrixFormat()
+        self.supplier = Supplier(name='Supplier',
+                                 matrix_formats=[self.format1, self.format2])
+        Session().add(self.supplier)
+
+    def tearDown(self):
+        clear_db()
+
+    def test_get_matrix_format_for_file(self):
+        # multiple matches with blank file name pattern
+        with self.assertRaises(UnknownFormatError):
+            self.dao.get_matrix_format_for_file(self.supplier, 'a')
+
+        # multiple matches: note that both "a" and None match "a"
+        self.format1.matrix_attachment_name = 'a'
+        with self.assertRaises(UnknownFormatError):
+            self.dao.get_matrix_format_for_file(self.supplier, 'a')
+
+        # exactly one match
+        self.format2.matrix_attachment_name = 'b'
+        self.assertEqual(self.format1, self.dao.get_matrix_format_for_file(
+            self.supplier, 'a'))
+
+        # no matches
+        with self.assertRaises(UnknownFormatError):
+            self.dao.get_matrix_format_for_file(self.supplier, 'c')
+
+        # multiple matches with non-blank file name patterns
+        self.format2.matrix_attachment_name = 'a'
+        with self.assertRaises(UnknownFormatError):
+            self.dao.get_matrix_format_for_file(self.supplier, 'a')
+
 
 class TestQuoteEmailProcessorWithDB(TestCase):
     """Integration test using a real email with QuoteEmailProcessor,
