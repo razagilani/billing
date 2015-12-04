@@ -136,6 +136,10 @@ class GEEMatrixParser(QuoteParser):
         self._valid_util = effective_date + datetime.timedelta(days=1)
 
         for sheet in self._reader.get_sheet_titles():
+            if not re.search(r'([\d]+K?-[\d]{3})', sheet):
+                # For now - only parse sheets that have volume ranges
+                continue
+
             start_row = self.ASSUMED_PRICE_ROW_START
             for test_row in xrange(0, self._reader.get_height(sheet)):
                 cell_val= self._reader.get(sheet, test_row, self.ZONE_COL, (basestring, type(None)))

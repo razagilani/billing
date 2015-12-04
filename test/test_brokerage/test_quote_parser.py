@@ -481,7 +481,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         q = quotes[0]
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
-        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q.start_until)
         self.assertEqual(6, q.term_months)
         self.assertEqual(0.08381, q.price)
 
