@@ -28,6 +28,9 @@ def _assert_match(regex, string):
 
 
 class MatrixQuoteValidator(object):
+    """Checks MatrixQuotes for any obviously-wrong values, to prevent bad
+    quotes from being stored.
+    """
     __metaclass__ = ABCMeta
 
     MIN_START_FROM = datetime(2000, 1, 1)
@@ -35,9 +38,8 @@ class MatrixQuoteValidator(object):
     MIN_TERM_MONTHS = 1
     MAX_TERM_MONTHS = 48
 
-    MIN_MIN_VOLUME = 0
-
     # subclasses must override these constants to validate volume ranges
+    MIN_MIN_VOLUME = 0
     MAX_MIN_VOLUME = None
     MIN_LIMIT_VOLUME = None
     MAX_LIMIT_VOLUME = None
@@ -45,18 +47,24 @@ class MatrixQuoteValidator(object):
     MAX_VOLUME_DIFFERENCE = None
 
     # subclasses must override these to validate prices
-    MIN_PRICE = None
+    MIN_PRICE = 0
     MAX_PRICE = None
 
     @classmethod
     def get_instance(cls, service_type):
+        """Return an instance of MatrixQuoteValidator with a concrete class
+        chosen according to service_type.
+        :param service_type: string: or "electric" or "gas"
+        """
         return {
             ELECTRIC: ElectricValidator,
             GAS: GasValidator,
         }[service_type]()
 
     def validate(self, quote):
-        """Sanity check to catch any values that are obviously wrong.
+        """Raise ValidationError if there are any wrong values in the given
+        quote.
+        :param quote: MatrixQuote
         """
         conditions = {
             quote.start_from < quote.start_until: 'start_from >= start_until',
@@ -81,7 +89,7 @@ class MatrixQuoteValidator(object):
             raise ValidationError('. '.join(all_errors))
 
         # volume-range validation
-        # TODO: combine with above
+        # TODO: combine this code with above
         try:
             if quote.min_volume is not None:
                 assert quote.min_volume >= self.MIN_MIN_VOLUME, (
@@ -111,7 +119,8 @@ class MatrixQuoteValidator(object):
 
 
 class ElectricValidator(MatrixQuoteValidator):
-
+    """Specifically for electricity quotes.
+    """
     # $.03/kWh - $.25/kWh
     MIN_PRICE = .01
     MAX_PRICE = 2.0
@@ -125,7 +134,8 @@ class ElectricValidator(MatrixQuoteValidator):
 
 
 class GasValidator(MatrixQuoteValidator):
-
+    """Specifically for gas quotes.
+    """
     # $.25/therm - $1/therm
     MIN_PRICE = .01
     MAX_PRICE = 2.0
