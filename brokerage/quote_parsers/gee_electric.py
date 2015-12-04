@@ -93,7 +93,9 @@ class GEEPriceQuote(object):
                 pass
         else:
             # After going through MAX_SEARCH_CNT cells - could not find a date.
-            raise ValueError('Cannot find start date for quote')
+            raise ValueError('Cannot find start date for quote (%s, %d, %d)' % (
+                self.sheet, self.row, self.col
+            ))
 
     def fetch_volume_range(self):
         # This is mostly located in the sheet title.
@@ -113,14 +115,16 @@ class GEEMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xlsx
     EXPECTED_ENERGY_UNIT = unit_registry.kWh
 
+    # Expected rows
     ZONE_COL = 'A'
     RATE_SCH_COL = 'B'
     TERM_COL = 'C'
     START_DATE_LBL_COL = 'D'
     FIRST_QUOTE_COL = 3
     EFFECTIVE_DATE_COL = 'F'
-    EFFECTIVE_DATE_ROW = 2
 
+    # Expected Cols
+    EFFECTIVE_DATE_ROW = 2
     ASSUMED_PRICE_ROW_START = 6
 
     def _validate(self):
@@ -143,11 +147,13 @@ class GEEMatrixParser(QuoteParser):
             start_row = self.ASSUMED_PRICE_ROW_START
             for test_row in xrange(0, self._reader.get_height(sheet)):
                 cell_val= self._reader.get(sheet, test_row, self.ZONE_COL, (basestring, type(None)))
-                if cell_val == 'Zone':
+                print cell_val
+                if cell_val and 'Zone' in cell_val:
                     start_row = test_row + 2
                     break
 
             for price_row in xrange(start_row, self._reader.get_height(sheet)):
+                print "START ROW", sheet, start_row
                 for price_col in xrange(self.FIRST_QUOTE_COL, self._reader.get_width(sheet)):
                     try:
                         price = self._reader.get(sheet, price_row, price_col, float)
