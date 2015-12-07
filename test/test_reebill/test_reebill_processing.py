@@ -1672,23 +1672,22 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
             'gas')
         self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
 
+
+        ba = Address(addressee='Test addressee', street='Test street',
+            city='Test city', state='VA', postal_code='20001')
+        sa = Address(addressee='Test addressee', street='Test street',
+            city='Test city', state='VA', postal_code='20001')
+
+        self.customer.set_service_address(sa)
+        self.customer.set_billing_address(ba)
+
         # create 2 reebills
         reebill_1 = self.reebill_processor.roll_reebill(
             self.account, start_date=date(2000, 1, 1))
         reebill_2 = self.reebill_processor.roll_reebill(self.account)
 
-        billing_address = self.reebill_processor.\
-            update_reebill_customer_address(
-            reebill_1.reebill_customer, 'Test addressee', 'Test street',
-            'Test city', 'VA', '20001', 'billing_address')
-        service_address = self.reebill_processor.\
-            update_reebill_customer_address(
-            reebill_1.reebill_customer, 'Test addressee', 'Test street',
-            'Test city', 'VA', '20001', 'service_address')
-        self.assertEqual(reebill_1.service_address, service_address)
-        self.assertEqual(reebill_2.service_address, service_address)
-        self.assertEqual(reebill_1.billing_address, billing_address)
-        self.assertEqual(reebill_2.billing_address, billing_address)
+        self.assertIs(self.customer.service_address, sa)
+        self.assertIs(self.customer.billing_address, ba)
 
     def test_payment_application(self):
         """Test that payments are applied to reebills according their "date
