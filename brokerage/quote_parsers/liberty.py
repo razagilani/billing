@@ -4,7 +4,7 @@ from itertools import chain
 from tablib import formats
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_equal
-
+from core.model.model import ELECTRIC
 from util.dateutils import date_to_datetime, parse_date
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -80,7 +80,7 @@ class SuperSaverPriceCell(PriceQuoteCell):
                 min_volume=min_vol, limit_volume=limit_vol,
                 purchase_of_receivables=False,
                 rate_class_alias=self.rate_class_alias, price=price,
-                service_type='electric')
+                service_type=ELECTRIC)
             quote.rate_class_id = rate_class_id
             yield quote
 
@@ -146,7 +146,8 @@ class NormalPriceCell(PriceQuoteCell):
                 valid_until=self.matrix_parser._valid_until,
                 min_volume=min_vol, limit_volume=limit_vol,
                 purchase_of_receivables=False,
-                rate_class_alias=self.rate_class_alias, price=price)
+                rate_class_alias=self.rate_class_alias, price=price,
+                service_type=ELECTRIC)
             quote.rate_class_id = rate_class_id
             yield quote
 
