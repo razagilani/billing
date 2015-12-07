@@ -620,15 +620,13 @@ class ReebillsResource(RESTResource):
         r = self.state_db.get_reebill_by_id(int(params['reebill_id']))
 
         service_address = Address(
-                r.reebill_customer, params['sa_addressee'],
-                params['sa_street'], params['sa_city'],
-                params['sa_state'], params['sa_postal_code'],
-                'service_address')
+            addressee=params['sa_addressee'],
+            street=params['sa_street'], city=params['sa_city'],
+            state=params['sa_state'], postal_code=params['sa_postal_code'])
         billing_address = Address(
-                r.reebill_customer, params['ba_addressee'],
-                params['ba_street'], params['ba_city'],
-                params['ba_state'], params['ba_postal_code'],
-                'billing_address')
+            addressee=params['ba_addressee'],
+            street=params['ba_street'], city=params['ba_city'],
+            state=params['ba_state'], postal_code=params['ba_postal_code'])
         r.reebill_customer.set_service_address(service_address)
         r.reebill_customer.set_billing_address(billing_address)
 
