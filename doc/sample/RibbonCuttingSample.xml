@@ -1,0 +1,709 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill id="2" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="bill">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>We the People</ub:addressee>
+				<ub:street>United States of America</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20319</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>The White House</ub:addressee>
+				<ub:street>1600 Pennsylvania Ave NW</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20500</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-07-01</ub:billperiodbegin>
+		<ub:billperiodend>2010-07-31</ub:billperiodend>
+		<ub:priorbalance>2206873312.01</ub:priorbalance>
+		<ub:paymentreceived>2206873312.01</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
+		<ub:balanceforward>0.00</ub:balanceforward>
+		<ub:hypotheticalecharges>4599528325.76</ub:hypotheticalecharges>
+		<ub:actualecharges>1675269842.08</ub:actualecharges>
+		<ub:recharges>1900768014.39</ub:recharges>
+		<ub:resavings>1023490469.28</ub:resavings>
+		<ub:currentcharges>1900768014.39</ub:currentcharges>
+		<ub:totaldue>1900768014.39</ub:totaldue>
+		<ub:duedate>2010-08-15</ub:duedate>
+		<ub:issued>2010-08-02</ub:issued>
+		<ub:message>Let's Save America a Billion Dollars a Month!</ub:message>
+	</ub:rebill>
+	<ub:utilbill service="Gas">
+		<ub:car>
+			<ub:accountnumber/>
+			<ub:serviceaddress>
+				<ub:addressee>Business Name</ub:addressee>
+				<ub:street>2301 Washington Ave</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Business Owner</ub:addressee>
+				<ub:street>33 MountainTop Way</ub:street>
+				<ub:city>Potomac</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20845</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-07-01</ub:billperiodbegin>
+		<ub:billperiodend>2010-07-31</ub:billperiodend>
+		<ub:hypotheticalecharges>1860435000.00</ub:hypotheticalecharges>
+		<ub:actualecharges>845883000.00</ub:actualecharges>
+		<ub:revalue>1014552000.00</ub:revalue>
+		<ub:recharges>862369200.00</ub:recharges>
+		<ub:resavings>152182800.00</ub:resavings>
+	</ub:utilbill>
+	<ub:utilbill service="Electric">
+		<ub:car>
+			<ub:accountnumber/>
+			<ub:serviceaddress>
+				<ub:addressee>Business Name</ub:addressee>
+				<ub:street>2301 Washington Ave</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Business Owner</ub:addressee>
+				<ub:street>33 MountainTop Way</ub:street>
+				<ub:city>Potomac</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20845</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-07-01</ub:billperiodbegin>
+		<ub:billperiodend>2010-07-31</ub:billperiodend>
+		<ub:hypotheticalecharges>2739093325.76</ub:hypotheticalecharges>
+		<ub:actualecharges>829386842.08</ub:actualecharges>
+		<ub:revalue>1909706483.68</ub:revalue>
+		<ub:recharges>1623250511.12</ub:recharges>
+		<ub:resavings>286455972.55</ub:resavings>
+	</ub:utilbill>
+	<ub:details service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">1080000000</ub:quantity>
+					<ub:rate units="dollars">0.25</ub:rate>
+					<ub:total>270000000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>391500000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">661500000.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>33075000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>County Energy Tax</ub:description>
+					<ub:quantity units="Therms">1080000000</ub:quantity>
+					<ub:rate units="percent">4.0</ub:rate>
+					<ub:total>43200000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>737775000.00</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">324000000</ub:quantity>
+					<ub:rate units="dollars">0.25</ub:rate>
+					<ub:total>81000000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>391500000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">472500000.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>23625000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>County Energy Tax</ub:description>
+					<ub:quantity units="Therms">324000000</ub:quantity>
+					<ub:rate units="percent">4.0</ub:rate>
+					<ub:total>12960000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>509085000.00</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">1080000000</ub:quantity>
+					<ub:rate units="dollars">.99</ub:rate>
+					<ub:total>1069200000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Sales Tax</ub:description>
+					<ub:quantity units="dollars">1069200000.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>53460000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>1122660000.00</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">324000000</ub:quantity>
+					<ub:rate units="dollars">.99</ub:rate>
+					<ub:total>320760000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Sales Tax</ub:description>
+					<ub:quantity units="dollars">320760000.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>16038000.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>336798000.00</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="hypothetical">1860435000.00</ub:total>
+		<ub:total type="actual">845883000.00</ub:total>
+	</ub:details>
+	<ub:details service="Electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+			<ub:rateineffect>Winter</ub:rateineffect>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>8910278.58</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On-Peak Energy</ub:description>
+					<ub:quantity units="kWh">8438400000</ub:quantity>
+					<ub:rate units="dollars">0.0111290</ub:rate>
+					<ub:total>93910953.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Int-Peak Energy</ub:description>
+					<ub:quantity units="kWh">7383600000</ub:quantity>
+					<ub:rate units="dollars">0.0111300</ub:rate>
+					<ub:total>82179468.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">5274000000</ub:quantity>
+					<ub:rate units="dollars">0.0111293</ub:rate>
+					<ub:total>58695928.20</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="kWh">21096000000</ub:quantity>
+					<ub:rate units="dollars">0.0006200</ub:rate>
+					<ub:total>13079520.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Universal Service Charge</ub:description>
+					<ub:total>5059642.47</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Environmental surcharge</ub:description>
+					<ub:quantity units="kWh">21096000000</ub:quantity>
+					<ub:rate units="dollars">0.0001550</ub:rate>
+					<ub:total>3269880.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>County Energy</ub:description>
+					<ub:quantity units="kWh">21096000000</ub:quantity>
+					<ub:rate units="dollars">0.0080900</ub:rate>
+					<ub:total>170666640.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">435772310.25</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>21788615.51</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total> 457560925.76</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>8910278.58</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On-Peak Energy</ub:description>
+					<ub:quantity units="kWh">2531520000</ub:quantity>
+					<ub:rate units="dollars">0.0111290</ub:rate>
+					<ub:total>28173286.08</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Int-Peak Energy</ub:description>
+					<ub:quantity units="kWh">2215080000</ub:quantity>
+					<ub:rate units="dollars">0.0111300</ub:rate>
+					<ub:total>24653840.40</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">1582200000</ub:quantity>
+					<ub:rate units="dollars">0.0111293</ub:rate>
+					<ub:total>17608778.46</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="kWh">6328800000</ub:quantity>
+					<ub:rate units="dollars">0.0006200</ub:rate>
+					<ub:total>3923856.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Universal Service Charge</ub:description>
+					<ub:total>5059642.47</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>State Environmental surcharge</ub:description>
+					<ub:quantity units="kWh">6328800000</ub:quantity>
+					<ub:rate units="dollars">0.0001550</ub:rate>
+					<ub:total>980964.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>County Energy</ub:description>
+					<ub:quantity units="kWh">6328800000</ub:quantity>
+					<ub:rate units="dollars">0.0080900</ub:rate>
+					<ub:total>51199992.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">88329681.99</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>4416484.09</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>144927122.08</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Total Use</ub:description>
+					<ub:quantity units="kWh">21096000000</ub:quantity>
+					<ub:rate units="dollars">0.103</ub:rate>
+					<ub:total>2172888000.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">2172888000.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>108644400.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>2281532400.00</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Total Use</ub:description>
+					<ub:quantity units="kWh">6328800000</ub:quantity>
+					<ub:rate units="dollars">0.103</ub:rate>
+					<ub:total>651866400.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">651866400.00</ub:quantity>
+					<ub:rate units="percent">5.0</ub:rate>
+					<ub:total>32593320.00</ub:total>
+					<ub:processingnote/>
+				</ub:charge>
+				<ub:total>684459720.00</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="hypothetical">2739093325.76</ub:total>
+		<ub:total type="actual">829386842.08</ub:total>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>1781.5</ub:quantity>
+		</ub:usage>
+		<ub:total>1781.5</ub:total>
+	</ub:billableusage>
+	<ub:billableusage service="Electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total kWh</ub:description>
+			<ub:quantity>29200</ub:quantity>
+		</ub:usage>
+		<ub:total>29200</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>T37110</ub:identifier>
+			<ub:register shadow="true">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>756000000</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>324000000</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:measuredusage service="Electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>475T</ub:identifier>
+			<ub:register shadow="true">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>14767200000</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>6328800000</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Off Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>07:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>3691800000</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Off Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>07:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>1582200000</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Intermediate Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>08:00:00</ub:fromhour>
+						<ub:tohour>11:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>20:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>5168520000</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Intermediate Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>08:00:00</ub:fromhour>
+						<ub:tohour>11:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>20:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>2215080000</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>On Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>12:00:00</ub:fromhour>
+						<ub:tohour>19:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>5906880000</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>On Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>12:00:00</ub:fromhour>
+						<ub:tohour>19:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Independence Day">2010-07-04</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>2531520000</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>72000000</ub:conventionalconsumed>
+		<ub:renewableconsumed>108000000</ub:renewableconsumed>
+		<ub:renewableutilization>60</ub:renewableutilization>
+		<ub:conventionalutilization>40</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>24228000000</ub:co2offset>
+		<ub:totalsavings>3947748952.95</ub:totalsavings>
+		<ub:totalrenewableconsumed>1588300000</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>12.5</ub:totaltrees>
+		<ub:totalco2offset>305407400000</ub:totalco2offset>
+		<ub:consumptiontrend>
+			<ub:period month="Jan" quantity="1600"/>
+			<ub:period month="Feb" quantity="1850"/>
+			<ub:period month="Mar" quantity="2100"/>
+			<ub:period month="Apr" quantity="2000"/>
+			<ub:period month="May" quantity="2150"/>
+			<ub:period month="Jun" quantity="2200"/>
+			<ub:period month="Jul" quantity="2100"/>
+			<ub:period month="Aug" quantity="2000"/>
+			<ub:period month="Sep" quantity="1900"/>
+			<ub:period month="Oct" quantity="1700"/>
+			<ub:period month="Nov" quantity="1500"/>
+			<ub:period month="Dec" quantity="1500"/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:bill>
