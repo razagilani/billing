@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_true
 
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -14,6 +16,7 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     electricity quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -29,15 +32,15 @@ class MajorEnergyElectricSheetParser(QuoteParser):
 
     SHEET = 'Commercial E'
     EXPECTED_CELLS = [
-        (SHEET, 3, 'B', 'Effective:'),
-        (SHEET, 5, 'B', 'Start'),
-        (SHEET, 5, 'C', 'State'),
-        (SHEET, 5, 'D', 'Utility'),
-        (SHEET, 5, 'E', 'Zone'),
-        (SHEET, 5, 'F', 'Usage'),
-        (SHEET, 5, 'G', 'Agent Fee'),
-        (SHEET, 11, 'B', 'GRT/SUT/POR Included where applicable'),
+        (SHEET, 11, 'B',
+         'Transfer Rates below include all applicable fees \(SUT/GRT/POR\)\s+To '
+         'apply these fees to your agent fee please use calculator above'),
         (SHEET, 13, 'G', 'Annual KWH Usage Tier'),
+        (SHEET, HEADER_ROW, 'B', 'Start'),
+        (SHEET, HEADER_ROW, 'C', 'Term'),
+        (SHEET, HEADER_ROW, 'D', 'State'),
+        (SHEET, HEADER_ROW, 'E', 'Utility'),
+        (SHEET, HEADER_ROW, 'F', 'Zone'),
     ]
 
     # spreadsheet says "kWh usage tier" but the numbers are small, so they
@@ -67,11 +70,11 @@ class MajorEnergyElectricSheetParser(QuoteParser):
                                        basestring)
             state = self._reader.get(self.SHEET, row, self.STATE_COL,
                                      basestring)
-            rate_class_alias_parts = ['electric', state, utility]
             zone = self._reader.get(self.SHEET, row, self.ZONE_COL,
                                     (basestring, type(None)))
-            if zone is not None:
-                rate_class_alias_parts.append(zone)
+            if zone is None:
+                zone = ''
+            rate_class_alias_parts = ['electric', state, utility, zone]
             rate_class_alias = '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
@@ -89,7 +92,8 @@ class MajorEnergyElectricSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='electric')
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -102,24 +106,26 @@ class MajorEnergyGasSheetParser(QuoteParser):
     gas quotes.
     """
     NAME = ''
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
-    HEADER_ROW = 7
-    QUOTE_START_ROW = 8
+    HEADER_ROW = 13
+    QUOTE_START_ROW = 14
     START_COL = 'B'
     STATE_COL = 'C'
     UTILITY_COL = 'D'
     PRICE_START_COL = 'E'
-    PRICE_END_COL = 'G'
+    PRICE_END_COL = 'H'
 
     SHEET = 'NG R & SC'
     EXPECTED_CELLS = [
-        (SHEET, 3, 'B', 'Effective:'),
-        (SHEET, 7, 'B', 'Start'),
-        (SHEET, 7, 'C', 'State'),
-        (SHEET, 7, 'D', 'Utility'),
-        (SHEET, 5, 'B', 'GRT/SUT/POR Included where applicable'),
+        (SHEET, HEADER_ROW, 'B', 'Start'),
+        (SHEET, HEADER_ROW, 'C', 'State'),
+        (SHEET, HEADER_ROW, 'D', 'Utility'),
+        (SHEET, 11, 'B', ('Transfer Rates below include all applicable fees '
+                         '\(SUT/GRT/POR\)\s+To apply these fees to your agent '
+                         'fee please use calculator above'))
     ]
 
     date_getter = StartEndCellDateGetter(SHEET, 3, 'C', 3, 'E', None)
@@ -129,7 +135,14 @@ class MajorEnergyGasSheetParser(QuoteParser):
                          self._reader.get_height(self.SHEET) + 1):
             # todo use time zone here
             start_from = self._reader.get(self.SHEET, row, self.START_COL,
-                                          datetime)
+                                          (datetime, basestring))
+            # one example of the file repeated the column headers in the
+            # first row of quotes, instead of actual quote data. probably a
+            # mistake that they'll fix later. handle it by skipping the row.
+            if start_from == 'Start':
+                continue
+            else:
+                _assert_true(isinstance(start_from, datetime))
             start_until = date_to_datetime((Month(start_from) + 1).first)
             utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
                                        basestring)
@@ -146,10 +159,11 @@ class MajorEnergyGasSheetParser(QuoteParser):
                 term_months = self._reader.get_matches(
                     self.SHEET, self.HEADER_ROW, col, '(\d+) Months', int)
                 price = self._reader.get(self.SHEET, row, col,
-                                         (int, float, type(None)))
-                # skip blank cells
-                if price is None:
+                                         (int, float, type(None), basestring))
+                # skip blank cells (may be blank or None)
+                if price in (None, ''):
                     continue
+                _assert_true(isinstance(price, (float, int)))
 
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
@@ -158,7 +172,8 @@ class MajorEnergyGasSheetParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=None, limit_volume=None,
                         purchase_of_receivables=False,
-                        rate_class_alias=rate_class_alias, price=price)
+                        rate_class_alias=rate_class_alias, price=price,
+                        service_type='gas')
                     # todo: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -176,7 +191,7 @@ class MajorEnergyMatrixParser(QuoteParser):
     classes that should be eliminated. But it works well enough.
     """
     NAME = 'majorenergy'
-
+    READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
 
     # only validation that applies to the entire file goes in this class.

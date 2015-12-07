@@ -3,7 +3,9 @@ import re
 
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, SpreadsheetReader, StartEndCellDateGetter
+from brokerage.quote_parser import QuoteParser, SpreadsheetReader, \
+    StartEndCellDateGetter
+from brokerage.validation import _assert_true
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -15,6 +17,7 @@ class SFEMatrixParser(QuoteParser):
     """Parser for SFE spreadsheet.
     """
     NAME = 'sfe'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xlsx
 
@@ -55,6 +58,14 @@ class SFEMatrixParser(QuoteParser):
 
     date_getter = StartEndCellDateGetter(0, 3, 'D', 4, 'D', None)
 
+    # service type names used by SFE in the spreadsheet
+    _ELECTRIC = 'Elec'
+    _GAS = 'Gas'
+    _SERVICE_NAMES = [_ELECTRIC, _GAS]
+
+    # special constant for determining volume range units by context
+    USE_LAST_HIGH_UNIT_FACTOR = object()
+
     def __init__(self):
         super(SFEMatrixParser, self).__init__()
 
@@ -63,18 +74,23 @@ class SFEMatrixParser(QuoteParser):
         # but the base unit itself could be either therms or kWh depending on
         # the service type (gas or electric). there is a separate factor for
         # the low and high values because in some cases they have different
-        # effective units. (for example, "500-1M" actually means 500 * 1000
-        # to 1 million kWh.)
+        # effective units.
         # K adds an extra factor of 1000 to the unit; M adds an extra 1 million.
+        # and as an added complication, in rows where the high value has an "M",
+        # the current row's low unit factor is the same as the previous row's
+        # high unit factor (which means this must not occur in the first row).
+        # for example, "500" in "500-1M" means 5e5 when preceded by "150-500K",
+        # but "1" in "1-2M" means 1e6 when preceded by "500-1M".
         self._volume_range_patterns = [
             # regular expression, low unit factor, high unit factor
             ('(?P<low>\d+)-(?P<high>\d+)K', 1000, 1000),
-            ('(?P<low>\d+)-(?P<high>\d+)M', 1000, 1e6),
+            ('(?P<low>\d+)-(?P<high>\d+)M',
+             # special value means context-dependent factor
+             self.USE_LAST_HIGH_UNIT_FACTOR, 1e6),
             ('(?P<low>\d+)K\+', 1000, None),
             ('(?P<low>\d+)M\+', 1e6, None),
         ]
 
-        self._service_names = ['Elec', 'Gas']
         self._target_units = {'Elec': unit_registry.kWh,
                               'Gas': unit_registry.therm}
 
@@ -83,11 +99,11 @@ class SFEMatrixParser(QuoteParser):
             self._reader.get_matches(0, self.HEADER_ROW, col, '(\d+) mth', int)
             for col in self.TERM_COL_RANGE]
 
-        for row in xrange(self.HEADER_ROW + 1, self._reader.get_height(0)):
+        for row in xrange(self.HEADER_ROW + 1, self._reader.get_height(0) + 1):
             state = self._reader.get(0, row, self.STATE_COL, basestring)
             service_type = self._reader.get(0, row, self.SERVICE_TYPE_COL,
                                             basestring)
-            _assert_true(service_type in self._service_names)
+            _assert_true(service_type in self._SERVICE_NAMES)
             start_from = self._reader.get(0, row, self.START_DATE_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
@@ -108,6 +124,11 @@ class SFEMatrixParser(QuoteParser):
                         0, row, self.VOLUME_RANGE_COL, regex,
                         expected_unit=target_unit,
                         target_unit=target_unit)
+                    # note that 'last_unit_factor' will not exist if this is
+                    # the first row; it gets initialized at the end of the
+                    # row loop
+                    if low_unit_factor is self.USE_LAST_HIGH_UNIT_FACTOR:
+                        low_unit_factor = last_unit_factor
                     if min_vol is not None:
                         min_vol *= low_unit_factor
                     if limit_vol is not None:
@@ -130,7 +151,13 @@ class SFEMatrixParser(QuoteParser):
                 elif isinstance(price, time):
                     continue
                 elif isinstance(price, float):
-                    price /= 100
+                    # rate class column shows the price unit for gas quotes
+                    # priced in dollars. (if unit is not shown, assume it's
+                    # cents.)
+                    if not (rate_class.strip().endswith(
+                            '($/therm)') or rate_class.strip().endswith(
+                        '($/ccf)')):
+                        price /= 100.
                 else:
                     raise ValidationError(
                         'Price at (%s, %s) has unexpected type %s: "%s"' % (
@@ -143,10 +170,17 @@ class SFEMatrixParser(QuoteParser):
                         valid_until=self._valid_until, min_volume=min_vol,
                         limit_volume=limit_vol,
                         rate_class_alias=rate_class_alias,
-                        purchase_of_receivables=False, price=price)
+                        purchase_of_receivables=False, price=price,
+                        service_type={
+                            self._GAS: 'gas',
+                            self._ELECTRIC: 'electric'
+                        }[service_type])
+                    quote.file_reference = (row, col)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
                         quote.rate_class_id = rate_class_id
                     yield quote
+
+            last_unit_factor = high_unit_factor
 

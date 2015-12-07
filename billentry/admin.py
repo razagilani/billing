@@ -13,6 +13,8 @@ from flask.ext.admin import AdminIndexView, expose, Admin
 from flask.ext import login
 from flask.ext.admin.contrib.sqla import ModelView
 from flask.ext.principal import Permission, RoleNeed
+
+from brokerage.brokerage_model import MatrixFormat
 from core.altitude import AltitudeSupplier
 from core.model import Supplier, Utility, RateClass, UtilityAccount, Session, \
     SupplyGroup
@@ -79,9 +81,7 @@ class SupplierModelView(LoginModelView):
     form_columns = (
         'name',
         'matrix_email_recipient',
-        'matrix_attachment_name',
     )
-
     def __init__(self, session, **kwargs):
         super(SupplierModelView, self).__init__(Supplier, session, **kwargs)
 
@@ -143,6 +143,7 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Utility, Session))
     admin.add_view(SupplierModelView(Session))
+    admin.add_view(LoginModelView(MatrixFormat, Session))
     admin.add_view(LoginModelView(AltitudeSupplier, Session))
     admin.add_view(LoginModelView(SupplyGroup, Session))
     admin.add_view(RateClassModelView(RateClass, Session))
