@@ -1,4 +1,5 @@
 from tablib import formats
+from brokerage.spreadsheet_reader import SpreadsheetReader
 
 from util.dateutils import date_to_datetime, parse_datetime
 from util.monthmath import Month
@@ -12,6 +13,7 @@ class ChampionMatrixParser(QuoteParser):
     """ Parser for Champion Matrix Rates
     """
     NAME = 'champion'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 
@@ -92,7 +94,7 @@ class ChampionMatrixParser(QuoteParser):
                             min_volume=min_volume,
                             limit_volume=limit_volume,
                             purchase_of_receivables=False, price=price,
-                            rate_class_alias=rate_class_alias)
+                            rate_class_alias=rate_class_alias, service_type='electric')
                         # TODO: rate_class_id should be determined automatically
                         # by setting rate_class
                         if rate_class_id is not None:

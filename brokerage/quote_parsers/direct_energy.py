@@ -1,7 +1,9 @@
 from tablib import formats
 
-from brokerage.quote_parser import _assert_true, QuoteParser, \
-    excel_number_to_datetime, SimpleCellDateGetter
+from brokerage.quote_parser import QuoteParser, excel_number_to_datetime, \
+    SimpleCellDateGetter
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_true
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -12,6 +14,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
     NAME = 'directenergy'
+    READER_CLASS = SpreadsheetReader
 
     FILE_FORMAT = formats.xls
 
@@ -80,7 +83,7 @@ class DirectEnergyMatrixParser(QuoteParser):
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
-                        price=price)
+                        price=price, service_type='electric')
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

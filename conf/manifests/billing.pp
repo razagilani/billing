@@ -12,7 +12,6 @@ $env = $environment
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
-    dropbox     => 'true',
     username   => $username,
 }
 
@@ -136,56 +135,65 @@ file { $receive_matrix_email_script:
 }
 
 # email aliases for receiving matrix quote emails
-mailalias { 'matrix-aep':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-amerigreen':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-champion':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-constellation':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-directenergy':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-entrust':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-liberty':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-majorenergy':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-sfe':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
-}
-mailalias { 'matrix-usge':
-    ensure    => present,
-    recipient => "|${receive_matrix_email_script}"
+class base::allalliases {
+    mailalias { 'matrix-aep':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-amerigreen':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-champion':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-constellation':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-directenergy':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-entrust':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-liberty':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-majorenergy':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-sfe':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-usge':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
+    mailalias { 'matrix-usge-electric':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
 }
 # Puppet doesn't rebuild the mail aliases database by default
 # (we could use "subscribe" and "refreshonly" but it would
 # require listing every mail alias here)
 exec { newaliases:
     path => ["/usr/bin", "/usr/sbin"],
-    require => Package['postfix']
+    require => Package['postfix'],
+    # TODO: this needs to require all the aliases above, because if it gets
+    # run before all the aliases are in /etc/aliases, aliases.db won't get
+    # updated. but we don't know how to use Puppet well enough.
 }
 
 rabbit_mq::rabbit_mq_server {'rabbit_mq_server':
-    cluster => "rabbit@portal-${env}.nextility.net"
+    cluster => "rabbit@acquisitor-${env}.nextility.net"
 }
 rabbit_mq::base_resource_configuration {$env:
     env => $env

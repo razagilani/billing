@@ -179,7 +179,7 @@ class _Base(object):
 Base = declarative_base(cls=_Base)
 AltitudeBase = declarative_base(cls=_Base)
 
-_schema_revision = '127c3e14d9d4'
+_schema_revision = '4f589e8d4cab'
 
 
 def check_schema_revision(schema_revision=None):
@@ -286,7 +286,6 @@ class Supplier(Base):
     # expression because file names can contain the current date or other
     # varying text.
     matrix_email_recipient = Column(String, unique=True)
-    matrix_attachment_name = Column(String)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")

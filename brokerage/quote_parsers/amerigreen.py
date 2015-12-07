@@ -3,14 +3,17 @@ from datetime import timedelta
 from tablib import formats
 
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import _assert_true, QuoteParser, FileNameDateGetter
+from brokerage.quote_parser import QuoteParser, FileNameDateGetter
 from brokerage.quote_parser import excel_number_to_datetime
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.validation import _assert_true
 
 
 class AmerigreenMatrixParser(QuoteParser):
     """Parser for Amerigreen spreadsheet.
     """
     NAME = 'amerigreen'
+    READER_CLASS = SpreadsheetReader
 
     # original spreadsheet is in "xlsx" format. but reading it using
     # tablib.formats.xls gives this error from openpyxl:
@@ -95,7 +98,8 @@ class AmerigreenMatrixParser(QuoteParser):
                     valid_until=self._valid_until,
                     min_volume=min_volume, limit_volume=limit_volume,
                     rate_class_alias=rate_class_alias,
-                    purchase_of_receivables=False, price=price)
+                    purchase_of_receivables=False, price=price,
+                    service_type='electric')
                 # TODO: rate_class_id should be determined automatically
                 # by setting rate_class
                 if rate_class_id is not None:
