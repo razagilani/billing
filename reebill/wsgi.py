@@ -618,7 +618,7 @@ class ReebillsResource(RESTResource):
     def update_addresses(self, **params):
         params = cherrypy.request.params
         r = self.state_db.get_reebill_by_id(int(params['reebill_id']))
-        
+
         service_address = Address(
                 r.reebill_customer, params['sa_addressee'],
                 params['sa_street'], params['sa_city'],
