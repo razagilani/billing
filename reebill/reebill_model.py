@@ -385,6 +385,12 @@ class ReeBill(Base):
             'actual_total': self.get_total_actual_charges(),
             'billing_address': address_to_dict(self.billing_address),
             'service_address': address_to_dict(self.service_address),
+            'customer_billing_address': address_to_dict(self.
+                                                        reebill_customer.
+                                                        billing_address),
+            'customer_service_address': address_to_dict(self.
+                                                        reebill_customer.
+                                                        service_address),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': self.utilbill.get_total_charges(),
