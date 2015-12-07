@@ -16,8 +16,9 @@ env.roledefs.update({
     'billing-prod': ['billing-prod'],
     'billing-stage': ['billing-stage'],
     'billing-dev': ['billing-dev'],
-    'billingworker-dev': ['billingworker1-dev'],
-    'billingworker-stage': ['billingworker1-stage', 'billingworker2-stage'],
+    'worker-dev': ['billingworker1-dev'],
+    'worker-stage': ['billingworker1-stage', 'billingworker2-stage'],
+    'worker-prod': ['billingworker1-prod'],
 })
 
 # Target environments, each environment specifies where code is deployed, the os user, config files, and more.
@@ -43,7 +44,7 @@ common.deployment_params['configs'] = {
         ],
         "puppet_manifest": 'conf/manifests/billing.pp'
     },
-    "extraction-worker-dev": {
+    "worker-dev": {
         "deploy_version":"4", 
         "os_user":"billing", 
         "os_group":"billing",
@@ -57,11 +58,11 @@ common.deployment_params['configs'] = {
             ("mq/conf/config-template-dev.yml", "/var/local/billing/billing/mq/config.yml"),
         ],
         "services":[
-            'billing-dev-worker'
+            'billing-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/worker.pp'
     },
-    "extraction-worker-stage": {
+    "worker-stage": {
         "deploy_version":"4", 
         "os_user":"billing", 
         "os_group":"billing",
@@ -77,7 +78,7 @@ common.deployment_params['configs'] = {
         "services":[
             'billing-stage-worker'
         ],
-        "puppet_manifest": 'conf/manifests/billing.pp'
+        "puppet_manifest": 'conf/manifests/worker.pp'
     },
     "stage": {
         "deploy_version":"4", 
@@ -122,10 +123,17 @@ common.deployment_params['configs'] = {
 @fabtask
 def create_pgpass_file():
     execute(common.prompt_config)
-    env_cfg = common.deployment_params['configs'][common.deployment_params['selected_env']]
     env_name = common.deployment_params['selected_env']
+    # pick a config file path based on which environment is being deployed to.
+    # this is forced to be the same as the puppet manifest name, which means
+    # the file is not found for some puppet manifest names.
+    if env_name in ('worker-dev', 'worker-stage', 'worker-prod',):
+        env_name = 'dev'
+    else:
+        assert env_name in ('dev', 'stage', 'prod')
+    env_cfg = common.deployment_params['configs'][common.deployment_params['selected_env']]
     config_path = os.path.join('conf','configs','settings-%s-template.cfg' % env_name)
-    
+
     init_config(filepath=config_path, fp=None)
     from core import config
     params = get_db_params()

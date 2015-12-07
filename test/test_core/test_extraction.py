@@ -15,7 +15,7 @@ from core.extraction import type_conversion
 # config. Simply calling init_test_config in a module that uses billentry
 # does not work because test are run in a indeterminate order and an indirect
 # dependency might cause the wrong config to be loaded.
-from core.extraction.task import test_bill, reduce_bill_results
+from core.extraction.task import check_bill, reduce_bill_results
 from core.extraction.type_conversion import convert_unit, convert_address, \
     process_charge, convert_table_charges, _get_rsi_binding_from_name
 from core.model.model import ChargeNameMap
@@ -630,11 +630,11 @@ class TestIntegration(TestCase):
             'Customer Charge': 'CUSTOMER_CHARGE',
             'PGC': 'PGC',
             'Peak Usage Charge': 'PEAK_USAGE_CHARGE',
-            'DC Rights-of-Way Fee': 'RIGHT_OF_WAY',
+            'DC Rights-of-Way Fee': 'FEE',
             'Sustainable Energy Trust Fund': 'SETF',
             'Energy Assistance Trust Fund': 'EATF',
             'Delivery Tax': 'DELIVERY_TAX',
-            'Sales Tax': 'SALES_TAX',
+            'Sales Tax': 'TAX',
         }
         rate_class = RateClass(utility=utility)
         account = UtilityAccount('', '123', None, None, None, Address(),
@@ -643,7 +643,7 @@ class TestIntegration(TestCase):
         #TODO add charge name map
         self.charge_names_map = [
             ChargeNameMap(display_name_regex="(distribution|customer)_charge",
-                rsi_binding='DISTRIBUTION_CHARGE', reviewed=False),
+                rsi_binding='DIST_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="peak",
                 rsi_binding='PEAK_USAGE_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex="pgc",
@@ -651,7 +651,7 @@ class TestIntegration(TestCase):
             ChargeNameMap(display_name_regex="(sales_|delivery_)?tax",
                 rsi_binding='TAX', reviewed=False),
             ChargeNameMap(display_name_regex=".*rights?.of.way(.fee)?",
-                rsi_binding='RIGHT_OF_WAY', reviewed=False),
+                rsi_binding='FEE', reviewed=False),
             ChargeNameMap(display_name_regex="total",
                 rsi_binding='TOTAL_CHARGE', reviewed=False),
             ChargeNameMap(display_name_regex=".*trust_fund.*",
@@ -715,9 +715,9 @@ class TestIntegration(TestCase):
         # specific fields is put into release 30
 
         expected = [
-             Charge('DISTRIBUTION_CHARGE', name='Distribution Charge',
+             Charge('DIST_CHARGE', name='Distribution Charge',
                     target_total=158.7, type=D, unit='therms'),
-             Charge('DISTRIBUTION_CHARGE', name='Customer Charge',
+             Charge('DIST_CHARGE', name='Customer Charge',
                  target_total=14.0,
                     type=D, unit='therms'),
              Charge('PGC_CHARGE', name='PGC', target_total=417.91,
@@ -725,7 +725,7 @@ class TestIntegration(TestCase):
                     unit='therms'),
              Charge('PEAK_USAGE_CHARGE', name='Peak Usage Charge',
                     target_total=15.79, type=D, unit='therms'),
-             Charge('RIGHT_OF_WAY', name='DC Rights-of-Way Fee',
+             Charge('FEE', name='DC Rights-of-Way Fee',
                     target_total=13.42, type=D, unit='therms'),
              Charge('TRUST_FUND', name='Sustainable Energy Trust Fund',
                     target_total=7.06, type=D, unit='therms'),
@@ -733,7 +733,7 @@ class TestIntegration(TestCase):
                     target_total=3.03, type=D, unit='therms'),
              Charge('TAX', name='Delivery Tax', target_total=39.24,
                     type=D, unit='therms'),
-             Charge('TAX', name='Sales Tax', target_total=38.48, type=D,
+             Charge('SALES_TAX', name='Sales Tax', target_total=38.48, type=D,
                     unit='therms')]
 
         self.assertEqual(len(expected), len(self.bill.charges))
@@ -789,7 +789,7 @@ class TestIntegration(TestCase):
         self.assertGreater(self.e1.modified, last_modified)
 
     def test_test_bill_tasks(self):
-        """ Tests the functions in task.py, such as test_bill and
+        """ Tests the functions in task.py, such as check_bill and
         reduce_bill_results
         """
 
@@ -806,13 +806,13 @@ class TestIntegration(TestCase):
         s.commit()
 
         # set bill as processed so that the extractor results can be verified
-        #  in test_bill
+        #  in check_bill
         self.bill.processed = True
 
         # get results from test
-        results = [test_bill(self.e1.extractor_id, self.bill.id),
-            TaskRevokedError("Representing a stopped task"),
-            Exception("Representing a failed task"), None]
+        results = [check_bill(self.e1.extractor_id, self.bill.id),
+                   TaskRevokedError("Representing a stopped task"),
+                   Exception("Representing a failed task"), None]
         total_result = reduce_bill_results(results)
 
         # set up expected results from test
