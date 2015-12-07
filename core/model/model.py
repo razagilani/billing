@@ -286,7 +286,6 @@ class Supplier(Base):
     # expression because file names can contain the current date or other
     # varying text.
     matrix_email_recipient = Column(String, unique=True)
-    matrix_attachment_name = Column(String)
 
     address_id = Column(Integer, ForeignKey('address.id'))
     address = relationship("Address")

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from tablib import formats
 
+from core.model.model import ELECTRIC
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -91,7 +92,8 @@ class ConstellationMatrixParser(QuoteParser):
                         valid_until=self._valid_until,
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
-                        purchase_of_receivables=False, price=price)
+                        purchase_of_receivables=False, price=price,
+                        service_type=ELECTRIC)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
