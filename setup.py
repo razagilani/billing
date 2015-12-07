@@ -28,7 +28,6 @@ install_requires = [
     'Flask-Principal==0.4.0',
     'Flask-KVSession==0.6.2',
     'flower==0.8.2',
-    'mongoengine#',
     'kombu-sqlalchemy==1.1.0',
     'pdfminer==20140328',
     'pika==0.9.14',
@@ -101,6 +100,11 @@ install_requires = [
     #'python-dateutil==2.1',
     #'pika==0.9.13'
     #'boto==2.28.0',
+
+
+    # should override anything else that wants to install a different version
+    # of MongoEngine
+    'mongoengine#',
 ]
 tests_require=[
     # actually for tests
