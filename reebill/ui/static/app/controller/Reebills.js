@@ -675,8 +675,8 @@ Ext.define('ReeBill.controller.Reebills', {
                     id: 'editAddressForm'}
         });
         var addressForm = Ext.ComponentQuery.query('#editAddressForm')[0].getForm();
-        var ba = record.get('billing_address');
-        var sa = record.get('service_address');
+        var ba = record.get('customer_billing_address');
+        var sa = record.get('customer_service_address');
         var reebill_id = record.get('id');
         addressForm.setValues({
                                'ba_addressee': ba.addressee,
