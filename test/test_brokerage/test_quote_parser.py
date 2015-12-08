@@ -497,6 +497,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertGreaterEqual(len(quotes_ma) + len(quotes_nj) + len(quotes_ny), 1000)
 
         q = quotes_ny[0]
+        self.assertEqual(datetime(2015, 12, 1), q.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), q.valid_until)
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
         self.assertEqual(datetime(2016, 1, 1), q.start_until)
         self.assertEqual(6, q.term_months)
@@ -537,8 +539,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
         self.assertEqual(6, q_ma_l.term_months)
         self.assertAlmostEqual(0.07356, q_ma_l.price, delta=0.000001)
-
-
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
