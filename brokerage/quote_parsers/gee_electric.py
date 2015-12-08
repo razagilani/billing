@@ -165,13 +165,15 @@ class GEEMatrixParser(QuoteParser):
                                          basestring)
         effective_date = datetime.datetime.strptime(effective_str.split(':')[1].strip(), '%B %d, %Y')
         self._valid_from = effective_date
-        self._valid_util = effective_date + datetime.timedelta(days=1)
+        self._valid_until = effective_date + datetime.timedelta(days=1)
 
+        # Indicates whether col indices have been shifted
         modified = False
 
         for sheet in self._reader.get_sheet_titles():
 
             if modified:
+                # Reset to originals for next sheet if previous one was shifted.
                 for key in [k for k in self.LAYOUT.keys() if "_COL" in k]:
                     self.LAYOUT[key] -= 1
                 modified = False
@@ -191,7 +193,6 @@ class GEEMatrixParser(QuoteParser):
                     for key in [k for k in self.LAYOUT.keys() if "_COL" in k]:
                         self.LAYOUT[key] += 1
 
-            print sheet, start_row, self._reader.get_height(sheet)
             for price_row in xrange(start_row, self._reader.get_height(sheet)):
                 for price_col in xrange(self.LAYOUT['FIRST_QUOTE_COL'], self._reader.get_width(sheet)):
                     try:
