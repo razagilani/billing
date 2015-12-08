@@ -55,7 +55,7 @@ for param in "${params[@]}"; do
     hosttype=$(echo $param | cut -f1 -d' ')
     envname=$(echo $param | cut -f2 -d' ')
 
-    echo $envname | fab common.configure_app_env -R $hosttype
+    echo $envname | fab create_pgpass_file -R $hosttype
     echo $envname | fab common.deploy_interactive_console -R $hosttype
     echo $envname | fab common.install_requirements_files -R $hosttype
     # this doesn't work:
