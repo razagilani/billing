@@ -1660,6 +1660,35 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         self.assertAlmostEqual(reebill_data[0]['ree_quantity'], energy_quantity)
         self.assertAlmostEqual(reebill_data[1]['ree_quantity'], energy_quantity)
 
+    def test_update_addresses(self):
+        self.utilbill_processor.update_utilbill_metadata(self.utilbill.id,
+                                                         processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            self.account, StringIO('February'), date(2000, 2, 1),
+            date(2000, 3, 1), 'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+        ub = self.utilbill_processor.upload_utility_bill(
+            self.account, StringIO('March'), date(2000, 3, 1), date(2000, 4, 1),
+            'gas')
+        self.utilbill_processor.update_utilbill_metadata(ub.id, processed=True)
+
+
+        ba = Address(addressee='Test addressee', street='Test street',
+            city='Test city', state='VA', postal_code='20001')
+        sa = Address(addressee='Test addressee', street='Test street',
+            city='Test city', state='VA', postal_code='20001')
+
+        self.customer.set_service_address(sa)
+        self.customer.set_billing_address(ba)
+
+        # create 2 reebills
+        reebill_1 = self.reebill_processor.roll_reebill(
+            self.account, start_date=date(2000, 1, 1))
+        reebill_2 = self.reebill_processor.roll_reebill(self.account)
+
+        self.assertIs(self.customer.service_address, sa)
+        self.assertIs(self.customer.billing_address, ba)
+
     def test_payment_application(self):
         """Test that payments are applied to reebills according their "date
             received", including when multiple payments are applied and multiple
@@ -1762,6 +1791,7 @@ class ReeBillProcessingTestWithBills(testing_utils.TestCase):
         payment = self.payment_dao.get_payments(account)[0].column_dict()
         self.assertRaises(IssuedBillError, self.payment_dao.delete_payment,
                           payment['id'])
+
 
     def test_update_readings(self):
         '''Simple test to get coverage on Process.update_reebill_readings.
@@ -2143,7 +2173,9 @@ class TestTouMetering(unittest.TestCase):
         self.utilbill.processed = True
         ua2 = UtilityAccount('', '88888', self.utilbill.utility, None, None,
                              Address(), Address())
-        customer2 = ReeBillCustomer(utility_account=ua2, name='', payee='payee')
+        customer2 = ReeBillCustomer(utility_account=ua2, name='',
+                                    payee='payee', billing_address=Address(),
+                                    service_address=Address())
         utilbill2 = self.utilbill.clone()
         utilbill2.utility = self.utilbill.utility
         utilbill2.set_rate_class(self.utilbill.get_rate_class())
@@ -2206,7 +2238,9 @@ class TestExportBillPayments(unittest.TestCase):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account,
-                                    payee='payee')
+                                    payee='payee',
+                                    billing_address=blank_address,
+                                    service_address=blank_address)
         self.utilbill = UtilBill(self.utility_account, self.utility, rate_class,
                              test_supplier,
                              period_start=date(2012, 1, 1),

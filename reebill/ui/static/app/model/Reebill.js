@@ -37,6 +37,8 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'billing_address_id'},
         {name: 'service_address'},
         {name: 'service_address_id'},
+        {name: 'customer_billing_address'},
+        {name: 'customer_service_address'},
         {name: 'processed'},
         // Data for Issuable Reebills
         {name: 'mailto'},
