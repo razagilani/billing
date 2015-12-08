@@ -22,6 +22,7 @@ from util.units import unit_registry
 def setUpModule():
     init_test_config()
 
+
 class QuoteParserTest(TestCase):
     def setUp(self):
         reader = Mock(autospec=SpreadsheetReader)
@@ -74,6 +75,7 @@ class MatrixQuoteParsersTest(TestCase):
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
+    USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(DIRECTORY,'Champion MM PJM Fixed-Index-24 '
                                         'Matrix 2015-10-30.xls')
     # using version of the file converted to XLS because we can't currently
@@ -238,6 +240,9 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
         self.assertEqual(quotes[-1].rate_class_alias,
                          "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
+
+
+
 
     def test_usge(self):
         parser = USGEMatrixParser()
