@@ -1,8 +1,9 @@
 import logging
 from brokerage.brokerage_model import MatrixFormat
 from upgrade_scripts import alembic_upgrade
-from reebill.reebill_model import ReeBillCustomer
-from core.model import Session, Base
+from reebill.reebill_model import ReeBillCustomer, ReeBill
+from sqlalchemy import desc
+from core.model import Session, Base, Address
 from core import init_model
 
 log = logging.getLogger(__name__)
@@ -10,9 +11,15 @@ log = logging.getLogger(__name__)
 def update_reebill_customer_addresses():
     s = Session()
     customers = s.query(ReeBillCustomer).all()
+    address = Address()
     for customer in customers:
-        customer.service_address = customer.utility_account.fb_service_address
-        customer.billing_address = customer.utility_account.fb_billing_address
+        reebill = s.query(ReeBill).filter(ReeBill.reebill_customer==customer).order_by(desc(ReeBill.sequence)).first()
+        if reebill is not None:
+            customer.service_address = reebill.service_address
+            customer.billing_address = reebill.billing_address
+        else:
+            customer.service_address = address
+            customer.billing_address = address
 
 def upgrade():
     alembic_upgrade('4f589e8d4cab')
