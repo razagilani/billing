@@ -1,0 +1,38 @@
+[
+    {
+      "model":"intro.UtilityProvider",
+      "pk":0,
+      "fields":{
+            "name":"Washington Gas (DC)",
+            "display_name":"Washington Gas",
+            "registrationrule":2
+      }
+    },
+    {
+      "model":"intro.UtilityProvider",
+      "pk":1,
+      "fields":{
+            "name":"Pepco (DC)",
+            "display_name":"Pepco",
+            "registrationrule":1
+      }
+    },
+    {
+      "model":"intro.UtilityProvider",
+      "pk":2,
+      "fields":{
+            "name":"SoCal Gas (DC)",
+            "display_name":"SoCal",
+            "registrationrule":1
+      }
+    },
+    {
+      "model":"intro.UtilityProvider",
+      "pk":3,
+      "fields":{
+            "name":"BGE (MD)",
+            "display_name":"BGE",
+            "registrationrule":3
+      }
+    }
+]
