@@ -115,7 +115,7 @@ class MatrixQuoteValidator(object):
                     'volume range difference > %s: %s' % (
                         self.MAX_VOLUME_DIFFERENCE, difference))
         except AssertionError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(' '.join([quote.service_type, e.message]))
 
 
 class ElectricValidator(MatrixQuoteValidator):
@@ -125,12 +125,11 @@ class ElectricValidator(MatrixQuoteValidator):
     MIN_PRICE = .01
     MAX_PRICE = 1.0
 
-    # TODO: replace with narrower electric-specific values
-    MAX_MIN_VOLUME = 1e9
-    MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 1e9
+    MAX_MIN_VOLUME = 4e6
+    MIN_LIMIT_VOLUME = 10000
+    MAX_LIMIT_VOLUME = 5e6
     MIN_VOLUME_DIFFERENCE = 0
-    MAX_VOLUME_DIFFERENCE = 1e7
+    MAX_VOLUME_DIFFERENCE = 5e6 # this could always equal MAX_LIMIT_VOLUME
 
 
 class GasValidator(MatrixQuoteValidator):
@@ -140,9 +139,8 @@ class GasValidator(MatrixQuoteValidator):
     MIN_PRICE = .10
     MAX_PRICE = 2.0
 
-    # TODO: replace with narrower gas-specific values
-    MAX_MIN_VOLUME = 1e9
-    MIN_LIMIT_VOLUME = 25
-    MAX_LIMIT_VOLUME = 1e9
+    MAX_MIN_VOLUME = 1e6
+    MIN_LIMIT_VOLUME = 10000
+    MAX_LIMIT_VOLUME = 1e6
     MIN_VOLUME_DIFFERENCE = 0
-    MAX_VOLUME_DIFFERENCE = 1e7
+    MAX_VOLUME_DIFFERENCE = 1e6 # this could always equal MAX_LIMIT_VOLUME
