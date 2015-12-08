@@ -504,6 +504,38 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(24, ql.term_months)
         self.assertAlmostEqual(0.07573, ql.price, delta=0.000001)
 
+        q_nj_0 = quotes_nj[0]
+        self.assertEqual(datetime(2015, 12, 1), q_nj_0.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q_nj_0.start_until)
+        self.assertEqual(6, q_nj_0.term_months)
+        self.assertAlmostEqual(0.09789, q_nj_0.price, delta=0.000001)
+
+        q_nj_l = quotes_nj[-1]
+        self.assertEqual(datetime(2016, 5, 1), q_nj_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_nj_l.start_until)
+        self.assertEqual(24, q_nj_l.term_months)
+        self.assertAlmostEqual(0.08219, q_nj_l.price, delta=0.000001)
+
+        q_ma_0 = quotes_ma[0]
+        self.assertEqual(datetime(2015, 12, 1), q_ma_0.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q_ma_0.start_until)
+        self.assertEqual(6, q_ma_0.term_months)
+        self.assertAlmostEqual(0.09168, q_ma_0.price, delta=0.000001)
+
+        q_ma_l = quotes_ma[-2]
+        self.assertEqual(datetime(2016, 5, 1), q_ma_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
+        self.assertEqual(24, q_ma_l.term_months)
+        self.assertAlmostEqual(0.08888, q_ma_l.price, delta=0.000001)
+
+        q_ma_l = quotes_ma[-1]
+        self.assertEqual(datetime(2016, 5, 1), q_ma_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
+        self.assertEqual(6, q_ma_l.term_months)
+        self.assertAlmostEqual(0.07356, q_ma_l.price, delta=0.000001)
+
+
+
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
         self.assertEqual(0, parser.get_count())
