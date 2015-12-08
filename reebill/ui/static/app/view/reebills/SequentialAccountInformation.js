@@ -36,7 +36,7 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
         }]
     },{
         xtype: 'fieldset',
-        title: 'Skyline Billing Address',
+        title: 'Nextility Billing Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150
@@ -64,7 +64,7 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
         }]
     },{
         xtype: 'fieldset',
-        title: 'Skyline Service Address',
+        title: 'Nextility Service Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150
