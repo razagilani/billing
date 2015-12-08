@@ -46,7 +46,8 @@ class GEEPriceQuote(object):
             min_volume=min_volume,
             limit_volume=limit_volume,
             purchase_of_receivables=False,
-            rate_class_alias=self.fetch_alias()
+            rate_class_alias=self.fetch_alias(),
+            service_type='electric'
         )
 
     def fetch_price(self):
@@ -182,7 +183,6 @@ class GEEMatrixParser(QuoteParser):
 
             for i in [0, 1]:
                 try:
-                    print sheet, 'trying col', self.LAYOUT['ZONE_COL']
                     start_row = self._find_start_row(sheet, self.LAYOUT['ZONE_COL'])
                     break
                 except ValueError:
