@@ -385,6 +385,12 @@ class ReeBill(Base):
             'actual_total': self.get_total_actual_charges(),
             'billing_address': address_to_dict(self.billing_address),
             'service_address': address_to_dict(self.service_address),
+            'customer_billing_address': address_to_dict(self.
+                                                        reebill_customer.
+                                                        billing_address),
+            'customer_service_address': address_to_dict(self.
+                                                        reebill_customer.
+                                                        service_address),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': self.utilbill.get_total_charges(),
@@ -556,6 +562,10 @@ class ReeBillCustomer(Base):
     bill_email_recipient = Column(String(1000), nullable=False)
     service = Column(Enum(*SERVICE_TYPES, name='service_types'), nullable=False)
     payee = Column(String(100), nullable=True)
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
 
     # identifies a group of accounts that belong to a particular owner,
     # for the purpose of producing "bill summaries"
@@ -565,10 +575,16 @@ class ReeBillCustomer(Base):
     utility_account = relationship(
         'UtilityAccount', uselist=False, cascade='all',
         primaryjoin='ReeBillCustomer.utility_account_id==UtilityAccount.id')
+    billing_address = relationship('Address', uselist=False,
+        cascade='all',
+        primaryjoin='ReeBillCustomer.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='ReeBillCustomer.service_address_id==Address.id')
 
     def __init__(self, name='', discount_rate=0.0, late_charge_rate=0.0,
                 service='thermal', bill_email_recipient='',
-                utility_account=None, payee=None):
+                utility_account=None, payee=None, billing_address=None,
+                service_address=None):
         """Construct a new :class:`.Customer`.
         :param name: The name of the utility_account.
         :param account:
@@ -591,6 +607,8 @@ class ReeBillCustomer(Base):
         self.service = service
         self.utility_account = utility_account
         self.payee = payee
+        self.billing_address = billing_address
+        self.service_address = service_address
 
     def get_discount_rate(self):
         return self.discountrate
@@ -655,6 +673,12 @@ class ReeBillCustomer(Base):
         to (normally only one).
         """
         return self.groups
+
+    def set_service_address(self, address):
+        self.service_address = address
+
+    def set_billing_address(self, address):
+        self.billing_address = address
 
 
 class ReeBillCharge(Base):

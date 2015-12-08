@@ -49,12 +49,16 @@ class IssuableReebillsTest(TestCase):
         utility_account2.id = 7
         reebill_customer = ReeBillCustomer(
             bill_email_recipient='example1@example.com',
-            utility_account=utility_account
+            utility_account=utility_account,
+            billing_address=blank_address,
+            service_address=blank_address
         )
         #brokerage_account = BrokerageAccount(utility_account)
         reebill_customer2 = ReeBillCustomer(
             bill_email_recipient='example2@example.com',
-            utility_account=utility_account2
+            utility_account=utility_account2,
+            billing_address=blank_address,
+            service_address=blank_address
         )
 
 
@@ -172,7 +176,8 @@ class AccountsResourceTest(TestCase):
                                 service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account,
-                                payee='payee')
+                                payee='payee', billing_address=fa_ba1,
+                                service_address=fa_sa1)
         session.add(reebill_customer)
         utility_account2 = UtilityAccount(
             'Test Customer 2', '100000', uc, supplier, rate_class,
@@ -182,7 +187,9 @@ class AccountsResourceTest(TestCase):
                                 service='thermal',
                                 bill_email_recipient='example2@example.com',
                                 utility_account=utility_account2,
-                                payee="Someone Else!")
+                                payee="Someone Else!",
+                                billing_address=fa_ba2,
+                                service_address=fa_sa2)
         u1 = UtilBill(utility_account2, uc,
                              rate_class, supplier=supplier,
                              billing_address=ub_ba1, service_address=ub_sa1,

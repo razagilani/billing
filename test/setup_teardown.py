@@ -308,7 +308,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                 service='thermal',
                                 bill_email_recipient='example@example.com',
                                 utility_account=utility_account,
-                                payee='payee')
+                                payee='payee', billing_address=fa_ba1,
+                                service_address=fa_sa1)
         session.add(utility_account)
         session.add(reebill_customer)
 
@@ -321,7 +322,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                 service='thermal',
                                 bill_email_recipient='example2@example.com',
                                 utility_account=utility_account2,
-                                payee="Someone Else!")
+                                payee="Someone Else!",billing_address=fa_ba2,
+                                service_address=fa_sa2)
         session.add(utility_account2)
         session.add(reebill_customer2)
 
@@ -380,7 +382,8 @@ class TestCaseWithSetup(test_utils.TestCase):
             late_charge_rate=.34, service='thermal',
             bill_email_recipient='example2@example.com',
             utility_account=utility_account4,
-            payee="Nextility")
+            payee="Nextility", billing_address=c4ba,
+            service_address=c4sa)
 
         session.add(utility_account4)
         session.add(reebill_customer4)
