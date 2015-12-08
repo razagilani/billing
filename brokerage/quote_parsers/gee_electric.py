@@ -65,17 +65,17 @@ class GEEPriceQuote(object):
         )
 
     def fetch_term(self):
-        return self.reader.get(self.sheet, self.row, self.matrix_parser.TERM_COL, int)
+        return self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['TERM_COL'], int)
 
     def fetch_rate_sch(self):
-        return self.reader.get(self.sheet, self.row, self.matrix_parser.RATE_SCH_COL, basestring)
+        return self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['RATE_SCH_COL'], basestring)
 
     def fetch_zone(self):
         # Special notes:
         # * If Zone contains "Sweet Spot", remove that label and add it as usual
         # * If Zone contains "Custom" - ignore everythign in that row.
         # BUT - This probably should not be done here.
-        return self.reader.get(self.sheet, self.row, self.matrix_parser.ZONE_COL, basestring)
+        return self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['ZONE_COL'], basestring)
 
     def fetch_start_dates(self):
         # Search for the start date row
@@ -115,55 +115,92 @@ class GEEMatrixParser(QuoteParser):
     FILE_FORMAT = formats.xlsx
     EXPECTED_ENERGY_UNIT = unit_registry.kWh
 
-    # Expected rows
-    ZONE_COL = 'A'
-    RATE_SCH_COL = 'B'
-    TERM_COL = 'C'
-    START_DATE_LBL_COL = 'D'
-    FIRST_QUOTE_COL = 3
-    EFFECTIVE_DATE_COL = 'F'
+    LAYOUT = {
+        # Expected rows
+        'ZONE_COL': 0,  #'A'
+        'RATE_SCH_COL': 1,          #'B'
+        'TERM_COL': 2,              #'C'
+        'START_DATE_LBL_COL': 3,    #'D'
+        'FIRST_QUOTE_COL': 3,
+        'EFFECTIVE_DATE_COL': 5,     #'F'
 
-    # Expected Cols
-    EFFECTIVE_DATE_ROW = 2
-    ASSUMED_PRICE_ROW_START = 6
+        # Expected Cols
+        'EFFECTIVE_DATE_ROW': 2,
+        'ASSUMED_PRICE_START_ROW': 6
+    }
+
 
     def _validate(self):
         pass
+
+
+    def _find_start_row(self, sheet, col):
+        """
+        Return the row index of the first row containing price data.
+        This is on the same row of the first 'Zone' token. If the given
+        col does not have Zone, raise ValueError.
+        :param sheet: Sheet name
+        :param col: Column index
+        :return: First row index containing price data
+        """
+        start_row = self.LAYOUT['ASSUMED_PRICE_START_ROW']
+        for test_row in xrange(0, self._reader.get_height(sheet)):
+            # Find the first row containing pricing data.
+            cell_val = self._reader.get(sheet, test_row, col, (basestring, type(None)))
+            if cell_val and 'Zone' in cell_val:
+                start_row = test_row + 2
+                return start_row
+        else:
+            # This indicates 'Zone' not found anywhere in the column
+            raise ValueError
 
     def _extract_quotes(self):
 
         # First, we need to get the validitity dates for all quotes. This is a little annoying
         # because it is ONLY available on the first sheet of each spreadsheet.
-        effective_str = self._reader.get(0, self.EFFECTIVE_DATE_ROW, self.EFFECTIVE_DATE_COL, basestring)
+        effective_str = self._reader.get(0,
+                                         self.LAYOUT['EFFECTIVE_DATE_ROW'],
+                                         self.LAYOUT['EFFECTIVE_DATE_COL'],
+                                         basestring)
         effective_date = datetime.datetime.strptime(effective_str.split(':')[1].strip(), '%B %d, %Y')
         self._valid_from = effective_date
         self._valid_util = effective_date + datetime.timedelta(days=1)
 
+        modified = False
+
         for sheet in self._reader.get_sheet_titles():
+
+            if modified:
+                for key in [k for k in self.LAYOUT.keys() if "_COL" in k]:
+                    self.LAYOUT[key] -= 1
+                modified = False
+
+            # We extract the volume ranges from the sheet title.
+            # If no ranges are listed, skip the sheet.
             if not re.search(r'([\d]+K?-[\d]{3})', sheet):
-                # For now - only parse sheets that have volume ranges
                 continue
 
-            start_row = self.ASSUMED_PRICE_ROW_START
-            for test_row in xrange(0, self._reader.get_height(sheet)):
-                cell_val= self._reader.get(sheet, test_row, self.ZONE_COL, (basestring, type(None)))
-                print cell_val
-                if cell_val and 'Zone' in cell_val:
-                    start_row = test_row + 2
+            for i in [0, 1]:
+                try:
+                    print sheet, 'trying col', self.LAYOUT['ZONE_COL']
+                    start_row = self._find_start_row(sheet, self.LAYOUT['ZONE_COL'])
                     break
+                except ValueError:
+                    # Shift all column keys over by one
+                    modified = True
+                    for key in [k for k in self.LAYOUT.keys() if "_COL" in k]:
+                        self.LAYOUT[key] += 1
 
+            print sheet, start_row, self._reader.get_height(sheet)
             for price_row in xrange(start_row, self._reader.get_height(sheet)):
-                print "START ROW", sheet, start_row
-                for price_col in xrange(self.FIRST_QUOTE_COL, self._reader.get_width(sheet)):
+                for price_col in xrange(self.LAYOUT['FIRST_QUOTE_COL'], self._reader.get_width(sheet)):
                     try:
+                        # This could be a good use of fuckit.py.
                         price = self._reader.get(sheet, price_row, price_col, float)
                     except ValidationError:
                         continue
 
-                    try:
-                        x = self
-                        quote = GEEPriceQuote(x, sheet, price_row, price_col).evaluate()
-                        if 'custom' not in quote.rate_class_alias.lower():
-                            yield quote
-                    except Exception as e:
-                        raise
+                    quote = GEEPriceQuote(self, sheet, price_row, price_col).evaluate()
+
+                    if 'custom' not in quote.rate_class_alias.lower():
+                        yield quote

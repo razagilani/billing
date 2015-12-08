@@ -89,9 +89,9 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
-    GEE_FILE_PATH_1 = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
-    GEE_FILE_PATH_2 = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
-    GEE_FILE_PATH_3 = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
+    GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
+    GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
+    GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -475,30 +475,30 @@ class MatrixQuoteParsersTest(TestCase):
     def test_gee_electric(self):
         parser = GEEMatrixParser()
 
-        with open(self.GEE_FILE_PATH_3, 'rb') as spreadsheet:
+        with open(self.GEE_FILE_PATH_MA, 'rb') as spreadsheet:
             parser.load_file(spreadsheet)
             parser.validate()
-            quotes3 = list(parser.extract_quotes())
+            quotes_ma = list(parser.extract_quotes())
 
-        with open(self.GEE_FILE_PATH_2, 'rb') as spreadsheet:
+        with open(self.GEE_FILE_PATH_NJ, 'rb') as spreadsheet:
             parser.load_file(spreadsheet)
             parser.validate()
-            quotes2 = list(parser.extract_quotes())
+            quotes_nj = list(parser.extract_quotes())
 
-        with open(self.GEE_FILE_PATH_1, 'rb') as spreadsheet:
+        with open(self.GEE_FILE_PATH_NY, 'rb') as spreadsheet:
             parser.load_file(spreadsheet)
             parser.validate()
-            quotes = list(parser.extract_quotes())
+            quotes_ny = list(parser.extract_quotes())
 
-        self.assertEqual(len(quotes3) + len(quotes2) + len(quotes), 4)
+        self.assertGreaterEqual(len(quotes_ma) + len(quotes_nj) + len(quotes_ny), 1000)
 
-        q = quotes[0]
+        q = quotes_ny[0]
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
         self.assertEqual(datetime(2016, 1, 1), q.start_until)
         self.assertEqual(6, q.term_months)
         self.assertEqual(0.08381, q.price)
 
-        ql = quotes[-1]
+        ql = quotes_ny[-1]
         self.assertEqual(datetime(2016, 5, 1), ql.start_from)
         self.assertEqual(datetime(2016, 6, 1), ql.start_until)
         self.assertEqual(24, ql.term_months)
