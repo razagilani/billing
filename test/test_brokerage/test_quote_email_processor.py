@@ -6,7 +6,10 @@ import os
 from email.mime.base import MIMEBase
 from unittest import TestCase
 
-from mock import Mock, MagicMock
+from boto.s3.bucket import Bucket
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
+from mock import Mock, MagicMock, call
 import statsd
 
 from brokerage.brokerage_model import Company, Quote, MatrixQuote, MatrixFormat
@@ -62,8 +65,16 @@ class TestQuoteEmailProcessor(TestCase):
         self.email_counter = statsd.Counter('email')
         self.quote_counter = statsd.Counter('quote')
 
+        self.s3_connection = Mock(autospec=S3Connection)
+        self.s3_bucket = Mock(autospec=Bucket)
+        self.s3_connection.get_bucket.return_value = self.s3_bucket
+        self.s3_key = Mock(autospec=Key)
+        self.s3_bucket.new_key.return_value = self.s3_key
+        self.s3_bucket_name = 'test-bucket'
+
         self.qep = QuoteEmailProcessor(
-            {1: QuoteParserClass1, 2: QuoteParserClass2}, self.quote_dao)
+            {1: QuoteParserClass1, 2: QuoteParserClass2}, self.quote_dao,
+            self.s3_connection, self.s3_bucket_name)
 
         self.message = Message()
         self.sender, self.recipient, self.subject = (
@@ -157,10 +168,16 @@ class TestQuoteEmailProcessor(TestCase):
         self.quote_dao.rollback.assert_called_once_with()
         self.assertEqual(0, self.quote_dao.commit.call_count)
 
+        # nothing happens in S3
+        self.assertEqual(0, self.s3_connection.get_bucket.call_count)
+        self.assertEqual(0, self.s3_bucket.new_key.call_count)
+        self.assertEqual(0, self.s3_key.set_contents_from_string.call_count)
+
     def test_process_email_good_attachment(self):
         self.format_1.matrix_attachment_name = 'filename.xls'
+        name ='fileNAME.XLS'
         self.message.add_header('Content-Disposition', 'attachment',
-                                filename='fileNAME.XLS')
+                                filename=name)
         email_file = StringIO(self.message.as_string())
 
         self.qep.process_email(email_file)
@@ -177,6 +194,13 @@ class TestQuoteEmailProcessor(TestCase):
         self.quote_parser.extract_quotes.assert_called_once_with()
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(1, self.quote_dao.commit.call_count)
+
+        # file should have been uploaded to S3
+        # (not checking actual file contents)
+        self.s3_connection.get_bucket.assert_called_once_with(
+            self.s3_bucket_name)
+        self.s3_bucket.new_key.assert_called_once_with(name)
+        self.assertEqual(1, self.s3_key.set_contents_from_string.call_count)
 
     def test_process_email_no_quotes(self):
         self.message.add_header('Content-Disposition', 'attachment',
@@ -198,6 +222,11 @@ class TestQuoteEmailProcessor(TestCase):
         self.quote_parser.extract_quotes.assert_called_once_with()
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(1, self.quote_dao.commit.call_count)
+
+        # nothing happens in S3
+        self.assertEqual(0, self.s3_connection.get_bucket.call_count)
+        self.assertEqual(0, self.s3_bucket.new_key.call_count)
+        self.assertEqual(0, self.s3_key.set_contents_from_string.call_count)
 
     def test_multiple_formats(self):
         """One email with 2 attachments, each of which should be read by a
@@ -226,6 +255,13 @@ class TestQuoteEmailProcessor(TestCase):
         self.assertEqual(1, self.quote_parser_2.load_file.call_count)
         self.assertEqual(0, self.quote_dao.rollback.call_count)
         self.assertEqual(2, self.quote_dao.commit.call_count)
+
+        # 2 files should be uploaded to s3
+        # (not checking file names or contents)
+        self.assertEqual(1, self.s3_connection.get_bucket.call_count)
+        self.assertEqual(2, self.s3_bucket.new_key.call_count)
+        self.assertEqual(2, self.s3_key.set_contents_from_string.call_count)
+
 
 class TestQuoteDAO(TestCase):
     @classmethod
@@ -287,8 +323,12 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         #  has a corresponding QuoteParser class.
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
-        email_counter, quote_counter = MagicMock(), MagicMock()
-        self.qep = QuoteEmailProcessor(CLASSES_FOR_FORMATS, self.quote_dao)
+
+        self.qep = QuoteEmailProcessor(
+            CLASSES_FOR_FORMATS, self.quote_dao,
+            # could use a real S3 connection with FakeS3, but that's not
+            # really the point of this test
+            Mock(autospec=S3Connection), 'test-bucket')
 
         # add a supplier to match the example email
         clear_db()
