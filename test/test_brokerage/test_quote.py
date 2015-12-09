@@ -92,7 +92,7 @@ class MatrixQuoteTest(TestCase):
 
         # good
         self.quote.min_volume = 100
-        self.quote.limit_volume = 200
+        self.quote.limit_volume = 10000
         self.quote.validate()
 
 
