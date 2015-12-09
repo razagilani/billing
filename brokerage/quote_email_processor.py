@@ -307,9 +307,9 @@ class QuoteEmailProcessor(object):
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
+                self._store_quote_file(file_name, file_content)
                 quote_parser = self._process_quote_file(
                     supplier, altitude_supplier, file_name, file_content)
-                self._store_quote_file(file_name, file_content)
             except UnknownFormatError:
                 self.logger.warn(('Skipped attachment from %s with unexpected '
                                  'name: "%s"') % (supplier.name, file_name))
