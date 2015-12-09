@@ -174,7 +174,8 @@ class SFEMatrixParser(QuoteParser):
                         service_type={
                             self._GAS: 'gas',
                             self._ELECTRIC: 'electric'
-                        }[service_type])
+                        }[service_type],
+                        file_reference='%s,%s,%s' % (0, row, col))
                     quote.file_reference = (row, col)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class

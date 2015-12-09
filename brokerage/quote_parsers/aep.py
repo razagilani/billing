@@ -136,6 +136,7 @@ class AEPMatrixParser(QuoteParser):
                             min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False,
                             rate_class_alias=rate_class_alias, price=price,
-                            service_type='electric')
+                            service_type='electric',
+                            file_reference='%s,%s,%s' % (self.SHEET, row, col))
                         quote.rate_class_id = rate_class_id
                         yield quote

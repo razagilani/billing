@@ -83,7 +83,8 @@ class DirectEnergyMatrixParser(QuoteParser):
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
-                        price=price, service_type='electric')
+                        price=price, service_type='electric',
+                        file_reference='%s,%s,%s' % (0, row, col))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

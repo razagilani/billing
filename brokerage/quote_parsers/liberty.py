@@ -369,9 +369,12 @@ class LibertyMatrixParser(QuoteParser):
                     row_offset = 4
                     while self._reader.get(sheet, table_start_row + row_offset,
                                            col, basestring) != '':
-                        for quote in price_type(self, self._reader, sheet,
-                                        table_start_row + row_offset, col,
+                        row = table_start_row + row_offset
+                        for quote in price_type(
+                                self, self._reader, sheet, row, col,
                                 rate_class_alias,
                                 rate_class_ids).generate_quote():
+                            quote.file_reference = '%s,%s,%s' % (
+                                sheet, row, col)
                             yield quote
                         row_offset += 1
