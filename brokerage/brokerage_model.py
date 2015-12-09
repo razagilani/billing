@@ -219,11 +219,10 @@ class MatrixQuote(Quote):
     min_volume = Column('Minimum_Annual_Volume_KWH_Therm', Float)
     limit_volume = Column('Maximum_Annual_Volume_KWH_Therm', Float)
 
-    # instance variable, not in database: may be set to any value to identify
-    # which file and part of the file (eg spreadsheet row and column) this
-    # quote came from, for troubleshooting. might be worth storing this in the
-    # databae.
-    file_reference = None
+    # optional string to identify which file and part of the file (eg
+    # spreadsheet row and column, or PDF page and coordinates) this quote came
+    # from, for troubleshooting
+    file_reference = Column('file_reference', String)
 
     def __str__(self):
         return '\n'.join(['Matrix quote'] +

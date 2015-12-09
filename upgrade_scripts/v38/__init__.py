@@ -9,6 +9,7 @@ from core import init_model
 log = logging.getLogger(__name__)
 
 def upgrade():
+    alembic_upgrade('366f5ed78b68')
     s = Session()
     init_model()
     s.commit()
