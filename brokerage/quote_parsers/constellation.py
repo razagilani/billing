@@ -94,7 +94,8 @@ class ConstellationMatrixParser(QuoteParser):
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=False, price=price,
                         service_type=ELECTRIC,
-                        file_reference='%s,%s,%s' % (self.SHEET, row, col))
+                        file_reference='%s %s,%s,%s' % (
+                            self.file_name, self.SHEET, row, col))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

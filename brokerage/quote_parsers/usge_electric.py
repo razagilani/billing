@@ -137,7 +137,8 @@ class USGEElectricMatrixParser(QuoteParser):
                                 purchase_of_receivables=False, price=price,
                                 rate_class_alias=rate_class_alias,
                                 service_type='electric',
-                                file_reference='%s,%s,%s' % (sheet, row, i))
+                                file_reference='%s %s,%s,%s' % (
+                                    self.file_name, sheet, row, i))
                             # TODO: rate_class_id should be determined automatically
                             # by setting rate_class
                             quote.rate_class_id = rate_class_id

@@ -374,7 +374,7 @@ class LibertyMatrixParser(QuoteParser):
                                 self, self._reader, sheet, row, col,
                                 rate_class_alias,
                                 rate_class_ids).generate_quote():
-                            quote.file_reference = '%s,%s,%s' % (
-                                sheet, row, col)
+                            quote.file_reference = '%s %s,%s,%s' % (
+                                self.file_name, sheet, row, col)
                             yield quote
                         row_offset += 1

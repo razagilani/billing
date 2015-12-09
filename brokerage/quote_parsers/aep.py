@@ -137,6 +137,7 @@ class AEPMatrixParser(QuoteParser):
                             purchase_of_receivables=False,
                             rate_class_alias=rate_class_alias, price=price,
                             service_type='electric',
-                            file_reference='%s,%s,%s' % (self.SHEET, row, col))
+                            file_reference='%s %s,%s,%s' % (
+                                self.file_name, self.SHEET, row, col))
                         quote.rate_class_id = rate_class_id
                         yield quote
