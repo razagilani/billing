@@ -171,17 +171,23 @@ class QuoteEmailProcessor(object):
     # rows allowed per insert statement in pymssql.)
     BATCH_SIZE = 1000
 
-    def __init__(self, classes_for_formats, quote_dao):
+    def __init__(self, classes_for_formats, quote_dao, s3_connection,
+                 s3_bucket_name):
         """
         :param classes_for_formats: dictionary mapping the primary key of
         each MatrixFormat in the database to the QuoteParser subclass that
         handles it.
         :param quote_dao: QuoteDAO object for handling database access.
+        param s3_connection: boto.s3.S3Connection
+        :param bucket_name: name of S3 bucket where quote files will be
+        stored (string).
         """
         self.logger = logging.getLogger(LOG_NAME)
         self.logger.setLevel(logging.DEBUG)
         self._classes_for_formats = classes_for_formats
         self._quote_dao = quote_dao
+        self._s3_connection = s3_connection
+        self._s3_bucket_name = s3_bucket_name
 
     def _process_quote_file(self, supplier, altitude_supplier, file_name,
                             file_content):
@@ -233,6 +239,16 @@ class QuoteEmailProcessor(object):
             if quote_list == []:
                 return quote_parser
             self.logger.debug('%s quotes so far' % count)
+
+    def _store_quote_file(self, file_name, file_content):
+        """Upload the file content to the S3 bucket as a key with the given
+        name.
+        :param file_name: name of the file (string)
+        :param file_content: content of the file (string)
+        """
+        bucket = self._s3_connection.get_bucket(self._s3_bucket_name)
+        key = bucket.new_key(file_name)
+        key.set_contents_from_string(file_content)
 
     def process_email(self, email_file):
         """Read an email from the given file, which should be an email from a
@@ -293,6 +309,7 @@ class QuoteEmailProcessor(object):
             try:
                 quote_parser = self._process_quote_file(
                     supplier, altitude_supplier, file_name, file_content)
+                self._store_quote_file(file_name, file_content)
             except UnknownFormatError:
                 self.logger.warn(('Skipped attachment from %s with unexpected '
                                  'name: "%s"') % (supplier.name, file_name))
