@@ -307,6 +307,8 @@ class QuoteEmailProcessor(object):
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
+                # upload files first, then process them, so even invalid
+                # files get uploaded
                 self._store_quote_file(file_name, file_content)
                 quote_parser = self._process_quote_file(
                     supplier, altitude_supplier, file_name, file_content)

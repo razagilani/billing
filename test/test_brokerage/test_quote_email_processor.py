@@ -22,6 +22,7 @@ from core import init_altitude_db, init_model, ROOT_PATH
 from core.model import Supplier, Session, AltitudeSession
 from core.exceptions import ValidationError
 from test import init_test_config, clear_db, create_tables
+from test.setup_teardown import FakeS3Manager
 
 EMAIL_FILE_PATH = os.path.join(ROOT_PATH, 'test', 'test_brokerage',
                                'quote_files', 'quote_email.txt')
@@ -327,10 +328,16 @@ class TestQuoteEmailProcessorWithDB(TestCase):
     """
     @classmethod
     def setUpClass(self):
+        FakeS3Manager.start()
+
         create_tables()
         init_model()
         init_altitude_db()
         clear_db()
+
+    @classmethod
+    def tearDownClass(cls):
+        FakeS3Manager.stop()
 
     def setUp(self):
         # example email containing a USGE matrix spreadsheet, matches the
@@ -339,11 +346,21 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         self.email_file = open(EMAIL_FILE_PATH)
         self.quote_dao = QuoteDAO()
 
+        from core import config
+        self.s3_connection = S3Connection(
+            config.get('aws_s3', 'aws_access_key_id'),
+            config.get('aws_s3', 'aws_secret_access_key'),
+            is_secure=config.get('aws_s3', 'is_secure'),
+            port=config.get('aws_s3', 'port'),
+            host=config.get('aws_s3', 'host'),
+            calling_format=config.get('aws_s3', 'calling_format'))
+        s3_bucket_name = 'test-bucket'
+        self.s3_bucket = self.s3_connection.create_bucket(s3_bucket_name)
         self.qep = QuoteEmailProcessor(
             CLASSES_FOR_FORMATS, self.quote_dao,
             # could use a real S3 connection with FakeS3, but that's not
             # really the point of this test
-            Mock(autospec=S3Connection), 'test-bucket')
+            self.s3_connection, s3_bucket_name)
 
         # add a supplier to match the example email
         clear_db()
@@ -372,14 +389,21 @@ class TestQuoteEmailProcessorWithDB(TestCase):
         a.add(self.altitude_supplier)
         self.assertEqual(0, a.query(Quote).count())
 
+        # s3 bucket should start out empty
+        self.assertEqual(0, len(self.s3_bucket.get_all_keys()))
+
         self.qep.process_email(self.email_file)
         self.assertEqual(2144, a.query(Quote).count())
+
+        # example email has 2 attachments in it, so 2 files are uploaded
+        self.assertEqual(2, len(self.s3_bucket.get_all_keys()))
 
         # TODO: tests block forever without this here. it doesn't even work
         # when this is moved to tearDown because AltitudeSession (unlike
         # Session) returns a different object each time it is called. i
         # haven't figured out why that is yet.
         a.rollback()
+
 
     def test_process_email_no_supplier_match(self):
         # supplier is missing but altitude_supplier is present
