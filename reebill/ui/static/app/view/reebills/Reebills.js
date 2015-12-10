@@ -146,6 +146,12 @@ Ext.define('ReeBill.view.reebills.Reebills', {
             text: 'Toggle Processed',
             action: 'toggleReebillProcessed',
             disabled: true
+        },{
+            xtype: 'button',
+            text: 'Edit Addresses',
+            action: 'updateAddresses',
+            iconCls: 'silk-edit',
+            disabled: true
         },'-',{
             xtype: 'button',
             text: 'Render PDF',

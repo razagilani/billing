@@ -205,6 +205,12 @@ class handler_consoleHandler(Schema):
     args = String()
 handler_consoleHandler.add_field('class', String())
 
+class handler_stderrHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_stderrHandler.add_field('class', String())
+
 class handler_reebillHandler(Schema):
     level = String()
     formatter = String()
