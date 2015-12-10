@@ -110,13 +110,16 @@ class GEEPriceQuote(object):
 class GEEMatrixParser(QuoteParser):
     """Parser class for Great Electric Energy (GEE) spreadsheets."""
 
-    # Question: Is this correct?
     NAME = 'greateasternenergy'
 
     READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
     EXPECTED_ENERGY_UNIT = unit_registry.kWh
 
+    # I have elected to put expected rows/cols in a dictionary for the following reason:
+    # Certain sheets start at column B instead of A, in which case all expected columns
+    # need to be shifted by 1. The easiest way to manage this is to throw them in a dict
+    # and increase all cols by one.
     LAYOUT = {
         # Expected rows
         'ZONE_COL': 0,  #'A'
@@ -221,16 +224,21 @@ class GEEMatrixParser(QuoteParser):
 
             for price_row in xrange(start_row, self._reader.get_height(sheet)):
                 for price_col in xrange(self.LAYOUT['FIRST_QUOTE_COL'], self._reader.get_width(sheet)):
-                    try:
-                        # This could be a good use of fuckit.py.
-                        price = self._reader.get(sheet, price_row, price_col, float)
-                    except ValidationError:
-                        continue
 
-                    quote = GEEPriceQuote(self, sheet, price_row, price_col).evaluate()
+                    # We don't know where the first price cell starts, so we give ourselves
+                    # some margin to search for it.
+                    price = self._reader.get(sheet, price_row, price_col, object)
 
-                    rate_class_ids = self.get_rate_class_ids_for_alias(quote.rate_class_alias)
-                    for rate_class_id in rate_class_ids:
-                        if 'custom' not in quote.rate_class_alias.lower():
-                            quote.rate_class_id = rate_class_id
-                            yield quote
+                    if isinstance(price, float):
+                        quote = GEEPriceQuote(self, sheet, price_row, price_col).evaluate()
+
+                        rate_class_ids = self.get_rate_class_ids_for_alias(quote.rate_class_alias)
+                        for rate_class_id in rate_class_ids:
+                            if 'custom' not in quote.rate_class_alias.lower():
+                                quote.rate_class_id = rate_class_id
+                                yield quote
+                    else:
+                        # The cell in question does NOT contain a price,
+                        # so we will skip over it. This is normal, because
+                        # sometimes it may involve some searching to find the first one.
+                        pass
