@@ -3,6 +3,7 @@ from os.path import join, basename
 import re
 from unittest import TestCase, skip
 
+from nose.plugins.attrib import attr
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -12,7 +13,7 @@ from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser)
+    USGEElectricMatrixParser, GEEMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -20,6 +21,7 @@ from util.units import unit_registry
 
 def setUpModule():
     init_test_config()
+
 
 class QuoteParserTest(TestCase):
     def setUp(self):
@@ -73,6 +75,7 @@ class MatrixQuoteParsersTest(TestCase):
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
+    USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(DIRECTORY,'Champion MM PJM Fixed-Index-24 '
                                         'Matrix 2015-10-30.xls')
     # using version of the file converted to XLS because we can't currently
@@ -88,6 +91,9 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
+    GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
+    GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -170,7 +176,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.07036, q1.price)
 
-    @skip('ignore failure until example file is added')
     def test_usge_electric(self):
         parser = USGEElectricMatrixParser()
         self.assertEqual(0, parser.get_count())
@@ -235,6 +240,9 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
         self.assertEqual(quotes[-1].rate_class_alias,
                          "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
+
+
+
 
     def test_usge(self):
         parser = USGEMatrixParser()
@@ -467,6 +475,76 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
+    @attr('current')
+    def test_gee_electric(self):
+        parser = GEEMatrixParser()
+
+        with open(self.GEE_FILE_PATH_MA, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+            parser.validate()
+            quotes_ma = list(parser.extract_quotes())
+
+        with open(self.GEE_FILE_PATH_NJ, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+            parser.validate()
+            quotes_nj = list(parser.extract_quotes())
+
+        with open(self.GEE_FILE_PATH_NY, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+            parser.validate()
+            quotes_ny = list(parser.extract_quotes())
+
+        self.assertGreaterEqual(len(quotes_ma) + len(quotes_nj) + len(quotes_ny), 1000)
+        q = quotes_ny[0]
+        self.assertEqual(datetime(2015, 12, 1), q.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 1), q.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q.start_until)
+        self.assertEqual('GEE-electric-ConEd-J-SC-02', q.rate_class_alias)
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(0.08381, q.price)
+
+        ql = quotes_ny[-1]
+        self.assertEqual(datetime(2015, 12, 1), ql.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), ql.valid_until)
+        self.assertEqual(datetime(2016, 5, 1), ql.start_from)
+        self.assertEqual(datetime(2016, 6, 1), ql.start_until)
+        self.assertEqual(24, ql.term_months)
+        self.assertAlmostEqual(0.07573, ql.price, delta=0.000001)
+
+        q_nj_0 = quotes_nj[0]
+        self.assertEqual(datetime(2015, 12, 1), q_nj_0.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), q_nj_0.valid_until)
+        self.assertEqual(datetime(2015, 12, 1), q_nj_0.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q_nj_0.start_until)
+        self.assertEqual(6, q_nj_0.term_months)
+        self.assertAlmostEqual(0.09789, q_nj_0.price, delta=0.000001)
+
+        q_nj_l = quotes_nj[-1]
+        self.assertEqual(datetime(2016, 5, 1), q_nj_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_nj_l.start_until)
+        self.assertEqual(24, q_nj_l.term_months)
+        self.assertAlmostEqual(0.08219, q_nj_l.price, delta=0.000001)
+
+        q_ma_0 = quotes_ma[0]
+        self.assertEqual(datetime(2015, 12, 1), q_ma_0.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), q_ma_0.valid_until)
+        self.assertEqual(datetime(2015, 12, 1), q_ma_0.start_from)
+        self.assertEqual(datetime(2016, 1, 1), q_ma_0.start_until)
+        self.assertEqual(6, q_ma_0.term_months)
+        self.assertAlmostEqual(0.09168, q_ma_0.price, delta=0.000001)
+
+        q_ma_l = quotes_ma[-2]
+        self.assertEqual(datetime(2016, 5, 1), q_ma_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
+        self.assertEqual(24, q_ma_l.term_months)
+        self.assertAlmostEqual(0.08888, q_ma_l.price, delta=0.000001)
+
+        q_ma_l = quotes_ma[-1]
+        self.assertEqual(datetime(2016, 5, 1), q_ma_l.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
+        self.assertEqual(6, q_ma_l.term_months)
+        self.assertAlmostEqual(0.07356, q_ma_l.price, delta=0.000001)
 
     def test_major_energy(self):
         parser = MajorEnergyMatrixParser()
