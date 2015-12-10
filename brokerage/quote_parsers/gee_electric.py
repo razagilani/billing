@@ -69,7 +69,8 @@ class GEEPriceQuote(object):
         return self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['TERM_COL'], int)
 
     def fetch_rate_sch(self):
-        return self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['RATE_SCH_COL'], basestring)
+        rate_sch = self.reader.get(self.sheet, self.row, self.matrix_parser.LAYOUT['RATE_SCH_COL'], basestring)
+        return rate_sch.replace('Sweet Spot', '').strip()
 
     def fetch_zone(self):
         # Special notes:
@@ -110,7 +111,7 @@ class GEEMatrixParser(QuoteParser):
     """Parser class for Great Electric Energy (GEE) spreadsheets."""
 
     # Question: Is this correct?
-    NAME = 'greatelectricenergy'
+    NAME = 'greateasternenergy'
 
     READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
@@ -228,5 +229,8 @@ class GEEMatrixParser(QuoteParser):
 
                     quote = GEEPriceQuote(self, sheet, price_row, price_col).evaluate()
 
-                    if 'custom' not in quote.rate_class_alias.lower():
-                        yield quote
+                    rate_class_ids = self.get_rate_class_ids_for_alias(quote.rate_class_alias)
+                    for rate_class_id in rate_class_ids:
+                        if 'custom' not in quote.rate_class_alias.lower():
+                            quote.rate_class_id = rate_class_id
+                            yield quote
