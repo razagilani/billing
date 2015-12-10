@@ -1,9 +1,8 @@
-Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
+Ext.define('ReeBill.view.reebills.AddressEditForm', {
     extend: 'Ext.form.Panel',
+    title: "Edit Customer's Billing/Service Addresses",
 
-    title: 'Sequential Account Information',
-
-    alias: 'widget.sequentialAccountInformation',    
+    alias: 'widget.addressEditForm',
 
     bodyPadding: 15,
     autoScroll: true,
@@ -13,30 +12,8 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
     },
 
     items: [{
-        xtype: 'reeBillVersions',
-        name: 'reeBillVersions',
-        region: 'north'
-    },{
         xtype: 'fieldset',
-        title: 'Rates',
-        defaults: {
-            anchor: '100%',
-            labelWidth: 150
-        },
-        collapsible: false,
-        items: [{
-            xtype: 'textfield',
-            name: 'discount_rate',
-            fieldLabel: 'Discount Rate'
-        },{
-            xtype: 'textfield',
-            fieldLabel: 'Late Charge Rate',
-            name: 'late_charge_rate',
-            msgTarget: 'under'
-        }]
-    },{
-        xtype: 'fieldset',
-        title: 'Nextility Billing Address',
+        title: 'Billing Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150
@@ -64,7 +41,7 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
         }]
     },{
         xtype: 'fieldset',
-        title: 'Nextility Service Address',
+        title: 'Service Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150
@@ -90,6 +67,9 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
             fieldLabel: 'Postal Code',
             name: 'sa_postal_code'
         }]
+    },{
+        xtype: 'hiddenfield',  //should use the more standard hiddenfield
+        name: 'reebill_id'
     }],
 
     dockedItems: [{
@@ -98,11 +78,8 @@ Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
         items: ['->',{
             xtype: 'button',
             text: 'Save',
-            action: 'saveAccountInformation'
-        },{
-            xtype: 'button',
-            text: 'Reset',
-            action: 'resetAccountInformation'
+            iconCls: 'silk-disk',
+            action: 'saveAddressChanges'
         }]
     }]
 });
