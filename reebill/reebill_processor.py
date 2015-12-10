@@ -216,8 +216,8 @@ class ReebillProcessor(object):
         # create reebill row in state database
         new_reebill = ReeBill(
             customer, new_sequence, utilbill=new_utilbill,
-            billing_address=new_utilbill.billing_address.clone(),
-            service_address=new_utilbill.service_address.clone())
+            billing_address=customer.billing_address.clone(),
+            service_address=customer.service_address.clone())
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
@@ -448,7 +448,8 @@ class ReebillProcessor(object):
                 late_charge_rate=late_charge_rate, service=service_type,
                 bill_email_recipient='example@example.com',
                 utility_account=new_utility_account,
-                payee=payee)
+                payee=payee, billing_address=Address(**billing_address),
+                service_address=Address(**service_address))
             session.add(new_reebill_customer)
             session.flush()
             return new_reebill_customer

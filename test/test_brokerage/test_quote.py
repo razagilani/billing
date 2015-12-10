@@ -6,6 +6,7 @@ from brokerage.brokerage_model import Quote, MatrixQuote, \
 from core import init_altitude_db, init_model
 from core.model import AltitudeSession
 from core.exceptions import ValidationError
+from core.model.model import ELECTRIC, GAS
 from test import init_test_config, clear_db, create_tables
 
 
@@ -13,10 +14,21 @@ class QuoteTest(TestCase):
     """Unit tests for Quote.
     """
     def setUp(self):
-        self.quote = Quote(start_from=datetime(2000, 3, 1),
-                           start_until=datetime(2000, 4, 1), term_months=3,
-                           valid_from=datetime(2000, 1, 1),
-                           valid_until=datetime(2000, 1, 2), price=0.1)
+        self.quote = Quote(
+            service_type=ELECTRIC,
+            start_from=datetime(2000, 3, 1), start_until=datetime(2000, 4, 1),
+            term_months=3, valid_from=datetime(2000, 1, 1),
+            valid_until=datetime(2000, 1, 2), price=0.1)
+
+class MatrixQuoteTest(TestCase):
+    """Unit tests for MatrixQuote.
+    """
+    def setUp(self):
+        self.quote = MatrixQuote(
+            service_type=GAS, start_from=datetime(2000, 3, 1),
+            start_until=datetime(2000, 4, 1), term_months=3,
+            valid_from=datetime(2000, 1, 1), valid_until=datetime(2000, 1, 2),
+            price=0.1, min_volume=0, limit_volume=100)
 
     def test_validate(self):
         self.quote.validate()
@@ -40,17 +52,6 @@ class QuoteTest(TestCase):
         self.assertRaises(ValidationError, q.validate)
         q.price = 10
         self.assertRaises(ValidationError, q.validate)
-
-
-class MatrixQuoteTest(TestCase):
-    """Unit tests for MatrixQuote.
-    """
-    def setUp(self):
-        self.quote = MatrixQuote(start_from=datetime(2000, 3, 1),
-                                 start_until=datetime(2000, 4, 1),
-                                 term_months=3, valid_from=datetime(2000, 1, 1),
-                                 valid_until=datetime(2000, 1, 2), price=0.1,
-                                 min_volume=0, limit_volume=100)
 
     def test_validate(self):
         # min too low
@@ -91,7 +92,7 @@ class MatrixQuoteTest(TestCase):
 
         # good
         self.quote.min_volume = 100
-        self.quote.limit_volume = 200
+        self.quote.limit_volume = 10000
         self.quote.validate()
 
 

@@ -23,7 +23,7 @@ from reebill.reebill_dao import ReeBillDAO
 from reebill.payment_dao import PaymentDAO
 from reebill.views import Views
 from core.pricing import FuzzyPricingModel
-from core.model import Session, UtilityAccount
+from core.model import Session, UtilityAccount, Address
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
 from reebill import journal, reebill_file_handler
@@ -611,6 +611,26 @@ class ReebillsResource(RESTResource):
             account, sequence, deleted_version)
 
         return True, {}
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def update_addresses(self, **params):
+        params = cherrypy.request.params
+        r = self.state_db.get_reebill_by_id(int(params['reebill_id']))
+
+        service_address = Address(
+            addressee=params['sa_addressee'],
+            street=params['sa_street'], city=params['sa_city'],
+            state=params['sa_state'], postal_code=params['sa_postal_code'])
+        billing_address = Address(
+            addressee=params['ba_addressee'],
+            street=params['ba_street'], city=params['ba_city'],
+            state=params['ba_state'], postal_code=params['ba_postal_code'])
+        r.reebill_customer.set_service_address(service_address)
+        r.reebill_customer.set_billing_address(billing_address)
+
+        return self.dumps({'success': True, 'reebill': r.column_dict()})
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
