@@ -1,0 +1,7 @@
+fabfile.py
+fabexcludes.txt
+*.pyc
+doc
+*.swp
+.log*
+static
