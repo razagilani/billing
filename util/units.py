@@ -9,6 +9,7 @@ unit_registry.define('centumcubicfoot = 1 * therm = ccf = therms')
 unit_registry.define('kilowattdaily = 0 * therm = kwd = kWD')
 unit_registry.define('MMBTU = 10**6 * btu')
 unit_registry.define('mmbtu = MMBTU')
+unit_registry.define('Mcf = 10 * ccf')
 
 def convert_to_therms(quantity, unit_name, ccf_conversion_factor=None):
     unit = unit_registry.parse_expression(unit_name)
