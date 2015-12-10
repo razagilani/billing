@@ -134,6 +134,9 @@ class MatrixQuoteParsersTest(TestCase):
             'NJ-SJG ($/therm)',
             # Entrust
             'Com Ed', 'ConEd Zone J',
+
+            # Great Eastern Energy
+            'GEE-electric-ConEd-J-SC-02'
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -504,6 +507,9 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q.min_volume)
         self.assertEqual(499999, q.limit_volume)
         self.assertEqual(0.08381, q.price)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual('electric', q.service_type)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
 
         ql = quotes_ny[-1]
         self.assertEqual(datetime(2015, 12, 1), ql.valid_from)
