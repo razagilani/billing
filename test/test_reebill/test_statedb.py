@@ -1,3 +1,4 @@
+import copy
 from datetime import date, datetime
 
 from sqlalchemy.orm.exc import NoResultFound
@@ -36,8 +37,17 @@ class StateDBTest(TestCase):
                                     service='thermal',
                                     bill_email_recipient='example@example.com',
                                     utility_account=self.utility_account,
-                                    payee='payee')
-        self.reebill_customer2 = self.reebill_customer.clone()
+                                    payee='payee',
+                                    billing_address=blank_address,
+                                    service_address=blank_address)
+        self.reebill_customer2 = ReeBillCustomer(name='Test Customer',
+                                    discount_rate=.12, late_charge_rate=.34,
+                                    service='thermal',
+                                    bill_email_recipient='example@example.com',
+                                    utility_account=self.utility_account,
+                                    payee='payee',
+                                    billing_address=blank_address,
+                                    service_address=blank_address)
 
         self.session = Session()
         self.session.add(self.utility_account)
@@ -51,9 +61,11 @@ class StateDBTest(TestCase):
 
     def test_get_all_reebills(self):
         # two different customers, one bill has multiple versions.
-        customer2 = ReeBillCustomer()
+        customer2 = ReeBillCustomer(billing_address=Address(),
+                                    service_address=Address())
         customer2.id = self.reebill_customer.id + 1
-        customer3 = ReeBillCustomer()
+        customer3 = ReeBillCustomer(billing_address=Address(),
+                                    service_address=Address())
         customer3.id = self.reebill_customer.id + 2
         one_1 = ReeBill(self.reebill_customer, 1)
         one_2_0 = ReeBill(self.reebill_customer, 2)

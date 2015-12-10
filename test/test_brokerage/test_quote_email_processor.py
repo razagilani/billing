@@ -296,8 +296,9 @@ class TestQuoteEmailProcessorWithDB(TestCase):
             id=199, name='USGE',
             matrix_email_recipient='recipient1@nextility.example.com',
             matrix_formats=[
-            # TODO: update this id when MatrixFormats are put in the database
-                MatrixFormat(matrix_format_id=199,
+                # this ID should correspond to USGE in
+                # 'quote_parsers.CLASSES_FOR_FORMATS'
+                MatrixFormat(matrix_format_id=4,
                              matrix_attachment_name='2. USGE Gas.xlsx')])
         self.altitude_supplier = Company(name=self.supplier.name)
 

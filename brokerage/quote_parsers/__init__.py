@@ -18,15 +18,15 @@ from .gee_electric import GEEMatrixParser
 # subclass. each time a subclass is written for a new supplier, add it to
 # this dictionary.
 CLASSES_FOR_FORMATS = {
-    95: AEPMatrixParser,
-    125: AmerigreenMatrixParser,
-    928: ChampionMatrixParser,
-    103: ConstellationMatrixParser,
-    14: DirectEnergyMatrixParser,
-    93: LibertyMatrixParser,
-    56: EntrustMatrixParser,
-    78: MajorEnergyMatrixParser,
-    1362: SFEMatrixParser,
-    199: USGEMatrixParser,
-    200: USGEElectricMatrixParser,
+    6: AEPMatrixParser,
+    11: AmerigreenMatrixParser,
+    7: ChampionMatrixParser,
+    3: ConstellationMatrixParser,
+    8: DirectEnergyMatrixParser,
+    1: LibertyMatrixParser,
+    2: EntrustMatrixParser,
+    10: MajorEnergyMatrixParser,
+    9: SFEMatrixParser,
+    4: USGEMatrixParser,
+    5: USGEElectricMatrixParser,
 }
