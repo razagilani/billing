@@ -676,4 +676,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
 
+    def test_guttman(self):
+        pass
+
 
