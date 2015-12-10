@@ -130,10 +130,35 @@ class GEEMatrixParser(QuoteParser):
         'ASSUMED_PRICE_START_ROW': 6
     }
 
-
     def _validate(self):
-        pass
+        """
+        Confirms many of the headers are in a known, proper location.
+        :return:
+        """
+        start_row = None
 
+        # Try searching the first two columns for "Zone".
+        # This also finds the start row.
+        for i in [0, 1]:
+            try:
+                start_row = self._find_start_row(0, self.LAYOUT['ZONE_COL'] + i) - 2
+                break
+            except ValueError:
+                pass
+
+        if start_row == None:
+            # Start row could not be determined. Definite Validation Error.
+            raise ValidationError('Did not find Zone in expected column')
+
+        # Search the other tokens - these must be in the same row as "Zone"
+        if 'Rate Sch' not in self._reader.get(0, start_row, self.LAYOUT['RATE_SCH_COL'] + i, basestring):
+            raise ValidationError('Cannot find Rate Sch')
+
+        if 'Term (Mths)' not in self._reader.get(0, start_row, self.LAYOUT['TERM_COL'] + i, basestring):
+            raise ValidationError('Cannot find Term (Mths)')
+
+        if 'START DATE' not in self._reader.get(0, start_row, self.LAYOUT['START_DATE_LBL_COL'] + i, basestring):
+            raise ValidationError('Cannot find START_DATE')
 
     def _find_start_row(self, sheet, col):
         """
