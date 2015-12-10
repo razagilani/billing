@@ -475,7 +475,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
-    @attr('current')
     def test_gee_electric(self):
         parser = GEEMatrixParser()
 
