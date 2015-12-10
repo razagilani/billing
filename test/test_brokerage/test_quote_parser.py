@@ -495,12 +495,12 @@ class MatrixQuoteParsersTest(TestCase):
             quotes_ny = list(parser.extract_quotes())
 
         self.assertGreaterEqual(len(quotes_ma) + len(quotes_nj) + len(quotes_ny), 1000)
-
         q = quotes_ny[0]
         self.assertEqual(datetime(2015, 12, 1), q.valid_from)
         self.assertEqual(datetime(2015, 12, 2), q.valid_until)
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
         self.assertEqual(datetime(2016, 1, 1), q.start_until)
+        self.assertEqual('GEE-electric-ConEd-J-SC-02', q.rate_class_alias)
         self.assertEqual(6, q.term_months)
         self.assertEqual(0.08381, q.price)
 
