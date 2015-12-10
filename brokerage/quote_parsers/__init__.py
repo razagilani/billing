@@ -29,4 +29,5 @@ CLASSES_FOR_FORMATS = {
     9: SFEMatrixParser,
     4: USGEMatrixParser,
     5: USGEElectricMatrixParser,
+    13: GEEMatrixParser
 }
