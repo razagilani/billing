@@ -501,6 +501,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 1, 1), q.start_until)
         self.assertEqual('GEE-electric-ConEd-J-SC-02', q.rate_class_alias)
         self.assertEqual(6, q.term_months)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(499999, q.limit_volume)
         self.assertEqual(0.08381, q.price)
 
         ql = quotes_ny[-1]
@@ -509,6 +511,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 5, 1), ql.start_from)
         self.assertEqual(datetime(2016, 6, 1), ql.start_until)
         self.assertEqual(24, ql.term_months)
+        self.assertEqual(500000, ql.min_volume)
+        self.assertEqual(999999, ql.limit_volume)
         self.assertAlmostEqual(0.07573, ql.price, delta=0.000001)
 
         q_nj_0 = quotes_nj[0]
@@ -534,9 +538,13 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertAlmostEqual(0.09168, q_ma_0.price, delta=0.000001)
 
         q_ma_l = quotes_ma[-2]
+        self.assertEqual(datetime(2015, 12, 1), q_ma_l.valid_from)
+        self.assertEqual(datetime(2015, 12, 2), q_ma_l.valid_until)
         self.assertEqual(datetime(2016, 5, 1), q_ma_l.start_from)
         self.assertEqual(datetime(2016, 6, 1), q_ma_l.start_until)
         self.assertEqual(24, q_ma_l.term_months)
+        self.assertEqual(500000, ql.min_volume)
+        self.assertEqual(999999, ql.limit_volume)
         self.assertAlmostEqual(0.08888, q_ma_l.price, delta=0.000001)
 
         q_ma_l = quotes_ma[-1]
