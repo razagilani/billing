@@ -62,7 +62,7 @@ class SimpleCellDateGetter(DateGetter):
 
     def get_dates(self, quote_parser):
         # TODO: use of private variable
-        valid_from = self._get_date_from_cell(quote_parser._reader, self._row,
+        valid_from = self._get_date_from_cell(quote_parser.reader, self._row,
                                               self._col)
         valid_until = valid_from + timedelta(days=1)
         return valid_from, valid_until
@@ -91,7 +91,7 @@ class StartEndCellDateGetter(SimpleCellDateGetter):
         valid_from, _ = super(StartEndCellDateGetter, self).get_dates(
             quote_parser)
         # TODO: use of private variable
-        valid_until = self._get_date_from_cell(quote_parser._reader,
+        valid_until = self._get_date_from_cell(quote_parser.reader,
                                                self._end_row, self._end_col)
         return valid_from, valid_until + timedelta(days=1)
 
