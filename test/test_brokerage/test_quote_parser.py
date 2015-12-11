@@ -91,8 +91,18 @@ class MatrixQuoteParsersTest(TestCase):
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
     # TODO: multiple files
-    VOLUNTEER_FILE_PATH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 '
-                                                       '12-7-15.pdf')
+    #VOLUNTEER_FILE_PATH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 '
+    # '12-7-15.pdf')
+    VOLUNTEER_FILE_PATHS = [join(DIRECTORY, 'volunteer', name) for name in [
+        'Exchange_COH_2015 12-7-15.pdf',
+        'Exchange_CON_2015 12-7-15.pdf',
+        'Exchange_DEO_2015 12-7-15.pdf',
+        'Exchange_DTE_2015 12-7-15.pdf',
+        'Exchange_DUKE_2015 12-7-15.pdf',
+        'Exchange_PNG_2015 12-7-15.pdf',
+        'Exchange_VEDO_2015 12-7-15.pdf',
+        'PECO Exchange_2015 12-7-15.pdf',
+    ]]
 
     @classmethod
     def setUpClass(cls):
@@ -689,12 +699,18 @@ class MatrixQuoteParsersTest(TestCase):
         parser = VolunteerMatrixParser()
         self.assertEqual(0, parser.get_count())
 
-        with open(self.VOLUNTEER_FILE_PATH) as quote_file:
-            parser.load_file(quote_file)
-        parser.validate()
-        self.assertEqual(0, parser.get_count())
+        for path in self.VOLUNTEER_FILE_PATHS:
+            with open(path) as quote_file:
+                parser.load_file(quote_file)
+            parser.validate()
+            try:
+                quotes = list(parser.extract_quotes())
+            except Exception as e:
+                print e
+            else:
+                print 'GOOD', path
+        return
 
-        quotes = list(parser.extract_quotes())
         self.assertEqual(9, parser.get_count())
         self.assertEqual(9, len(quotes))
 
