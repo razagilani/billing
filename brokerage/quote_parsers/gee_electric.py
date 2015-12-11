@@ -111,9 +111,8 @@ class GEEMatrixParser(QuoteParser):
     """Parser class for Great Electric Energy (GEE) spreadsheets."""
 
     NAME = 'greateasternenergy'
+    reader = SpreadsheetReader(formats.xlsx)
 
-    READER_CLASS = SpreadsheetReader
-    FILE_FORMAT = formats.xlsx
     EXPECTED_ENERGY_UNIT = unit_registry.kWh
 
     # I have elected to put expected rows/cols in a dictionary for the following reason:
@@ -155,13 +154,13 @@ class GEEMatrixParser(QuoteParser):
             raise ValidationError('Did not find Zone in expected column')
 
         # Search the other tokens - these must be in the same row as "Zone"
-        if 'Rate Sch' not in self._reader.get(0, start_row, self.LAYOUT['RATE_SCH_COL'] + i, basestring):
+        if 'Rate Sch' not in self.reader.get(0, start_row, self.LAYOUT['RATE_SCH_COL'] + i, basestring):
             raise ValidationError('Cannot find Rate Sch')
 
-        if 'Term (Mths)' not in self._reader.get(0, start_row, self.LAYOUT['TERM_COL'] + i, basestring):
+        if 'Term (Mths)' not in self.reader.get(0, start_row, self.LAYOUT['TERM_COL'] + i, basestring):
             raise ValidationError('Cannot find Term (Mths)')
 
-        if 'START DATE' not in self._reader.get(0, start_row, self.LAYOUT['START_DATE_LBL_COL'] + i, basestring):
+        if 'START DATE' not in self.reader.get(0, start_row, self.LAYOUT['START_DATE_LBL_COL'] + i, basestring):
             raise ValidationError('Cannot find START_DATE')
 
     def _find_start_row(self, sheet, col):
@@ -174,9 +173,9 @@ class GEEMatrixParser(QuoteParser):
         :return: First row index containing price data
         """
         start_row = self.LAYOUT['ASSUMED_PRICE_START_ROW']
-        for test_row in xrange(0, self._reader.get_height(sheet)):
+        for test_row in xrange(0, self.reader.get_height(sheet)):
             # Find the first row containing pricing data.
-            cell_val = self._reader.get(sheet, test_row, col, (basestring, type(None)))
+            cell_val = self.reader.get(sheet, test_row, col, (basestring, type(None)))
             if cell_val and 'Zone' in cell_val:
                 start_row = test_row + 2
                 return start_row
@@ -188,10 +187,10 @@ class GEEMatrixParser(QuoteParser):
 
         # First, we need to get the validitity dates for all quotes. This is a little annoying
         # because it is ONLY available on the first sheet of each spreadsheet.
-        effective_str = self._reader.get(0,
-                                         self.LAYOUT['EFFECTIVE_DATE_ROW'],
-                                         self.LAYOUT['EFFECTIVE_DATE_COL'],
-                                         basestring)
+        effective_str = self.reader.get(0,
+                                        self.LAYOUT['EFFECTIVE_DATE_ROW'],
+                                        self.LAYOUT['EFFECTIVE_DATE_COL'],
+                                        basestring)
         effective_date = datetime.datetime.strptime(effective_str.split(':')[1].strip(), '%B %d, %Y')
         self._valid_from = effective_date
         self._valid_until = effective_date + datetime.timedelta(days=1)
@@ -199,7 +198,7 @@ class GEEMatrixParser(QuoteParser):
         # Indicates whether col indices have been shifted
         modified = False
 
-        for sheet in self._reader.get_sheet_titles():
+        for sheet in self.reader.get_sheet_titles():
 
             if modified:
                 # Reset to originals for next sheet if previous one was shifted.
@@ -222,12 +221,12 @@ class GEEMatrixParser(QuoteParser):
                     for key in [k for k in self.LAYOUT.keys() if "_COL" in k]:
                         self.LAYOUT[key] += 1
 
-            for price_row in xrange(start_row, self._reader.get_height(sheet)):
-                for price_col in xrange(self.LAYOUT['FIRST_QUOTE_COL'], self._reader.get_width(sheet)):
+            for price_row in xrange(start_row, self.reader.get_height(sheet)):
+                for price_col in xrange(self.LAYOUT['FIRST_QUOTE_COL'], self.reader.get_width(sheet)):
 
                     # We don't know where the first price cell starts, so we give ourselves
                     # some margin to search for it.
-                    price = self._reader.get(sheet, price_row, price_col, object)
+                    price = self.reader.get(sheet, price_row, price_col, object)
 
                     if isinstance(price, float):
                         quote = GEEPriceQuote(self, sheet, price_row, price_col).evaluate()

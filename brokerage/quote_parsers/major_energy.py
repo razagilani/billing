@@ -16,9 +16,7 @@ class MajorEnergyElectricSheetParser(QuoteParser):
     electricity quotes.
     """
     NAME = ''
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     HEADER_ROW = 14
     QUOTE_START_ROW = 15
@@ -60,31 +58,31 @@ class MajorEnergyElectricSheetParser(QuoteParser):
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1)]
 
         for row in xrange(self.QUOTE_START_ROW,
-                          self._reader.get_height(self.SHEET) + 1):
+                          self.reader.get_height(self.SHEET) + 1):
             # TODO use time zone here
-            start_from = self._reader.get(self.SHEET, row, self.START_COL,
-                                          datetime)
+            start_from = self.reader.get(self.SHEET, row, self.START_COL,
+                                         datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
-            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
-                                       basestring)
-            state = self._reader.get(self.SHEET, row, self.STATE_COL,
-                                     basestring)
-            zone = self._reader.get(self.SHEET, row, self.ZONE_COL,
-                                    (basestring, type(None)))
+            utility = self.reader.get(self.SHEET, row, self.UTILITY_COL,
+                                      basestring)
+            state = self.reader.get(self.SHEET, row, self.STATE_COL,
+                                    basestring)
+            zone = self.reader.get(self.SHEET, row, self.ZONE_COL,
+                                   (basestring, type(None)))
             if zone is None:
                 zone = ''
             rate_class_alias_parts = ['electric', state, utility, zone]
             rate_class_alias = '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
-            term_months = self._reader.get(self.SHEET, row, self.TERM_COL, int)
+            term_months = self.reader.get(self.SHEET, row, self.TERM_COL, int)
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 # for gas, term is different for each column
                 # (this could be done one instead of in a loop)
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader.get(self.SHEET, row, col, (int, float))
+                price = self.reader.get(self.SHEET, row, col, (int, float))
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
@@ -106,9 +104,7 @@ class MajorEnergyGasSheetParser(QuoteParser):
     gas quotes.
     """
     NAME = ''
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     HEADER_ROW = 13
     QUOTE_START_ROW = 14
@@ -132,10 +128,10 @@ class MajorEnergyGasSheetParser(QuoteParser):
 
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
-                         self._reader.get_height(self.SHEET) + 1):
+                          self.reader.get_height(self.SHEET) + 1):
             # todo use time zone here
-            start_from = self._reader.get(self.SHEET, row, self.START_COL,
-                                          (datetime, basestring))
+            start_from = self.reader.get(self.SHEET, row, self.START_COL,
+                                         (datetime, basestring))
             # one example of the file repeated the column headers in the
             # first row of quotes, instead of actual quote data. probably a
             # mistake that they'll fix later. handle it by skipping the row.
@@ -144,22 +140,22 @@ class MajorEnergyGasSheetParser(QuoteParser):
             else:
                 _assert_true(isinstance(start_from, datetime))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
-                                       basestring)
-            state = self._reader.get(self.SHEET, row, self.STATE_COL,
-                                     basestring)
+            utility = self.reader.get(self.SHEET, row, self.UTILITY_COL,
+                                      basestring)
+            state = self.reader.get(self.SHEET, row, self.STATE_COL,
+                                    basestring)
             rate_class_alias_parts = ['gas', state, utility]
             rate_class_alias = '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
-            for col in self._reader.column_range(self.PRICE_START_COL,
-                                                 self.PRICE_END_COL):
+            for col in self.reader.column_range(self.PRICE_START_COL,
+                                                self.PRICE_END_COL):
                 # for gas, term is different for each column
                 # (this could be done one instead of in a loop)
-                term_months = self._reader.get_matches(
+                term_months = self.reader.get_matches(
                     self.SHEET, self.HEADER_ROW, col, '(\d+) Months', int)
-                price = self._reader.get(self.SHEET, row, col,
-                                         (int, float, type(None), basestring))
+                price = self.reader.get(self.SHEET, row, col,
+                                        (int, float, type(None), basestring))
                 # skip blank cells (may be blank or None)
                 if price in (None, ''):
                     continue
@@ -191,8 +187,7 @@ class MajorEnergyMatrixParser(QuoteParser):
     classes that should be eliminated. But it works well enough.
     """
     NAME = 'majorenergy'
-    READER_CLASS = SpreadsheetReader
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     # only validation that applies to the entire file goes in this class.
     # beware of hidden sheet that contains similar data

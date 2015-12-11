@@ -1,9 +1,8 @@
 from datetime import datetime
 from os.path import join, basename
 import re
-from unittest import TestCase, skip
+from unittest import TestCase
 
-from nose.plugins.attrib import attr
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
@@ -28,10 +27,10 @@ class QuoteParserTest(TestCase):
         reader = Mock(autospec=SpreadsheetReader)
         class ExampleQuoteParser(QuoteParser):
             NAME = 'example'
-            READER_CLASS = Mock()
+            reader = Mock()
             def __init__(self):
                 super(ExampleQuoteParser, self).__init__()
-                self._reader = reader
+                self.reader = reader
             def _load_rate_class_aliases(self):
                 # avoid use of database in this test by overriding this method
                 # where a database query is made. TODO better way to do this

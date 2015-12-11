@@ -6,6 +6,8 @@ import re
 from datetime import datetime, timedelta
 
 from tablib import Databook, formats
+
+from brokerage.reader import Reader
 from brokerage.validation import ValidationError, _assert_true, _assert_match, \
     _assert_equal
 from brokerage.spreadsheet_reader import SpreadsheetReader
@@ -128,11 +130,8 @@ class QuoteParser(object):
     # with no spaces or punctuation, like "directenergy". avoid changing this!
     NAME = None
 
-    # determines which subclass of Reader to use for this file type
-    READER_CLASS = None
-
-    # tablib submodule that should be used to import data from the spreadsheet
-    FILE_FORMAT = None
+    # a Reader instance to use for this file type (subclasses should set this)
+    reader = None
 
     # subclasses can set this to use sheet titles to validate the file
     EXPECTED_SHEET_TITLES = None
@@ -158,7 +157,11 @@ class QuoteParser(object):
         # name should be defined
         assert isinstance(self.NAME, basestring)
 
-        self._reader = self.READER_CLASS()
+        # reader should be set to a Reader instance by subclass
+        assert self.reader is not None
+        # TODO: remove '_reader' variable used in subclasses
+        self._reader = self.reader
+
         self._file_name = None
 
         # whether validation has been done yet
@@ -195,7 +198,7 @@ class QuoteParser(object):
         :param file_name: name of the file, used in some formats to get
         valid_from and valid_until dates for the quotes
         """
-        self._reader.load_file(quote_file, self.FILE_FORMAT)
+        self.reader.load_file(quote_file)
         self._validated = False
         self.file_name = file_name
 
@@ -205,19 +208,19 @@ class QuoteParser(object):
         reading the wrong file by accident, not to find all possible
         problems the contents in advance.
         """
-        assert self._reader.is_loaded()
+        assert self.reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
             _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
-                set(self._reader.get_sheet_titles())))
+                set(self.reader.get_sheet_titles())))
         for sheet_number_or_title, row, col, expected_value in \
                 self.EXPECTED_CELLS:
             if isinstance(expected_value, basestring):
-                text = self._reader.get(sheet_number_or_title, row, col,
-                                        basestring)
+                text = self.reader.get(sheet_number_or_title, row, col,
+                                       basestring)
                 _assert_match(expected_value, text)
             else:
-                actual_value = self._reader.get(sheet_number_or_title, row, col,
-                                                object)
+                actual_value = self.reader.get(sheet_number_or_title, row, col,
+                                               object)
                 _assert_equal(expected_value, actual_value)
         self._validate()
         self._validated = True
@@ -302,8 +305,8 @@ class QuoteParser(object):
         if isinstance(regex, basestring):
             regex = re.compile(regex)
         assert set(regex.groupindex.iterkeys()).issubset({'low', 'high'})
-        values = self._reader.get_matches(sheet, row, col, regex,
-                                          (int,) * regex.groups)
+        values = self.reader.get_matches(sheet, row, col, regex,
+                                         (int,) * regex.groups)
         # TODO: can this be made less verbose?
         if regex.groupindex.keys() == ['low']:
             low, high = values, None
@@ -351,7 +354,7 @@ class QuoteParser(object):
         # some of these arguments could be instance variables instead.
         result = [
             self._extract_volume_range(sheet, row, col, regex, **kwargs)
-            for col in self._reader.column_range(start_col, end_col)]
+            for col in self.reader.column_range(start_col, end_col)]
 
         # volume ranges should be contiguous or restarting at 0
         for i, vr in enumerate(result[:-1]):
