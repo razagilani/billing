@@ -22,9 +22,8 @@ class Reader(object):
     """
     ___metaclass__ = ABCMeta
 
-    def load_file(self, quote_file, file_format):
+    def load_file(self, quote_file):
         """Read from 'quote_file'.
-        :param quote_file: file to read from.
         """
         raise NotImplementedError
 
