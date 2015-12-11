@@ -156,11 +156,9 @@ class LibertyMatrixParser(QuoteParser):
     """Parser for Liberty Power spreadsheet.
     """
     NAME = 'liberty'
-    READER_CLASS = SpreadsheetReader
-
     # TODO: we couldn't open this in its original xlsx format
     # (might be fixed by upgrading openpyxl)
-    FILE_FORMAT = formats.xls
+    reader = SpreadsheetReader(formats.xls)
 
     START_COL = 'A'
     UTILITY_COL = 'B'
@@ -274,15 +272,15 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _validate(self):
-        for sheet in self._reader.get_sheet_titles():
+        for sheet in self.reader.get_sheet_titles():
             if not self._is_sheet_green(sheet):
                 for (row, col, regexp) in self.LIBERTY_EXPECTED_CELLS:
                     _assert_equal(regexp,
-                                  self._reader.get(sheet, row, col, basestring))
+                                  self.reader.get(sheet, row, col, basestring))
 
                 # Make sure every sheet maintains the limit KWH of 2,000,000
                 if not any(['%s kWh' % '{:,}'.format(self.LIBERTY_KWH_LIMIT)
-                            in (self._reader.get(sheet, 3, col, object) or '')
+                            in (self.reader.get(sheet, 3, col, object) or '')
                             for col in xrange(0, 14)]):
                     raise ValidationError('Size requirements has changed.')
 
@@ -293,23 +291,23 @@ class LibertyMatrixParser(QuoteParser):
         :param sheet:
         :return Yields the rows and rate class alias as a tuple:
         """
-        for row in xrange(1, self._reader.get_height(sheet)):
-            if 'Utility:' in self._reader.get(sheet, row, self.START_COL, basestring):
+        for row in xrange(1, self.reader.get_height(sheet)):
+            if 'Utility:' in self.reader.get(sheet, row, self.START_COL, basestring):
                 zone, service_class = None, None
-                for col in range(0, self._reader.get_width(sheet)):
-                    cell_val = self._reader.get(sheet, row, col, basestring)
+                for col in range(0, self.reader.get_width(sheet)):
+                    cell_val = self.reader.get(sheet, row, col, basestring)
                     if 'Zone:' == cell_val:
-                        zone = self._reader.get(sheet, row, col+1, basestring) or \
-                            self._reader.get(sheet, row, col+2, basestring)
+                        zone = self.reader.get(sheet, row, col + 1, basestring) or \
+                               self.reader.get(sheet, row, col + 2, basestring)
                     elif 'Service Class:' == cell_val:
-                        service_class = self._reader.get(sheet, row, col+1, basestring) or \
-                            self._reader.get(sheet, row, col+2, basestring)
+                        service_class = self.reader.get(sheet, row, col + 1, basestring) or \
+                                        self.reader.get(sheet, row, col + 2, basestring)
 
                 if not any([zone, service_class]):
                     raise ValidationError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
 
                 rate_class_alias = '%s-%s-%s' % (
-                    self._reader.get(sheet, row, 'B', basestring),
+                    self.reader.get(sheet, row, 'B', basestring),
                     zone,
                     service_class
                 )
@@ -328,8 +326,8 @@ class LibertyMatrixParser(QuoteParser):
         """
 
         col_price_types = list()
-        for col in xrange(0, self._reader.get_width(sheet)):
-            cell_value = self._reader.get(sheet, table_start_row + 3, col, basestring)
+        for col in xrange(0, self.reader.get_width(sheet)):
+            cell_value = self.reader.get(sheet, table_start_row + 3, col, basestring)
 
             if cell_value.isdigit():
                 col_price_types.append((col, NormalPriceCell))
@@ -367,11 +365,11 @@ class LibertyMatrixParser(QuoteParser):
                     # row_offset indicates how many rows between start of table and first row
                     # of price data.
                     row_offset = 4
-                    while self._reader.get(sheet, table_start_row + row_offset,
-                                           col, basestring) != '':
-                        for quote in price_type(self, self._reader, sheet,
-                                        table_start_row + row_offset, col,
-                                rate_class_alias,
-                                rate_class_ids).generate_quote():
+                    while self.reader.get(sheet, table_start_row + row_offset,
+                                          col, basestring) != '':
+                        for quote in price_type(self, self.reader, sheet,
+                                                table_start_row + row_offset, col,
+                                                rate_class_alias,
+                                                rate_class_ids).generate_quote():
                             yield quote
                         row_offset += 1

@@ -19,8 +19,7 @@ class USGEElectricMatrixParser(QuoteParser):
     time along the columns.
     """
     NAME = 'usgeelectic'
-    READER_CLASS = SpreadsheetReader
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     TERM_HEADER_ROW = 4
     HEADER_ROW = 5
@@ -60,13 +59,13 @@ class USGEElectricMatrixParser(QuoteParser):
         below_regex = r'Below ([\d,]+) [kK][wW][hH]'
         normal_regex = r'([\d,]+)-([\d,]+) [kK][wW][hH]'
         try:
-            low, high = self._reader.get_matches(sheet, row, col, normal_regex,
-                                                 (parse_number, parse_number))
+            low, high = self.reader.get_matches(sheet, row, col, normal_regex,
+                                                (parse_number, parse_number))
             if low > 0 :
                 low -= 1
         except ValidationError:
-            high = self._reader.get_matches(sheet, row, col, below_regex,
-                                            parse_number)
+            high = self.reader.get_matches(sheet, row, col, below_regex,
+                                           parse_number)
             low = 0
         return low, high
     # TODO: can't use superclass method here because there's more than one
@@ -75,31 +74,31 @@ class USGEElectricMatrixParser(QuoteParser):
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
             # Sometimes this can be None so we can't force it to expect a basestring
-            zone = self._reader.get(sheet,5,'E', object)
+            zone = self.reader.get(sheet, 5, 'E', object)
             if zone == 'Zone':
                 term_start_col = 6
-                term_end_col = self._reader.get_width(sheet)
+                term_end_col = self.reader.get_width(sheet)
             else:
                 term_start_col = 5
-                term_end_col = self._reader.get_width(sheet)
+                term_end_col = self.reader.get_width(sheet)
 
             # This is the date at the top of the document in each spreadsheet
-            valid_from = self._reader.get(sheet, 2, 'D', datetime)
+            valid_from = self.reader.get(sheet, 2, 'D', datetime)
             valid_until = valid_from + timedelta(days=1)
 
             for row in xrange(self.RATE_START_ROW,
-                              self._reader.get_height(sheet) + 1):
-                utility = self._reader.get(sheet, row, self.UTILITY_COL,
-                                           (basestring, type(None)))
+                              self.reader.get_height(sheet) + 1):
+                utility = self.reader.get(sheet, row, self.UTILITY_COL,
+                                          (basestring, type(None)))
                 if utility is None:
                     continue
 
-                ldc = self._reader.get(sheet, row, self.LDC_COL,
-                                       (basestring, type(None)))
-                customer_type = self._reader.get(
+                ldc = self.reader.get(sheet, row, self.LDC_COL,
+                                      (basestring, type(None)))
+                customer_type = self.reader.get(
                     sheet, row, self.CUSTOMER_TYPE_COL, (basestring, type(None)))
-                rate_class = self._reader.get(sheet, row,self.RATE_CLASS_COL,
-                                              (basestring, type(None)))
+                rate_class = self.reader.get(sheet, row, self.RATE_CLASS_COL,
+                                             (basestring, type(None)))
                 rate_class_alias = '-'.join([ldc, customer_type, rate_class])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
@@ -107,22 +106,22 @@ class USGEElectricMatrixParser(QuoteParser):
                 min_volume, limit_volume = self._extract_volume_range(
                     sheet, row, self.VOLUME_RANGE_COL)
 
-                for term_col in self._reader.column_range(term_start_col,
-                                                          term_end_col, 7):
-                    term = self._reader.get_matches(
+                for term_col in self.reader.column_range(term_start_col,
+                                                         term_end_col, 7):
+                    term = self.reader.get_matches(
                         sheet, self.TERM_HEADER_ROW, term_col,
                         '(\d+) Months Beginning in:', int)
 
-                    for i in self._reader.column_range(term_col, term_col + 5):
-                        start_from = self._reader.get(sheet, self.HEADER_ROW,
-                                                      i, (type(None),datetime))
+                    for i in self.reader.column_range(term_col, term_col + 5):
+                        start_from = self.reader.get(sheet, self.HEADER_ROW,
+                                                     i, (type(None),datetime))
                         if start_from is None:
                             continue
 
                         start_until = date_to_datetime(
                             (Month(start_from) + 1).first)
-                        price = self._reader.get(sheet, row, i,
-                                                 (float, type(None)))
+                        price = self.reader.get(sheet, row, i,
+                                                (float, type(None)))
                         # some cells are blank
                         # TODO: test spreadsheet does not include this
                         if price is None:

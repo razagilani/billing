@@ -17,9 +17,7 @@ class SFEMatrixParser(QuoteParser):
     """Parser for SFE spreadsheet.
     """
     NAME = 'sfe'
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     HEADER_ROW = 21
     STATE_COL = 'B'
@@ -96,25 +94,25 @@ class SFEMatrixParser(QuoteParser):
 
     def _extract_quotes(self):
         term_lengths = [
-            self._reader.get_matches(0, self.HEADER_ROW, col, '(\d+) mth', int)
+            self.reader.get_matches(0, self.HEADER_ROW, col, '(\d+) mth', int)
             for col in self.TERM_COL_RANGE]
 
-        for row in xrange(self.HEADER_ROW + 1, self._reader.get_height(0) + 1):
-            state = self._reader.get(0, row, self.STATE_COL, basestring)
-            service_type = self._reader.get(0, row, self.SERVICE_TYPE_COL,
-                                            basestring)
+        for row in xrange(self.HEADER_ROW + 1, self.reader.get_height(0) + 1):
+            state = self.reader.get(0, row, self.STATE_COL, basestring)
+            service_type = self.reader.get(0, row, self.SERVICE_TYPE_COL,
+                                           basestring)
             _assert_true(service_type in self._SERVICE_NAMES)
-            start_from = self._reader.get(0, row, self.START_DATE_COL, datetime)
+            start_from = self.reader.get(0, row, self.START_DATE_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                          basestring)
+            rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
+                                         basestring)
             rate_class_alias = '-'.join([state, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             # volume range can have different format in each row, and the
             # energy unit depends on both the format of the row and the
             # service type.
-            volume_text = self._reader.get(
+            volume_text = self.reader.get(
                 0, row, self.VOLUME_RANGE_COL, basestring)
             target_unit = self._target_units[service_type]
             for regex, low_unit_factor, high_unit_factor in \
@@ -140,7 +138,7 @@ class SFEMatrixParser(QuoteParser):
 
             for col in self.TERM_COL_RANGE:
                 term = term_lengths[col - self.TERM_COL_RANGE[0]]
-                price = self._reader.get(0, row, col, object)
+                price = self.reader.get(0, row, col, object)
 
                 # blank cells say "NA". also, some prices are in cents and some
                 # are in dollars; the ones shown in dollars are encoded as
