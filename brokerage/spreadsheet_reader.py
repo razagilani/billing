@@ -70,7 +70,12 @@ class SpreadsheetReader(Reader):
             raise BillingError('Unknown format: %s' % format.__name__)
         return result
 
-    def __init__(self):
+    def __init__(self, file_format):
+        """
+        :param file_format: tablib submodule that should be used to import
+        data from the spreadsheet
+        """
+        self._file_format = file_format
         # Databook representing whole spreadsheet and relevant sheet
         # respectively
         self._databook = None
@@ -89,12 +94,13 @@ class SpreadsheetReader(Reader):
         except StopIteration:
             raise ValueError('No sheet named "%s"' % sheet_number_or_title)
 
-    def load_file(self, quote_file, file_format):
+    def load_file(self, quote_file):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
         """
-        self._databook = self.get_databook_from_file(quote_file, file_format)
+        self._databook = self.get_databook_from_file(quote_file,
+                                                     self._file_format)
 
     def is_loaded(self):
         """:return: True if file has been loaded, False otherwise.
