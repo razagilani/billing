@@ -12,6 +12,7 @@ from .major_energy import MajorEnergyMatrixParser
 from .usge import USGEMatrixParser
 from .usge_electric import USGEElectricMatrixParser
 from .sfe import SFEMatrixParser
+from .volunteer import VolunteerMatrixParser
 
 # mapping of each supplier's primary key in the database to its QuoteParser
 # subclass. each time a subclass is written for a new supplier, add it to
