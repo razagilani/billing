@@ -16,9 +16,7 @@ class AEPMatrixParser(QuoteParser):
     """Parser for AEP Energy spreadsheet.
     """
     NAME = 'aep'
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xls
+    reader = SpreadsheetReader(formats.xls)
 
     EXPECTED_SHEET_TITLES = [
         'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
@@ -73,27 +71,27 @@ class AEPMatrixParser(QuoteParser):
 
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
-                          self._reader.get_height(self.SHEET)):
-            state = self._reader.get(self.SHEET, row, self.STATE_COL,
-                                     basestring)
+                          self.reader.get_height(self.SHEET)):
+            state = self.reader.get(self.SHEET, row, self.STATE_COL,
+                                    basestring)
             # blank line means end of sheet
             if state == '':
                 continue
 
-            utility = self._reader.get(self.SHEET, row, self.UTILITY_COL,
-                                       basestring)
-            state = self._reader.get(self.SHEET, row,
-                                              self.STATE_COL, basestring)
-            rate_codes = self._reader.get(self.SHEET, row,
-                                              self.RATE_CODES_COL, basestring)
-            rate_class = self._reader.get(self.SHEET, row,
-                                              self.RATE_CLASS_COL, basestring)
+            utility = self.reader.get(self.SHEET, row, self.UTILITY_COL,
+                                      basestring)
+            state = self.reader.get(self.SHEET, row,
+                                    self.STATE_COL, basestring)
+            rate_codes = self.reader.get(self.SHEET, row,
+                                         self.RATE_CODES_COL, basestring)
+            rate_class = self.reader.get(self.SHEET, row,
+                                         self.RATE_CLASS_COL, basestring)
             rate_class_alias = '-'.join([state, utility, rate_codes,rate_class])
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader.get(self.SHEET, row, self.START_MONTH_COL,
-                                 float))
+                self.reader.get(self.SHEET, row, self.START_MONTH_COL,
+                                float))
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
@@ -108,20 +106,20 @@ class AEPMatrixParser(QuoteParser):
                 except IndexError:
                     next_vol_col = 'X'
 
-                for col in self._reader.column_range(vol_col, next_vol_col,
-                                                     inclusive=False):
+                for col in self.reader.column_range(vol_col, next_vol_col,
+                                                    inclusive=False):
                     # skip column that says "End May '18" since we don't know
                     # what contract length that really is
-                    if self._reader.get(
+                    if self.reader.get(
                             self.SHEET, self.HEADER_ROW, col,
                             (basestring, float, int)) == "End May '18":
                         continue
                     # TODO: extracted unnecessarily many times
-                    term = self._reader.get(
+                    term = self.reader.get(
                         self.SHEET, self.HEADER_ROW, col, (int, float))
 
-                    price = self._reader.get(self.SHEET, row, col,
-                                             (float, basestring, type(None)))
+                    price = self.reader.get(self.SHEET, row, col,
+                                            (float, basestring, type(None)))
                     # skip blanks
                     if price in (None, ""):
                         continue
