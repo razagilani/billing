@@ -9,7 +9,7 @@ from util.pdf import PDFUtil
 class PDFReader(Reader):
     """Implementation of Reader for extracting tabular data from PDFs.
     """
-    def __init__(self, tolerance=10):
+    def __init__(self, tolerance=15):
         self._tolerance = tolerance
         self._pages = None
 
@@ -49,7 +49,7 @@ class PDFReader(Reader):
 
         # find closest box to the given coordinates, within tolerance
         def distance(box):
-            return (box.x0 - x) ** 2 + (box.y0 - y) ** 2
+            return ((box.x0 - x) ** 2 + (box.y0 - y) ** 2)**.5
         closest_box = min(text_boxes, key=distance)
         text = closest_box.get_text().strip()
         if distance(closest_box) > self._tolerance:

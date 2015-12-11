@@ -7,12 +7,13 @@ from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
+from brokerage.quote_parsers.volunteer import VolunteerMatrixParser
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser)
+    USGEElectricMatrixParser, VolunteerMatrixParser)
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -89,6 +90,9 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    # TODO: multiple files
+    VOLUNTEER_FILE_PATH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 '
+                                                       '12-7-15.pdf')
 
     @classmethod
     def setUpClass(cls):
@@ -129,6 +133,8 @@ class MatrixQuoteParsersTest(TestCase):
             'NJ-SJG ($/therm)',
             # Entrust
             'Com Ed', 'ConEd Zone J',
+            # Volunteer
+            'COLUMBIA GAS of OHIO (COH)'
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -679,4 +685,36 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
 
+    def test_volunteer(self):
+        parser = VolunteerMatrixParser()
+        self.assertEqual(0, parser.get_count())
 
+        with open(self.VOLUNTEER_FILE_PATH) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        # self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(False, q.purchase_of_receivables)
+        self.assertEqual(4.39, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(3.99, q.price)
