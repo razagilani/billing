@@ -13,13 +13,11 @@ class AmerigreenMatrixParser(QuoteParser):
     """Parser for Amerigreen spreadsheet.
     """
     NAME = 'amerigreen'
-    READER_CLASS = SpreadsheetReader
-
     # original spreadsheet is in "xlsx" format. but reading it using
     # tablib.formats.xls gives this error from openpyxl:
     # "ValueError: Negative dates (-0.007) are not supported"
     # solution: open in Excel and re-save in "xls" format.
-    FILE_FORMAT = formats.xls
+    reader = SpreadsheetReader(formats.xls)
 
     HEADER_ROW = 25
     QUOTE_START_ROW = 26
@@ -62,33 +60,33 @@ class AmerigreenMatrixParser(QuoteParser):
         'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
 
     def _extract_quotes(self):
-        broker_fee = self._reader.get(0, self.BROKER_FEE_CELL[0],
-                                      self.BROKER_FEE_CELL[1], float)
+        broker_fee = self.reader.get(0, self.BROKER_FEE_CELL[0],
+                                     self.BROKER_FEE_CELL[1], float)
 
         # "Valid for accounts with annual volume of up to 50,000 therms"
         min_volume, limit_volume = 0, 50000
 
-        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
-            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
+        for row in xrange(self.QUOTE_START_ROW, self.reader.get_height(0)):
+            utility = self.reader.get(0, row, self.UTILITY_COL, basestring)
             # detect end of quotes by blank cell in first column
             if utility == "":
                 break
 
-            state = self._reader.get(0, row, self.STATE_COL, basestring)
+            state = self.reader.get(0, row, self.STATE_COL, basestring)
             rate_class_alias = state + '-' + utility
 
-            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = self.reader.get(0, row, self.TERM_COL, (int, float))
 
             start_from = excel_number_to_datetime(
-                self._reader.get(0, row, self.START_MONTH_COL, float))
-            start_day_str = self._reader.get(0, row, self.START_DAY_COL,
-                                             basestring)
+                self.reader.get(0, row, self.START_MONTH_COL, float))
+            start_day_str = self.reader.get(0, row, self.START_DAY_COL,
+                                            basestring)
             _assert_true(start_day_str in ('1st of the Month',
                                            'On Cycle Read Date'))
             # TODO: does "1st of the month" really mean starting only on one day?
             start_until = start_from + timedelta(days=1)
 
-            price = self._reader.get(0, row, self.PRICE_COL, float) - broker_fee
+            price = self.reader.get(0, row, self.PRICE_COL, float) - broker_fee
 
             for rate_class_id in self.get_rate_class_ids_for_alias(
                     rate_class_alias):
