@@ -246,7 +246,10 @@ class QuoteParser(object):
             self.validate()
 
         if self.date_getter is not None:
-            self._valid_from, self._valid_until = self.date_getter.get_dates(self)
+            # TODO: date getter has to use Reader so it can use offset
+            #self._valid_from, self._valid_until =
+        # self.date_getter.get_dates(self)
+            pass
 
         for quote in self._extract_quotes():
             self._count += 1
