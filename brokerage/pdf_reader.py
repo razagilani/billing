@@ -76,10 +76,53 @@ class PDFReader(Reader):
                     closest_box.y0))
         return text
 
-    def find_element(self, page_number, y, x, regex):
-        """Return coordinates of the text element closest to the given
-        coordinates matching the given regular expression (ignoring
-        surrounding whitespace).
+    def get_matches(self, page_number, y, x, regex, types, tolerance=None):
+        """Get list of values extracted from the PDF element whose corner is
+        closest to the given coordinates, optionally within 'tolerance',
+        using groups (parentheses) in a regular expression. Values
+        are converted from strings to the given types. Raise ValidationError
+        if there are 0 matches or the wrong number of matches or any value
+        could not be converted to the expected type.
+
+        Commas are removed from strings before converting to 'int' or 'float'.
+
+        Position is allowed to be fuzzy because the regular expression can
+        ensure the right cell is picked if it's specific enough. So don't use
+        this with a really vague regular expression unless tolerance is low.
+
+        :param page_number: int
+        :param y: vertical coordinate
+        :param x: horizontal coordinate
+        :param regex: regular expression string
+        :param types: expected type of each match represented as a callable
+        that converts a string to that type, or a list/tuple of them whose
+        length corresponds to the number of matches.
+        :param tolerance: allowable distance (float) between given coordinates
+        and actual coordinates of the matching element.
+        :return: resulting value or list of values
+        """
+        # to tolerate variations in the position of the element, find the
+        # closest element within tolerance that matches the regex
+        elements = self._find_matching_elements(page_number, y, x, regex)
+        print 'ALL ELEMENTS', elements
+        closest_element = elements[0]
+        print 'CLOSEST ELEMENT', closest_element
+        print 'y0 x0', closest_element.y0, closest_element.x0
+        print 'TEXT', closest_element.get_text()
+        if tolerance is not None and distance(closest_element, x, y) > tolerance:
+            raise ValidationError(
+                'No text elements within %s of (%s,%s) on page %s: '
+                'closest is "%s" at (%s,%s)' % (
+                    tolerance, x, y, page_number, closest_element.get_text(),
+                    closest_element.x0, closest_element.y0))
+
+        text = closest_element.get_text().strip()
+        return self._validate_and_convert_text(regex, text, types)
+
+    def _find_matching_elements(self, page_number, y, x, regex):
+        """Return list of text elements matching the given regular expression
+        (ignoring surrounding whitespace) in increasing order of distance
+        from the given coordinates.
 
         :param page_number: PDF page number starting with 1.
         :param y: y coordinate (float)
@@ -94,6 +137,20 @@ class PDFReader(Reader):
             raise ValidationError('No text elements on page %s match "%s"' %
                                   page_number, regex)
         matching_elements.sort(key=lambda e: distance(e, x, y))
+        return matching_elements
+
+    def find_element_coordinates(self, page_number, y, x, regex):
+        """Return coordinates of the text element closest to the given
+        coordinates matching the given regular expression (ignoring
+        surrounding whitespace).
+
+        :param page_number: PDF page number starting with 1.
+        :param y: y coordinate (float)
+        :param x: x coordinate (float)
+        :param regex: regular expression string
+        """
+        matching_elements = self._find_matching_elements(page_number, y, x,
+                                                         regex)
         closest_element = matching_elements[0]
         return (closest_element.y0 - self.offset_y,
                 closest_element.x0 - self.offset_x)
