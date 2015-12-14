@@ -804,8 +804,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        #self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
@@ -835,8 +834,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('CONSUMERS ENERGY\nIndicative Price Offers',
@@ -866,8 +864,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('DOMINION EAST OHIO (DEO)', q.rate_class_alias)
@@ -896,8 +893,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         # TODO: broken
@@ -927,8 +923,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('DUKE ENERGY OHIO', q.rate_class_alias)
@@ -957,8 +952,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('PEOPLES NATURAL GAS (PNG)', q.rate_class_alias)
@@ -989,8 +983,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('VECTREN ENERGY DELIVERY OHIO (VEDO)',
@@ -1020,8 +1013,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # TODO broken
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         # TODO: broken
