@@ -1,19 +1,18 @@
+import re
 from datetime import datetime
 from os.path import join, basename
-import re
 from unittest import TestCase
 
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.volunteer import VolunteerMatrixParser
-from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, VolunteerMatrixParser)
+from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
 from util.units import unit_registry
@@ -786,6 +785,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
 
+    # TODO: this should be broken into separate test methods
     def test_volunteer(self):
         parser = VolunteerMatrixParser()
         self.assertEqual(0, parser.get_count())
@@ -962,8 +962,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6e4, q.min_volume)
         self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.95, q.price)
-
-
 
 
 
