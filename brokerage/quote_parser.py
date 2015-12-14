@@ -50,15 +50,14 @@ class SimpleCellDateGetter(DateGetter):
         self._col = col
         self._regex = regex
 
-    def _get_date_from_cell(self, spreadsheet_reader, row, col):
+    def _get_date_from_cell(self, reader, row, col):
         if self._regex is None:
-            value = spreadsheet_reader.get(self._sheet, row, col,
-                                           (datetime, int, float))
+            value = reader.get(self._sheet, row, col, (datetime, int, float))
             if isinstance(value, (int, float)):
                 value = excel_number_to_datetime(value)
             return value
-        return spreadsheet_reader.get_matches(self._sheet, self._row, self._col,
-                                              self._regex, parse_datetime)
+        return reader.get_matches(self._sheet, row, col, self._regex,
+                                  parse_datetime)
 
     def get_dates(self, quote_parser):
         # TODO: use of private variable
