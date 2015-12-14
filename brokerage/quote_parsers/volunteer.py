@@ -41,7 +41,6 @@ class VolunteerMatrixParser(QuoteParser):
     ]
 
     START_ROW, START_COL = (539, 521)
-
     PRICE_ROWS = [477, 455, 422]
     TERM_ROW = 520
     TERM_COLS = [189, 324, 465]
@@ -53,11 +52,11 @@ class VolunteerMatrixParser(QuoteParser):
     date_getter = StartEndCellDateGetter(1, 538, 319, 538, 373, '(\d+/\d+/\d+)')
     EXPECTED_ENERGY_UNIT = unit_registry.Mcf
 
-    # very tricky: this is usually all caps, except "COLUMBIA GAS of OHIO (
-    # COH)" which has a lowercase "of". also, sometimes "\nIndicative Price
-    # Offers" is appended to the end, while other times that is a completely
-    # separate box that we must avoid matching instead of the utility name. (
-    # in some cases only the length distinguishes it
+    # very tricky: this is usually all caps, except
+    # "COLUMBIA GAS of OHIO (COH)" which has a lowercase "of". also, sometimes
+    # "\nIndicative Price Offers" is appended to the end, while other times
+    # that is a completely separate element that we must avoid matching instead
+    # of the utility name. in some cases only the length distinguishes it.
     UTILITY_NAME_PATTERN = re.compile('^([A-Z\(\) of]{10,50}).*',
                                       flags=re.DOTALL)
 
@@ -66,19 +65,14 @@ class VolunteerMatrixParser(QuoteParser):
             1, 0, 0, 'PRICING LEVEL.*')
         self._reader.offset_y = oy - 509
         self._reader.offset_x = ox - 70
-        print '***************', self._reader.offset_x, self._reader.offset_y
 
-        # just utility name
-        # rate_class_alias = self._reader.get(1, 588, 330, basestring,
-        #                                     position=PDFReader.CENTER)
-        # rate_class_alias = self._reader.get_matches(
-        #     1, 588, 330, basestring, '(.*^(Indicative Price Offers)')
-        # rate_class_alias = self._reader.get_matches(
-        #     1, 585, 317, '^((?!Indicative Price Offers).*)$', str)
-        # sometimes the text "Indicative Price Offers" is concatenated with
-        # the utility name and other times it's a separate box.
+        # utility name is the only rate class alias field.
+        # getting this using the same code for every file is a lot harder than
+        # it seems at first. here we pick the closest field within tolerance
+        # of the given coordinates whose text matches the big ugly regex
+        # defined above.
         rate_class_alias = self._reader.get_matches(
-            1, 581, 241, self.UTILITY_NAME_PATTERN, str)
+            1, 581, 241, self.UTILITY_NAME_PATTERN, str, tolerance=50)
 
         # TODO maybe target unit shound be different?
         low, high = self._extract_volume_range(
