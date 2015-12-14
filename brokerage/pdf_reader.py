@@ -63,6 +63,21 @@ class PDFReader(Reader):
             raise ValidationError('No page %s: last page number is %s' % (
                 page_number, len(self._pages)))
 
+    @property
+    def offset(self):
+        """:return: offsets added to all coordinates in get... methods (y, x)
+        """
+        return self.offset_y, self.offset_x
+
+    @offset.setter
+    def offset(self, (offset_y, offset_x)):
+        """Set ithe offsets added to all coordinates in get... methods.
+        :param offset_y: vertical offset
+        :param offset_x: horizontal offset
+        """
+        self.offset_x = offset_x
+        self.offset_y = offset_y
+
     def get(self, page_number, y, x, the_type):
         """
         Extract a value from the text box in the PDF file whose upper left
