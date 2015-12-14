@@ -94,19 +94,22 @@ class MatrixQuoteParsersTest(TestCase):
     GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
-    # TODO: multiple files
-    #VOLUNTEER_FILE_PATH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 '
-    # '12-7-15.pdf')
-    VOLUNTEER_FILE_PATHS = [join(DIRECTORY, 'volunteer', name) for name in [
-        'Exchange_COH_2015 12-7-15.pdf',
-        'Exchange_CON_2015 12-7-15.pdf',
-        'Exchange_DEO_2015 12-7-15.pdf',
-        'Exchange_DTE_2015 12-7-15.pdf',
-        'Exchange_DUKE_2015 12-7-15.pdf',
-        'Exchange_PNG_2015 12-7-15.pdf',
-        'Exchange_VEDO_2015 12-7-15.pdf',
-        'PECO Exchange_2015 12-7-15.pdf',
-    ]]
+    VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer',
+                                   'Exchange_COH_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer',
+                                   'Exchange_CON_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_DEO = join(DIRECTORY, 'volunteer',
+                                   'Exchange_DEO_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_DTE = join(DIRECTORY, 'volunteer',
+                                   'Exchange_DTE_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_DUKE = join(DIRECTORY, 'volunteer',
+                                    'Exchange_DUKE_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_PNG = join(DIRECTORY, 'volunteer',
+                                   'Exchange_PNG_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_VEDO = join(DIRECTORY, 'volunteer',
+                                    'Exchange_VEDO_2015 12-7-15.pdf')
+    VOLUNTEER_FILE_PATH_PECO = join(DIRECTORY, 'volunteer',
+                                    'PECO Exchange_2015 12-7-15.pdf')
 
     @classmethod
     def setUpClass(cls):
@@ -787,17 +790,10 @@ class MatrixQuoteParsersTest(TestCase):
         parser = VolunteerMatrixParser()
         self.assertEqual(0, parser.get_count())
 
-        for path in self.VOLUNTEER_FILE_PATHS:
-            with open(path) as quote_file:
-                parser.load_file(quote_file)
-            parser.validate()
-            try:
-                quotes = list(parser.extract_quotes())
-            except Exception as e:
-                print e
-            else:
-                print 'GOOD', path
-        return
+        with open(self.VOLUNTEER_FILE_PATH_COH) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
 
         self.assertEqual(9, parser.get_count())
         self.assertEqual(9, len(quotes))
@@ -807,8 +803,9 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 2, 1), q.start_until)
         self.assertEqual(12, q.term_months)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
-        # self.assertEqual(datetime(2015, 12, 7), q.valid_from)
-        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        #self.assertEqual(datetime(2015, 12, 11), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
         self.assertEqual('COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
@@ -822,3 +819,218 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6e4, q.min_volume)
         self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.99, q.price)
+
+
+        with open(self.VOLUNTEER_FILE_PATH_CON) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('CONSUMERS ENERGY\nIndicative Price Offers',
+                         q.rate_class_alias)
+        self.assertEqual(3.65, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(3.65, q.price)
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_DEO) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('DOMINION EAST OHIO (DEO)', q.rate_class_alias)
+        self.assertEqual(3.55, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(3.39, q.price)
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_DTE) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        # TODO: broken
+        #self.assertEqual('DTE ENERGY', q.rate_class_alias)
+        self.assertEqual(4.15, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(3.80, q.price)
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_DUKE) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('DUKE ENERGY OHIO', q.rate_class_alias)
+        self.assertEqual(4.35, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(4.0, q.price)
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_PNG) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('PEOPLES NATURAL GAS (PNG)', q.rate_class_alias)
+        self.assertEqual(3.95, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(3.95, q.price)
+
+
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_VEDO) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual('VECTREN ENERGY DELIVERY OHIO (VEDO)',
+                         q.rate_class_alias)
+        self.assertEqual(4.69, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(4.24, q.price)
+
+
+
+        with open(self.VOLUNTEER_FILE_PATH_PECO) as quote_file:
+            parser.load_file(quote_file)
+        parser.validate()
+        quotes = list(parser.extract_quotes())
+
+        self.assertEqual(9, parser.get_count())
+        self.assertEqual(9, len(quotes))
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 1, 1), q.start_from)
+        self.assertEqual(datetime(2016, 2, 1), q.start_until)
+        self.assertEqual(12, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2015, 12, 7), q.valid_from)
+        # TODO broken
+        # self.assertEqual(datetime(2015, 12, 11), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(2500, q.limit_volume)
+        # TODO: broken
+        #self.assertEqual('PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
+        self.assertEqual(4.6, q.price)
+
+        # last quote: only check things that are different from above
+        q = quotes[-1]
+        self.assertEqual(24, q.term_months)
+        self.assertEqual(6e4, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(4.6, q.price)

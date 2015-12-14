@@ -200,6 +200,7 @@ class QuoteParser(object):
         """
         self.reader.load_file(quote_file)
         self._validated = False
+        self._count = 0
         self.file_name = file_name
 
     def validate(self):
