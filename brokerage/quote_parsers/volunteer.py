@@ -61,10 +61,18 @@ class VolunteerMatrixParser(QuoteParser):
                                       flags=re.DOTALL)
 
     def _extract_quotes(self):
-        oy, ox = self._reader.find_element_coordinates(
-            1, 0, 0, 'PRICING LEVEL.*')
-        self._reader.offset_y = oy - 509
-        self._reader.offset_x = ox - 70
+        # set global vertical and horizontal offset for this file based on the
+        # position of the "PRICING LEVEL" box in this file relative to where
+        # it was in the "Exchange_COH_2015\ 12-7-15.pdf" file.
+        # this is pretty messy but it allows enough tolerance of varying
+        # positions that the same code can be used to parse all of
+        # Volunteer's PDF files.
+        # if this is a common thing in PDF formats, move it into PDFReader by
+        # making PDFReader calibrate its coordinates according to the
+        # position of a certain element.
+        pricing_level_y, pricing_level_x = \
+            self._reader.find_element_coordinates(1, 0, 0, 'PRICING LEVEL.*')
+        self._reader.offset = (pricing_level_y - 509, pricing_level_x - 70)
 
         # utility name is the only rate class alias field.
         # getting this using the same code for every file is a lot harder than
