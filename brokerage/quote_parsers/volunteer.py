@@ -1,6 +1,7 @@
 import calendar
 from datetime import datetime, time
 
+import re
 from tablib import formats
 
 from brokerage.pdf_reader import PDFReader
@@ -52,6 +53,14 @@ class VolunteerMatrixParser(QuoteParser):
     date_getter = StartEndCellDateGetter(1, 538, 319, 538, 373, '(\d+/\d+/\d+)')
     EXPECTED_ENERGY_UNIT = unit_registry.Mcf
 
+    # very tricky: this is usually all caps, except "COLUMBIA GAS of OHIO (
+    # COH)" which has a lowercase "of". also, sometimes "\nIndicative Price
+    # Offers" is appended to the end, while other times that is a completely
+    # separate box that we must avoid matching instead of the utility name. (
+    # in some cases only the length distinguishes it
+    UTILITY_NAME_PATTERN = re.compile('^([A-Z\(\) of]{10,50}).*',
+                                      flags=re.DOTALL)
+
     def _extract_quotes(self):
         oy, ox = self._reader.find_element_coordinates(
             1, 0, 0, 'PRICING LEVEL.*')
@@ -60,7 +69,16 @@ class VolunteerMatrixParser(QuoteParser):
         print '***************', self._reader.offset_x, self._reader.offset_y
 
         # just utility name
-        rate_class_alias = self._reader.get(1, 581, 241, basestring)
+        # rate_class_alias = self._reader.get(1, 588, 330, basestring,
+        #                                     position=PDFReader.CENTER)
+        # rate_class_alias = self._reader.get_matches(
+        #     1, 588, 330, basestring, '(.*^(Indicative Price Offers)')
+        # rate_class_alias = self._reader.get_matches(
+        #     1, 585, 317, '^((?!Indicative Price Offers).*)$', str)
+        # sometimes the text "Indicative Price Offers" is concatenated with
+        # the utility name and other times it's a separate box.
+        rate_class_alias = self._reader.get_matches(
+            1, 581, 241, self.UTILITY_NAME_PATTERN, str)
 
         # TODO maybe target unit shound be different?
         low, high = self._extract_volume_range(
