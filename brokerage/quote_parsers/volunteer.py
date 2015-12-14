@@ -17,29 +17,26 @@ from util.units import unit_registry
 
 class VolunteerMatrixParser(QuoteParser):
     NAME = 'volunteer'
-    reader = PDFReader()
+    reader = PDFReader(tolerance=40)
 
     EXPECTED_CELLS = [
-        # TODO: coordinates are reversed?
-        # (1, 581.94832, 241.85, 'COLUMBIA GAS of OHIO \(COH\)'),
-        # (1, 538.51792, 189, 'Prices Effective for Week of:'),
-        # (1, 569, 265, 'Indicative Price Offers'),
-        # (1, 538, 189,  'Prices Effective for Week of:'),
-        # (1, 549, 329,  'From:'),
-        # (1, 549, 391,  'To:'),
-        # (1, 539, 470,  'Start\nMonth'),
-        # (1, 520, 189,  'Term-12 Month'),
-        # (1, 520, 324,  'Term-18 Month'),
-        # (1, 520, 465,  'Term-24 Month'),
-        # (1, 509, 172,  'Fixed\s+Variable\*\*'),
-        # (1, 509, 314,  'Fixed\s+Variable\*\*'),
-        # (1, 509, 455,  'Fixed\s+Variable\*\*'),
-        # (1, 509, 70,  'PRICING LEVEL\n250-6,000 Mcf\*'),
-        # # refer to volume ranges, i think (below, between, and above the 2
-        # # numbers in the top left cell of the table) TODO: confirm
-        # (1, 477, 70,  'PREMIUM'),
-        # (1, 455, 70,  'MARKET MID'),
-        # (1, 422, 70, 'MARKET ULTRA'),
+        #(1, 581.94832, 241.85, 'COLUMBIA GAS of OHIO \(COH\)'),
+        #(1, 538.51792, 189, 'Prices Effective for Week of:'),
+        #(1, 569, 265, 'Indicative Price Offers'),
+        #(1, 538, 189,  'Prices Effective for Week of:'),
+        #(1, 549, 329,  'From:'), # TODO broken
+        (1, 549, 391,  'To:'),
+        #(1, 539, 470,  'Start\nMonth'), # TODO broken
+        # TODO broken on "DTE" file
+        # (1, 509, 172,  'Fixed(\s+Variable\*\*)?'),
+        # (1, 509, 314,  'Fixed(\s+Variable\*\*)?'),
+        # (1, 509, 455,  'Fixed(\s+Variable\*\*)?'),
+        (1, 509, 70,  'PRICING LEVEL\n250-6,000 Mcf\*'),
+        # refer to volume ranges, i think (below, between, and above the 2
+        # numbers in the top left cell of the table) TODO: confirm
+        #(1, 477, 70,  'PREMIUM'), # TODO: broken
+        # (1, 455, 70,  'MARKET MID'), TODO: broken
+        (1, 422, 70, 'MARKET ULTRA'),
     ]
 
     START_ROW, START_COL = (539, 521)
@@ -56,7 +53,8 @@ class VolunteerMatrixParser(QuoteParser):
     EXPECTED_ENERGY_UNIT = unit_registry.Mcf
 
     def _extract_quotes(self):
-        oy, ox = self._reader.find_element(1, 0, 0, 'PRICING LEVEL.*')
+        oy, ox = self._reader.find_element_coordinates(
+            1, 0, 0, 'PRICING LEVEL.*')
         self._reader.offset_y = oy - 509
         self._reader.offset_x = ox - 70
         print '***************', self._reader.offset_x, self._reader.offset_y
@@ -79,9 +77,11 @@ class VolunteerMatrixParser(QuoteParser):
         for row, (min_vol, limit_vol) in zip(
                 self.PRICE_ROWS, [(0, low), (low, high), (high, None)]):
             for price_col, term_col in zip(self.PRICE_COLS, self.TERM_COLS):
-                term = self._reader.get_matches(1, self.TERM_ROW, term_col,
-                                                r'Term-(\d+)', int)
-                price = float(self._reader.get(1, row, price_col, '.*'))
+                term = self._reader.get_matches(
+                    1, self.TERM_ROW, term_col, r'Term-(\d+) Month', int)
+                #price = float(self._reader.get(1, row, price_col, '.*'))
+                price = self._reader.get_matches(1, row, price_col,
+                                                 '(\d*\.\d+)', float)
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
                 for rate_class_id in rate_class_ids:
