@@ -6,14 +6,33 @@ from brokerage.reader import Reader
 from core.exceptions import ValidationError
 from util.pdf import PDFUtil
 
-def distance(element, x, y):
-    """Return distance of a PDF element from the given coordinates.
-    """
-    return ((element.x0 - x) ** 2 + (element.y0 - y) ** 2)**.5
 
 class PDFReader(Reader):
     """Implementation of Reader for extracting tabular data from PDFs.
     """
+    # positions: these can be used as arguments to get to choose which part
+    # of an element the coordinates apply to
+    LOWER_LEFT = object()
+    CENTER = object()
+
+    @classmethod
+    def distance(cls, element, x, y, position):
+        """Return distance of a PDF element from the given coordinates.
+        :param element: any PDF element
+        :param position: a constant specifying which point on the element
+        (e.g. lower left corner) should be used for element coordinates
+        :return: float
+        """
+        if position is cls.LOWER_LEFT:
+            element_x, element_y = element.x0, element.y0
+        elif position is cls.CENTER:
+            element_x = (element.x0 + element.x1) / 2.
+            element_y = (element.y0 + element.y1) / 2.
+        else:
+            # add more positions if needed
+            raise ValueError('Unknown position: %s' % x)
+        return ((element_x - x) ** 2 + (element_y - y) ** 2)**.5
+
     def __init__(self, offset_x=0, offset_y=0, tolerance=30):
         """
         :param offset_x: float to add to all x coordinates when getting
@@ -53,6 +72,7 @@ class PDFReader(Reader):
         :param y: vertical coordinate (starting from bottom)
         :param x: horizontal coordinate (starting from left)
         :param the_type: ignored. all values are strings.
+
         :return: text box content (string), with whitespace stripped
         """
         y += self.offset_y
@@ -66,9 +86,10 @@ class PDFReader(Reader):
             raise ValidationError('No text elements on page %s' % page_number)
 
         # find closest box to the given coordinates, within tolerance
-        closest_box = min(text_boxes, key=lambda box: distance(box, x, y))
+        closest_box = min(text_boxes, key=lambda box: self.distance(
+            box, x, y, self.LOWER_LEFT))
         text = closest_box.get_text().strip()
-        if distance(closest_box, x, y) > self._tolerance:
+        if self.distance(closest_box, x, y, self.LOWER_LEFT) > self._tolerance:
             raise ValidationError(
                 'No text elements within %s of (%s,%s) on page %s: '
                 'closest is "%s" at (%s,%s)' % (
@@ -109,7 +130,8 @@ class PDFReader(Reader):
         print 'CLOSEST ELEMENT', closest_element
         print 'y0 x0', closest_element.y0, closest_element.x0
         print 'TEXT', closest_element.get_text()
-        if tolerance is not None and distance(closest_element, x, y) > tolerance:
+        if tolerance is not None and self.distance(
+                closest_element, x, y, self.LOWER_LEFT) > tolerance:
             raise ValidationError(
                 'No text elements within %s of (%s,%s) on page %s: '
                 'closest is "%s" at (%s,%s)' % (
@@ -134,9 +156,10 @@ class PDFReader(Reader):
             e for e in page if isinstance(e, LTTextBox) and
             re.match(regex, e.get_text().strip())]
         if matching_elements == []:
-            raise ValidationError('No text elements on page %s match "%s"' %
-                                  page_number, regex)
-        matching_elements.sort(key=lambda e: distance(e, x, y))
+            raise ValidationError(
+                'No text elements on page %s match "%s"' % (page_number, regex))
+        matching_elements.sort(
+            key=lambda e: self.distance(e, x, y, position=self.LOWER_LEFT))
         return matching_elements
 
     def find_element_coordinates(self, page_number, y, x, regex):

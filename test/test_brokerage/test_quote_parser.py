@@ -837,8 +837,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
-        self.assertEqual('CONSUMERS ENERGY\nIndicative Price Offers',
-                         q.rate_class_alias)
+        self.assertEqual('CONSUMERS ENERGY', q.rate_class_alias)
         self.assertEqual(3.65, q.price)
 
         # last quote: only check things that are different from above
@@ -896,8 +895,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
-        # TODO: broken
-        #self.assertEqual('DTE ENERGY', q.rate_class_alias)
+        self.assertEqual('DTE ENERGY', q.rate_class_alias)
         self.assertEqual(4.15, q.price)
 
         # last quote: only check things that are different from above
@@ -1016,8 +1014,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(2500, q.limit_volume)
-        # TODO: broken
-        #self.assertEqual('PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
+        self.assertEqual('PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
         self.assertEqual(4.6, q.price)
 
         # last quote: only check things that are different from above
