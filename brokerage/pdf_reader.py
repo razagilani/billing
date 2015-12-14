@@ -125,11 +125,7 @@ class PDFReader(Reader):
         # to tolerate variations in the position of the element, find the
         # closest element within tolerance that matches the regex
         elements = self._find_matching_elements(page_number, y, x, regex)
-        print 'ALL ELEMENTS', elements
         closest_element = elements[0]
-        print 'CLOSEST ELEMENT', closest_element
-        print 'y0 x0', closest_element.y0, closest_element.x0
-        print 'TEXT', closest_element.get_text()
         if tolerance is not None and self.distance(
                 closest_element, x, y, self.LOWER_LEFT) > tolerance:
             raise ValidationError(
