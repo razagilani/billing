@@ -204,8 +204,8 @@ class QuoteParser(object):
         self._after_load()
 
     def _after_load(self):
-        """This method is execute code after the file is loaded and before it
-        is validated. Subclasses can override it to add extra behavior such
+        """This method is executed after the file is loaded, and before it is
+        validated. Subclasses can override it to add extra behavior such
         as preparing the reader with additional data taken from the file.
         """
         pass
