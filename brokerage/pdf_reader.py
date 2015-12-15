@@ -89,7 +89,7 @@ class PDFReader(Reader):
 
     @offset.setter
     def offset(self, (offset_y, offset_x)):
-        """Set ithe offsets added to all coordinates in get... methods.
+        """Set the offsets added to all coordinates in get... methods.
         :param offset_y: vertical offset
         :param offset_x: horizontal offset
         """

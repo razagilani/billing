@@ -21,23 +21,26 @@ class VolunteerMatrixParser(QuoteParser):
 
     reader = PDFReader(tolerance=40)
 
+
+    # used for validation and setting PDFReader offset to account for varying
+    # positions of elements in each file, as well as extracting the volume
+    # ranges
+    PRICING_LEVEL_PATTERN = \
+        'PRICING LEVEL\n(?P<low>\d+)-(?P<high>[\d,r]+) Mcf.*'
+
+    # very tricky: this is usually all caps, except
+    # "COLUMBIA GAS of OHIO (COH)" which has a lowercase "of". also, sometimes
+    # "\nIndicative Price Offers" is appended to the end, while other times
+    # that is a completely separate element that we must avoid matching instead
+    # of the utility name. in some cases only the length distinguishes it.
+    UTILITY_NAME_PATTERN = re.compile('^([A-Z\(\) of]{10,50}).*',
+                                      flags=re.DOTALL)
+
+    # only these two have positions consistent enough to use the same
+    # coordinates for every file
     EXPECTED_CELLS = [
-        #(1, 538.51792, 189, 'Prices Effective for Week of:'),
-        #(1, 569, 265, 'Indicative Price Offers'),
-        #(1, 538, 189,  'Prices Effective for Week of:'),
-        #(1, 549, 329,  'From:'), # TODO broken
-        #(1, 549, 391,  'To:'),
-        #(1, 539, 470,  'Start\nMonth'), # TODO broken
-        # TODO broken on "DTE" file
-        # (1, 509, 172,  'Fixed(\s+Variable\*\*)?'),
-        # (1, 509, 314,  'Fixed(\s+Variable\*\*)?'),
-        # (1, 509, 455,  'Fixed(\s+Variable\*\*)?'),
-        #(1, 509, 70,  'PRICING LEVEL\n250-6,000 Mcf\*'),
-        # refer to volume ranges, i think (below, between, and above the 2
-        # numbers in the top left cell of the table) TODO: confirm
-        #(1, 477, 70,  'PREMIUM'), # TODO: broken
-        # (1, 455, 70,  'MARKET MID'), TODO: broken
-        #(1, 422, 70, 'MARKET ULTRA'),
+        (1, 509, 70,  PRICING_LEVEL_PATTERN),
+        (1, 422, 70, 'MARKET ULTRA'),
     ]
 
     START_ROW, START_COL = (539, 521)
@@ -52,14 +55,6 @@ class VolunteerMatrixParser(QuoteParser):
     date_getter = StartEndCellDateGetter(1, 538, 319, 538, 373, '(\d+/\d+/\d+)')
     EXPECTED_ENERGY_UNIT = unit_registry.Mcf
 
-    # very tricky: this is usually all caps, except
-    # "COLUMBIA GAS of OHIO (COH)" which has a lowercase "of". also, sometimes
-    # "\nIndicative Price Offers" is appended to the end, while other times
-    # that is a completely separate element that we must avoid matching instead
-    # of the utility name. in some cases only the length distinguishes it.
-    UTILITY_NAME_PATTERN = re.compile('^([A-Z\(\) of]{10,50}).*',
-                                      flags=re.DOTALL)
-
     def _after_load(self):
         # set global vertical and horizontal offset for each file based on the
         # position of the "PRICING LEVEL" box in that file relative to where
@@ -67,7 +62,28 @@ class VolunteerMatrixParser(QuoteParser):
         # ugly but it allows enough tolerance of varying positions that the
         # same code can be used to parse all of Volunteer's PDF files.
         self._reader.set_offset_by_element_regex(
-            'PRICING LEVEL.*', element_x=70, element_y=509)
+            self.PRICING_LEVEL_PATTERN, element_x=70, element_y=509)
+
+    def _validate(self):
+        # these can't go in EXPECTED CELLS because their position varies too
+        # much to use fixed coordinates for every file. instead, use the
+        # fuzzy position behavior in PDFReader.get_matches.
+        for page_number, y, x, regex in [
+            (1, 569, 265, re.compile('.*Indicative Price Offers', re.DOTALL)),
+            (1, 549, 391, 'To:'),
+            (1, 549, 329, 'From:'),
+            (1, 539, 470, 'Start\nMonth'),
+            (1, 538, 189, 'Prices Effective for Week of:'),
+            (1, 538, 189, 'Prices Effective for Week of:'),
+            (1, 509, 455, 'Fixed(?:\s+Variable\*\*)?'),
+            (1, 509, 314, 'Fixed(?:\s+Variable\*\*)?'),
+            (1, 509, 172, 'Fixed(?:\s+Variable\*\*)?'),
+            (1, 477, 70, 'PREMIUM'),
+            (1, 455, 70, 'MARKET MID'),
+        ]:
+            # types argument is [] because there are no groups; this is just
+            # to check for matches rather than extract data
+            self._reader.get_matches(page_number, y, x, regex, [], tolerance=40)
 
     def _extract_quotes(self):
         # utility name is the only rate class alias field.
@@ -80,7 +96,7 @@ class VolunteerMatrixParser(QuoteParser):
 
         # TODO maybe target unit shound be different?
         low, high = self._extract_volume_range(
-            1, 509, 70, r'PRICING LEVEL\n(?P<low>\d+)-(?P<high>[\d,r]+) Mcf.*',
+            1, 509, 70, self.PRICING_LEVEL_PATTERN,
             expected_unit=unit_registry.Mcf, target_unit=unit_registry.ccf)
 
         start_month_name, start_year = self._reader.get_matches(
@@ -95,7 +111,6 @@ class VolunteerMatrixParser(QuoteParser):
             for price_col, term_col in zip(self.PRICE_COLS, self.TERM_COLS):
                 term = self._reader.get_matches(
                     1, self.TERM_ROW, term_col, r'Term-(\d+) Month', int)
-                #price = float(self._reader.get(1, row, price_col, '.*'))
                 price = self._reader.get_matches(1, row, price_col,
                                                  '(\d*\.\d+)', float)
                 rate_class_ids = self.get_rate_class_ids_for_alias(
