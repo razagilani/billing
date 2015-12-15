@@ -18,26 +18,26 @@ from util.units import unit_registry
 
 class VolunteerMatrixParser(QuoteParser):
     NAME = 'volunteer'
+
     reader = PDFReader(tolerance=40)
 
     EXPECTED_CELLS = [
-        #(1, 581.94832, 241.85, 'COLUMBIA GAS of OHIO \(COH\)'),
         #(1, 538.51792, 189, 'Prices Effective for Week of:'),
         #(1, 569, 265, 'Indicative Price Offers'),
         #(1, 538, 189,  'Prices Effective for Week of:'),
         #(1, 549, 329,  'From:'), # TODO broken
-        (1, 549, 391,  'To:'),
+        #(1, 549, 391,  'To:'),
         #(1, 539, 470,  'Start\nMonth'), # TODO broken
         # TODO broken on "DTE" file
         # (1, 509, 172,  'Fixed(\s+Variable\*\*)?'),
         # (1, 509, 314,  'Fixed(\s+Variable\*\*)?'),
         # (1, 509, 455,  'Fixed(\s+Variable\*\*)?'),
-        (1, 509, 70,  'PRICING LEVEL\n250-6,000 Mcf\*'),
+        #(1, 509, 70,  'PRICING LEVEL\n250-6,000 Mcf\*'),
         # refer to volume ranges, i think (below, between, and above the 2
         # numbers in the top left cell of the table) TODO: confirm
         #(1, 477, 70,  'PREMIUM'), # TODO: broken
         # (1, 455, 70,  'MARKET MID'), TODO: broken
-        (1, 422, 70, 'MARKET ULTRA'),
+        #(1, 422, 70, 'MARKET ULTRA'),
     ]
 
     START_ROW, START_COL = (539, 521)
@@ -60,20 +60,16 @@ class VolunteerMatrixParser(QuoteParser):
     UTILITY_NAME_PATTERN = re.compile('^([A-Z\(\) of]{10,50}).*',
                                       flags=re.DOTALL)
 
-    def _extract_quotes(self):
-        # set global vertical and horizontal offset for this file based on the
-        # position of the "PRICING LEVEL" box in this file relative to where
-        # it was in the "Exchange_COH_2015\ 12-7-15.pdf" file.
-        # this is pretty messy but it allows enough tolerance of varying
-        # positions that the same code can be used to parse all of
-        # Volunteer's PDF files.
-        # if this is a common thing in PDF formats, move it into PDFReader by
-        # making PDFReader calibrate its coordinates according to the
-        # position of a certain element.
-        pricing_level_y, pricing_level_x = \
-            self._reader.find_element_coordinates(1, 0, 0, 'PRICING LEVEL.*')
-        self._reader.offset = (pricing_level_y - 509, pricing_level_x - 70)
+    def _after_load(self):
+        # set global vertical and horizontal offset for each file based on the
+        # position of the "PRICING LEVEL" box in that file relative to where
+        # it was in the "Exchange_COH_2015\ 12-7-15.pdf" file. this may be
+        # ugly but it allows enough tolerance of varying positions that the
+        # same code can be used to parse all of Volunteer's PDF files.
+        self._reader.set_offset_by_element_regex(
+            'PRICING LEVEL.*', element_x=70, element_y=509)
 
+    def _extract_quotes(self):
         # utility name is the only rate class alias field.
         # getting this using the same code for every file is a lot harder than
         # it seems at first. here we pick the closest field within tolerance
