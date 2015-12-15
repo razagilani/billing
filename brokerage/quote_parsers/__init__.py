@@ -15,9 +15,9 @@ from .sfe import SFEMatrixParser
 from .gee_electric import GEEMatrixParser
 from .volunteer import VolunteerMatrixParser
 
-# mapping of each supplier's primary key in the database to its QuoteParser
-# subclass. each time a subclass is written for a new supplier, add it to
-# this dictionary.
+# mapping of each matrix format's primary key in the database to its
+# QuoteParser subclass. each time a subclass is written for a new format,
+# add it to this dictionary.
 CLASSES_FOR_FORMATS = {
     6: AEPMatrixParser,
     11: AmerigreenMatrixParser,
@@ -30,5 +30,6 @@ CLASSES_FOR_FORMATS = {
     9: SFEMatrixParser,
     4: USGEMatrixParser,
     5: USGEElectricMatrixParser,
-    13: GEEMatrixParser
+    13: GEEMatrixParser,
+    12: VolunteerMatrixParser,
 }
