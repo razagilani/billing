@@ -1,0 +1,308 @@
+{% load staticfiles %}
+{% load webdesign %}
+{% load compress %}
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1, user-scalable=no" />
+        <meta name="description" content="" />
+
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <meta name="msapplication-TileColor" content="" />
+        <meta name="msapplication-TileImage" content="icons/fav144.png" />
+
+        <link rel="icon" href="{% static 'favicon.ico' %}" />
+        <!-- STYLE -->
+
+        {% compress css %}
+            <link href="{% static 'css/bootstrap.min.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+            <link href="{% static 'css/bootstrap-responsive.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+            <link href="{% static 'css/common.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+            <link href="{% static 'css/intro.css' %}" media="screen, projection" rel="stylesheet" type="text/css"/>
+        {% endcompress %}
+
+        <!-- JS LIBRARY -->
+        {% compress js %}
+            <script type="text/javascript" src="{% static 'js/jquery-1.10.2.min.js' %}"></script>
+        {% endcompress %}
+
+        <!-- IE CONDITIONALS -->
+        <!--[if IE]>
+            <link rel="shortcut icon" href="icons/favicon.ico" />
+        <![endif]-->
+        <!--[if lt IE 9]>
+            {% compress css %}
+                <link href="{% static 'css/ie.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+            {% endcompress %}
+            {% compress js %}
+                <script type="text/javascript" src="{% static 'js/modernizr.custom.js' %}"></script>
+            {% endcompress %}
+        <![endif]-->
+        <!--[if gte IE 9]>
+            {% compress css inline %}
+                <style type="text/css">
+                    .gradient {
+                            filter: none;
+                    }
+                </style>
+            {% endcompress %}
+        <![endif]-->
+        <title id="title">{% block title %}XBill{% endblock %}</title>
+        {% block head %}
+        {% endblock %}
+    </head>
+    <body>
+        {% block body %}
+            <div class="wrapper-top">
+                <div class="content clear-top">
+                    <nav>
+                        <div class="container">
+                            <div class="row">
+                                <div class="span6">
+                                    <img src="{% static 'images/logo-transparent.png' %}" alt="logo" id="header-logo"/>
+                                </div>
+                                <div class="span6" >
+                                    <ul class="nav nav-pills pull-right" id="js-block-header">
+                                        {% block header %}
+                                                {% if request.user.is_authenticated %}
+                                                    <li><a href="{% url 'intro:index' %}">Home</a></li>
+                                                    <li><a href="{% url 'intro:logout' %}">Log out</a></li>
+                                                {% else %}
+                                                    <li><a href="{% url 'intro:index' %}">Home</a></li>
+                                                    <li><a href="{% url 'intro:login' %}">Login</a></li>
+                                                    <li><a href="{% url 'intro:signup' %}">Register</a></li>
+                                                {% endif %}
+                                        {% endblock %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <hr id="header-hr">
+                    <div id="js-block-content">
+                        {% block content %}
+                        {% endblock %}
+                    </div>
+                    <div class="row vspace20 visible-desktop"></div>
+                </div>
+            </div>
+            <footer class="footer">
+                <div class="container">
+                    <div class="row">
+                        <div class="span4 footer-column">
+                            <a href="#">Facebook</a><br />
+                            <a href="#">Twitter</a><br />
+                            <a href="#">LinkedIn</a>
+                        </div>
+                        <div class="span4 footer-column">
+                            &copy; 2013 Skyline Innovations<br />
+                            <a href="{% url 'intro:tou' %}">Terms of Service</a><br />
+                            <a href="#">Privacy Policy</a>
+                        </div>
+                        <div class="span4 footer-column">
+                            Skyline Innovations<br />
+                            1606 20th St. NW, 2nd Floor<br />
+                            Washington, DC 20009
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            {% block scripts %}
+                <!-- JS -->
+                {% compress js inline %}
+                    <script type="text/javascript">
+                        var _gaq = _gaq || [];
+                        _gaq.push(['_setAccount', 'UA-XXXXX-X']); // REPLACE WITH YOUR UA KEY
+                        _gaq.push(['_trackPageview']);
+
+                        (function() {
+                        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+                        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+                        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+                        })();
+                    </script>
+                {% endcompress %}
+                {% compress js %}
+                    <script type="text/javascript" src="{% static 'js/jquery-ui.min.js' %}"></script>
+                    <script type="text/javascript" src="{% static 'js/nprogress.js' %}"></script>
+                    <script type="text/javascript" src="{% static 'js/jquery.ba-hashchange.min.js' %}"></script>
+                    <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+                {% endcompress %}
+{% comment %}                {% compress js inline %}
+                <script type="text/javascript">
+                    Application = function(){
+                        /* scope: the scope (jQuery selector) in which to update links and content
+                           This is passed to the server so the server knows whether to return
+                           a full page, or only certain elements.
+                           For example: In the when requesting a dashboard panel for the first time
+                           the scope is body, so the server returns a full page. The server also
+                           sets the scope to #js-block-dashboardcontent so for the next request
+                           it will only return contents in the scope
+                           The scope is set via http header:X-XBill-requestScope
+                        */
+                        var scope = 'body';
+
+                        /* prevHeadAddition: is a list of ids that keeps track of head-elements
+                           that are added/removed when a new page is updated.
+                        */
+                        var prevHeadAddition=[];
+
+                        /* ignoreNextHashChange: Can be set to true if the page hash needs to change
+                           without triggering onhashchange
+                        */
+                        var ignoreNextHashChange = false;
+
+                        /* This method replaces link urls in the given scope
+                           or the default scope and changes submit buttons to not
+                           submit but rather send an ajax post requestinformation
+                        */
+                        var updateURLs = function(update_scope){
+                            if (!update_scope) {
+                                update_scope = scope;
+                            }
+                            // Replace link urls
+                            $(update_scope + ' a').not('.js-no-replace').each(function () {
+                                var origin = window.location.origin;
+                                var href = $(this).attr('href');
+                                // Check if the link is a hash (= it was already replaced)
+                                // And if its an internal link (!= skylineinnovation.com)
+                                if (href.substring(0, 1) !== '#'
+                                    && (href.substr(0,origin.length) === origin // Absolute link to another domain
+                                    ||  href.substring(0, 1) === '/')) { // Relative link
+                                    $(this).attr('href', '#' + this.pathname);
+                                    $(this).click(function () {
+                                        if ($(this).attr('href') == window.location.hash) {
+                                            // If a link was clicked whose href is equal to the
+                                            // the current page onhashchange won't trigger
+                                            // but the page should still be reloaded
+                                            loadPage();
+                                        }
+                                    });
+                                }
+                            });
+                            // Override button submit
+                            $(update_scope + ' form').not('.js-no-replace').each(function () {
+                                var form = this;
+                                var button = $(form).find("*[type=submit]").not('.js-no-replace');
+                                var url = $(form).attr('action') ? $(form).attr('action') : window.location.hash.substring(1);
+                                $(button).click(function (event) {
+                                    NProgress.start();
+                                    event.preventDefault();
+                                    $.ajax({
+                                        type: "POST",
+                                        url: url,
+                                        data: $(form).serialize(),
+                                        beforeSend: function (jqXHR) {
+                                            jqXHR.setRequestHeader('X-XBill-requestScope', scope);
+                                        },
+                                        success: function (data, textStatus, jqXHR) {
+                                            // First update the hash to reflect the true URL of the request
+                                            // This URL is coming back to as as a response header form django
+                                            // because jQuery apparently can't tell us where a request has
+                                            // been redirected to
+                                            var newurl = jqXHR.getResponseHeader('X-XBill-requestPath');
+                                            ignoreNextHashChange = true;
+                                            window.location.hash = newurl;
+                                            handleReturnData(data);
+                                        }
+                                    }).always(function () {
+                                        NProgress.done();
+                                    });
+                                });
+                            });
+                        };
+
+                        /* Passes the data object parts coming form Ajax
+                           GET or POST requests to the appropriate method
+                        */
+                        var handleReturnData = function(data){
+                            updateContent(data.content);
+                            updateHead(data.head);
+                            updateURLs();
+                            scope = data.scope;
+                        };
+
+                        /* Makes a Ajax GET request to the url currently in the
+                           widow.location.hash
+                        */
+                        var loadPage = function(){
+                            NProgress.start();
+                            $.ajax({
+                                dataType: "json",
+                                url: window.location.hash.substring(1),
+                                beforeSend: function (jqXHR) {
+                                    jqXHR.setRequestHeader('X-XBill-requestScope', scope);
+                                },
+                                success: function (data) {
+                                    handleReturnData(data);
+                                }
+                            }).fail(function () {
+                                console.log("Request Failed!");
+                            }).always(function () {
+                                NProgress.done();
+                            });
+                        };
+
+                        /* Removes tags listed in prevHeadAddition and adds the
+                           elements in data to the head after registering them
+                           in prevHeadAddition via added id
+                        */
+                        var updateHead = function(data){
+                            // remove previos head aditions
+                            for (var i = 0; i < prevHeadAddition.length; i++) {
+                                $(prevHeadAddition[i]).remove();
+                            }
+                            // Reset elemnt list
+                            prevHeadAddition = [];
+                            // Add elements
+                            $(data).each(function (index) {
+                                $(this).attr('id', 'js-added-header-elm-' + index);
+                                prevHeadAddition.push(('#js-added-header-elm-' + index));
+                                $('head').append($(this))
+                            });
+                        };
+
+                        /* updates the content by setting the VALUE of the
+                           data record to the KEY element
+                        */
+                        var updateContent = function(data){
+                            for (var key in data) {
+                                if (data[key] && data.hasOwnProperty(key)) {
+                                    $(key).html(data[key]);
+                                }
+                            }
+                        };
+
+                        /* Checks if the current hash is different than the path
+                           and if so requests the hash-page. This makes hashes linkable
+                        */
+                        var init = function(){
+                            updateURLs();
+                            if (window.location.hash &&
+                                    window.location.pathname != window.location.hash.substring(1)) {
+                                loadPage();
+                            }
+                        };
+
+                        return {init:init, ignoreNextHashChange:ignoreNextHashChange,
+                                loadPage:loadPage}
+                    }();
+
+                    /* Gets triggered whenever the hash changes and loads the requested
+                       page
+                     */
+                    $(window).hashchange(function(){
+                        Application.ignoreNextHashChange? Application.ignoreNextHashChange=false: Application.loadPage() ;
+                    });
+                    $(function(){Application.init()});
+                </script>
+                {% endcompress %}{% endcomment %}
+            {% endblock %}
+        {% endblock %}
+    </body>
+</html>
