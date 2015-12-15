@@ -65,7 +65,7 @@ class VolunteerMatrixParser(QuoteParser):
             self.PRICING_LEVEL_PATTERN, element_x=70, element_y=509)
 
     def _validate(self):
-        # these can't go in EXPECTED CELLS because their position varies too
+        # these can't go in EXPECTED_CELLS because their position varies too
         # much to use fixed coordinates for every file. instead, use the
         # fuzzy position behavior in PDFReader.get_matches.
         for page_number, y, x, regex in [
