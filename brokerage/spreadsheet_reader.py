@@ -75,6 +75,7 @@ class SpreadsheetReader(Reader):
         :param file_format: tablib submodule that should be used to import
         data from the spreadsheet
         """
+        super(SpreadsheetReader, self).__init__()
         self._file_format = file_format
         # Databook representing whole spreadsheet and relevant sheet
         # respectively

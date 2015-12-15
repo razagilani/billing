@@ -22,6 +22,9 @@ class Reader(object):
     """
     ___metaclass__ = ABCMeta
 
+    def __init__(self):
+        self._file_name = None
+
     def load_file(self, quote_file):
         """Read from 'quote_file'.
         """
