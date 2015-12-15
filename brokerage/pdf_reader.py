@@ -33,24 +33,22 @@ class PDFReader(Reader):
             raise ValueError('Unknown position: %s' % x)
         return ((element_x - x) ** 2 + (element_y - y) ** 2)**.5
 
-    def __init__(self, offset_x=0, offset_y=0, tolerance=30):
+    def __init__(self, tolerance=30):
         """
-        :param offset_x: float to add to all x coordinates when getting
-        data from the PDF file.
-        :param offset_y: float to add to all y coordinates when getting
-        data from the PDF file.
         :param tolerance: max allowable distance between expected and actual
         coordinates of elements in the PDF.
         """
-        self.offset_x = offset_x
-        self.offset_y = offset_y
+        super(PDFReader, self).__init__()
         self._tolerance = tolerance
         self._pages = None
+        self._offset_x = 0
+        self._offset_y = 0
 
     def load_file(self, quote_file):
         """Read from 'quote_file'.
         :param quote_file: file to read from.
         """
+        self._file_name = quote_file.name
         self._pages = PDFUtil().get_pdfminer_layout(quote_file)
 
     def is_loaded(self):
@@ -63,11 +61,31 @@ class PDFReader(Reader):
             raise ValidationError('No page %s: last page number is %s' % (
                 page_number, len(self._pages)))
 
+    def set_offset_by_element_regex(self, regex, element_y, element_x):
+        """
+        :param offset_by_element_regex: regular expression string.
+        if given, look for a text element whose text matches the regular
+        expression, then add the difference between that element's position
+        and (element_x, offset_element_y) to all coordinates when
+        getting data from the PDF file in get...() methods. use this to adapt
+        a QuoteParser that works for one PDF file to other files with a
+        similar but not identical layout.
+
+        :param element_y: vertical coordinate of the expected position of the
+        matching element (float).
+
+        :param element_x: horizontal coordinate of the expected position of the
+        matching element (float).
+        """
+        y0, x0 = self.find_element_coordinates(1, 0, 0, regex)
+        self._offset_x = x0 - element_x
+        self._offset_y = y0 - element_y
+
     @property
     def offset(self):
         """:return: offsets added to all coordinates in get... methods (y, x)
         """
-        return self.offset_y, self.offset_x
+        return self._offset_y, self._offset_x
 
     @offset.setter
     def offset(self, (offset_y, offset_x)):
@@ -75,8 +93,8 @@ class PDFReader(Reader):
         :param offset_y: vertical offset
         :param offset_x: horizontal offset
         """
-        self.offset_x = offset_x
-        self.offset_y = offset_y
+        self._offset_x = offset_x
+        self._offset_y = offset_y
 
     def get(self, page_number, y, x, the_type):
         """
@@ -90,8 +108,8 @@ class PDFReader(Reader):
 
         :return: text box content (string), with whitespace stripped
         """
-        y += self.offset_y
-        x += self.offset_x
+        y += self._offset_y
+        x += self._offset_x
 
         # get all text boxes on the page (there must be at least one)
         page = self._get_page(page_number)
@@ -106,10 +124,10 @@ class PDFReader(Reader):
         text = closest_box.get_text().strip()
         if self.distance(closest_box, x, y, self.LOWER_LEFT) > self._tolerance:
             raise ValidationError(
-                'No text elements within %s of (%s,%s) on page %s: '
+                'No text elements within %s of (%s,%s) in %s page %s: '
                 'closest is "%s" at (%s,%s)' % (
-                    self._tolerance, x, y, page_number, text, closest_box.x0,
-                    closest_box.y0))
+                    self._tolerance, x, y, self._file_name, page_number, text,
+                    closest_box.x0, closest_box.y0))
         return text
 
     def get_matches(self, page_number, y, x, regex, types, tolerance=None):
@@ -186,5 +204,5 @@ class PDFReader(Reader):
         matching_elements = self._find_matching_elements(page_number, y, x,
                                                          regex)
         closest_element = matching_elements[0]
-        return (closest_element.y0 - self.offset_y,
-                closest_element.x0 - self.offset_x)
+        return (closest_element.y0 - self._offset_y,
+                closest_element.x0 - self._offset_x)

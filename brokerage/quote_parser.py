@@ -201,6 +201,14 @@ class QuoteParser(object):
         self._validated = False
         self._count = 0
         self.file_name = file_name
+        self._after_load()
+
+    def _after_load(self):
+        """This method is execute code after the file is loaded and before it
+        is validated. Subclasses can override it to add extra behavior such
+        as preparing the reader with additional data taken from the file.
+        """
+        pass
 
     def validate(self):
         """Raise ValidationError if the file does not match expectations about
