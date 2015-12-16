@@ -7,6 +7,7 @@ from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
+from brokerage.quote_parsers.guttman_gas_ohio_dominion import GuttmanGasOhioDominion
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
@@ -88,6 +89,7 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    GUTTMAN_GAS_OHIO_DOMINION_FILE_PATH = join(DIRECTORY, 'DEO_Matrix_12072015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -337,6 +339,29 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.4621, q1.price)
+
+    def test_guttman_gas_ohio_dominion(self):
+        parser = GuttmanGasOhioDominion()
+        self.assertEqual(0, parser.get_count())
+        with open(self.GUTTMAN_GAS_OHIO_DOMINION_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(340, len(quotes))
+        self.assertEqual(340, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        for quote in quotes:
+            print quote.min_volume
+            print quote.limit_volume
+            print quote.rate_class_alias
+            print quote.price
+            print quote.start_from
+            quote.validate()
+
 
     def test_aep(self):
         parser = AEPMatrixParser()
