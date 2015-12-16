@@ -12,6 +12,8 @@ from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
+from util.units import unit_registry
+
 
 class GuttmanGasOhioDominion(QuoteParser):
     """Parser for Guttman Ohio Dominion Gas spreadsheet. This one has energy along the rows and
@@ -44,12 +46,12 @@ class GuttmanGasOhioDominion(QuoteParser):
             (sheet, 6, 6, 'Price ($/Dth)')
         ] for sheet in [s for s in EXPECTED_SHEET_TITLES if s != 'Summary']))
 
-    def _extract_volume_range(self, sheet, row, col):
+    def _get_direction(self, sheet, row, col):
         regex = r'(EAST|WEST)_([\d,]+)-([\d,]+)_MCF'
         direction, low, high = self._reader.get_matches(sheet, row, col, regex,
                                                  (unicode, parse_number,
                                                  parse_number))
-        return direction, low, high
+        return direction
 
     def _extract_quotes(self):
         title = self._reader.get(0, self.TITLE_ROW, self.TITLE_COL,
@@ -71,9 +73,14 @@ class GuttmanGasOhioDominion(QuoteParser):
             for row in xrange(self.RATE_START_ROW,
                               self._reader.get_height(sheet) + 1):
                 term = self._reader.get(sheet, row, self.TERM_COL, int)
-                direction, min_volume, limit_volume = \
+                min_volume, limit_volume = \
                     self._extract_volume_range(sheet, row,
-                                               self.VOLUME_RANGE_COL)
+                                        self.VOLUME_RANGE_COL,
+                                        r'(?:EAST|WEST)_(?P<low>[\d,]+)-(?P<high>[\d,]+)_MCF',
+                                        expected_unit=unit_registry.Mcf,
+                                        target_unit=unit_registry.ccf)
+                direction = self._get_direction(sheet, row,
+                                                self.VOLUME_RANGE_COL)
                 start_from = self._reader.get(sheet, row,
                                               self.START_DATE_COL, unicode)
                 start_from = datetime.fromtimestamp(mktime(strptime(
@@ -88,7 +95,7 @@ class GuttmanGasOhioDominion(QuoteParser):
                     continue
                 elif isinstance(price, float):
                     # the unit is $/mcf
-                    price /= 1000.
+                    price /= 10.
                 rate_class_alias = '-'.join(['Guttman', 'gas', state,
                     utility, direction, str(min_volume), str(limit_volume)])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
