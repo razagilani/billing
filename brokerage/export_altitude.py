@@ -59,7 +59,6 @@ class PGAltitudeExporter(object):
             'utility_bill_guid',
             'utility_guid',
             'supplier_guid',
-            'supplier_name',
             'service_type',
             'utility_account_number',
             'billing_period_start_date',
@@ -110,7 +109,6 @@ class PGAltitudeExporter(object):
                 'supplier_guid':
                     self._altitude_converter.get_or_create_guid_for_supplier(
                         ub.get_supplier(), self._uuid_func, session),
-                'supplier_name': ub.get_supplier().name,
                 'service_type': format_possible_none(ub.get_service()),
                 'utility_account_number': ub.get_utility_account_number(),
                 'billing_period_start_date':  format_date(ub.period_start),
