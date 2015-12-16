@@ -355,12 +355,22 @@ class MatrixQuoteParsersTest(TestCase):
         assert self.rate_class.rate_class_id == 1
 
         for quote in quotes:
-            print quote.min_volume
-            print quote.limit_volume
-            print quote.rate_class_alias
-            print quote.price
-            print quote.start_from
             quote.validate()
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 43, 45), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 43, 45), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Guttman-gas-Ohio-Dominion-EAST-0-5000', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.290968354076165, q1.price)
+
 
 
     def test_aep(self):
