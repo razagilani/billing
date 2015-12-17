@@ -14,7 +14,8 @@ from core import init_config, init_altitude_db
          'quote_parsers module (case insensitive).')
 @click.argument('supplier_name')
 @click.argument('file_path')
-def read_file(supplier_name, file_path):
+@click.option('--verbose', '-v', is_flag=True)
+def read_file(supplier_name, file_path, verbose):
     def clean_name(name):
         return name.lower().replace(' ', '')
 
@@ -36,6 +37,8 @@ def read_file(supplier_name, file_path):
         print 'Validated'
 
         for quote in parser.extract_quotes():
+            if verbose:
+                print quote
             quote.validate()
         print 'Got %s quotes' % parser.get_count()
 
