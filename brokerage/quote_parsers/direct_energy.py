@@ -14,9 +14,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     """Parser for Direct Energy spreadsheet.
     """
     NAME = 'directenergy'
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xls
+    reader = SpreadsheetReader(formats.xls)
 
     HEADER_ROW = 51
     VOLUME_RANGE_ROW = 51
@@ -54,27 +52,27 @@ class DirectEnergyMatrixParser(QuoteParser):
             r'(?P<low>\d+)\s*-\s*(?P<high>\d+)', fudge_high=True,
             fudge_block_size=5)
 
-        for row in xrange(self.QUOTE_START_ROW, self._reader.get_height(0)):
+        for row in xrange(self.QUOTE_START_ROW, self.reader.get_height(0)):
             # TODO use time zone here
             start_from = excel_number_to_datetime(
-                self._reader.get(0, row, 0, (int, float)))
+                self.reader.get(0, row, 0, (int, float)))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self._reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = self.reader.get(0, row, self.TERM_COL, (int, float))
 
-            rate_class = self._reader.get(0, row, self.RATE_CLASS_COL,
-                                               basestring)
-            state = self._reader.get(0, row, self.STATE_COL, basestring)
-            utility = self._reader.get(0, row, self.UTILITY_COL, basestring)
+            rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
+                                         basestring)
+            state = self.reader.get(0, row, self.STATE_COL, basestring)
+            utility = self.reader.get(0, row, self.UTILITY_COL, basestring)
             rate_class_alias = '-'.join([state, utility, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
-            special_options = self._reader.get(0, row, self.SPECIAL_OPTIONS_COL,
-                                               basestring)
+            special_options = self.reader.get(0, row, self.SPECIAL_OPTIONS_COL,
+                                              basestring)
             _assert_true(special_options in ['', 'POR', 'UCB', 'RR'])
 
             for col in xrange(self.PRICE_START_COL, self.PRICE_END_COL + 1):
                 min_vol, max_vol = volume_ranges[col - self.PRICE_START_COL]
-                price = self._reader.get(0, row, col, (int, float)) / 1000.
+                price = self.reader.get(0, row, col, (int, float)) / 1000.
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
@@ -83,7 +81,9 @@ class DirectEnergyMatrixParser(QuoteParser):
                         min_volume=min_vol, limit_volume=max_vol,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=(special_options == 'POR'),
-                        price=price, service_type='electric')
+                        price=price, service_type='electric',
+                        file_reference='%s %s,%s,%s' % (
+                            self.file_name, 0, row, col))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

@@ -5,7 +5,9 @@ install_requires = [
     # installed from a URL in "dependency_links", not PyPI. apparently it's not
     # necessary to specify a version number or "egg" name after the "#".
 
-    'boto==2.32.1',
+    # boto 2.38 failed to upload files to S3 due to TCP reset. downgrading to
+    # this version seemed to fix it.
+    'boto==2.2.2',
     'billiard==3.3.0.20', # not sure what this is but may have to do with Flask/Bill Entry'
     'aniso8601', # not sure what this is but may have to do with Flask/Bill Entry'
     'CherryPy==3.8.0',

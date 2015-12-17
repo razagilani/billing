@@ -13,9 +13,7 @@ class ChampionMatrixParser(QuoteParser):
     """ Parser for Champion Matrix Rates
     """
     NAME = 'champion'
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xls
+    reader = SpreadsheetReader(formats.xls)
 
     HEADER_ROW = 13
     VOLUME_RANGE_COL = 'H'
@@ -47,25 +45,25 @@ class ChampionMatrixParser(QuoteParser):
         for sheet in self.EXPECTED_SHEET_TITLES:
 
             for row in xrange(self.QUOTE_START_ROW,
-                              self._reader.get_height(sheet)):
-                state = self._reader.get(sheet, row, self.STATE_COL,
-                                         basestring)
+                              self.reader.get_height(sheet)):
+                state = self.reader.get(sheet, row, self.STATE_COL,
+                                        basestring)
                 if state == '':
                     continue
 
-                edc = self._reader.get(sheet, row, self.EDC_COL,
-                                         basestring)
+                edc = self.reader.get(sheet, row, self.EDC_COL,
+                                      basestring)
 
-                description = self._reader.get(sheet, row,self.DESCRIPTION_COL,
-                                         basestring)
+                description = self.reader.get(sheet, row, self.DESCRIPTION_COL,
+                                              basestring)
 
-                rate_class_name = self._reader.get(sheet, row,
-                    self.RATE_CLASS_COL, basestring)
+                rate_class_name = self.reader.get(sheet, row,
+                                                  self.RATE_CLASS_COL, basestring)
                 rate_class_alias = '-'.join(
                     [state, edc, rate_class_name, description])
 
-                month_str, year = self._reader.get_matches(sheet, row,
-                                                          self.START_DATE_COL,r'(\w+)-(\d\d\d\d)',(str,int))
+                month_str, year = self.reader.get_matches(sheet, row,
+                                                          self.START_DATE_COL,r'(\w+)-(\d\d\d\d)', (str,int))
 
                 start_from = parse_datetime('%s/1/%s' % (month_str,year))
 
@@ -75,26 +73,28 @@ class ChampionMatrixParser(QuoteParser):
                     row, self.VOLUME_RANGE_COL,
                     r'(?P<low>\d+)-(?P<high>\d+) MWh', fudge_low=True)
 
-                for col in self._reader.column_range(self.TERM_START_COL,
-                                                     self.TERM_END_COL):
-                    price = float(self._reader.get(sheet, row, col,
+                for col in self.reader.column_range(self.TERM_START_COL,
+                                                    self.TERM_END_COL):
+                    price = float(self.reader.get(sheet, row, col,
                                                   (float, basestring,
                                                    type(None))))/1000
 
-                    term = self._reader.get_matches(
+                    term = self.reader.get_matches(
                                             sheet, self.HEADER_ROW, col,
                                             '(\d+) mths', int)
 
                     for rate_class_id in self.get_rate_class_ids_for_alias(
                             rate_class_alias):
-                        quote = MatrixQuote(start_from=start_from,
-                            start_until=start_until, term_months=term,
-                            valid_from=self._valid_from,
+                        quote = MatrixQuote(
+                            start_from=start_from, start_until=start_until,
+                            term_months=term, valid_from=self._valid_from,
                             valid_until=self._valid_until,
-                            min_volume=min_volume,
-                            limit_volume=limit_volume,
+                            min_volume=min_volume, limit_volume=limit_volume,
                             purchase_of_receivables=False, price=price,
-                            rate_class_alias=rate_class_alias, service_type='electric')
+                            rate_class_alias=rate_class_alias,
+                            service_type='electric',
+                            file_reference='%s %s,%s,%s' % (
+                                self.file_name, 0, row, col))
                         # TODO: rate_class_id should be determined automatically
                         # by setting rate_class
                         if rate_class_id is not None:

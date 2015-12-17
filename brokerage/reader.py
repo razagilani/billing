@@ -22,9 +22,11 @@ class Reader(object):
     """
     ___metaclass__ = ABCMeta
 
-    def load_file(self, quote_file, file_format):
+    def __init__(self):
+        self._file_name = None
+
+    def load_file(self, quote_file):
         """Read from 'quote_file'.
-        :param quote_file: file to read from.
         """
         raise NotImplementedError
 
@@ -69,12 +71,18 @@ class Reader(object):
         >>> self.get_matches(1, 2, '(\d+/\d+/\d+)', parse_date)
         >>> self.get_matches(3, 4, r'(\d+) ([A-Za-z])', (int, str))
         """
+        text = self.get(page_specifier, y, x, basestring)
+        return self._validate_and_convert_text(regex, text, types)
+
+    def _validate_and_convert_text(self, regex, text, types):
+        """Helper method for get_matches. Subclasses can use this by itself
+        if they override get_matches to get the text in a different way.
+        """
         if not isinstance(types, (list, tuple)):
             types = [types]
         # substitute 'parse_number' function for regular int/float
         types = [{int: parse_number, float: parse_number}.get(t, t)
                  for t in types]
-        text = self.get(page_specifier, y, x, basestring)
         _assert_match(regex, text)
         m = re.match(regex, text)
         if len(m.groups()) != len(types):
@@ -90,6 +98,4 @@ class Reader(object):
         if len(results) == 1:
             return results[0]
         return results
-
-
 
