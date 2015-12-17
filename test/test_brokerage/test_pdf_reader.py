@@ -15,13 +15,13 @@ def pdf_reader():
 def loaded_pdf_reader(pdf_reader):
     """PDFReader instance with the example file loaded."""
     with open(EXAMPLE_FILE_PATH) as example_file:
-        pdf_reader.load_file(example_file, None)
+        pdf_reader.load_file(example_file)
     return pdf_reader
 
 def test_load_file(pdf_reader):
     assert pdf_reader.is_loaded() is False
     with open(EXAMPLE_FILE_PATH) as example_file:
-        pdf_reader.load_file(example_file, None)
+        pdf_reader.load_file(example_file)
     assert pdf_reader.is_loaded() is True
 
 def test_get(loaded_pdf_reader):

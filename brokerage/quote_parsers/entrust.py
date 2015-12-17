@@ -16,9 +16,7 @@ class EntrustMatrixParser(QuoteParser):
     """Parser for Entrust spreadsheet.
     """
     NAME = 'entrust'
-    READER_CLASS = SpreadsheetReader
-
-    FILE_FORMAT = formats.xlsx
+    reader = SpreadsheetReader(formats.xlsx)
 
     EXPECTED_SHEET_TITLES = [
         'IL - ComEd Matrix',
@@ -84,7 +82,7 @@ class EntrustMatrixParser(QuoteParser):
         # since only the first sheet is the offical source of the date,
         # make sure all others have the same date in them
         all_dates = [
-            self._reader.get(sheet, self.DATE_ROW, self.DATE_COL, object) for
+            self.reader.get(sheet, self.DATE_ROW, self.DATE_COL, object) for
             sheet in self.EXPECTED_SHEET_TITLES]
         if not all(all_dates[0] == d for d in all_dates):
             raise ValidationError('Dates are not the same in all sheets')
@@ -92,8 +90,8 @@ class EntrustMatrixParser(QuoteParser):
     def _process_sheet(self, sheet):
         # could get the utility from the sheet name, but this seems better.
         # includes utility and zone name.
-        utility = self._reader.get(sheet, self.UTILITY_ROW, self.UTILITY_COL,
-                                   basestring)
+        utility = self.reader.get(sheet, self.UTILITY_ROW, self.UTILITY_COL,
+                                  basestring)
         rate_class_alias = utility
         rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
@@ -115,17 +113,17 @@ class EntrustMatrixParser(QuoteParser):
         vol_range_block_width = len(self.VOLUME_RANGE_COLS) + 3
 
         for row in xrange(self.QUOTE_START_ROW,
-                          self._reader.get_height(sheet) + 1):
-            start_from = self._reader.get(sheet, row, self.START_COL, datetime)
+                          self.reader.get_height(sheet) + 1):
+            start_from = self.reader.get(sheet, row, self.START_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for col in SpreadsheetReader.column_range(
-                    self.PRICE_START_COL, self._reader.get_width(sheet),
+                    self.PRICE_START_COL, self.reader.get_width(sheet),
                     inclusive=False):
                 if col in self.SWEET_SPOT_TERM_COLS:
                     # not a price, but the term length for the previous column
                     continue
-                price = self._reader.get(sheet, row, col, object)
+                price = self.reader.get(sheet, row, col, object)
                 if price is None:
                     # blank space
                     continue
@@ -135,12 +133,12 @@ class EntrustMatrixParser(QuoteParser):
                     # is in the corresponding position in SWEET_SPOT_TERM_COLS
                     term_col = self.SWEET_SPOT_TERM_COLS[
                         self.SWEET_SPOT_PRICE_COLS.index(col)]
-                    term_months = self._reader.get_matches(
+                    term_months = self.reader.get_matches(
                         sheet, row, term_col, '(\d+) Months', int)
                 else:
                     min_volume, limit_volume = volume_ranges[
                         (col - first_vol_range_index) / vol_range_block_width]
-                    term_months = self._reader.get(
+                    term_months = self.reader.get(
                         sheet, self.TERM_ROW, col, int)
 
                 for rate_class_id in rate_class_ids:
@@ -151,7 +149,9 @@ class EntrustMatrixParser(QuoteParser):
                         min_volume=min_volume, limit_volume=limit_volume,
                         rate_class_alias=rate_class_alias,
                         purchase_of_receivables=False, price=price,
-                        service_type='electric')
+                        service_type='electric',
+                        file_reference='%s %s,%s,%s' % (
+                            self.file_name, self.sheet, row, col))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

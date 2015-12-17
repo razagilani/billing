@@ -108,8 +108,8 @@ class mongodb(Schema):
     port = TCPPort()
 
 class brokerage(Schema):
-    # path to Dropbox directoy where quote files should be put for importing
-    quote_directory = Directory()
+    # name of Amazon S3 bucket where quote files will be uploaded
+    quote_file_bucket = String()
 
 class mailer(Schema):
     # sending reebill emails to customers
