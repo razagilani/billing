@@ -8,7 +8,7 @@ from mock import Mock
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from brokerage.quote_parsers import (
-    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, VolunteerMatrixParser)
@@ -266,7 +266,7 @@ class MatrixQuoteParsersTest(TestCase):
 
 
     def test_usge(self):
-        parser = USGEMatrixParser()
+        parser = USGEGasMatrixParser()
         self.assertEqual(0, parser.get_count())
 
         with open(self.USGE_FILE_PATH, 'rb') as spreadsheet:
