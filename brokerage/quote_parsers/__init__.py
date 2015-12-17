@@ -9,7 +9,7 @@ from .direct_energy import DirectEnergyMatrixParser
 from .liberty import LibertyMatrixParser
 from .entrust import EntrustMatrixParser
 from .major_energy import MajorEnergyMatrixParser
-from .usge import USGEMatrixParser
+from .usge import USGEGasMatrixParser
 from .usge_electric import USGEElectricMatrixParser
 from .sfe import SFEMatrixParser
 from .gee_electric import GEEMatrixParser
@@ -28,8 +28,8 @@ CLASSES_FOR_FORMATS = {
     2: EntrustMatrixParser,
     10: MajorEnergyMatrixParser,
     9: SFEMatrixParser,
-    4: USGEMatrixParser,
-    5: USGEElectricMatrixParser,
+    4: USGEGasMatrixParser,
+    14: USGEElectricMatrixParser,
     13: GEEMatrixParser,
     12: VolunteerMatrixParser,
 }
