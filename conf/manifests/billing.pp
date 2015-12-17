@@ -189,6 +189,8 @@ class base::allalliases {
         recipient => "|${receive_matrix_email_script}"
     }
 }
+include base::allalliases
+
 # Puppet doesn't rebuild the mail aliases database by default
 # (we could use "subscribe" and "refreshonly" but it would
 # require listing every mail alias here)
