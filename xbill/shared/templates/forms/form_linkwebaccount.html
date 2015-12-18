@@ -1,0 +1,245 @@
+{% load widget_tweaks %}
+{% load staticfiles %}
+{% load compress %}
+{% load future_include %}
+
+{% compress js inline %}
+<script type="text/javascript" id="linkAccountForm_script">
+    linkAccountForm = function(){
+        /*
+        A dictionary of the following form:
+        { "Virginia":[
+                        {"display_name":"Pepco",
+                        "name":"Pepco (DC)"},
+                        {"display_name":"Washington Gas",
+                        "name":"Washington Gas (DC)"},
+                     ],
+          "Maryland":[
+                        {"display_name":"Washington Gas",
+                        "name":"Washington Gas (MD)"}
+                     ],
+          ....
+        }
+        */
+        var utilprovider_by_state = {
+            {% for state,providers in utilprovider_by_state.items %}
+                "{{ state }}": [
+                    {% for up in  providers%}
+                        {"display_name":"{{ up.display_name }}",
+                        "name":"{{ up.name }}"},
+                    {% endfor %}
+                ],
+            {% endfor %}
+        };
+        /*
+        A dictionary of the following form:
+        {       "BGE (MD)": "3",
+                "Pepco (DC)": "1",
+                ...
+        }
+        */
+        var all_utilproviders = {
+            {% for name,id in  all_utilproviders.items %}
+                "{{ name }}": "{{ id }}",
+            {% endfor %}
+        };
+
+        /*
+            @param state_select:    The <select>-Element containg States, whose
+                                    selected option changed
+
+            Finds the associated Utility-<select>, removes all options, and
+            adds a new option for each array element in utilprovider_by_state
+            for the selected state. Each option gets the value attribute of
+            the id found in all_utilproviders, for the option's utility provider
+         */
+        var update_utilproviders = function(state_select){
+            var up_select = $(state_select).parent().parent().next('div').find('select');
+            $(up_select).html("");
+            var selected_state = $(state_select).find('option:selected').text();
+            $.each(utilprovider_by_state[selected_state], function(){
+                var provider=this;
+                var option_el = $("<option>")
+                                    .attr('value', all_utilproviders[provider['name']])
+                                    .text(provider['display_name']);
+                $(up_select).append(option_el)
+            });
+        };
+
+        /*
+            @param password_checkbox:   The <input type=checkbox>-Element that
+                                        was toggled
+
+            Finds the associated password-<input> and sets the type to 'text'
+            if the checkbox is checked, otherwise to 'password
+        */
+        var toggle_password =function(password_checkbox){
+            var pw1_field = $(password_checkbox).parent().parent().parent().find('.js-password1field');
+            var pw2_field = $(password_checkbox).parent().parent().parent().find('.js-password2field');
+            if($(password_checkbox).is(':checked') && ($(pw1_field).attr('type')=='password')){
+                $(pw1_field).attr('type','text');
+                $(pw2_field).attr('type','text');
+            }else{
+                $(pw1_field).attr('type','password');
+                $(pw2_field).attr('type','password');
+            }
+        };
+        /*
+            The init function of this form
+        */
+        var init = function(){
+            $('.js-password-checkbox').each(function(){
+                $(this).change(function(){
+                    toggle_password(this)
+                });
+            });
+            $('.js-stateselector').each(function(){
+                update_utilproviders(this);
+                $(this).change(function(){
+                    update_utilproviders(this);
+                });
+            });
+
+            $("#linkAccountForm_continueBtn").click(function(){
+                console.log("submit")
+                $("#linkAccountForm").submit();
+            });
+        };
+        return {init:init, update_utilproviders:update_utilproviders}
+    }();
+    $(document).ready(function(){linkAccountForm.init()});
+</script>
+{% endcompress %}
+{% compress js %}
+    <script src="{% static 'js/jquery.formset.min.js' %}"></script>
+{% endcompress %}
+{% compress js inline %}
+<script type="text/javascript">
+    $(function() {
+        $('.form-in-formset').formset({
+            addCssClass:'btn btn-large pull-left js-add-another-account-button',
+            addText:'Add Another Account',
+            deleteText: 'X',
+            added: function(){
+                // Manually move the 'Add another Account' label to
+                // before the button
+                var l = $("#js-add-another-account-label").detach();
+                $(".js-add-another-account-button").before($(l));
+            }
+        });
+        // Manually move the 'Add another Account' button
+        $(function(){
+            var b = $(".js-add-another-account-button").detach();
+            $("#js-add-another-account-label").after($(b));
+        });
+
+    })
+</script>
+{% endcompress %}
+
+<form id="linkAccountForm" method="post" action="" class="form-horizontal">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    {% for form in formset.forms %}
+        <div class="form-in-formset">
+            <div class="no-marker-no-indent text-error">
+                {{ form.non_field_errors }}
+            </div>
+             <div class="control-group">
+                <label class="control-label" for="{{form.state.id_for_label}}">{{form.state.label}}</label>
+                <div class="controls">
+                    {{ form.state|add_class:"js-stateselector" }}
+                    <div class="no-marker-no-indent text-error">
+                        {{ form.state.errors }}
+                    </div>
+                </div>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="{{form.utility_provider.id_for_label}}">{{form.utility_provider.label}}</label>
+                <div class="controls">
+                    {{form.utility_provider}}
+                    <div class="no-marker-no-indent text-error">
+                        {{ form.utility_provider.errors }}
+                    </div>
+                </div>
+            </div>
+            <div id="linkAccountForm_customeronlineinformation" class="registrationrule registrationrule1">
+                <strong class="inline"><span id="linkAccountForm_utilityinformationspan">Enter utility website login information:</span></strong>
+                <h6 class="pull-right hide"><a href="#">Why do we need this?</a></h6>
+                <div class="clear vspace20"></div>
+                <div class="control-group">
+                    <label class="control-label" for="{{form.username.id_for_label}}">{{form.username.label}}:</label>
+                    <div class="controls">
+                        {% with placeholder="placeholder:"|add:form.username.label %}
+                            {{ form.username|add_class:"input-block-level"|attr:placeholder }}
+                        {% endwith %}
+                        <div class="no-marker-no-indent text-error">
+                            {{ form.username.errors }}
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="{{form.password1.id_for_label}}">{{form.password1.label}}:</label>
+                    <div class="controls">
+                        {% with placeholder="placeholder:"|add:form.password1.label %}
+                                {{ form.password1|add_class:"input-block-level js-password1field"|attr:placeholder }}
+                        {% endwith %}
+                        <div class="no-marker-no-indent text-error">
+                            {{ form.password1.errors }}
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="{{form.password2.id_for_label}}">{{form.password2.label}}:</label>
+                    <div class="controls">
+                        {% with placeholder="placeholder:"|add:form.password2.label %}
+                            {{ form.password2|add_class:"input-block-level js-password2field"|attr:placeholder }}
+                        {% endwith %}
+                        <div class="no-marker-no-indent text-error">
+                            {{ form.password2.errors }}
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="linkAccountForm_showpassword">Show passwords:</label>
+                    <div class="controls">
+                        <input type="checkbox" class="checkbox js-password-checkbox" id="linkAccountForm_showpassword" name="linkAccountForm_showpassword"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    <p id="js-add-another-account-label"></p>
+    {% if action == "edit" %}
+            <input type="hidden" name="linkAccountForm_accountid" id="linkAccountForm_accountid" value="{{linkAccountForm_accountid}}" />
+            <input type="hidden" name="action" id="action" value="linkedAccount_edit" />
+            <button class="btn btn-large btn-success pull-right" type="submit" id="continueBtn">Save</button>
+{% comment %}
+            <a href="{% url linkAccountForm_senderUrl %}" class="btn btn-large pull-right hspace20" id="backbtn">Back</a>
+{% endcomment %}
+    {% else %}
+        {% if show_tou %}
+            <input type="hidden" name="action" id="action" value="linkedAccount_add" />
+            <button type="button"  id="continueBtn" class="btn btn-large btn-success pull-right" data-toggle="modal" data-target="#linkAccountForm_modal">
+                Proceed
+            </button>
+        {% else %}
+            <input type="hidden" name="action" id="action" value="linkedAccount_add" />
+            <button type="submit"  id="continueBtn" class="btn btn-large btn-success pull-right">
+                Proceed
+            </button>
+        {% endif %}
+    {% endif %}
+</form>
+
+{% if show_tou and tou_content%}
+    <div class="modal hide fade" id="linkAccountForm_modal" data-backdrop="static" data-keyboard="false">
+      <div class="modal-body">
+        {% future_include tou_content %}
+      </div>
+      <div class="modal-footer">
+        <button type="button"  id="linkAccountForm_continueBtn" class="btn btn-primary">I agree to the Terms of Service</button>
+        <button type="button"  class="btn" data-toggle="modal" data-target="#linkAccountForm_modal">Cancel</button>
+      </div>
+    </div>
+{%  endif %}
