@@ -175,7 +175,6 @@ class SFEMatrixParser(QuoteParser):
                         }[service_type],
                         file_reference='%s %s,%s,%s' % (self.file_name, 0, row,
                                                      col))
-                    quote.file_reference = (row, col)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
