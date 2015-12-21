@@ -8,7 +8,7 @@ from mock import Mock
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from brokerage.quote_parsers import (
-    DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, VolunteerMatrixParser)
@@ -266,7 +266,7 @@ class MatrixQuoteParsersTest(TestCase):
 
 
     def test_usge(self):
-        parser = USGEMatrixParser()
+        parser = USGEGasMatrixParser()
         self.assertEqual(0, parser.get_count())
 
         with open(self.USGE_FILE_PATH, 'rb') as spreadsheet:
@@ -805,8 +805,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
@@ -815,8 +815,6 @@ class MatrixQuoteParsersTest(TestCase):
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.99, q.price)
 
 
@@ -835,16 +833,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('CONSUMERS ENERGY', q.rate_class_alias)
         self.assertEqual(3.65, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.65, q.price)
 
 
@@ -864,16 +860,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('DOMINION EAST OHIO (DEO)', q.rate_class_alias)
         self.assertEqual(3.55, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.39, q.price)
 
 
@@ -893,16 +887,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('DTE ENERGY', q.rate_class_alias)
         self.assertEqual(4.15, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.80, q.price)
 
 
@@ -922,16 +914,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('DUKE ENERGY OHIO', q.rate_class_alias)
         self.assertEqual(4.35, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(4.0, q.price)
 
 
@@ -951,16 +941,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('PEOPLES NATURAL GAS (PNG)', q.rate_class_alias)
         self.assertEqual(3.95, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(3.95, q.price)
 
 
@@ -980,8 +968,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('VECTREN ENERGY DELIVERY OHIO (VEDO)',
                          q.rate_class_alias)
         self.assertEqual(4.69, q.price)
@@ -989,8 +977,6 @@ class MatrixQuoteParsersTest(TestCase):
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(4.24, q.price)
 
 
@@ -1010,14 +996,12 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(datetime(2015, 12, 7), q.valid_from)
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
-        self.assertEqual(0, q.min_volume)
-        self.assertEqual(2500, q.limit_volume)
+        self.assertEqual(2500, q.min_volume)
+        self.assertEqual(6e4, q.limit_volume)
         self.assertEqual('PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
         self.assertEqual(4.6, q.price)
 
         # last quote: only check things that are different from above
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
-        self.assertEqual(6e4, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
         self.assertEqual(4.6, q.price)
