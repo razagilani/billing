@@ -10,28 +10,14 @@ from util.pdf import PDFUtil
 class PDFReader(Reader):
     """Implementation of Reader for extracting tabular data from PDFs.
     """
-    # positions: these can be used as arguments to get to choose which part
-    # of an element the coordinates apply to
-    LOWER_LEFT = object()
-    CENTER = object()
-
-    @classmethod
-    def distance(cls, element, x, y, position):
-        """Return distance of a PDF element from the given coordinates.
+    @staticmethod
+    def distance(element, x, y):
+        """Return distance of the lower left corner of a PDF element from the
+        given coordinates.
         :param element: any PDF element
-        :param position: a constant specifying which point on the element
-        (e.g. lower left corner) should be used for element coordinates
         :return: float
         """
-        if position is cls.LOWER_LEFT:
-            element_x, element_y = element.x0, element.y0
-        elif position is cls.CENTER:
-            element_x = (element.x0 + element.x1) / 2.
-            element_y = (element.y0 + element.y1) / 2.
-        else:
-            # add more positions if needed
-            raise ValueError('Unknown position: %s' % x)
-        return ((element_x - x) ** 2 + (element_y - y) ** 2)**.5
+        return ((element.x0 - x) ** 2 + (element.y0 - y) ** 2)**.5
 
     def __init__(self, tolerance=30):
         """
@@ -81,21 +67,6 @@ class PDFReader(Reader):
         self._offset_x = x0 - element_x
         self._offset_y = y0 - element_y
 
-    @property
-    def offset(self):
-        """:return: offsets added to all coordinates in get... methods (y, x)
-        """
-        return self._offset_y, self._offset_x
-
-    @offset.setter
-    def offset(self, (offset_y, offset_x)):
-        """Set ithe offsets added to all coordinates in get... methods.
-        :param offset_y: vertical offset
-        :param offset_x: horizontal offset
-        """
-        self._offset_x = offset_x
-        self._offset_y = offset_y
-
     def get(self, page_number, y, x, the_type):
         """
         Extract a value from the text box in the PDF file whose upper left
@@ -119,10 +90,9 @@ class PDFReader(Reader):
             raise ValidationError('No text elements on page %s' % page_number)
 
         # find closest box to the given coordinates, within tolerance
-        closest_box = min(text_boxes, key=lambda box: self.distance(
-            box, x, y, self.LOWER_LEFT))
+        closest_box = min(text_boxes, key=lambda box: self.distance(box, x, y))
         text = closest_box.get_text().strip()
-        if self.distance(closest_box, x, y, self.LOWER_LEFT) > self._tolerance:
+        if self.distance(closest_box, x, y) > self._tolerance:
             raise ValidationError(
                 'No text elements within %s of (%s,%s) in %s page %s: '
                 'closest is "%s" at (%s,%s)' % (
@@ -160,7 +130,7 @@ class PDFReader(Reader):
         elements = self._find_matching_elements(page_number, y, x, regex)
         closest_element = elements[0]
         if tolerance is not None and self.distance(
-                closest_element, x, y, self.LOWER_LEFT) > tolerance:
+                closest_element, x, y) > tolerance:
             raise ValidationError(
                 'No text elements within %s of (%s,%s) on page %s: '
                 'closest is "%s" at (%s,%s)' % (
@@ -187,8 +157,7 @@ class PDFReader(Reader):
         if matching_elements == []:
             raise ValidationError(
                 'No text elements on page %s match "%s"' % (page_number, regex))
-        matching_elements.sort(
-            key=lambda e: self.distance(e, x, y, position=self.LOWER_LEFT))
+        matching_elements.sort(key=lambda e: self.distance(e, x, y))
         return matching_elements
 
     def find_element_coordinates(self, page_number, y, x, regex):
