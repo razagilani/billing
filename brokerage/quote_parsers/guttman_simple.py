@@ -15,11 +15,11 @@ from brokerage.brokerage_model import MatrixQuote
 from util.units import unit_registry
 
 
-class GuttmanGasOhioDominion(QuoteParser):
+class GuttmanSimple(QuoteParser):
     """Parser for Guttman Ohio Dominion Gas spreadsheet. This one has energy along the rows and
     time along the columns.
     """
-    NAME = 'guttmangasohiodominion'
+    NAME = 'guttmansimple'
     READER_CLASS = SpreadsheetReader
     FILE_FORMAT = formats.xlsx
 
@@ -38,28 +38,25 @@ class GuttmanGasOhioDominion(QuoteParser):
         'Summary'
     ]
 
+
     EXPECTED_CELLS = list(chain.from_iterable([
             (sheet, 6, 2, 'Count'),
             (sheet, 6, 3, 'Start'),
             (sheet, 6, 4, 'Term'),
             (sheet, 6, 5, 'Annual kWh'),
-            (sheet, 6, 6, 'Price ($/Dth)')
+            (sheet, 6, 6, r'Price ((?:\(\$/Dth\))|(?:\(\$/Therm\)))')
         ] for sheet in [s for s in EXPECTED_SHEET_TITLES if s != 'Summary']))
 
-    def _get_direction(self, sheet, row, col):
-        regex = r'(EAST|WEST)_([\d,]+)-([\d,]+)_MCF'
-        direction, low, high = self._reader.get_matches(sheet, row, col, regex,
-                                                 (unicode, parse_number,
-                                                 parse_number))
-        return direction
 
     def _extract_quotes(self):
         title = self._reader.get(0, self.TITLE_ROW, self.TITLE_COL,
                                  basestring)
-        title_tokens = re.split("_", title)
-        state = title_tokens[0]
-        utility = title_tokens[1]
-        unit = title_tokens[4]
+        regex = r'(.*)_\(\$/((?:MCF)|(?:CCF)|(?:Therm?))\)'
+        rate_class_alias, unit = re.match(regex, title).groups()
+        if unit == 'MCF':
+            expected_unit = unit_registry.Mcf
+        elif unit =='CCF' or unit == 'Therm':
+            expected_unit = unit_registry.ccf
         valid_from_row = self._reader.get_height(0)
         valid_from = self._reader.get(0, valid_from_row, 'C', basestring)
 
@@ -67,7 +64,6 @@ class GuttmanGasOhioDominion(QuoteParser):
                             (" ".join(re.split(" ", valid_from)[1:]),
                               '%m/%d/%Y %I:%M:%S %p')))
         valid_until = valid_from + timedelta(days=1)
-        rate_class_alias = self._reader.get(0, 3, 'C', basestring)
         for sheet in [s for s in self.EXPECTED_SHEET_TITLES if
                     s != 'Summary']:
             for row in xrange(self.RATE_START_ROW,
@@ -76,11 +72,12 @@ class GuttmanGasOhioDominion(QuoteParser):
                 min_volume, limit_volume = \
                     self._extract_volume_range(sheet, row,
                                         self.VOLUME_RANGE_COL,
-                                        r'(?:EAST|WEST)_(?P<low>[\d,]+)-(?P<high>[\d,]+)_MCF',
-                                        expected_unit=unit_registry.Mcf,
+                                        r'(?:EAST|WEST)?(?:_)?(?:MA 36\: )?'
+                                        r'(?P<low>[\d,]+)-(?P<high>[\d,]+)'
+                                        r'(?:_)?(?:MCF|CCF|THERM)?',
+                                        expected_unit=expected_unit,
                                         target_unit=unit_registry.ccf)
-                direction = self._get_direction(sheet, row,
-                                                self.VOLUME_RANGE_COL)
+
                 start_from = self._reader.get(sheet, row,
                                               self.START_DATE_COL, unicode)
                 start_from = datetime.fromtimestamp(mktime(strptime(
@@ -93,11 +90,9 @@ class GuttmanGasOhioDominion(QuoteParser):
                     continue
                 elif price is None:
                     continue
-                elif isinstance(price, float):
+                elif isinstance(price, float) and unit=='MCF':
                     # the unit is $/mcf
                     price /= 10.
-                rate_class_alias = '-'.join(['Guttman', 'gas', state,
-                    utility, direction, str(min_volume), str(limit_volume)])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
                 for rate_class_id in rate_class_ids:

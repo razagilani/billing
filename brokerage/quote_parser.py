@@ -214,7 +214,7 @@ class QuoteParser(object):
             if isinstance(expected_value, basestring):
                 text = self._reader.get(sheet_number_or_title, row, col,
                                         basestring)
-                _assert_match(re.escape(expected_value), text)
+                _assert_match(expected_value, text)
             else:
                 actual_value = self._reader.get(sheet_number_or_title, row, col,
                                                 object)

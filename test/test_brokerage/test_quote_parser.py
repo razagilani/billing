@@ -7,7 +7,7 @@ from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.guttman_gas_ohio_dominion import GuttmanGasOhioDominion
+from brokerage.quote_parsers.guttman_simple import GuttmanSimple
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
@@ -89,7 +89,11 @@ class MatrixQuoteParsersTest(TestCase):
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
     LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
-    GUTTMAN_GAS_OHIO_DOMINION_FILE_PATH = join(DIRECTORY, 'DEO_Matrix_12072015.xlsx')
+    GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_12072015.xlsx')
+    GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_12072015.xlsx')
+    GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_12072015.xlsx')
+    GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_12072015.xlsx')
+    GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_12072015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -340,10 +344,10 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.4621, q1.price)
 
-    def test_guttman_gas_ohio_dominion(self):
-        parser = GuttmanGasOhioDominion()
+    def test_guttman_simple(self):
+        parser = GuttmanSimple()
         self.assertEqual(0, parser.get_count())
-        with open(self.GUTTMAN_GAS_OHIO_DOMINION_FILE_PATH, 'rb') as \
+        with open(self.GUTTMAN_DEO_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
         parser.validate()
@@ -366,11 +370,110 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 43, 45), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Guttman-gas-Ohio-Dominion-EAST-0-5000', q1.rate_class_alias)
+        self.assertEqual('Ohio_Dominion_OH_NG', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.290968354076165, q1.price)
 
+        parser = GuttmanSimple()
+        with open(self.GUTTMAN_OH_DUKE_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(170, len(quotes))
+        self.assertEqual(170, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 43, 55), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 43, 55), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Ohio_Duke_OH_NG', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.363225453377907, q1.price)
+
+        parser = GuttmanSimple()
+        with open(self.GUTTMAN_PEOPLE_TWP_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(170, len(quotes))
+        self.assertEqual(170, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 44, 15), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 44, 15), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Pennsylvania_PNG_PA-TWP', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.268467651178349, q1.price)
+
+        parser = GuttmanSimple()
+        with open(self.GUTTMAN_CPA_MATRIX_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(340, len(quotes))
+        self.assertEqual(340, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 43, 57), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 43, 57), q1.valid_until)
+        self.assertEqual(3001, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Pennsylvania_ColumbiaGas_PA', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.343800955709901, q1.price)
+
+        parser = GuttmanSimple()
+        with open(self.GUTTMAN_PEOPLE_MATRIX_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(170, len(quotes))
+        self.assertEqual(170, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 44, 5), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 44, 5), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Pennsylvania_PNG_PA', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.267685109454913, q1.price)
 
 
     def test_aep(self):
