@@ -215,6 +215,10 @@ class QuoteEmailProcessor(object):
         matrix_format = self._quote_dao.get_matrix_format_for_file(
             supplier, file_name)
 
+        # upload files after identifying the format, but before parsing,
+        # so even invalid files get uploaded
+        self._store_quote_file(file_name, file_content)
+
         # copy string into a StringIO :(
         quote_file = StringIO(file_content)
 
@@ -307,12 +311,10 @@ class QuoteEmailProcessor(object):
                 supplier.name, file_name))
             self._quote_dao.begin()
             try:
-                # upload files first, then process them, so even invalid
-                # files get uploaded
-                self._store_quote_file(file_name, file_content)
                 quote_parser = self._process_quote_file(
                     supplier, altitude_supplier, file_name, file_content)
             except UnknownFormatError:
+                self._quote_dao.rollback()
                 self.logger.warn(('Skipped attachment from %s with unexpected '
                                  'name: "%s"') % (supplier.name, file_name))
                 continue
