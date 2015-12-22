@@ -71,12 +71,12 @@ class GuttmanSimple(QuoteParser):
                 term = self._reader.get(sheet, row, self.TERM_COL, int)
                 min_volume, limit_volume = \
                     self._extract_volume_range(sheet, row,
-                                        self.VOLUME_RANGE_COL,
-                                        r'(?:EAST|WEST)?(?:_)?(?:MA 36\: )?'
-                                        r'(?P<low>[\d,]+)-(?P<high>[\d,]+)'
-                                        r'(?:_)?(?:MCF|CCF|THERM)?',
-                                        expected_unit=expected_unit,
-                                        target_unit=unit_registry.ccf)
+                            self.VOLUME_RANGE_COL,
+                            r'(?:EAST|WEST)?(?:_)?(?:MA(?:[\d]+)? [\d]+\: )?'
+                            r'(?P<low>[\d,]+)-(?P<high>[\d,]+)'
+                            r'(?:_)?(?:MCF|CCF|THERM)?',
+                            expected_unit=expected_unit,
+                            target_unit=unit_registry.ccf)
 
                 start_from = self._reader.get(sheet, row,
                                               self.START_DATE_COL, unicode)
