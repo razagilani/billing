@@ -140,7 +140,7 @@ class GasValidator(MatrixQuoteValidator):
     MAX_PRICE = 5.0
 
     MAX_MIN_VOLUME = 1e6
-    MIN_LIMIT_VOLUME = 2500
+    MIN_LIMIT_VOLUME = 2000
     MAX_LIMIT_VOLUME = 1e6
     MIN_VOLUME_DIFFERENCE = 0
     MAX_VOLUME_DIFFERENCE = 1e6 # this could always equal MAX_LIMIT_VOLUME
