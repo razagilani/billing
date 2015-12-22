@@ -7,7 +7,7 @@ from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.guttman_simple import GuttmanSimple
+from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from core import ROOT_PATH, init_altitude_db, init_model
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEMatrixParser, AEPMatrixParser, EntrustMatrixParser,
@@ -345,8 +345,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.4621, q1.price)
 
-    def test_guttman_simple(self):
-        parser = GuttmanSimple()
+    def test_guttman_gas(self):
+        parser = GuttmanGas()
         self.assertEqual(0, parser.get_count())
         with open(self.GUTTMAN_DEO_FILE_PATH, 'rb') as \
                 spreadsheet:
@@ -376,7 +376,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.290968354076165, q1.price)
 
-        parser = GuttmanSimple()
+        parser = GuttmanGas()
         with open(self.GUTTMAN_OH_DUKE_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
@@ -401,7 +401,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.363225453377907, q1.price)
 
-        parser = GuttmanSimple()
+        parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_TWP_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
@@ -426,7 +426,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.268467651178349, q1.price)
 
-        parser = GuttmanSimple()
+        parser = GuttmanGas()
         with open(self.GUTTMAN_CPA_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
@@ -451,7 +451,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.343800955709901, q1.price)
 
-        parser = GuttmanSimple()
+        parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
@@ -476,7 +476,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.267685109454913, q1.price)
 
-        parser = GuttmanSimple()
+        parser = GuttmanGas()
         with open(self.GUTTMAN_COH_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
             parser.load_file(spreadsheet)
