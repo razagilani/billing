@@ -94,6 +94,7 @@ class MatrixQuoteParsersTest(TestCase):
     GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_12072015.xlsx')
     GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_12072015.xlsx')
     GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_12072015.xlsx')
+    GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_12072015.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -474,6 +475,31 @@ class MatrixQuoteParsersTest(TestCase):
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.267685109454913, q1.price)
+
+        parser = GuttmanSimple()
+        with open(self.GUTTMAN_COH_MATRIX_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(510, len(quotes))
+        self.assertEqual(510, parser.get_count())
+        assert self.rate_class.rate_class_id == 1
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(6, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 48, 28), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 48, 28), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(5 * 1000, q1.limit_volume)
+        self.assertEqual('Ohio_ColumbiaGas_OH', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.382446152963526, q1.price)
 
 
     def test_aep(self):
