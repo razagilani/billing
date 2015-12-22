@@ -96,11 +96,11 @@ class MatrixQuoteParsersTest(TestCase):
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer',
                                    'Exchange_COH_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer',
-                                   'Exchange_CON_2015 12-7-15.pdf')
+                                   'EXCHANGE_CON_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_DEO = join(DIRECTORY, 'volunteer',
                                    'Exchange_DEO_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_DTE = join(DIRECTORY, 'volunteer',
-                                   'Exchange_DTE_2015 12-7-15.pdf')
+                                   'EXCHANGE_DTE_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_DUKE = join(DIRECTORY, 'volunteer',
                                     'Exchange_DUKE_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_PNG = join(DIRECTORY, 'volunteer',
