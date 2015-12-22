@@ -35,7 +35,7 @@ function delete_temp_files {
 # variables used in Puppet scripts to do things differently on different hosts.
 params=()
 params[1]="billing-$env $env"
-#params[2]="worker-$env worker-$env"
+params[2]="worker-$env worker-$env"
 
 ## clone private repositories for dependencies inside the billing repository working
 ## directory, because remote hosts don't have access to Bitbucket

@@ -34,6 +34,14 @@ class Directory(String):
     # Invalid because formencode will catch it and re-raise Invalid.
     pass
 
+class CallingFormat(FancyValidator):
+    def _convert_to_python(self, value, state):
+        if value == 'OrdinaryCallingFormat':
+            return OrdinaryCallingFormat()
+        elif value == 'DefaultCallingFormat':
+            return S3Connection.DefaultCallingFormat
+        raise Invalid('Please specify a valid calling format.')
+
 class reebill(Schema):
     # host and port for running ReeBill web app with built-in server
     socket_port = TCPPort()
@@ -128,6 +136,9 @@ class aws_s3(Schema):
     host = String()
     port = TCPPort()
     is_secure = StringBool()
+    calling_format = All(CallingFormat(),
+                         OneOf(['OrdinaryCallingFormat',
+                                'DefaultCallingFormat']))
     # optional settings for boto HTTP requests
     # note: empty values get converted to None
     num_retries = Any(validators=[Number(), Empty()])
