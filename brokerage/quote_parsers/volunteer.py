@@ -95,7 +95,7 @@ class VolunteerMatrixParser(QuoteParser):
             1, 581, 241, self.UTILITY_NAME_PATTERN, str, tolerance=50)
 
         # TODO maybe target unit shound be different?
-        low, high = self._extract_volume_range(
+        min_vol, limit_vol = self._extract_volume_range(
             1, 509, 70, self.PRICING_LEVEL_PATTERN,
             expected_unit=unit_registry.Mcf, target_unit=unit_registry.ccf)
 
@@ -106,8 +106,7 @@ class VolunteerMatrixParser(QuoteParser):
         start_from = datetime(start_year, start_month, 1)
         start_until = date_to_datetime((Month(start_from) + 1).first)
 
-        for row, (min_vol, limit_vol) in zip(
-                self.PRICE_ROWS, [(0, low), (low, high), (high, None)]):
+        for row in self.PRICE_ROWS:
             for price_col, term_col in zip(self.PRICE_COLS, self.TERM_COLS):
                 term = self._reader.get_matches(
                     1, self.TERM_ROW, term_col, r'Term-(\d+) Month', int)
