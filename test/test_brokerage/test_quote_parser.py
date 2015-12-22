@@ -386,7 +386,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(340, len(quotes))
         self.assertEqual(340, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         for quote in quotes:
             quote.validate()
@@ -414,7 +413,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(170, len(quotes))
         self.assertEqual(170, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 01, 16), q1.start_from)
@@ -439,7 +437,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(170, len(quotes))
         self.assertEqual(170, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 01, 16), q1.start_from)
@@ -464,7 +461,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(340, len(quotes))
         self.assertEqual(340, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 01, 16), q1.start_from)
@@ -489,7 +485,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(170, len(quotes))
         self.assertEqual(170, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 01, 16), q1.start_from)
@@ -514,7 +509,6 @@ class MatrixQuoteParsersTest(TestCase):
         quotes = list(parser.extract_quotes())
         self.assertEqual(510, len(quotes))
         self.assertEqual(510, parser.get_count())
-        assert self.rate_class.rate_class_id == 1
 
         q1 = quotes[0]
         self.assertEqual(datetime(2015, 01, 16), q1.start_from)
