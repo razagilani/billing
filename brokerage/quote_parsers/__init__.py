@@ -3,6 +3,7 @@ suppliers, each one in a separate file.
 """
 from .aep import AEPMatrixParser
 from .amerigreen import AmerigreenMatrixParser
+from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from .champion import ChampionMatrixParser
 from .constellation import ConstellationMatrixParser
 from .direct_energy import DirectEnergyMatrixParser
@@ -32,4 +33,5 @@ CLASSES_FOR_FORMATS = {
     14: USGEElectricMatrixParser,
     13: GEEMatrixParser,
     12: VolunteerMatrixParser,
+    17: GuttmanGas
 }
