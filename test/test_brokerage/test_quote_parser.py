@@ -394,8 +394,8 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 01), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(12, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 30, 28), q1.valid_from)
@@ -408,8 +408,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0.0524883445181945, q1.price)
 
         q2 = quotes[1559]
-        self.assertEqual(datetime(2015, 01, 17), q2.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q2.start_until)
+        self.assertEqual(datetime(2017, 01, 01), q2.start_from)
+        self.assertEqual(datetime(2017, 02, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
         self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 30, 58), q2.valid_from)
@@ -437,8 +437,8 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 01), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(12, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 34, 20), q1.valid_from)
@@ -451,8 +451,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual( 0.0666530148307838, q1.price)
 
         q2 = quotes[2079]
-        self.assertEqual(datetime(2015, 01, 17), q2.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q2.start_until)
+        self.assertEqual(datetime(2017, 01, 01), q2.start_from)
+        self.assertEqual(datetime(2017, 02, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
         self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 34, 44), q2.valid_from)
