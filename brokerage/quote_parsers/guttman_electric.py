@@ -62,17 +62,24 @@ class GuttmanElectric(QuoteParser):
                     #                           valid_from, valid_until)
                     try:
                         min_volume, limit_volume = self._extract_volume_range(
-                                        sheet, row, col,
-                                        r'[A-Z_]*(?P<low>[\d,]+)'
-                                        r'(?: - |-)?(?P<high>[\d,]+)'
-                                        r'(?:-kWh)',
-                                        expected_unit=unit_registry.kwh,
-                                        target_unit=unit_registry.kwh)
+                            sheet, row, col,
+                            r'(?:[0-9]*|[A-Z]*|[A-Z]*[0-9]*|[A-Z]*_[A-Z]*)?'
+                            r'(?:-[0-9]_|_| )?'
+                            r'(?P<low>[\d,]+)'
+                            r'(?: - |-)?(?P<high>[\d,]+)'
+                            r'(?:-kWh)',
+                            expected_unit=unit_registry.kwh,
+                                target_unit=unit_registry.kwh)
                     except ValidationError:
                         continue
-                    rate_class_alias = self._reader.get(sheet, self.TITLE_ROW, self.TITLE_COL,
-                                     basestring)
-                    rate_class = self._reader.get_matches(sheet, row, col, r'([A-Z_]){3,7}.*', str)
+                    rate_class_alias = self._reader.get(sheet,
+                                                        self.TITLE_ROW,
+                                                        self.TITLE_COL,
+                                                        basestring)
+                    regex = r'([A-Z]*_[A-Z]*|[A-Z]*-[0-9]*|' \
+                            r'[A-Z]*[0-9]*|[A-Z]*|[0-9]*).*'
+                    rate_class = self._reader.get_matches(sheet, row, col,
+                                                          regex, str)
                     rate_class_alias = rate_class_alias + '_' + \
                                        rate_class
                     for table_row in xrange(row, row + self.TABLE_ROWS):
