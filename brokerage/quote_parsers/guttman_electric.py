@@ -40,6 +40,40 @@ class GuttmanElectric(QuoteParser):
     PRICE_COL = 4
     ROW_INCREMENT = 16
 
+    def process_table(self, sheet, row, col, rate_class_alias, valid_from, valid_until, min_volume, limit_volume):
+        for table_row in xrange(row, row + self.TABLE_ROWS):
+            start_from = self._reader.get(sheet, table_row,
+                                          self.START_DATE_COL, unicode)
+            start_from = parse_datetime(start_from)
+            start_until = date_to_datetime((Month(start_from) + 1).first)
+            for price_col in xrange(col + 2, col + 2 + self.NO_OF_TERM_COLS):
+                term = self._reader.get(sheet, self.TERM_ROW, price_col, int)
+                price = self._reader.get(sheet, table_row, price_col, object)
+                if isinstance(price, int) and price == 0:
+                    continue
+                elif price is None:
+                    continue
+                rate_class_ids = self.get_rate_class_ids_for_alias(
+                rate_class_alias)
+                for rate_class_id in rate_class_ids:
+                    quote = MatrixQuote(
+                        start_from=start_from, start_until=start_until,
+                        term_months=term, valid_from=valid_from,
+                        valid_until=valid_until,
+                        min_volume=min_volume,
+                        limit_volume=limit_volume,
+                        purchase_of_receivables=False, price=price,
+                        rate_class_alias=rate_class_alias,
+                        service_type=ELECTRIC,
+                        file_reference='%s %s,%s' % (
+                        self.file_name, sheet, table_row))
+                    # TODO: rate_class_id should be determined automatically
+                    # by setting rate_class
+                    quote.rate_class_id = rate_class_id
+                    yield quote
+
+
+
     def _extract_quotes(self):
         for sheet in [s for s in self.reader.get_sheet_titles() if s != 'Sheet1']:
             valid_from_row = self._reader.get_height(sheet)
@@ -57,61 +91,39 @@ class GuttmanElectric(QuoteParser):
                 for col in xrange(self.VOLUME_RANGE_COL,
                                   self._reader.get_width(sheet),
                                   self.COL_INCREMENT):
-                    # yield self.extract_table_quotes(sheet, row, col,
-                    #                           col + 2, rate_class_alias,
-                    #                           valid_from, valid_until)
-                    try:
+                    volume_column = self._reader.get(sheet, row, col, object)
+                    if volume_column is not None and 'kWh' in volume_column:
                         min_volume, limit_volume = self._extract_volume_range(
                             sheet, row, col,
-                            r'(?:[0-9]*|[A-Z]*|[A-Z]*[0-9]*|[A-Z]*_[A-Z]*)?'
+                            r'(?:[0-9]*|[A-Z]*|[A-Z]*[0-9]*|[A-Z]*_[A-Z]*|'
+                            r'[A-Z]*_[A-Z]*\>[0-9]*|[A-Z]*_[A-Z]*\<[0-9]*)?'
                             r'(?:-[0-9]_|_| )?'
                             r'(?P<low>[\d,]+)'
                             r'(?: - |-)?(?P<high>[\d,]+)'
                             r'(?:-kWh)',
                             expected_unit=unit_registry.kwh,
-                                target_unit=unit_registry.kwh)
-                    except ValidationError:
+                            target_unit=unit_registry.kwh)
+                    else:
                         continue
+
                     rate_class_alias = self._reader.get(sheet,
                                                         self.TITLE_ROW,
                                                         self.TITLE_COL,
                                                         basestring)
                     regex = r'([A-Z]*_[A-Z]*|[A-Z]*-[0-9]*|' \
-                            r'[A-Z]*[0-9]*|[A-Z]*|[0-9]*).*'
+                            r'[A-Z]*[0-9]*|[A-Z]*|[0-9]*|' \
+                            r'[A-Z]*_[A-Z]*\>[0-9]*|[A-Z]*_[A-Z]*\<[0-9]*).*'
                     rate_class = self._reader.get_matches(sheet, row, col,
                                                           regex, str)
                     rate_class_alias = rate_class_alias + '_' + \
                                        rate_class
-                    for table_row in xrange(row, row + self.TABLE_ROWS):
-                        start_from = self._reader.get(sheet, table_row,
-                                                      self.START_DATE_COL, unicode)
-                        start_from = parse_datetime(start_from)
-                        start_until = date_to_datetime((Month(start_from) + 1).first)
-                        for price_col in xrange(col + 2, col + 2 + self.NO_OF_TERM_COLS):
-                            term = self._reader.get(sheet, self.TERM_ROW, price_col, int)
-                            price = self._reader.get(sheet, table_row, price_col, object)
-                            if isinstance(price, int) and price == 0:
-                                continue
-                            elif price is None:
-                                continue
-                            rate_class_ids = self.get_rate_class_ids_for_alias(
-                            rate_class_alias)
-                            for rate_class_id in rate_class_ids:
-                                quote = MatrixQuote(
-                                    start_from=start_from, start_until=start_until,
-                                    term_months=term, valid_from=valid_from,
-                                    valid_until=valid_until,
-                                    min_volume=min_volume,
-                                    limit_volume=limit_volume,
-                                    purchase_of_receivables=False, price=price,
-                                    rate_class_alias=rate_class_alias,
-                                    service_type=ELECTRIC,
-                                    file_reference='%s %s,%s' % (
-                                    self.file_name, sheet, table_row))
-                                # TODO: rate_class_id should be determined automatically
-                                # by setting rate_class
-                                quote.rate_class_id = rate_class_id
-                                yield quote
+                    quotes = self.process_table(sheet, row, col,
+                                                rate_class_alias, valid_from,
+                                                valid_until, min_volume,
+                                                limit_volume)
+                    for quote in quotes:
+                        yield quote
+
 
 
 
