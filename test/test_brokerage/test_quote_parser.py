@@ -430,8 +430,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(1820, len(quotes))
-        self.assertEqual(1820, parser.get_count())
+        self.assertEqual(2080, len(quotes))
+        self.assertEqual(2080, parser.get_count())
 
         for quote in quotes:
             quote.validate()
@@ -450,7 +450,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual( 0.0666530148307838, q1.price)
 
-        q2 = quotes[1819]
+        q2 = quotes[2079]
         self.assertEqual(datetime(2015, 01, 17), q2.start_from)
         self.assertEqual(datetime(2015, 02, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
