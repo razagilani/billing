@@ -7,6 +7,7 @@ from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
+from brokerage.quote_parsers.guttman_electric import GuttmanElectric
 from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
@@ -97,6 +98,8 @@ class MatrixQuoteParsersTest(TestCase):
     GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_12072015.xlsx')
     GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_12072015.xlsx')
     GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_12072015.xlsx')
+    GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 12.7.15.xlsx')
+    GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 12.7.15.xlsx')
     GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
@@ -373,6 +376,93 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.4621, q1.price)
+
+    def test_guttman_electric(self):
+        parser = GuttmanElectric()
+        self.assertEqual(0, parser.get_count())
+        with open(self.GUTTMAN_OH_POWER_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(1560, len(quotes))
+        self.assertEqual(1560, parser.get_count())
+
+        for quote in quotes:
+            quote.validate()
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(12, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 30, 28), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 30, 28), q1.valid_until)
+        self.assertEqual(0, q1.min_volume)
+        self.assertEqual(250000, q1.limit_volume)
+        self.assertEqual('Ohio_AEP_OH_CS_GS-1_0_250000', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.0524883445181945, q1.price)
+
+        q2 = quotes[1559]
+        self.assertEqual(datetime(2015, 01, 17), q2.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q2.start_until)
+        self.assertEqual(36, q2.term_months)
+        self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 30, 58), q2.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
+        self.assertEqual(250001, q2.min_volume)
+        self.assertEqual(500000, q2.limit_volume)
+        self.assertEqual('Ohio_Toledo Edison_GS_25250001_500000', q2.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q2.purchase_of_receivables)
+        self.assertEqual(0.0548764676732971, q2.price)
+
+        parser = GuttmanElectric()
+        self.assertEqual(0, parser.get_count())
+        with open(self.GUTTMAN_PA_POWER_FILE_PATH, 'rb') as \
+                spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(1690, len(quotes))
+        self.assertEqual(1690, parser.get_count())
+
+        for quote in quotes:
+            quote.validate()
+
+        q1 = quotes[0]
+        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(12, q1.term_months)
+        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 34, 20), q1.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 34, 20), q1.valid_until)
+        self.assertEqual(125000, q1.min_volume)
+        self.assertEqual(250000, q1.limit_volume)
+        self.assertEqual('Ohio_AEP_OH_CS_GS-1_0_250000', q1.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q1.purchase_of_receivables)
+        self.assertEqual(0.0524883445181945, q1.price)
+
+        q2 = quotes[1559]
+        self.assertEqual(datetime(2015, 01, 17), q2.start_from)
+        self.assertEqual(datetime(2015, 02, 01), q2.start_until)
+        self.assertEqual(36, q2.term_months)
+        self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
+        self.assertEqual(datetime(2015, 12, 07, 8, 30, 58), q2.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
+        self.assertEqual(250001, q2.min_volume)
+        self.assertEqual(500000, q2.limit_volume)
+        self.assertEqual('Ohio_Toledo Edison_GS_25250001_500000', q2.rate_class_alias)
+        #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
+        self.assertEqual(False, q2.purchase_of_receivables)
+        self.assertEqual(0.0548764676732971, q2.price)
 
     def test_guttman_gas(self):
         parser = GuttmanGas()
