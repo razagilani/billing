@@ -402,7 +402,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 30, 28), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
-        self.assertEqual('Ohio_AEP_OH_CS_GS-1_0_250000', q1.rate_class_alias)
+        self.assertEqual('Ohio_AEP_OH_CS_GS-1', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0524883445181945, q1.price)
@@ -416,7 +416,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
-        self.assertEqual('Ohio_Toledo Edison_GS_25250001_500000', q2.rate_class_alias)
+        self.assertEqual('Ohio_Toledo Edison_GS_', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
         self.assertEqual(0.0548764676732971, q2.price)
@@ -430,8 +430,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(1690, len(quotes))
-        self.assertEqual(1690, parser.get_count())
+        self.assertEqual(1820, len(quotes))
+        self.assertEqual(1820, parser.get_count())
 
         for quote in quotes:
             quote.validate()
@@ -445,24 +445,24 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 34, 20), q1.valid_until)
         self.assertEqual(125000, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
-        self.assertEqual('Ohio_AEP_OH_CS_GS-1_0_250000', q1.rate_class_alias)
+        self.assertEqual('Pennsylvania_Duquesne_DQE_GS', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0524883445181945, q1.price)
+        self.assertEqual( 0.0666530148307838, q1.price)
 
-        q2 = quotes[1559]
+        q2 = quotes[1819]
         self.assertEqual(datetime(2015, 01, 17), q2.start_from)
         self.assertEqual(datetime(2015, 02, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
         self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 30, 58), q2.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
+        self.assertEqual(datetime(2015, 12, 07, 8, 34, 44), q2.valid_from)
+        self.assertEqual(datetime(2015, 12, 8, 8, 34, 44), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
-        self.assertEqual('Ohio_Toledo Edison_GS_25250001_500000', q2.rate_class_alias)
+        self.assertEqual('Pennsylvania_West Penn Power_30', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
-        self.assertEqual(0.0548764676732971, q2.price)
+        self.assertEqual(0.0612858140640282, q2.price)
 
     def test_guttman_gas(self):
         parser = GuttmanGas()
