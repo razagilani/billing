@@ -107,9 +107,8 @@ class GuttmanElectric(QuoteParser):
                                                         self.TITLE_ROW,
                                                         self.TITLE_COL,
                                                         basestring)
-                    regex = r'([A-Z]*_[A-Z]*|[A-Z]*-[0-9]*|' \
-                            r'[A-Z]*[0-9]*|[A-Z]*|[0-9]*|' \
-                            r'[A-Z]*_[A-Z]*\>[0-9]*|[A-Z]*_[A-Z]*\<[0-9]*).*'
+                    regex = r'([A-Z0-9]+(?:_[A-Z]+|-[0-9]+|[0-9]+|[A-Z]+|' \
+                            r'[0-9]+|_[A-Z]+\>[0-9]+|_[A-Z]+\<[0-9]+))'
                     rate_class = self._reader.get_matches(sheet, row, col,
                                                           regex, str)
                     rate_class_alias = rate_class_alias + '_' + \
