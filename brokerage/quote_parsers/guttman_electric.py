@@ -95,11 +95,8 @@ class GuttmanElectric(QuoteParser):
                     if volume_column is not None and 'kWh' in volume_column:
                         min_volume, limit_volume = self._extract_volume_range(
                             sheet, row, col,
-                            r'(?:[0-9]*|[A-Z]*|[A-Z]*[0-9]*|[A-Z]*_[A-Z]*|'
-                            r'[A-Z]*_[A-Z]*\>[0-9]*|[A-Z]*_[A-Z]*\<[0-9]*)?'
-                            r'(?:-[0-9]_|_| )?'
-                            r'(?P<low>[\d,]+)'
-                            r'(?: - |-)?(?P<high>[\d,]+)'
+                            r'.*[_ ](?P<low>[\d,]+)'
+                            r'(?: - |-)(?P<high>[\d,]+)'
                             r'(?:-kWh)',
                             expected_unit=unit_registry.kwh,
                             target_unit=unit_registry.kwh)
