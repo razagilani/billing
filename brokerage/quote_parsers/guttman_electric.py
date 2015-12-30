@@ -33,34 +33,34 @@ class GuttmanElectric(QuoteParser):
     NO_OF_TERM_COLS = 5
     VOLUME_RANGE_COL = 2
     COL_INCREMENT = 8
-    TABLE_HEIGHT = 16  #the expected number of rows in a table
+    TABLE_HEIGHT = 16  # the expected number of rows in a table
 
     def process_table(self, sheet, row, col, rate_class_alias, valid_from,
             valid_until, min_volume, limit_volume, term_row):
         """
-        Extracts quotes from a table containing 13 rows of 5 columns. With each cell containing a price
-        :param sheet
-        :param row
-        :param col
-        :param rate_class_alias
-        :param valid_from
-        :param valid_until
-        :param min_volume
-        :param limit_volume
-        :param term_row
+        Extracts quotes from a table
+        :param sheet: the sheet number or title
+        :param row: the starting row of the table containing quotes
+        :param col: the starting column of the table containing quotes
+        :param rate_class_alias: rate class alias for the quotes in the table
+        :param valid_from: the starting date from which the quote becomes valid
+        :param valid_until: the date at which the quotes becomes invalid
+        :param min_volume: the minimum volume for the quote
+        :param limit_volume: the maximum volume for the quote
+        :param term_row: the row at which the term of the quote is located
         :return yield a quote object
         """
 
         for table_row in xrange(row, row + self.TABLE_ROWS):
             start_from = self._reader.get(sheet, table_row,
-                                           self.START_DATE_COL, unicode)
+                                          self.START_DATE_COL, unicode)
             start_from = datetime.fromtimestamp(mktime(strptime(start_from, '%b-%y')))
             start_until = date_to_datetime((Month(start_from) + 1).first)
             for price_col in xrange(col + 2, col + 2 + self.NO_OF_TERM_COLS):
                 term = self._reader.get(sheet, term_row, price_col, int)
                 price = self._reader.get(sheet, table_row, price_col, float)
                 rate_class_ids = self.get_rate_class_ids_for_alias(
-                rate_class_alias)
+                    rate_class_alias)
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
@@ -72,12 +72,11 @@ class GuttmanElectric(QuoteParser):
                         rate_class_alias=rate_class_alias,
                         service_type=ELECTRIC,
                         file_reference='%s %s,%s' % (
-                        self.file_name, sheet, table_row))
+                            self.file_name, sheet, table_row))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     quote.rate_class_id = rate_class_id
                     yield quote
-
 
 
     def _extract_quotes(self):
@@ -85,14 +84,14 @@ class GuttmanElectric(QuoteParser):
             valid_from_row = self._reader.get_height(sheet)
 
             valid_from = self._reader.get_matches(sheet,
-                                              valid_from_row, 'C',
-                                              'Published: (.*)',
-                                              parse_datetime)
+                                                  valid_from_row, 'C',
+                                                  'Published: (.*)',
+                                                  parse_datetime)
             valid_until = valid_from + timedelta(days=1)
 
             for table_start_row in xrange(self.RATE_START_ROW,
-                              self._reader.get_height(sheet),
-                              self.TABLE_HEIGHT):
+                                          self._reader.get_height(sheet),
+                                          self.TABLE_HEIGHT):
                 term_row = table_start_row - 1
                 for col in xrange(self.VOLUME_RANGE_COL,
                                   self._reader.get_width(sheet),
