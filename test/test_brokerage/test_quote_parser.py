@@ -416,7 +416,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
-        self.assertEqual('Ohio_Toledo Edison_GS_', q2.rate_class_alias)
+        self.assertEqual('Ohio_Toledo Edison_GS', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
         self.assertEqual(0.0548764676732971, q2.price)
