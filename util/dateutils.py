@@ -261,7 +261,8 @@ def parse_datetime(string):
     :return: date
     """
     result = parser.parse(string)
-    if isinstance(result, date):
+    # datetime is a subclass of date
+    if isinstance(result, date) and not isinstance(result, datetime):
         return date_to_datetime(result)
     return result
 

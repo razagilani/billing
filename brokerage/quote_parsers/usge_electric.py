@@ -5,6 +5,7 @@ from brokerage.reader import parse_number
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser
+from brokerage.reader import parse_number
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime

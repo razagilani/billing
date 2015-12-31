@@ -298,6 +298,8 @@ class DateUtilsTest(unittest.TestCase):
     def test_parse_datetime(self):
         self.assertEqual(datetime(2000, 1, 1), parse_datetime('2000/1/1'))
         self.assertEqual(datetime(2000, 1, 1), parse_datetime('2000/1/1 00:00'))
+        self.assertEqual(datetime(2000, 1, 1, 12, 34, 56, 700000),
+                         parse_datetime('2000/1/1 12:34:56.7'))
 
     def test_parse_date(self):
         self.assertEqual(date(2000, 1, 1), parse_date('2000/1/1'))
