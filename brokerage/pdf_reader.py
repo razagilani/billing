@@ -30,11 +30,11 @@ class PDFReader(Reader):
         self._offset_x = 0
         self._offset_y = 0
 
-    def load_file(self, quote_file):
+    def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'.
         :param quote_file: file to read from.
         """
-        self._file_name = quote_file.name
+        self._file_name = file_name
         self._pages = PDFUtil().get_pdfminer_layout(quote_file)
 
     def is_loaded(self):
