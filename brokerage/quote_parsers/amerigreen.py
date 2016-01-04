@@ -75,7 +75,8 @@ class AmerigreenMatrixParser(QuoteParser):
             state = self.reader.get(0, row, self.STATE_COL, basestring)
             rate_class_alias = state + '-' + utility
 
-            term_months = self.reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = int(self.reader.get(0, row, self.TERM_COL,
+                                              (int, float)))
 
             start_from = excel_number_to_datetime(
                 self.reader.get(0, row, self.START_MONTH_COL, float))

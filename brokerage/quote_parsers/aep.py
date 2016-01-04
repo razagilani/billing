@@ -115,8 +115,8 @@ class AEPMatrixParser(QuoteParser):
                             (basestring, float, int)) == "End May '18":
                         continue
                     # TODO: extracted unnecessarily many times
-                    term = self.reader.get(
-                        self.SHEET, self.HEADER_ROW, col, (int, float))
+                    term = int(self.reader.get(
+                        self.SHEET, self.HEADER_ROW, col, (int, float)))
 
                     price = self.reader.get(self.SHEET, row, col,
                                             (float, basestring, type(None)))
