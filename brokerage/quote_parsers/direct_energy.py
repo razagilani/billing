@@ -57,7 +57,8 @@ class DirectEnergyMatrixParser(QuoteParser):
             start_from = excel_number_to_datetime(
                 self.reader.get(0, row, 0, (int, float)))
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            term_months = self.reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = int(self.reader.get(0, row, self.TERM_COL,
+                                              (int, float)))
 
             rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
                                          basestring)
