@@ -56,8 +56,11 @@ class SimpleCellDateGetter(DateGetter):
 
     def _get_date_from_cell(self, reader, row, col):
         if self._regex is None:
-            value = reader.get(self._sheet, row, col, (datetime, int, float))
-            if isinstance(value, (int, float)):
+            value = reader.get(self._sheet, row, col, (datetime, int, float,
+                                                       basestring))
+            if isinstance(value, basestring):
+                value = parse_datetime(value)
+            elif isinstance(value, (int, float)):
                 value = excel_number_to_datetime(value)
             return value
         return reader.get_matches(self._sheet, row, col, self._regex,
@@ -133,8 +136,9 @@ class SpreadsheetFileConverter(object):
 
         # note: openpyxl doesn't support xls. soffice seems to corrupt files when converting to xlsx.
         EXTENSION = 'xls'
+        dest_format_str = EXTENSION + ':"MS Excel 97"'
         COMMAND = '/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %s --outdir %s %s' % (
-            EXTENSION, self.directory.path, shell_quote(temp_file_path))
+            dest_format_str, self.directory.path, shell_quote(temp_file_path))
         _, _, check_exit_status = run_command(COMMAND)
         check_exit_status()
 
