@@ -3,7 +3,8 @@ from datetime import timedelta
 from tablib import formats
 
 from brokerage.brokerage_model import MatrixQuote
-from brokerage.quote_parser import QuoteParser, FileNameDateGetter
+from brokerage.quote_parser import QuoteParser, FileNameDateGetter, \
+    SpreadsheetFileConverter
 from brokerage.quote_parser import excel_number_to_datetime
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_true
@@ -58,6 +59,11 @@ class AmerigreenMatrixParser(QuoteParser):
 
     date_getter = FileNameDateGetter(
         'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
+
+    def _preprocess_file(self, quote_file, file_name=None):
+        sfc = SpreadsheetFileConverter()
+        converted_file = sfc.convert_file(quote_file, file_name)
+        return converted_file
 
     def _extract_quotes(self):
         broker_fee = self.reader.get(0, self.BROKER_FEE_CELL[0],
