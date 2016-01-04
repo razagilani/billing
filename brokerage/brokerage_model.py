@@ -4,7 +4,7 @@ from datetime import datetime
 import itertools
 
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, \
-    Float, func, desc
+    Float, func, desc, Numeric
 from sqlalchemy.orm import relationship
 
 from brokerage.validation import MatrixQuoteValidator
@@ -165,7 +165,7 @@ class Quote(AltitudeBase):
                                      nullable=False, server_default='0')
 
     # fixed price for energy in dollars/energy unit
-    price = Column('Supplier_Price_Dollars_KWH_Therm', Float, nullable=False)
+    price = Column('Supplier_Price_Dollars_KWH_Therm', Numeric(precision=10, scale=7), nullable=False)
 
     # zone
     zone = Column('Zone', String)
