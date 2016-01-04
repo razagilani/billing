@@ -622,7 +622,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.AEP_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet,
+                             file_name=basename(self.AEP_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
