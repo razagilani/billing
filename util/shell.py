@@ -19,3 +19,5 @@ def run_command(command):
     return process.stdin, process.stdout, check_exit_status
 
 
+def shell_quote(s):
+    return "'" + s.replace("'", "'\\''") + "'"

@@ -3,7 +3,7 @@ import time
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, \
-    excel_number_to_datetime, SimpleCellDateGetter
+    excel_number_to_datetime, SimpleCellDateGetter, SpreadsheetFileConverter
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_true
 from util.dateutils import date_to_datetime
@@ -68,6 +68,11 @@ class AEPMatrixParser(QuoteParser):
     # TODO: prices are valid until 6 PM CST = 7 PM EST according to cell
     # below the date cell
     date_getter = SimpleCellDateGetter(SHEET, 3, 'W', None)
+
+    def _preprocess_file(self, quote_file, file_name=None):
+        sfc = SpreadsheetFileConverter()
+        converted_file = sfc.convert_file(quote_file, file_name)
+        return converted_file
 
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
