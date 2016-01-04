@@ -1,7 +1,6 @@
 """Code related to getting quotes out of Excel spreadsheets.
 """
-from tablib import formats, Databook
-
+from tablib import formats, Databook, Dataset
 from brokerage.reader import Reader
 from core.exceptions import BillingError, ValidationError
 
@@ -66,6 +65,11 @@ class SpreadsheetReader(Reader):
             file_format.import_book(result, quote_file)
         elif file_format in [formats.xls]:
             file_format.import_book(result, quote_file.read())
+        elif file_format in [formats.csv]:
+            # TODO: how to handle multiple sheets?
+            dataset = Dataset()
+            file_format.import_set(dataset, quote_file.read())
+            result.add_sheet(dataset)
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
         return result

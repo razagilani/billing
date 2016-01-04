@@ -1,12 +1,12 @@
-import datetime
-import time
+from datetime import datetime
+
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, \
     excel_number_to_datetime, SimpleCellDateGetter, SpreadsheetFileConverter
 from brokerage.spreadsheet_reader import SpreadsheetReader
-from brokerage.validation import _assert_true
-from util.dateutils import date_to_datetime
+from brokerage.validation import _assert_true, _assert_match
+from util.dateutils import date_to_datetime, parse_date, parse_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from util.units import unit_registry
@@ -16,14 +16,16 @@ class AEPMatrixParser(QuoteParser):
     """Parser for AEP Energy spreadsheet.
     """
     NAME = 'aep'
-    reader = SpreadsheetReader(formats.xls)
+    reader = SpreadsheetReader(formats.csv)
 
-    EXPECTED_SHEET_TITLES = [
-        'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
-        'Matrix Table-Energy Only', 'PLC Load Factor Calculator']
+    # with only one sheet you can't get titles
+    # EXPECTED_SHEET_TITLES = [
+    #     'Price Finder', 'Customer Information', 'Matrix Table-FPAI',
+    #     'Matrix Table-Energy Only', 'PLC Load Factor Calculator']
 
-    # FPAI is "Fixed-Price All-In"; we're ignoring the "Energy Only" quotes
-    SHEET = 'Matrix Table-FPAI'
+    # # FPAI is "Fixed-Price All-In"; we're ignoring the "Energy Only" quotes
+    # SHEET = 'Matrix Table-FPAI'
+    SHEET = 0
 
     EXPECTED_CELLS = [
         (SHEET, 3, 'E', 'Matrix Pricing'),
@@ -69,10 +71,10 @@ class AEPMatrixParser(QuoteParser):
     # below the date cell
     date_getter = SimpleCellDateGetter(SHEET, 3, 'W', None)
 
-    def _preprocess_file(self, quote_file, file_name=None):
-        sfc = SpreadsheetFileConverter()
-        converted_file = sfc.convert_file(quote_file, file_name)
-        return converted_file
+    # def _preprocess_file(self, quote_file, file_name=None):
+    #     sfc = SpreadsheetFileConverter()
+    #     converted_file = sfc.convert_file(quote_file, file_name)
+    #     return converted_file
 
     def _extract_quotes(self):
         for row in xrange(self.QUOTE_START_ROW,
@@ -94,9 +96,12 @@ class AEPMatrixParser(QuoteParser):
             rate_class_alias = '-'.join([state, utility, rate_codes,rate_class])
 
             # TODO use time zone here
-            start_from = excel_number_to_datetime(
-                self.reader.get(self.SHEET, row, self.START_MONTH_COL,
-                                float))
+            # TODO: years come out as 99 when converted to csv!
+            convert_date = lambda s: datetime.strptime(s.lower(), '%b-%y')
+            start_from_str = self.reader.get(
+                self.SHEET, row, self.START_MONTH_COL, basestring)
+            print '****************', (start_from_str)
+            start_from = convert_date(start_from_str)
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             for i, vol_col in enumerate(self.VOLUME_RANGE_COLS):
@@ -121,14 +126,14 @@ class AEPMatrixParser(QuoteParser):
                         continue
                     # TODO: extracted unnecessarily many times
                     term = int(self.reader.get(
-                        self.SHEET, self.HEADER_ROW, col, (int, float)))
+                        self.SHEET, self.HEADER_ROW, col, basestring))
 
-                    price = self.reader.get(self.SHEET, row, col,
-                                            (float, basestring, type(None)))
+                    price = self.reader.get(self.SHEET, row, col, basestring)
                     # skip blanks
                     if price in (None, ""):
                         continue
-                    _assert_true(type(price) is float)
+                    price = self.reader.get_matches(self.SHEET, row, col,
+                                                    '\$(.*)', float)
 
                     for rate_class_id in self.get_rate_class_ids_for_alias(
                             rate_class_alias):
