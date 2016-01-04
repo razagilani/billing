@@ -2,16 +2,20 @@
 specific suppliers' matrix formats should go in separate files.
 """
 from abc import ABCMeta, abstractmethod
+import os
 import re
 from datetime import datetime, timedelta
 
 from tablib import Databook, formats
+
+from testfixtures import TempDirectory
 
 from brokerage.reader import Reader
 from brokerage.validation import ValidationError, _assert_true, _assert_match, \
     _assert_equal
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.brokerage_model import load_rate_class_aliases
+from util.shell import run_command, shell_quote
 from util.dateutils import parse_datetime, excel_number_to_datetime
 from util.units import unit_registry
 
@@ -117,6 +121,36 @@ class FileNameDateGetter(DateGetter):
         return valid_from, valid_from + timedelta(days=1)
 
 
+class SpreadsheetFileConverter(object):
+
+    def __init__(self):
+        self.directory = TempDirectory()
+
+    def convert_file(self, fp, file_name):
+        temp_file_path = os.path.join(self.directory.path, file_name)
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(fp.read())
+
+        # note: openpyxl doesn't support xls. soffice seems to corrupt files when converting to xlsx.
+        EXTENSION = 'xls'
+        COMMAND = '/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %s --outdir %s %s' % (
+            EXTENSION, self.directory.path, shell_quote(temp_file_path))
+        _, _, check_exit_status = run_command(COMMAND)
+        check_exit_status()
+
+        # note: libreoffice exits with 0 even if it failed to convert.
+        converted_file_path = os.path.splitext(temp_file_path)[0] + '.' + EXTENSION
+        print converted_file_path
+        assert os.access(converted_file_path, os.R_OK)
+
+        return open(converted_file_path, 'rb')
+
+    def __del__(self):
+        #self.directory.cleanup()
+        pass
+        # TODO: this gets called to early for some reason
+
+
 class QuoteParser(object):
     """Superclass for classes representing particular matrix file formats.
     """
@@ -188,6 +222,15 @@ class QuoteParser(object):
         # TODO: using a separate DAO object would be a better way
         return load_rate_class_aliases()
 
+    def _preprocess_file(self, quote_file, file_name=None):
+        """Override this to modify the file or replace it with another one
+        before reading from it.
+        :param quote_file: file to read from.
+        :param file_name: name of the file.
+        :return: new file that should be used instead of the original one
+        """
+        return quote_file
+
     def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
@@ -195,6 +238,7 @@ class QuoteParser(object):
         :param file_name: name of the file, used in some formats to get
         valid_from and valid_until dates for the quotes
         """
+        quote_file = self._preprocess_file(quote_file, file_name)
         self.reader.load_file(quote_file)
         self._validated = False
         self._count = 0
