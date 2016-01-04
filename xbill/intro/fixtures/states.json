@@ -1,0 +1,461 @@
+[
+    {
+        "model": "intro.State",
+        "pk": 0,
+        "fields": {
+            "abbr": "AL",
+            "name": "Alabama",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 1,
+        "fields": {
+            "abbr": "AK",
+            "name": "Alaska",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 2,
+        "fields": {
+            "abbr": "AZ",
+            "name": "Arizona",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 3,
+        "fields": {
+            "abbr": "AR",
+            "name": "Arkansas",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 4,
+        "fields": {
+            "abbr": "CA",
+            "name": "California",
+            "brokerage_possible": 1
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 5,
+        "fields": {
+            "abbr": "CO",
+            "name": "Colorado",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 6,
+        "fields": {
+            "abbr": "CT",
+            "name": "Connecticut",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 7,
+        "fields": {
+            "abbr": "DE",
+            "name": "Delaware",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 8,
+        "fields": {
+            "abbr": "DC",
+            "name": "District of Columbia",
+            "brokerage_possible": 1
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 9,
+        "fields": {
+            "abbr": "FL",
+            "name": "Florida",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 10,
+        "fields": {
+            "abbr": "GA",
+            "name": "Georgia",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 11,
+        "fields": {
+            "abbr": "HI",
+            "name": "Hawaii",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 12,
+        "fields": {
+            "abbr": "ID",
+            "name": "Idaho",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 13,
+        "fields": {
+            "abbr": "IL",
+            "name": "Illinois",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 14,
+        "fields": {
+            "abbr": "IN",
+            "name": "Indiana",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 15,
+        "fields": {
+            "abbr": "IA",
+            "name": "Iowa",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 16,
+        "fields": {
+            "abbr": "KS",
+            "name": "Kansas",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 17,
+        "fields": {
+            "abbr": "KY",
+            "name": "Kentucky",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 18,
+        "fields": {
+            "abbr": "LA",
+            "name": "Louisiana",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 19,
+        "fields": {
+            "abbr": "ME",
+            "name": "Maine",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 20,
+        "fields": {
+            "abbr": "MD",
+            "name": "Maryland",
+            "brokerage_possible": 1
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 21,
+        "fields": {
+            "abbr": "MA",
+            "name": "Massachusetts",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 22,
+        "fields": {
+            "abbr": "MI",
+            "name": "Michigan",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 23,
+        "fields": {
+            "abbr": "MN",
+            "name": "Minnesota",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 24,
+        "fields": {
+            "abbr": "MS",
+            "name": "Mississippi",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 25,
+        "fields": {
+            "abbr": "MO",
+            "name": "Missouri",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 26,
+        "fields": {
+            "abbr": "MT",
+            "name": "Montana",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 27,
+        "fields": {
+            "abbr": "NE",
+            "name": "Nebraska",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 28,
+        "fields": {
+            "abbr": "NV",
+            "name": "Nevada",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 29,
+        "fields": {
+            "abbr": "NH",
+            "name": "New Hampshire",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 30,
+        "fields": {
+            "abbr": "NJ",
+            "name": "New Jersey",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 31,
+        "fields": {
+            "abbr": "NM",
+            "name": "New Mexico",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 32,
+        "fields": {
+            "abbr": "NY",
+            "name": "New York",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 33,
+        "fields": {
+            "abbr": "NC",
+            "name": "North Carolina",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 34,
+        "fields": {
+            "abbr": "ND",
+            "name": "North Dakota",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 35,
+        "fields": {
+            "abbr": "OH",
+            "name": "Ohio",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 36,
+        "fields": {
+            "abbr": "OK",
+            "name": "Oklahoma",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 37,
+        "fields": {
+            "abbr": "OR",
+            "name": "Oregon",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 38,
+        "fields": {
+            "abbr": "PA",
+            "name": "Pennsylvania",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 39,
+        "fields": {
+            "abbr": "RI",
+            "name": "Rhode Island",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 40,
+        "fields": {
+            "abbr": "SC",
+            "name": "South Carolina",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 41,
+        "fields": {
+            "abbr": "SD",
+            "name": "South Dakota",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 42,
+        "fields": {
+            "abbr": "TN",
+            "name": "Tennessee",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 43,
+        "fields": {
+            "abbr": "TX",
+            "name": "Texas",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 44,
+        "fields": {
+            "abbr": "UT",
+            "name": "Utah",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 45,
+        "fields": {
+            "abbr": "VT",
+            "name": "Vermont",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 46,
+        "fields": {
+            "abbr": "VA",
+            "name": "Virginia",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 47,
+        "fields": {
+            "abbr": "WA",
+            "name": "Washington",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 48,
+        "fields": {
+            "abbr": "WV",
+            "name": "West Virginia",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 49,
+        "fields": {
+            "abbr": "WI",
+            "name": "Wisconsin",
+            "brokerage_possible": 0
+        }
+    },
+    {
+        "model": "intro.State",
+        "pk": 50,
+        "fields": {
+            "abbr": "WY",
+            "name": "Wyoming",
+            "brokerage_possible": 0
+        }
+    }
+]
