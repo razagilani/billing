@@ -27,6 +27,7 @@ class AmerigreenMatrixParser(QuoteParser):
     START_MONTH_COL = 'F'
     START_DAY_COL = 'G'
     PRICE_COL = 'N'
+    ROUNDING_DIGITS = 4
 
     # Amerigreen builds in the broker fee to the prices, so it must be
     # subtracted from the prices shown
@@ -88,7 +89,7 @@ class AmerigreenMatrixParser(QuoteParser):
             start_until = start_from + timedelta(days=1)
 
             price = self.reader.get(0, row, self.PRICE_COL, float) - broker_fee
-            price = round(price, 4)
+            price = round(price, self.ROUNDING_DIGITS)
 
             for rate_class_id in self.get_rate_class_ids_for_alias(
                     rate_class_alias):
