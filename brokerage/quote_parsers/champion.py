@@ -1,6 +1,6 @@
 from tablib import formats
-from brokerage.spreadsheet_reader import SpreadsheetReader
-
+from brokerage.spreadsheet_reader import SpreadsheetReader, \
+    SpreadsheetFileConverter
 from util.dateutils import date_to_datetime, parse_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
@@ -40,6 +40,9 @@ class ChampionMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter('PA', 8, 'C', None)
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
+
+    def _preprocess_file(self, quote_file, file_name=None):
+        return SpreadsheetFileConverter().convert_file(quote_file, file_name)
 
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:

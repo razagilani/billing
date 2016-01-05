@@ -83,8 +83,8 @@ class MatrixQuoteParsersTest(TestCase):
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
     USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
-    CHAMPION_FILE_PATH = join(DIRECTORY, 'Champion MM PJM Fixed-Index-24 '
-                                         'Matrix 2015-10-30.xls')
+    CHAMPION_FILE_PATH = join(
+        DIRECTORY, 'Champion MM PJM Fixed-Index-24 Matrix 2016-01-05.xlsm')
     # using version of the file converted to XLS because we can't currently
     # read the newer format
     AMERIGREEN_FILE_PATH = join(DIRECTORY, 'Amerigreen Matrix 08-03-2015.xlsx')
@@ -96,7 +96,8 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
                    'Gas Rack Rates October 27 2015.xlsx')
     ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
-    LIBERTY_FILE_PATH = join(DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2015-09-11.xls')
+    LIBERTY_FILE_PATH = join(
+        DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2016-01-05.xlsx')
     GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_12072015.xlsx')
     GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_12072015.xlsx')
     GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_12072015.xlsx')
@@ -648,12 +649,13 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.05628472538457212, q1.price)
 
-    def test_Champion(self):
+    def test_champion(self):
         parser = ChampionMatrixParser()
         self.assertEqual(0, parser.get_count())
 
         with open(self.CHAMPION_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.CHAMPION_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -981,7 +983,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.LIBERTY_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.LIBERTY_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -996,42 +999,40 @@ class MatrixQuoteParsersTest(TestCase):
         q1 = quotes[0]
 
         # Last quote from first page from last table (super saver)
-        q2 = quotes[1007]
+        # (to get this index, break after the first iteration of the loop
+        # through sheets)
+        q2 = quotes[2159]
 
         # Last quote (super saver) from last table on last readable sheet
         q3 = quotes[-1]
 
-        # TODO: update to match this spreadsheet
-        self.assertEqual(datetime(2015, 9, 11), q1.valid_from)
-        self.assertEqual(datetime(2015, 9, 12), q1.valid_until)
-        self.assertEqual(datetime(2015, 10, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 11, 1), q1.start_until)
+        # validity dates are only checked once
+        self.assertEqual(datetime(2016, 1, 5), q1.valid_from)
+        self.assertEqual(datetime(2016, 1, 6), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 1), q1.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q1.start_until)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(3, q1.term_months)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(25000, q1.limit_volume)
-        self.assertEqual(0.10913, q1.price)
+        self.assertEqual(0.10178, q1.price)
         self.assertEqual('PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
 
-        self.assertEqual(21, q2.term_months)
-        self.assertEqual(0.08087, q2.price)
-        self.assertEqual(datetime(2015, 9, 11), q2.valid_from)
-        self.assertEqual(datetime(2015, 9, 12), q2.valid_until)
-        self.assertEqual(datetime(2016, 3, 1), q2.start_from)
-        self.assertEqual(datetime(2016, 4, 1), q2.start_until)
+        self.assertEqual(30, q2.term_months)
+        self.assertEqual(0.07959, q2.price)
+        self.assertEqual(datetime(2017, 1, 1), q2.start_from)
+        self.assertEqual(datetime(2017, 2, 1), q2.start_until)
         self.assertEqual('PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q2.rate_class_id)
         self.assertEqual(500000, q2.min_volume)
         self.assertEqual(2000000, q2.limit_volume)
 
         self.assertEqual(15, q3.term_months)
-        self.assertEqual(0.07868, q3.price)
-        self.assertEqual(datetime(2015, 9, 11), q3.valid_from)
-        self.assertEqual(datetime(2015, 9, 12), q3.valid_until)
-        self.assertEqual(datetime(2016, 3, 1), q3.start_from)
-        self.assertEqual(datetime(2016, 4, 1), q3.start_until)
+        self.assertEqual(.07636, q3.price)
+        self.assertEqual(datetime(2016, 7, 1), q3.start_from)
+        self.assertEqual(datetime(2016, 8, 1), q3.start_until)
         self.assertEqual('WPP-APS-SOHO (Tax ID Required)', q3.rate_class_alias)
         self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)

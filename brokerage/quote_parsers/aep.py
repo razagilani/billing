@@ -3,7 +3,7 @@ from datetime import datetime
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, \
-    excel_number_to_datetime, SimpleCellDateGetter, SpreadsheetFileConverter
+    excel_number_to_datetime, SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.validation import _assert_true, _assert_match
 from util.dateutils import date_to_datetime, parse_date, parse_datetime
