@@ -26,6 +26,7 @@ class SFEMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'E'
     VOLUME_RANGE_COL = 'F'
     TERM_COL_RANGE = SpreadsheetReader.column_range('G', 'K')
+    ROUNDING_DIGITS = 4
 
     EXPECTED_SHEET_TITLES = [
         'Pricing Worksheet',
@@ -161,7 +162,7 @@ class SFEMatrixParser(QuoteParser):
                         'Price at (%s, %s) has unexpected type %s: "%s"' % (
                             row, col, type(price), price))
 
-                price = round(price, 4)
+                price = round(price, self.ROUNDING_DIGITS)
 
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(

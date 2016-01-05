@@ -59,6 +59,7 @@ class AEPMatrixParser(QuoteParser):
     # TODO what is "rate code(s)" in col E?
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
+    ROUNDING_DIGITS = 5
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     TARGET_ENERGY_UNIT = unit_registry.kWh
@@ -125,7 +126,7 @@ class AEPMatrixParser(QuoteParser):
                     if price in (None, ""):
                         continue
                     _assert_true(type(price) is float)
-                    price = round(price, 5)
+                    price = round(price, self.ROUNDING_DIGITS)
 
                     for rate_class_id in self.get_rate_class_ids_for_alias(
                             rate_class_alias):
