@@ -1,5 +1,6 @@
 import datetime
 import time
+from decimal import Decimal
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, \
