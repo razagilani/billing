@@ -2,7 +2,8 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
-from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.spreadsheet_reader import SpreadsheetReader, \
+    SpreadsheetFileConverter
 from brokerage.validation import _assert_equal
 from core.model.model import ELECTRIC
 from util.dateutils import date_to_datetime, parse_date
@@ -270,6 +271,9 @@ class LibertyMatrixParser(QuoteParser):
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
+
+    def _preprocess_file(self, quote_file, file_name=None):
+        return SpreadsheetFileConverter().convert_file(quote_file, file_name)
 
     def _validate(self):
         for sheet in self.reader.get_sheet_titles():

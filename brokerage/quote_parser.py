@@ -124,37 +124,6 @@ class FileNameDateGetter(DateGetter):
         return valid_from, valid_from + timedelta(days=1)
 
 
-class SpreadsheetFileConverter(object):
-
-    def __init__(self):
-        self.directory = TempDirectory()
-
-    def convert_file(self, fp, file_name):
-        temp_file_path = os.path.join(self.directory.path, file_name)
-        with open(temp_file_path, 'wb') as temp_file:
-            temp_file.write(fp.read())
-
-        # note: openpyxl doesn't support xls. soffice seems to corrupt files when converting to xlsx.
-        EXTENSION = 'xls'
-        dest_format_str = EXTENSION + ':"MS Excel 97"'
-        COMMAND = '/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %s --outdir %s %s' % (
-            dest_format_str, self.directory.path, shell_quote(temp_file_path))
-        _, _, check_exit_status = run_command(COMMAND)
-        check_exit_status()
-
-        # note: libreoffice exits with 0 even if it failed to convert.
-        converted_file_path = os.path.splitext(temp_file_path)[0] + '.' + EXTENSION
-        print converted_file_path
-        assert os.access(converted_file_path, os.R_OK)
-
-        return open(converted_file_path, 'rb')
-
-    def __del__(self):
-        #self.directory.cleanup()
-        pass
-        # TODO: this gets called to early for some reason
-
-
 class QuoteParser(object):
     """Superclass for classes representing particular matrix file formats.
     """

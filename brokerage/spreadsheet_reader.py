@@ -1,8 +1,14 @@
 """Code related to getting quotes out of Excel spreadsheets.
 """
+import os
+from os.path import splitext
 from tablib import formats, Databook, Dataset
+from testfixtures import TempDirectory
+
 from brokerage.reader import Reader
 from core.exceptions import BillingError, ValidationError
+from util.shell import run_command
+from util.shell import shell_quote
 
 
 class SpreadsheetReader(Reader):
@@ -177,5 +183,37 @@ class SpreadsheetReader(Reader):
                 get_neighbor_str())
             raise ValidationError(message)
         return value
+
+
+class SpreadsheetFileConverter(object):
+
+    def __init__(self):
+        self.directory = TempDirectory()
+
+    def convert_file(self, fp, file_name):
+        temp_file_path = os.path.join(self.directory.path, file_name)
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(fp.read())
+
+        # note: openpyxl doesn't support xls. soffice seems to corrupt files when converting to xlsx.
+        EXTENSION = 'xls'
+        dest_format_str = EXTENSION + ':"MS Excel 97"'
+        COMMAND = '/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %s --outdir %s %s' % (
+            dest_format_str, self.directory.path, shell_quote(temp_file_path))
+        _, _, check_exit_status = run_command(COMMAND)
+        check_exit_status()
+
+        # note: libreoffice exits with 0 even if it failed to convert.
+        converted_file_path = splitext(temp_file_path)[0] + '.' + EXTENSION
+        print converted_file_path
+        assert os.access(converted_file_path, os.R_OK)
+
+        return open(converted_file_path, 'rb')
+
+    def __del__(self):
+        #self.directory.cleanup()
+        pass
+        # TODO: this gets called to early for some reason
+
 
 
