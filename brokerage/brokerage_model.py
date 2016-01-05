@@ -194,6 +194,7 @@ class Quote(AltitudeBase):
 
         # pick a MatrixQuoteValidator class based on service type (mandatory)
         assert self.service_type is not None
+        assert isinstance(self.term_months, int)
         self._validator = MatrixQuoteValidator.get_instance(self.service_type)
 
     def validate(self):
