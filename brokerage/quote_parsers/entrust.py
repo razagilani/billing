@@ -65,6 +65,7 @@ class EntrustMatrixParser(QuoteParser):
     UTILITY_COL = 'E'
     PRICE_START_COL = 'E'
     DATE_COL = 'F'
+    ROUNDING_DIGITS = 4
     # certain columns have term length in a different place
     # (indices are used instead of letters to enable comparison)
     # each of the prices has a corresponding term in the cell whose row is
@@ -127,7 +128,7 @@ class EntrustMatrixParser(QuoteParser):
                 if price is None:
                     # blank space
                     continue
-                price = round(price, 4)
+                price = round(price, self.ROUNDING_DIGITS)
 
                 if col in self.SWEET_SPOT_PRICE_COLS:
                     # this price has its term length in the next column, which
