@@ -127,6 +127,7 @@ class EntrustMatrixParser(QuoteParser):
                 if price is None:
                     # blank space
                     continue
+                price = round(price, 4)
 
                 if col in self.SWEET_SPOT_PRICE_COLS:
                     # this price has its term length in the next column, which
