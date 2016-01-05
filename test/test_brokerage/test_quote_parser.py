@@ -646,7 +646,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('IL-Ameren_Zone_1_CIPS-DS2-SECONDARY', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.05628472538457212, q1.price)
+        self.assertEqual(0.05628, q1.price)
 
     def test_Champion(self):
         parser = ChampionMatrixParser()
@@ -705,7 +705,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('NY-Con Ed', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.34025833996486833, q1.price)
+        self.assertEqual(0.3403, q1.price)
 
     def test_constellation(self):
         parser = ConstellationMatrixParser()
@@ -900,7 +900,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('NY-A (NiMo, NYSEG)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.05911930642465754, q.price)
+        self.assertEqual(0.0591, q.price)
 
         # check volume ranges in many rows rows because SFE's units are
         # complicated
@@ -931,7 +931,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('NJ-SJG ($/therm)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.48745407444444444, q.price)
+        self.assertEqual(0.4875, q.price)
 
     def test_entrust(self):
         parser = EntrustMatrixParser()
@@ -959,7 +959,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('Com Ed', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.08121965893896807, q.price)
+        self.assertEqual(0.0812, q.price)
 
         # since this one is especially complicated and also missed a row,
         # check the last quote too. (this also checks the "sweet spot"
