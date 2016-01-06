@@ -7,7 +7,7 @@ Create Date: 2016-01-04 12:27:07.364248
 """
 
 # revision identifiers, used by Alembic.
-from sqlalchemy.dialects.mysql import NUMERIC, FLOAT
+from sqlalchemy.dialects.postgres import NUMERIC, FLOAT
 
 revision = '2f0fca54f119'
 down_revision = '366f5ed78b68'

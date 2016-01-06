@@ -126,7 +126,6 @@ class AEPMatrixParser(QuoteParser):
                     if price in (None, ""):
                         continue
                     _assert_true(type(price) is float)
-                    price = round(price, self.ROUNDING_DIGITS)
 
                     for rate_class_id in self.get_rate_class_ids_for_alias(
                             rate_class_alias):
