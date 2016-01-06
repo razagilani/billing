@@ -124,7 +124,7 @@ class MatrixQuoteParsersTest(TestCase):
     VOLUNTEER_FILE_PATH_VEDO = join(DIRECTORY, 'volunteer',
                                     'Exchange_VEDO_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_PECO = join(DIRECTORY, 'volunteer',
-                                    'PECO Exchange_2015 12-7-15.pdf')
+                                    'PECO EXCHANGE_2015 12-7-15.pdf')
 
     @classmethod
     def setUpClass(cls):
@@ -974,7 +974,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('ConEd Zone J', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.08106865957514724, q.price)
+        self.assertEqual(0.0811, q.price)
 
     def test_liberty(self):
         parser = LibertyMatrixParser()

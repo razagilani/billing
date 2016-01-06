@@ -89,7 +89,6 @@ class AmerigreenMatrixParser(QuoteParser):
             start_until = start_from + timedelta(days=1)
 
             price = self.reader.get(0, row, self.PRICE_COL, float) - broker_fee
-            price = round(price, self.ROUNDING_DIGITS)
 
             for rate_class_id in self.get_rate_class_ids_for_alias(
                     rate_class_alias):
