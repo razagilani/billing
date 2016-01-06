@@ -51,7 +51,8 @@ class GuttmanGas(QuoteParser):
 
 
     def _extract_quotes(self):
-        title = self._reader.get(0, self.TITLE_ROW, self.TITLE_COL,
+        title = self._reader.get(self.SUMMARY_SHEET, self.TITLE_ROW,
+                                 self.TITLE_COL,
                                  basestring)
         regex = r'(.*)_\(\$/((?:MCF)|(?:CCF)|(?:Therm?))\)'
         rate_class_alias, unit = re.match(regex, title).groups()
