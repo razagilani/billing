@@ -77,14 +77,15 @@ class QuoteParserTest(TestCase):
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
-    AEP_FILE_PATH = join(DIRECTORY, 'AEP Energy Matrix 3.0 2016-01-04.xlsb')
+    AEP_FILE_PATH = join(DIRECTORY,
+                         'AEP Energy Matrix 3.0 2015-11-12.xls')
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
     USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(
-        DIRECTORY, 'Champion MM PJM Fixed-Index-24 Matrix 2016-01-05.xlsm')
+        DIRECTORY, 'Champion MM PJM Fixed-Index-24 Matrix 2015-10-30.xls')
     # using version of the file converted to XLS because we can't currently
     # read the newer format
     AMERIGREEN_FILE_PATH = join(DIRECTORY, 'Amerigreen Matrix 08-03-2015.xlsx')
