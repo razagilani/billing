@@ -273,7 +273,8 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _preprocess_file(self, quote_file, file_name=None):
-        return SpreadsheetFileConverter().convert_file(quote_file, file_name)
+        return SpreadsheetFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
     def _validate(self):
         for sheet in self.reader.get_sheet_titles():
