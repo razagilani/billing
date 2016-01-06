@@ -195,7 +195,7 @@ class QuoteParser(object):
         # TODO: using a separate DAO object would be a better way
         return load_rate_class_aliases()
 
-    def _preprocess_file(self, quote_file, file_name=None):
+    def _preprocess_file(self, quote_file, file_name):
         """Override this to modify the file or replace it with another one
         before reading from it.
         :param quote_file: file to read from.

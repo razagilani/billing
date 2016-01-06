@@ -272,7 +272,7 @@ class LibertyMatrixParser(QuoteParser):
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
-    def _preprocess_file(self, quote_file, file_name=None):
+    def _preprocess_file(self, quote_file, file_name):
         return SpreadsheetFileConverter(
             'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
