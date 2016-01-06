@@ -162,8 +162,6 @@ class SFEMatrixParser(QuoteParser):
                         'Price at (%s, %s) has unexpected type %s: "%s"' % (
                             row, col, type(price), price))
 
-                price = round(price, self.ROUNDING_DIGITS)
-
                 for rate_class_id in rate_class_ids:
                     quote = MatrixQuote(
                         start_from=start_from, start_until=start_until,
