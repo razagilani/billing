@@ -72,7 +72,7 @@ class SpreadsheetReader(Reader):
         elif file_format in [formats.xls]:
             file_format.import_book(result, quote_file.read())
         elif file_format in [formats.csv]:
-            # TODO: how to handle multiple sheets?
+            # TODO: this only works on one sheet. how to handle multiple sheets?
             dataset = Dataset()
             file_format.import_set(dataset, quote_file.read())
             result.add_sheet(dataset)
@@ -192,10 +192,10 @@ class SpreadsheetFileConverter(object):
     It would be better to use a library (such as "uno", "unotools", or "unoconv"
     which are Python interfaces to the same code used in LibreOffice).
     """
-
-    # TODO: this is different for MacOS than Linux. maybe soffice can be put
-    # on the PATH so we don't have to worry about this.
-    SOFFICE_PATH = '/Applications/LibreOffice.app/Contents/MacOS/soffice'
+    # the LibreOffice executable is called "soffice". its location is
+    # environment-dependent so it must be added to the PATH in deployment
+    # environments and local development environments.
+    SOFFICE_PATH = 'soffice'
 
     def __init__(self, destination_extension, destination_type_str):
         """
