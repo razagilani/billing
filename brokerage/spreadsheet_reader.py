@@ -186,34 +186,54 @@ class SpreadsheetReader(Reader):
 
 
 class SpreadsheetFileConverter(object):
+    """Handles conversion of spreadsheet files from one type to another.
 
-    def __init__(self):
+    Currently using LibreOffice as subprocess via command-line interface.
+    It would be better to use a library (such as "uno", "unotools", or "unoconv"
+    which are Python interfaces to the same code used in LibreOffice).
+    """
+
+    # TODO: this is different for MacOS than Linux. maybe soffice can be put
+    # on the PATH so we don't have to worry about this.
+    SOFFICE_PATH = '/Applications/LibreOffice.app/Contents/MacOS/soffice'
+
+    def __init__(self, destination_extension, destination_type_str):
+        """
+        :param destination_extension: file extension representing the
+        type of the converted file, such as "xls".
+        :param destination_type_str: a special string used by LibreOffice
+        that determines the details of the file type, such as "xls:MS Excel 97"
+        (usually starts with destination_extension).
+        """
+        self.destination_extension = destination_extension
+        self.destination_type_str = destination_type_str
         self.directory = TempDirectory()
 
     def convert_file(self, fp, file_name):
+        """
+        :param fp: original file
+        :param file_name: name of the original file including extension
+        :return: converted file opened in 'rb' mode
+        """
         temp_file_path = os.path.join(self.directory.path, file_name)
         with open(temp_file_path, 'wb') as temp_file:
             temp_file.write(fp.read())
 
-        # note: openpyxl doesn't support xls. soffice seems to corrupt files when converting to xlsx.
-        EXTENSION = 'xls'
-        dest_format_str = EXTENSION + ':"MS Excel 97"'
-        COMMAND = '/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %s --outdir %s %s' % (
-            dest_format_str, self.directory.path, shell_quote(temp_file_path))
-        _, _, check_exit_status = run_command(COMMAND)
-        check_exit_status()
+        command = '%s --headless --convert-to %s --outdir %s %s' % (
+            self.SOFFICE_PATH, self.destination_type_str, self.directory.path,
+            shell_quote(temp_file_path))
+        _, _, check_exit_status = run_command(command)
 
         # note: libreoffice exits with 0 even if it failed to convert.
-        converted_file_path = splitext(temp_file_path)[0] + '.' + EXTENSION
-        print converted_file_path
-        assert os.access(converted_file_path, os.R_OK)
+        check_exit_status()
 
+        converted_file_path = '.'.join([splitext(temp_file_path)[0],
+                                       self.destination_extension])
+        assert os.access(converted_file_path, os.R_OK)
         return open(converted_file_path, 'rb')
 
     def __del__(self):
-        #self.directory.cleanup()
-        pass
-        # TODO: this gets called to early for some reason
+        self.directory.cleanup()
 
 
 
