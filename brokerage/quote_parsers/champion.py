@@ -42,7 +42,8 @@ class ChampionMatrixParser(QuoteParser):
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
 
     def _preprocess_file(self, quote_file, file_name=None):
-        return SpreadsheetFileConverter().convert_file(quote_file, file_name)
+        return SpreadsheetFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
     def _extract_quotes(self):
         for sheet in self.EXPECTED_SHEET_TITLES:
