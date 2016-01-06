@@ -61,7 +61,8 @@ class AmerigreenMatrixParser(QuoteParser):
         'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
 
     def _preprocess_file(self, quote_file, file_name=None):
-        return SpreadsheetFileConverter().convert_file(quote_file, file_name)
+        return SpreadsheetFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
     def _extract_quotes(self):
         broker_fee = self.reader.get(0, self.BROKER_FEE_CELL[0],
