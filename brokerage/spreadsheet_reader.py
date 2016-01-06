@@ -224,12 +224,14 @@ class SpreadsheetFileConverter(object):
             shell_quote(temp_file_path))
         _, _, check_exit_status = run_command(command)
 
-        # note: libreoffice exits with 0 even if it failed to convert.
+        # note: libreoffice exits with 0 even if it failed to convert. errors
+        # are detected by checking whether the destination file exists.
         check_exit_status()
-
         converted_file_path = '.'.join([splitext(temp_file_path)[0],
                                        self.destination_extension])
-        assert os.access(converted_file_path, os.R_OK)
+        if not os.access(converted_file_path, os.R_OK):
+            raise BillingError('Failed to convert file "%s" to %s' % (
+                file_name, self.destination_type_str))
         return open(converted_file_path, 'rb')
 
     def __del__(self):
