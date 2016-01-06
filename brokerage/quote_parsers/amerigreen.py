@@ -60,7 +60,7 @@ class AmerigreenMatrixParser(QuoteParser):
     date_getter = FileNameDateGetter(
         'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
 
-    def _preprocess_file(self, quote_file, file_name=None):
+    def _preprocess_file(self, quote_file, file_name):
         return SpreadsheetFileConverter(
             'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
