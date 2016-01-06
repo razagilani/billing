@@ -3,24 +3,22 @@
 Back up/restore ReeBill databases to/from S3.
 TODO: needs a name that reflects what it does (not just backing up).
 '''
-from subprocess import Popen, PIPE, CalledProcessError
 from datetime import datetime
 import argparse
 import os
-import re
 import sys
-import shlex
 from StringIO import StringIO
 from gzip import GzipFile
 import zlib
 
 from boto.s3.connection import S3Connection
+
 from boto.s3.key import Key
 
 from core import init_config, init_model, get_scrub_sql, get_db_params
 from core.bill_file_handler import BillFileHandler
 from core.utilbill_loader import UtilBillLoader
-from util.shell import run_command
+from util.shell import run_command, shell_quote
 
 init_config()
 from core import config
@@ -57,8 +55,6 @@ S3_MULTIPART_CHUNK_SIZE_BYTES = 200 * 1024**2
 # amount of data to read and compress at one time in bytes
 GZIP_CHUNK_SIZE_BYTES = 128 * 1024
 
-def shell_quote(s):
-    return "'" + s.replace("'", "'\\''") + "'"
 
 def _write_gzipped_chunk(in_file, out_file, chunk_size):
     '''Write gzipped data from 'in_file' to 'out_file' until 'out_file'
