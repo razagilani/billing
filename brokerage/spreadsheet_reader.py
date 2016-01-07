@@ -1,9 +1,14 @@
 """Code related to getting quotes out of Excel spreadsheets.
 """
-from tablib import formats, Databook
+import os
+from os.path import splitext
+from tablib import formats, Databook, Dataset
+from testfixtures import TempDirectory
 
 from brokerage.reader import Reader
 from core.exceptions import BillingError, ValidationError
+from util.shell import run_command
+from util.shell import shell_quote
 
 
 class SpreadsheetReader(Reader):
@@ -66,6 +71,11 @@ class SpreadsheetReader(Reader):
             file_format.import_book(result, quote_file)
         elif file_format in [formats.xls]:
             file_format.import_book(result, quote_file.read())
+        elif file_format in [formats.csv]:
+            # TODO: this only works on one sheet. how to handle multiple sheets?
+            dataset = Dataset()
+            file_format.import_set(dataset, quote_file.read())
+            result.add_sheet(dataset)
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
         return result
@@ -173,5 +183,59 @@ class SpreadsheetReader(Reader):
                 get_neighbor_str())
             raise ValidationError(message)
         return value
+
+
+class SpreadsheetFileConverter(object):
+    """Handles conversion of spreadsheet files from one type to another.
+
+    Currently using LibreOffice as subprocess via command-line interface.
+    It would be better to use a library (such as "uno", "unotools", or "unoconv"
+    which are Python interfaces to the same code used in LibreOffice).
+    """
+    # the LibreOffice executable is called "soffice". its location is
+    # environment-dependent so it must be added to the PATH in deployment
+    # environments and local development environments.
+    SOFFICE_PATH = 'soffice'
+
+    def __init__(self, destination_extension, destination_type_str):
+        """
+        :param destination_extension: file extension representing the
+        type of the converted file, such as "xls".
+        :param destination_type_str: a special string used by LibreOffice
+        that determines the details of the file type, such as "xls:MS Excel 97"
+        (usually starts with destination_extension).
+        """
+        self.destination_extension = destination_extension
+        self.destination_type_str = destination_type_str
+        self.directory = TempDirectory()
+
+    def convert_file(self, fp, file_name):
+        """
+        :param fp: original file
+        :param file_name: name of the original file including extension
+        :return: converted file opened in 'rb' mode
+        """
+        temp_file_path = os.path.join(self.directory.path, file_name)
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(fp.read())
+
+        command = '%s --headless --convert-to %s --outdir %s %s' % (
+            self.SOFFICE_PATH, self.destination_type_str, self.directory.path,
+            shell_quote(temp_file_path))
+        _, _, check_exit_status = run_command(command)
+
+        # note: libreoffice exits with 0 even if it failed to convert. errors
+        # are detected by checking whether the destination file exists.
+        check_exit_status()
+        converted_file_path = '.'.join([splitext(temp_file_path)[0],
+                                       self.destination_extension])
+        if not os.access(converted_file_path, os.R_OK):
+            raise BillingError('Failed to convert file "%s" to %s' % (
+                file_name, self.destination_type_str))
+        return open(converted_file_path, 'rb')
+
+    def __del__(self):
+        self.directory.cleanup()
+
 
 

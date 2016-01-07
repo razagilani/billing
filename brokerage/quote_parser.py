@@ -2,16 +2,20 @@
 specific suppliers' matrix formats should go in separate files.
 """
 from abc import ABCMeta, abstractmethod
+import os
 import re
 from datetime import datetime, timedelta
 
 from tablib import Databook, formats
+
+from testfixtures import TempDirectory
 
 from brokerage.reader import Reader
 from brokerage.validation import ValidationError, _assert_true, _assert_match, \
     _assert_equal
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.brokerage_model import load_rate_class_aliases
+from util.shell import run_command, shell_quote
 from util.dateutils import parse_datetime, excel_number_to_datetime
 from util.units import unit_registry
 
@@ -52,8 +56,11 @@ class SimpleCellDateGetter(DateGetter):
 
     def _get_date_from_cell(self, reader, row, col):
         if self._regex is None:
-            value = reader.get(self._sheet, row, col, (datetime, int, float))
-            if isinstance(value, (int, float)):
+            value = reader.get(self._sheet, row, col, (datetime, int, float,
+                                                       basestring))
+            if isinstance(value, basestring):
+                value = parse_datetime(value)
+            elif isinstance(value, (int, float)):
                 value = excel_number_to_datetime(value)
             return value
         return reader.get_matches(self._sheet, row, col, self._regex,
@@ -150,6 +157,11 @@ class QuoteParser(object):
     # different dates for some quotes than for others.
     date_getter = None
 
+    # The number of digits to which quote price is rounded.
+    # subclasses can fill in this value to round the price to a certain
+    # number of digits
+    ROUNDING_DIGITS = None
+
     def __init__(self):
         # name should be defined
         assert isinstance(self.NAME, basestring)
@@ -188,6 +200,15 @@ class QuoteParser(object):
         # TODO: using a separate DAO object would be a better way
         return load_rate_class_aliases()
 
+    def _preprocess_file(self, quote_file, file_name):
+        """Override this to modify the file or replace it with another one
+        before reading from it.
+        :param quote_file: file to read from.
+        :param file_name: name of the file.
+        :return: new file that should be used instead of the original one
+        """
+        return quote_file
+
     def load_file(self, quote_file, file_name=None):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
@@ -195,6 +216,7 @@ class QuoteParser(object):
         :param file_name: name of the file, used in some formats to get
         valid_from and valid_until dates for the quotes
         """
+        quote_file = self._preprocess_file(quote_file, file_name)
         self.reader.load_file(quote_file)
         self._validated = False
         self._count = 0
@@ -259,6 +281,8 @@ class QuoteParser(object):
                 self)
 
         for quote in self._extract_quotes():
+            if self.ROUNDING_DIGITS is not None:
+                quote.price = round(quote.price, self.ROUNDING_DIGITS)
             self._count += 1
             yield quote
 
