@@ -118,9 +118,7 @@ class FileNameDateGetter(DateGetter):
 
 
 class QuoteParser(object):
-    """Superclass for classes representing particular spreadsheet formats.
-    These should contain everything format-specific, but not general-purpose
-    code for reading spreadsheets.
+    """Superclass for classes representing particular matrix file formats.
     """
     __metaclass__ = ABCMeta
 
@@ -152,6 +150,11 @@ class QuoteParser(object):
     # different dates for some quotes than for others.
     date_getter = None
 
+    # The number of digits to which quote price is rounded.
+    # subclasses can fill in this value to round the price to a certain
+    # number of digits
+    ROUNDING_DIGITS = None
+
     def __init__(self):
         # name should be defined
         assert isinstance(self.NAME, basestring)
@@ -167,8 +170,8 @@ class QuoteParser(object):
         self._validated = False
 
         # optional validity date and expiration dates for all quotes (matrix
-        # quote spreadsheets tend have a date on them and are good for one
-        # day; some are valid for a longer period of time)
+        # quote files tend have dates in them and are good for one day; some
+        # are valid for a longer period of time)
         self._valid_from = None
         self._valid_until = None
 
@@ -206,7 +209,7 @@ class QuoteParser(object):
     def _after_load(self):
         """This method is executed after the file is loaded, and before it is
         validated. Subclasses can override it to add extra behavior such
-        as preparing the reader with additional data taken from the file.
+        as preparing the Reader with additional data taken from the file.
         """
         pass
 
@@ -261,6 +264,8 @@ class QuoteParser(object):
                 self)
 
         for quote in self._extract_quotes():
+            if self.ROUNDING_DIGITS is not None:
+                quote.price = round(quote.price, self.ROUNDING_DIGITS)
             self._count += 1
             yield quote
 
