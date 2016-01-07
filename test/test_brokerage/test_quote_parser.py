@@ -466,7 +466,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q2.purchase_of_receivables)
         self.assertEqual(0.0612858140640282, q2.price)
 
-    @skip("failing")
     def test_guttman_gas(self):
         parser = GuttmanGas()
         self.assertEqual(0, parser.get_count())
@@ -484,8 +483,8 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 43, 45), q1.valid_from)
@@ -508,8 +507,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 43, 55), q1.valid_from)
@@ -532,8 +531,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 44, 15), q1.valid_from)
@@ -556,8 +555,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(340, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 43, 57), q1.valid_from)
@@ -580,8 +579,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 44, 5), q1.valid_from)
@@ -604,8 +603,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(510, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2015, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2015, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
         self.assertEqual(datetime(2015, 12, 07, 8, 48, 28), q1.valid_from)
