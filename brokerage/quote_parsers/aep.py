@@ -1,5 +1,6 @@
 import datetime
 import time
+from decimal import Decimal
 from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, \
@@ -58,6 +59,7 @@ class AEPMatrixParser(QuoteParser):
     # TODO what is "rate code(s)" in col E?
     RATE_CLASS_COL = 'F'
     START_MONTH_COL = 'G'
+    ROUNDING_DIGITS = 5
 
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     TARGET_ENERGY_UNIT = unit_registry.kWh
@@ -115,8 +117,8 @@ class AEPMatrixParser(QuoteParser):
                             (basestring, float, int)) == "End May '18":
                         continue
                     # TODO: extracted unnecessarily many times
-                    term = self.reader.get(
-                        self.SHEET, self.HEADER_ROW, col, (int, float))
+                    term = int(self.reader.get(
+                        self.SHEET, self.HEADER_ROW, col, (int, float)))
 
                     price = self.reader.get(self.SHEET, row, col,
                                             (float, basestring, type(None)))

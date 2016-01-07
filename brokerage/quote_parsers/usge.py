@@ -12,7 +12,7 @@ from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 
 
-class USGEMatrixParser(QuoteParser):
+class USGEGasMatrixParser(QuoteParser):
     """Parser for USGE spreadsheet. This one has energy along the rows and
     time along the columns.
     """
