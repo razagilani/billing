@@ -26,6 +26,7 @@ class SFEMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'E'
     VOLUME_RANGE_COL = 'F'
     TERM_COL_RANGE = SpreadsheetReader.column_range('G', 'K')
+    ROUNDING_DIGITS = 4
 
     EXPECTED_SHEET_TITLES = [
         'Pricing Worksheet',
@@ -175,7 +176,6 @@ class SFEMatrixParser(QuoteParser):
                         }[service_type],
                         file_reference='%s %s,%s,%s' % (self.file_name, 0, row,
                                                      col))
-                    quote.file_reference = (row, col)
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:

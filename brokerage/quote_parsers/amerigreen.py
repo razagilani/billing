@@ -27,6 +27,7 @@ class AmerigreenMatrixParser(QuoteParser):
     START_MONTH_COL = 'F'
     START_DAY_COL = 'G'
     PRICE_COL = 'N'
+    ROUNDING_DIGITS = 4
 
     # Amerigreen builds in the broker fee to the prices, so it must be
     # subtracted from the prices shown
@@ -75,7 +76,8 @@ class AmerigreenMatrixParser(QuoteParser):
             state = self.reader.get(0, row, self.STATE_COL, basestring)
             rate_class_alias = state + '-' + utility
 
-            term_months = self.reader.get(0, row, self.TERM_COL, (int, float))
+            term_months = int(self.reader.get(0, row, self.TERM_COL,
+                                              (int, float)))
 
             start_from = excel_number_to_datetime(
                 self.reader.get(0, row, self.START_MONTH_COL, float))
