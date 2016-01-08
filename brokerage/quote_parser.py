@@ -150,6 +150,11 @@ class QuoteParser(object):
     # different dates for some quotes than for others.
     date_getter = None
 
+    # The number of digits to which quote price is rounded.
+    # subclasses can fill in this value to round the price to a certain
+    # number of digits
+    ROUNDING_DIGITS = None
+
     def __init__(self):
         # name should be defined
         assert isinstance(self.NAME, basestring)
@@ -259,6 +264,8 @@ class QuoteParser(object):
                 self)
 
         for quote in self._extract_quotes():
+            if self.ROUNDING_DIGITS is not None:
+                quote.price = round(quote.price, self.ROUNDING_DIGITS)
             self._count += 1
             yield quote
 

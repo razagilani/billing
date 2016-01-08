@@ -95,6 +95,14 @@ class UtilityModelView(LoginModelView):
     def instantiate_model(self, form):
         return self.model(name=form.name.data)
 
+class MatrixFormatView(LoginModelView):
+    column_list = ('matrix_format_id', 'supplier', 'name',
+                    'matrix_attachment_name')
+
+    def __init__(self, session, **kwargs):
+        super(MatrixFormatView, self).__init__(MatrixFormat, session, **kwargs)
+
+
 class RateClassModelView(LoginModelView):
     # sos_supply_group_id must be excluded from the fields shown in the admin UI
     # because otherwise Flask-Admin will overwrite the sos_supplier created
@@ -142,8 +150,8 @@ def make_admin(app):
     admin.add_view(CustomModelView(UtilityAccount, Session))
     admin.add_view(CustomModelView(UtilBill, Session, name='Utility Bill'))
     admin.add_view(UtilityModelView(Utility, Session))
+    admin.add_view(MatrixFormatView(Session))
     admin.add_view(SupplierModelView(Session))
-    admin.add_view(LoginModelView(MatrixFormat, Session))
     admin.add_view(LoginModelView(AltitudeSupplier, Session))
     admin.add_view(LoginModelView(SupplyGroup, Session))
     admin.add_view(RateClassModelView(RateClass, Session))
