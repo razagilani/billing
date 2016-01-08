@@ -88,7 +88,7 @@ class AEPMatrixParser(QuoteParser):
                                          self.RATE_CODES_COL, basestring)
             rate_class = self.reader.get(self.SHEET, row,
                                          self.RATE_CLASS_COL, basestring)
-            rate_class_alias = '-'.join([state, utility, rate_codes,rate_class])
+            rate_class_alias = 'AEP-electric-%s' % '-'.join([state, utility, rate_codes,rate_class])
 
             # TODO use time zone here
             start_from = excel_number_to_datetime(
