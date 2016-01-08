@@ -24,6 +24,7 @@ class DirectEnergyMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'E'
     SPECIAL_OPTIONS_COL = 'F'
     TERM_COL = 'H'
+    ZONE_COL = 3
     PRICE_START_COL = 8
     PRICE_END_COL = 13
 
@@ -63,8 +64,9 @@ class DirectEnergyMatrixParser(QuoteParser):
             rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
                                          basestring)
             state = self.reader.get(0, row, self.STATE_COL, basestring)
+            zone = self._reader.get(0, row, self.ZONE_COL, basestring)
             utility = self.reader.get(0, row, self.UTILITY_COL, basestring)
-            rate_class_alias = '-'.join([state, utility, rate_class])
+            rate_class_alias = 'Direct-electric-%s' % '-'.join([state, utility, rate_class, zone])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             special_options = self.reader.get(0, row, self.SPECIAL_OPTIONS_COL,

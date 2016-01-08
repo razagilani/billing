@@ -77,9 +77,11 @@ class USGEElectricMatrixParser(QuoteParser):
             # Sometimes this can be None so we can't force it to expect a basestring
             zone = self.reader.get(sheet, 5, 'E', object)
             if zone == 'Zone':
+                zone_col = 'E'
                 term_start_col = 6
                 term_end_col = self.reader.get_width(sheet)
             else:
+                zone_col = None
                 term_start_col = 5
                 term_end_col = self.reader.get_width(sheet)
 
@@ -100,7 +102,11 @@ class USGEElectricMatrixParser(QuoteParser):
                     sheet, row, self.CUSTOMER_TYPE_COL, (basestring, type(None)))
                 rate_class = self.reader.get(sheet, row, self.RATE_CLASS_COL,
                                              (basestring, type(None)))
-                rate_class_alias = '-'.join([ldc, customer_type, rate_class])
+                if zone_col:
+                    zone = self.reader.get(sheet, row, zone_col, basestring)
+                else:
+                    zone = ""
+                rate_class_alias = 'USGE-electric-%s' % '-'.join([ldc, customer_type, rate_class, zone])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
 
