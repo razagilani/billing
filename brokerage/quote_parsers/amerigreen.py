@@ -79,7 +79,7 @@ class AmerigreenMatrixParser(QuoteParser):
                 break
 
             state = self.reader.get(0, row, self.STATE_COL, basestring)
-            rate_class_alias = state + '-' + utility
+            rate_class_alias = 'Amerigreen-gas-' + state + '-' + utility
 
             term_months = int(self.reader.get(0, row, self.TERM_COL,
                                               (int, float)))

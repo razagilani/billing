@@ -311,7 +311,7 @@ class LibertyMatrixParser(QuoteParser):
                 if not any([zone, service_class]):
                     raise ValidationError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
 
-                rate_class_alias = '%s-%s-%s' % (
+                rate_class_alias = 'Liberty-electric-%s-%s-%s' % (
                     self.reader.get(sheet, row, 'B', basestring),
                     zone,
                     service_class
