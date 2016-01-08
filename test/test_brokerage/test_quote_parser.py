@@ -1,8 +1,7 @@
 import re
 from datetime import datetime
 from os.path import join, basename
-from unittest import TestCase
-
+from unittest import TestCase, skip
 from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
