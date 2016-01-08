@@ -26,6 +26,7 @@ class SFEMatrixParser(QuoteParser):
     RATE_CLASS_COL = 'E'
     VOLUME_RANGE_COL = 'F'
     TERM_COL_RANGE = SpreadsheetReader.column_range('G', 'K')
+    ROUNDING_DIGITS = 4
 
     EXPECTED_SHEET_TITLES = [
         'Pricing Worksheet',
