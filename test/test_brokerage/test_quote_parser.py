@@ -4,6 +4,8 @@ from os.path import join, basename
 from unittest import TestCase, skip
 from mock import Mock
 
+from nose.plugins.attrib import attr
+
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
 from brokerage.quote_parsers.guttman_electric import GuttmanElectric
@@ -141,30 +143,32 @@ class MatrixQuoteParsersTest(TestCase):
         # actually try to create a RateClassAlias for every one that might be
         # checked in a test
         aliases = [
-            # Direct Energy
-            'CT-CLP-37, R35',
+            # Direct Energy. Yes, it's SUPPOSED to look that way with the -- at the end.
+            'Direct-electric-CT-CLP-37, R35--',
             # USGE
-            'Columbia of Kentucky-Residential-Residential',
+            'USGE-gas-Columbia of Kentucky-Residential-Residential',
+            'USGE-electric-Columbia of Kentucky-Residential-Residential',
             # AEP
-            'DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A',
+            'AEP-electric-DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A',
             # Champion
-            'PA-DQE-GS-General service',
+            'Champion-electric-PA-DQE-GS-General service',
             # Amerigreen
-            'NY-Con Ed',
+            'Amerigreen-gas-NY-Con Ed',
             # Constellation
             'CT-CLP',
             'NJ-AECO',
             # liberty
-            'PEPCO-DC-PEPCO-Default',
-            'PEPCO-DC-PEPCO-GTLV/DMGT',
+            'Liberty-electric-PEPCO-DC-PEPCO-Default',
+            'Liberty-electric-PEPCO-DC-PEPCO-GTLV/DMGT',
             # Major Energy
-            'electric-IL-ComEd-',
-            'gas-NY-RGE',
+            'Major-electric-IL-ComEd-',
+            'Major-gas-NY-RGE',
             # SFE
-            'NY-A (NiMo, NYSEG)',
-            'NJ-SJG ($/therm)',
+            'SFE-electric-NY-A (NiMo, NYSEG)',
+            'SFE-gas-NJ-SJG ($/therm)',
             # Entrust
-            'Com Ed', 'ConEd Zone J',
+            'Entrust-electric-Com Ed',
+            'Entrust-electric-ConEd Zone J',
 
             # Great Eastern Energy
             'GEE-electric-ConEd-J-SC-02',
@@ -208,7 +212,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(75000, q1.limit_volume)
-        self.assertEqual('CT-CLP-37, R35', q1.rate_class_alias)
+        self.assertEqual('Direct-electric-CT-CLP-37, R35--', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(.07036, q1.price)
@@ -231,7 +235,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
         self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 03))
         self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[0].rate_class_alias, "Connecticut Light & Power-Residential-Residential")
+        self.assertEqual(quotes[0].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
 
         self.assertEqual(quotes[1].price, 0.1000)
         self.assertEqual(quotes[1].min_volume, 0)
@@ -241,7 +245,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[1].start_until, datetime(2016, 01, 01))
         self.assertEqual(quotes[1].valid_until, datetime(2015, 11, 03))
         self.assertEqual(quotes[1].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[1].rate_class_alias, "Connecticut Light & Power-Residential-Residential")
+        self.assertEqual(quotes[1].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
 
         self.assertEqual(quotes[2].price, 0.0969)
 
@@ -255,7 +259,7 @@ class MatrixQuoteParsersTest(TestCase):
                 self.assertIsNotNone(getattr(quote, field))
 
             # This is a random one I picked out from the 3rd sheet in the spreadsheet.
-            if quote.price == 0.082 and quote.rate_class_alias == 'JCPL-Commercial-GSCL (>100KW Demand)' \
+            if quote.price == 0.082 and quote.rate_class_alias == 'USGE-electric-JCPL-Commercial-GSCL (>100KW Demand)-' \
                     and quote.start_from == datetime(2015, 12, 01):
                 found_needle = True
                 self.assertAlmostEqual(quote.min_volume, 100000, delta=2)
@@ -275,7 +279,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes[-1].valid_until, datetime(2015, 11, 03))
         self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
         self.assertEqual(quotes[-1].rate_class_alias,
-                         "Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3")
+                         "USGE-electric-Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3-PJMATSI")
 
 
     def test_usge(self):
@@ -299,7 +303,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # KY check
         q1 = quotes[0]
-        self.assertEqual('Columbia of Kentucky-Residential-Residential', q1.rate_class_alias)
+        self.assertEqual('USGE-gas-Columbia of Kentucky-Residential-Residential', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
@@ -313,7 +317,7 @@ class MatrixQuoteParsersTest(TestCase):
 
         # MD check
         q1 = quotes[96]
-        self.assertEqual('Baltimore Gas & Electric-Residential-Residential', q1.rate_class_alias)
+        self.assertEqual('USGE-gas-Baltimore Gas & Electric-Residential-Residential', q1.rate_class_alias)
         self.assertEqual(datetime(2015, 6, 1), q1.start_from)
         self.assertEqual(datetime(2015, 7, 1), q1.start_until)
         self.assertEqual(6, q1.term_months)
@@ -405,7 +409,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 30, 28), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
-        self.assertEqual('Ohio_AEP_OH_CS_GS-1', q1.rate_class_alias)
+        self.assertEqual('Guttman-electric-Ohio_AEP_OH_CS_GS-1', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0524883445181945, q1.price)
@@ -419,7 +423,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
-        self.assertEqual('Ohio_Toledo Edison_GS', q2.rate_class_alias)
+        self.assertEqual('Guttman-electric-Ohio_Toledo Edison_GS', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
         self.assertEqual(0.0548764676732971, q2.price)
@@ -448,7 +452,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 34, 20), q1.valid_until)
         self.assertEqual(125000, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
-        self.assertEqual('Pennsylvania_Duquesne_DQE_GS', q1.rate_class_alias)
+        self.assertEqual('Guttman-electric-Pennsylvania_Duquesne_DQE_GS', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.0666530148307838, q1.price)
@@ -462,7 +466,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 34, 44), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
-        self.assertEqual('Pennsylvania_West Penn Power_30', q2.rate_class_alias)
+        self.assertEqual('Guttman-electric-Pennsylvania_West Penn Power_30', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
         self.assertEqual(0.0612858140640282, q2.price)
@@ -492,7 +496,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 43, 45), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Ohio_Dominion_OH_NG', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Ohio_Dominion_OH_NG', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.290968354076165, q1.price)
@@ -516,7 +520,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 43, 55), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Ohio_Duke_OH_NG', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Ohio_Duke_OH_NG', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.363225453377907, q1.price)
@@ -540,7 +544,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 44, 15), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Pennsylvania_PNG_PA-TWP', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Pennsylvania_PNG_PA-TWP', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.268467651178349, q1.price)
@@ -564,7 +568,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 43, 57), q1.valid_until)
         self.assertEqual(3001, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Pennsylvania_ColumbiaGas_PA', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Pennsylvania_ColumbiaGas_PA', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.343800955709901, q1.price)
@@ -588,7 +592,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 44, 5), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Pennsylvania_PNG_PA', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Pennsylvania_PNG_PA', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.267685109454913, q1.price)
@@ -612,11 +616,10 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 8, 8, 48, 28), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
-        self.assertEqual('Ohio_ColumbiaGas_OH', q1.rate_class_alias)
+        self.assertEqual('Guttman-gas-Ohio_ColumbiaGas_OH', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.382446152963526, q1.price)
-
 
     def test_aep(self):
         parser = AEPMatrixParser()
@@ -644,7 +647,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 11, 13), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(100 * 1000, q1.limit_volume)
-        self.assertEqual('IL-Ameren_Zone_1_CIPS-DS2-SECONDARY', q1.rate_class_alias)
+        self.assertEqual('AEP-electric-IL-Ameren_Zone_1_CIPS-DS2-SECONDARY', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.05628, q1.price)
@@ -672,7 +675,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q1.term_months)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(100000, q1.limit_volume)
-        self.assertEqual('PA-DQE-GS-General service', q1.rate_class_alias)
+        self.assertEqual('Champion-electric-PA-DQE-GS-General service', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.07063, q1.price)
@@ -704,12 +707,15 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 8, 4), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(50000, q1.limit_volume)
-        self.assertEqual('NY-Con Ed', q1.rate_class_alias)
+        self.assertEqual('Amerigreen-gas-NY-Con Ed', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
         self.assertEqual(0.3403, q1.price)
 
     def test_constellation(self):
+        # Constellation is NO LONGER SUPPORTED.
+        pass
+
         parser = ConstellationMatrixParser()
         self.assertEqual(0, parser.get_count())
 
@@ -856,7 +862,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(74000, q.limit_volume)
-        self.assertEqual('electric-IL-ComEd-', q.rate_class_alias)
+        self.assertEqual('Major-electric-IL-ComEd-', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.0652, q.price)
@@ -871,7 +877,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(24, q.term_months)
         self.assertEqual(None, q.min_volume)
         self.assertEqual(None, q.limit_volume)
-        self.assertEqual('gas-NY-RGE', q.rate_class_alias)
+        self.assertEqual('Major-gas-NY-RGE', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.3843, q.price)
@@ -899,7 +905,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(150000, q.limit_volume)
-        self.assertEqual('NY-A (NiMo, NYSEG)', q.rate_class_alias)
+        self.assertEqual('SFE-electric-NY-A (NiMo, NYSEG)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.0591, q.price)
@@ -930,7 +936,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(36, q.term_months)
         self.assertEqual(500000, q.min_volume)
         self.assertEqual(None, q.limit_volume)
-        self.assertEqual('NJ-SJG ($/therm)', q.rate_class_alias)
+        self.assertEqual('SFE-gas-NJ-SJG ($/therm)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.4875, q.price)
@@ -958,7 +964,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(12, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(15000, q.limit_volume)
-        self.assertEqual('Com Ed', q.rate_class_alias)
+        self.assertEqual('Entrust-electric-Com Ed', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.0812, q.price)
@@ -973,7 +979,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(17, q.term_months)
         self.assertEqual(3e5, q.min_volume)
         self.assertEqual(1e6, q.limit_volume)
-        self.assertEqual('ConEd Zone J', q.rate_class_alias)
+        self.assertEqual('Entrust-electric-ConEd Zone J', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.0811, q.price)
@@ -1016,7 +1022,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(25000, q1.limit_volume)
         self.assertEqual(0.10178, q1.price)
-        self.assertEqual('PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
+        self.assertEqual('Liberty-electric-PEPCO-DC-PEPCO-Default', q1.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
 
@@ -1024,7 +1030,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0.07959, q2.price)
         self.assertEqual(datetime(2017, 1, 1), q2.start_from)
         self.assertEqual(datetime(2017, 2, 1), q2.start_until)
-        self.assertEqual('PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
+        self.assertEqual('Liberty-electric-PEPCO-DC-PEPCO-GTLV/DMGT', q2.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q2.rate_class_id)
         self.assertEqual(500000, q2.min_volume)
         self.assertEqual(2000000, q2.limit_volume)
@@ -1033,7 +1039,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(.07636, q3.price)
         self.assertEqual(datetime(2016, 7, 1), q3.start_from)
         self.assertEqual(datetime(2016, 8, 1), q3.start_until)
-        self.assertEqual('WPP-APS-SOHO (Tax ID Required)', q3.rate_class_alias)
+        self.assertEqual('Liberty-electric-WPP-APS-SOHO (Tax ID Required)', q3.rate_class_alias)
         self.assertEqual(0, q3.min_volume)
         self.assertEqual(2000000, q3.limit_volume)
 
