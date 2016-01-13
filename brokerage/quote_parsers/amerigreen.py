@@ -27,6 +27,7 @@ class AmerigreenMatrixParser(QuoteParser):
     START_MONTH_COL = 'F'
     START_DAY_COL = 'G'
     PRICE_COL = 'N'
+    ROUNDING_DIGITS = 4
 
     # Amerigreen builds in the broker fee to the prices, so it must be
     # subtracted from the prices shown
