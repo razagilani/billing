@@ -56,6 +56,7 @@ class GuttmanGas(QuoteParser):
                                  basestring)
         regex = r'(.*)_\(\$/((?:MCF)|(?:CCF)|(?:Therm?))\)'
         rate_class_alias, unit = re.match(regex, title).groups()
+        rate_class_alias = 'Guttman-gas-' + rate_class_alias
         if unit == 'MCF':
             expected_unit = unit_registry.Mcf
         elif unit =='CCF' or unit == 'Therm':

@@ -107,7 +107,8 @@ class SFEMatrixParser(QuoteParser):
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
                                          basestring)
-            rate_class_alias = '-'.join([state, rate_class])
+            rate_class_alias = 'SFE-' + ('electric' if service_type == 'Elec' else 'gas') + \
+                '-%s' % '-'.join([state, rate_class])
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             # volume range can have different format in each row, and the
