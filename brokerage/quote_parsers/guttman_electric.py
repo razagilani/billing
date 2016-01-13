@@ -108,10 +108,11 @@ class GuttmanElectric(QuoteParser):
                     else:
                         continue
 
-                    rate_class_alias = self._reader.get(sheet,
-                                                        self.TITLE_ROW,
-                                                        self.TITLE_COL,
-                                                        basestring)
+                    rate_class_alias = 'Guttman-electric-'
+                    rate_class_alias += self._reader.get(sheet,
+                                                         self.TITLE_ROW,
+                                                         self.TITLE_COL,
+                                                         basestring)
                     regex = r'([A-Z0-9]+(?:_[A-Z]+|-[0-9]+|[0-9]+|[A-Z]+|' \
                             r'[0-9]+|_[A-Z]+\>[0-9]+|_[A-Z]+\<[0-9]+))'
                     rate_class = self._reader.get_matches(sheet, table_start_row, col,

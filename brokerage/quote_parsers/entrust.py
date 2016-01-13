@@ -93,7 +93,7 @@ class EntrustMatrixParser(QuoteParser):
         # includes utility and zone name.
         utility = self.reader.get(sheet, self.UTILITY_ROW, self.UTILITY_COL,
                                   basestring)
-        rate_class_alias = utility
+        rate_class_alias = 'Entrust-electric-' + utility
         rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
         # they spell "Annually" wrong in some columns
