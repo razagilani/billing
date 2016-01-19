@@ -174,7 +174,7 @@ class MatrixQuoteParsersTest(TestCase):
             'GEE-electric-ConEd-J-SC-02',
 
             # Volunteer
-            'COLUMBIA GAS of OHIO (COH)'
+            'Volunteer-gas-COLUMBIA GAS of OHIO (COH)'
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -1064,7 +1064,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-COLUMBIA GAS of OHIO (COH)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(4.39, q.price)
@@ -1091,7 +1091,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('CONSUMERS ENERGY', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-CONSUMERS ENERGY', q.rate_class_alias)
         self.assertEqual(3.65, q.price)
 
         # last quote: only check things that are different from above
@@ -1116,7 +1116,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('DOMINION EAST OHIO (DEO)', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-DOMINION EAST OHIO (DEO)', q.rate_class_alias)
         self.assertEqual(3.55, q.price)
 
         # last quote: only check things that are different from above
@@ -1141,7 +1141,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('DTE ENERGY', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-DTE ENERGY', q.rate_class_alias)
         self.assertEqual(4.15, q.price)
 
         # last quote: only check things that are different from above
@@ -1166,7 +1166,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('DUKE ENERGY OHIO', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-DUKE ENERGY OHIO', q.rate_class_alias)
         self.assertEqual(4.35, q.price)
 
         # last quote: only check things that are different from above
@@ -1191,7 +1191,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('PEOPLES NATURAL GAS (PNG)', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-PEOPLES NATURAL GAS (PNG)', q.rate_class_alias)
         self.assertEqual(3.95, q.price)
 
         # last quote: only check things that are different from above
@@ -1216,7 +1216,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('VECTREN ENERGY DELIVERY OHIO (VEDO)',
+        self.assertEqual('Volunteer-gas-VECTREN ENERGY DELIVERY OHIO (VEDO)',
                          q.rate_class_alias)
         self.assertEqual(4.69, q.price)
 
@@ -1242,7 +1242,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 12), q.valid_until)
         self.assertEqual(2500, q.min_volume)
         self.assertEqual(6e4, q.limit_volume)
-        self.assertEqual('PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
+        self.assertEqual('Volunteer-gas-PECO ENERGY COMPANY (PECO)', q.rate_class_alias)
         self.assertEqual(4.6, q.price)
 
         # last quote: only check things that are different from above
