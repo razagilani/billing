@@ -1,0 +1,26 @@
+<html>
+<head>
+	<title>Quote Status</title>
+</head>
+
+<body>
+<h2>{{ data.active_quotes }} active quotes</h2>
+<table cellpadding="10">
+	<tr>
+		<td><b>Supplier</b></td>
+		<td><b>Last Updated</b></td>
+		<td><b>Today's Quotes</b></td>
+		<td><b>Total Quotes</b></td>
+	</tr>
+    {% for row in data.status_by_supplier %}
+		<tr bgcolor={{ "palegreen" if row.good else "pink" }}>
+			<td>{{ row.name }}</td>
+			<td>{{ row.date_received }}</td>
+			<td>{{ row.today_count }}</td>
+			<td>{{ row.total_count }}</td>
+		</tr>
+    {% endfor %}
+</table>
+</body>
+
+</html>
