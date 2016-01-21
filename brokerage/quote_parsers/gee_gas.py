@@ -42,6 +42,10 @@ Hopefully, this allows identical parsing code but allows for parameterizing it.
 """
 
 
+class Object(object):
+    pass
+
+
 class GEEGasPDFParser(QuoteParser):
     NAME = 'geegas'
 
@@ -80,8 +84,17 @@ class GEEGasPDFParser(QuoteParser):
         ]:
             self._reader.get_matches(page_number, y, x, regex, [], tolerance=40)
 
-    def _produce_quote(self, info_dict, data_start_offset, month_duration, min_volume, limit_volume):
-        start_date = datetime.datetime(2016, 01, 01)
+    def _produce_quote(self, info_dict, context, data_start_offset):
+
+        start_month_str = self._reader.get_matches(info_dict['Page'],
+                                                   data_start_offset,
+                                                   info_dict['Start Date'],
+                                                   '([a-zA-Z]{3}-[\d]{2})',
+                                                   str,
+                                                   tolerance=40).strip()
+
+        start_from_date = datetime.datetime.strptime('1 %s' % start_month_str, '%d %b-%y')
+        start_until_date = date_to_datetime((Month(start_from_date) + 1).first)
 
         utility = self._reader.get_matches(info_dict['Page'],
                                            data_start_offset,
@@ -99,22 +112,23 @@ class GEEGasPDFParser(QuoteParser):
 
         price= self._reader.get_matches(info_dict['Page'],
                                         data_start_offset,
-                                        info_dict[month_duration],
+                                        info_dict[context.month_duration],
                                         '(\d+\.\d+)',
                                         str,
                                         tolerance=40)
 
         quote = MatrixQuote(
-            start_from=datetime.datetime(2016, 01, 01),
-            start_until=datetime.datetime(2017, 01, 01),
-            term_months=month_duration,
-            valid_from=datetime.datetime(2016, 01, 01),
-            valid_until=datetime.datetime(2017, 01, 01),
-            min_volume=min_volume,
-            limit_volume=limit_volume,
+            start_from=start_from_date,
+            start_until=start_until_date,
+            term_months=context.month_duration,
+            valid_from=context.valid_dates[0],
+            valid_until=context.valid_dates[1],
+            min_volume=context.volumes[0],
+            limit_volume=context.volumes[1],
             purchase_of_receivables=False,
-            rate_class_alias='cats',
             service_type='gas',
+            rate_class_alias='GEE-gas-%s' % \
+                '-'.join((context.state_and_type, utility, load_type)),
             file_reference='%s %s,%s,%s' % (
                 self.file_name, info_dict['Page'], 0, 0),
             price=float(price)
@@ -123,7 +137,15 @@ class GEEGasPDFParser(QuoteParser):
         return quote
 
     def _parse_page(self, info_dict):
-        # Get volume ranges
+        valid_date_str = self._reader.get_matches(1,
+                                                  info_dict['Valid Date'][0],
+                                                  info_dict['Valid Date'][1],
+                                                  '([\d]{1,2}/[\d]{1,2}/[\d]{4})',
+                                                  str,
+                                                  tolerance=40).strip()
+        valid_from_date = datetime.datetime.strptime(valid_date_str, '%m/%d/%Y')
+        valid_until_date = valid_from_date + datetime.timedelta(days=1)
+
         volume_str = self._reader.get_matches(info_dict['Page'],
                                               info_dict['Volume'][0],
                                               info_dict['Volume'][1],
@@ -137,6 +159,7 @@ class GEEGasPDFParser(QuoteParser):
                                                   '(.*)',
                                                   str,
                                                   tolerance=40).strip()
+
         if '0 - 999' in volume_str:
             min_volume, limit_volume = 0, 999 * 10
         elif '1,000 - 5,999' in volume_str:
@@ -146,13 +169,15 @@ class GEEGasPDFParser(QuoteParser):
 
         for data_start_offset in [info_dict['Data Start']]:
             for month_duration in [key for key in info_dict.keys() if isinstance(key, int)]:
-                yield self._produce_quote(info_dict,
-                                          data_start_offset,
-                                          month_duration,
-                                          min_volume,
-                                          limit_volume)
-
+                # Create a simple namespace
+                context = Object()
+                context.valid_dates = (valid_from_date, valid_until_date)
+                context.volumes = (min_volume, limit_volume)
+                context.state_and_type = state_and_type
+                context.month_duration = month_duration
+                yield self._produce_quote(info_dict, context, data_start_offset)
 
     def _extract_quotes(self):
         for quote in self._parse_page(self.indexes_nj_p1):
+            print quote
             yield quote
