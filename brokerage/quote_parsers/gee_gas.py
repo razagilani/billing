@@ -49,7 +49,7 @@ class Object(object):
 class GEEGasPDFParser(QuoteParser):
     NAME = 'geegas'
 
-    reader = PDFReader(tolerance=40)
+    reader = PDFReader(tolerance=10)
 
     indexes_nj_p1 = {
         'Page': 1,
@@ -63,7 +63,9 @@ class GEEGasPDFParser(QuoteParser):
         'Utility': 27,
         'Start Date': 105,
         'Load Type': 61,
-        'Data Start': 491
+        'Data Start': 491,
+        'Intra Row Delta': 10.1,
+        'Rows': 32 + 11,
     }
 
     def _validate(self):
@@ -82,16 +84,24 @@ class GEEGasPDFParser(QuoteParser):
             # Page 3 "Large Commercial"
             #(3, 448, 355, 'NJ Large Commercial')
         ]:
-            self._reader.get_matches(page_number, y, x, regex, [], tolerance=40)
+            self._reader.get_matches(page_number, y, x, regex, [])
 
     def _produce_quote(self, info_dict, context, data_start_offset):
+
+        try:
+            price = self._reader.get_matches(info_dict['Page'],
+                                            data_start_offset,
+                                            info_dict[context.month_duration],
+                                            '(\d+\.\d+)',
+                                            str)
+        except ValidationError:
+            return None
 
         start_month_str = self._reader.get_matches(info_dict['Page'],
                                                    data_start_offset,
                                                    info_dict['Start Date'],
                                                    '([a-zA-Z]{3}-[\d]{2})',
-                                                   str,
-                                                   tolerance=40).strip()
+                                                   str).strip()
 
         start_from_date = datetime.datetime.strptime('1 %s' % start_month_str, '%d %b-%y')
         start_until_date = date_to_datetime((Month(start_from_date) + 1).first)
@@ -100,22 +110,17 @@ class GEEGasPDFParser(QuoteParser):
                                            data_start_offset,
                                            info_dict['Utility'],
                                            '([a-zA-Z]+)',
-                                           str,
-                                           tolerance=40).strip()
+                                           str).strip()
 
         load_type = self._reader.get_matches(info_dict['Page'],
                                              data_start_offset,
                                              info_dict['Load Type'],
                                              '([-\w]+)',
-                                             str,
-                                             tolerance=40).strip()
+                                             str).strip()
 
-        price= self._reader.get_matches(info_dict['Page'],
-                                        data_start_offset,
-                                        info_dict[context.month_duration],
-                                        '(\d+\.\d+)',
-                                        str,
-                                        tolerance=40)
+        # Since quotes price is per Dth, we need to divide by ten
+        # in order to convert to price per therm.
+        price = float(price)/10.0
 
         quote = MatrixQuote(
             start_from=start_from_date,
@@ -129,9 +134,10 @@ class GEEGasPDFParser(QuoteParser):
             service_type='gas',
             rate_class_alias='GEE-gas-%s' % \
                 '-'.join((context.state_and_type, utility, load_type)),
-            file_reference='%s %s,%s,%s' % (
-                self.file_name, info_dict['Page'], 0, 0),
-            price=float(price)
+            file_reference='%s %s,%s,start %s,%d month,%f' % (
+                self.file_name, context.state_and_type, utility,
+                start_from_date.strftime('%Y-%m-%d'), context.month_duration, price),
+            price=price
         )
 
         return quote
@@ -141,8 +147,8 @@ class GEEGasPDFParser(QuoteParser):
                                                   info_dict['Valid Date'][0],
                                                   info_dict['Valid Date'][1],
                                                   '([\d]{1,2}/[\d]{1,2}/[\d]{4})',
-                                                  str,
-                                                  tolerance=40).strip()
+                                                  str).strip()
+
         valid_from_date = datetime.datetime.strptime(valid_date_str, '%m/%d/%Y')
         valid_until_date = valid_from_date + datetime.timedelta(days=1)
 
@@ -150,24 +156,25 @@ class GEEGasPDFParser(QuoteParser):
                                               info_dict['Volume'][0],
                                               info_dict['Volume'][1],
                                               '(.*)',
-                                              str,
-                                              tolerance=40).strip()
+                                              str).strip()
 
         state_and_type = self._reader.get_matches(info_dict['Page'],
                                                   info_dict['State/Type'][0],
                                                   info_dict['State/Type'][1],
                                                   '(.*)',
-                                                  str,
-                                                  tolerance=40).strip()
+                                                  str).strip()
 
         if '0 - 999' in volume_str:
-            min_volume, limit_volume = 0, 999 * 10
+            min_volume, limit_volume = 0, 9999
         elif '1,000 - 5,999' in volume_str:
-            min_volume, limit_volume = 1000 * 10, 5999 * 10
+            min_volume, limit_volume = 10000, 59999
         else:
             raise ValidationError('Unknown volume ranges')
 
-        for data_start_offset in [info_dict['Data Start']]:
+        offsets = [info_dict['Data Start'] - (i * info_dict['Intra Row Delta'])
+                   for i in xrange(0, info_dict['Rows'])]
+        print offsets
+        for data_start_offset in offsets:
             for month_duration in [key for key in info_dict.keys() if isinstance(key, int)]:
                 # Create a simple namespace
                 context = Object()
@@ -178,6 +185,14 @@ class GEEGasPDFParser(QuoteParser):
                 yield self._produce_quote(info_dict, context, data_start_offset)
 
     def _extract_quotes(self):
+        quotes = list()
+
         for quote in self._parse_page(self.indexes_nj_p1):
-            print quote
+            if quote:
+                quotes.append(quote)
+
+        keys = list(set([q.file_reference for q in quotes]))
+
+        for quote in filtered_quotes:
+            print quote.file_reference
             yield quote
