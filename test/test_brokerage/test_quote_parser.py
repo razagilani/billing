@@ -772,6 +772,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes_nj[0].term_months, 6)
         self.assertEqual(quotes_nj[0].start_from, datetime(2016, 1, 1))
         self.assertEqual(quotes_nj[0].valid_from, datetime(2016, 1, 7))
+        self.assertEqual(quotes_nj[0].valid_until, datetime(2016, 1, 8))
         self.assertEqual(quotes_nj[0].rate_class_alias, 'GEE-gas-NJ Commercial-Etown-Non-Heat')
         self.assertIn('NJ Commercial,Etown Non-Heat,start 2016-01-01,6 month,0.3591', quotes_nj[0].file_reference[0])
 
@@ -779,6 +780,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes_nj[-22].limit_volume, 9999)
         self.assertEqual(quotes_nj[-22].term_months, 18)
         self.assertEqual(quotes_nj[-22].start_from, datetime(2016, 3, 1))
+        self.assertEqual(quotes_nj[-22].start_until, datetime(2016, 4, 1))
         self.assertEqual(quotes_nj[-22].valid_from, datetime(2016, 1, 7))
         self.assertAlmostEqual(quotes_nj[-22].price, 0.5372, delta=0.000001)
 
@@ -787,6 +789,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes_nj[-1].limit_volume, 9999)
         self.assertEqual(quotes_nj[-1].term_months, 24)
         self.assertEqual(quotes_nj[-1].start_from, datetime(2016, 4, 1))
+        self.assertEqual(quotes_nj[-1].start_until, datetime(2016, 5, 1))
         self.assertEqual(quotes_nj[-1].valid_from, datetime(2016, 1, 7))
 
     def test_gee_electric(self):
