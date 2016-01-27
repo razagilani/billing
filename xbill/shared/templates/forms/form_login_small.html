@@ -1,0 +1,67 @@
+{% load staticfiles %}
+{% load widget_tweaks %}
+{% load compress %}
+
+{% compress js %}
+    <script type="text/javascript" src="{% static 'js/jquery.validate.min.js' %}"></script>
+{% endcompress %}
+{% compress js inline %}
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $(".controls input").popover({
+                        placement: "left",
+                        trigger: "manual",
+                        content: "",
+            });
+            $('index-loginform').validate({ // initialize the plugin
+                rules: {
+                    email: {
+                        email: true,
+                        required: true,
+                    },
+                    password: {
+                        required: true,
+                        minlength: 8,
+                    },
+                },
+                errorPlacement: function(label, element) {
+                    var po = $(element).data('popover');
+                    $(element).attr("data-content",$(label).text())
+                    $(element).popover('setContent');
+                    $(element).popover('show');
+                    return true;
+                },
+                success: function(label, element){
+                    $(element).popover('hide');
+                },
+            });
+        });
+    </script>
+{% endcompress %}
+<form class="form-inline" id="index-loginform" method="post" action="{% url 'intro:login' %}">
+    <h5>User Login:</h5>
+    {% csrf_token %}
+    <div class="row-fluid">
+        <div class="span4">
+            {% with placeholder="placeholder:"|add:form.email.label %}
+                {{ form.email|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+        </div>
+        <div class="span4">
+            {% with placeholder="placeholder:"|add:form.password.label %}
+                {{ form.password|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+        </div>
+        <div class="span4">
+            <button class="btn btn-primary btn-block pull-right" type="submit" id="userLoginBtn">Login</button>
+        </div>
+    </div>
+    <div class="row-fluid">
+        <div class="span4">
+            <span class="checkBox"><a href="{% url 'intro:forgot_password' %}">Forgot Your Password?</a></span>
+        </div>
+        <div class="span4">
+            <span class="checkBox">{{ form.rememberme }}{{ form.rememberme.label }}</span>
+        </div>
+    </div>
+</form>
