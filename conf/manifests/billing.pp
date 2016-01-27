@@ -266,12 +266,12 @@ ssh_authorized_key { 'codeshipkey':
 
 file { "/tmp/install_ec2_libreoffice.sh":
     ensure => file,
-    content => "conf/files/install_ec2_libreoffice.sh",
+    content => template('conf/install_ec2_libreoffice.sh'),
     mode => 755,
     owner => 'root'
 }
 
 exec { "/tmp/install_ec2_libreoffice.sh -f":
-    path => ["/usr/bin/", "/sbin/"],
+    path => ["/bin", "/usr/bin/", "/sbin/"],
     require => File["/tmp/install_ec2_libreoffice.sh"]
 }
