@@ -144,10 +144,9 @@ class GEEGasPDFParser(QuoteParser):
         # Every single price quote should have a DISTINCT reference.
         # This is (also) to avoid situations in which the wrong price is attached
         # to some start date and utility.
-        unique_file_reference = '%s %s,%s %s,start %s,%d month,%f' % (
+        unique_file_reference = '%s %s,%s %s,start %s,%d month,%.4f' % (
                 self.file_name, context.state_and_type, utility, load_type,
                 start_from_date.strftime('%Y-%m-%d'), context.month_duration, price),
-
 
         quote = MatrixQuote(
             start_from=start_from_date,
