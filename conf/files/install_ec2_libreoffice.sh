@@ -33,8 +33,11 @@ function download {
 }
 
 function install {
+	cd RPMS/
 	# Remove libobasis4.3-gnome-integration rpm file. Amazon EC2 Linux is 
 	# command-line only.
+	#find . -name "*gnome*" -exec rm -v {} \;
+	for f in *gnome*; do mv "$f" "${f/.rpm/.noinstall}"; done
 	rm -rf libobasis4.3-gnome-integration-4.3.1.2-2.x86_64.rpm	
 	yum -y install *rpm
 }
