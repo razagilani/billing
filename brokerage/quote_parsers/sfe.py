@@ -33,10 +33,6 @@ class SFEMatrixParser(QuoteParser):
     ]
     EXPECTED_CELLS = [
         (0, 2, 'D', 'Commercial Pricing Worksheet'),
-        (0, 6, 'B',
-         'For Single locations above 2 million kWh/yr please email '
-         'supply@sfeenergy\.com for pricing'),
-
         # broker fees must be 0--otherwise they must be subtracted from prices.
         # somehow, the 0s which should be floats are encoded as times.
         # if they are ever not 0, they might become floats.
