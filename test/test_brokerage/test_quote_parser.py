@@ -111,6 +111,7 @@ class MatrixQuoteParsersTest(TestCase):
     GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
+    GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer',
                                    'Exchange_COH_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer',

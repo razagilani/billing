@@ -74,24 +74,6 @@ class GEEGasPDFParser(QuoteParser):
         'Factor': 16
     }
 
-    INDEX_NJ_PAGE1 = {
-        'Page': 3,
-        'State/Type': (546, 376),
-        'Valid Date':(508, 27),
-        'Volume': (535, 369),
-        6: 454,
-        12: 492,
-        18: 532,
-        24: 571,
-        'Utility': 27,
-        'Start Date': 105,
-        'Load Type': 61,
-        'Data Start': 491,
-        'Intra Row Delta': 10.2,
-        'Rows': 32 + 11,
-        'Factor': 16
-    }
-
     def _validate(self):
         for page_number, y, x, regex in [
             # Page 1 "Commercial"
@@ -159,6 +141,14 @@ class GEEGasPDFParser(QuoteParser):
         # in order to convert to price per therm.
         price = float(price)/10.0
 
+        # Every single price quote should have a DISTINCT reference.
+        # This is (also) to avoid situations in which the wrong price is attached
+        # to some start date and utility.
+        unique_file_reference = '%s %s,%s %s,start %s,%d month,%f' % (
+                self.file_name, context.state_and_type, utility, load_type,
+                start_from_date.strftime('%Y-%m-%d'), context.month_duration, price),
+
+
         quote = MatrixQuote(
             start_from=start_from_date,
             start_until=start_until_date,
@@ -171,9 +161,7 @@ class GEEGasPDFParser(QuoteParser):
             service_type='gas',
             rate_class_alias='GEE-gas-%s' % \
                 '-'.join((context.state_and_type, utility, load_type)),
-            file_reference='%s %s,%s %s,start %s,%d month,%f' % (
-                self.file_name, context.state_and_type, utility, load_type,
-                start_from_date.strftime('%Y-%m-%d'), context.month_duration, price),
+            file_reference=unique_file_reference,
             price=price
         )
         return quote
