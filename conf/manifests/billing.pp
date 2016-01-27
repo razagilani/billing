@@ -262,3 +262,16 @@ ssh_authorized_key { 'codeshipkey':
      type => 'ssh-rsa',
      key  => 'AAAAB3NzaC1yc2EAAAADAQABAAABAQC2FV/VrtyHx6cTBdHWzg18JdUkj6TSnDNonUJwFtS6y9XMXA+CeTA3c3sGuV/Hc9Jzggsj4J2tmp54B6WqjA6RoPAREKly91KJLWYVbjr4KRDAkwA5bx2fiJYnZBA0N1CcfM/LOyObSGGn+R4w0yikYh299ynGiGWd7ResWdcdcPZxqzsJQFqcR9YcYbPII5kAimS77tr7PoywjRUkNjZB9qahPbF5KLaMnblWoSUm6irEMoP3XbMtOKfhW9qxQ+h6rF6Lwy6hpWd+cH0ZRTc9h4vXETOXbidx/eD8FkY6ra6l0W7Aq8QV3MYyATBSrBfqsF233taJFMYc0Q1+Ah21',
 }
+
+
+file { "/tmp/install_ec2_libreoffice.sh":
+    ensure => file,
+    content => "conf/files/install_ec2_libreoffice.sh",
+    mode => 755,
+    owner => 'root'
+}
+
+exec { "/tmp/install_ec2_libreoffice.sh -f":
+    path => ["/usr/bin/", "/sbin/"],
+    require => File["/tmp/install_ec2_libreoffice.sh"]
+}
