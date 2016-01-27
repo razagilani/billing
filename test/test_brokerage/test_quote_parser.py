@@ -1,5 +1,5 @@
-import re
 from datetime import datetime
+import re
 from os.path import join, basename
 from unittest import TestCase, skip
 from mock import Mock
@@ -14,7 +14,7 @@ from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser, GEEMatrixParser, VolunteerMatrixParser)
+    USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
 from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
@@ -755,6 +755,39 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
+
+    def test_gee_gas(self):
+        parser = GEEGasPDFParser()
+
+        with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:
+            parser.load_file(pdf_file)
+            parser.validate()
+            quotes_nj = list(parser.extract_quotes())
+
+        self.assertEqual(len(quotes_nj), 128)
+
+        self.assertAlmostEqual(quotes_nj[0].price, 0.3591, delta=0.000001)
+        self.assertEqual(quotes_nj[0].min_volume, 0)
+        self.assertEqual(quotes_nj[0].limit_volume, 9999)
+        self.assertEqual(quotes_nj[0].term_months, 6)
+        self.assertEqual(quotes_nj[0].start_from, datetime(2016, 1, 1))
+        self.assertEqual(quotes_nj[0].valid_from, datetime(2016, 1, 7))
+        self.assertEqual(quotes_nj[0].rate_class_alias, 'GEE-gas-NJ Commercial-Etown-Non-Heat')
+        self.assertIn('NJ Commercial,Etown Non-Heat,start 2016-01-01,6 month,0.3591', quotes_nj[0].file_reference[0])
+
+        self.assertEqual(quotes_nj[-22].min_volume, 0)
+        self.assertEqual(quotes_nj[-22].limit_volume, 9999)
+        self.assertEqual(quotes_nj[-22].term_months, 18)
+        self.assertEqual(quotes_nj[-22].start_from, datetime(2016, 3, 1))
+        self.assertEqual(quotes_nj[-22].valid_from, datetime(2016, 1, 7))
+        self.assertAlmostEqual(quotes_nj[-22].price, 0.5372, delta=0.000001)
+
+        self.assertAlmostEqual(quotes_nj[-1].price, 0.5057, delta=0.000001)
+        self.assertEqual(quotes_nj[-1].min_volume, 0)
+        self.assertEqual(quotes_nj[-1].limit_volume, 9999)
+        self.assertEqual(quotes_nj[-1].term_months, 24)
+        self.assertEqual(quotes_nj[-1].start_from, datetime(2016, 4, 1))
+        self.assertEqual(quotes_nj[-1].valid_from, datetime(2016, 1, 7))
 
     def test_gee_electric(self):
         parser = GEEMatrixParser()
