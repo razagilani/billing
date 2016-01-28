@@ -2,7 +2,8 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
-from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.spreadsheet_reader import SpreadsheetReader, \
+    SpreadsheetFileConverter
 from brokerage.validation import _assert_equal
 from core.model.model import ELECTRIC
 from util.dateutils import date_to_datetime, parse_date
@@ -271,6 +272,10 @@ class LibertyMatrixParser(QuoteParser):
     EXPECTED_ENERGY_UNIT = unit_registry.MWh
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
+    def _preprocess_file(self, quote_file, file_name):
+        return SpreadsheetFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
+
     def _validate(self):
         for sheet in self.reader.get_sheet_titles():
             if not self._is_sheet_green(sheet):
@@ -306,7 +311,7 @@ class LibertyMatrixParser(QuoteParser):
                 if not any([zone, service_class]):
                     raise ValidationError('Zone (%s) or Service Class (%s) not found in %s!' % (zone, service_class, sheet))
 
-                rate_class_alias = '%s-%s-%s' % (
+                rate_class_alias = 'Liberty-electric-%s-%s-%s' % (
                     self.reader.get(sheet, row, 'B', basestring),
                     zone,
                     service_class

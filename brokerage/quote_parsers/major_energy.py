@@ -73,7 +73,7 @@ class MajorEnergyElectricSheetParser(QuoteParser):
             if zone is None:
                 zone = ''
             rate_class_alias_parts = ['electric', state, utility, zone]
-            rate_class_alias = '-'.join(rate_class_alias_parts)
+            rate_class_alias = 'Major-%s' % '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             term_months = self.reader.get(self.SHEET, row, self.TERM_COL, int)
@@ -147,7 +147,7 @@ class MajorEnergyGasSheetParser(QuoteParser):
             state = self.reader.get(self.SHEET, row, self.STATE_COL,
                                     basestring)
             rate_class_alias_parts = ['gas', state, utility]
-            rate_class_alias = '-'.join(rate_class_alias_parts)
+            rate_class_alias = 'Major-%s' % '-'.join(rate_class_alias_parts)
             rate_class_ids = self.get_rate_class_ids_for_alias(rate_class_alias)
 
             for col in self.reader.column_range(self.PRICE_START_COL,
