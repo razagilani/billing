@@ -96,7 +96,7 @@ class USGEGasMatrixParser(QuoteParser):
                     sheet, row, self.CUSTOMER_TYPE_COL, (basestring, type(None)))
                 rate_class = self.reader.get(sheet, row, self.RATE_CLASS_COL,
                                              (basestring, type(None)))
-                rate_class_alias = '-'.join([ldc, customer_type, rate_class])
+                rate_class_alias = 'USGE-gas-%s' % '-'.join([ldc, customer_type, rate_class])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
 
