@@ -93,6 +93,7 @@ class VolunteerMatrixParser(QuoteParser):
         # defined above.
         rate_class_alias = self._reader.get_matches(
             1, 581, 241, self.UTILITY_NAME_PATTERN, str, tolerance=50)
+        rate_class_alias = 'Volunteer-gas-%s' % rate_class_alias
 
         # TODO maybe target unit shound be different?
         min_vol, limit_vol = self._extract_volume_range(

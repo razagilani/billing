@@ -5,7 +5,8 @@ from tablib import formats
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, FileNameDateGetter
 from brokerage.quote_parser import excel_number_to_datetime
-from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.spreadsheet_reader import SpreadsheetReader, \
+    SpreadsheetFileConverter
 from brokerage.validation import _assert_true
 
 
@@ -60,6 +61,10 @@ class AmerigreenMatrixParser(QuoteParser):
     date_getter = FileNameDateGetter(
         'Amerigreen Matrix (\d+-\d+-\d\d\d\d)\s*\..+')
 
+    def _preprocess_file(self, quote_file, file_name):
+        return SpreadsheetFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
+
     def _extract_quotes(self):
         broker_fee = self.reader.get(0, self.BROKER_FEE_CELL[0],
                                      self.BROKER_FEE_CELL[1], float)
@@ -74,7 +79,7 @@ class AmerigreenMatrixParser(QuoteParser):
                 break
 
             state = self.reader.get(0, row, self.STATE_COL, basestring)
-            rate_class_alias = state + '-' + utility
+            rate_class_alias = 'Amerigreen-gas-' + state + '-' + utility
 
             term_months = int(self.reader.get(0, row, self.TERM_COL,
                                               (int, float)))

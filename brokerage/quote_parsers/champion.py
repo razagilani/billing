@@ -59,7 +59,7 @@ class ChampionMatrixParser(QuoteParser):
 
                 rate_class_name = self.reader.get(sheet, row,
                                                   self.RATE_CLASS_COL, basestring)
-                rate_class_alias = '-'.join(
+                rate_class_alias = 'Champion-electric-%s' % '-'.join(
                     [state, edc, rate_class_name, description])
 
                 month_str, year = self.reader.get_matches(sheet, row,
