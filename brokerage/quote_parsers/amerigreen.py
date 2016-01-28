@@ -58,7 +58,7 @@ class AmerigreenMatrixParser(QuoteParser):
     ]
 
     date_getter = FileNameDateGetter(
-        'Amerigreen Matrix (\d\d-\d\d-\d\d\d\d)\s*\..+')
+        'Amerigreen Matrix (\d+-\d+-\d\d\d\d)\s*\..+')
 
     def _extract_quotes(self):
         broker_fee = self.reader.get(0, self.BROKER_FEE_CELL[0],
