@@ -1,0 +1,113 @@
+{% load staticfiles %}
+{% load webdesign %}
+{% load compress %}
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1, user-scalable=no" />
+        <meta name="description" content="" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <meta name="msapplication-TileColor" content="" />
+        <meta name="msapplication-TileImage" content="{% static 'favicon.ico' %}" />
+
+        <link rel="icon" href="{% static 'favicon.ico' %}" />
+        <!-- STYLE -->
+
+        {% compress css %}
+            <link href="{% static 'css/new/bootstrap.min.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+            <link href="{% static 'css/new/bootstrap-responsive.css' %}"
+                  media="screen, projection" rel="stylesheet" type="text/css" />
+            <link href="{% static 'css/new/common.css' %}" media="screen,
+            projection" rel="stylesheet" type="text/css" />
+        {% endcompress %}
+
+        <!-- JS LIBRARY -->
+        <script data-main="../../../../../static/js/app" src=
+                "{% static 'js/lib/require.js' %}"></script>
+        <!-- IE CONDITIONALS -->
+        <!--[if IE]>
+            <link rel="shortcut icon" href="{% static 'favicon.ico' %}" />
+        <![endif]-->
+        <!--[if lt IE 9]>
+            {% compress css %}
+                <link href="{% static 'css/ie.css' %}" media="screen, projection" rel="stylesheet" type="text/css" />
+                <style type="text/css">
+                    .gradient {
+                            filter: none;
+                    }
+                </style>
+            {% endcompress %}
+            {% compress js %}
+                <script type="text/javascript" src="{% static 'js/lib/modernizr.custom.js' %}"></script>
+            {% endcompress %}
+        <![endif]-->
+        <title id="title">{% block title %}XBill{% endblock %}</title>
+        {% block head %}
+        {% endblock %}
+    </head>
+    <body>
+        {% block body %}
+            <div class="wrapper-top">
+                <div class="content clear-top">
+                    <div class="header">
+                        <nav>
+                            <div class="container">
+                                <div class="row">
+                                    <div class="span6">
+                                        <img src="
+                                        {% static 'images/logo-transparent.png' %}" alt="logo" class="logo"/>
+                                    </div>
+                                    <div class="span6" >
+                                        <ul class="nav nav-pills pull-right" id="js-block-header">
+                                            {% block header %}
+                                                {% if request.user.is_authenticated %}
+                                                    <li><a href="{% url 'intro:index' %}">Home</a></li>
+                                                    <li><a href="{% url 'intro:logout' %}">Log out</a></li>
+                                                {% else %}
+                                                    <li><a href="{% url 'intro:index' %}">Home</a></li>
+                                                    <li><a href="{% url 'intro:login' %}">Login</a></li>
+                                                    <li><a href="{% url 'intro:signup' %}">Register</a></li>
+                                                {% endif %}
+                                            {% endblock %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </nav>
+
+                        <hr>
+                    </div>
+                    <div id="js-block-content">
+                        {% block content %}
+                        {% endblock %}
+                    </div>
+                </div>
+            </div>
+            <footer class="footer">
+                <div class="container">
+                    <div class="row">
+                        <div class="span4 footer-column">
+                            <a href="#">Facebook</a><br />
+                            <a href="#">Twitter</a><br />
+                            <a href="#">LinkedIn</a>
+                        </div>
+                        <div class="span4 footer-column">
+                            &copy; 2013 Skyline Innovations<br />
+                            <a href="{% url 'intro:tou' %}">Terms of Service</a><br />
+                            <a href="#">Privacy Policy</a>
+                        </div>
+                        <div class="span4 footer-column">
+                            Skyline Innovations<br />
+                            1606 20th St. NW, 2nd Floor<br />
+                            Washington, DC 20009
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        {% endblock %}
+    </body>
+</html>

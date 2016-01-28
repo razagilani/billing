@@ -1,0 +1,186 @@
+{# DEPRECTATED! DO NOT USE THIS FORM #}
+{% load widget_tweaks %}
+{% load compress %}
+
+<script type="text/javascript" id="linkAccountForm_script">
+    linkAccountForm={
+        registrationrules:{
+            {% for provider in form.fields.utility_provider.queryset %}
+                "{{provider.name}}":(".registrationrule"+String({{provider.registrationrule}})),
+            {% endfor %}
+        },
+        changeUtilitySpan:function(){
+            $("label[for='{{form.utility_account_number.id_for_label}}']").text("Your " + $("#{{form.utility_provider.id_for_label}} option:selected").text() +" Account Number");
+            $("#linkAccountForm_utilityinformationspan").text("Please provide us with your " + $("#{{form.utility_provider.id_for_label}} option:selected").text() +" Online Access Information:");
+        },
+        applyRules:function(){
+            $(".registrationrule").addClass("hide");
+            rule=this.registrationrules[$("#{{form.utility_provider.id_for_label}} option:selected").text()];
+            $(rule).removeClass("hide");
+        },
+        init:function(){
+            var that=this;
+            this.changeUtilitySpan();
+            this.applyRules();
+            this.checkShowPassword();
+            $("#{{form.utility_provider.id_for_label}}").change(function(){
+                that.changeUtilitySpan();
+                that.applyRules();
+            });
+            $("#linkAccountForm_showpassword").change(function(){
+                that.checkShowPassword();
+            });
+        },
+        checkShowPassword:function(){
+            if($('#linkAccountForm_showpassword').is(':checked')){
+                $("#{{form.password1.id_for_label}}").attr('type','text');
+                $("#{{form.password2.id_for_label}}").attr('type','text');
+            }else{
+                $("#{{form.password1.id_for_label}}").attr('type','password');
+                $("#{{form.password2.id_for_label}}").attr('type','password');
+            }
+        },
+    }
+    $(document).ready(function(){linkAccountForm.init()});
+    
+</script>
+
+<form id="linkAccountForm" method="post" action="" class="form-horizontal">
+    {% csrf_token %}
+    <div class="no-marker-no-indent text-error">
+        {{ form.non_field_errors }}
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="{{form.utility_provider.id_for_label}}">{{form.utility_provider.label}}</label>
+        <div class="controls">
+            {{form.utility_provider}}
+            <div class="no-marker-no-indent text-error">
+                {{ form.utility_provider.errors }}
+            </div>
+        </div>
+    </div>
+    <div id="linkAccountForm_customeronlineinformation" class="registrationrule registrationrule1">
+        <strong class="inline"><span id="linkAccountForm_utilityinformationspan">Please provide us with your Utility Online Access Information:</span></strong>
+        <h6 class="pull-right"><a href="#">Why do we need this?</a></h6>
+        <div class="clear vspace20"></div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.username.id_for_label}}">{{form.username.label}}</label>
+            <div class="controls">     
+                {% with placeholder="placeholder:"|add:form.username.label %}
+                    {{ form.username|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.username.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.password1.id_for_label}}">{{form.password1.label}}</label>
+            <div class="controls">     
+                {% with placeholder="placeholder:"|add:form.password1.label %}
+                        {{ form.password1|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.password1.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.password2.id_for_label}}">{{form.password2.label}}</label>
+            <div class="controls">     
+                {% with placeholder="placeholder:"|add:form.password2.label %}
+                    {{ form.password2|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.password2.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="linkAccountForm_showpassword">Show passwords:</label>
+            <div class="controls">
+                <input type="checkbox" class="checkbox" id="linkAccountForm_showpassword" name="linkAccountForm_showpassword"/>
+            </div>
+        </div>
+    </div>
+    <div class="clear vspace20 registrationrule registrationrule1 registrationrule2 registrationrule3">
+        <strong class="inline">Your Account Information:</strong>
+    </div>
+    <div class="control-group registrationrule registrationrule1 registrationrule2 registrationrule3">
+        <label class="control-label" for="{{form.utility_account_number.id_for_label}}">{{form.utility_account_number.label}}</label>
+        <div class="controls">     
+            {% with placeholder="placeholder:"|add:form.utility_account_number.label %}
+                {{ form.utility_account_number|add_class:"input-block-level"|attr:placeholder }}
+            {% endwith %}
+            <div class="no-marker-no-indent text-error">
+                {{ form.utility_account_number.errors }}
+            </div>
+        </div>
+    </div>
+    <div id="linkAccountForm_address" class="registrationrule registrationrule1 registrationrule2 registrationrule3">
+        <div class="control-group">
+            <label class="control-label" for="{{form.street1.id_for_label}}">{{form.street1.label}}</label>
+            <div class="controls">
+                {% with placeholder="placeholder:"|add:form.street1.label %}
+                    {{ form.street1|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.street1.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.street2.id_for_label}}">{{form.street2.label}}</label>
+            <div class="controls">
+                {% with placeholder="placeholder:"|add:form.street2.label %}
+                    {{ form.street2|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.street2.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.city.id_for_label}}">{{form.city.label}}</label>
+            <div class="controls">
+                {% with placeholder="placeholder:"|add:form.city.label %}
+                    {{ form.city|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.city.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.state.id_for_label}}">{{form.state.label}}</label>
+            <div class="controls">
+                {{ form.state }}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.state.errors }}
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="{{form.zip.id_for_label}}">{{form.zip.label}}</label>
+            <div class="controls">
+                {% with placeholder="placeholder:"|add:form.zip.label %}
+                    {{ form.zip|add_class:"input-block-level"|attr:placeholder }}
+                {% endwith %}
+                <div class="no-marker-no-indent text-error">
+                    {{ form.zip.errors }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if action == "edit" %}
+            <input type="hidden" name="linkAccountForm_accountid" id="linkAccountForm_accountid" value="{{linkAccountForm_accountid}}" />
+            <input type="hidden" name="action" id="action" value="linkedAccount_edit" />
+            <button class="btn btn-large btn-success pull-right" type="submit" id="continueBtn">Save</button>
+{% comment %}
+            <a href="{% url linkAccountForm_senderUrl %}" class="btn btn-large pull-right hspace20" id="backbtn">Back</a>
+{% endcomment %}
+    {% else %}
+        <input type="hidden" name="action" id="action" value="linkedAccount_add" />
+        <button class="btn btn-large btn-success pull-right" type="submit" id="continueBtn">Link Account</button>
+    {% endif %}
+</form>
