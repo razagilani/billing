@@ -219,12 +219,9 @@ class SpreadsheetFileConverter(object):
         temp_file_path = os.path.join(self.directory.path, file_name)
         with open(temp_file_path, 'wb') as temp_file:
             temp_file.write(fp.read())
-
-        print '*********#####', os.environ['PATH']
         command = '%s --headless --convert-to %s --outdir %s %s' % (
             self.SOFFICE_PATH, self.destination_type_str, self.directory.path,
             shell_quote(temp_file_path))
-        print '***************', command
         _, _, check_exit_status = run_command_in_shell(command)
 
         # note: libreoffice exits with 0 even if it failed to convert. errors
