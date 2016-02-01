@@ -7,7 +7,7 @@ from testfixtures import TempDirectory
 
 from brokerage.reader import Reader
 from core.exceptions import BillingError, ValidationError
-from util.shell import run_command
+from util.shell import run_command, run_command_in_shell
 from util.shell import shell_quote
 
 
@@ -215,14 +215,17 @@ class SpreadsheetFileConverter(object):
         :param file_name: name of the original file including extension
         :return: converted file opened in 'rb' mode
         """
+        import os
         temp_file_path = os.path.join(self.directory.path, file_name)
         with open(temp_file_path, 'wb') as temp_file:
             temp_file.write(fp.read())
 
+        print '*********#####', os.environ['PATH']
         command = '%s --headless --convert-to %s --outdir %s %s' % (
             self.SOFFICE_PATH, self.destination_type_str, self.directory.path,
             shell_quote(temp_file_path))
-        _, _, check_exit_status = run_command(command)
+        print '***************', command
+        _, _, check_exit_status = run_command_in_shell(command)
 
         # note: libreoffice exits with 0 even if it failed to convert. errors
         # are detected by checking whether the destination file exists.
