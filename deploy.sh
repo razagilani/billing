@@ -15,7 +15,8 @@ env="$1"
 version="$2"
 
 # used for deleting temporary files
-all_hosts="billing-$env billingworker1-$env billingworker2-$env portal-$env"
+# (billingworker2-dev is now gone)
+all_hosts="billing-$env billingworker1-$env portal-$env"
 
 function delete_temp_files {
     # delete temporary files created and not deleted by previous deployments,
