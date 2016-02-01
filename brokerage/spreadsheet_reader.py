@@ -1,13 +1,13 @@
 """Code related to getting quotes out of Excel spreadsheets.
 """
-import os
 from os.path import splitext
+
 from tablib import formats, Databook, Dataset
 from testfixtures import TempDirectory
 
 from brokerage.reader import Reader
 from core.exceptions import BillingError, ValidationError
-from util.shell import run_command, run_command_in_shell
+from util.shell import run_command_in_shell
 from util.shell import shell_quote
 
 
