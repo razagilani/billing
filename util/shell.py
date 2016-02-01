@@ -19,12 +19,10 @@ def run_command(command):
     return process.stdin, process.stdout, check_exit_status
 
 def run_command_in_shell(command):
-    # launch bash as a subprocess in "login shell" mode so it reads
-    # ~/.bash_profile etc. in order to include any modifications to the PATH
-    # in those files. then write the command into its stdin.
-    process = Popen(['/bin/bash', '--login'], stdin=PIPE, stdout=PIPE,
-                    stderr=sys.stderr)
-    process.communicate(input=command)
+    # bash must be run in "login shell" mode so it reads ~/.bash_profile etc.
+    # in order to set the PATH
+    process = Popen(['/bin/bash', '--login', '-c', command],
+                    stdin=PIPE, stdout=PIPE, stderr=sys.stderr)
 
     # TODO duplicate code
     def check_exit_status():
