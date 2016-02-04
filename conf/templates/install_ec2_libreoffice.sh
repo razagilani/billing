@@ -14,6 +14,7 @@ LIBREOFFICE_URL="http://download.documentfoundation.org/libreoffice/stable/${LIB
 FORCE_DOWNLOAD="0"
 DRYRUN="0"
 CLEANUP="1"
+EXTRA="http://mirror.centos.org/centos/6/os/x86_64/Packages/dbus-glib-0.86-6.el6.x86_64.rpm"
 
 function download {
 	WORKDIR=`mktemp -d` || exit 1
@@ -36,6 +37,7 @@ function install {
 	cd RPMS/
 	# Remove libobasis4.3-gnome-integration rpm file. Amazon EC2 Linux is 
 	# command-line only.
+	rpm -Uvh "$EXTRA"
 	for f in *gnome*; do mv "$f" "${f/.rpm/.noinstall}"; done
 	yum -y install *rpm
 }
