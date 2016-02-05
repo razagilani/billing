@@ -149,4 +149,5 @@ class USGEElectricMatrixParser(QuoteParser):
                             # TODO: rate_class_id should be determined automatically
                             # by setting rate_class
                             quote.rate_class_id = rate_class_id
+                            print quote
                             yield quote

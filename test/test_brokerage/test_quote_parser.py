@@ -83,7 +83,7 @@ class MatrixQuoteParsersTest(TestCase):
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
-    USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
+    USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20160205.xlsx')
     USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(
         DIRECTORY, 'Champion MM PJM Fixed-Index-24 Matrix 2015-10-30.xls')
