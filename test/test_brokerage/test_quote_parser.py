@@ -228,25 +228,27 @@ class MatrixQuoteParsersTest(TestCase):
 
         quotes = list(parser.extract_quotes())
 
-        self.assertEqual(quotes[0].price, 0.1017)
-        self.assertEqual(quotes[0].min_volume, 0)
-        self.assertEqual(quotes[0].limit_volume, 500000)
-        self.assertEqual(quotes[0].term_months, 6)
-        self.assertEqual(quotes[0].start_from, datetime(2015, 11, 01))
-        self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
-        self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[0].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
+        q = quotes[0]
+        self.assertEqual(q.price, 0.1017)
+        self.assertEqual(q.min_volume, 0)
+        self.assertEqual(q.limit_volume, 500000)
+        self.assertEqual(q.term_months, 6)
+        self.assertEqual(q.start_from, datetime(2015, 11, 01))
+        self.assertEqual(q.start_until, datetime(2015, 12, 01))
+        self.assertEqual(q.valid_until, datetime(2015, 11, 03))
+        self.assertEqual(q.valid_from, datetime(2015, 11, 02))
+        self.assertEqual(q.rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
 
-        self.assertEqual(quotes[1].price, 0.1000)
-        self.assertEqual(quotes[1].min_volume, 0)
-        self.assertAlmostEqual(quotes[1].limit_volume, 500000, delta=2)
-        self.assertEqual(quotes[1].term_months, 6)
-        self.assertEqual(quotes[1].start_from, datetime(2015, 12, 01))
-        self.assertEqual(quotes[1].start_until, datetime(2016, 01, 01))
-        self.assertEqual(quotes[1].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[1].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[1].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
+        q = quotes[1]
+        self.assertEqual(q.price, 0.1000)
+        self.assertEqual(q.min_volume, 0)
+        self.assertAlmostEqual(q.limit_volume, 500000, delta=2)
+        self.assertEqual(q.term_months, 6)
+        self.assertEqual(q.start_from, datetime(2015, 12, 01))
+        self.assertEqual(q.start_until, datetime(2016, 01, 01))
+        self.assertEqual(q.valid_until, datetime(2015, 11, 03))
+        self.assertEqual(q.valid_from, datetime(2015, 11, 02))
+        self.assertEqual(q.rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
 
         self.assertEqual(quotes[2].price, 0.0969)
 
@@ -270,17 +272,20 @@ class MatrixQuoteParsersTest(TestCase):
         # Assert that we found the above-mentioned quote.
         self.assertTrue(found_needle)
 
-        # Last qouote from the spreadsheet.
-        self.assertEqual(quotes[-1].price, 0.0711)
-        self.assertAlmostEqual(quotes[-1].min_volume, 500000, delta=2)
-        self.assertAlmostEqual(quotes[-1].limit_volume, 1000000, delta=2)
-        self.assertEqual(quotes[-1].term_months, 24)
-        self.assertEqual(quotes[-1].start_from, datetime(2016, 04, 01))
-        self.assertEqual(quotes[-1].start_until, datetime(2016, 05, 01))
-        self.assertEqual(quotes[-1].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[-1].rate_class_alias,
-                         "USGE-electric-Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3-PJMATSI")
+        # Last quote from the spreadsheet.
+        q = quotes[-1]
+        self.assertEqual(q.price, 0.0711)
+        self.assertAlmostEqual(q.min_volume, 500000, delta=2)
+        self.assertAlmostEqual(q.limit_volume, 1000000, delta=2)
+        self.assertEqual(q.term_months, 24)
+        self.assertEqual(q.start_from, datetime(2016, 04, 01))
+        self.assertEqual(q.start_until, datetime(2016, 05, 01))
+        self.assertEqual(q.valid_until, datetime(2015, 11, 03))
+        self.assertEqual(q.valid_from, datetime(2015, 11, 02))
+        self.assertEqual(
+                q.rate_class_alias,
+                "USGE-electric-Penn Power-Commercial-Commerical: C1, C2, C3, "
+                "CG, CH, GH1, GH2, GS1, GS3-PJMATSI")
 
 
     def test_usge(self):
