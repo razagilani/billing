@@ -28,12 +28,12 @@ class GuttmanElectric(QuoteParser):
     RATE_START_ROW = 8
     TITLE_ROW = 3
     TITLE_COL = 'C'
-    TABLE_ROWS = 13
+    TABLE_ROWS = 12
     START_DATE_COL = 3
     NO_OF_TERM_COLS = 5
     VOLUME_RANGE_COL = 2
     COL_INCREMENT = 8
-    TABLE_HEIGHT = 16  # the expected number of rows in a table
+    TABLE_HEIGHT = 15  # the expected number of rows in a table
 
     def process_table(self, sheet, row, col, rate_class_alias, valid_from,
             valid_until, min_volume, limit_volume, term_row):
