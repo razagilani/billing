@@ -87,6 +87,7 @@ class GuttmanElectric(QuoteParser):
                                                   valid_from_row, 'C',
                                                   'Published: (.*)',
                                                   parse_datetime)
+            #TODO: set valid_until to the same day at 5:00 PM 
             valid_until = valid_from + timedelta(days=1)
 
             for table_start_row in xrange(self.RATE_START_ROW,
