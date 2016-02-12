@@ -1,0 +1,36 @@
+<VirtualHost *:80>
+    ServerName billentry-<%= @env%>
+    serverAlias billentry-<%= @env%>.nextility.net
+
+    ServerAdmin webmaster@localhost
+
+    DocumentRoot /var/local/<%= @username%>/billing/billentry/static/app
+    <Directory /var/local/<%= @username%>/billing/billentry/static/app>
+            Options FollowSymLinks
+            AllowOverride None
+    </Directory>
+
+    Alias /ext /var/local/<%= @username%>/billing/billentry/static/ext
+    Alias /app /var/local/<%= @username%>/billing/billentry/static/app
+    Alias /images /var/local/<%= @username%>/billing/billentry/static/images
+    Alias /icons /var/local/<%= @username%>/billing/billentry/static/icons
+    Alias /style /var/local/<%= @username%>/billing/billentry/static/style
+    Alias /revision.txt /var/local/<%= @username%>/billing/revision.txt
+
+    
+    ErrorLog /var/log/httpd/billentry-<%= @env%>_error.log
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel debug
+
+    CustomLog /var/log/httpd/billentry-<%= @env%>_access.log combined
+
+    WSGIScriptAlias / /var/local/<%= @username%>/billing/bin/run_billentry.py
+
+    WSGIDaemonProcess billentry-<%= @env%> processes=<%= @billentry_http_python_processes%> threads=1 user=<%= @username%> group=<%= @username%> python-path=/var/local/<%= @username%>/billing:/var/local/<%= @username%>:/var/local/<%= @username%>/lib/python2.7/dist-packages/:/var/local/<%= @username%>/lib/python2.7/site-packages/
+    WSGIApplicationGroup %{GLOBAL}
+
+    WSGIProcessGroup billentry-<%= @env%>
+
+</VirtualHost>
