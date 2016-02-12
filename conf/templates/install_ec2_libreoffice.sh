@@ -37,10 +37,10 @@ function install {
 	cd RPMS/
 	# Remove libobasis4.3-gnome-integration rpm file. Amazon EC2 Linux is 
 	# command-line only.
-	rpm -Uvh "$EXTRA"
+	rpm -Uvh --force "$EXTRA"
 	for f in *gnome*; do mv "$f" "${f/.rpm/.noinstall}"; done
-	yum -y install *rpm
-}
+        rpm -Uvh --force *.rpm
+}	
 
 function cleanup {
 	echo "Removing temporary directory ${WORKDIR}"
