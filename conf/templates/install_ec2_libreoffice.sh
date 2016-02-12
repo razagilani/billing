@@ -105,3 +105,5 @@ while getopts "fdnh" opt; do
 done
 
 main
+
+echo "Done"
