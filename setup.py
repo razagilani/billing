@@ -102,11 +102,6 @@ install_requires = [
     #'python-dateutil==2.1',
     #'pika==0.9.13'
     #'boto==2.28.0',
-
-
-    # should override anything else that wants to install a different version
-    # of MongoEngine
-    'mongoengine#',
 ]
 tests_require=[
     # actually for tests
@@ -148,9 +143,6 @@ setup(
     dependency_links=[
         # Our forked repo of Flask-Admin
         'https://github.com/nextilityinc/flask-admin/archive/3ba9b936410d97839c99604dab25ba388e19cf1d.zip',
-
-        # this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4) but appears as version "8.7"
-        'https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip',
 
         'https://github.com/klothe/pymssql/archive/ba8c5f45f52ef3602a29604428dc831fab7f3af3.zip',
 

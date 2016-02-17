@@ -167,20 +167,6 @@ Ext.define('ReeBill.view.Viewport', {
                     id: 'issuableReebillsGrid'
                 },{
                     xtype: 'panel',
-                    name: 'journalTab',
-                    title: 'Journal',
-                    layout: 'border',
-                    items: [{
-                        xtype: 'noteForm',
-                        region: 'north',
-                        id: 'noteForm'
-                    },{
-                        xtype: 'journalEntries',
-                        region: 'center',
-                        id: 'journalEntriesGrid'
-                    }]
-                },{
-                    xtype: 'panel',
                     name: 'reportsTab',
                     title: 'Reports',
                     layout: 'border',
