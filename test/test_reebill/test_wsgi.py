@@ -1,8 +1,5 @@
-import pymongo
-import mongoengine
 from datetime import date
 from unittest import TestCase
-from brokerage.brokerage_model import BrokerageAccount
 from test.setup_teardown import TestCaseWithSetup, create_reebill_objects
 from test.testing_utils import ReebillRestTestClient
 from test.setup_teardown import create_reebill_resource_objects
@@ -19,16 +16,12 @@ def setUpModule():
     init_test_config()
     create_tables()
     init_model()
-    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
 
 
 class IssuableReebillsTest(TestCase):
 
     def setUp(self):
         self.database = 'test'
-        # Clear out mongo database
-        mongo_connection = pymongo.Connection()
-        mongo_connection.drop_database(self.database)
         clear_db()
         TestCaseWithSetup.insert_data()
 
@@ -85,9 +78,6 @@ class IssuableReebillsTest(TestCase):
 
     def tearDown(self):
         clear_db()
-        # Clear out mongo database
-        mongo_connection = pymongo.Connection()
-        mongo_connection.drop_database(self.database)
 
     def test_get(self):
         success, response = self.app.get('/issuable')
@@ -109,9 +99,6 @@ class AccountsResourceTest(TestCase):
         session = Session()
         self.database = 'test'
         self.maxDiff = None
-        # Clear out mongo database
-        mongo_connection = pymongo.Connection()
-        mongo_connection.drop_database(self.database)
         self.reebill_processor, self.views = create_reebill_objects()
         clear_db()
         #TestCaseWithSetup.insert_data()
@@ -214,9 +201,6 @@ class AccountsResourceTest(TestCase):
 
     def tearDown(self):
         clear_db()
-        # Clear out mongo database
-        mongo_connection = pymongo.Connection()
-        mongo_connection.drop_database(self.database)
 
     def test_put(self):
         self.maxDiff = None
