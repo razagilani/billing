@@ -7,7 +7,7 @@ from brokerage.quote_parser import QuoteParser, SpreadsheetReader, \
     StartEndCellDateGetter
 from brokerage.validation import _assert_true
 from core.exceptions import ValidationError
-from util.dateutils import date_to_datetime
+from util.dateutils import date_to_datetime, excel_number_to_datetime
 from util.monthmath import Month
 from brokerage.brokerage_model import MatrixQuote
 from util.units import unit_registry
@@ -99,7 +99,14 @@ class SFEMatrixParser(QuoteParser):
             service_type = self.reader.get(0, row, self.SERVICE_TYPE_COL,
                                            basestring)
             _assert_true(service_type in self._SERVICE_NAMES)
-            start_from = self.reader.get(0, row, self.START_DATE_COL, datetime)
+            start_from = self.reader.get(0, row, self.START_DATE_COL, object)
+            if isinstance(start_from, datetime):
+                pass
+            elif isinstance(start_from, int):
+                start_from = excel_number_to_datetime(start_from)
+            else:
+                raise ValidationError("start_from has unxpected type: %s %s" % (
+                    type( start_from), start_from))
             start_until = date_to_datetime((Month(start_from) + 1).first)
             rate_class = self.reader.get(0, row, self.RATE_CLASS_COL,
                                          basestring)
@@ -142,7 +149,7 @@ class SFEMatrixParser(QuoteParser):
                 # are in dollars; the ones shown in dollars are encoded as
                 # times, and i don't know how to convert those into useful
                 # numbers, so they are skipped.
-                if price == 'NA':
+                if price in ('NA', 'N/A'):
                     continue
                 elif isinstance(price, time):
                     continue
