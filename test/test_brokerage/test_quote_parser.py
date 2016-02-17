@@ -93,7 +93,7 @@ class MatrixQuoteParsersTest(TestCase):
     CONSTELLATION_FILE_PATH = join(
         DIRECTORY, 'Constellation - SMB Cost+ Matrix_Fully '
                    'Bundled_09_24_2015.xlsm')
-    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Jan 15 2016.xlsx')
+    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Feb 16 2016.xlsx')
     MAJOR_FILE_PATH = join(
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
                    'Gas Rack Rates October 27 2015.xlsx')
@@ -914,14 +914,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(4356, len(quotes))
+        self.assertEqual(7830, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         q = quotes[0]
-        self.assertEqual(datetime(2016, 2, 1), q.start_from)
-        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime(2016, 3, 1), q.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
@@ -929,7 +929,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('SFE-electric-NY-A (NiMo, NYSEG)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0575, q.price)
+        self.assertEqual(0.0593, q.price)
 
         # check volume ranges in many rows rows because SFE's units are
         # complicated
@@ -948,18 +948,6 @@ class MatrixQuoteParsersTest(TestCase):
         q = quotes[25]
         self.assertEqual(0, q.min_volume)
         self.assertEqual(150000, q.limit_volume)
-
-        q = quotes[4355]
-        self.assertEqual(datetime(2016, 7, 31), q.start_from)
-        self.assertEqual(datetime(2016, 8, 1), q.start_until)
-        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
-        self.assertEqual(36, q.term_months)
-        self.assertEqual(500000, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
-        self.assertEqual('SFE-gas-NJ-SJG ($/therm)', q.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.4625, q.price)
 
     def test_entrust(self):
         parser = EntrustMatrixParser()
