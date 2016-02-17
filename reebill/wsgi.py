@@ -9,7 +9,6 @@ from StringIO import StringIO
 
 from boto.s3.connection import S3Connection
 import cherrypy
-import mongoengine
 
 from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
