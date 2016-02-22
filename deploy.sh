@@ -71,7 +71,7 @@ delete_temp_files
 # in the Python virtualenv and the above does not install the right version
 # for no reason we can tell. this replaces the version installed above with
 # the right one.
-ssh -t billing-$env "sudo -u billing -i /bin/bash -c \"source /var/local/billing/bin/activate && pip uninstall qengine && pip install https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip\" && pip install -U pymongo==2.7.2"
+ssh -t billing-$env "sudo -u billing -i /bin/bash -c \"source /var/local/billing/bin/activate && pip uninstall mongoengine && pip install https://github.com/MongoEngine/mongoengine/archive/d77b13efcb9f096bd20f9116cebedeae8d83749f.zip\" && pip install -U pymongo==2.7.2"
 
 
 # clean up dependency repositories cloned in local working directory
