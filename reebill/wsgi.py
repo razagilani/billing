@@ -9,7 +9,6 @@ from StringIO import StringIO
 
 from boto.s3.connection import S3Connection
 import cherrypy
-import mongoengine
 
 from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
@@ -26,7 +25,7 @@ from core.pricing import FuzzyPricingModel
 from core.model import Session, UtilityAccount, Address
 from core.utilbill_loader import UtilBillLoader
 from core.bill_file_handler import BillFileHandler
-from reebill import journal, reebill_file_handler
+from reebill import reebill_file_handler
 from reebill.users import UserDAO
 from core.utilbill_processor import UtilbillProcessor
 from reebill.reebill_processor import ReebillProcessor
@@ -99,7 +98,7 @@ def db_commit(method):
 class WebResource(object):
 
     def __init__(self, config_, logger, nexus_util, users_dao, payment_dao,
-                 state_db, bill_file_handler, journal_dao, splinter,
+                 state_db, bill_file_handler, splinter,
                  rb_file_handler, bill_mailer, ree_getter, utilbill_views,
                  utilbill_processor, reebill_processor):
         self.config = config_
@@ -109,7 +108,6 @@ class WebResource(object):
         self.payment_dao = payment_dao
         self.state_db = state_db
         self.bill_file_handler = bill_file_handler
-        self.journal_dao = journal_dao
         self.splinter = splinter
         self.reebill_file_handler = rb_file_handler
         self.bill_mailer = bill_mailer
@@ -241,9 +239,6 @@ class AccountsResource(RESTResource):
                 billing_address, service_address, row['template_account'],
                 row['utility_account_number'], row['payee'])
 
-        journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
-                row['account'])
-
         count, result = self.utilbill_views.list_account_status(row['account'])
         return True, {'rows': result, 'results': count}
 
@@ -364,13 +359,6 @@ class IssuableReebills(RESTResource):
                 sequence=sequence, recipients=recipient_list)
             version = self.state_db.max_version(bill['account'],
                                                 bill['sequence'])
-            journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'],
-                    bill['sequence'], version,
-                    applied_sequence=version if version!=0 else None)
-            journal.ReeBillMailedEvent.save_instance(
-                cherrypy.session['user'], bill['account'], bill['sequence'],
-                bill['recipients'])
         return self.dumps({'success': True, 'issued': bills})
 
 
@@ -392,13 +380,6 @@ class IssuableReebills(RESTResource):
             account, sequence = bill['account'], bill['sequence']
             version = self.state_db.max_version(account,
                                                 sequence)
-            journal.ReeBillIssuedEvent.save_instance(
-                cherrypy.session['user'], account,
-                sequence, version,
-                applied_sequence=version if version!=0 else None)
-            journal.ReeBillMailedEvent.save_instance(
-                cherrypy.session['user'], account, sequence,
-                summary_recipient)
         return self.dumps({'success': True, 'issued': bills})
 
     @cherrypy.expose
@@ -449,14 +430,6 @@ class IssuableReebills(RESTResource):
         reebills = self.reebill_processor.issue_summary_for_bills(
             bills, summary_recipient)
 
-        # journal event for corrections is not logged
-        user = cherrypy.session['user']
-        for reebill in reebills:
-            journal.ReeBillIssuedEvent.save_instance(
-                user, reebill.get_account(), reebill.sequence, reebill.version)
-            journal.ReeBillMailedEvent.save_instance(
-                user, reebill.get_account(), reebill.sequence,
-                reebill.email_recipient)
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -467,14 +440,6 @@ class IssuableReebills(RESTResource):
         bills = self.reebill_processor.issue_processed_and_mail()
         for bill in bills:
             version = self.state_db.max_version(bill['account'], bill['sequence'])
-            journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'], bill['sequence'],
-                    version, applied_sequence=bill['sequence']
-                if version != 0 else None)
-            if version == 0:
-                journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'],
-                        bill['sequence'], bill['mailto'])
         return self.dumps({'success': True,
                     'issued': bills})
 
@@ -503,16 +468,6 @@ class ReebillsResource(RESTResource):
         reebill = self.reebill_processor.roll_reebill(
             account, start_date=start_date, estimate=estimate)
 
-        journal.ReeBillRolledEvent.save_instance(
-            cherrypy.session['user'], account, reebill.sequence)
-        # Process.roll includes attachment
-        # TODO "attached" is no longer a useful event;
-        # see https://www.pivotaltracker.com/story/show/55044870
-        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-            reebill.get_account(), reebill.sequence, reebill.version)
-        journal.ReeBillBoundEvent.save_instance(
-            cherrypy.session['user'],account, reebill.sequence, reebill.version)
-
         rtn = reebill.column_dict()
         rtn.update({'action': '', 'action_value': ''})
         return True, {'rows': rtn, 'results': 1}
@@ -528,8 +483,6 @@ class ReebillsResource(RESTResource):
         reebill = self.state_db.get_reebill(account, sequence)
         if action == 'bindree':
             self.reebill_processor.bind_renewable_energy(account, sequence)
-            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence, r.version)
             rtn = reebill.column_dict()
 
         elif action == 'render':
@@ -547,9 +500,6 @@ class ReebillsResource(RESTResource):
             reebill = self.state_db.get_reebill(account, sequence)
             self.reebill_processor.mail_reebill("email_template.html", "A copy of your bill", reebill, recipient_list)
 
-            # journal mailing of every bill
-            journal.ReeBillMailedEvent.save_instance(
-                cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
         elif action == 'updatereadings':
@@ -562,9 +512,6 @@ class ReebillsResource(RESTResource):
 
         elif action == 'newversion':
             rb = self.reebill_processor.new_version(account, sequence)
-
-            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    rb.get_account(), rb.sequence, rb.version)
             rtn = rb.column_dict()
 
         elif not action:
@@ -606,10 +553,6 @@ class ReebillsResource(RESTResource):
         sequence, account = r.sequence, r.get_account()
         deleted_version = self.reebill_processor.delete_reebill(account,
                                                                 sequence)
-        # deletions must all have succeeded, so journal them
-        journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
-            account, sequence, deleted_version)
-
         return True, {}
 
     @cherrypy.expose
@@ -733,10 +676,6 @@ class UtilBillResource(RESTResource):
     def handle_delete(self, utilbill_id, account, *vpath, **params):
         utilbill, deleted_path = self.utilbill_processor.delete_utility_bill_by_id(
             utilbill_id)
-        journal.UtilBillDeletedEvent.save_instance(
-            cherrypy.session['user'], account,
-            utilbill.period_start, utilbill.period_end,
-            utilbill.get_service(), deleted_path)
         return True, {}
 
 
@@ -902,23 +841,6 @@ class PaymentsResource(RESTResource):
     def handle_delete(self, payment_id, *vpath, **params):
         self.payment_dao.delete_payment(payment_id)
         return True, {}
-
-
-class JournalResource(RESTResource):
-
-    def handle_get(self, account, *vpath, **params):
-        journal_entries = self.journal_dao.load_entries(account)
-        return True, {'rows': journal_entries,  'results': len(journal_entries)}
-
-    def handle_post(self,  *vpath, **params):
-        account = cherrypy.request.json['account']
-        sequence = cherrypy.request.json['sequence']
-        sequence = sequence if sequence else None
-        message = cherrypy.request.json['msg']
-        note = journal.Note.save_instance(cherrypy.session['user'], account,
-                                          message, sequence=sequence)
-        return True, {'rows': note.to_dict(), 'results': 1}
-
 
 class PreferencesResource(RESTResource):
 
@@ -1128,16 +1050,6 @@ class ReebillWSGI(object):
         # create a FuzzyPricingModel
         fuzzy_pricing_model = FuzzyPricingModel(utilbill_loader)
 
-        # configure journal:
-        # create a MongoEngine connection "alias" named "journal" with which
-        # journal.Event subclasses (in journal.py) can associate themselves by
-        # setting meta = {'db_alias': 'journal'}.
-        mongoengine.connect(
-            config.get('mongodb', 'database'),
-            host=config.get('mongodb', 'host'),
-            port=config.getint('mongodb', 'port'), alias='journal')
-        journal_dao = journal.JournalDAO()
-
         # create a Splinter
         if config.get('reebill', 'mock_skyliner'):
             splinter = mock_skyliner.MockSplinter()
@@ -1184,126 +1096,120 @@ class ReebillWSGI(object):
 
         ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
         utilbill_views = Views(state_db, bill_file_handler,
-                               nexus_util, journal_dao)
+                               nexus_util)
         utilbill_processor = UtilbillProcessor(
             fuzzy_pricing_model, bill_file_handler, logger=logger)
         reebill_processor = ReebillProcessor(
             state_db, payment_dao, nexus_util, bill_mailer,
-            rb_file_handler, ree_getter, journal_dao, logger=logger)
+            rb_file_handler, ree_getter, logger=logger)
 
         # Instantiate the object
         wsgi = cls(config, user_dao, logger)
         wsgi.accounts = AccountsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.reebills = ReebillsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.utilitybills = UtilBillResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.registers = RegistersResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.charges = ChargesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.payments = PaymentsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.reebillcharges = ReebillChargesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.supplygroups = SupplyGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.reebillversions = ReebillVersionsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.rsibindings = RSIBindingsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
-            bill_mailer, ree_getter, utilbill_views, utilbill_processor,
-            reebill_processor
-        )
-        wsgi.journal = JournalResource(
-            config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.reports = ReportsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.preferences = PreferencesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.issuable = IssuableReebills(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.suppliers = SuppliersResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.supplygroups = SupplyGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.utilities = UtilitiesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.rateclasses = RateClassesResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )
         wsgi.customergroups = CustomerGroupsResource(
             config, logger, nexus_util, user_dao, payment_dao, state_db,
-            bill_file_handler, journal_dao, splinter, rb_file_handler,
+            bill_file_handler, splinter, rb_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor
         )

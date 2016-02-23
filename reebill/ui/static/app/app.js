@@ -14,7 +14,6 @@ Ext.Ajax.request({
 
         config.preferencesPanelDisabled = data.preferences_panel_disabled;
         config.reportPanelDisabled = data.report_panel_disabled;
-        config.journalPanelDisabled = data.preferences_panel_disabled;
         config.aboutPanelDisabled = data.about_panel_disabled;
         config.chargesPanelDisabled = data.charges_panel_disabled;
         config.billPeriodsPanelDisabled = data.bill_periods_panel_disabled;
@@ -39,7 +38,6 @@ Ext.Ajax.request({
                 'BottomBar',
                 'Charges',
                 'IssuableReebills',
-                'Journal',
                 'Payments',
                 'Preferences',
                 'ReebillCharges',
@@ -65,7 +63,6 @@ Ext.Ajax.request({
                 'EstimatedRevenue',
                 'IssuableReebills',
                 'IssuableReebillsMemory',
-                'JournalEntries',
                 'Payments',
                 'Preferences',
                 'Reconciliations',

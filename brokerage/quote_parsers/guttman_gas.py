@@ -66,7 +66,7 @@ class GuttmanGas(QuoteParser):
                                               valid_from_row, 'C',
                                               'Published: (.*)',
                                               parse_datetime)
-
+        #TODO: set valid_until to the same day at 5:00 PM = 22:00 UTC (in the winter)
         valid_until = valid_from + timedelta(days=1)
 
         for row in xrange(self.RATE_START_ROW,
