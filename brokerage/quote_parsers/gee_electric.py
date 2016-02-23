@@ -12,6 +12,7 @@ from tablib import formats
 
 from dateutil.relativedelta import relativedelta
 
+from brokerage.validation import ElectricValidator
 from core.exceptions import ValidationError
 from util.units import unit_registry
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
@@ -237,6 +238,7 @@ class GEEMatrixParser(QuoteParser):
                         for rate_class_id in rate_class_ids:
                             if 'custom' not in quote.rate_class_alias.lower():
                                 quote = quote.clone()
+                                quote._validator = ElectricValidator()
                                 quote.rate_class_id = rate_class_id
                                 yield quote
                     else:
