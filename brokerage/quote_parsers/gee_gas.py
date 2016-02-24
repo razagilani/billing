@@ -1,9 +1,9 @@
 from tablib import formats
 
 from brokerage.pdf_reader import PDFReader
-from brokerage.quote_parser import QuoteParser, SpreadsheetReader, \
-    StartEndCellDateGetter
-from brokerage.validation import _assert_true
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
+from brokerage.spreadsheet_reader import SpreadsheetReader, TabulaConverter
+from brokerage.validation import _assert_true, _assert_equal
 from core.exceptions import ValidationError
 from core.model.model import GAS
 from util.dateutils import date_to_datetime
@@ -253,3 +253,55 @@ class GEEGasPDFParser(QuoteParser):
         # Yield only distinct quotes.
         for quote in filtered_quotes:
             yield quote
+
+
+class GEEGasNYParser(QuoteParser):
+    NAME = 'geegasny'
+
+    # reader = PDFReader(tolerance=30)
+    #
+    # UTILITY_COL = 35
+    # LOAD_TYPE_COL = 90
+    # RATE_CLASS_COL = 158
+    # PRICE_START_ROW = 432
+    #
+    # def _extract_quotes(self):
+    #     y = self.PRICE_START_ROW
+    #     _, bottom = self.reader.find_element_coordinates(
+    #             1, 0, 0, '.*Start is for Renewal accounts.*')
+    #     while y > bottom:
+    #         print '***************', y
+    #         utility_col_block, _, y0, _, y1 = self.reader.get_with_coordinates(
+    #                 1, y, self.UTILITY_COL, basestring)
+    #         block_height = abs(y1 - y0)
+    #         utilities = utility_col_block.split('\n')
+    #         if utilities[0] == 'Utility':
+    #             utilities = utilities[1:]
+    #
+    #         # TODO load type is not always a separate block from utility
+    #         load_type_block, _, _, _, _ = self.reader.get_with_coordinates(
+    #                 1, y, self.LOAD_TYPE_COL, basestring)
+    #         load_types = load_type_block.split('\n')
+    #         if load_types[0] == 'Load Type Rate Class':
+    #             load_types = load_types[1:]
+    #
+    #         rate_class_block, _, _, _, _ = self.reader.get_with_coordinates(
+    #                 1, y, self.RATE_CLASS_COL, basestring)
+    #         print repr(rate_class_block)
+    #
+    #         for utility, load_type in zip(utilities, load_types):
+    #             if utility == 'Utility':
+    #                 continue
+    #             # TODO: what to do when utility is "Con Edison Non-Heat SC2 Non Heat"
+    #             print 'U', repr(utility), 'L', repr(load_type)
+    #         print 'L', repr(load_type_block)
+    #
+    #         y -= block_height
+
+    reader = SpreadsheetReader(formats.csv)
+
+    def _preprocess_file(self, quote_file, file_name):
+        return TabulaConverter().convert_file(quote_file, file_name)
+
+    def _extract_quotes(self):
+        pass
