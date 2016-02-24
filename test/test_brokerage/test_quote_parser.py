@@ -8,6 +8,7 @@ from nose.plugins.attrib import attr
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
+from brokerage.quote_parsers.gee_gas import GEEGasNYParser
 from brokerage.quote_parsers.guttman_electric import GuttmanElectric
 from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (
@@ -112,6 +113,7 @@ class MatrixQuoteParsersTest(TestCase):
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
     GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
+    GEE_GAS_PATH_NY = join(DIRECTORY, 'NY Rack Rates_2.2.2016.pdf')
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer',
                                    'Exchange_COH_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer',
@@ -740,7 +742,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
-    def test_gee_gas(self):
+    def test_gee_gas_nj(self):
         parser = GEEGasPDFParser()
 
         with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:
@@ -775,6 +777,15 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes_nj[-1].start_from, datetime(2016, 4, 1))
         self.assertEqual(quotes_nj[-1].start_until, datetime(2016, 5, 1))
         self.assertEqual(quotes_nj[-1].valid_from, datetime(2016, 1, 7))
+
+    def test_gee_gas_ny(self):
+        parser = GEEGasNYParser()
+
+        with open(self.GEE_GAS_PATH_NY, 'rb') as pdf_file:
+            parser.load_file(pdf_file, file_name=basename(self.GEE_GAS_PATH_NY))
+            parser.validate()
+            quotes = list(parser.extract_quotes())
+
 
     def test_gee_electric(self):
         parser = GEEMatrixParser()
