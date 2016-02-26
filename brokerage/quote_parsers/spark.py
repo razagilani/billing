@@ -2,11 +2,11 @@ from datetime import datetime
 
 from tablib import formats
 
+from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader, \
     SimpleCellDateGetter
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
-from brokerage.brokerage_model import MatrixQuote
 from util.units import unit_registry
 
 
@@ -33,29 +33,27 @@ class SparkMatrixParser(QuoteParser):
         (SHEET, HEADER_ROW, VOLUME_RANGE_COL, 'ANNUAL USAGE.*'),
     ]
 
+    date_getter = SimpleCellDateGetter(SHEET, 3, 'A', None)
+
     ROUNDING_DIGITS = 4
-
-    date_getter = SimpleCellDateGetter(0, 3, 'A', None)
-
-    def __init__(self):
-        super(SparkMatrixParser, self).__init__()
 
     def _extract_quotes(self):
         for row in xrange(self.HEADER_ROW + 1,
                           self.reader.get_height(self.SHEET) + 1):
             rate_class_alias = '-'.join(self.reader.get(
-                self.SHEET, row, c, basestring) for c in self.RCA_COLS)
-            start_from = self.reader.get(self.SHEET, row, self.START_COL,
-                                         datetime)
+                self.SHEET, row, col, basestring) for col in self.RCA_COLS)
+            start_from = self.reader.get(
+                self.SHEET, row, self.START_COL, datetime)
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             min_vol, limit_vol = self._extract_volume_range(
                 self.SHEET, row, self.VOLUME_RANGE_COL,
                 '(?P<low>[\d,]+) to (?P<high>[\d,]+)', fudge_low=True,
                 expected_unit=unit_registry.kWh)
+
             for col in self.PRICE_COLS:
-                term = self.reader.get_matches(self.SHEET, self.HEADER_ROW,
-                                               col, '(\d+) MTHS', int)
+                term = self.reader.get_matches(
+                    self.SHEET, self.HEADER_ROW, col, '(\d+) MTHS', int)
                 price = self.reader.get(self.SHEET, row, col, float)
 
                 for rate_class_id in self.get_rate_class_ids_for_alias(
@@ -74,4 +72,3 @@ class SparkMatrixParser(QuoteParser):
                     if rate_class_id is not None:
                         quote.rate_class_id = rate_class_id
                     yield quote
-
