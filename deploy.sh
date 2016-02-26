@@ -38,13 +38,6 @@ params=()
 params[1]="billing-$env $env"
 #params[2]="worker-$env worker-$env"
 
-## clone private repositories for dependencies inside the billing repository working
-## directory, because remote hosts don't have access to Bitbucket
-## (for now, there is only one)
-#rm -rf postal
-#git clone ssh://git@bitbucket.org/skylineitops/postal.git
-
-
 # fix problem with old packaves in ReeBill virtualenv by deleting
 # existing files. if we could do this for all hosts we would.
 ssh -t billing-$env "sudo rm -rf /var/local/*"
@@ -67,8 +60,6 @@ for param in "${params[@]}"; do
 done
 delete_temp_files
 
-# clean up dependency repositories cloned in local working directory
-rm -rf postal
 
 # run database upgrade script if there is one
 # (this could be done from any host)

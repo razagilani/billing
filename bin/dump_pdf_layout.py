@@ -8,7 +8,8 @@ from util.pdf import PDFUtil
 
 
 @click.command(
-    help='Print out coordinates and contents of text elements in a PDF file.')
+    help='Print out coordinates and contents of text elements in a PDF file '
+         '(x0, y0, x1, y1).')
 @click.argument('file_path')
 @click.option('--round-coordinates', '-r', is_flag=True,
               help='Round all coordinates to integers.')
@@ -25,6 +26,7 @@ def main(file_path, round_coordinates=False):
                     x0, y0, x1, y1 = (int(num) for num in (x0, y0, x1, y1))
                 print '%s,%s %s,%s %s: ' % (
                     x0, y0, x1, y1, repr(element.get_text()))
+        print ''
 
 if __name__ == '__main__':
     main()
