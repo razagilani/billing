@@ -119,7 +119,7 @@ class QuoteDAO(object):
         matching_formats = [f for f in supplier.matrix_formats
                             if f.matrix_attachment_name is None
                             or re.match(f.matrix_attachment_name, file_name,
-                                        re.IGNORECASE)]
+                                        re.IGNORECASE, re.DOTALL)]
         if len(matching_formats) == 0:
             raise UnknownFormatError('No formats matched file name "%s"' %
                                      file_name)
