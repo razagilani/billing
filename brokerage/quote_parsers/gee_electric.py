@@ -12,6 +12,7 @@ from tablib import formats
 
 from dateutil.relativedelta import relativedelta
 
+from brokerage.validation import ElectricValidator
 from core.exceptions import ValidationError
 from util.units import unit_registry
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
@@ -47,7 +48,9 @@ class GEEPriceQuote(object):
             limit_volume=limit_volume,
             purchase_of_receivables=False,
             rate_class_alias=self.fetch_alias(),
-            service_type='electric'
+            service_type='electric',
+            file_reference='%s, %s, %s, %s' % (
+                self.matrix_parser.file_name, self.sheet, self.row, self.col)
         )
 
     def fetch_price(self):
@@ -234,6 +237,8 @@ class GEEMatrixParser(QuoteParser):
                         rate_class_ids = self.get_rate_class_ids_for_alias(quote.rate_class_alias)
                         for rate_class_id in rate_class_ids:
                             if 'custom' not in quote.rate_class_alias.lower():
+                                quote = quote.clone()
+                                quote._validator = ElectricValidator()
                                 quote.rate_class_id = rate_class_id
                                 yield quote
                     else:
