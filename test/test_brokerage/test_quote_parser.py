@@ -74,7 +74,7 @@ class QuoteParserTest(TestCase):
                                                         (int, int))
 
 class MatrixQuoteParsersTest(TestCase):
-    """Deprecated. Each test should go in their own file in the
+    """Deprecated. Each test should go in its own file in the
     "test_quote_parsers" directory and should use Pytest.
     """
 
