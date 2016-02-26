@@ -1,20 +1,19 @@
-from datetime import datetime
 import re
+from datetime import datetime
 from os.path import join, basename
-from unittest import TestCase, skip
-from mock import Mock
+from unittest import TestCase
 
-from nose.plugins.attrib import attr
+from mock import Mock
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.guttman_electric import GuttmanElectric
-from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (
-    DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
+from brokerage.quote_parsers.guttman_electric import GuttmanElectric
+from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
@@ -75,6 +74,10 @@ class QuoteParserTest(TestCase):
                                                         (int, int))
 
 class MatrixQuoteParsersTest(TestCase):
+    """Deprecated. Each test should go in their own file in the
+    "test_quote_parsers" directory and should use Pytest.
+    """
+
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY,
