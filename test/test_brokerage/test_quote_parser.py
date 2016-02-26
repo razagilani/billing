@@ -74,14 +74,11 @@ class QuoteParserTest(TestCase):
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
 
-
 class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY,
                          'AEP Energy Matrix 3.0 2015-11-12.xls')
-    DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
-                                   'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
     USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20160205.xlsx')
     USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
@@ -187,36 +184,6 @@ class MatrixQuoteParsersTest(TestCase):
 
     def tearDown(self):
         clear_db()
-
-    def test_direct_energy(self):
-        parser = DirectEnergyMatrixParser()
-        self.assertEqual(0, parser.get_count())
-
-        with open(self.DIRECT_ENERGY_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
-        parser.validate()
-        self.assertEqual(0, parser.get_count())
-
-        quotes = list(parser.extract_quotes())
-        self.assertEqual(106554, len(quotes))
-        self.assertEqual(106554, parser.get_count())
-        for quote in quotes:
-            quote.validate()
-
-        # since there are so many, only check one
-        q1 = quotes[0]
-        self.assertEqual(datetime(2015, 5, 1), q1.start_from)
-        self.assertEqual(datetime(2015, 6, 1), q1.start_until)
-        self.assertEqual(6, q1.term_months)
-        self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 5, 4), q1.valid_from)
-        self.assertEqual(datetime(2015, 5, 5), q1.valid_until)
-        self.assertEqual(0, q1.min_volume)
-        self.assertEqual(75000, q1.limit_volume)
-        self.assertEqual('Direct-electric-CT-CLP-37, R35--', q1.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
-        self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(.07036, q1.price)
 
     def test_usge_electric(self):
         parser = USGEElectricMatrixParser()
