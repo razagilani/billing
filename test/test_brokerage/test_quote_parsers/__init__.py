@@ -27,7 +27,7 @@ def quotes(request):
     assert parser.get_count() == 0
     quote_list = list(parser.extract_quotes())
 
-    # TODO: maybe this code belongs in a test method rather than setUp
+    # TODO: maybe this code belongs in an actual test method
     assert parser.get_count() == request.module.EXPECTED_COUNT
     assert len(quote_list) == request.module.EXPECTED_COUNT
     for quote in quote_list:
