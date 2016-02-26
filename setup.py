@@ -51,7 +51,7 @@ install_requires = [
     'regex==2015.7.19',
     'requests==0.14.0',
     'simplejson==2.6.0',
-    'tablib==0.10.0',
+    'tablib==0.11.2',
     'tsort==0.0.1',
     'wsgiref==0.1.2',
     'xkcdpass==1.2.5',
