@@ -17,6 +17,7 @@ from .sfe import SFEMatrixParser
 from .gee_electric import GEEMatrixParser
 from .volunteer import VolunteerMatrixParser
 from .gee_gas import GEEGasPDFParser
+from .gee_gas_ny import GEEGasNYParser
 from .spark import SparkMatrixParser
 
 # mapping of each matrix format's primary key in the database to its
@@ -39,4 +40,5 @@ CLASSES_FOR_FORMATS = {
     17: GuttmanGas,
     18: GuttmanElectric,
     19: SparkMatrixParser,
+    20: GEEGasNYParser,
 }
