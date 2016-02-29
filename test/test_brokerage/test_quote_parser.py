@@ -8,7 +8,7 @@ from nose.plugins.attrib import attr
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.gee_gas import GEEGasNYParser
+from brokerage.quote_parsers.gee_gas_ny import GEEGasNYParser
 from brokerage.quote_parsers.guttman_electric import GuttmanElectric
 from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (

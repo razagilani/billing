@@ -74,7 +74,9 @@ class SpreadsheetReader(Reader):
         elif file_format in [formats.csv]:
             # TODO: this only works on one sheet. how to handle multiple sheets?
             dataset = Dataset()
-            file_format.import_set(dataset, quote_file.read(), headers=False)
+            # headers=True is used to maintain the same row numbering as
+            # spreadsheets, where the first row is 0
+            file_format.import_set(dataset, quote_file.read(), headers=True)
             result.add_sheet(dataset)
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
