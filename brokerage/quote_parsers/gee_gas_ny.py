@@ -8,7 +8,7 @@ from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.spreadsheet_reader import TabulaConverter
-from brokerage.validation import _assert_true
+from brokerage.validation import _assert_true, ValidationError
 from core.model.model import GAS
 from util.dateutils import date_to_datetime, parse_date
 from util.monthmath import Month
@@ -20,8 +20,19 @@ class GEEGasNYParser(QuoteParser):
 
     SHEET = 0
 
-    RCA_START_COL = 'A'
-    PRICE_COLS = SpreadsheetReader.column_range('B', 'G')
+    # column of rate class alias, which sometimes also has date text appended
+    # to the end
+    RCA_COL = 'A'
+
+    # column containing a start date string when not appended to the end of
+    # RCA_COL
+    START_COL = 'B'
+
+    # number of columns to be used for price numbers (and some term length
+    # numbers). the start of this block of columns may vary, and some columns
+    # may be empty, but we only care about the combined text of all of them.
+    PRICE_COLS_MAX_WIDTH = 8
+
     HEADER_ROW = 4
     TERM_ROW = 5
 
@@ -30,7 +41,7 @@ class GEEGasNYParser(QuoteParser):
        '.*Start is for Renewal accounts.*',
        'Natural Gas Rack Rates',
         r'.*(\d+/\d+/\d+).*',
-        'Utility Load Type Rate Class Start Date',
+        'Utility Load Type.*',
         r'^\w*$',
     ]
 
@@ -45,14 +56,8 @@ class GEEGasNYParser(QuoteParser):
             sheet, row, col, basestring) for col in columns)
 
     def _extract_quotes(self):
-        term_text = self._get_joined_row_text(self.SHEET, self.PRICE_COLS,
-                                     self.TERM_ROW)
-
-        # integer strings in the term column (6, 12, 18, 24)--other strings
-        # are "Term" and "Price"
-        terms = (s for s in term_text.split() if re.match('\d+', s))
-
-        for row in xrange(self.TERM_ROW + 1, 52): # TODO
+        for row in xrange(self.TERM_ROW + 1, self.reader.get_height(
+                self.SHEET)): # TODO
             if any(re.match(
                     pattern, self.reader.get(self.SHEET, row, 'A', basestring))
                    for pattern in self.SKIP_PATTERNS):
@@ -61,21 +66,42 @@ class GEEGasNYParser(QuoteParser):
                 continue
 
             # extract rate class alias and date from first column
-            rca, month_name, year = self.reader.get_matches(
-                self.SHEET, 6, self.RCA_START_COL, '(.*) (\w+)-(\d\d)\s*',
-                (unicode, unicode, int))
+            print 'ROW', row, repr(self.reader.get(self.SHEET, row,
+                                                   self.RCA_COL, basestring))
+            try:
+                # in rows 5-47, rate class alias and start date are smashed
+                # together in the same column
+                rca, month_name, year = self.reader.get_matches(
+                    self.SHEET, row, self.RCA_COL, '(.*) (\w+)-(\d\d)\s*',
+                    (unicode, unicode, int))
+                price_cols = self.reader.column_range('B', 'J')
+            except ValidationError:
+                # in rows 53-68, rate class alias and start date are in
+                # separate columns, so all other columns are shifted to the
+                # right by 1.
+                rca = self.reader.get(self.SHEET, row, self.RCA_COL,
+                                      basestring)
+                month_name, year = self.reader.get_matches(
+                    self.SHEET, row, self.START_COL,
+                    '(\w+)-(\d\d)\s*', (unicode, int))
+                price_cols = self.reader.column_range('C', 'J')
             month = next(i for i, abbr in enumerate(calendar.month_abbr)
-                               if abbr.lower() == month_name.lower())
+                         if abbr.lower() == month_name.lower())
             start_from = date(2000 + year, month, 1)
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            print row, 'RCA', rca
+            print row, 'RCA', rca, 'MONTH', month_name, 'YEAR', year
+
+            term_text = self._get_joined_row_text(self.SHEET, price_cols,
+                                                  self.TERM_ROW)
+
+            # integer strings in the term column (6, 12, 18, 24)--other strings
+            # are "Term" and "Price"
+            terms = (s for s in term_text.split() if re.match('\d+', s))
 
             # look at column arrangement in the PDF file to understand this
             price_and_term_strs = self._get_joined_row_text(
-                self.SHEET, self.PRICE_COLS, row).split()
+                self.SHEET, price_cols, row).split()
             print '***', price_and_term_strs, len(price_and_term_strs)
-            if price_and_term_strs == []:
-                continue
             prices_1 = price_and_term_strs[0:4]
             ss_term_1 = price_and_term_strs[4]
             ss_price_1 = price_and_term_strs[5]
