@@ -292,14 +292,14 @@ class AccountsResource(RESTResource):
             self.reebill_processor.update_late_charge_rate(
                 row['utility_account_id'], row['late_charge_rate']
             )
-        if set(row).issubset({'ba_addressee', 'ba_city', 'ba_postal_code',
-            'ba_state','ba_street', 'utility_account_id'}):
-            ba_addressee = row['ba_addressee'] if 'ba_addressee' in row else ''
-            ba_city = row['ba_city'] if 'ba_city' in row else ''
-            ba_postal_code= row['ba_postal_code'] if 'ba_postal_code' in row \
+        if {'ba_addressee', 'ba_city', 'ba_postal_code', 'ba_state',
+            'ba_street'}.issubset(set(row)):
+            ba_addressee = row['ba_addressee'] if row['ba_addressee'] else ''
+            ba_city = row['ba_city'] if row['ba_city'] else ''
+            ba_postal_code= row['ba_postal_code'] if row['ba_postal_code'] \
                 else ''
-            ba_state= row['ba_state'] if 'ba_state' in row else ''
-            ba_street = row['ba_street'] if 'ba_street' in row else ''
+            ba_state= row['ba_state'] if row['ba_state'] else ''
+            ba_street = row['ba_street'] if row['ba_street'] else ''
             self.utilbill_processor.update_fb_billing_address(
                                             row['utility_account_id'],
                                             ba_addressee,
@@ -308,13 +308,13 @@ class AccountsResource(RESTResource):
                                             ba_state,
                                             ba_street)
 
-        if set(row).issubset({'sa_addressee', 'sa_city', 'sa_postal_code', 'sa_state',
-            'sa_street', 'utility_account_id'}):
-            sa_addressee = row['sa_addressee'] if 'sa_addressee' in row else ''
-            sa_city = row['sa_city'] if 'sa_city' in row else ''
-            sa_postal_code= row['sa_postal_code'] if 'sa_postal_code' in row else ''
-            sa_state= row['sa_state'] if 'sa_state' in row else ''
-            sa_street = row['sa_street'] if 'sa_street' in row else ''
+        if {'sa_addressee', 'sa_city', 'sa_postal_code', 'sa_state',
+            'sa_street'}.issubset(set(row)):
+            sa_addressee = row['sa_addressee'] if row['sa_addressee'] else ''
+            sa_city = row['sa_city'] if row['sa_city'] else ''
+            sa_postal_code= row['sa_postal_code'] if row['sa_postal_code'] else ''
+            sa_state= row['sa_state'] if row['sa_state'] else ''
+            sa_street = row['sa_street'] if row['sa_street'] else ''
             self.utilbill_processor.update_fb_service_address(
                                             row['utility_account_id'],
                                             sa_addressee,
