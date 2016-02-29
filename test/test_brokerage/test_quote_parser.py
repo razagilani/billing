@@ -9,7 +9,6 @@ from nose.plugins.attrib import attr
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
-from brokerage.quote_parsers.gee_gas_ny import GEEGasNYParser
 from brokerage.quote_parsers.guttman_electric import GuttmanElectric
 from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (
@@ -754,15 +753,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(quotes_nj[-1].start_from, datetime(2016, 4, 1))
         self.assertEqual(quotes_nj[-1].start_until, datetime(2016, 5, 1))
         self.assertEqual(quotes_nj[-1].valid_from, datetime(2016, 1, 7))
-
-    def test_gee_gas_ny(self):
-        parser = GEEGasNYParser()
-
-        with open(self.GEE_GAS_PATH_NY, 'rb') as pdf_file:
-            parser.load_file(pdf_file, file_name=basename(self.GEE_GAS_PATH_NY))
-            parser.validate()
-            quotes = list(parser.extract_quotes())
-
 
     def test_gee_electric(self):
         parser = GEEMatrixParser()

@@ -12,6 +12,7 @@ from brokerage.validation import ValidationError
 from core.model.model import GAS
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
+from util.units import unit_registry
 
 
 class GEEGasNYParser(QuoteParser):
@@ -46,6 +47,9 @@ class GEEGasNYParser(QuoteParser):
     ]
 
     date_getter = SimpleCellDateGetter(SHEET, 2, 'A', '(.*)')
+
+    # TODO
+    EXPECTED_ENERGY_UNIT = 10 * unit_registry.therm
 
     def _preprocess_file(self, quote_file, file_name):
         return TabulaConverter().convert_file(quote_file, file_name)
