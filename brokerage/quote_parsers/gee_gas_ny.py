@@ -48,9 +48,6 @@ class GEEGasNYParser(QuoteParser):
 
     date_getter = SimpleCellDateGetter(SHEET, 2, 'A', '(.*)')
 
-    # TODO
-    EXPECTED_ENERGY_UNIT = 10 * unit_registry.therm
-
     def _preprocess_file(self, quote_file, file_name):
         return TabulaConverter().convert_file(quote_file, file_name)
 
@@ -112,8 +109,8 @@ class GEEGasNYParser(QuoteParser):
             ss_term_2 = price_and_term_strs[10]
             ss_price_2 = price_and_term_strs[11]
 
-            # convert to appropriate types
-            all_prices_and_terms = ((float(p), int(t)) for p, t in
+            # convert to appropriate types and units (price is in $/10 therm)
+            all_prices_and_terms = ((float(p) / 10., int(t)) for p, t in
                 zip(prices_1, terms) + [(ss_price_1, ss_term_1)] +
                 zip(prices_2, terms) + [(ss_price_2, ss_term_2)])
 
