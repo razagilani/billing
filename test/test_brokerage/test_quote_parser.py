@@ -15,6 +15,8 @@ from brokerage.quote_parsers import (
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
+
+from brokerage.quote_parsers.spark import SparkMatrixParser
 from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
@@ -128,6 +130,7 @@ class MatrixQuoteParsersTest(TestCase):
                                     'Exchange_VEDO_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_PECO = join(DIRECTORY, 'volunteer',
                                     'PECO EXCHANGE_2015 12-7-15.pdf')
+    SPARK_FILE_PATH = join(DIRECTORY, 'Spark CUSTOM_LED_MATRIX.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -175,7 +178,10 @@ class MatrixQuoteParsersTest(TestCase):
             'GEE-electric-ConEd-J-SC-02',
 
             # Volunteer
-            'Volunteer-gas-COLUMBIA GAS of OHIO (COH)'
+            'Volunteer-gas-COLUMBIA GAS of OHIO (COH)',
+
+            # Spark
+            'NJ-PSEG-PSEG-GLP'
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -1258,3 +1264,42 @@ class MatrixQuoteParsersTest(TestCase):
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
         self.assertEqual(4.6, q.price)
+
+    def test_spark(self):
+        parser = SparkMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.SPARK_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(60 * 5, len(quotes))
+        for quote in quotes:
+            quote.validate()
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(3, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2016, 1, 25), q.valid_from)
+        self.assertEqual(datetime(2016, 1, 26), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(50000, q.limit_volume)
+        self.assertEqual('NJ-PSEG-PSEG-GLP', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(.1097, q.price)
+
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 5, 1), q.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q.start_until)
+        self.assertEqual(36, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2016, 1, 25), q.valid_from)
+        self.assertEqual(datetime(2016, 1, 26), q.valid_until)
+        self.assertEqual(2e5, q.min_volume)
+        self.assertEqual(1e6, q.limit_volume)
+        self.assertEqual('NY-CONED-ZONE J-SC9', q.rate_class_alias)
+        self.assertEqual(.0766, q.price)

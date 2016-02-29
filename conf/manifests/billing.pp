@@ -191,6 +191,10 @@ class base::allalliases {
     mailalias { 'matrix-guttmanenergy':
         ensure    => present,
         recipient => "|${receive_matrix_email_script}"
+    },
+    mailalias { 'matrix-spark':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
     }
 }
 include base::allalliases
