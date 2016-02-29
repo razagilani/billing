@@ -34,8 +34,9 @@ class GEEGasNYParser(QuoteParser):
     # may be empty, but we only care about the combined text of all of them.
     PRICE_COLS_MAX_WIDTH = 8
 
-    HEADER_ROW = 4
-    TERM_ROW = 5
+    # the first row matching this pattern is the "header", which means the
+    # term labels are the 1 below and prices start 2 beloe
+    HEADER_ROW_PATTERN = 'Utility Load Type.*'
 
     # if column A matches any of these, the row does not contain quotes
     SKIP_PATTERNS = [
@@ -43,6 +44,8 @@ class GEEGasNYParser(QuoteParser):
        'Natural Gas Rack Rates',
         r'.*(\d+/\d+/\d+).*',
         'Utility Load Type.*',
+        r'^Rate\w*',
+        r'^Class\w*',
         r'^\w*$',
     ]
 
@@ -53,12 +56,22 @@ class GEEGasNYParser(QuoteParser):
 
     # TODO move to Reader
     def _get_joined_row_text(self, sheet, columns, row):
-        return ''.join(self.reader.get(
-            sheet, row, col, basestring) for col in columns)
+        return ''.join(
+            self.reader.get(sheet, row, col, basestring) for col in columns
+            if self.reader.col_letter_to_index(col) <
+            self.reader.get_width(sheet))
 
     def _extract_quotes(self):
-        for row in xrange(self.TERM_ROW + 1,
-                          self.reader.get_height(self.SHEET)):
+        # find header row; term row should be the next one
+        try:
+            header_row = next(row for row in xrange(1, 10) if re.match(
+                self.HEADER_ROW_PATTERN, self.reader.get(
+                    self.SHEET, row, 'A', basestring)))
+        except StopIteration:
+            raise ValidationError("Header row not found")
+        term_row = header_row + 1
+
+        for row in xrange(term_row, self.reader.get_height(self.SHEET)):
             # skip row if it is known not to contain quotes
             if any(re.match(
                     pattern, self.reader.get(self.SHEET, row, 'A', basestring))
@@ -94,7 +107,7 @@ class GEEGasNYParser(QuoteParser):
             # an some parts of this row are column headers that can be skipped).
             # these should look like: 6, 12, 18, 24, 6, 12, 18, 24
             term_text = self._get_joined_row_text(
-                self.SHEET, price_cols, self.TERM_ROW)
+                self.SHEET, price_cols, term_row)
             terms = (s for s in term_text.split() if re.match('\d+', s))
 
             # a block of 4 prices matching the "terms" above, 1 term and price
