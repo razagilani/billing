@@ -42,6 +42,8 @@ class SpreadsheetReader(Reader):
         or a multiple letters like (AA-AZ, BA-BZ...), case insensitive
         :return index of spreadsheet column (int)
         """
+        if isinstance(letter, int):
+            return letter
         result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
                     enumerate(reversed(letter.lower()))) - 1
         if result < 0:
@@ -74,8 +76,7 @@ class SpreadsheetReader(Reader):
         elif file_format in [formats.csv]:
             # TODO: this only works on one sheet. how to handle multiple sheets?
             dataset = Dataset()
-            # headers=True is used to maintain the same row numbering as
-            # spreadsheets, where the first row is 0
+            # headers=True is used to maintain the same
             file_format.import_set(dataset, quote_file.read(), headers=True)
             result.add_sheet(dataset)
         else:
