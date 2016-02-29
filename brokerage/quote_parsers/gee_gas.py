@@ -1,7 +1,8 @@
 from tablib import formats
 
 from brokerage.pdf_reader import PDFReader
-from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter
+from brokerage.quote_parser import QuoteParser, StartEndCellDateGetter, \
+    SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader, TabulaConverter
 from brokerage.validation import _assert_true, _assert_equal
 from core.exceptions import ValidationError
@@ -298,10 +299,3 @@ class GEEGasNYParser(QuoteParser):
     #
     #         y -= block_height
 
-    reader = SpreadsheetReader(formats.csv)
-
-    def _preprocess_file(self, quote_file, file_name):
-        return TabulaConverter().convert_file(quote_file, file_name)
-
-    def _extract_quotes(self):
-        pass
