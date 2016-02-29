@@ -22,7 +22,7 @@ def quotes(request):
 
     parser = request.module.PARSER_CLASS(brokerage_dao=dao)
     with open(join(DIRECTORY, request.module.FILE_NAME), 'rb') as spreadsheet:
-        parser.load_file(spreadsheet)
+        parser.load_file(spreadsheet, request.module.FILE_NAME)
 
     assert parser.get_count() == 0
     quote_list = list(parser.extract_quotes())
