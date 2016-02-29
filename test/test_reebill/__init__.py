@@ -1,4 +1,3 @@
-import mongoengine
 from core import init_model
 from test import init_test_config
 from test import create_tables
@@ -9,7 +8,6 @@ def setUpModule():
     init_test_config()
     create_tables()
     init_model()
-    mongoengine.connect('test', host='localhost', port=27017, alias='journal')
     FakeS3Manager.start()
 
 def tearDownModule():
