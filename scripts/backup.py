@@ -27,7 +27,6 @@ from core import config
 # time the database is backed up, the latest version is used automatically
 # whenever the key is accessed without specifying a version.
 BACKUP_FILE_NAME = 'billing_db.gz'
-MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 
 # force no password prompt because it shouldn't be necessary and isn't
 # entered through the subprocess stdin
@@ -36,10 +35,6 @@ CREATE_COMMAND = 'createdb %(db)s %(host)s -U %(user)s -w'
 DUMP_COMMAND = 'pg_dump %(db)s -h %(host)s -U %(user)s -w -O'
 DB_SHELL_COMMAND = 'psql %(db)s -h %(host)s -U %(user)s -w'
 TEMP_DB_NAME = 'template1'
-MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
-MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
-                        '--collection %(collection)s --host %(host)s %(filepath)s')
-MONGO_COLLECTIONS = ['journal']
 
 #ACCOUNTS_LIST = [100, 101, 102, 103, 104]
 ACCOUNTS_LIST = [1737]
@@ -174,23 +169,6 @@ def backup_main_db_local(file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
-def backup_mongo_collection(collection_name, s3_key):
-    command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
-            host=config.get('mongodb', 'host'), collection=collection_name)
-    _, stdout, check_exit_status = run_command(command)
-    write_gzipped_to_s3(stdout, s3_key, check_exit_status)
-    s3_key = _refresh_s3_key(s3_key)
-    print 'created S3 key %s/%s version %s at %s' % (
-        s3_key.bucket.name, s3_key.name, s3_key.version_id,
-        s3_key.last_modified)
-
-def backup_mongo_collection_local(collection_name, file_path):
-    command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
-            host=config.get('mongodb', 'host'), collection=collection_name)
-    _, stdout, check_exit_status = run_command(command)
-    with open(file_path,'wb') as out_file:
-        write_gzipped_to_file(stdout, out_file)
-
 def _recreate_main_db():
     '''Drop and re-create the main database because pg_dump only includes drop
     commands for tables that already exist in the backup.
@@ -253,57 +231,6 @@ def restore_main_db_local(dump_file_path):
     stdin.close()
     check_exit_status()
 
-def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
-    '''bson_file_path: local file path to write bson to temporarily so
-    mongorestore can read from it. (this is a workaround for mongorestore's
-    inability to accept input from stdin; see ticket
-    https://jira.mongodb.org/browse/SERVER-4345.)
-    '''
-    key_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection_name
-    key = bucket.get_key(key_name)
-    if not key or not key.exists():
-        raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                key_name, bucket.name))
-    print ('restoring Mongo collection "%s" from %s/%s version %s '
-           '(modified %s)') % (collection_name, bucket.name, key.name,
-            key.version_id, key.last_modified)
-
-    # temporarily write bson data to bson_file_path so mongorestore can read
-    # it, then restore from that file
-    with open(bson_file_path, 'wb') as bson_file:
-        ungzip_file = UnGzipFile(bson_file)
-        key.get_contents_to_file(ungzip_file)
-
-    command = MONGORESTORE_COMMAND % dict(
-            db=config.get('mongodb', 'database'),
-            host=config.get('mongodb', 'host'),
-            collection=collection_name,
-            filepath=shell_quote(bson_file_path))
-    _, _, check_exit_status = run_command(command)
-
-    # this may not help because mongorestore seems to exit with status
-    # 0 even when it has an error
-    check_exit_status()
-
-    os.remove(bson_file_path)
-
-def restore_mongo_collection_local(collection_name, dump_file_path, bson_file_path):
-    print 'restoring Mongo collection "%s" from local file %s' % (
-            collection_name, dump_file_path)
-    with open(bson_file_path, 'wb') as bson_file:
-        ungzip_file = UnGzipFile(bson_file)
-        with open(dump_file_path, 'r') as dump_file:
-            ungzip_file.write(dump_file.read())
-    command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
-            collection=collection_name, filepath=shell_quote(bson_file_path),
-            host=config.get('mongodb', 'host'))
-    _, _, check_exit_status = run_command(command)
-
-    # this may not help because mongorestore seems to exit with status
-    # 0 even when it has an error
-    check_exit_status()
-    os.remove(bson_file_path)
-
 def scrub_dev_data():
     '''Replace some data with placeholder values for development environment.
     Obviously this should not be used in production.
@@ -336,20 +263,11 @@ def backup(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
     backup_main_db(bucket.get_key(BACKUP_FILE_NAME, validate=False))
-    for collection in MONGO_COLLECTIONS:
-        backup_mongo_collection(collection, Key(bucket,
-                name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
 
 def restore(args):
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = get_bucket(args.bucket, conn)
     restore_main_db_s3(bucket)
-    for collection in MONGO_COLLECTIONS:
-        # NOTE mongorestore cannot restore from a file unless its name
-        # ends with ".bson".
-        bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
-                collection, datetime.utcnow())
-        restore_mongo_collection_s3(bucket, collection, bson_file_path)
     if args.scrub:
         scrub_dev_data()
 
@@ -372,16 +290,6 @@ def download(args):
                 key.name, bucket.name))
     key.get_contents_to_filename(os.path.join(
             local_dir_absolute_path, BACKUP_FILE_NAME))
-
-    # download Mongo dump
-    for collection in MONGO_COLLECTIONS:
-        file_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection
-        key = bucket.get_key(file_name)
-        if not key or not key.exists():
-            raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                    key.name, bucket.name))
-        key.get_contents_to_filename(os.path.join(
-                local_dir_absolute_path, file_name))
 
 def get_key_names_for_account(account_id):
     init_model()
@@ -447,19 +355,9 @@ def restore_files(args):
 
 def backup_local(args):
     backup_main_db_local(os.path.join(args.local_dir, BACKUP_FILE_NAME))
-    for collection in MONGO_COLLECTIONS:
-        backup_file_path = os.path.join(args.local_dir,
-                MONGO_BACKUP_FILE_NAME_FORMAT % collection)
-        backup_mongo_collection_local(collection, backup_file_path)
 
 def restore_local(args):
     restore_main_db_local(os.path.join(args.local_dir, BACKUP_FILE_NAME))
-    for collection in MONGO_COLLECTIONS:
-        backup_file_path = os.path.join(args.local_dir,
-                MONGO_BACKUP_FILE_NAME_FORMAT % collection)
-        bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
-                collection, datetime.utcnow())
-        restore_mongo_collection_local(collection, backup_file_path, bson_file_path)
     # TODO always scrub the data when restore-local is used because it's only for development?
     if args.scrub:
         scrub_dev_data()
@@ -527,8 +425,7 @@ if __name__ == '__main__':
                 'defaults to value in settings.cfg ({0})'.format(config.get('aws_s3', 'bucket'))))
 
     # arguments for local backup files
-    all_file_names = [BACKUP_FILE_NAME] + [(MONGO_BACKUP_FILE_NAME_FORMAT % c)
-                                           for c in MONGO_COLLECTIONS]
+    all_file_names = [BACKUP_FILE_NAME]
     for parser in (download_parser, restore_local_parser,
         backup_local_parser):
         parser.add_argument(dest='local_dir', type=str,
