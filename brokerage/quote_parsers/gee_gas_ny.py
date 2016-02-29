@@ -1,6 +1,6 @@
 import calendar
 import re
-from datetime import date
+from datetime import datetime
 
 from tablib import formats
 
@@ -8,9 +8,9 @@ from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader
 from brokerage.spreadsheet_reader import TabulaConverter
-from brokerage.validation import _assert_true, ValidationError
+from brokerage.validation import ValidationError
 from core.model.model import GAS
-from util.dateutils import date_to_datetime, parse_date
+from util.dateutils import date_to_datetime
 from util.monthmath import Month
 
 
@@ -85,7 +85,7 @@ class GEEGasNYParser(QuoteParser):
             # get start/end dates from month abbreviation + 2-digit year
             month = next(i for i, abbr in enumerate(calendar.month_abbr)
                          if abbr.lower() == month_name.lower())
-            start_from = date(2000 + year, month, 1)
+            start_from = datetime(2000 + year, month, 1)
             start_until = date_to_datetime((Month(start_from) + 1).first)
 
             # extract term length number strings from the top row of term
