@@ -56,18 +56,15 @@ class GEEGasNYParser(QuoteParser):
             sheet, row, col, basestring) for col in columns)
 
     def _extract_quotes(self):
-        for row in xrange(self.TERM_ROW + 1, self.reader.get_height(
-                self.SHEET)): # TODO
+        for row in xrange(self.TERM_ROW + 1,
+                          self.reader.get_height(self.SHEET)):
+            # skip row if it is known not to contain quotes
             if any(re.match(
                     pattern, self.reader.get(self.SHEET, row, 'A', basestring))
                    for pattern in self.SKIP_PATTERNS):
-                t = self.reader.get(self.SHEET, row, 'A', basestring)
-                print 'SKIP', row, t
                 continue
 
-            # extract rate class alias and date from first column
-            print 'ROW', row, repr(self.reader.get(self.SHEET, row,
-                                                   self.RCA_COL, basestring))
+            # extract rate class alias and date from columns A and/or B
             try:
                 # in rows 5-47, rate class alias and start date are smashed
                 # together in the same column
@@ -79,29 +76,31 @@ class GEEGasNYParser(QuoteParser):
                 # in rows 53-68, rate class alias and start date are in
                 # separate columns, so all other columns are shifted to the
                 # right by 1.
-                rca = self.reader.get(self.SHEET, row, self.RCA_COL,
-                                      basestring)
+                rca = self.reader.get(self.SHEET, row, self.RCA_COL, basestring)
                 month_name, year = self.reader.get_matches(
-                    self.SHEET, row, self.START_COL,
-                    '(\w+)-(\d\d)\s*', (unicode, int))
+                    self.SHEET, row, self.START_COL, '(\w+)-(\d\d)\s*',
+                    (unicode, int))
                 price_cols = self.reader.column_range('C', 'J')
+
+            # get start/end dates from month abbreviation + 2-digit year
             month = next(i for i, abbr in enumerate(calendar.month_abbr)
                          if abbr.lower() == month_name.lower())
             start_from = date(2000 + year, month, 1)
             start_until = date_to_datetime((Month(start_from) + 1).first)
-            print row, 'RCA', rca, 'MONTH', month_name, 'YEAR', year
 
-            term_text = self._get_joined_row_text(self.SHEET, price_cols,
-                                                  self.TERM_ROW)
-
-            # integer strings in the term column (6, 12, 18, 24)--other strings
-            # are "Term" and "Price"
+            # extract term length number strings from the top row of term
+            # lengths (but some term lengths are in the "Term" column,
+            # an some parts of this row are column headers that can be skipped).
+            # these should look like: 6, 12, 18, 24, 6, 12, 18, 24
+            term_text = self._get_joined_row_text(
+                self.SHEET, price_cols, self.TERM_ROW)
             terms = (s for s in term_text.split() if re.match('\d+', s))
 
-            # look at column arrangement in the PDF file to understand this
+            # a block of 4 prices matching the "terms" above, 1 term and price
+            # pair (labeled "Sweet Spot"), then same thing repeated.
+            # (see column arrangement in original PDF, not CSV.)
             price_and_term_strs = self._get_joined_row_text(
                 self.SHEET, price_cols, row).split()
-            print '***', price_and_term_strs, len(price_and_term_strs)
             prices_1 = price_and_term_strs[0:4]
             ss_term_1 = price_and_term_strs[4]
             ss_price_1 = price_and_term_strs[5]
@@ -109,6 +108,7 @@ class GEEGasNYParser(QuoteParser):
             ss_term_2 = price_and_term_strs[10]
             ss_price_2 = price_and_term_strs[11]
 
+            # convert to appropriate types
             all_prices_and_terms = ((float(p), int(t)) for p, t in
                 zip(prices_1, terms) + [(ss_price_1, ss_term_1)] +
                 zip(prices_2, terms) + [(ss_price_2, ss_term_2)])
