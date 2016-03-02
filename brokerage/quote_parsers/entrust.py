@@ -5,6 +5,7 @@ from tablib import formats
 
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter, \
     SpreadsheetReader
+from brokerage.validation import _assert_equal, _assert_match
 from core.exceptions import ValidationError
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
@@ -19,42 +20,36 @@ class EntrustMatrixParser(QuoteParser):
     reader = SpreadsheetReader(formats.xlsx)
 
     EXPECTED_SHEET_TITLES = [
-        'IL - ComEd Matrix',
-        'OH - Duke Matrix',
-        'OH - Dayton Matrix',
-        'PA - PECO Matrix',
-        'PA - PPL Matrix',
-        'MD - BGE Matrix',
-        'MD - PEPCO Matrix',
-        'NJ - JCPL Matrix',
-        'NYSEG - A - Matrix',
-        'NYSEG - B - Matrix',
-        'NYSEG - C - Matrix',
-        'NYSEG - D - Matrix',
-        'NYSEG - E - Matrix',
-        'NYSEG - F - Matrix',
-        'NYSEG - G - Matrix',
-        'NYSEG - H - Matrix',
-        'NYSEG - I - Matrix',
-        'NY - NATGRID - A - Matrix',
-        'NY - NATGRID - B - Matrix',
-        'NY - NATGRID - C - Matrix',
-        'NY - NATGRID - D - Matrix',
-        'NY - NATGRID - E - Matrix',
-        'RG&E - B - Matrix',
-        'ConEd - H - Matrix',
-        'ConEd - I - Matrix',
-        'ConEd - J - Matrix']
+        # 'IL - ComEd Matrix',
+        # 'OH - Duke Matrix',
+        # 'OH - Dayton Matrix',
+        # 'PA - PECO Matrix',
+        # 'PA - PPL Matrix',
+        # 'MD - BGE Matrix',
+        # 'MD - PEPCO Matrix',
+        # 'NJ - JCPL Matrix',
+        # 'NYSEG - A - Matrix',
+        # 'NYSEG - B - Matrix',
+        # 'NYSEG - C - Matrix',
+        # 'NYSEG - D - Matrix',
+        # 'NYSEG - E - Matrix',
+        # 'NYSEG - F - Matrix',
+        # 'NYSEG - G - Matrix',
+        # 'NYSEG - H - Matrix',
+        # 'NYSEG - I - Matrix',
+        # 'NY - NATGRID - A - Matrix',
+        # 'NY - NATGRID - B - Matrix',
+        # 'NY - NATGRID - C - Matrix',
+        # 'NY - NATGRID - D - Matrix',
+        # 'NY - NATGRID - E - Matrix',
+        # 'RG&E - B - Matrix',
+        # 'ConEd - H - Matrix',
+        # 'ConEd - I - Matrix',
+        # 'ConEd - J - Matrix']
+    ]
 
     DATE_REGEX = ('Pricing for Commercial Customers\s+'
                  'for (\w+ \w+ \d\d?, \d\d\d\d)')
-    EXPECTED_CELLS = chain.from_iterable(
-        [[(sheet, 4, 'F', DATE_REGEX),
-          (sheet, 6, 'D', 'Utility'),
-          (sheet, 7, 'D', 'Annual Usage'),
-          (sheet, 8, 'D', 'Term \(months\)'),
-          (sheet, 9, 'C', 'Start Month'),
-          ] for sheet in EXPECTED_SHEET_TITLES])
 
     DATE_ROW = 4
     UTILITY_ROW = 6
@@ -80,13 +75,27 @@ class EntrustMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, DATE_ROW, 'F', DATE_REGEX)
 
     def _validate(self):
-        # since only the first sheet is the offical source of the date,
+        # EXPECTED_SHEET_TITLES and EXPECTED_CELLS are not used because
+        # there are many sheets the titles change. instead check cells here.
+        for sheet in self.reader.get_sheet_titles():
+            for row, col, regex in [
+                (4, 'F', self.DATE_REGEX),
+                (6, 'D', 'Utility'),
+                (7, 'D', 'Annual Usage'),
+                (8, 'D', 'Term \(months\)'),
+                (9, 'C', 'Start Month'),
+            ]:
+                _assert_match(
+                    regex, self.reader.get(sheet, row, col, basestring))
+
+        # since only the first sheet is the official source of the date,
         # make sure all others have the same date in them
         all_dates = [
             self.reader.get(sheet, self.DATE_ROW, self.DATE_COL, object) for
-            sheet in self.EXPECTED_SHEET_TITLES]
+            sheet in self.reader.get_sheet_titles()]
         if not all(all_dates[0] == d for d in all_dates):
             raise ValidationError('Dates are not the same in all sheets')
+
 
     def _process_sheet(self, sheet):
         # could get the utility from the sheet name, but this seems better.
@@ -152,7 +161,7 @@ class EntrustMatrixParser(QuoteParser):
                         purchase_of_receivables=False, price=price,
                         service_type='electric',
                         file_reference='%s %s,%s,%s' % (
-                            self.file_name, self.sheet, row, col))
+                            self.file_name, sheet, row, col))
                     # TODO: rate_class_id should be determined automatically
                     # by setting rate_class
                     if rate_class_id is not None:
@@ -160,6 +169,6 @@ class EntrustMatrixParser(QuoteParser):
                     yield quote
 
     def _extract_quotes(self):
-        for sheet in self.EXPECTED_SHEET_TITLES:
+        for sheet in self.reader.get_sheet_titles():
             for quote in self._process_sheet(sheet):
                 yield quote
