@@ -99,7 +99,8 @@ class MatrixQuoteParsersTest(TestCase):
     MAJOR_FILE_PATH = join(
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
                    'Gas Rack Rates October 27 2015.xlsx')
-    ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+    ENTRUST_FILE_PATH = join(
+        DIRECTORY, 'Entrust Energy Commercial Matrix Pricing - Residual - 2016 03 02.xlsx')
     LIBERTY_FILE_PATH = join(
         DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2016-01-05.xlsx')
     GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_02042016.xlsx')
@@ -965,38 +966,35 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        # 26 sheets * 4 tables * 5 columns (of prices) * 6 rows
-        self.assertEqual(3120, len(quotes))
+        self.assertEqual(3212, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         q = quotes[0]
-        self.assertEqual(datetime(2015, 9, 1), q.start_from)
-        self.assertEqual(datetime(2015, 10, 1), q.start_until)
+        self.assertEqual(datetime(2016, 3, 1), q.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(12, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(15000, q.limit_volume)
         self.assertEqual('Entrust-electric-Com Ed', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0812, q.price)
+        self.assertEqual(0.069, q.price)
 
         # since this one is especially complicated and also missed a row,
         # check the last quote too. (this also checks the "sweet spot"
         # columns which work differently from the other ones)
         q = quotes[-1]
-        self.assertEqual(datetime(2016, 2, 1), q.start_from)
-        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime(2017, 8, 1), q.start_from)
+        self.assertEqual(datetime(2017, 9, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
-        self.assertEqual(17, q.term_months)
+        self.assertEqual(24, q.term_months)
         self.assertEqual(3e5, q.min_volume)
         self.assertEqual(1e6, q.limit_volume)
         self.assertEqual('Entrust-electric-ConEd Zone J', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0811, q.price)
+        self.assertEqual(0.0771, q.price)
 
     def test_liberty(self):
         parser = LibertyMatrixParser()
