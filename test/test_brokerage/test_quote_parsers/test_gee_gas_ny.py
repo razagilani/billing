@@ -24,7 +24,7 @@ def test_gee_gas_ny(quotes):
     assert q.limit_volume == None
     assert q.rate_class_alias == ALIASES[0]
     assert q.rate_class_id == 1
-    assert q.price == 1.493
+    assert q.price == .1493
 
     q = quotes[-1]
     # TODO
