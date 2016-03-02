@@ -240,8 +240,10 @@ class QuoteParser(object):
         """
         assert self.reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
-            _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
-                set(self.reader.get_sheet_titles())))
+            actual_titles = self.reader.get_sheet_titles()
+            if not set(self.EXPECTED_SHEET_TITLES).issubset(set(actual_titles)):
+                raise ValidationError('Expected sheet tiles %s, actual %s' % (
+                    self.EXPECTED_SHEET_TITLES, actual_titles))
         for sheet_number_or_title, row, col, expected_value in \
                 self.EXPECTED_CELLS:
             if isinstance(expected_value, basestring):
