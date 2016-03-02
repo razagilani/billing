@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 from datetime import datetime
 from os.path import join, basename
 from unittest import TestCase
@@ -33,7 +34,10 @@ class QuoteParserTest(TestCase):
             reader = Mock()
 
             def __init__(self):
-                super(ExampleQuoteParser, self).__init__()
+                super(ExampleQuoteParser, self).__init__(
+                    brokerage_dao=Mock(
+                        load_rate_class_aliases=Mock(
+                            return_value=defaultdict(lambda: [1]))))
                 self.reader = reader
 
             def _load_rate_class_aliases(self):
