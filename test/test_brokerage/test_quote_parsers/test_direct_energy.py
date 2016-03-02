@@ -13,7 +13,7 @@ ALIASES = ['Direct-electric-CT-CLP-37, R35--']
 PARSER_CLASS = DirectEnergyMatrixParser
 EXPECTED_COUNT = 106554
 
-def test_direct_energy(quotes):
+def test_first(quotes):
     q = quotes[0]
     assert q.start_from == datetime(2015, 5, 1)
     assert q.start_until == datetime(2015, 6, 1)
