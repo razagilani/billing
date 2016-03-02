@@ -5,14 +5,13 @@ from datetime import datetime
 from tablib import formats
 
 from brokerage.brokerage_model import MatrixQuote
+from brokerage.converters import TabulaConverter
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader
-from brokerage.converters import TabulaConverter
 from brokerage.validation import ValidationError
 from core.model.model import GAS
 from util.dateutils import date_to_datetime
 from util.monthmath import Month
-from util.units import unit_registry
 
 
 class GEEGasNYParser(QuoteParser):
