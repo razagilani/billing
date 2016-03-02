@@ -7,7 +7,7 @@ from tablib import formats
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, SimpleCellDateGetter
 from brokerage.spreadsheet_reader import SpreadsheetReader
-from brokerage.spreadsheet_reader import TabulaConverter
+from brokerage.converters import TabulaConverter
 from brokerage.validation import ValidationError
 from core.model.model import GAS
 from util.dateutils import date_to_datetime
@@ -50,6 +50,8 @@ class GEEGasNYParser(QuoteParser):
     ]
 
     date_getter = SimpleCellDateGetter(SHEET, 2, 'A', '(.*)')
+
+    ROUNDING_DIGITS = 4
 
     def _preprocess_file(self, quote_file, file_name):
         return TabulaConverter().convert_file(quote_file, file_name)
@@ -123,7 +125,9 @@ class GEEGasNYParser(QuoteParser):
             ss_price_2 = price_and_term_strs[11]
 
             # convert to appropriate types and units (price is in $/10 therm)
-            all_prices_and_terms = ((float(p) / 10., int(t)) for p, t in
+            all_prices_and_terms = (
+                (round(float(p) / 10.,self.ROUNDING_DIGITS), int(t))
+                for p, t in
                 zip(prices_1, terms) + [(ss_price_1, ss_term_1)] +
                 zip(prices_2, terms) + [(ss_price_2, ss_term_2)])
 
