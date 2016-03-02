@@ -42,6 +42,8 @@ class SpreadsheetReader(Reader):
         or a multiple letters like (AA-AZ, BA-BZ...), case insensitive
         :return index of spreadsheet column (int)
         """
+        if isinstance(letter, int):
+            return letter
         result = sum((26 ** i) * (ord(c) - ord('a') + 1) for i, c in
                     enumerate(reversed(letter.lower()))) - 1
         if result < 0:
@@ -74,7 +76,8 @@ class SpreadsheetReader(Reader):
         elif file_format in [formats.csv]:
             # TODO: this only works on one sheet. how to handle multiple sheets?
             dataset = Dataset()
-            file_format.import_set(dataset, quote_file.read())
+            # headers=True is used to maintain the same
+            file_format.import_set(dataset, quote_file.read(), headers=True)
             result.add_sheet(dataset)
         else:
             raise BillingError('Unknown format: %s' % format.__name__)
@@ -232,6 +235,41 @@ class SpreadsheetFileConverter(object):
         if not os.access(converted_file_path, os.R_OK):
             raise BillingError('Failed to convert file "%s" to %s' % (
                 file_name, self.destination_type_str))
+        return open(converted_file_path, 'rb')
+
+    def __del__(self):
+        self.directory.cleanup()
+
+
+class TabulaConverter(object):
+    TABULA_PATH = '/Users/dan/Downloads/tabula-java-master/target/tabula-0.8.0-jar-with-dependencies.jar'
+
+    def __init__(self):
+        self.destination_extension = 'csv'
+        self.directory = TempDirectory()
+
+    def convert_file(self, fp, file_name):
+        """
+        :param fp: original file
+        :param file_name: name of the original file including extension
+        :return: converted file opened in 'rb' mode
+        """
+        import os
+        temp_file_path = os.path.join(self.directory.path, file_name)
+        with open(temp_file_path, 'wb') as temp_file:
+            temp_file.write(fp.read())
+        converted_file_path = '.'.join([splitext(temp_file_path)[0],
+                                        self.destination_extension])
+        command = 'java -jar %s --pages all -o %s %s' % (
+            self.TABULA_PATH, shell_quote(converted_file_path),
+            shell_quote(temp_file_path))
+        _, _, check_exit_status = run_command_in_shell(command)
+
+        # note: libreoffice exits with 0 even if it failed to convert. errors
+        # are detected by checking whether the destination file exists.
+        check_exit_status()
+        if not os.access(converted_file_path, os.R_OK):
+            raise BillingError('Failed to convert file "%s"' % file_name)
         return open(converted_file_path, 'rb')
 
     def __del__(self):

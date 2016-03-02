@@ -67,17 +67,19 @@ class PDFReader(Reader):
         self._offset_x = x0 - element_x
         self._offset_y = y0 - element_y
 
-    def get(self, page_number, y, x, the_type):
+    def get_with_coordinates(self, page_number, y, x, the_type):
         """
         Extract a value from the text box in the PDF file whose upper left
         corner is closest to the given coordinates, within some tolerance.
+        Return both the text and the coordinates of the box.
 
         :param page_number: PDF page number starting with 1.
         :param y: vertical coordinate (starting from bottom)
         :param x: horizontal coordinate (starting from left)
         :param the_type: ignored. all values are strings.
 
-        :return: text box content (string), with whitespace stripped
+        :return: text box content (string with whitespace stripped), x0, y0,
+        x1, y1
         """
         y += self._offset_y
         x += self._offset_x
@@ -98,6 +100,23 @@ class PDFReader(Reader):
                 'closest is "%s" at (%s,%s)' % (
                     self._tolerance, x, y, self._file_name, page_number, text,
                     closest_box.x0, closest_box.y0))
+        return text, closest_box.x0, closest_box.y0, closest_box.x1, \
+               closest_box.y1
+
+    def get(self, page_number, y, x, the_type):
+        """
+        Extract a value from the text box in the PDF file whose upper left
+        corner is closest to the given coordinates, within some tolerance.
+
+        :param page_number: PDF page number starting with 1.
+        :param y: vertical coordinate (starting from bottom)
+        :param x: horizontal coordinate (starting from left)
+        :param the_type: ignored. all values are strings.
+
+        :return: text box content (string with whitespace stripped)
+        """
+        text, _, _, _, _ = self.get_with_coordinates(page_number, y, x,
+                                                     the_type)
         return text
 
     def get_matches(self, page_number, y, x, regex, types, tolerance=None):

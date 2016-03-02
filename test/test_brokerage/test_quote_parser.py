@@ -1,22 +1,24 @@
-import re
+from collections import defaultdict
 from collections import defaultdict
 from datetime import datetime
+import re
 from os.path import join, basename
-from unittest import TestCase
-
+from unittest import TestCase, skip
 from mock import Mock
+
+from nose.plugins.attrib import attr
 
 from brokerage.brokerage_model import RateClass, RateClassAlias
 from brokerage.quote_parser import QuoteParser, SpreadsheetReader
+from brokerage.quote_parsers.guttman_electric import GuttmanElectric
+from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from brokerage.quote_parsers import (
-    USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
+    DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
     USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
 
 from brokerage.quote_parsers.spark import SparkMatrixParser
-from brokerage.quote_parsers.guttman_electric import GuttmanElectric
-from brokerage.quote_parsers.guttman_gas import GuttmanGas
 from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
@@ -34,7 +36,6 @@ class QuoteParserTest(TestCase):
         class ExampleQuoteParser(QuoteParser):
             NAME = 'example'
             reader = Mock()
-
             def __init__(self):
                 super(ExampleQuoteParser, self).__init__(
                     brokerage_dao=Mock(
@@ -79,11 +80,8 @@ class QuoteParserTest(TestCase):
         self.reader.get_matches.assert_called_once_with(0, 0, 0, self.regex,
                                                         (int, int))
 
-class MatrixQuoteParsersTest(TestCase):
-    """Deprecated. Each test should go in its own file in the
-    "test_quote_parsers" directory and should use Pytest.
-    """
 
+class MatrixQuoteParsersTest(TestCase):
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY,
@@ -119,6 +117,7 @@ class MatrixQuoteParsersTest(TestCase):
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
     GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
+    GEE_GAS_PATH_NY = join(DIRECTORY, 'NY Rack Rates_2.2.2016.pdf')
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer',
                                    'Exchange_COH_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer',
@@ -721,7 +720,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
-    def test_gee_gas(self):
+    def test_gee_gas_nj(self):
         parser = GEEGasPDFParser()
 
         with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:

@@ -148,6 +148,7 @@ class QuoteParser(object):
 
     # energy unit that the supplier uses: convert from this. subclass should
     # specify it.
+    # this is only used for volume ranges (but should also be used for prices)
     EXPECTED_ENERGY_UNIT = None
 
     # energy unit for resulting quotes: convert to this
