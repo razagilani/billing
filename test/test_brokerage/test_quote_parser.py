@@ -14,7 +14,7 @@ from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
+    USGEElectricMatrixParser, GEEMatrixParser, GEEGasNJParser, VolunteerMatrixParser)
 
 from brokerage.quote_parsers.spark import SparkMatrixParser
 from core import ROOT_PATH, init_altitude_db, init_model
@@ -747,8 +747,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
-    def test_gee_gas(self):
-        parser = GEEGasPDFParser()
+    def test_gee_gas_nj(self):
+        parser = GEEGasNJParser()
 
         with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:
             parser.load_file(pdf_file)

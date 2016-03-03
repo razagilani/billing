@@ -51,7 +51,7 @@ class QuoteNotFoundException(Exception):
     pass
 
 
-class GEEGasPDFParser(QuoteParser):
+class GEEGasNJParser(QuoteParser):
     NAME = 'geegas'
 
     reader = PDFReader(tolerance=5)
