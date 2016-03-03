@@ -131,7 +131,7 @@ class MatrixQuoteParsersTest(TestCase):
                                     'Exchange_VEDO_2015 12-7-15.pdf')
     VOLUNTEER_FILE_PATH_PECO = join(DIRECTORY, 'volunteer',
                                     'PECO EXCHANGE_2015 12-7-15.pdf')
-    SPARK_FILE_PATH = join(DIRECTORY, 'Spark CUSTOM_LED_MATRIX.xlsx')
+    SPARK_FILE_PATH = join(DIRECTORY, 'Spark Custom_LED_MATRIX.xlsx')
 
     @classmethod
     def setUpClass(cls):
