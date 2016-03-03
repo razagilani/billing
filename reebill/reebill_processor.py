@@ -43,7 +43,7 @@ class ReebillProcessor(object):
     QUERY_BATCH_SIZE = 100
 
     def __init__(self, state_db, payment_dao, nexus_util, bill_mailer,
-                 reebill_file_handler, ree_getter, journal_dao, logger=None):
+                 reebill_file_handler, ree_getter, logger=None):
         self.state_db = state_db
         self.payment_dao = payment_dao
         self.nexus_util = nexus_util
@@ -51,7 +51,6 @@ class ReebillProcessor(object):
         self.ree_getter = ree_getter
         self.reebill_file_handler = reebill_file_handler
         self.logger = logger
-        self.journal_dao = journal_dao
 
     # TODO rename this to something that makes sense
     def get_hypothetical_matched_charges(self, reebill_id):
