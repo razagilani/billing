@@ -15,6 +15,10 @@ from util.monthmath import Month
 
 
 class GEEGasNYParser(QuoteParser):
+    """Parser for Great Eastern Energy New York gas matrix (PDF file).
+    The same code might also be usable for the New Jersey file if it has to
+    changed.
+    """
     NAME = 'geegasny'
     reader = SpreadsheetReader(formats.csv)
 
@@ -52,10 +56,20 @@ class GEEGasNYParser(QuoteParser):
     ROUNDING_DIGITS = 4
 
     def _preprocess_file(self, quote_file, file_name):
+        # convert PDF file to a CSV file to make it easier to parse
         return TabulaConverter().convert_file(quote_file, file_name)
 
-    # TODO move to Reader
     def _get_joined_row_text(self, sheet, columns, row):
+        """
+        Get text from a horizontal group of cells in the given columns,
+        concatenated left to right.
+        TODO: could be moved to SpreadsheetReader or Reader
+        :param sheet: sheet number/name
+        :param columns: list of column numbers/letters (not necessarily
+        contiguous)
+        :param row: row number
+        :return: concatenated text of all cells
+        """
         return ''.join(
             self.reader.get(sheet, row, col, basestring) for col in columns
             if self.reader.col_letter_to_index(col) <
