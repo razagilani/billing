@@ -20,7 +20,7 @@ class GuttmanGas(QuoteParser):
     time along the columns.
     """
     NAME = 'guttmangas'
-    reader = SpreadsheetReader(file_format=formats.xlsx)
+    reader = SpreadsheetReader(file_format=formats.xls)
 
     HEADER_ROW = 6
     RATE_START_ROW = 7
@@ -71,7 +71,7 @@ class GuttmanGas(QuoteParser):
 
         for row in xrange(self.RATE_START_ROW,
                           self._reader.get_height(self.DETAIL_SHEET) + 1):
-            term = self._reader.get(self.DETAIL_SHEET, row, self.TERM_COL, int)
+            term = self._reader.get(self.DETAIL_SHEET, row, self.TERM_COL, float)
             min_volume, limit_volume = \
                 self._extract_volume_range(self.DETAIL_SHEET, row,
                         self.VOLUME_RANGE_COL,
@@ -89,7 +89,7 @@ class GuttmanGas(QuoteParser):
                 continue
             start_until = date_to_datetime((Month(start_from) + 1).first)
             price = self._reader.get(self.DETAIL_SHEET, row, self.PRICE_COL, object)
-            if isinstance(price, int) and price == 0:
+            if (isinstance(price, int) and price == 0) or (isinstance(price, float) and price == 0.0):
                 continue
             elif price is None:
                 continue
@@ -101,7 +101,7 @@ class GuttmanGas(QuoteParser):
             for rate_class_id in rate_class_ids:
                 quote = MatrixQuote(
                     start_from=start_from, start_until=start_until,
-                    term_months=term, valid_from=valid_from,
+                    term_months=int(term), valid_from=valid_from,
                     valid_until=valid_until,
                     min_volume=min_volume,
                     limit_volume=limit_volume,
