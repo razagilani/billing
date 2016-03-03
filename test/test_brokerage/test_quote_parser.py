@@ -1,5 +1,5 @@
-import re
 from datetime import datetime
+import re
 from os.path import join, basename
 from unittest import TestCase, skip
 from mock import Mock
@@ -14,7 +14,9 @@ from brokerage.quote_parsers import (
     DirectEnergyMatrixParser, USGEGasMatrixParser, AEPMatrixParser, EntrustMatrixParser,
     AmerigreenMatrixParser, ChampionMatrixParser, LibertyMatrixParser,
     ConstellationMatrixParser, MajorEnergyMatrixParser, SFEMatrixParser,
-    USGEElectricMatrixParser, GEEMatrixParser, VolunteerMatrixParser)
+    USGEElectricMatrixParser, GEEMatrixParser, GEEGasPDFParser, VolunteerMatrixParser)
+
+from brokerage.quote_parsers.spark import SparkMatrixParser
 from core import ROOT_PATH, init_altitude_db, init_model
 from core.model import AltitudeSession
 from test import create_tables, init_test_config, clear_db
@@ -83,7 +85,7 @@ class MatrixQuoteParsersTest(TestCase):
     DIRECT_ENERGY_FILE_PATH = join(DIRECTORY,
                                    'Matrix 1 Example - Direct Energy.xls')
     USGE_FILE_PATH = join(DIRECTORY, 'Matrix 2a Example - USGE.xlsx')
-    USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20151102.xlsx')
+    USGE_ELECTRIC_FILE_PATH = join(DIRECTORY, 'USGE Matrix Pricing - ELEC - 20160205.xlsx')
     USGE_ELECTRIC_ANOMALY_PATH = join(DIRECTORY, 'USGEMatrixPricing-ELEC-20151130.xlsx')
     CHAMPION_FILE_PATH = join(
         DIRECTORY, 'Champion MM PJM Fixed-Index-24 Matrix 2015-10-30.xls')
@@ -93,24 +95,26 @@ class MatrixQuoteParsersTest(TestCase):
     CONSTELLATION_FILE_PATH = join(
         DIRECTORY, 'Constellation - SMB Cost+ Matrix_Fully '
                    'Bundled_09_24_2015.xlsm')
-    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Jan 15 2016.xlsx')
+    SFE_FILE_PATH = join(DIRECTORY, 'SFE Pricing Worksheet - Feb 16 2016.xlsx')
     MAJOR_FILE_PATH = join(
         DIRECTORY, 'Major Energy - Commercial and Residential Electric and '
                    'Gas Rack Rates October 27 2015.xlsx')
-    ENTRUST_FILE_PATH = join(DIRECTORY, 'Matrix 10 Entrust.xlsx')
+    ENTRUST_FILE_PATH = join(
+        DIRECTORY, 'Entrust Energy Commercial Matrix Pricing - Residual - 2016 03 02.xlsx')
     LIBERTY_FILE_PATH = join(
         DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2016-01-05.xlsx')
-    GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_12072015.xlsx')
-    GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_12072015.xlsx')
-    GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_12072015.xlsx')
-    GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_12072015.xlsx')
-    GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_12072015.xlsx')
-    GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_12072015.xlsx')
-    GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 12.7.15.xlsx')
-    GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 12.7.15.xlsx')
+    GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_02042016.xlsx')
+    GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_02042016.xlsx')
+    GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_02042016.xlsx')
+    GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_02042016.xlsx')
+    GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_02042016.xlsx')
+    GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_02042016.xlsx')
+    GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 2.4.16.xlsx')
+    GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 2.4.16.xlsx')
     GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
+    GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 1-25-16.pdf')
     VOLUNTEER_FILE_PATH_CON = join(DIRECTORY, 'volunteer', 'EXCHANGE_CON_2015 1-25-16.pdf')
     VOLUNTEER_FILE_PATH_DEO = join(DIRECTORY, 'volunteer', 'Exchange_DEO_2015 1-25-16.pdf')
@@ -119,6 +123,7 @@ class MatrixQuoteParsersTest(TestCase):
     VOLUNTEER_FILE_PATH_PNG = join(DIRECTORY, 'volunteer', 'Exchange_PNG_2015 1-25-16.pdf')
     VOLUNTEER_FILE_PATH_VEDO = join(DIRECTORY, 'volunteer', 'Exchange_VEDO_2015 1-25-16.pdf')
     VOLUNTEER_FILE_PATH_PECO = join(DIRECTORY, 'volunteer', 'PECO EXCHANGE_2015 1-25-16.pdf')
+    SPARK_FILE_PATH = join(DIRECTORY, 'Spark Custom_LED_MATRIX.xlsx')
 
     @classmethod
     def setUpClass(cls):
@@ -139,7 +144,7 @@ class MatrixQuoteParsersTest(TestCase):
             'Direct-electric-CT-CLP-37, R35--',
             # USGE
             'USGE-gas-Columbia of Kentucky-Residential-Residential',
-            'USGE-electric-Columbia of Kentucky-Residential-Residential',
+            'USGE-electric-Connecticut Light & Power-Residential-Residential-All Zones',
             # AEP
             'AEP-electric-DC-PEPCO_DC-GS-GSLV ND, GS LV, GS 3A',
             # Champion
@@ -166,7 +171,10 @@ class MatrixQuoteParsersTest(TestCase):
             'GEE-electric-ConEd-J-SC-02',
 
             # Volunteer
-            'Volunteer-gas-COLUMBIA GAS of OHIO (COH)'
+            'Volunteer-gas-COLUMBIA GAS of OHIO (COH)',
+
+            # Spark
+            'NJ-PSEG-PSEG-GLP'
         ]
         session = AltitudeSession()
         session.add(self.rate_class)
@@ -219,59 +227,43 @@ class MatrixQuoteParsersTest(TestCase):
 
         quotes = list(parser.extract_quotes())
 
-        self.assertEqual(quotes[0].price, 0.1017)
-        self.assertEqual(quotes[0].min_volume, 0)
-        self.assertEqual(quotes[0].limit_volume, 500000)
-        self.assertEqual(quotes[0].term_months, 6)
-        self.assertEqual(quotes[0].start_from, datetime(2015, 11, 01))
-        self.assertEqual(quotes[0].start_until, datetime(2015, 12, 01))
-        self.assertEqual(quotes[0].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[0].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[0].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
+        q = quotes[0]
+        self.assertEqual(q.price, 0.0799)
+        self.assertEqual(q.min_volume, 0)
+        self.assertEqual(q.limit_volume, 500000)
+        self.assertEqual(q.term_months, 6)
+        self.assertEqual(q.start_from, datetime(2016, 03, 01))
+        self.assertEqual(q.start_until, datetime(2016, 04, 01))
+        self.assertEqual(q.valid_until, datetime(2016, 02, 06))
+        self.assertEqual(q.valid_from, datetime(2016, 02, 05))
+        self.assertEqual(q.rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-All Zones")
 
-        self.assertEqual(quotes[1].price, 0.1000)
-        self.assertEqual(quotes[1].min_volume, 0)
-        self.assertAlmostEqual(quotes[1].limit_volume, 500000, delta=2)
-        self.assertEqual(quotes[1].term_months, 6)
-        self.assertEqual(quotes[1].start_from, datetime(2015, 12, 01))
-        self.assertEqual(quotes[1].start_until, datetime(2016, 01, 01))
-        self.assertEqual(quotes[1].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[1].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[1].rate_class_alias, "USGE-electric-Connecticut Light & Power-Residential-Residential-")
+        q = quotes[1]
+        self.assertEqual(q.price, 0.0802)
+        self.assertEqual(q.min_volume, 0)
+        self.assertAlmostEqual(q.limit_volume, 500000, delta=2)
+        self.assertEqual(q.term_months, 6)
+        self.assertEqual(q.start_from, datetime(2016, 4, 01))
+        self.assertEqual(q.start_until, datetime(2016, 5, 01))
+        self.assertEqual(q.valid_until, datetime(2016, 2, 06))
+        self.assertEqual(q.valid_from, datetime(2016, 2, 05))
 
-        self.assertEqual(quotes[2].price, 0.0969)
+        self.assertEqual(quotes[2].price, 0.0805)
 
-        found_needle = False
-        for quote in quotes:
-            # We need to make sure all important fields are not null - we earlier caught a problem
-            # in which valid_from was Null and the brokerage model did not catch it.
-            fields = ['price', 'rate_class_alias', 'min_volume', 'limit_volume', 'term_months',
-                'valid_from', 'valid_until', 'start_from', 'start_until']
-            for field in fields:
-                self.assertIsNotNone(getattr(quote, field))
-
-            # This is a random one I picked out from the 3rd sheet in the spreadsheet.
-            if quote.price == 0.082 and quote.rate_class_alias == 'USGE-electric-JCPL-Commercial-GSCL (>100KW Demand)-' \
-                    and quote.start_from == datetime(2015, 12, 01):
-                found_needle = True
-                self.assertAlmostEqual(quote.min_volume, 100000, delta=2)
-                self.assertAlmostEqual(quote.limit_volume, 500000, delta=2)
-                self.assertEqual(quote.term_months, 12)
-
-        # Assert that we found the above-mentioned quote.
-        self.assertTrue(found_needle)
-
-        # Last qouote from the spreadsheet.
-        self.assertEqual(quotes[-1].price, 0.0711)
-        self.assertAlmostEqual(quotes[-1].min_volume, 500000, delta=2)
-        self.assertAlmostEqual(quotes[-1].limit_volume, 1000000, delta=2)
-        self.assertEqual(quotes[-1].term_months, 24)
-        self.assertEqual(quotes[-1].start_from, datetime(2016, 04, 01))
-        self.assertEqual(quotes[-1].start_until, datetime(2016, 05, 01))
-        self.assertEqual(quotes[-1].valid_until, datetime(2015, 11, 03))
-        self.assertEqual(quotes[-1].valid_from, datetime(2015, 11, 02))
-        self.assertEqual(quotes[-1].rate_class_alias,
-                         "USGE-electric-Penn Power-Commercial-Commerical: C1, C2, C3, CG, CH, GH1, GH2, GS1, GS3-PJMATSI")
+        # Last quote from the spreadsheet.
+        q = quotes[-1]
+        self.assertEqual(q.price, 0.0715)
+        self.assertAlmostEqual(q.min_volume, 500000, delta=2)
+        self.assertAlmostEqual(q.limit_volume, 1000000, delta=2)
+        self.assertEqual(q.term_months, 24)
+        self.assertEqual(q.start_from, datetime(2016, 8, 1))
+        self.assertEqual(q.start_until, datetime(2016, 9, 1))
+        self.assertEqual(q.valid_until, datetime(2016, 2, 6))
+        self.assertEqual(q.valid_from, datetime(2016, 2, 5))
+        self.assertEqual(
+                q.rate_class_alias,
+                "USGE-electric-Penn Power-Commercial-Commerical: C1, C2, C3, "
+                "CG, CH, GH1, GH2, GS1, GS3-PJMATSI")
 
 
     def test_usge(self):
@@ -386,39 +378,39 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(1560, len(quotes))
-        self.assertEqual(1560, parser.get_count())
+        self.assertEqual(1440, len(quotes))
+        self.assertEqual(1440, parser.get_count())
 
         for quote in quotes:
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 01), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_from)
+        self.assertEqual(datetime(2016, 05, 01), q1.start_until)
         self.assertEqual(12, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 30, 28), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 30, 28), q1.valid_until)
+        self.assertEqual(datetime(2016, 02, 04, 8, 42, 49), q1.valid_from)
+        self.assertEqual(datetime(2016, 02, 05, 8, 42, 49), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
         self.assertEqual('Guttman-electric-Ohio_AEP_OH_CS_GS-1', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0524883445181945, q1.price)
+        self.assertEqual(0.0523100684762365, q1.price)
 
-        q2 = quotes[1559]
-        self.assertEqual(datetime(2017, 01, 01), q2.start_from)
-        self.assertEqual(datetime(2017, 02, 01), q2.start_until)
+        q2 = quotes[1439]
+        self.assertEqual(datetime(2017, 03, 01), q2.start_from)
+        self.assertEqual(datetime(2017, 04, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
         self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 30, 58), q2.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 30, 58), q2.valid_until)
+        self.assertEqual(datetime(2016, 02, 04, 8, 51, 30), q2.valid_from)
+        self.assertEqual(datetime(2016, 02, 05, 8, 51, 30), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
         self.assertEqual('Guttman-electric-Ohio_Toledo Edison_GS', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
-        self.assertEqual(0.0548764676732971, q2.price)
+        self.assertEqual(0.0565063914882725, q2.price)
 
         parser = GuttmanElectric()
         self.assertEqual(0, parser.get_count())
@@ -429,39 +421,39 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(2080, len(quotes))
-        self.assertEqual(2080, parser.get_count())
+        self.assertEqual(1920, len(quotes))
+        self.assertEqual(1920, parser.get_count())
 
         for quote in quotes:
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 01), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_from)
+        self.assertEqual(datetime(2016, 05, 01), q1.start_until)
         self.assertEqual(12, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 34, 20), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 34, 20), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 51, 40), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 51, 40), q1.valid_until)
         self.assertEqual(125000, q1.min_volume)
         self.assertEqual(250000, q1.limit_volume)
         self.assertEqual('Guttman-electric-Pennsylvania_Duquesne_DQE_GS', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.0666530148307838, q1.price)
+        self.assertEqual(0.0665074230983375, q1.price)
 
-        q2 = quotes[2079]
-        self.assertEqual(datetime(2017, 01, 01), q2.start_from)
-        self.assertEqual(datetime(2017, 02, 01), q2.start_until)
+        q2 = quotes[1919]
+        self.assertEqual(datetime(2017, 03, 01), q2.start_from)
+        self.assertEqual(datetime(2017, 04, 01), q2.start_until)
         self.assertEqual(36, q2.term_months)
         self.assertEqual(datetime.utcnow().date(), q2.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 34, 44), q2.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 34, 44), q2.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 52, 20), q2.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 52, 20), q2.valid_until)
         self.assertEqual(250001, q2.min_volume)
         self.assertEqual(500000, q2.limit_volume)
         self.assertEqual('Guttman-electric-Pennsylvania_West Penn Power_30', q2.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q2.purchase_of_receivables)
-        self.assertEqual(0.0612858140640282, q2.price)
+        self.assertEqual(0.0625273435516683, q2.price)
 
     def test_guttman_gas(self):
         parser = GuttmanGas()
@@ -480,18 +472,18 @@ class MatrixQuoteParsersTest(TestCase):
             quote.validate()
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 43, 45), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 43, 45), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 43, 24), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 43, 24), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Ohio_Dominion_OH_NG', q1.rate_class_alias)
         # self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.290968354076165, q1.price)
+        self.assertEqual(0.288514151909343, q1.price)
 
         parser = GuttmanGas()
         with open(self.GUTTMAN_OH_DUKE_FILE_PATH, 'rb') as \
@@ -504,18 +496,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 43, 55), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 43, 55), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 43, 39), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 43, 39), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Ohio_Duke_OH_NG', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.363225453377907, q1.price)
+        self.assertEqual(0.382672151434036, q1.price)
 
         parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_TWP_FILE_PATH, 'rb') as \
@@ -528,18 +520,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 44, 15), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 44, 15), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 52, 10), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 52, 10), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Pennsylvania_PNG_PA-TWP', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.268467651178349, q1.price)
+        self.assertEqual(0.25010806097029203, q1.price)
 
         parser = GuttmanGas()
         with open(self.GUTTMAN_CPA_MATRIX_FILE_PATH, 'rb') as \
@@ -552,18 +544,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(340, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 43, 57), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 43, 57), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 51, 34), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 51, 34), q1.valid_until)
         self.assertEqual(3001, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Pennsylvania_ColumbiaGas_PA', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.343800955709901, q1.price)
+        self.assertEqual(0.335108676605036, q1.price)
 
         parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_MATRIX_FILE_PATH, 'rb') as \
@@ -576,18 +568,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(170, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 44, 5), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 44, 5), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 52, 4), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 52, 4), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Pennsylvania_PNG_PA', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.267685109454913, q1.price)
+        self.assertEqual(0.249393339931405, q1.price)
 
         parser = GuttmanGas()
         with open(self.GUTTMAN_COH_MATRIX_FILE_PATH, 'rb') as \
@@ -600,18 +592,18 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(510, parser.get_count())
 
         q1 = quotes[0]
-        self.assertEqual(datetime(2016, 01, 16), q1.start_from)
-        self.assertEqual(datetime(2016, 02, 01), q1.start_until)
+        self.assertEqual(datetime(2016, 03, 16), q1.start_from)
+        self.assertEqual(datetime(2016, 04, 01), q1.start_until)
         self.assertEqual(6, q1.term_months)
         self.assertEqual(datetime.utcnow().date(), q1.date_received.date())
-        self.assertEqual(datetime(2015, 12, 07, 8, 48, 28), q1.valid_from)
-        self.assertEqual(datetime(2015, 12, 8, 8, 48, 28), q1.valid_until)
+        self.assertEqual(datetime(2016, 2, 4, 8, 43, 9), q1.valid_from)
+        self.assertEqual(datetime(2016, 2, 5, 8, 43, 9), q1.valid_until)
         self.assertEqual(0, q1.min_volume)
         self.assertEqual(5 * 1000, q1.limit_volume)
         self.assertEqual('Guttman-gas-Ohio_ColumbiaGas_OH', q1.rate_class_alias)
         #self.assertEqual(self.rate_class.rate_class_id, q1.rate_class_id)
         self.assertEqual(False, q1.purchase_of_receivables)
-        self.assertEqual(0.382446152963526, q1.price)
+        self.assertEqual(0.421905135494187, q1.price)
 
     def test_aep(self):
         parser = AEPMatrixParser()
@@ -747,6 +739,42 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual(0.090746, q.price)
 
+    def test_gee_gas(self):
+        parser = GEEGasPDFParser()
+
+        with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:
+            parser.load_file(pdf_file)
+            parser.validate()
+            quotes_nj = list(parser.extract_quotes())
+
+        self.assertEqual(len(quotes_nj), 128)
+
+        self.assertAlmostEqual(quotes_nj[0].price, 0.3591, delta=0.000001)
+        self.assertEqual(quotes_nj[0].min_volume, 0)
+        self.assertEqual(quotes_nj[0].limit_volume, 9999)
+        self.assertEqual(quotes_nj[0].term_months, 6)
+        self.assertEqual(quotes_nj[0].start_from, datetime(2016, 1, 1))
+        self.assertEqual(quotes_nj[0].valid_from, datetime(2016, 1, 7))
+        self.assertEqual(quotes_nj[0].valid_until, datetime(2016, 1, 8))
+        self.assertEqual(quotes_nj[0].rate_class_alias, 'GEE-gas-NJ Commercial-Etown-Non-Heat')
+        self.assertIn('NJ Commercial,Etown Non-Heat,start 2016-01-01,6 month,0.3591', quotes_nj[0].file_reference[0])
+
+        self.assertEqual(quotes_nj[-22].min_volume, 0)
+        self.assertEqual(quotes_nj[-22].limit_volume, 9999)
+        self.assertEqual(quotes_nj[-22].term_months, 18)
+        self.assertEqual(quotes_nj[-22].start_from, datetime(2016, 3, 1))
+        self.assertEqual(quotes_nj[-22].start_until, datetime(2016, 4, 1))
+        self.assertEqual(quotes_nj[-22].valid_from, datetime(2016, 1, 7))
+        self.assertAlmostEqual(quotes_nj[-22].price, 0.5372, delta=0.000001)
+
+        self.assertAlmostEqual(quotes_nj[-1].price, 0.5057, delta=0.000001)
+        self.assertEqual(quotes_nj[-1].min_volume, 0)
+        self.assertEqual(quotes_nj[-1].limit_volume, 9999)
+        self.assertEqual(quotes_nj[-1].term_months, 24)
+        self.assertEqual(quotes_nj[-1].start_from, datetime(2016, 4, 1))
+        self.assertEqual(quotes_nj[-1].start_until, datetime(2016, 5, 1))
+        self.assertEqual(quotes_nj[-1].valid_from, datetime(2016, 1, 7))
+
     def test_gee_electric(self):
         parser = GEEMatrixParser()
 
@@ -867,8 +895,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2016, 3, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(24, q.term_months)
-        self.assertEqual(None, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(50000, q.limit_volume)
         self.assertEqual('Major-gas-NY-RGE', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
@@ -885,14 +913,14 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        self.assertEqual(4356, len(quotes))
+        self.assertEqual(7830, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         q = quotes[0]
-        self.assertEqual(datetime(2016, 2, 1), q.start_from)
-        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime(2016, 3, 1), q.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
@@ -900,7 +928,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual('SFE-electric-NY-A (NiMo, NYSEG)', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0575, q.price)
+        self.assertEqual(0.0593, q.price)
 
         # check volume ranges in many rows rows because SFE's units are
         # complicated
@@ -920,18 +948,6 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, q.min_volume)
         self.assertEqual(150000, q.limit_volume)
 
-        q = quotes[4355]
-        self.assertEqual(datetime(2016, 7, 31), q.start_from)
-        self.assertEqual(datetime(2016, 8, 1), q.start_until)
-        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
-        self.assertEqual(36, q.term_months)
-        self.assertEqual(500000, q.min_volume)
-        self.assertEqual(None, q.limit_volume)
-        self.assertEqual('SFE-gas-NJ-SJG ($/therm)', q.rate_class_alias)
-        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.4625, q.price)
-
     def test_entrust(self):
         parser = EntrustMatrixParser()
         self.assertEqual(0, parser.get_count())
@@ -942,38 +958,35 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         quotes = list(parser.extract_quotes())
-        # 26 sheets * 4 tables * 5 columns (of prices) * 6 rows
-        self.assertEqual(3120, len(quotes))
+        self.assertEqual(3212, len(quotes))
 
         for quote in quotes:
             quote.validate()
 
         q = quotes[0]
-        self.assertEqual(datetime(2015, 9, 1), q.start_from)
-        self.assertEqual(datetime(2015, 10, 1), q.start_until)
+        self.assertEqual(datetime(2016, 3, 1), q.start_from)
+        self.assertEqual(datetime(2016, 4, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
         self.assertEqual(12, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(15000, q.limit_volume)
         self.assertEqual('Entrust-electric-Com Ed', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0812, q.price)
+        self.assertEqual(0.069, q.price)
 
         # since this one is especially complicated and also missed a row,
         # check the last quote too. (this also checks the "sweet spot"
         # columns which work differently from the other ones)
         q = quotes[-1]
-        self.assertEqual(datetime(2016, 2, 1), q.start_from)
-        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(datetime(2017, 8, 1), q.start_from)
+        self.assertEqual(datetime(2017, 9, 1), q.start_until)
         self.assertEqual(datetime.utcnow().date(), q.date_received.date())
-        self.assertEqual(17, q.term_months)
+        self.assertEqual(24, q.term_months)
         self.assertEqual(3e5, q.min_volume)
         self.assertEqual(1e6, q.limit_volume)
         self.assertEqual('Entrust-electric-ConEd Zone J', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
-        self.assertEqual(False, q.purchase_of_receivables)
-        self.assertEqual(0.0811, q.price)
+        self.assertEqual(0.0771, q.price)
 
     def test_liberty(self):
         parser = LibertyMatrixParser()
@@ -1241,3 +1254,42 @@ class MatrixQuoteParsersTest(TestCase):
         q = quotes[-1]
         self.assertEqual(24, q.term_months)
         self.assertEqual(4.6, q.price)
+
+    def test_spark(self):
+        parser = SparkMatrixParser()
+        self.assertEqual(0, parser.get_count())
+
+        with open(self.SPARK_FILE_PATH, 'rb') as spreadsheet:
+            parser.load_file(spreadsheet)
+        parser.validate()
+        self.assertEqual(0, parser.get_count())
+
+        quotes = list(parser.extract_quotes())
+        self.assertEqual(60 * 5, len(quotes))
+        for quote in quotes:
+            quote.validate()
+
+        q = quotes[0]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(3, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2016, 1, 25), q.valid_from)
+        self.assertEqual(datetime(2016, 1, 26), q.valid_until)
+        self.assertEqual(0, q.min_volume)
+        self.assertEqual(50000, q.limit_volume)
+        self.assertEqual('NJ-PSEG-PSEG-GLP', q.rate_class_alias)
+        self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
+        self.assertEqual(.1097, q.price)
+
+        q = quotes[-1]
+        self.assertEqual(datetime(2016, 5, 1), q.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q.start_until)
+        self.assertEqual(36, q.term_months)
+        self.assertEqual(datetime.utcnow().date(), q.date_received.date())
+        self.assertEqual(datetime(2016, 1, 25), q.valid_from)
+        self.assertEqual(datetime(2016, 1, 26), q.valid_until)
+        self.assertEqual(2e5, q.min_volume)
+        self.assertEqual(1e6, q.limit_volume)
+        self.assertEqual('NY-CONED-ZONE J-SC9', q.rate_class_alias)
+        self.assertEqual(.0766, q.price)

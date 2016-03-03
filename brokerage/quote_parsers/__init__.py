@@ -16,6 +16,8 @@ from .usge_electric import USGEElectricMatrixParser
 from .sfe import SFEMatrixParser
 from .gee_electric import GEEMatrixParser
 from .volunteer import VolunteerMatrixParser
+from .gee_gas import GEEGasPDFParser
+from .spark import SparkMatrixParser
 
 # mapping of each matrix format's primary key in the database to its
 # QuoteParser subclass. each time a subclass is written for a new format,
@@ -35,5 +37,6 @@ CLASSES_FOR_FORMATS = {
     13: GEEMatrixParser,
     12: VolunteerMatrixParser,
     17: GuttmanGas,
-    18: GuttmanElectric
+    18: GuttmanElectric,
+    19: SparkMatrixParser,
 }

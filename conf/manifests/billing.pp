@@ -192,6 +192,10 @@ class base::allalliases {
         ensure    => present,
         recipient => "|${receive_matrix_email_script}"
     }
+    mailalias { 'matrix-spark':
+        ensure    => present,
+        recipient => "|${receive_matrix_email_script}"
+    }
 }
 include base::allalliases
 
