@@ -1,40 +1,49 @@
 from datetime import datetime
 
 from brokerage.quote_parsers.gee_gas_ny import GEEGasNYParser
+from test.test_brokerage.test_quote_parsers import QuoteParserTest
+from test.testing_utils import TestCase
 
-# this must be imported to get the "quotes" fixture passed as as argument to
-# the test method below
-from test.test_brokerage.test_quote_parsers import quotes
+class GeeGasNYTest(QuoteParserTest, TestCase):
+    FILE_NAME = 'NY Rack Rates_2.2.2016.pdf'
+    ALIASES = [
+        'NGW Non-Heat SC2-1',
+        'Con Edison-Heating-SC1'
+    ]
+    PARSER_CLASS = GEEGasNYParser
+    EXPECTED_COUNT = 260
 
+    def test_gee_gas_ny(self):
+        q = self.quotes[0]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(6, q.term_months)
+        self.assertEqual(datetime(2016, 2, 2), q.valid_from)
+        self.assertEqual(datetime(2016, 2, 3), q.valid_until)
+        self.assertEqual(None, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(self.ALIASES[0], q.rate_class_alias)
+        self.assertEqual(1, q.rate_class_id)
+        self.assertEqual(.3732, q.price)
 
-# these variables are accessed inside the "quotes" fixture function
-FILE_NAME = 'NY Rack Rates_2.2.2016.pdf'
-ALIASES = [
-    'NGW Non-Heat SC2-1',
-    'Con Edison-Heating-SC1'
-] # TODO some of the spaces should be -s
-PARSER_CLASS = GEEGasNYParser
-EXPECTED_COUNT = 260
+        # first "sweet spot" quote (last in first row)
+        q = self.quotes[4]
+        self.assertEqual(datetime(2016, 2, 1), q.start_from)
+        self.assertEqual(datetime(2016, 3, 1), q.start_until)
+        self.assertEqual(9, q.term_months)
+        self.assertEqual(datetime(2016, 2, 2), q.valid_from)
+        self.assertEqual(datetime(2016, 2, 3), q.valid_until)
+        self.assertEqual(None, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(self.ALIASES[0], q.rate_class_alias)
+        self.assertEqual(.3688, q.price)
 
-def test_gee_gas_ny(quotes):
-    q = quotes[0]
-    assert q.start_from == datetime(2016, 2, 1)
-    assert q.start_until == datetime(2016, 3, 1)
-    assert q.term_months == 6
-    assert q.valid_from == datetime(2016, 2, 2)
-    assert q.valid_until == datetime(2016, 2, 3)
-    assert q.min_volume == None
-    assert q.limit_volume == None
-    assert q.rate_class_alias == ALIASES[0]
-    assert q.rate_class_id == 1
-    assert q.price == .3732
-
-    q = quotes[-1]
-    assert q.start_from == datetime(2016, 5, 1)
-    assert q.start_until == datetime(2016, 6, 1)
-    assert q.term_months == 11
-    assert q.valid_from == datetime(2016, 2, 2)
-    assert q.valid_until == datetime(2016, 2, 3)
-    assert q.min_volume == None
-    assert q.limit_volume == None
-    assert q.price == .4673
+        q = self.quotes[-1]
+        self.assertEqual(datetime(2016, 5, 1), q.start_from)
+        self.assertEqual(datetime(2016, 6, 1), q.start_until)
+        self.assertEqual(11, q.term_months)
+        self.assertEqual(datetime(2016, 2, 2), q.valid_from)
+        self.assertEqual(datetime(2016, 2, 3), q.valid_until)
+        self.assertEqual(None, q.min_volume)
+        self.assertEqual(None, q.limit_volume)
+        self.assertEqual(.4673, q.price)
