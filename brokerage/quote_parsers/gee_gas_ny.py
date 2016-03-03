@@ -24,8 +24,7 @@ class GEEGasNYParser(QuoteParser):
     # to the end
     RCA_COL = 'A'
 
-    # column containing a start date string when not appended to the end of
-    # RCA_COL
+    # column containing a start date string, when not appended to RCA_COL
     START_COL = 'B'
 
     # number of columns to be used for price numbers (and some term length
@@ -114,6 +113,9 @@ class GEEGasNYParser(QuoteParser):
             # a block of 4 prices matching the "terms" above, 1 term and price
             # pair (labeled "Sweet Spot"), then same thing repeated.
             # (see column arrangement in original PDF, not CSV.)
+            # currently we want only the "Fixed" section (rightmost 4 normal
+            # columns and 2 "sweet spot" columns), but keep the code for the
+            # others in case we want those too
             price_and_term_strs = self._get_joined_row_text(
                 self.SHEET, price_cols, row).split()
             prices_1 = price_and_term_strs[0:4]
@@ -127,7 +129,7 @@ class GEEGasNYParser(QuoteParser):
             all_prices_and_terms = (
                 (round(float(p) / 10.,self.ROUNDING_DIGITS), int(t))
                 for p, t in
-                zip(prices_1, terms) + [(ss_price_1, ss_term_1)] +
+                #zip(prices_1, terms) + [(ss_price_1, ss_term_1)] +
                 zip(prices_2, terms) + [(ss_price_2, ss_term_2)])
 
             for price, term in all_prices_and_terms:
