@@ -1,9 +1,6 @@
 from datetime import datetime
 
 from brokerage.quote_parsers import DirectEnergyMatrixParser
-
-# this must be imported to get the "quotes" fixture passed as as argument to
-# the test method below
 from test.test_brokerage.test_quote_parsers import QuoteParserTest
 from test.testing_utils import TestCase
 
