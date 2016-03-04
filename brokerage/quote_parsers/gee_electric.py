@@ -241,6 +241,10 @@ class GEEMatrixParser(QuoteParser):
                                 quote._validator = ElectricValidator()
                                 quote.rate_class_id = rate_class_id
                                 yield quote
+                    elif isinstance(price, type(None)):
+                        # Break if we're at the first blank cell
+                        # This indicates end-of-row, essentially.
+                        break
                     else:
                         # The cell in question does NOT contain a price,
                         # so we will skip over it. This is normal, because
