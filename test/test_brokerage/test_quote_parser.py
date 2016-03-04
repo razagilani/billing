@@ -113,7 +113,6 @@ class MatrixQuoteParsersTest(TestCase):
     GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_02042016.xlsx')
     GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 2.4.16.xlsx')
     GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 2.4.16.xlsx')
-    GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
     GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
