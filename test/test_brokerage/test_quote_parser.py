@@ -105,12 +105,12 @@ class MatrixQuoteParsersTest(TestCase):
         DIRECTORY, 'Entrust Energy Commercial Matrix Pricing - Residual - 2016 03 02.xlsx')
     LIBERTY_FILE_PATH = join(
         DIRECTORY, 'Liberty Power Daily Pricing for NEX ABC 2016-01-05.xlsx')
-    GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_02242016.xls')
-    GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_02242016.xls')
-    GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_02242016.xls')
-    GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_02242016.xls')
-    GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_02242016.xls')
-    GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_02242016.xls')
+    GUTTMAN_DEO_FILE_PATH = join(DIRECTORY, 'Guttman', 'DEO_Matrix_02242016.xlsx')
+    GUTTMAN_OH_DUKE_FILE_PATH = join(DIRECTORY, 'Guttman', 'OH_Duke_Gas_Matrix_02242016.xlsx')
+    GUTTMAN_PEOPLE_TWP_FILE_PATH = join(DIRECTORY, 'Guttman', 'PeoplesTWP_Matrix_02242016.xlsx')
+    GUTTMAN_CPA_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'CPA_Matrix_02242016.xlsx')
+    GUTTMAN_PEOPLE_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'Peoples_Matrix_02242016.xlsx')
+    GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_02242016.xlsx')
     GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 2.10.16.xlsx')
     GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 2.10.16.xlsx')
     GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
@@ -432,7 +432,8 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
         with open(self.GUTTMAN_DEO_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_DEO_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -460,7 +461,8 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GuttmanGas()
         with open(self.GUTTMAN_OH_DUKE_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_OH_DUKE_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
         quotes = list(parser.extract_quotes())
@@ -484,7 +486,8 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_TWP_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_PEOPLE_TWP_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
         quotes = list(parser.extract_quotes())
@@ -508,7 +511,8 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GuttmanGas()
         with open(self.GUTTMAN_CPA_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_CPA_MATRIX_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
         quotes = list(parser.extract_quotes())
@@ -532,7 +536,8 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GuttmanGas()
         with open(self.GUTTMAN_PEOPLE_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_PEOPLE_MATRIX_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
         quotes = list(parser.extract_quotes())
@@ -556,7 +561,8 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GuttmanGas()
         with open(self.GUTTMAN_COH_MATRIX_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, file_name=basename(
+                self.GUTTMAN_COH_MATRIX_FILE_PATH))
         parser.validate()
         self.assertEqual(0, parser.get_count())
         quotes = list(parser.extract_quotes())
