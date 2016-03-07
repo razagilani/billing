@@ -4,6 +4,7 @@ from os.path import splitext
 
 from testfixtures import TempDirectory
 
+from core import ROOT_PATH
 from core.exceptions import BillingError
 from util.shell import shell_quote, run_command_in_shell
 
@@ -96,8 +97,10 @@ class TabulaConverter(Converter):
     """Extracts tabular data from PDF files using Tabula-java
     (see https://github.com/tabulapdf/tabula-java).
     """
-    # TODO: add to PATH to make this cross-platform
-    TABULA_PATH = '/Users/dan/Downloads/tabula-java-master/target/tabula-0.8.0-jar-with-dependencies.jar'
+    # Tabula jar file is included in the repository so we don't have to deal
+    # with installation or handle different paths in different environments.
+    TABULA_PATH = os.path.join(ROOT_PATH, 'bin',
+                               'tabula-0.8.0-jar-with-dependencies.jar')
 
     def get_converted_file_path(self, temp_file_path):
         return '.'.join([splitext(temp_file_path)[0], 'csv'])
