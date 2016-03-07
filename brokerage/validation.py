@@ -136,7 +136,7 @@ class GasValidator(MatrixQuoteValidator):
     """Specifically for gas quotes.
     """
     # normal range is $.25/therm - $1/therm
-    MIN_PRICE = .10
+    MIN_PRICE = .05
     MAX_PRICE = 5.0
 
     MAX_MIN_VOLUME = 1e6

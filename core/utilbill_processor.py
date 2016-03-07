@@ -661,12 +661,18 @@ class UtilbillProcessor(object):
                 UtilityAccount.id == utility_account_id).one()
         except NoResultFound:
             raise
-        address = Address(addressee=addressee,
-                          city=city,
-                          postal_code=postal_code,
-                          state=state,
-                          street=street)
-        utility_account.fb_billing_address = address
+        utility_account.fb_billing_address.city = city if city != '' else \
+            utility_account.fb_billing_address.city
+        utility_account.fb_billing_address.addressee = addressee if addressee\
+            != '' else utility_account.fb_billing_address.addressee
+        utility_account.fb_billing_address.postal_code = postal_code if \
+            postal_code != '' else \
+            utility_account.fb_billing_address.postal_code
+        utility_account.fb_billing_address.state = state if state != '' else \
+            utility_account.fb_billing_address.state
+        utility_account.fb_billing_address.street = street if street != '' \
+            else utility_account.fb_billing_address.street
+
         return utility_account
 
     def update_fb_service_address(self, utility_account_id,
@@ -682,7 +688,17 @@ class UtilbillProcessor(object):
                           postal_code=postal_code,
                           state=state,
                           street=street)
-        utility_account.fb_service_address = address
+        utility_account.fb_service_address.city = city if city != '' else \
+            utility_account.fb_service_address.city
+        utility_account.fb_service_address.addressee = addressee if addressee\
+            != '' else utility_account.fb_service_address.addressee
+        utility_account.fb_service_address.postal_code = postal_code if \
+            postal_code != '' else \
+            utility_account.fb_service_address.postal_code
+        utility_account.fb_service_address.state = state if state != '' else \
+            utility_account.fb_service_address.state
+        utility_account.fb_service_address.street = street if street != '' \
+            else utility_account.fb_service_address.street
         return utility_account
 
     def move_account_references(self, dest_account_id, source_account_id):
