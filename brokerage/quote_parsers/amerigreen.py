@@ -5,8 +5,8 @@ from tablib import formats
 from brokerage.brokerage_model import MatrixQuote
 from brokerage.quote_parser import QuoteParser, FileNameDateGetter
 from brokerage.quote_parser import excel_number_to_datetime
-from brokerage.spreadsheet_reader import SpreadsheetReader, \
-    SpreadsheetFileConverter
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.converters import LibreOfficeFileConverter
 from brokerage.validation import _assert_true
 
 
@@ -62,7 +62,7 @@ class AmerigreenMatrixParser(QuoteParser):
         'Amerigreen Matrix (\d+-\d+-\d\d\d\d)\s*\..+')
 
     def _preprocess_file(self, quote_file, file_name):
-        return SpreadsheetFileConverter(
+        return LibreOfficeFileConverter(
             'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
     def _extract_quotes(self):

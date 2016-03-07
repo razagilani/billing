@@ -15,6 +15,7 @@ EXTRA="http://mirror.centos.org/centos/6/os/x86_64/Packages/dbus-glib-0.86-6.el6
 FORCE_DOWNLOAD="0"
 DRYRUN="0"
 CLEANUP="1"
+EXTRA="http://mirror.centos.org/centos/6/os/x86_64/Packages/dbus-glib-0.86-6.el6.x86_64.rpm"
 
 function download {
 	WORKDIR=`mktemp -d` || exit 1
@@ -38,9 +39,10 @@ function install {
 	rpm -Uvh $EXTRA
 	# Remove libobasis4.3-gnome-integration rpm file. Amazon EC2 Linux is 
 	# command-line only.
+	rpm -Uvh --force "$EXTRA"
 	for f in *gnome*; do mv "$f" "${f/.rpm/.noinstall}"; done
-	yum -y install *rpm
-}
+        rpm -Uvh --force *.rpm
+}	
 
 function cleanup {
 	echo "Removing temporary directory ${WORKDIR}"
@@ -105,3 +107,5 @@ while getopts "fdnh" opt; do
 done
 
 main
+
+echo "Done"
