@@ -113,8 +113,9 @@ class MatrixQuoteParsersTest(TestCase):
     GUTTMAN_COH_MATRIX_FILE_PATH = join(DIRECTORY, 'Guttman', 'COH_Matrix_02242016.xlsx')
     GUTTMAN_OH_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy OH Power Matrices 2.10.16.xlsx')
     GUTTMAN_PA_POWER_FILE_PATH = join(DIRECTORY, 'Guttman', 'Guttman Energy PA Power Matrices 2.10.16.xlsx')
-    GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_FILE_PATH_MA = join(DIRECTORY, 'GEE Rack Rates_MA_12.1.2015.xlsx')
+    GEE_FILE_PATH_NJ = join(DIRECTORY, 'GEE Rack Rate_NY_12.1.2015.xlsx')
+    GEE_FILE_PATH_NY = join(DIRECTORY, 'GEE Rack Rates_NJ_12.1.2015.xlsx')
     GEE_GAS_PATH_NJ = join(DIRECTORY, 'NJ Rack Rates_1.7.2016.pdf')
     GEE_GAS_PATH_NY = join(DIRECTORY, 'NY Rack Rates_2.2.2016.pdf')
     VOLUNTEER_FILE_PATH_COH = join(DIRECTORY, 'volunteer', 'Exchange_COH_2015 1-25-16.pdf')
@@ -170,7 +171,7 @@ class MatrixQuoteParsersTest(TestCase):
             'Entrust-electric-ConEd Zone J',
 
             # Great Eastern Energy
-            'GEE-electric-ConEd-J-SC-02',
+            'GEE-electric-PSEG-PSEG-GLP',
 
             # Volunteer
             'Volunteer-gas-COLUMBIA GAS of OHIO (COH)',
@@ -777,12 +778,12 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 2), q.valid_until)
         self.assertEqual(datetime(2015, 12, 1), q.start_from)
         self.assertEqual(datetime(2016, 1, 1), q.start_until)
-        self.assertEqual('GEE-electric-ConEd-J-SC-02', q.rate_class_alias)
+        self.assertEqual('GEE-electric-PSEG-PSEG-GLP', q.rate_class_alias)
         self.assertEqual(self.rate_class.rate_class_id, q.rate_class_id)
         self.assertEqual(6, q.term_months)
         self.assertEqual(0, q.min_volume)
         self.assertEqual(499999, q.limit_volume)
-        self.assertEqual(0.08381, q.price)
+        self.assertEqual(0.09789, q.price)
         self.assertEqual(False, q.purchase_of_receivables)
         self.assertEqual('electric', q.service_type)
 
@@ -794,7 +795,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(24, ql.term_months)
         self.assertEqual(500000, ql.min_volume)
         self.assertEqual(999999, ql.limit_volume)
-        self.assertAlmostEqual(0.07573, ql.price, delta=0.000001)
+        self.assertAlmostEqual(0.08219, ql.price, delta=0.000001)
 
         q_nj_0 = quotes_nj[0]
         self.assertEqual(datetime(2015, 12, 1), q_nj_0.valid_from)
@@ -802,13 +803,13 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(datetime(2015, 12, 1), q_nj_0.start_from)
         self.assertEqual(datetime(2016, 1, 1), q_nj_0.start_until)
         self.assertEqual(6, q_nj_0.term_months)
-        self.assertAlmostEqual(0.09789, q_nj_0.price, delta=0.000001)
+        self.assertAlmostEqual(0.08381, q_nj_0.price, delta=0.000001)
 
         q_nj_l = quotes_nj[-1]
         self.assertEqual(datetime(2016, 5, 1), q_nj_l.start_from)
         self.assertEqual(datetime(2016, 6, 1), q_nj_l.start_until)
         self.assertEqual(24, q_nj_l.term_months)
-        self.assertAlmostEqual(0.08219, q_nj_l.price, delta=0.000001)
+        self.assertAlmostEqual(0.07573, q_nj_l.price, delta=0.000001)
 
         q_ma_0 = quotes_ma[0]
         self.assertEqual(datetime(2015, 12, 1), q_ma_0.valid_from)
