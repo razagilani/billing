@@ -4,6 +4,7 @@ import re
 from time import strptime, mktime
 
 from tablib import formats
+from brokerage.converters import LibreOfficeFileConverter
 
 from brokerage.quote_parser import QuoteParser
 from brokerage.reader import parse_number
@@ -48,6 +49,11 @@ class GuttmanGas(QuoteParser):
             (sheet, 6, 5, 'Annual kWh'),
             (sheet, 6, 6, r'Price ((?:\(\$/Dth\))|(?:\(\$/Therm\)))')
         ] for sheet in [s for s in EXPECTED_SHEET_TITLES if s != 'Summary']))
+
+
+    def _preprocess_file(self, quote_file, file_name):
+        return LibreOfficeFileConverter(
+            'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
 
     def _extract_quotes(self):
