@@ -168,7 +168,8 @@ class MajorEnergyGasSheetParser(QuoteParser):
                         start_from=start_from, start_until=start_until,
                         term_months=term_months, valid_from=self._valid_from,
                         valid_until=self._valid_until,
-                        min_volume=None, limit_volume=None,
+                        # hard-coded volume range values come from email body
+                        min_volume=0, limit_volume=50000,
                         purchase_of_receivables=False,
                         rate_class_alias=rate_class_alias, price=price,
                         service_type='gas', file_reference='%s,%s,%s' % (

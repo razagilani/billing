@@ -2,8 +2,8 @@ from datetime import datetime
 from itertools import chain
 
 from tablib import formats
-from brokerage.spreadsheet_reader import SpreadsheetReader, \
-    SpreadsheetFileConverter
+from brokerage.spreadsheet_reader import SpreadsheetReader
+from brokerage.converters import LibreOfficeFileConverter
 from brokerage.validation import _assert_equal
 from core.model.model import ELECTRIC
 from util.dateutils import date_to_datetime, parse_date
@@ -273,7 +273,7 @@ class LibertyMatrixParser(QuoteParser):
     date_getter = SimpleCellDateGetter(0, 2, 'D', '(\d\d?/\d\d?/\d\d\d\d)')
 
     def _preprocess_file(self, quote_file, file_name):
-        return SpreadsheetFileConverter(
+        return LibreOfficeFileConverter(
             'xls', 'xls:"MS Excel 97"').convert_file(quote_file, file_name)
 
     def _validate(self):

@@ -10,6 +10,7 @@ from tablib import Databook, formats
 
 from testfixtures import TempDirectory
 
+from brokerage import brokerage_model
 from brokerage.reader import Reader
 from brokerage.validation import ValidationError, _assert_true, _assert_match, \
     _assert_equal
@@ -147,6 +148,7 @@ class QuoteParser(object):
 
     # energy unit that the supplier uses: convert from this. subclass should
     # specify it.
+    # this is only used for volume ranges (but should also be used for prices)
     EXPECTED_ENERGY_UNIT = None
 
     # energy unit for resulting quotes: convert to this
@@ -162,7 +164,12 @@ class QuoteParser(object):
     # number of digits
     ROUNDING_DIGITS = None
 
-    def __init__(self):
+    def __init__(self, brokerage_dao=brokerage_model):
+        """
+        :param brokerage_dao: object having a 'load_rate_class_aliases'
+        method/function, such as the module brokerage.brokerage_model (use
+        this to avoid accessing the database in tests)
+        """
         # name should be defined
         assert isinstance(self.NAME, basestring)
 
@@ -187,18 +194,13 @@ class QuoteParser(object):
 
         # mapping of rate class alias to rate class ID, loaded in advance to
         # avoid repeated queries
-        self._rate_class_aliases = self._load_rate_class_aliases()
+        self._rate_class_aliases = brokerage_dao.load_rate_class_aliases()
 
     def get_name(self):
         """Rerturn the short standardized name of the format or supplier that
         this parser is for.
         """
         return self.__class__.get_name()
-
-    def _load_rate_class_aliases(self):
-        # allow tests to avoid using the database by overriding this method
-        # TODO: using a separate DAO object would be a better way
-        return load_rate_class_aliases()
 
     def _preprocess_file(self, quote_file, file_name):
         """Override this to modify the file or replace it with another one
@@ -238,8 +240,10 @@ class QuoteParser(object):
         """
         assert self.reader.is_loaded()
         if self.EXPECTED_SHEET_TITLES is not None:
-            _assert_true(set(self.EXPECTED_SHEET_TITLES).issubset(
-                set(self.reader.get_sheet_titles())))
+            actual_titles = self.reader.get_sheet_titles()
+            if not set(self.EXPECTED_SHEET_TITLES).issubset(set(actual_titles)):
+                raise ValidationError('Expected sheet tiles %s, actual %s' % (
+                    self.EXPECTED_SHEET_TITLES, actual_titles))
         for sheet_number_or_title, row, col, expected_value in \
                 self.EXPECTED_CELLS:
             if isinstance(expected_value, basestring):

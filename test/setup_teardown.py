@@ -18,7 +18,6 @@ from test import testing_utils as test_utils
 from core import pricing
 from core.model import Supplier, RateClass, UtilityAccount, SupplyGroup
 from core.utilbill_loader import UtilBillLoader
-from reebill import journal
 from reebill.reebill_model import Session, Register, Address, ReeBillCustomer
 from core.model.utilbill import UtilBill
 from core.model import Utility
@@ -29,7 +28,6 @@ from core.utilbill_processor import UtilbillProcessor
 from reebill.users import UserDAO
 from reebill.reebill_dao import ReeBillDAO
 from reebill import fetch_bill_data as fbd
-from reebill.journal import JournalDAO
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from reebill.reebill_file_handler import ReebillFileHandler
@@ -112,8 +110,7 @@ def create_utility_bill_views():
     file_handler = create_bill_file_handler()
     nexus_util = create_nexus_util()
     reebill_dao = ReeBillDAO()
-    journal_dao = JournalDAO()
-    return Views(reebill_dao, file_handler, nexus_util, journal_dao)
+    return Views(reebill_dao, file_handler, nexus_util)
 
 
 def create_reebill_file_handler():
@@ -139,14 +136,12 @@ def create_reebill_objects():
     reebill_file_handler = create_reebill_file_handler()
 
     ree_getter = RenewableEnergyGetter(splinter, nexus_util, logger)
-    journal_dao = journal.JournalDAO()
     payment_dao = PaymentDAO()
 
     reebill_processor = ReebillProcessor(
         state_db, payment_dao, nexus_util, bill_mailer,
-        reebill_file_handler, ree_getter, journal_dao, logger=logger)
-    reebill_views = Views(state_db, create_bill_file_handler(), nexus_util,
-                          journal_dao)
+        reebill_file_handler, ree_getter, logger=logger)
+    reebill_views = Views(state_db, create_bill_file_handler(), nexus_util)
     return reebill_processor, reebill_views
 
 
@@ -158,7 +153,6 @@ def create_reebill_resource_objects():
     utilbill_processor = create_utilbill_processor()
     reebill_processor, _ = create_reebill_objects()
     user_dao = UserDAO()
-    journal_dao = JournalDAO()
     payment_dao = PaymentDAO()
     reebill_dao = ReeBillDAO()
     splinter = MockSplinter()
@@ -167,7 +161,7 @@ def create_reebill_resource_objects():
     bill_mailer = create_bill_mailer()
     ree_getter = fbd.RenewableEnergyGetter(splinter, nexus_util, logger)
     return (config, logger, nexus_util, user_dao, payment_dao, reebill_dao,
-            bill_file_handler, journal_dao, splinter, reebill_file_handler,
+            bill_file_handler, splinter, reebill_file_handler,
             bill_mailer, ree_getter, utilbill_views, utilbill_processor,
             reebill_processor)
 

@@ -79,11 +79,9 @@ class USGEElectricMatrixParser(QuoteParser):
             if zone == 'Zone':
                 zone_col = 'E'
                 term_start_col = 6
-                term_end_col = self.reader.get_width(sheet)
             else:
                 zone_col = None
                 term_start_col = 5
-                term_end_col = self.reader.get_width(sheet)
 
             # This is the date at the top of the document in each spreadsheet
             valid_from = self.reader.get(sheet, 2, 'D', datetime)
@@ -106,15 +104,21 @@ class USGEElectricMatrixParser(QuoteParser):
                     zone = self.reader.get(sheet, row, zone_col, basestring)
                 else:
                     zone = ""
-                rate_class_alias = 'USGE-electric-%s' % '-'.join([ldc, customer_type, rate_class, zone])
+                rate_class_alias = 'USGE-electric-%s' % '-'.join(
+                        [ldc, customer_type, rate_class, zone])
                 rate_class_ids = self.get_rate_class_ids_for_alias(
                     rate_class_alias)
 
                 min_volume, limit_volume = self._extract_volume_range(
                     sheet, row, self.VOLUME_RANGE_COL)
 
-                for term_col in self.reader.column_range(term_start_col,
-                                                         term_end_col, 7):
+                for term_col in self.reader.column_range(
+                        term_start_col, self.reader.get_width(sheet), 7):
+                    # empty cell where header is expected means end of relevant
+                    # columns in this sheet
+                    if self.reader.get(sheet, self.TERM_HEADER_ROW, term_col,
+                                       object) is None:
+                        break
                     term = self.reader.get_matches(
                         sheet, self.TERM_HEADER_ROW, term_col,
                         '(\d+) Months Beginning in:', int)
