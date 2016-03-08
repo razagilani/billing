@@ -202,10 +202,10 @@ class MajorEnergyMatrixParser(QuoteParser):
         self._electric_parser = MajorEnergyElectricSheetParser(*args, **kwargs)
         self._gas_parser = MajorEnergyGasSheetParser(*args, **kwargs)
 
-    def load_file(self, *args, **kwargs):
-        super(self.__class__, self).load_file(*args, **kwargs)
-        self._electric_parser.load_file(*args, **kwargs)
-        self._gas_parser.load_file(*args, **kwargs)
+    def load_file(self, quote_file, file_name):
+        super(self.__class__, self).load_file(quote_file, file_name)
+        self._electric_parser.load_file(quote_file, file_name)
+        self._gas_parser.load_file(quote_file, file_name)
 
     def _validate(self):
         self._electric_parser.validate()
