@@ -82,6 +82,10 @@ class QuoteParserTest(TestCase):
 
 
 class MatrixQuoteParsersTest(TestCase):
+    """Deprecated. Don't put new tests in here; instead use the
+    QuoteParserTest class, following the example in test_quote_parsers/*.py
+    Instead of updating these tests, replace them with new ones that directory.
+    """
     # paths to example spreadsheet files from each supplier
     DIRECTORY = join(ROOT_PATH, 'test', 'test_brokerage', 'quote_files')
     AEP_FILE_PATH = join(DIRECTORY,
@@ -195,7 +199,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.USGE_ELECTRIC_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
 
         quotes = list(parser.extract_quotes())
@@ -244,7 +248,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.USGE_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
 
         assert self.rate_class.rate_class_id == 1
@@ -346,7 +350,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
         with open(self.GUTTMAN_OH_POWER_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -389,7 +393,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
         with open(self.GUTTMAN_PA_POWER_FILE_PATH, 'rb') as \
                 spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -722,7 +726,7 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GEEGasPDFParser()
 
         with open(self.GEE_GAS_PATH_NJ, 'rb') as pdf_file:
-            parser.load_file(pdf_file)
+            parser.load_file(pdf_file, None)
             parser.validate()
             quotes_nj = list(parser.extract_quotes())
 
@@ -758,17 +762,17 @@ class MatrixQuoteParsersTest(TestCase):
         parser = GEEMatrixParser()
 
         with open(self.GEE_FILE_PATH_MA, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
             parser.validate()
             quotes_ma = list(parser.extract_quotes())
 
         with open(self.GEE_FILE_PATH_NJ, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
             parser.validate()
             quotes_nj = list(parser.extract_quotes())
 
         with open(self.GEE_FILE_PATH_NY, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
             parser.validate()
             quotes_ny = list(parser.extract_quotes())
 
@@ -840,7 +844,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.MAJOR_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -932,7 +936,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.ENTRUST_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
         self.assertEqual(0, parser.get_count())
 
@@ -1032,7 +1036,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.VOLUNTEER_FILE_PATH_COH) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1059,7 +1063,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(4.1, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_CON) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1084,7 +1088,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(3.65, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_DEO) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1109,7 +1113,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(3.39, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_DTE) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1134,7 +1138,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(3.80, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_DUKE) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1159,7 +1163,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(4.14, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_PNG) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1184,7 +1188,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(3.95, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_VEDO) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1210,7 +1214,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(4.49, q.price)
 
         with open(self.VOLUNTEER_FILE_PATH_PECO) as quote_file:
-            parser.load_file(quote_file)
+            parser.load_file(quote_file, None)
         parser.validate()
         quotes = list(parser.extract_quotes())
 
@@ -1239,7 +1243,7 @@ class MatrixQuoteParsersTest(TestCase):
         self.assertEqual(0, parser.get_count())
 
         with open(self.SPARK_FILE_PATH, 'rb') as spreadsheet:
-            parser.load_file(spreadsheet)
+            parser.load_file(spreadsheet, None)
         parser.validate()
         self.assertEqual(0, parser.get_count())
 

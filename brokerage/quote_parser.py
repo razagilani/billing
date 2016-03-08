@@ -211,7 +211,7 @@ class QuoteParser(object):
         """
         return quote_file
 
-    def load_file(self, quote_file, file_name=None):
+    def load_file(self, quote_file, file_name):
         """Read from 'quote_file'. May be very slow and take a huge amount of
         memory.
         :param quote_file: file to read from.
