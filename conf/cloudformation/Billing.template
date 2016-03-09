@@ -27,6 +27,10 @@
       "Type" : "String",
       "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
     },
+    "VpnSecurityGroup" : {
+      "Type" : "String",
+      "Description" : "(Required) Security group of the VPN, allowing VPN traffic to reach the application instance"
+    },
     "ExternalNatSecurityGroup" : {
       "Type" : "String",
       "Description" : "(Required) Security group of the nat instance, allowing web traffic to reach the application instance"
