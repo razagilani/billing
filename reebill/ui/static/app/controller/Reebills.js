@@ -655,6 +655,7 @@ Ext.define('ReeBill.controller.Reebills', {
          selected.set('service_address', sa);
          selected.set('late_charge_rate', late_charge_rate.getValue());
          selected.set('discount_rate', discount_rate.getValue());
+         selected.set('action', 'saveaccountinfo')
          store.resumeAutoSync();
          store.sync();
      },
