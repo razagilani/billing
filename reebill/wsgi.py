@@ -514,7 +514,7 @@ class ReebillsResource(RESTResource):
             rb = self.reebill_processor.new_version(account, sequence)
             rtn = rb.column_dict()
 
-        elif not action:
+        elif action == 'saveaccountinfo':
             # Regular PUT request. In this case this means updated
             # Sequential Account Information
             discount_rate = float(row['discount_rate'])
@@ -540,6 +540,17 @@ class ReebillsResource(RESTResource):
                 processed=row['processed'])
 
             rtn = rb.column_dict()
+
+        elif not action:
+            # Regular PUT request. In this case this means updated
+            # manual adjustment
+            rb = self.state_db.get_reebill_by_id(row['id'])
+            rb.manual_adjustment = row['manual_adjustment']
+            self.reebill_processor.bind_renewable_energy(account, sequence)
+            self.reebill_processor.compute_reebill(account, sequence, 'max')
+            rtn = rb.column_dict()
+            pass
+
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again

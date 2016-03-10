@@ -4,6 +4,18 @@ Ext.define('ReeBill.view.reebills.Reebills', {
     title: 'Reebills',
     alias: 'widget.reebills',    
     store: 'Reebills',
+
+    plugins: [
+        Ext.create('Ext.grid.plugin.CellEditing', {
+            clicksToEdit: 2,
+            listeners: {
+                beforeedit: function (e, editor) {
+                    if (editor.record.get('processed'))
+                        return false;
+                }
+            }
+        })
+    ],
     
     viewConfig: {
         trackOver: false,
@@ -95,6 +107,16 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         dataIndex: 'ree_charge',
         align: 'right',
         width: 120,
+        renderer: Ext.util.Format.usMoney
+    },{
+        header: 'Adjustment',
+        dataIndex: 'manual_adjustment',
+        editor: {
+            xtype: 'numberfield',
+            allowBlank: false
+        },
+        width: 120,
+        align: 'right',
         renderer: Ext.util.Format.usMoney
     }],
 
