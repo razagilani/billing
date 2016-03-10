@@ -11,7 +11,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
         Enum
 
 from core.model.model import physical_unit_type
-from core.exceptions import RegisterError, UnEditableBillError
+from core.exceptions import RegisterError, UnEditableBillError, BillingError, BillStateError
 from reebill.exceptions import IssuedBillError, NotIssuable
 from core.model import Base, Address, Register, Session
 from core.model.utilbill import Evaluation, Charge
@@ -318,6 +318,11 @@ class ReeBill(Base):
                 self.get_account())
         else:
             self.total_adjustment = 0
+
+    def set_manual_adjustment(self, amount):
+        if self.version > 0:
+            raise BillStateError("Corrected bill can't have adjustment")
+        self.manual_adjustment = amount
 
     def set_payments(self, payments, predecessor_balance_due):
         """Associate the given Payment objects with this bill and update the

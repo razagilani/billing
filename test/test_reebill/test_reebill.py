@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from mock import Mock
 
 from core import init_model
+from core.exceptions import BillStateError
 from core.model import Address, Register, Session, Utility, Supplier, RateClass, UtilityAccount
 from core.model.utilbill import UtilBill, Charge
 from reebill.exceptions import NotIssuable
@@ -162,6 +163,16 @@ class ReeBillUnitTest(unittest.TestCase):
         corrected_bill.issue_date = now
         corrected_bill.due_date = datetime(2000, 3, 15)
         corrected_bill.issue(now, reebill_processor)
+
+    def test_manual_adjustment(self):
+        self.assertEqual(0, self.reebill.manual_adjustment)
+
+        self.reebill.set_manual_adjustment(123)
+        self.assertEqual(123, self.reebill.manual_adjustment)
+
+        self.reebill_2.version = 1
+        with self.assertRaises(BillStateError):
+            self.reebill_2.set_manual_adjustment(123)
 
 
 class ReebillTestWithDB(unittest.TestCase):
