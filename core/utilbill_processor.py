@@ -742,6 +742,8 @@ class UtilbillProcessor(object):
                     source_reebill_customer.set_account(dest_utility_account)
                 dest_reebill_customer.utility_account = None
                 # delete the destination account's old reebill_customer
+                dest_reebill_customer.billing_address = None
+                dest_reebill_customer.service_address = None
                 s.delete(dest_reebill_customer)
                 s.commit()
             else:
