@@ -109,7 +109,7 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         width: 120,
         renderer: Ext.util.Format.usMoney
     },{
-        header: 'Adjustment',
+        header: 'Manual Adjustment',
         dataIndex: 'manual_adjustment',
         editor: {
             xtype: 'numberfield',
