@@ -113,7 +113,8 @@ Ext.define('ReeBill.view.reebills.Reebills', {
         dataIndex: 'manual_adjustment',
         editor: {
             xtype: 'numberfield',
-            allowBlank: false
+            allowBlank: false,
+            itemId: 'manual_adjustment'
         },
         width: 120,
         align: 'right',
