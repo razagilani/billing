@@ -541,7 +541,7 @@ class ReebillsResource(RESTResource):
 
             rtn = rb.column_dict()
 
-        elif not action:
+        elif action == 'manual_adjustment':
             # Regular PUT request. In this case this means updated
             # manual adjustment
             rb = self.state_db.get_reebill_by_id(row['id'])

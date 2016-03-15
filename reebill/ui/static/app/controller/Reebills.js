@@ -146,8 +146,13 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=saveAddressChanges]': {
                 click: this.saveAddressChanges
+            },
+            '#manual_adjustment': {
+                blur: this.editManualAdjustment
             }
         });
+
+
 
         this.getReeBillVersionsStore().on({
             beforeload: function(){
@@ -162,6 +167,17 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             scope: this
         });
+    },
+
+    /**
+     * handle edit event in manual_adjustment field
+     */
+    editManualAdjustment: function(editor, e){
+        var reebillStore = this.getReebillsStore();
+        reebillStore.suspendAutoSync();
+        var selected = editor.findParentByType('grid').getSelectionModel().getSelection()[0];
+        selected.set('action', 'manual_adjustment');
+        reebillStore.resumeAutoSync();
     },
 
     /**
